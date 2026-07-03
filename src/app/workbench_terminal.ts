@@ -361,42 +361,40 @@ export function workbenchTerminalToolbarItemsInto(
   const actions = options.actions ?? WORKBENCH_TERMINAL_TOOLBAR_ACTIONS;
   const hasMatches = (state.searchMatchCount ?? 0) > 0;
   const scrollDisabled = (state.scrollbackTotalRows ?? 0) <= (state.scrollbackViewportRows ?? 0);
-  let written = 0;
-  for (let index = 0; index < actions.length; index += 1) {
-    const action = actions[index]!;
-    const item = workbenchTerminalToolbarItemForAction(target[written], action);
-    if (action === "previous" || action === "next") {
-      item.disabled = state.sessionCount < 2;
-    } else if (action === "close") {
-      item.disabled = state.activeId === undefined || state.sessionCount <= 1;
-    } else if (action === "zoomPane") {
-      item.active = state.zoomedPaneId !== undefined;
-    } else if (action === "closePane") {
-      item.disabled = (state.paneCount ?? 1) < 2;
-    } else if (action === "start") {
-      item.disabled = state.activeId === undefined || state.shellRunning === true || state.shellStarting === true;
-    } else if (action === "stop") {
-      item.disabled = state.shellRunning !== true;
-    } else if (action === "restart") {
-      item.disabled = state.activeId === undefined;
-    } else if (action === "raw") {
-      item.active = state.inputMode === "raw";
-      item.disabled = state.shellRunning !== true;
-    } else if (action === "copy") {
-      item.active = state.copyMode === true;
-    } else if (action === "search") {
-      item.active = !!state.searchQuery;
-      item.disabled = (state.scrollbackTotalRows ?? 0) <= 0;
-    } else if (action === "previousMatch" || action === "nextMatch") {
-      item.disabled = !hasMatches;
-    } else if (action === "top" || action === "bottom") {
-      item.disabled = scrollDisabled;
-    }
-    target[written] = item;
-    written += 1;
-  }
-  target.length = written;
-  return target;
+  return projectToolbarItemsInto(
+    target,
+    actions,
+    workbenchTerminalToolbarItemForAction,
+    (item, action) => {
+      if (action === "previous" || action === "next") {
+        item.disabled = state.sessionCount < 2;
+      } else if (action === "close") {
+        item.disabled = state.activeId === undefined || state.sessionCount <= 1;
+      } else if (action === "zoomPane") {
+        item.active = state.zoomedPaneId !== undefined;
+      } else if (action === "closePane") {
+        item.disabled = (state.paneCount ?? 1) < 2;
+      } else if (action === "start") {
+        item.disabled = state.activeId === undefined || state.shellRunning === true || state.shellStarting === true;
+      } else if (action === "stop") {
+        item.disabled = state.shellRunning !== true;
+      } else if (action === "restart") {
+        item.disabled = state.activeId === undefined;
+      } else if (action === "raw") {
+        item.active = state.inputMode === "raw";
+        item.disabled = state.shellRunning !== true;
+      } else if (action === "copy") {
+        item.active = state.copyMode === true;
+      } else if (action === "search") {
+        item.active = !!state.searchQuery;
+        item.disabled = (state.scrollbackTotalRows ?? 0) <= 0;
+      } else if (action === "previousMatch" || action === "nextMatch") {
+        item.disabled = !hasMatches;
+      } else if (action === "top" || action === "bottom") {
+        item.disabled = scrollDisabled;
+      }
+    },
+  );
 }
 
 /** Projects process-output toolbar button descriptors into caller-owned storage. */
@@ -406,27 +404,25 @@ export function workbenchTerminalOutputToolbarItemsInto(
   options: WorkbenchTerminalOutputToolbarItemOptions = {},
 ): WorkbenchButtonRowItem<WorkbenchTerminalOutputToolbarAction>[] {
   const actions = options.actions ?? WORKBENCH_TERMINAL_OUTPUT_TOOLBAR_ACTIONS;
-  let written = 0;
-  for (let index = 0; index < actions.length; index += 1) {
-    const action = actions[index]!;
-    const item = workbenchTerminalOutputToolbarItemForAction(target[written], action);
-    if (action === "run") {
-      item.disabled = state.running;
-    } else if (action === "stop") {
-      item.disabled = !state.running;
-    } else if (action === "clear") {
-      item.disabled = state.outputLineCount <= 0;
-    } else if (action === "follow") {
-      item.active = state.follow;
-    } else if (action === "raw") {
-      item.active = state.inputMode === "raw";
-      item.disabled = !state.running;
-    }
-    target[written] = item;
-    written += 1;
-  }
-  target.length = written;
-  return target;
+  return projectToolbarItemsInto(
+    target,
+    actions,
+    workbenchTerminalOutputToolbarItemForAction,
+    (item, action) => {
+      if (action === "run") {
+        item.disabled = state.running;
+      } else if (action === "stop") {
+        item.disabled = !state.running;
+      } else if (action === "clear") {
+        item.disabled = state.outputLineCount <= 0;
+      } else if (action === "follow") {
+        item.active = state.follow;
+      } else if (action === "raw") {
+        item.active = state.inputMode === "raw";
+        item.disabled = !state.running;
+      }
+    },
+  );
 }
 
 /** Projects a terminal workspace layout into pane frames with content rectangles and optional title rows. */
@@ -461,6 +457,24 @@ export function workbenchTerminalPaneProjectionsInto(
       );
       written += 1;
     }
+  }
+  target.length = written;
+  return target;
+}
+
+function projectToolbarItemsInto<Action extends string>(
+  target: WorkbenchButtonRowItem<Action>[],
+  actions: readonly Action[],
+  prepare: (target: WorkbenchButtonRowItem<Action> | undefined, action: Action) => WorkbenchButtonRowItem<Action>,
+  applyState: (item: WorkbenchButtonRowItem<Action>, action: Action) => void,
+): WorkbenchButtonRowItem<Action>[] {
+  let written = 0;
+  for (let index = 0; index < actions.length; index += 1) {
+    const action = actions[index]!;
+    const item = prepare(target[written], action);
+    applyState(item, action);
+    target[written] = item;
+    written += 1;
   }
   target.length = written;
   return target;

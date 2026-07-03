@@ -14362,42 +14362,40 @@ function workbenchTerminalToolbarItemsInto(target, state, options = {}) {
   const actions = options.actions ?? WORKBENCH_TERMINAL_TOOLBAR_ACTIONS;
   const hasMatches = (state.searchMatchCount ?? 0) > 0;
   const scrollDisabled = (state.scrollbackTotalRows ?? 0) <= (state.scrollbackViewportRows ?? 0);
-  let written = 0;
-  for (let index = 0; index < actions.length; index += 1) {
-    const action = actions[index];
-    const item = workbenchTerminalToolbarItemForAction(target[written], action);
-    if (action === "previous" || action === "next") {
-      item.disabled = state.sessionCount < 2;
-    } else if (action === "close") {
-      item.disabled = state.activeId === void 0 || state.sessionCount <= 1;
-    } else if (action === "zoomPane") {
-      item.active = state.zoomedPaneId !== void 0;
-    } else if (action === "closePane") {
-      item.disabled = (state.paneCount ?? 1) < 2;
-    } else if (action === "start") {
-      item.disabled = state.activeId === void 0 || state.shellRunning === true || state.shellStarting === true;
-    } else if (action === "stop") {
-      item.disabled = state.shellRunning !== true;
-    } else if (action === "restart") {
-      item.disabled = state.activeId === void 0;
-    } else if (action === "raw") {
-      item.active = state.inputMode === "raw";
-      item.disabled = state.shellRunning !== true;
-    } else if (action === "copy") {
-      item.active = state.copyMode === true;
-    } else if (action === "search") {
-      item.active = !!state.searchQuery;
-      item.disabled = (state.scrollbackTotalRows ?? 0) <= 0;
-    } else if (action === "previousMatch" || action === "nextMatch") {
-      item.disabled = !hasMatches;
-    } else if (action === "top" || action === "bottom") {
-      item.disabled = scrollDisabled;
+  return projectToolbarItemsInto(
+    target,
+    actions,
+    workbenchTerminalToolbarItemForAction,
+    (item, action) => {
+      if (action === "previous" || action === "next") {
+        item.disabled = state.sessionCount < 2;
+      } else if (action === "close") {
+        item.disabled = state.activeId === void 0 || state.sessionCount <= 1;
+      } else if (action === "zoomPane") {
+        item.active = state.zoomedPaneId !== void 0;
+      } else if (action === "closePane") {
+        item.disabled = (state.paneCount ?? 1) < 2;
+      } else if (action === "start") {
+        item.disabled = state.activeId === void 0 || state.shellRunning === true || state.shellStarting === true;
+      } else if (action === "stop") {
+        item.disabled = state.shellRunning !== true;
+      } else if (action === "restart") {
+        item.disabled = state.activeId === void 0;
+      } else if (action === "raw") {
+        item.active = state.inputMode === "raw";
+        item.disabled = state.shellRunning !== true;
+      } else if (action === "copy") {
+        item.active = state.copyMode === true;
+      } else if (action === "search") {
+        item.active = !!state.searchQuery;
+        item.disabled = (state.scrollbackTotalRows ?? 0) <= 0;
+      } else if (action === "previousMatch" || action === "nextMatch") {
+        item.disabled = !hasMatches;
+      } else if (action === "top" || action === "bottom") {
+        item.disabled = scrollDisabled;
+      }
     }
-    target[written] = item;
-    written += 1;
-  }
-  target.length = written;
-  return target;
+  );
 }
 function workbenchTerminalPaneProjectionsInto(target, layout, bounds, options = {}) {
   const entries = terminalWorkspacePaneRects2(layout, bounds, {
@@ -14425,6 +14423,18 @@ function workbenchTerminalPaneProjectionsInto(target, layout, bounds, options = 
       );
       written += 1;
     }
+  }
+  target.length = written;
+  return target;
+}
+function projectToolbarItemsInto(target, actions, prepare, applyState) {
+  let written = 0;
+  for (let index = 0; index < actions.length; index += 1) {
+    const action = actions[index];
+    const item = prepare(target[written], action);
+    applyState(item, action);
+    target[written] = item;
+    written += 1;
   }
   target.length = written;
   return target;

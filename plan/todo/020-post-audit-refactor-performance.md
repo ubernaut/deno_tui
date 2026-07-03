@@ -236,3 +236,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   it while keeping renderer-specific writes and hit registration local.
 - Consolidated API workbench checkbox, radio, and combo row projection behind shared append helpers so focused control
   helpers and the aggregate controls panel cannot drift.
+- Routed shell and process-output terminal toolbar item projection through one private reusable action loop while
+  preserving each toolbar's public state rules and caller-owned item reuse.
