@@ -4463,6 +4463,13 @@
     },
     {
       "module": "src/app/workbench_terminal.ts",
+      "name": "nextWorkbenchTerminalSessionId",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
       "name": "resolveWorkbenchShellBackend",
       "kind": "function",
       "typeOnly": false,
@@ -4561,6 +4568,20 @@
     },
     {
       "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchTerminalSessionIdOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchTerminalSessionIdSource",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
       "name": "WorkbenchTerminalSessionTab",
       "kind": "interface",
       "typeOnly": true,
@@ -4599,6 +4620,20 @@
       "name": "workbenchTerminalSessionTabsInto",
       "kind": "function",
       "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "workbenchTerminalSessionTitleFromId",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchTerminalSessionTitleOptions",
+      "kind": "interface",
+      "typeOnly": true,
       "documented": true
     },
     {

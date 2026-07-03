@@ -14165,6 +14165,30 @@ var WORKBENCH_TERMINAL_TOOLBAR_ACTIONS = [
   "top",
   "bottom"
 ];
+function nextWorkbenchTerminalSessionId(sessions, options = {}) {
+  const prefix = options.prefix ?? "shell";
+  const maxIndex = Math.max(1, Math.floor(options.maxIndex ?? 9999));
+  for (let index = 1; index <= maxIndex; index += 1) {
+    const id2 = `${prefix}-${index}`;
+    let exists = false;
+    for (let sessionIndex = 0; sessionIndex < sessions.length; sessionIndex += 1) {
+      if (sessions[sessionIndex]?.id === id2) {
+        exists = true;
+        break;
+      }
+    }
+    if (!exists) return id2;
+  }
+  return `${prefix}-${options.fallbackNow?.() ?? Date.now()}`;
+}
+function workbenchTerminalSessionTitleFromId(id2, options = {}) {
+  const prefix = options.prefix ?? "shell";
+  const label = options.label ?? "Shell";
+  const expectedPrefix = `${prefix}-`;
+  if (!id2.startsWith(expectedPrefix)) return label;
+  const suffix = id2.slice(expectedPrefix.length);
+  return /^\d+$/.test(suffix) ? `${label} ${suffix}` : label;
+}
 function workbenchTerminalSessionTabsInto(target, sessions, activeId, rect, options = {}) {
   target.length = 0;
   if (rect.width <= 0 || rect.height <= 0) return target;
@@ -17975,16 +17999,10 @@ function applyWebTerminalAction(action) {
   active.value = "terminal";
 }
 function nextWebTerminalSessionId() {
-  const existing = new Set(webTerminalWorkspace.inspect().sessions.map((session) => session.id));
-  for (let index = 1; index < 1e4; index += 1) {
-    const id2 = `pages-shell-${index}`;
-    if (!existing.has(id2)) return id2;
-  }
-  return `pages-shell-${Date.now()}`;
+  return nextWorkbenchTerminalSessionId(webTerminalWorkspace.inspect().sessions, { prefix: "pages-shell" });
 }
 function webTerminalSessionTitle(id2) {
-  const match = /^pages-shell-(\d+)$/.exec(id2);
-  return match ? `Pages Shell ${match[1]}` : "Pages Shell";
+  return workbenchTerminalSessionTitleFromId(id2, { prefix: "pages-shell", label: "Pages Shell" });
 }
 function panelLines(id2, height) {
   panelLineBuffer.length = 0;

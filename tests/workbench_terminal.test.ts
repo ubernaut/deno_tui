@@ -13,12 +13,14 @@ import type {
 } from "../src/runtime/terminal_backend.ts";
 import {
   createWorkbenchShellSession,
+  nextWorkbenchTerminalSessionId,
   resolveWorkbenchShellBackend,
   type WorkbenchTerminalOutputToolbarAction,
   workbenchTerminalOutputToolbarItemsInto,
   workbenchTerminalPaneProjectionsInto,
   workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
+  workbenchTerminalSessionTitleFromId,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
 } from "../src/app/workbench/mod.ts";
@@ -91,6 +93,27 @@ Deno.test("createWorkbenchShellSession runs command and fullscreen PTY smoke thr
   } finally {
     await session.shell.dispose();
   }
+});
+
+Deno.test("workbench terminal session id helpers avoid collisions and format titles", () => {
+  assertEquals(nextWorkbenchTerminalSessionId([{ id: "shell-1" }, { id: "shell-3" }]), "shell-2");
+  assertEquals(
+    nextWorkbenchTerminalSessionId([{ id: "pages-shell-1" }], { prefix: "pages-shell" }),
+    "pages-shell-2",
+  );
+  assertEquals(
+    nextWorkbenchTerminalSessionId([{ id: "shell-1" }, { id: "shell-2" }], {
+      maxIndex: 2,
+      fallbackNow: () => 42,
+    }),
+    "shell-42",
+  );
+  assertEquals(workbenchTerminalSessionTitleFromId("shell-7"), "Shell 7");
+  assertEquals(
+    workbenchTerminalSessionTitleFromId("pages-shell-8", { prefix: "pages-shell", label: "Pages Shell" }),
+    "Pages Shell 8",
+  );
+  assertEquals(workbenchTerminalSessionTitleFromId("custom", { label: "Session" }), "Session");
 });
 
 Deno.test("workbenchTerminalSessionTabsInto projects clipped selectable tabs", () => {

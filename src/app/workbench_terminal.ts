@@ -49,6 +49,24 @@ export interface WorkbenchTerminalSessionTab {
   status?: string;
 }
 
+/** Minimal session id metadata used when creating the next workbench terminal session. */
+export interface WorkbenchTerminalSessionIdSource {
+  id: string;
+}
+
+/** Options for creating stable sequential terminal session ids. */
+export interface WorkbenchTerminalSessionIdOptions {
+  prefix?: string;
+  maxIndex?: number;
+  fallbackNow?: () => number;
+}
+
+/** Options for deriving a display title from a generated terminal session id. */
+export interface WorkbenchTerminalSessionTitleOptions {
+  prefix?: string;
+  label?: string;
+}
+
 /** Projected terminal session tab geometry and label. */
 export interface WorkbenchTerminalSessionTabPlacement {
   id: string;
@@ -223,6 +241,40 @@ export async function createWorkbenchShellSession(
     }),
     resolution,
   };
+}
+
+/** Returns the first unused sequential workbench terminal session id without allocating an intermediate id set. */
+export function nextWorkbenchTerminalSessionId(
+  sessions: readonly WorkbenchTerminalSessionIdSource[],
+  options: WorkbenchTerminalSessionIdOptions = {},
+): string {
+  const prefix = options.prefix ?? "shell";
+  const maxIndex = Math.max(1, Math.floor(options.maxIndex ?? 9999));
+  for (let index = 1; index <= maxIndex; index += 1) {
+    const id = `${prefix}-${index}`;
+    let exists = false;
+    for (let sessionIndex = 0; sessionIndex < sessions.length; sessionIndex += 1) {
+      if (sessions[sessionIndex]?.id === id) {
+        exists = true;
+        break;
+      }
+    }
+    if (!exists) return id;
+  }
+  return `${prefix}-${options.fallbackNow?.() ?? Date.now()}`;
+}
+
+/** Creates a compact title for a generated workbench terminal session id. */
+export function workbenchTerminalSessionTitleFromId(
+  id: string,
+  options: WorkbenchTerminalSessionTitleOptions = {},
+): string {
+  const prefix = options.prefix ?? "shell";
+  const label = options.label ?? "Shell";
+  const expectedPrefix = `${prefix}-`;
+  if (!id.startsWith(expectedPrefix)) return label;
+  const suffix = id.slice(expectedPrefix.length);
+  return /^\d+$/.test(suffix) ? `${label} ${suffix}` : label;
 }
 
 /** Projects terminal session tabs into a single row, returning caller-owned placements for rendering and hit testing. */

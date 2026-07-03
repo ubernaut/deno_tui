@@ -162,6 +162,7 @@ import {
   wrapPlainTextInto,
 } from "../src/app/workbench_text.ts";
 import {
+  nextWorkbenchTerminalSessionId,
   resolveWorkbenchShellBackend,
   type WorkbenchTerminalPaneProjection,
   workbenchTerminalPaneProjectionsInto,
@@ -170,6 +171,7 @@ import {
   type WorkbenchTerminalSessionTabRenderCommand,
   workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
+  workbenchTerminalSessionTitleFromId,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
 } from "../src/app/workbench_terminal.ts";
@@ -2329,17 +2331,11 @@ function activeTerminalShell(): TerminalShellController | undefined {
 }
 
 function nextWorkbenchShellSessionId(): string {
-  const existing = new Set(terminalShell.inspect().sessions.map((session) => session.id));
-  for (let index = 1; index < 10000; index += 1) {
-    const id = `shell-${index}`;
-    if (!existing.has(id)) return id;
-  }
-  return `shell-${Date.now()}`;
+  return nextWorkbenchTerminalSessionId(terminalShell.inspect().sessions);
 }
 
 function sessionTitleFromId(id: string): string {
-  const match = /^shell-(\d+)$/.exec(id);
-  return match ? `Shell ${match[1]}` : "Shell";
+  return workbenchTerminalSessionTitleFromId(id);
 }
 
 function addSplitTerminalShell(direction: "row" | "column") {

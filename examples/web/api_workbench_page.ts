@@ -46,6 +46,7 @@ import {
   modalContentHeight,
   ModalController,
   moveWorkbenchMenuIndex,
+  nextWorkbenchTerminalSessionId,
   normalizeTerminalWorkspaceSnapshot,
   normalizeWorkbenchPanelWorkspaceState,
   persistWorkbenchPanelWorkspaceState,
@@ -101,6 +102,7 @@ import {
   type WorkbenchTerminalSessionTabRenderCommand,
   workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
+  workbenchTerminalSessionTitleFromId,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
   type WorkbenchTitlebarButtonKind,
@@ -1527,17 +1529,11 @@ function applyWebTerminalAction(action: WebTerminalAction): void {
 }
 
 function nextWebTerminalSessionId(): string {
-  const existing = new Set(webTerminalWorkspace.inspect().sessions.map((session) => session.id));
-  for (let index = 1; index < 10000; index += 1) {
-    const id = `pages-shell-${index}`;
-    if (!existing.has(id)) return id;
-  }
-  return `pages-shell-${Date.now()}`;
+  return nextWorkbenchTerminalSessionId(webTerminalWorkspace.inspect().sessions, { prefix: "pages-shell" });
 }
 
 function webTerminalSessionTitle(id: string): string {
-  const match = /^pages-shell-(\d+)$/.exec(id);
-  return match ? `Pages Shell ${match[1]}` : "Pages Shell";
+  return workbenchTerminalSessionTitleFromId(id, { prefix: "pages-shell", label: "Pages Shell" });
 }
 
 function panelLines(id: PanelId, height: number): string[] {
