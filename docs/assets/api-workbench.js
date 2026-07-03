@@ -11320,6 +11320,7 @@ function inset(rect, amount) {
 
 // src/app/workbench_frame.ts
 var RESET2 = "\x1B[0m";
+var BACKGROUND_SGR_PATTERN = /\x1b\[48(?:;|\d)/;
 var MAX_FRAME_CELL_PARTS_CACHE_SIZE = 32768;
 var frameCellPartsCache = /* @__PURE__ */ new Map();
 function prepareWorkbenchRows(rows2, count, create, reset) {
@@ -11374,6 +11375,12 @@ function renderFrameCells(cellAt, width) {
   for (let column = 0; column < width; ) {
     const firstCell = cellAt(column);
     const first = splitFrameCell(firstCell);
+    if (isBackgroundStyledFrameCell(first)) {
+      const styled = renderBackgroundStyledRun(cellAt, column, width, firstCell, first);
+      row += styled.value;
+      column = styled.nextColumn;
+      continue;
+    }
     let next = column + 1;
     while (next < width && cellAt(next) === firstCell) {
       next += 1;
@@ -11394,6 +11401,28 @@ function renderFrameCells(cellAt, width) {
     column = next;
   }
   return row;
+}
+function renderBackgroundStyledRun(cellAt, startColumn, width, firstCell, first) {
+  let next = startColumn;
+  let value = "";
+  let currentCell = firstCell;
+  let current = first;
+  while (next < width) {
+    let repeatEnd = next + 1;
+    while (repeatEnd < width && cellAt(repeatEnd) === currentCell) {
+      repeatEnd += 1;
+    }
+    value += `${current.prefix}${repeatEnd - next === 1 ? current.text : current.text.repeat(repeatEnd - next)}`;
+    next = repeatEnd;
+    if (next >= width) break;
+    currentCell = cellAt(next);
+    current = splitFrameCell(currentCell);
+    if (!isBackgroundStyledFrameCell(current)) break;
+  }
+  return { value: `${value}${RESET2}`, nextColumn: next };
+}
+function isBackgroundStyledFrameCell(cell) {
+  return cell.suffix === RESET2 && cell.prefix.length > 0 && BACKGROUND_SGR_PATTERN.test(cell.prefix);
 }
 function splitFrameCell(cell) {
   if (!cell.includes("\x1B[") || !cell.endsWith("\x1B[0m")) {

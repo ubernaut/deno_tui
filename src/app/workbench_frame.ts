@@ -3,6 +3,7 @@ import type { Rectangle } from "../types.ts";
 import { stripStyles, textWidth } from "../utils/strings.ts";
 
 const RESET = "\x1b[0m";
+const BACKGROUND_SGR_PATTERN = /\x1b\[48(?:;|\d)/;
 const MAX_FRAME_CELL_PARTS_CACHE_SIZE = 32768;
 const frameCellPartsCache = new Map<string, FrameCellParts>();
 
@@ -187,6 +188,12 @@ function renderFrameCells(cellAt: (column: number) => string, width: number): st
   for (let column = 0; column < width;) {
     const firstCell = cellAt(column);
     const first = splitFrameCell(firstCell);
+    if (isBackgroundStyledFrameCell(first)) {
+      const styled = renderBackgroundStyledRun(cellAt, column, width, firstCell, first);
+      row += styled.value;
+      column = styled.nextColumn;
+      continue;
+    }
     let next = column + 1;
     while (next < width && cellAt(next) === firstCell) {
       next += 1;
@@ -207,6 +214,39 @@ function renderFrameCells(cellAt: (column: number) => string, width: number): st
     column = next;
   }
   return row;
+}
+
+function renderBackgroundStyledRun(
+  cellAt: (column: number) => string,
+  startColumn: number,
+  width: number,
+  firstCell: string,
+  first: FrameCellParts,
+): { value: string; nextColumn: number } {
+  let next = startColumn;
+  let value = "";
+  let currentCell = firstCell;
+  let current = first;
+
+  while (next < width) {
+    let repeatEnd = next + 1;
+    while (repeatEnd < width && cellAt(repeatEnd) === currentCell) {
+      repeatEnd += 1;
+    }
+    value += `${current.prefix}${repeatEnd - next === 1 ? current.text : current.text.repeat(repeatEnd - next)}`;
+    next = repeatEnd;
+    if (next >= width) break;
+
+    currentCell = cellAt(next);
+    current = splitFrameCell(currentCell);
+    if (!isBackgroundStyledFrameCell(current)) break;
+  }
+
+  return { value: `${value}${RESET}`, nextColumn: next };
+}
+
+function isBackgroundStyledFrameCell(cell: FrameCellParts): boolean {
+  return cell.suffix === RESET && cell.prefix.length > 0 && BACKGROUND_SGR_PATTERN.test(cell.prefix);
 }
 
 interface FrameCellParts {
