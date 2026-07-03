@@ -4,6 +4,7 @@ import {
   buildWorkspaceMenuEntries,
   buildWorkspaceMenuEntriesInto,
   currentWorkspaceVisualizationIds,
+  currentWorkspaceWindows,
   defaultWorkspaceName,
   deleteWorkspaceModalContent,
   normalizeWorkspaceName,
@@ -98,6 +99,29 @@ Deno.test("currentWorkspaceVisualizationIds preserves window order", () => {
     { visualizationId: "cpu", ascii: { style: "blocks" } },
   ];
   assertEquals(currentWorkspaceVisualizationIds(windows), ["gpu", "cpu"]);
+});
+
+Deno.test("currentWorkspaceWindows projects active visualization windows only", () => {
+  const asciiByWindow: Record<string, { style: string }> = {
+    "viz:cpu": { style: "blocks" },
+    "viz:gpu": { style: "glyphs" },
+  };
+  const visualizationByWindow: Partial<Record<string, string>> = {
+    "viz:cpu": "cpu-monitor",
+    "viz:gpu": "gpu-monitor",
+  };
+  const windows = currentWorkspaceWindows({
+    windowIds: ["inspector", "viz:cpu", "viz:missing", "viz:gpu"],
+    isVisualizationWindow: (id) => id.startsWith("viz:"),
+    visualizationIdForWindow: (id) => visualizationByWindow[id],
+    asciiForWindow: (id) => ({ ...asciiByWindow[id]! }),
+  });
+
+  assertEquals(windows, [
+    { visualizationId: "cpu-monitor", ascii: { style: "blocks" } },
+    { visualizationId: "gpu-monitor", ascii: { style: "glyphs" } },
+  ]);
+  assertEquals(windows[0]?.ascii === asciiByWindow["viz:cpu"], false);
 });
 
 Deno.test("workspaceNameModalBody describes save and rename prompts", () => {

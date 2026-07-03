@@ -259,6 +259,7 @@ import {
 import {
   buildWorkspaceMenuEntriesInto,
   currentWorkspaceVisualizationIds as workspaceVisualizationIdsFromWindows,
+  currentWorkspaceWindows as currentWorkspaceWindowsFromIds,
   defaultWorkspaceName as defaultWorkspaceNameFromCount,
   deleteWorkspaceModalContent,
   normalizeWorkspaceName as normalizeWorkspaceNameFromCount,
@@ -3414,17 +3415,13 @@ function currentWorkspaceVisualizationIds(): string[] {
 }
 
 function currentWorkspaceWindows(): SavedWorkspaceWindow[] {
-  const ids = windowManager.ids();
   const dynamicWindows = dynamicVisualizationWindows.peek();
-  const windows: SavedWorkspaceWindow[] = [];
-  for (let index = 0; index < ids.length; index += 1) {
-    const windowId = ids[index] as WindowId;
-    if (!isVisualizationWindow(windowId)) continue;
-    const visualizationId = dynamicWindows[windowId];
-    if (!visualizationId) continue;
-    windows.push({ visualizationId, ascii: cloneAsciiOptions(asciiForWindow(windowId).peek()) });
-  }
-  return windows;
+  return currentWorkspaceWindowsFromIds({
+    windowIds: windowManager.ids() as WindowId[],
+    isVisualizationWindow,
+    visualizationIdForWindow: (windowId) => isVisualizationWindow(windowId) ? dynamicWindows[windowId] : undefined,
+    asciiForWindow: (windowId) => cloneAsciiOptions(asciiForWindow(windowId).peek()),
+  });
 }
 
 function defaultWorkspaceName(): string {

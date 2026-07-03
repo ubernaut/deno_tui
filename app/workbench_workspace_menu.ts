@@ -30,6 +30,14 @@ export interface WorkspaceNameModalBodyOptions {
   targetName?: string | null;
 }
 
+/** Inputs for projecting currently loaded visualization windows into persisted workspace windows. */
+export interface CurrentWorkspaceWindowsOptions<TWindowId extends string, TAscii = unknown> {
+  windowIds: readonly TWindowId[];
+  isVisualizationWindow: (id: TWindowId) => boolean;
+  visualizationIdForWindow: (id: TWindowId) => string | undefined;
+  asciiForWindow: (id: TWindowId) => TAscii;
+}
+
 /** Builds the save-workspace prompt content for the workbench modal controller. */
 export function saveWorkspaceModalContent(body: string[]): ModalContent {
   return {
@@ -187,6 +195,21 @@ export function currentWorkspaceVisualizationIds(windows: readonly WorkbenchWork
     ids[index] = windows[index]!.visualizationId;
   }
   return ids;
+}
+
+/** Projects currently loaded visualization windows into a fresh persisted workspace window snapshot. */
+export function currentWorkspaceWindows<TWindowId extends string, TAscii = unknown>(
+  options: CurrentWorkspaceWindowsOptions<TWindowId, TAscii>,
+): WorkbenchWorkspaceWindow<TAscii>[] {
+  const windows: WorkbenchWorkspaceWindow<TAscii>[] = [];
+  for (let index = 0; index < options.windowIds.length; index++) {
+    const windowId = options.windowIds[index]!;
+    if (!options.isVisualizationWindow(windowId)) continue;
+    const visualizationId = options.visualizationIdForWindow(windowId);
+    if (!visualizationId) continue;
+    windows.push({ visualizationId, ascii: options.asciiForWindow(windowId) });
+  }
+  return windows;
 }
 
 /** Builds the modal body for save/rename workspace prompts. */
