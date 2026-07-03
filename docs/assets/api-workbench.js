@@ -3387,6 +3387,7 @@ var RESET = "\x1B[0m";
 var MAX_LINEAR_BYTE_CACHE_SIZE = 65536;
 var MAX_FOREGROUND_ANSI_CACHE_SIZE = 4096;
 var MAX_CELL_CACHE_SIZE = 16384;
+var MIN_VISIBLE_FILL_GLYPH_INDEX = 6;
 var ThreeAsciiAnsiGridAssembler = class {
   toByte = createLinearByteCache();
   foregroundAnsiCache = /* @__PURE__ */ new Map();
@@ -3489,7 +3490,7 @@ var ThreeAsciiAnsiGridAssembler = class {
         const dominantCount = edgeGlyphs[edgeOffset + 1] ?? 0;
         const totalCount = edgeGlyphs[edgeOffset + 2] ?? 0;
         const secondCount = edgeGlyphs[edgeOffset + 3] ?? 0;
-        if (fillGlyphIndex < 5 && (edgeGlyphIndex <= 0 || dominantCount <= 0 || totalCount <= 0)) {
+        if (fillGlyphIndex < MIN_VISIBLE_FILL_GLYPH_INDEX && (edgeGlyphIndex <= 0 || dominantCount <= 0 || totalCount <= 0)) {
           outputRow[column] = this.blankAnsi;
           continue;
         }
@@ -3575,10 +3576,12 @@ var ThreeAsciiAnsiGridAssembler = class {
       for (let column = 0; column < columns2; column += 1) {
         const index = rowOffset + column;
         const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
-        if (fillGlyphIndex < 5) {
+        if (fillGlyphIndex < MIN_VISIBLE_FILL_GLYPH_INDEX) {
           const blankStart = column;
           column += 1;
-          while (column < columns2 && Math.round(fillGlyphs[rowOffset + column] ?? 0) < 5) column += 1;
+          while (column < columns2 && Math.round(fillGlyphs[rowOffset + column] ?? 0) < MIN_VISIBLE_FILL_GLYPH_INDEX) {
+            column += 1;
+          }
           outputRow.fill(this.blankAnsi, blankStart, column);
           column -= 1;
           continue;
@@ -3633,10 +3636,12 @@ var ThreeAsciiAnsiGridAssembler = class {
       for (let column = 0; column < columns2; column += 1) {
         const index = rowOffset + column;
         const fillGlyphIndex = Math.round(fillGlyphs[index]);
-        if (fillGlyphIndex < 5) {
+        if (fillGlyphIndex < MIN_VISIBLE_FILL_GLYPH_INDEX) {
           const blankStart = column;
           column += 1;
-          while (column < columns2 && Math.round(fillGlyphs[rowOffset + column]) < 5) column += 1;
+          while (column < columns2 && Math.round(fillGlyphs[rowOffset + column]) < MIN_VISIBLE_FILL_GLYPH_INDEX) {
+            column += 1;
+          }
           outputRow.fill(this.blankAnsi, blankStart, column);
           column -= 1;
           continue;
