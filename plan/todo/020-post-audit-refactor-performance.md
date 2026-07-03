@@ -197,3 +197,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   caller-owned row reuse.
 - Extracted API workbench Data Table row projection and page-size calculation into a generic helper with direct tests
   for selected rows, wrapped footers, and body-row reuse.
+- Extracted text-rendered visualization row styling into the visualization window helper with tests for severity mapping
+  and caller-owned row reuse.

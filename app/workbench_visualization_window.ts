@@ -30,6 +30,18 @@ export interface WorkbenchThreeFallbackTheme {
   surface: string;
 }
 
+/** Minimal theme tokens needed to style generic visualization text rows. */
+export interface WorkbenchVisualizationRowsTheme {
+  background: string;
+  danger: string;
+  muted: string;
+  panelSoft: string;
+  soft: string;
+  surface: string;
+  text: string;
+  warn: string;
+}
+
 /** Options for building the built-in Three ASCII fallback rows. */
 export interface WorkbenchThreeFallbackRowsOptions {
   width: number;
@@ -84,6 +96,47 @@ export function visualizationWindowRowsInto(
   );
   appendBodyLines(target, rendered.body);
   target.push(rendered.footer);
+  return target;
+}
+
+/** Projects styled rows for a text-rendered visualization window. */
+export function workbenchVisualizationRowsInto(
+  target: RowStyle[],
+  textRows: string[],
+  option: WorkbenchVisualizationWindowOption,
+  rendered: PanelRender,
+  options: {
+    accent: string;
+    theme: WorkbenchVisualizationRowsTheme;
+    contrast: (color: string, darkFallback: string, lightFallback: string) => string;
+  },
+): RowStyle[] {
+  const rows = visualizationWindowRowsInto(textRows, option, rendered);
+  const { accent, theme: t, contrast } = options;
+  target.length = rows.length;
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = target[index] ?? { text: "" };
+    row.text = rows[index]!;
+    if (index === 0) {
+      row.fg = contrast(accent, t.background, t.text);
+      row.bg = accent;
+      row.bold = true;
+    } else if (index === 1) {
+      row.fg = rendered.severity === "alarm" ? t.danger : rendered.severity === "warning" ? t.warn : t.soft;
+      row.bg = t.surface;
+      row.bold = rendered.severity !== "info";
+    } else if (index === rows.length - 1) {
+      row.fg = t.muted;
+      row.bg = t.panelSoft;
+      row.bold = undefined;
+    } else {
+      const bodyIndex = index - 2;
+      row.fg = bodyIndex % 3 === 0 ? accent : bodyIndex % 3 === 1 ? t.text : t.soft;
+      row.bg = t.surface;
+      row.bold = bodyIndex === 0;
+    }
+    target[index] = row;
+  }
   return target;
 }
 

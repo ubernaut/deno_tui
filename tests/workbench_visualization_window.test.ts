@@ -12,8 +12,11 @@ import {
   workbenchThreeFallbackRowsInto,
   workbenchThreePreviewMode,
   workbenchThreePreviewRowsInto,
+  workbenchVisualizationRowsInto,
+  type WorkbenchVisualizationRowsTheme,
   type WorkbenchVisualizationWindowOption,
 } from "../app/workbench_visualization_window.ts";
+import type { RowStyle } from "../app/workbench_rows.ts";
 import type { PanelRender } from "../app/types.ts";
 
 const option: WorkbenchVisualizationWindowOption = {
@@ -41,6 +44,17 @@ const rowTheme = {
   surface: "#101018",
 };
 
+const visualizationTheme: WorkbenchVisualizationRowsTheme = {
+  background: "#000000",
+  danger: "#ff3366",
+  muted: "#887799",
+  panelSoft: "#21182f",
+  soft: "#c7b8ff",
+  surface: "#101018",
+  text: "#f8f5ff",
+  warn: "#ffb02e",
+};
+
 Deno.test("visualizationWindowRows assembles title description body and footer", () => {
   assertEquals(visualizationWindowRows(option, render), [
     " MONITOR · Hex Grid ",
@@ -64,6 +78,51 @@ Deno.test("visualizationWindowRowsInto reuses caller storage", () => {
     "core 1  95%      ",
     "selected cpu-1",
   ]);
+});
+
+Deno.test("workbenchVisualizationRowsInto styles visualization rows and reuses storage", () => {
+  const target: RowStyle[] = [{ text: "stale", fg: "x", bg: "y", bold: false }];
+  const firstRow = target[0];
+  const textRows = ["stale"];
+  const rows = workbenchVisualizationRowsInto(target, textRows, option, {
+    ...render,
+    severity: "warning",
+  }, {
+    accent: "#9cff3a",
+    theme: visualizationTheme,
+    contrast: () => "#000000",
+  });
+
+  assertEquals(rows === target, true);
+  assertEquals(rows[0] === firstRow, true);
+  assertEquals(rows[0], { text: " MONITOR · Hex Grid ", fg: "#000000", bg: "#9cff3a", bold: true });
+  assertEquals(rows[1], { text: "core utilization topology", fg: "#ffb02e", bg: "#101018", bold: true });
+  assertEquals(rows[2], { text: "core 0  12%", fg: "#9cff3a", bg: "#101018", bold: true });
+  assertEquals(rows[3], { text: "core 1  95%      ", fg: "#f8f5ff", bg: "#101018", bold: false });
+  assertEquals(rows[4], { text: "selected cpu-1", fg: "#887799", bg: "#21182f", bold: undefined });
+  assertEquals(textRows, [
+    " MONITOR · Hex Grid ",
+    "core utilization topology",
+    "core 0  12%",
+    "core 1  95%      ",
+    "selected cpu-1",
+  ]);
+});
+
+Deno.test("workbenchVisualizationRowsInto maps alarm and info severity", () => {
+  const alarm = workbenchVisualizationRowsInto([], [], option, { ...render, severity: "alarm" }, {
+    accent: "#9cff3a",
+    theme: visualizationTheme,
+    contrast: () => "#000000",
+  });
+  const info = workbenchVisualizationRowsInto([], [], option, { ...render, severity: "info" }, {
+    accent: "#9cff3a",
+    theme: visualizationTheme,
+    contrast: () => "#000000",
+  });
+
+  assertEquals(alarm[1], { text: "core utilization topology", fg: "#ff3366", bg: "#101018", bold: true });
+  assertEquals(info[1], { text: "core utilization topology", fg: "#c7b8ff", bg: "#101018", bold: false });
 });
 
 Deno.test("visualizationTextContentSize expands to rendered text dimensions", () => {

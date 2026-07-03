@@ -250,8 +250,8 @@ import {
   threeRendererModeLabel,
   visualizationTextContentSize,
   visualizationThreeStatusLine,
-  visualizationWindowRowsInto,
   workbenchThreeFallbackRowsInto,
+  workbenchVisualizationRowsInto,
 } from "./workbench_visualization_window.ts";
 import {
   buildWorkspaceMenuEntries,
@@ -1401,36 +1401,15 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
     return;
   }
   hideVisualizationThreePanel(id);
-  const rows = visualizationWindowRowsInto(visualizationTextRows, option, rendered);
-  visualizationRenderRows.length = rows.length;
-  for (let index = 0; index < rows.length; index += 1) {
-    if (index === 0) {
-      visualizationRenderRows[index] = {
-        text: rows[index]!,
-        fg: contrastText(accent, t.background, t.text),
-        bg: accent,
-        bold: true,
-      };
-    } else if (index === 1) {
-      visualizationRenderRows[index] = {
-        text: rows[index]!,
-        fg: rendered.severity === "alarm" ? t.danger : rendered.severity === "warning" ? t.warn : t.soft,
-        bg: t.surface,
-        bold: rendered.severity !== "info",
-      };
-    } else if (index === rows.length - 1) {
-      visualizationRenderRows[index] = { text: rows[index]!, fg: t.muted, bg: t.panelSoft };
-    } else {
-      const bodyIndex = index - 2;
-      visualizationRenderRows[index] = {
-        text: rows[index]!,
-        fg: bodyIndex % 3 === 0 ? accent : bodyIndex % 3 === 1 ? t.text : t.soft,
-        bg: t.surface,
-        bold: bodyIndex === 0,
-      };
-    }
-  }
-  writeRows(frame, rect, visualizationRenderRows);
+  writeRows(
+    frame,
+    rect,
+    workbenchVisualizationRowsInto(visualizationRenderRows, visualizationTextRows, option, rendered, {
+      accent,
+      theme: t,
+      contrast: contrastText,
+    }),
+  );
   if (visualizationId === "cpu-hex-grid") {
     addCpuHexTileHits(id, rect, context);
   }
