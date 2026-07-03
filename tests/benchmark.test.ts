@@ -8,6 +8,7 @@ import {
   inspectBenchmarkCatalog,
   queryBenchmarkCases,
   summarizeBenchmarkResults,
+  summarizeBestBenchmarkSummaries,
 } from "../src/perf/mod.ts";
 import { parseBenchmarkCliOptions, selectBenchmarkCases } from "../scripts/benchmark_cli.ts";
 import { benchmarkCases } from "../scripts/benchmark_cases.ts";
@@ -70,6 +71,58 @@ Deno.test("BenchmarkRunner summarizes threshold failures", async () => {
       "fail benchmark summary: 1 cases, 1 failed, 4.000ms total, 4.000ms avg/case",
     ].join("\n"),
   );
+});
+
+Deno.test("summarizeBestBenchmarkSummaries keeps best averages across noisy repeats", () => {
+  const slow = summarizeBenchmarkResults([
+    {
+      name: "render/a",
+      iterations: 10,
+      warmupIterations: 0,
+      totalMs: 40,
+      averageMs: 4,
+      maxAverageMs: 3,
+      passed: false,
+    },
+    {
+      name: "render/b",
+      iterations: 10,
+      warmupIterations: 0,
+      totalMs: 20,
+      averageMs: 2,
+      maxAverageMs: 3,
+      passed: true,
+    },
+  ]);
+  const fast = summarizeBenchmarkResults([
+    {
+      name: "render/a",
+      iterations: 10,
+      warmupIterations: 0,
+      totalMs: 25,
+      averageMs: 2.5,
+      maxAverageMs: 3,
+      passed: true,
+    },
+    {
+      name: "render/b",
+      iterations: 10,
+      warmupIterations: 0,
+      totalMs: 30,
+      averageMs: 3,
+      maxAverageMs: 3,
+      passed: true,
+    },
+  ]);
+
+  const best = summarizeBestBenchmarkSummaries([slow, fast]);
+
+  assertEquals(best.passed, true);
+  assertEquals(best.results.map((result) => [result.name, result.averageMs]), [
+    ["render/a", 2.5],
+    ["render/b", 2],
+  ]);
+  assertEquals(summarizeBestBenchmarkSummaries([]).results, []);
 });
 
 Deno.test("benchmark catalogs filter inspect and format case metadata", () => {

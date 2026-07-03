@@ -9397,6 +9397,13 @@
       "documented": true
     },
     {
+      "module": "src/perf/benchmark.ts",
+      "name": "summarizeBestBenchmarkSummaries",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
       "module": "src/runtime/capabilities.ts",
       "name": "createRuntimePlan",
       "kind": "function",

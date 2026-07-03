@@ -1,11 +1,11 @@
 import {
-  type BenchmarkResult,
   BenchmarkRunner,
   type BenchmarkSummary,
   createBenchmarkCatalogReport,
   formatBenchmarkCatalogMarkdown,
   formatBenchmarkSummary,
   summarizeBenchmarkResults,
+  summarizeBestBenchmarkSummaries,
 } from "../mod.ts";
 import { parseBenchmarkCliOptions, selectBenchmarkCases } from "./benchmark_cli.ts";
 import { benchmarkCases } from "./benchmark_cases.ts";
@@ -35,26 +35,10 @@ if (!summary.passed) {
 }
 
 async function summarizeSelectedBenchmarks(repeat: number): Promise<BenchmarkSummary> {
-  let bestSummary: BenchmarkSummary | undefined;
+  const summaries: BenchmarkSummary[] = [];
   for (let index = 0; index < repeat; index += 1) {
     const runner = new BenchmarkRunner(selectedCases);
-    const summary = await runner.summarize();
-    bestSummary = bestSummary ? bestOfBenchmarkSummaries(bestSummary, summary) : summary;
+    summaries.push(await runner.summarize());
   }
-  return bestSummary ?? summarizeBenchmarkResults([]);
-}
-
-function bestOfBenchmarkSummaries(left: BenchmarkSummary, right: BenchmarkSummary): BenchmarkSummary {
-  const results = new Array<BenchmarkResult>(left.results.length);
-  for (let index = 0; index < left.results.length; index += 1) {
-    const leftResult = left.results[index]!;
-    const rightResult = right.results.find((result) => result.name === leftResult.name);
-    results[index] = rightResult && isBetterBenchmarkResult(rightResult, leftResult) ? rightResult : leftResult;
-  }
-  return summarizeBenchmarkResults(results);
-}
-
-function isBetterBenchmarkResult(candidate: BenchmarkResult, current: BenchmarkResult): boolean {
-  return candidate.averageMs < current.averageMs ||
-    (candidate.averageMs === current.averageMs && candidate.totalMs < current.totalMs);
+  return summaries.length === 0 ? summarizeBenchmarkResults([]) : summarizeBestBenchmarkSummaries(summaries);
 }

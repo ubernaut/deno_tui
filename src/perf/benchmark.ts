@@ -245,6 +245,22 @@ export function summarizeBenchmarkResults(results: readonly BenchmarkResult[]): 
   };
 }
 
+/** Summarizes repeated benchmark summaries by keeping the best average result for each case. */
+export function summarizeBestBenchmarkSummaries(summaries: readonly BenchmarkSummary[]): BenchmarkSummary {
+  if (summaries.length === 0) return summarizeBenchmarkResults([]);
+  const first = summaries[0]!;
+  const results = new Array<BenchmarkResult>(first.results.length);
+  for (let index = 0; index < first.results.length; index += 1) {
+    let best = first.results[index]!;
+    for (let summaryIndex = 1; summaryIndex < summaries.length; summaryIndex += 1) {
+      const candidate = summaries[summaryIndex]!.results.find((result) => result.name === best.name);
+      if (candidate && isBetterBenchmarkResult(candidate, best)) best = candidate;
+    }
+    results[index] = best;
+  }
+  return summarizeBenchmarkResults(results);
+}
+
 /** Formats benchmark results as stable text for CLI output and smoke tests. */
 export function formatBenchmarkResults(results: readonly BenchmarkResult[]): string {
   const lines = new Array<string>(results.length);
@@ -273,6 +289,11 @@ function formatThresholds(result: BenchmarkResult): string {
   if (result.maxAverageMs !== undefined) thresholds.push(`max avg ${result.maxAverageMs.toFixed(3)}ms`);
   if (result.maxTotalMs !== undefined) thresholds.push(`max total ${result.maxTotalMs.toFixed(3)}ms`);
   return thresholds.length === 0 ? "" : `, ${thresholds.join(", ")}`;
+}
+
+function isBetterBenchmarkResult(candidate: BenchmarkResult, current: BenchmarkResult): boolean {
+  return candidate.averageMs < current.averageMs ||
+    (candidate.averageMs === current.averageMs && candidate.totalMs < current.totalMs);
 }
 
 function formatBenchmarkCaseThresholds(benchmark: BenchmarkCaseInspection): string {
