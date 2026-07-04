@@ -438,6 +438,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   for the default scene even though the renderer was submitting frames.
 - Extracted workbench Three pressure-probe grid snapshot, source-row diffing, and line formatting helpers into the
   shared probe module with direct tests so CLI profiling output stays renderer-aware and script-local code stays small.
+- Extracted API workbench control-row snapshot projection into a tested helper so `renderControls` no longer owns
+  checkbox/radio option buffer assembly before painting and hit registration.
 - Returned Three grid projection metadata from the workbench grid writer and routed terminal-pressure row accounting
   through the actual rendered target height, keeping capped/scaled grid pressure measurement aligned with paint output.
 - Extracted the workbench Three terminal-pressure flush update into a pure resolver that combines live-cap resync,

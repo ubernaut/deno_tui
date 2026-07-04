@@ -13,6 +13,7 @@ import {
   apiWorkbenchControlLineRenderCommandsInto,
   type ApiWorkbenchControlLineSegment,
   apiWorkbenchControlsRowsInto,
+  apiWorkbenchControlsSnapshotRowsInto,
   apiWorkbenchControlTrack,
   apiWorkbenchDropdownHeaderRowInto,
   apiWorkbenchDropdownPopoverRect,
@@ -803,6 +804,75 @@ Deno.test("api workbench controls panel rows project shared adapter order", () =
   });
   assertEquals(rows[0] === first, true);
   assertEquals(rows.at(-1), { id: "slider", value: "Progress  ░░░░ 0%", options: undefined });
+});
+
+Deno.test("api workbench controls snapshot rows assemble state into reusable buffers", () => {
+  const checkboxBuffer = [{ label: "stale", checked: false }];
+  const radioBuffer = [{ label: "old", selected: true }];
+  const rows = apiWorkbenchControlsSnapshotRowsInto([], {
+    buttonPressCount: 2,
+    genericButtonPressCount: 1,
+    modalOpen: false,
+    slider: { track: { text: "██░░" }, value: 5, max: 10 },
+    checkboxLivePreview: true,
+    checkboxCompactRows: false,
+    radioOptions: [
+      { label: "Fast", value: "fast" },
+      { label: "Unit-01 Signal", value: "unit-01" },
+      { label: "Dense", value: "dense" },
+    ],
+    radioSelectedValue: "unit-01",
+    radioActiveIndex: 2,
+    combo: {
+      title: "Theme",
+      label: "Unit-01 Signal",
+      expanded: false,
+      rectWidth: 32,
+    },
+    dropdown: {
+      title: "Dropdown",
+      label: "Geometry",
+      expanded: true,
+    },
+    input: {
+      title: "Input",
+      text: "deno task health",
+      active: false,
+    },
+    stepper: {
+      steps: [
+        { id: "draft", label: "Draft", completed: true },
+        { id: "ship", label: "Ship" },
+      ],
+      activeIndex: 1,
+      rectWidth: 40,
+    },
+    progress: { track: { text: "███░" }, value: 75 },
+    buffers: {
+      checkboxes: checkboxBuffer,
+      radio: radioBuffer,
+    },
+  });
+
+  assertEquals(checkboxBuffer, [
+    { label: "live preview", checked: true },
+    { label: "compact rows", checked: false },
+  ]);
+  assertEquals(radioBuffer, [
+    { label: "Fast", selected: false },
+    { label: "Unit-01 Signal", selected: true },
+    { label: "Dense", selected: false },
+  ]);
+  assertEquals(rows.map((row) => [row.id, row.value, row.options]).slice(4, 12), [
+    ["checkbox", "Checkboxes", undefined],
+    ["checkbox", "✓ live preview", { indent: true, index: 0 }],
+    ["checkbox", "✗ compact rows", { indent: true, index: 1 }],
+    ["radio", "Radio", { previous: true, next: true }],
+    ["radio", "  ○ Fast", { indent: true, index: 0 }],
+    ["radio", "  ● Unit-01 Signal", { indent: true, index: 1 }],
+    ["radio", "> ○ Dense", { indent: true, index: 2 }],
+    ["combo", "Theme  ▸ Unit-01 Signal", { action: "activate", previous: undefined, next: undefined }],
+  ]);
 });
 
 Deno.test("api workbench controls panel rows keep terminal and web geometry in parity", () => {

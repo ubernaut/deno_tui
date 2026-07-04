@@ -211,6 +211,7 @@ import {
   apiWorkbenchControlLineRenderCommandsInto,
   type ApiWorkbenchControlLineSegment,
   apiWorkbenchControlsRowsInto,
+  apiWorkbenchControlsSnapshotRowsInto,
   apiWorkbenchControlTrack,
   apiWorkbenchDropdownHeaderRowInto,
   apiWorkbenchDropdownPopoverRect,
@@ -1618,20 +1619,7 @@ function renderControls(frame: Frame, rect: Rectangle): void {
     reservedWidth: 18,
     maxWidth: 24,
   });
-  controlCheckboxOptions[0] = { label: "live preview", checked: livePreview.checked.peek() };
-  controlCheckboxOptions[1] = { label: "compact rows", checked: compactRows.checked.peek() };
-  controlCheckboxOptions.length = 2;
-  const selectedRadioValue = modeRadio.selectedValue.peek();
-  const radioOptions = modeRadio.options.peek();
-  for (let index = 0; index < radioOptions.length; index += 1) {
-    const option = radioOptions[index]!;
-    controlRadioOptions[index] = {
-      label: option.label,
-      selected: option.value === selectedRadioValue,
-    };
-  }
-  controlRadioOptions.length = radioOptions.length;
-  apiWorkbenchControlsRowsInto(controlProjectedRows, {
+  apiWorkbenchControlsSnapshotRowsInto(controlProjectedRows, {
     buttonPressCount: actionButton.pressCount.peek(),
     genericButtonPressCount: genericButton.pressCount.peek(),
     modalOpen: modal.openState.peek(),
@@ -1640,11 +1628,11 @@ function renderControls(frame: Frame, rect: Rectangle): void {
       value: density.value.peek(),
       max: 10,
     },
-    checkboxes: controlCheckboxOptions,
-    radio: {
-      items: controlRadioOptions,
-      activeIndex: modeRadio.activeIndex.peek(),
-    },
+    checkboxLivePreview: livePreview.checked.peek(),
+    checkboxCompactRows: compactRows.checked.peek(),
+    radioOptions: modeRadio.options.peek(),
+    radioSelectedValue: modeRadio.selectedValue.peek(),
+    radioActiveIndex: modeRadio.activeIndex.peek(),
     combo: {
       title: "Theme",
       label: themeCombo.label(),
@@ -1669,6 +1657,10 @@ function renderControls(frame: Frame, rect: Rectangle): void {
     progress: {
       track: progressTrack,
       value: progress.value.peek(),
+    },
+    buffers: {
+      checkboxes: controlCheckboxOptions,
+      radio: controlRadioOptions,
     },
   });
   for (let index = 0; index < controlProjectedRows.length; index += 1) {

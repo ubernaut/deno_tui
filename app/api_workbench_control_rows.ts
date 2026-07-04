@@ -31,6 +31,11 @@ export interface ApiWorkbenchRadioOption {
   selected: boolean;
 }
 
+export interface ApiWorkbenchRadioSourceOption<Value extends string = string> {
+  label: string;
+  value: Value;
+}
+
 export interface ApiWorkbenchComboHeaderRowsOptions {
   title: string;
   label: string;
@@ -103,6 +108,21 @@ export interface ApiWorkbenchControlsRowsOptions {
   input: ApiWorkbenchInputRowOptions;
   stepper: ApiWorkbenchStepperRowOptions;
   progress: ApiWorkbenchProgressRowOptions;
+}
+
+export interface ApiWorkbenchControlsSnapshotBuffers {
+  checkboxes: ApiWorkbenchCheckboxOption[];
+  radio: ApiWorkbenchRadioOption[];
+}
+
+export interface ApiWorkbenchControlsSnapshotOptions<Value extends string = string>
+  extends Omit<ApiWorkbenchControlsRowsOptions, "checkboxes" | "radio"> {
+  checkboxLivePreview: boolean;
+  checkboxCompactRows: boolean;
+  radioOptions: readonly ApiWorkbenchRadioSourceOption<Value>[];
+  radioSelectedValue: Value | undefined;
+  radioActiveIndex: number;
+  buffers: ApiWorkbenchControlsSnapshotBuffers;
 }
 
 export function apiWorkbenchCheckboxRowsInto(
@@ -261,6 +281,43 @@ export function apiWorkbenchControlsRowsInto(
   written += 1;
   target.length = written;
   return target;
+}
+
+export function apiWorkbenchControlsSnapshotRowsInto<Value extends string = string>(
+  target: ApiWorkbenchProjectedControlRow[],
+  options: ApiWorkbenchControlsSnapshotOptions<Value>,
+): ApiWorkbenchProjectedControlRow[] {
+  const checkboxes = options.buffers.checkboxes;
+  checkboxes[0] = { label: "live preview", checked: options.checkboxLivePreview };
+  checkboxes[1] = { label: "compact rows", checked: options.checkboxCompactRows };
+  checkboxes.length = 2;
+
+  const radio = options.buffers.radio;
+  for (let index = 0; index < options.radioOptions.length; index += 1) {
+    const option = options.radioOptions[index]!;
+    radio[index] = {
+      label: option.label,
+      selected: option.value === options.radioSelectedValue,
+    };
+  }
+  radio.length = options.radioOptions.length;
+
+  return apiWorkbenchControlsRowsInto(target, {
+    buttonPressCount: options.buttonPressCount,
+    genericButtonPressCount: options.genericButtonPressCount,
+    modalOpen: options.modalOpen,
+    slider: options.slider,
+    checkboxes,
+    radio: {
+      items: radio,
+      activeIndex: options.radioActiveIndex,
+    },
+    combo: options.combo,
+    dropdown: options.dropdown,
+    input: options.input,
+    stepper: options.stepper,
+    progress: options.progress,
+  });
 }
 
 type OptionRowId = Extract<ApiWorkbenchControlId, "checkbox" | "radio">;
