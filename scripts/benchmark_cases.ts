@@ -1042,11 +1042,11 @@ function runWorkbenchThreePressurePolicyWorkload(): void {
       highBytesPerGrid: 96_000,
       lowBytesPerGrid: 1_500,
       highBytesPerSecond: 35_000,
-      lowBytesPerSecond: 12_000,
+      lowBytesPerSecond: 10_000,
       highDurationMs: 50,
       sampleDurationMs: 1000 / 30,
       highFrameThreshold: 1,
-      lowFrameThreshold: 60,
+      lowFrameThreshold: 45,
     });
     workbenchThreePressureState.currentCells = next.currentCells;
     workbenchThreePressureState.highFrames = next.highFrames;

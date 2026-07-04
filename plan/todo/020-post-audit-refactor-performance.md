@@ -765,3 +765,7 @@ performance, shared terminal/web workbench projections, and oversized module red
   scrolled-off panels out of the render loop.
 - Switched `FrameScheduler` throttling to measure frame spacing from callback completion instead of callback start,
   preventing slow terminal flushes from immediately draining queued invalidations and compounding perceived lag.
+- Promoted API workbench Three panes from the 30-cell rescue startup tier to the 60-cell emergency tier while keeping
+  the 30-cell fallback available under terminal pressure. Normal animated block output now stays at `13x4/52c` and
+  20fps cadence instead of starting at `9x3/27c`; recovery into 120 cells requires quieter output below 10KB/s to avoid
+  periodic expensive up/down oscillation.

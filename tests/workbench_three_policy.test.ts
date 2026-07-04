@@ -24,14 +24,14 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
     480,
     960,
   ]);
-  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, WORKBENCH_THREE_RESCUE_CELLS);
+  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 60);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 240_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 96_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 35_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerGrid, 1_500);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerSecond, 12_000);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerSecond, 10_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highFrameThreshold, 1);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowFrameThreshold, 60);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowFrameThreshold, 45);
   assertEquals(WORKBENCH_THREE_READBACK_STRATEGY, "deferred");
 });
 
@@ -51,13 +51,37 @@ Deno.test("API workbench Three policy keeps live panes faster than idle panes", 
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: false }), 1000 / 5);
 });
 
-Deno.test("API workbench Three policy starts at a conservative live budget", () => {
+Deno.test("API workbench Three policy starts above rescue but keeps rescue available", () => {
+  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 60);
   assertEquals(
     apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
+    WORKBENCH_THREE_EMERGENCY_DRAW_INTERVAL_MS,
+  );
+  assertEquals(
+    apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_RESCUE_CELLS, { live: true }),
     WORKBENCH_THREE_RESCUE_DRAW_INTERVAL_MS,
   );
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(60, { live: true }), 1000 / 20);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(960, { live: true }), 1000 / 20);
+});
+
+Deno.test("API workbench Three policy recovers startup tier after sustained quiet output", () => {
+  const state = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_INITIAL_CELLS);
+  const sample = {
+    ...API_WORKBENCH_THREE_PRESSURE_POLICY,
+    renderedThreeGrids: 1,
+    bytes: 450,
+    durationMs: 0.05,
+    sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
+  };
+
+  const frames = API_WORKBENCH_THREE_PRESSURE_POLICY.lowFrameThreshold ?? 1;
+  for (let index = 0; index < frames; index += 1) {
+    Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
+  }
+
+  assertEquals(state.currentCells, 120);
+  assertEquals(state.lowFrames, 0);
 });
 
 Deno.test("API workbench Three policy backs off on the first high-pressure terminal frame", () => {

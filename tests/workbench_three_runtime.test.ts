@@ -4,8 +4,8 @@ import {
   resolveApiWorkbenchThreePressureChange,
 } from "../app/workbench_three_runtime.ts";
 import {
+  WORKBENCH_THREE_EMERGENCY_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_INITIAL_CELLS,
-  WORKBENCH_THREE_RESCUE_DRAW_INTERVAL_MS,
 } from "../app/workbench_three_policy.ts";
 
 Deno.test("ApiWorkbenchThreeRuntimeController owns live cadence signals", () => {
@@ -15,11 +15,28 @@ Deno.test("ApiWorkbenchThreeRuntimeController owns live cadence signals", () => 
   });
 
   assertEquals(controller.liveMaxCells.peek(), WORKBENCH_THREE_INITIAL_CELLS);
-  assertEquals(controller.frameInterval.peek(), WORKBENCH_THREE_RESCUE_DRAW_INTERVAL_MS);
+  assertEquals(controller.frameInterval.peek(), WORKBENCH_THREE_EMERGENCY_DRAW_INTERVAL_MS);
 
   live = false;
   controller.syncFrameInterval();
   assertEquals(controller.frameInterval.peek(), 1000 / 8);
+
+  controller.dispose();
+});
+
+Deno.test("ApiWorkbenchThreeRuntimeController recovers startup cells under quiet scoped output", () => {
+  const controller = new ApiWorkbenchThreeRuntimeController({
+    hasLiveThreeWindow: () => true,
+  });
+  const stats = { changed: 5, bytes: 450, durationMs: 0.05 };
+  const sample = { renderedThreeGrids: 1, renderedThreeRows: 4 };
+
+  for (let index = 0; index < 45; index += 1) {
+    controller.updatePressure(stats, sample);
+  }
+
+  assertEquals(controller.liveMaxCells.peek(), 120);
+  assertEquals(controller.inspectPressure().lowFrames, 0);
 
   controller.dispose();
 });
