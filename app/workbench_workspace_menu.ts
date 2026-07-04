@@ -63,6 +63,23 @@ export interface WorkspaceLoadClosePlan<TWindowId extends string, TSelection = s
   selectedVisualizationTilesChanged: boolean;
 }
 
+/** Inputs for planning side effects when a single workbench window closes. */
+export interface WorkbenchWindowClosePlanOptions<TWindowId extends string, TSelection = string> {
+  windowId: TWindowId;
+  isVisualizationWindow: (id: TWindowId) => id is Extract<TWindowId, `viz:${string}`>;
+  isTerminalShellWindow?: (id: TWindowId) => boolean;
+  selectedVisualizationTiles?: Readonly<Partial<Record<string, TSelection>>>;
+}
+
+/** Side-effect-free single-window close plan. */
+export interface WorkbenchWindowClosePlan<TWindowId extends string, TSelection = string> {
+  windowId: TWindowId;
+  visualizationWindowId?: Extract<TWindowId, `viz:${string}`>;
+  stopTerminalShell: boolean;
+  selectedVisualizationTiles: Partial<Record<string, TSelection>>;
+  selectedVisualizationTilesChanged: boolean;
+}
+
 /** Inputs for saving the current loaded windows as a workspace. */
 export interface SaveWorkspaceStateOptions<TAscii = unknown> {
   workspaces: readonly WorkbenchWorkspace<TAscii>[];
@@ -328,6 +345,33 @@ export function workspaceLoadClosePlan<TWindowId extends string, TSelection = st
   return {
     windowIds,
     visualizationWindowIds,
+    selectedVisualizationTiles,
+    selectedVisualizationTilesChanged,
+  };
+}
+
+/** Plans side effects needed when a single workbench window closes. */
+export function workbenchWindowClosePlan<TWindowId extends string, TSelection = string>(
+  options: WorkbenchWindowClosePlanOptions<TWindowId, TSelection>,
+): WorkbenchWindowClosePlan<TWindowId, TSelection> {
+  const selectedVisualizationTiles = { ...(options.selectedVisualizationTiles ?? {}) } as Partial<
+    Record<string, TSelection>
+  >;
+  let selectedVisualizationTilesChanged = false;
+  let visualizationWindowId: Extract<TWindowId, `viz:${string}`> | undefined;
+
+  if (options.isVisualizationWindow(options.windowId)) {
+    visualizationWindowId = options.windowId;
+    if (options.windowId in selectedVisualizationTiles) {
+      delete selectedVisualizationTiles[options.windowId];
+      selectedVisualizationTilesChanged = true;
+    }
+  }
+
+  return {
+    windowId: options.windowId,
+    visualizationWindowId,
+    stopTerminalShell: Boolean(options.isTerminalShellWindow?.(options.windowId)),
     selectedVisualizationTiles,
     selectedVisualizationTilesChanged,
   };

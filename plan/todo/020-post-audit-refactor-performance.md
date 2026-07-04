@@ -264,6 +264,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   close counts are computed outside the terminal workbench render/orchestration module.
 - Extracted dynamic visualization window registration planning into the shared window registry so id normalization,
   restore/create decisions, minimum dimensions, and order assignment are tested outside the terminal workbench app.
+- Extracted single-window close planning into a typed pure helper so visualization renderer disposal, selected CPU tile
+  cleanup, and terminal-shell stop decisions are computed outside the terminal workbench app.
 - Retuned the default workbench Three ASCII pressure policy for slow terminal links: the default pane now starts at the
   120-cell emergency tier, 240-cell animated output downshifts on sustained byte rates above roughly 35KB/s, and low
   byte-rate recovery remains conservative so SSH/tmux sessions do not immediately climb back into expensive output.

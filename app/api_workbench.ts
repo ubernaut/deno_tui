@@ -284,6 +284,7 @@ import {
   resolveWorkspaceMenuCommand,
   saveWorkspaceModalContent,
   saveWorkspaceState,
+  workbenchWindowClosePlan,
   workspaceDeletedModalContent,
   workspaceLoadClosePlan,
   type WorkspaceMenuEntry,
@@ -4143,13 +4144,20 @@ function handleThreeConfigKey(event: { key: string; shift?: boolean }): void {
 }
 
 function closeWindow(id: WindowId): void {
-  if (isVisualizationWindow(id)) {
-    disposeVisualizationThreePanel(id);
-    disposeAsciiForWindow(id);
-    const { [id]: _removed, ...remainingSelections } = selectedCpuHexTiles.peek();
-    selectedCpuHexTiles.value = remainingSelections;
+  const plan = workbenchWindowClosePlan({
+    windowId: id,
+    isVisualizationWindow,
+    isTerminalShellWindow: (candidate) => candidate === TERMINAL_SHELL_WINDOW_ID,
+    selectedVisualizationTiles: selectedCpuHexTiles.peek(),
+  });
+  if (plan.visualizationWindowId) {
+    disposeVisualizationThreePanel(plan.visualizationWindowId);
+    disposeAsciiForWindow(plan.visualizationWindowId);
+    if (plan.selectedVisualizationTilesChanged) {
+      selectedCpuHexTiles.value = plan.selectedVisualizationTiles as Record<VisualizationWindowId, string>;
+    }
   }
-  if (id === TERMINAL_SHELL_WINDOW_ID) {
+  if (plan.stopTerminalShell) {
     void activeTerminalShell()?.stop();
     terminalShellInputMode.value = "workbench";
   }

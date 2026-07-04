@@ -14,6 +14,7 @@ import {
   resolveWorkspaceMenuCommand,
   saveWorkspaceModalContent,
   saveWorkspaceState,
+  workbenchWindowClosePlan,
   workspaceDeletedModalContent,
   workspaceLoadClosePlan,
   type WorkspaceMenuEntry,
@@ -193,6 +194,66 @@ Deno.test("workspaceLoadClosePlan preserves selections when no visualization win
     selectedVisualizationTiles: { "viz:cpu": "cpu 1" },
     selectedVisualizationTilesChanged: false,
   });
+});
+
+Deno.test("workbenchWindowClosePlan trims visualization selection and requests renderer cleanup", () => {
+  type TestWindowId = "controls" | "terminalShell" | "viz:cpu";
+  const selected = { "viz:cpu": "cpu 42", "viz:gpu": "gpu" };
+
+  const plan = workbenchWindowClosePlan({
+    windowId: "viz:cpu" as TestWindowId,
+    isVisualizationWindow: (id: TestWindowId): id is Extract<TestWindowId, `viz:${string}`> => id.startsWith("viz:"),
+    isTerminalShellWindow: (id) => id === "terminalShell",
+    selectedVisualizationTiles: selected,
+  });
+
+  assertEquals(plan, {
+    windowId: "viz:cpu",
+    visualizationWindowId: "viz:cpu",
+    stopTerminalShell: false,
+    selectedVisualizationTiles: { "viz:gpu": "gpu" },
+    selectedVisualizationTilesChanged: true,
+  });
+  assertEquals(selected, { "viz:cpu": "cpu 42", "viz:gpu": "gpu" });
+});
+
+Deno.test("workbenchWindowClosePlan identifies terminal shell and preserves non-visual selections", () => {
+  type TestWindowId = "controls" | "terminalShell" | "viz:cpu";
+  const selected = { "viz:cpu": "cpu 42" };
+  const isVisualizationWindow = (id: TestWindowId): id is Extract<TestWindowId, `viz:${string}`> =>
+    id.startsWith("viz:");
+
+  assertEquals(
+    workbenchWindowClosePlan({
+      windowId: "terminalShell" as TestWindowId,
+      isVisualizationWindow,
+      isTerminalShellWindow: (id) => id === "terminalShell",
+      selectedVisualizationTiles: selected,
+    }),
+    {
+      windowId: "terminalShell",
+      visualizationWindowId: undefined,
+      stopTerminalShell: true,
+      selectedVisualizationTiles: { "viz:cpu": "cpu 42" },
+      selectedVisualizationTilesChanged: false,
+    },
+  );
+
+  assertEquals(
+    workbenchWindowClosePlan({
+      windowId: "controls" as TestWindowId,
+      isVisualizationWindow,
+      isTerminalShellWindow: (id) => id === "terminalShell",
+      selectedVisualizationTiles: selected,
+    }),
+    {
+      windowId: "controls",
+      visualizationWindowId: undefined,
+      stopTerminalShell: false,
+      selectedVisualizationTiles: { "viz:cpu": "cpu 42" },
+      selectedVisualizationTilesChanged: false,
+    },
+  );
 });
 
 Deno.test("workspace state transitions save rename and delete workspaces", () => {
