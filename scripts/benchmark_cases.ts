@@ -1560,6 +1560,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     run: workbenchThreeGridBenchmark.runVerticalOnly,
   },
   {
+    name: "render/workbench-sparse-three-grid-220x70",
+    category: "render",
+    description: "Project sparse Three ASCII rows with fallback-row reuse into a large workbench pane.",
+    tags: ["render", "workbench", "three", "ascii", "frame", "sparse"],
+    iterations: 200,
+    maxAverageMs: 6,
+    run: workbenchThreeGridBenchmark.runSparseFallback,
+  },
+  {
     name: "render/ansi-styled-character-split-160",
     category: "render",
     description: "Split a full-width truecolor ANSI background row into TextObject cells.",

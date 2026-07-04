@@ -5,6 +5,7 @@ export interface WorkbenchThreeGridBenchmark {
   runScaled(): void;
   runCapped(): void;
   runVerticalOnly(): void;
+  runSparseFallback(): void;
 }
 
 export function createWorkbenchThreeGridBenchmark(options: {
@@ -30,6 +31,10 @@ export function createWorkbenchThreeGridBenchmark(options: {
         const blue = (160 + row * 5 + column * 3) % 256;
         return `\x1b[48;2;${red};${green};${blue}m \x1b[0m`;
       }),
+  );
+  const sparseGrid = Array.from(
+    { length: sourceRows },
+    (_, row) => row % 3 === 0 ? grid[row] : undefined,
   );
   let checksum = 0;
 
@@ -96,6 +101,24 @@ export function createWorkbenchThreeGridBenchmark(options: {
         },
       );
       checksumFrame("workbench vertical-only Three grid checksum failed", sourceColumns, targetRows);
+    },
+
+    runSparseFallback() {
+      const preparedFrame = prepareWorkbenchFrame(frame, targetRows);
+      writeWorkbenchThreeGrid(
+        preparedFrame,
+        { column: 0, row: 0, width: targetColumns, height: targetRows },
+        sparseGrid,
+        "\x1b[48;2;8;6;18m \x1b[0m",
+        {
+          scale: true,
+          rowBuffer,
+          sourceColumns,
+          sourceRowIndexes,
+          sourceColumnIndexes,
+        },
+      );
+      checksumFrame("workbench sparse Three grid checksum failed");
     },
   };
 }
