@@ -7,7 +7,6 @@ import {
   buttonText as formatButtonText,
   CheckBoxController,
   clampWorkbenchTileDensity,
-  clipRect,
   ComboBoxController,
   Computed,
   type ComputedLayoutBox,
@@ -161,6 +160,10 @@ import {
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
 } from "../../app/api_workbench_controls.ts";
+import {
+  expandedApiWorkbenchTouchHitRect,
+  isApiWorkbenchTouchOptimizedLayout,
+} from "../../app/api_workbench_hit.ts";
 import {
   type HtmlCssLayoutRenderCommand,
   htmlCssLayoutRenderCommandsInto,
@@ -2695,28 +2698,21 @@ function findHit(x: number, y: number): HitTarget<Hit> | undefined {
   const target = hitTargets.find(x, y);
   if (target) return target;
   if (!isTouchOptimizedLayout()) return undefined;
-  return hitTargets.findExpanded(x, y, (rect) => expandedTouchHitRect(rect));
+  return hitTargets.findExpanded(x, y, (rect) =>
+    expandedApiWorkbenchTouchHitRect({
+      rect,
+      bounds: { column: 0, row: 0, width: cols(), height: rowsCount() },
+    })
+  );
 }
 
 function isTouchOptimizedLayout(): boolean {
   const coarsePointer = globalThis.matchMedia?.("(pointer: coarse)")?.matches ?? false;
-  return coarsePointer || cols() < 92 || rowsCount() < 30;
-}
-
-function expandedTouchHitRect(rect: Rectangle): Rectangle {
-  const minimumWidth = rect.width <= 3 ? 6 : rect.width <= 10 ? Math.max(10, rect.width) : rect.width;
-  const minimumHeight = rect.height <= 1 ? 3 : rect.height;
-  const growColumns = Math.max(0, minimumWidth - rect.width);
-  const growRows = Math.max(0, minimumHeight - rect.height);
-  return clipRect(
-    {
-      column: rect.column - Math.floor(growColumns / 2),
-      row: rect.row - Math.floor(growRows / 2),
-      width: rect.width + growColumns,
-      height: rect.height + growRows,
-    },
-    { column: 0, row: 0, width: cols(), height: rowsCount() },
-  );
+  return isApiWorkbenchTouchOptimizedLayout({
+    coarsePointer,
+    columns: cols(),
+    rows: rowsCount(),
+  });
 }
 function hex(value: string): [number, number, number] {
   const color = value.replace("#", "");

@@ -1,5 +1,7 @@
 import { assertEquals } from "./deps.ts";
 import {
+  expandedApiWorkbenchTouchHitRect,
+  isApiWorkbenchTouchOptimizedLayout,
   resolveApiWorkbenchHitWindowId,
   resolveApiWorkbenchTitlebarHitAction,
   resolveApiWorkbenchWindowHScrollbarOffset,
@@ -89,5 +91,29 @@ Deno.test("resolveApiWorkbench workspace scrollbar offset scrolls rows only", ()
       pointerRow: -4,
     }),
     { columns: 0, rows: 0 },
+  );
+});
+
+Deno.test("api workbench touch layout expands on coarse or compact screens", () => {
+  assertEquals(isApiWorkbenchTouchOptimizedLayout({ columns: 120, rows: 40 }), false);
+  assertEquals(isApiWorkbenchTouchOptimizedLayout({ coarsePointer: true, columns: 120, rows: 40 }), true);
+  assertEquals(isApiWorkbenchTouchOptimizedLayout({ columns: 91, rows: 40 }), true);
+  assertEquals(isApiWorkbenchTouchOptimizedLayout({ columns: 120, rows: 29 }), true);
+});
+
+Deno.test("api workbench expanded touch hit rect grows small targets and clips to bounds", () => {
+  assertEquals(
+    expandedApiWorkbenchTouchHitRect({
+      rect: { column: 10, row: 5, width: 2, height: 1 },
+      bounds: { column: 0, row: 0, width: 40, height: 20 },
+    }),
+    { column: 8, row: 4, width: 6, height: 3 },
+  );
+  assertEquals(
+    expandedApiWorkbenchTouchHitRect({
+      rect: { column: 0, row: 0, width: 2, height: 1 },
+      bounds: { column: 0, row: 0, width: 5, height: 2 },
+    }),
+    { column: 0, row: 0, width: 4, height: 2 },
   );
 });

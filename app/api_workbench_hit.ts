@@ -1,4 +1,5 @@
 import { scrollbarOffsetForPointer } from "../src/components/scroll_area.ts";
+import type { Rectangle } from "../src/types.ts";
 
 export interface ApiWorkbenchHitWindowIds<TWindowId extends string> {
   terminalShell: TWindowId;
@@ -35,6 +36,17 @@ export interface ApiWorkbenchScrollbarOffsetInput {
 export interface ApiWorkbenchScrollbarOffset {
   columns: number;
   rows: number;
+}
+
+export interface ApiWorkbenchTouchLayoutInput {
+  coarsePointer?: boolean;
+  columns: number;
+  rows: number;
+}
+
+export interface ApiWorkbenchTouchHitRectInput {
+  rect: Rectangle;
+  bounds: Rectangle;
 }
 
 /** Maps a renderer-neutral titlebar button kind to the workbench hit action it should trigger. */
@@ -123,5 +135,41 @@ export function resolveApiWorkbenchWorkspaceScrollbarOffset(
       Math.max(0, Math.floor(input.viewportHeight ?? 0)),
       Math.max(0, Math.floor(input.pointerRow ?? 0)),
     ),
+  };
+}
+
+/** Returns true when pointer targets should expand for coarse or compact layouts. */
+export function isApiWorkbenchTouchOptimizedLayout(input: ApiWorkbenchTouchLayoutInput): boolean {
+  return Boolean(input.coarsePointer) || input.columns < 92 || input.rows < 30;
+}
+
+/** Expands small pointer targets for touch/mobile layouts while clipping to the visible bounds. */
+export function expandedApiWorkbenchTouchHitRect(input: ApiWorkbenchTouchHitRectInput): Rectangle {
+  const { rect, bounds } = input;
+  const minimumWidth = rect.width <= 3 ? 6 : rect.width <= 10 ? Math.max(10, rect.width) : rect.width;
+  const minimumHeight = rect.height <= 1 ? 3 : rect.height;
+  const growColumns = Math.max(0, minimumWidth - rect.width);
+  const growRows = Math.max(0, minimumHeight - rect.height);
+  return clipApiWorkbenchRect(
+    {
+      column: rect.column - Math.floor(growColumns / 2),
+      row: rect.row - Math.floor(growRows / 2),
+      width: rect.width + growColumns,
+      height: rect.height + growRows,
+    },
+    bounds,
+  );
+}
+
+function clipApiWorkbenchRect(rect: Rectangle, bounds: Rectangle): Rectangle {
+  const column = Math.max(bounds.column, rect.column);
+  const row = Math.max(bounds.row, rect.row);
+  const right = Math.min(bounds.column + bounds.width, rect.column + rect.width);
+  const bottom = Math.min(bounds.row + bounds.height, rect.row + rect.height);
+  return {
+    column,
+    row,
+    width: Math.max(0, right - column),
+    height: Math.max(0, bottom - row),
   };
 }

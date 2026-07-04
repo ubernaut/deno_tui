@@ -203,6 +203,8 @@ import {
   createApiWorkbenchThemes,
 } from "./api_workbench_catalog.ts";
 import {
+  expandedApiWorkbenchTouchHitRect,
+  isApiWorkbenchTouchOptimizedLayout,
   resolveApiWorkbenchHitWindowId,
   resolveApiWorkbenchTitlebarHitAction,
   resolveApiWorkbenchWindowHScrollbarOffset,
@@ -4535,7 +4537,22 @@ function addHit(rect: Rectangle, action: HitAction): void {
 }
 
 function findHit(x: number, y: number): { rect: Rectangle; action: HitAction } | undefined {
-  return hitTargets.find(x, y);
+  const target = hitTargets.find(x, y);
+  if (target) return target;
+  if (!isTouchOptimizedLayout()) return undefined;
+  return hitTargets.findExpanded(x, y, (rect) =>
+    expandedApiWorkbenchTouchHitRect({
+      rect,
+      bounds: { column: 0, row: 0, width: currentWidth(), height: currentHeight() },
+    })
+  );
+}
+
+function isTouchOptimizedLayout(): boolean {
+  return isApiWorkbenchTouchOptimizedLayout({
+    columns: currentWidth(),
+    rows: currentHeight(),
+  });
 }
 
 function windowTitle(id: WindowId): string {
