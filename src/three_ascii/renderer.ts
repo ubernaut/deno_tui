@@ -16,6 +16,7 @@ import {
   type ThreeAsciiDeferredReadbackFrame,
   ThreeAsciiDeferredReadbackQueue,
 } from "./deferred_readback.ts";
+import { createThreeAsciiComputeDispatchPlan } from "./compute_plan.ts";
 import {
   shouldIncludeThreeAsciiTerminalEdges,
   type ThreeAsciiEffectState,
@@ -568,35 +569,22 @@ export class ThreeAsciiRenderer {
     const commandEncoder = this.device!.createCommandEncoder({
       label: "deno_tui.three_ascii.cells",
     });
-    const workgroupsX = Math.ceil(this.columns / WORKGROUP_SIZE);
-    const workgroupsY = Math.ceil(this.rows / WORKGROUP_SIZE);
-
-    this.dispatchComputePass(
-      commandEncoder,
-      "deno_tui.three_ascii.fill",
-      this.fillPipeline!,
-      this.fillBindGroup!,
-      workgroupsX,
-      workgroupsY,
-    );
-    if (includeTerminalEdges) {
+    const dispatchPlan = createThreeAsciiComputeDispatchPlan({
+      columns: this.columns,
+      rows: this.rows,
+      workgroupSize: WORKGROUP_SIZE,
+      includeEdges: includeTerminalEdges,
+    });
+    for (const pass of dispatchPlan.passes) {
       this.dispatchComputePass(
         commandEncoder,
-        "deno_tui.three_ascii.edge",
-        this.edgePipeline!,
-        this.edgeBindGroup!,
-        workgroupsX,
-        workgroupsY,
+        pass.label,
+        this.computePipelineForPass(pass.kind),
+        this.computeBindGroupForPass(pass.kind),
+        dispatchPlan.workgroupsX,
+        dispatchPlan.workgroupsY,
       );
     }
-    this.dispatchComputePass(
-      commandEncoder,
-      "deno_tui.three_ascii.color",
-      this.colorPipeline!,
-      this.colorBindGroup!,
-      workgroupsX,
-      workgroupsY,
-    );
 
     const readbackLayout = this.readbackLayoutCache.resolve({
       fillByteLength: this.fillOutput!.byteLength,
@@ -712,6 +700,28 @@ export class ThreeAsciiRenderer {
         command.targetOffset,
         command.byteLength,
       );
+    }
+  }
+
+  private computePipelineForPass(kind: "fill" | "edge" | "color"): GPUComputePipeline {
+    switch (kind) {
+      case "fill":
+        return this.fillPipeline!;
+      case "edge":
+        return this.edgePipeline!;
+      case "color":
+        return this.colorPipeline!;
+    }
+  }
+
+  private computeBindGroupForPass(kind: "fill" | "edge" | "color"): GPUBindGroup {
+    switch (kind) {
+      case "fill":
+        return this.fillBindGroup!;
+      case "edge":
+        return this.edgeBindGroup!;
+      case "color":
+        return this.colorBindGroup!;
     }
   }
 
