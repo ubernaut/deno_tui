@@ -2,6 +2,7 @@ import type { CanvasStdout } from "../canvas/sink.ts";
 
 const encoder = new TextEncoder();
 
+/** Terminal flush statistics returned by retained workbench ANSI screen painters. */
 export interface WorkbenchAnsiScreenFlushStats {
   rows: number;
   changed: number;
@@ -10,6 +11,7 @@ export interface WorkbenchAnsiScreenFlushStats {
   durationMs: number;
 }
 
+/** Encodes and writes assembled ANSI rows while measuring byte count and write duration. */
 export function writeWorkbenchAnsiScreenOutput(
   stdout: CanvasStdout,
   output: readonly string[],

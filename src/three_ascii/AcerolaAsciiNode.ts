@@ -84,6 +84,7 @@ export interface AcerolaAsciiNodeOptions {
   viewEdges?: boolean;
 }
 
+/** Render-output feature profile used to prune unused Acerola ASCII passes. */
 export interface AcerolaAsciiRenderProfile {
   image: boolean;
   terminalEdges: boolean;

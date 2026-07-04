@@ -264,6 +264,7 @@ export interface WorkbenchTerminalPaneTitleRenderCommand {
   };
 }
 
+/** Contrast resolver used by pane title render-command projection. */
 export type WorkbenchTerminalPaneTitleContrast = (color: string, dark: string, light: string) => string;
 
 /** Renderer-neutral shell header row projected before the live pane content. */

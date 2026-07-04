@@ -11,14 +11,18 @@ export interface ThreeAsciiEmptyRenderFrame {
   grid?: string[][];
 }
 
+/** Normalized output selection for one renderer frame. */
 export interface ThreeAsciiRenderFrameSelection {
   renderAnsi: boolean;
   renderImage: boolean;
 }
 
+/** Shared options object for ANSI-only renderer frames. */
 export const THREE_ASCII_ANSI_FRAME_OPTIONS: Readonly<ThreeAsciiRenderFrameOptions> = { ansi: true };
+/** Shared options object for image-only renderer frames. */
 export const THREE_ASCII_IMAGE_FRAME_OPTIONS: Readonly<ThreeAsciiRenderFrameOptions> = { ansi: false, image: true };
 
+/** Resolves optional frame-output flags into explicit ANSI/image booleans. */
 export function resolveThreeAsciiRenderFrameSelection(
   options: ThreeAsciiRenderFrameOptions = THREE_ASCII_ANSI_FRAME_OPTIONS,
 ): ThreeAsciiRenderFrameSelection {
@@ -38,6 +42,7 @@ export function resolveThreeAsciiRenderFrameSelectionInto(
   return target;
 }
 
+/** Creates the empty frame shape matching the selected output channels. */
 export function emptyThreeAsciiRenderFrame(selection: ThreeAsciiRenderFrameSelection): ThreeAsciiEmptyRenderFrame {
   return { grid: selection.renderAnsi ? [] : undefined };
 }

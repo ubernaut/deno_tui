@@ -21,6 +21,7 @@ export interface ThreeAsciiRendererPerformance {
   deferredReadbackSaturated?: boolean;
 }
 
+/** Snapshot of deferred GPU readback queue pressure. */
 export interface ThreeAsciiReadbackQueueInspection {
   slotCount: number;
   pending: number;
@@ -29,6 +30,7 @@ export interface ThreeAsciiReadbackQueueInspection {
   saturated: boolean;
 }
 
+/** Input used to assemble normal renderer performance telemetry. */
 export interface ThreeAsciiRendererPerformanceInput {
   columns: number;
   rows: number;
@@ -44,6 +46,7 @@ export interface ThreeAsciiRendererPerformanceInput {
   queue?: ThreeAsciiReadbackQueueInspection;
 }
 
+/** Input used to report a saturated deferred-readback frame without new scene output. */
 export interface ThreeAsciiRendererSaturatedPerformanceInput {
   columns: number;
   rows: number;
@@ -54,6 +57,7 @@ export interface ThreeAsciiRendererSaturatedPerformanceInput {
   queue: Pick<ThreeAsciiReadbackQueueInspection, "slotCount" | "pending" | "unresolved" | "resolved">;
 }
 
+/** Creates a renderer performance snapshot from measured frame timings. */
 export function createThreeAsciiRendererPerformance(
   input: ThreeAsciiRendererPerformanceInput,
 ): ThreeAsciiRendererPerformance {
@@ -78,6 +82,7 @@ export function createThreeAsciiRendererPerformance(
   };
 }
 
+/** Creates a renderer performance snapshot for a saturated deferred-readback frame. */
 export function createThreeAsciiRendererSaturatedPerformance(
   input: ThreeAsciiRendererSaturatedPerformanceInput,
 ): ThreeAsciiRendererPerformance {

@@ -2036,6 +2036,161 @@ function isEmojiSymbol(codePoint) {
   return 9728 <= codePoint && codePoint <= 10175 || 126976 <= codePoint && codePoint <= 129791;
 }
 
+// src/canvas/dirty_region.ts
+var DirtyRegion = class _DirtyRegion {
+  #rows = /* @__PURE__ */ new Map();
+  /** Creates a dirty region from rectangle bounds. */
+  static fromRectangles(rectangles) {
+    const region = new _DirtyRegion();
+    region.resetFromRectangles(rectangles);
+    return region;
+  }
+  /** Replaces the region contents with merged rectangle bounds. */
+  resetFromRectangles(rectangles) {
+    this.clear();
+    for (const rectangle of rectangles) {
+      this.addRectangleUnmerged(rectangle);
+    }
+    this.mergeRows();
+  }
+  addRectangleUnmerged(rectangle) {
+    const startRow = Math.floor(rectangle.row);
+    const endRow = startRow + Math.max(0, Math.floor(rectangle.height));
+    const startColumn = Math.floor(rectangle.column);
+    const endColumn = startColumn + Math.max(0, Math.floor(rectangle.width));
+    if (endRow <= startRow || endColumn <= startColumn) return;
+    for (let row = startRow; row < endRow; row += 1) {
+      const segments = this.#rows.get(row);
+      const segment = { row, startColumn, endColumn };
+      if (segments) segments.push(segment);
+      else this.#rows.set(row, [segment]);
+    }
+  }
+  /** Adds a rectangular dirty area, ignoring empty or invalid dimensions. */
+  addRectangle(rectangle) {
+    const startRow = Math.floor(rectangle.row);
+    const endRow = startRow + Math.max(0, Math.floor(rectangle.height));
+    const startColumn = Math.floor(rectangle.column);
+    const endColumn = startColumn + Math.max(0, Math.floor(rectangle.width));
+    for (let row = startRow; row < endRow; row += 1) {
+      this.addSegment(row, startColumn, endColumn);
+    }
+  }
+  /** Adds a half-open dirty segment to one row and merges overlap or adjacency. */
+  addSegment(row, startColumn, endColumn) {
+    const normalizedRow = Math.floor(row);
+    const start = Math.floor(Math.min(startColumn, endColumn));
+    const end = Math.floor(Math.max(startColumn, endColumn));
+    if (end <= start) return;
+    const segments = this.#rows.get(normalizedRow);
+    if (segments) {
+      segments.push({ row: normalizedRow, startColumn: start, endColumn: end });
+      mergeDirtyRowSegmentsInPlace(segments);
+    } else {
+      this.#rows.set(normalizedRow, [{ row: normalizedRow, startColumn: start, endColumn: end }]);
+    }
+  }
+  /** Removes all row segments from the dirty region. */
+  clear() {
+    this.#rows.clear();
+  }
+  /** Returns true when the dirty region has no row segments. */
+  isEmpty() {
+    return this.#rows.size === 0;
+  }
+  /** Returns cloned row segments sorted by row then start column. */
+  inspect() {
+    const rows2 = [];
+    for (const row of this.#rows.keys()) {
+      rows2.push(row);
+    }
+    rows2.sort((left, right) => left - right);
+    const output = [];
+    for (const row of rows2) {
+      const segments = this.#rows.get(row);
+      if (!segments) continue;
+      for (const segment of segments) {
+        output.push({ ...segment });
+      }
+    }
+    return output;
+  }
+  /** Visits row segments without cloning them for hot render paths. */
+  forEachSegment(visitor) {
+    for (const segments of this.#rows.values()) {
+      for (const segment of segments) {
+        visitor(segment);
+      }
+    }
+  }
+  /** Returns true when any dirty segment intersects the rectangle. */
+  intersects(rectangle) {
+    const rowStart = Math.floor(rectangle.row);
+    const rowEnd = rowStart + Math.max(0, Math.floor(rectangle.height));
+    const columnStart = Math.floor(rectangle.column);
+    const columnEnd = columnStart + Math.max(0, Math.floor(rectangle.width));
+    if (rowEnd <= rowStart || columnEnd <= columnStart) return false;
+    for (let row = rowStart; row < rowEnd; row += 1) {
+      for (const segment of this.#rows.get(row) ?? []) {
+        if (Math.min(columnEnd, segment.endColumn) > Math.max(columnStart, segment.startColumn)) return true;
+      }
+    }
+    return false;
+  }
+  /** Returns row segments clipped to the supplied rectangle. */
+  intersections(rectangle) {
+    const intersections = [];
+    this.forEachIntersection(rectangle, (segment) => {
+      intersections.push({ ...segment });
+    });
+    return intersections;
+  }
+  /** Visits row segments clipped to the supplied rectangle without allocating an output array. */
+  forEachIntersection(rectangle, visitor) {
+    this.forEachIntersectionValue(rectangle, (row, startColumn, endColumn) => {
+      visitor({ row, startColumn, endColumn });
+    });
+  }
+  /** Visits clipped row segments as primitive values for allocation-sensitive render paths. */
+  forEachIntersectionValue(rectangle, visitor) {
+    const rowStart = Math.floor(rectangle.row);
+    const rowEnd = rowStart + Math.max(0, Math.floor(rectangle.height));
+    const columnStart = Math.floor(rectangle.column);
+    const columnEnd = columnStart + Math.max(0, Math.floor(rectangle.width));
+    if (rowEnd <= rowStart || columnEnd <= columnStart) return;
+    for (let row = rowStart; row < rowEnd; row += 1) {
+      for (const segment of this.#rows.get(row) ?? []) {
+        const startColumn = Math.max(columnStart, segment.startColumn);
+        const endColumn = Math.min(columnEnd, segment.endColumn);
+        if (endColumn > startColumn) {
+          visitor(row, startColumn, endColumn);
+        }
+      }
+    }
+  }
+  mergeRows() {
+    for (const segments of this.#rows.values()) {
+      mergeDirtyRowSegmentsInPlace(segments);
+    }
+  }
+};
+function mergeDirtyRowSegmentsInPlace(ranges) {
+  if (ranges.length < 2) return;
+  ranges.sort((left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn);
+  let writeIndex = 0;
+  for (let readIndex = 1; readIndex < ranges.length; readIndex += 1) {
+    const active2 = ranges[writeIndex];
+    const next = ranges[readIndex];
+    if (next.startColumn <= active2.endColumn) {
+      active2.endColumn = Math.max(active2.endColumn, next.endColumn);
+      continue;
+    }
+    writeIndex += 1;
+    ranges[writeIndex] = next;
+  }
+  ranges.length = writeIndex + 1;
+}
+
 // src/canvas/text.ts
 var TextObject = class extends DrawObject {
   text;
@@ -2206,7 +2361,7 @@ var TextObject = class extends DrawObject {
     const rowBuffer = frameBuffer[row] ??= [];
     const rerenderQueueRow = rerenderQueue[row] ??= /* @__PURE__ */ new Set();
     if (ranges?.length) {
-      mergeTextRowRanges(ranges);
+      mergeDirtyRowSegmentsInPlace(ranges);
       const directRanges = omitColumns?.size ? void 0 : canvas.rerenderRanges[row] ??= [];
       for (const range of ranges) {
         const start = Math.max(range.startColumn, rectangle.column);
@@ -2250,22 +2405,6 @@ function queueChangedOverwriteRanges(object, previousValueChars, valueChars, row
   if (runStart !== -1) {
     object.queueRerenderRange(row, column + runStart, column + width);
   }
-}
-function mergeTextRowRanges(ranges) {
-  if (ranges.length < 2) return;
-  ranges.sort((left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn);
-  let writeIndex = 0;
-  for (let readIndex = 1; readIndex < ranges.length; readIndex += 1) {
-    const active2 = ranges[writeIndex];
-    const next = ranges[readIndex];
-    if (next.startColumn <= active2.endColumn) {
-      active2.endColumn = Math.max(active2.endColumn, next.endColumn);
-      continue;
-    }
-    writeIndex += 1;
-    ranges[writeIndex] = next;
-  }
-  ranges.length = writeIndex + 1;
 }
 
 // src/grwizard_themes.ts
@@ -2718,7 +2857,7 @@ var BoxObject = class extends DrawObject {
       const rowBuffer = frameBuffer[row] ??= [];
       const rerenderQueueRow = rerenderQueue[row] ??= /* @__PURE__ */ new Set();
       if (ranges?.length) {
-        mergeBoxRowRanges(ranges);
+        mergeDirtyRowSegmentsInPlace(ranges);
         for (const range of ranges) {
           const start = Math.max(range.startColumn, rectangle.column);
           const end = Math.min(range.endColumn, columnRange);
@@ -2743,174 +2882,6 @@ var BoxObject = class extends DrawObject {
     }
   }
 };
-function mergeBoxRowRanges(ranges) {
-  if (ranges.length < 2) return;
-  ranges.sort((left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn);
-  let writeIndex = 0;
-  for (let readIndex = 1; readIndex < ranges.length; readIndex += 1) {
-    const active2 = ranges[writeIndex];
-    const next = ranges[readIndex];
-    if (next.startColumn <= active2.endColumn) {
-      active2.endColumn = Math.max(active2.endColumn, next.endColumn);
-      continue;
-    }
-    writeIndex += 1;
-    ranges[writeIndex] = next;
-  }
-  ranges.length = writeIndex + 1;
-}
-
-// src/canvas/dirty_region.ts
-var DirtyRegion = class _DirtyRegion {
-  #rows = /* @__PURE__ */ new Map();
-  /** Creates a dirty region from rectangle bounds. */
-  static fromRectangles(rectangles) {
-    const region = new _DirtyRegion();
-    region.resetFromRectangles(rectangles);
-    return region;
-  }
-  /** Replaces the region contents with merged rectangle bounds. */
-  resetFromRectangles(rectangles) {
-    this.clear();
-    for (const rectangle of rectangles) {
-      this.addRectangleUnmerged(rectangle);
-    }
-    this.mergeRows();
-  }
-  addRectangleUnmerged(rectangle) {
-    const startRow = Math.floor(rectangle.row);
-    const endRow = startRow + Math.max(0, Math.floor(rectangle.height));
-    const startColumn = Math.floor(rectangle.column);
-    const endColumn = startColumn + Math.max(0, Math.floor(rectangle.width));
-    if (endRow <= startRow || endColumn <= startColumn) return;
-    for (let row = startRow; row < endRow; row += 1) {
-      const segments = this.#rows.get(row);
-      const segment = { row, startColumn, endColumn };
-      if (segments) segments.push(segment);
-      else this.#rows.set(row, [segment]);
-    }
-  }
-  /** Adds a rectangular dirty area, ignoring empty or invalid dimensions. */
-  addRectangle(rectangle) {
-    const startRow = Math.floor(rectangle.row);
-    const endRow = startRow + Math.max(0, Math.floor(rectangle.height));
-    const startColumn = Math.floor(rectangle.column);
-    const endColumn = startColumn + Math.max(0, Math.floor(rectangle.width));
-    for (let row = startRow; row < endRow; row += 1) {
-      this.addSegment(row, startColumn, endColumn);
-    }
-  }
-  /** Adds a half-open dirty segment to one row and merges overlap or adjacency. */
-  addSegment(row, startColumn, endColumn) {
-    const normalizedRow = Math.floor(row);
-    const start = Math.floor(Math.min(startColumn, endColumn));
-    const end = Math.floor(Math.max(startColumn, endColumn));
-    if (end <= start) return;
-    const segments = this.#rows.get(normalizedRow) ?? [];
-    segments.push({ row: normalizedRow, startColumn: start, endColumn: end });
-    this.#rows.set(normalizedRow, mergeRowSegments(segments));
-  }
-  /** Removes all row segments from the dirty region. */
-  clear() {
-    this.#rows.clear();
-  }
-  /** Returns true when the dirty region has no row segments. */
-  isEmpty() {
-    return this.#rows.size === 0;
-  }
-  /** Returns cloned row segments sorted by row then start column. */
-  inspect() {
-    const rows2 = [];
-    for (const row of this.#rows.keys()) {
-      rows2.push(row);
-    }
-    rows2.sort((left, right) => left - right);
-    const output = [];
-    for (const row of rows2) {
-      const segments = this.#rows.get(row);
-      if (!segments) continue;
-      for (const segment of segments) {
-        output.push({ ...segment });
-      }
-    }
-    return output;
-  }
-  /** Visits row segments without cloning them for hot render paths. */
-  forEachSegment(visitor) {
-    for (const segments of this.#rows.values()) {
-      for (const segment of segments) {
-        visitor(segment);
-      }
-    }
-  }
-  /** Returns true when any dirty segment intersects the rectangle. */
-  intersects(rectangle) {
-    const rowStart = Math.floor(rectangle.row);
-    const rowEnd = rowStart + Math.max(0, Math.floor(rectangle.height));
-    const columnStart = Math.floor(rectangle.column);
-    const columnEnd = columnStart + Math.max(0, Math.floor(rectangle.width));
-    if (rowEnd <= rowStart || columnEnd <= columnStart) return false;
-    for (let row = rowStart; row < rowEnd; row += 1) {
-      for (const segment of this.#rows.get(row) ?? []) {
-        if (Math.min(columnEnd, segment.endColumn) > Math.max(columnStart, segment.startColumn)) return true;
-      }
-    }
-    return false;
-  }
-  /** Returns row segments clipped to the supplied rectangle. */
-  intersections(rectangle) {
-    const intersections = [];
-    this.forEachIntersection(rectangle, (segment) => {
-      intersections.push({ ...segment });
-    });
-    return intersections;
-  }
-  /** Visits row segments clipped to the supplied rectangle without allocating an output array. */
-  forEachIntersection(rectangle, visitor) {
-    this.forEachIntersectionValue(rectangle, (row, startColumn, endColumn) => {
-      visitor({ row, startColumn, endColumn });
-    });
-  }
-  /** Visits clipped row segments as primitive values for allocation-sensitive render paths. */
-  forEachIntersectionValue(rectangle, visitor) {
-    const rowStart = Math.floor(rectangle.row);
-    const rowEnd = rowStart + Math.max(0, Math.floor(rectangle.height));
-    const columnStart = Math.floor(rectangle.column);
-    const columnEnd = columnStart + Math.max(0, Math.floor(rectangle.width));
-    if (rowEnd <= rowStart || columnEnd <= columnStart) return;
-    for (let row = rowStart; row < rowEnd; row += 1) {
-      for (const segment of this.#rows.get(row) ?? []) {
-        const startColumn = Math.max(columnStart, segment.startColumn);
-        const endColumn = Math.min(columnEnd, segment.endColumn);
-        if (endColumn > startColumn) {
-          visitor(row, startColumn, endColumn);
-        }
-      }
-    }
-  }
-  mergeRows() {
-    for (const [row, segments] of this.#rows) {
-      this.#rows.set(row, mergeRowSegments(segments));
-    }
-  }
-};
-function mergeRowSegments(segments) {
-  const sorted = new Array(segments.length);
-  for (let index = 0; index < segments.length; index += 1) {
-    sorted[index] = { ...segments[index] };
-  }
-  sorted.sort((left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn);
-  const merged = [];
-  for (const segment of sorted) {
-    const previous = merged.at(-1);
-    if (!previous || segment.startColumn > previous.endColumn) {
-      merged.push(segment);
-      continue;
-    }
-    previous.endColumn = Math.max(previous.endColumn, segment.endColumn);
-  }
-  return merged;
-}
 
 // src/canvas/spatial_index.ts
 var DrawObjectSpatialIndex = class _DrawObjectSpatialIndex {
@@ -3461,7 +3432,7 @@ var Canvas = class extends EventEmitter {
     for (let row = 0; row < size.rows; ++row) {
       const ranges = rerenderRanges[row];
       if (ranges?.length) {
-        mergeDirtyRowSegments(ranges);
+        mergeDirtyRowSegmentsInPlace(ranges);
         dirtyRowsSeen.add(row);
         const rowBuffer2 = frameBuffer[row] ??= [];
         for (const range of ranges) {
@@ -3538,22 +3509,6 @@ function emptyRenderStats() {
     flushedCells: 0
   };
 }
-function mergeDirtyRowSegments(ranges) {
-  if (ranges.length < 2) return;
-  ranges.sort((left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn);
-  let writeIndex = 0;
-  for (let readIndex = 1; readIndex < ranges.length; readIndex += 1) {
-    const active2 = ranges[writeIndex];
-    const next = ranges[readIndex];
-    if (next.startColumn <= active2.endColumn) {
-      active2.endColumn = Math.max(active2.endColumn, next.endColumn);
-      continue;
-    }
-    writeIndex += 1;
-    ranges[writeIndex] = next;
-  }
-  ranges.length = writeIndex + 1;
-}
 function cloneRectangle(rectangle) {
   return {
     column: rectangle.column,
@@ -3626,7 +3581,7 @@ import { pass } from "https://esm.sh/three@0.183.2/tsl";
 
 // src/three_ascii/AcerolaAsciiNode.ts
 import {
-  Color,
+  Color as Color2,
   HalfFloatType,
   LinearFilter,
   NodeMaterial,
@@ -3670,8 +3625,51 @@ import {
   viewZToOrthographicDepth
 } from "https://esm.sh/three@0.183.2/tsl";
 
-// src/three_ascii/ansi_grid.ts
-import { Color as Color2 } from "https://esm.sh/three@0.183.2";
+// src/three_ascii/colors.ts
+import { Color } from "https://esm.sh/three@0.183.2";
+var MAX_LINEAR_BYTE_CACHE_SIZE = 65536;
+function colorValue(input2, fallback) {
+  return input2 instanceof Color ? input2 : new Color(input2 ?? fallback);
+}
+function colorToBytes(color) {
+  return [
+    linearUnitToByte(color.r),
+    linearUnitToByte(color.g),
+    linearUnitToByte(color.b)
+  ];
+}
+function createLinearByteCache() {
+  const cache = /* @__PURE__ */ new Map();
+  const read = (value) => {
+    if (value <= 0) return 0;
+    if (value >= 1) return 255;
+    const cached = cache.get(value);
+    if (cached !== void 0) return cached;
+    const byte = linearUnitToByte(value);
+    cache.set(value, byte);
+    return byte;
+  };
+  read.clear = () => cache.clear();
+  read.prune = () => {
+    if (cache.size > MAX_LINEAR_BYTE_CACHE_SIZE) {
+      cache.clear();
+    }
+  };
+  return read;
+}
+function linearUnitToByte(value) {
+  return Math.round(linearToSrgb(value) * 255);
+}
+function rgbToAnsiForeground(red, green, blue) {
+  return `\x1B[38;2;${red};${green};${blue}m`;
+}
+function rgbToAnsiBackground(red, green, blue) {
+  return `\x1B[48;2;${red};${green};${blue}m`;
+}
+function linearToSrgb(value) {
+  const clamped = Math.max(0, Math.min(1, value));
+  return clamped <= 31308e-7 ? clamped * 12.92 : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
+}
 
 // src/three_ascii/glyphs.ts
 var EDGE_GLYPHS = [" ", "|", "-", "\\", "/"];
@@ -3840,41 +3838,139 @@ function shouldUseGohu11EdgeGlyph(edgeGlyphIndex, dominantCount, totalCount, sec
   return directionShare >= clampUnit(minShare) && separation >= clampUnit(minSeparation) && dominantCoverage >= clampUnit(minCoverage);
 }
 
+// src/three_ascii/ansi_background.ts
+import { Color as Color3 } from "https://esm.sh/three@0.183.2";
+var RESET = "\x1B[0m";
+var ThreeAsciiAnsiBackgroundState = class {
+  key = -1;
+  ansi = "";
+  blankAnsi = "";
+  red = 0;
+  green = 0;
+  blue = 0;
+  stableInput;
+  hasStableInput = false;
+  stableColorRef;
+  stableColorRed = Number.NaN;
+  stableColorGreen = Number.NaN;
+  stableColorBlue = Number.NaN;
+  set(backgroundColor) {
+    if (!(backgroundColor instanceof Color3)) {
+      const stableInput = backgroundColor ?? 0;
+      if (this.hasStableInput && this.stableInput === stableInput) {
+        return false;
+      }
+      this.hasStableInput = true;
+      this.stableInput = stableInput;
+      this.stableColorRef = void 0;
+      return this.setColor(colorValue(backgroundColor, 0));
+    }
+    this.hasStableInput = false;
+    this.stableInput = void 0;
+    if (this.stableColorRef === backgroundColor && this.stableColorRed === backgroundColor.r && this.stableColorGreen === backgroundColor.g && this.stableColorBlue === backgroundColor.b) {
+      return false;
+    }
+    this.stableColorRef = backgroundColor;
+    this.stableColorRed = backgroundColor.r;
+    this.stableColorGreen = backgroundColor.g;
+    this.stableColorBlue = backgroundColor.b;
+    return this.setColor(backgroundColor);
+  }
+  clear() {
+    this.key = -1;
+    this.ansi = "";
+    this.blankAnsi = "";
+    this.red = 0;
+    this.green = 0;
+    this.blue = 0;
+    this.hasStableInput = false;
+    this.stableInput = void 0;
+    this.stableColorRef = void 0;
+    this.stableColorRed = Number.NaN;
+    this.stableColorGreen = Number.NaN;
+    this.stableColorBlue = Number.NaN;
+  }
+  setColor(backgroundColor) {
+    const [red, green, blue] = colorToBytes(backgroundColor);
+    const key = red << 16 | green << 8 | blue;
+    if (key === this.key) {
+      return false;
+    }
+    this.key = key;
+    this.red = red;
+    this.green = green;
+    this.blue = blue;
+    this.ansi = rgbToAnsiBackground(red, green, blue);
+    this.blankAnsi = `${this.ansi} ${RESET}`;
+    return true;
+  }
+};
+
+// src/three_ascii/ansi_color_cache.ts
+var ThreeAsciiAnsiColorKeyCache = class {
+  toByte = createLinearByteCache();
+  rawRed = new Float64Array(0);
+  rawGreen = new Float64Array(0);
+  rawBlue = new Float64Array(0);
+  byteKeys = new Uint32Array(0);
+  prepare(cellCount) {
+    if (this.byteKeys.length === cellCount) return;
+    this.rawRed = createNaNFloat64Array(cellCount);
+    this.rawGreen = createNaNFloat64Array(cellCount);
+    this.rawBlue = createNaNFloat64Array(cellCount);
+    this.byteKeys = new Uint32Array(cellCount);
+  }
+  keyForIndex(index, rawRed, rawGreen, rawBlue) {
+    if (this.rawRed[index] === rawRed && this.rawGreen[index] === rawGreen && this.rawBlue[index] === rawBlue) {
+      return this.byteKeys[index];
+    }
+    const foregroundRed = this.toByte(rawRed);
+    const foregroundGreen = this.toByte(rawGreen);
+    const foregroundBlue = this.toByte(rawBlue);
+    const key = foregroundRed << 16 | foregroundGreen << 8 | foregroundBlue;
+    this.rawRed[index] = rawRed;
+    this.rawGreen[index] = rawGreen;
+    this.rawBlue[index] = rawBlue;
+    this.byteKeys[index] = key;
+    return key;
+  }
+  prune() {
+    this.toByte.prune();
+  }
+  clear() {
+    this.toByte.clear();
+    this.rawRed = new Float64Array(0);
+    this.rawGreen = new Float64Array(0);
+    this.rawBlue = new Float64Array(0);
+    this.byteKeys = new Uint32Array(0);
+  }
+};
+function createNaNFloat64Array(length) {
+  const values = new Float64Array(length);
+  values.fill(Number.NaN);
+  return values;
+}
+
 // src/three_ascii/ansi_grid.ts
 var DEFAULT_TERMINAL_EDGE_BIAS2 = 1;
-var RESET = "\x1B[0m";
-var MAX_LINEAR_BYTE_CACHE_SIZE = 65536;
+var RESET2 = "\x1B[0m";
 var MAX_FOREGROUND_ANSI_CACHE_SIZE = 4096;
 var MAX_CELL_CACHE_SIZE = 16384;
 var MIN_VISIBLE_FILL_GLYPH_INDEX = 6;
+var MIN_VISIBLE_BLOCK_FILL_VALUE = MIN_VISIBLE_FILL_GLYPH_INDEX - 0.5;
 var SOLID_BLOCK_GLYPH_KEY = 14;
 var ThreeAsciiAnsiGridAssembler = class {
-  toByte = createLinearByteCache();
   foregroundAnsiCache = /* @__PURE__ */ new Map();
   cellCache = /* @__PURE__ */ new Map();
+  background = new ThreeAsciiAnsiBackgroundState();
+  colorKeyCache = new ThreeAsciiAnsiColorKeyCache();
   reuseGrid;
   reusableGrid = [];
-  backgroundKey = -1;
-  backgroundAnsi = "";
-  blankAnsi = "";
-  backgroundRed = 0;
-  backgroundGreen = 0;
-  backgroundBlue = 0;
-  cachedColorRawRed = new Float64Array(0);
-  cachedColorRawGreen = new Float64Array(0);
-  cachedColorRawBlue = new Float64Array(0);
-  cachedColorByteKeys = new Uint32Array(0);
   cachedCellForegroundKeys = new Int32Array(0);
   cachedCellGlyphKeys = new Int32Array(0);
   cachedCellStrings = [];
   cachedCellBackgroundKey = -1;
   cachedCellGlyphMode = -1;
-  stableBackgroundInput;
-  hasStableBackgroundInput = false;
-  stableBackgroundColorRef;
-  stableBackgroundColorRed = Number.NaN;
-  stableBackgroundColorGreen = Number.NaN;
-  stableBackgroundColorBlue = Number.NaN;
   constructor(options = {}) {
     this.reuseGrid = options.reuseGrid ?? false;
   }
@@ -3887,12 +3983,12 @@ var ThreeAsciiAnsiGridAssembler = class {
     const terminalGlyphMode = terminalGlyphModeForStyle(terminalGlyphStyle);
     const edgeGlyphs = input2.edgeGlyphs;
     const hasEdges = edgeGlyphs !== void 0 && terminalGlyphMode !== GLYPH_MODE_BLOCKS;
-    const terminalFillGlyphKeys = terminalFillGlyphKeysForMode(terminalGlyphMode);
-    const terminalEdgeBias = Math.max(0.5, input2.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS2);
     const cellCount = columns2 * rows2;
     const denseFill = fillGlyphs.length >= cellCount;
     const denseColors = colors.length >= cellCount * 4;
-    this.setBackground(input2.backgroundColor);
+    if (this.background.set(input2.backgroundColor)) {
+      this.cellCache.clear();
+    }
     this.prepareFrameCaches(cellCount, terminalGlyphMode);
     this.pruneCaches();
     let lastForegroundKey = -1;
@@ -3904,6 +4000,13 @@ var ThreeAsciiAnsiGridAssembler = class {
     let lastFillGlyphIndex = -1;
     const grid = this.reuseGrid ? this.prepareReusableGrid(rows2, columns2) : createStringGrid(rows2, columns2);
     if (!hasEdges) {
+      if (terminalGlyphMode === GLYPH_MODE_BLOCKS) {
+        if (input2.blockVisibilityFromColorAlpha) {
+          return this.buildAlphaBlockGrid(grid, columns2, rows2, colors);
+        }
+        return denseFill && denseColors ? this.buildDenseBlockGrid(grid, columns2, rows2, fillGlyphs, colors) : this.buildBlockGrid(grid, columns2, rows2, fillGlyphs, colors);
+      }
+      const terminalFillGlyphKeys2 = terminalFillGlyphKeysForMode(terminalGlyphMode);
       if (denseFill && denseColors) {
         return this.buildDenseFillOnlyGrid(
           grid,
@@ -3911,8 +4014,7 @@ var ThreeAsciiAnsiGridAssembler = class {
           rows2,
           fillGlyphs,
           colors,
-          terminalGlyphMode,
-          terminalFillGlyphKeys,
+          terminalFillGlyphKeys2,
           lastForegroundKey,
           lastGlyphKey,
           lastCell,
@@ -3928,8 +4030,7 @@ var ThreeAsciiAnsiGridAssembler = class {
         rows2,
         fillGlyphs,
         colors,
-        terminalGlyphMode,
-        terminalFillGlyphKeys,
+        terminalFillGlyphKeys2,
         lastForegroundKey,
         lastGlyphKey,
         lastCell,
@@ -3939,6 +4040,8 @@ var ThreeAsciiAnsiGridAssembler = class {
         lastFillGlyphIndex
       );
     }
+    const terminalFillGlyphKeys = terminalFillGlyphKeysForMode(terminalGlyphMode);
+    const terminalEdgeBias = Math.max(0.5, input2.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS2);
     for (let row = 0; row < rows2; row += 1) {
       const outputRow = grid[row];
       const rowOffset = row * columns2;
@@ -3951,7 +4054,7 @@ var ThreeAsciiAnsiGridAssembler = class {
         const totalCount = edgeGlyphs[edgeOffset + 2] ?? 0;
         const secondCount = edgeGlyphs[edgeOffset + 3] ?? 0;
         if (fillGlyphIndex < MIN_VISIBLE_FILL_GLYPH_INDEX && (edgeGlyphIndex <= 0 || dominantCount <= 0 || totalCount <= 0)) {
-          outputRow[column] = this.blankAnsi;
+          outputRow[column] = this.background.blankAnsi;
           continue;
         }
         const glyphKey = terminalGlyphForCell(
@@ -3988,10 +4091,7 @@ var ThreeAsciiAnsiGridAssembler = class {
           lastFillGlyphIndex = fillGlyphIndex;
           continue;
         }
-        const foregroundRed = foregroundKey >> 16 & 255;
-        const foregroundGreen = foregroundKey >> 8 & 255;
-        const foregroundBlue = foregroundKey & 255;
-        const cell = this.cellFor(foregroundKey, foregroundRed, foregroundGreen, foregroundBlue, glyphKey);
+        const cell = this.cellFor(foregroundKey, glyphKey);
         this.setCachedCellForIndex(index, foregroundKey, glyphKey, cell);
         lastForegroundKey = foregroundKey;
         lastGlyphKey = glyphKey;
@@ -4009,28 +4109,216 @@ var ThreeAsciiAnsiGridAssembler = class {
     this.foregroundAnsiCache.clear();
     this.cellCache.clear();
     this.reusableGrid = [];
-    this.backgroundKey = -1;
-    this.backgroundAnsi = "";
-    this.blankAnsi = "";
-    this.hasStableBackgroundInput = false;
-    this.stableBackgroundInput = void 0;
-    this.stableBackgroundColorRef = void 0;
-    this.stableBackgroundColorRed = Number.NaN;
-    this.stableBackgroundColorGreen = Number.NaN;
-    this.stableBackgroundColorBlue = Number.NaN;
-    this.cachedColorRawRed = new Float64Array(0);
-    this.cachedColorRawGreen = new Float64Array(0);
-    this.cachedColorRawBlue = new Float64Array(0);
-    this.cachedColorByteKeys = new Uint32Array(0);
+    this.background.clear();
+    this.colorKeyCache.clear();
     this.cachedCellForegroundKeys = new Int32Array(0);
     this.cachedCellGlyphKeys = new Int32Array(0);
     this.cachedCellStrings = [];
     this.cachedCellBackgroundKey = -1;
     this.cachedCellGlyphMode = -1;
-    this.toByte.clear();
   }
-  buildFillOnlyGrid(grid, columns2, rows2, fillGlyphs, colors, terminalGlyphMode, terminalFillGlyphKeys, lastForegroundKey, lastGlyphKey, lastCell, lastRawRed, lastRawGreen, lastRawBlue, lastFillGlyphIndex) {
-    const blockMode = terminalGlyphMode === GLYPH_MODE_BLOCKS;
+  buildBlockGrid(grid, columns2, rows2, fillGlyphs, colors) {
+    let lastForegroundKey = -1;
+    let lastCell = "";
+    let lastRawRed = Number.NaN;
+    let lastRawGreen = Number.NaN;
+    let lastRawBlue = Number.NaN;
+    for (let row = 0; row < rows2; row += 1) {
+      const outputRow = grid[row];
+      const rowOffset = row * columns2;
+      for (let column = 0; column < columns2; column += 1) {
+        const index = rowOffset + column;
+        const fillGlyphValue = fillGlyphs[index] ?? 0;
+        if (fillGlyphValue < MIN_VISIBLE_BLOCK_FILL_VALUE) {
+          column = fillSparseBlockBlankRun(
+            outputRow,
+            fillGlyphs,
+            rowOffset,
+            column,
+            columns2,
+            this.background.blankAnsi
+          );
+          continue;
+        }
+        const colorOffset = index * 4;
+        const rawRed = colors[colorOffset] ?? 0;
+        const rawGreen = colors[colorOffset + 1] ?? 0;
+        const rawBlue = colors[colorOffset + 2] ?? 0;
+        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue) {
+          outputRow[column] = lastCell;
+          continue;
+        }
+        const foregroundKey = this.byteColorKeyForIndex(index, rawRed, rawGreen, rawBlue);
+        if (foregroundKey === lastForegroundKey) {
+          outputRow[column] = lastCell;
+          continue;
+        }
+        const cachedCell = this.cachedCellForIndex(index, foregroundKey, SOLID_BLOCK_GLYPH_KEY);
+        if (cachedCell !== void 0) {
+          outputRow[column] = cachedCell;
+          lastForegroundKey = foregroundKey;
+          lastCell = cachedCell;
+          lastRawRed = rawRed;
+          lastRawGreen = rawGreen;
+          lastRawBlue = rawBlue;
+          continue;
+        }
+        const cell = this.blockCellFor(foregroundKey);
+        this.setCachedCellForIndex(index, foregroundKey, SOLID_BLOCK_GLYPH_KEY, cell);
+        lastForegroundKey = foregroundKey;
+        lastCell = cell;
+        lastRawRed = rawRed;
+        lastRawGreen = rawGreen;
+        lastRawBlue = rawBlue;
+        outputRow[column] = cell;
+      }
+    }
+    return grid;
+  }
+  buildDenseBlockGrid(grid, columns2, rows2, fillGlyphs, colors) {
+    let lastForegroundKey = -1;
+    let lastCell = "";
+    let lastRawRed = Number.NaN;
+    let lastRawGreen = Number.NaN;
+    let lastRawBlue = Number.NaN;
+    for (let row = 0; row < rows2; row += 1) {
+      const outputRow = grid[row];
+      const rowOffset = row * columns2;
+      for (let column = 0; column < columns2; column += 1) {
+        const index = rowOffset + column;
+        const fillGlyphValue = fillGlyphs[index];
+        if (fillGlyphValue < MIN_VISIBLE_BLOCK_FILL_VALUE) {
+          column = fillDenseBlockBlankRun(outputRow, fillGlyphs, rowOffset, column, columns2, this.background.blankAnsi);
+          continue;
+        }
+        const colorOffset = index * 4;
+        const rawRed = colors[colorOffset];
+        const rawGreen = colors[colorOffset + 1];
+        const rawBlue = colors[colorOffset + 2];
+        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue) {
+          column = fillDenseBlockColorRun(
+            outputRow,
+            fillGlyphs,
+            colors,
+            rowOffset,
+            column,
+            columns2,
+            rawRed,
+            rawGreen,
+            rawBlue,
+            lastCell
+          );
+          continue;
+        }
+        const foregroundKey = this.byteColorKeyForIndex(index, rawRed, rawGreen, rawBlue);
+        if (foregroundKey === lastForegroundKey) {
+          outputRow[column] = lastCell;
+          continue;
+        }
+        const cachedCell = this.cachedCellForIndex(index, foregroundKey, SOLID_BLOCK_GLYPH_KEY);
+        if (cachedCell !== void 0) {
+          outputRow[column] = cachedCell;
+          lastForegroundKey = foregroundKey;
+          lastCell = cachedCell;
+          lastRawRed = rawRed;
+          lastRawGreen = rawGreen;
+          lastRawBlue = rawBlue;
+          continue;
+        }
+        const cell = this.blockCellFor(foregroundKey);
+        this.setCachedCellForIndex(index, foregroundKey, SOLID_BLOCK_GLYPH_KEY, cell);
+        lastForegroundKey = foregroundKey;
+        lastCell = cell;
+        lastRawRed = rawRed;
+        lastRawGreen = rawGreen;
+        lastRawBlue = rawBlue;
+        column = fillDenseBlockColorRun(
+          outputRow,
+          fillGlyphs,
+          colors,
+          rowOffset,
+          column,
+          columns2,
+          rawRed,
+          rawGreen,
+          rawBlue,
+          cell
+        );
+      }
+    }
+    return grid;
+  }
+  buildAlphaBlockGrid(grid, columns2, rows2, colors) {
+    let lastForegroundKey = -1;
+    let lastCell = "";
+    let lastRawRed = Number.NaN;
+    let lastRawGreen = Number.NaN;
+    let lastRawBlue = Number.NaN;
+    for (let row = 0; row < rows2; row += 1) {
+      const outputRow = grid[row];
+      const rowOffset = row * columns2;
+      for (let column = 0; column < columns2; column += 1) {
+        const index = rowOffset + column;
+        const colorOffset = index * 4;
+        if ((colors[colorOffset + 3] ?? 0) < 0.5) {
+          column = fillAlphaBlockBlankRun(outputRow, colors, rowOffset, column, columns2, this.background.blankAnsi);
+          continue;
+        }
+        const rawRed = colors[colorOffset] ?? 0;
+        const rawGreen = colors[colorOffset + 1] ?? 0;
+        const rawBlue = colors[colorOffset + 2] ?? 0;
+        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue) {
+          column = fillAlphaBlockColorRun(
+            outputRow,
+            colors,
+            rowOffset,
+            column,
+            columns2,
+            rawRed,
+            rawGreen,
+            rawBlue,
+            lastCell
+          );
+          continue;
+        }
+        const foregroundKey = this.byteColorKeyForIndex(index, rawRed, rawGreen, rawBlue);
+        if (foregroundKey === lastForegroundKey) {
+          outputRow[column] = lastCell;
+          continue;
+        }
+        const cachedCell = this.cachedCellForIndex(index, foregroundKey, SOLID_BLOCK_GLYPH_KEY);
+        if (cachedCell !== void 0) {
+          outputRow[column] = cachedCell;
+          lastForegroundKey = foregroundKey;
+          lastCell = cachedCell;
+          lastRawRed = rawRed;
+          lastRawGreen = rawGreen;
+          lastRawBlue = rawBlue;
+          continue;
+        }
+        const cell = this.blockCellFor(foregroundKey);
+        this.setCachedCellForIndex(index, foregroundKey, SOLID_BLOCK_GLYPH_KEY, cell);
+        lastForegroundKey = foregroundKey;
+        lastCell = cell;
+        lastRawRed = rawRed;
+        lastRawGreen = rawGreen;
+        lastRawBlue = rawBlue;
+        column = fillAlphaBlockColorRun(
+          outputRow,
+          colors,
+          rowOffset,
+          column,
+          columns2,
+          rawRed,
+          rawGreen,
+          rawBlue,
+          cell
+        );
+      }
+    }
+    return grid;
+  }
+  buildFillOnlyGrid(grid, columns2, rows2, fillGlyphs, colors, terminalFillGlyphKeys, lastForegroundKey, lastGlyphKey, lastCell, lastRawRed, lastRawGreen, lastRawBlue, lastFillGlyphIndex) {
     for (let row = 0; row < rows2; row += 1) {
       const outputRow = grid[row];
       const rowOffset = row * columns2;
@@ -4038,21 +4326,22 @@ var ThreeAsciiAnsiGridAssembler = class {
         const index = rowOffset + column;
         const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
         if (fillGlyphIndex < MIN_VISIBLE_FILL_GLYPH_INDEX) {
-          const blankStart = column;
-          column += 1;
-          while (column < columns2 && Math.round(fillGlyphs[rowOffset + column] ?? 0) < MIN_VISIBLE_FILL_GLYPH_INDEX) {
-            column += 1;
-          }
-          outputRow.fill(this.blankAnsi, blankStart, column);
-          column -= 1;
+          column = fillSparseGlyphBlankRun(
+            outputRow,
+            fillGlyphs,
+            rowOffset,
+            column,
+            columns2,
+            this.background.blankAnsi
+          );
           continue;
         }
-        const glyphKey = blockMode ? SOLID_BLOCK_GLYPH_KEY : fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
+        const glyphKey = fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
         const colorOffset = index * 4;
         const rawRed = colors[colorOffset] ?? 0;
         const rawGreen = colors[colorOffset + 1] ?? 0;
         const rawBlue = colors[colorOffset + 2] ?? 0;
-        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey && (blockMode || fillGlyphIndex === lastFillGlyphIndex)) {
+        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey && fillGlyphIndex === lastFillGlyphIndex) {
           outputRow[column] = lastCell;
           continue;
         }
@@ -4073,10 +4362,7 @@ var ThreeAsciiAnsiGridAssembler = class {
           lastFillGlyphIndex = fillGlyphIndex;
           continue;
         }
-        const foregroundRed = foregroundKey >> 16 & 255;
-        const foregroundGreen = foregroundKey >> 8 & 255;
-        const foregroundBlue = foregroundKey & 255;
-        const cell = this.cellFor(foregroundKey, foregroundRed, foregroundGreen, foregroundBlue, glyphKey);
+        const cell = this.cellFor(foregroundKey, glyphKey);
         this.setCachedCellForIndex(index, foregroundKey, glyphKey, cell);
         lastForegroundKey = foregroundKey;
         lastGlyphKey = glyphKey;
@@ -4090,8 +4376,7 @@ var ThreeAsciiAnsiGridAssembler = class {
     }
     return grid;
   }
-  buildDenseFillOnlyGrid(grid, columns2, rows2, fillGlyphs, colors, terminalGlyphMode, terminalFillGlyphKeys, lastForegroundKey, lastGlyphKey, lastCell, lastRawRed, lastRawGreen, lastRawBlue, lastFillGlyphIndex) {
-    const blockMode = terminalGlyphMode === GLYPH_MODE_BLOCKS;
+  buildDenseFillOnlyGrid(grid, columns2, rows2, fillGlyphs, colors, terminalFillGlyphKeys, lastForegroundKey, lastGlyphKey, lastCell, lastRawRed, lastRawGreen, lastRawBlue, lastFillGlyphIndex) {
     for (let row = 0; row < rows2; row += 1) {
       const outputRow = grid[row];
       const rowOffset = row * columns2;
@@ -4099,21 +4384,15 @@ var ThreeAsciiAnsiGridAssembler = class {
         const index = rowOffset + column;
         const fillGlyphIndex = Math.round(fillGlyphs[index]);
         if (fillGlyphIndex < MIN_VISIBLE_FILL_GLYPH_INDEX) {
-          const blankStart = column;
-          column += 1;
-          while (column < columns2 && Math.round(fillGlyphs[rowOffset + column]) < MIN_VISIBLE_FILL_GLYPH_INDEX) {
-            column += 1;
-          }
-          outputRow.fill(this.blankAnsi, blankStart, column);
-          column -= 1;
+          column = fillDenseGlyphBlankRun(outputRow, fillGlyphs, rowOffset, column, columns2, this.background.blankAnsi);
           continue;
         }
-        const glyphKey = blockMode ? SOLID_BLOCK_GLYPH_KEY : fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
+        const glyphKey = fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
         const colorOffset = index * 4;
         const rawRed = colors[colorOffset];
         const rawGreen = colors[colorOffset + 1];
         const rawBlue = colors[colorOffset + 2];
-        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey && (blockMode || fillGlyphIndex === lastFillGlyphIndex)) {
+        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey && fillGlyphIndex === lastFillGlyphIndex) {
           outputRow[column] = lastCell;
           continue;
         }
@@ -4134,10 +4413,7 @@ var ThreeAsciiAnsiGridAssembler = class {
           lastFillGlyphIndex = fillGlyphIndex;
           continue;
         }
-        const foregroundRed = foregroundKey >> 16 & 255;
-        const foregroundGreen = foregroundKey >> 8 & 255;
-        const foregroundBlue = foregroundKey & 255;
-        const cell = this.cellFor(foregroundKey, foregroundRed, foregroundGreen, foregroundBlue, glyphKey);
+        const cell = this.cellFor(foregroundKey, glyphKey);
         this.setCachedCellForIndex(index, foregroundKey, glyphKey, cell);
         lastForegroundKey = foregroundKey;
         lastGlyphKey = glyphKey;
@@ -4151,27 +4427,39 @@ var ThreeAsciiAnsiGridAssembler = class {
     }
     return grid;
   }
-  cellFor(foregroundKey, foregroundRed, foregroundGreen, foregroundBlue, glyphKey) {
+  cellFor(foregroundKey, glyphKey) {
     const cellKey = foregroundKey * CELL_GLYPH_KEY_STRIDE + glyphKey;
     let cell = this.cellCache.get(cellKey);
     if (cell !== void 0) return cell;
     if (isSolidBlockFillGlyphKey(glyphKey)) {
-      cell = `${rgbToAnsiBackground(foregroundRed, foregroundGreen, foregroundBlue)} ${RESET}`;
-      this.cellCache.set(cellKey, cell);
-      return cell;
+      return this.blockCellFor(foregroundKey);
     }
     let foregroundAnsi = this.foregroundAnsiCache.get(foregroundKey);
     if (foregroundAnsi === void 0) {
+      const foregroundRed = foregroundKey >> 16 & 255;
+      const foregroundGreen = foregroundKey >> 8 & 255;
+      const foregroundBlue = foregroundKey & 255;
       foregroundAnsi = rgbToAnsiForeground(foregroundRed, foregroundGreen, foregroundBlue);
       this.foregroundAnsiCache.set(foregroundKey, foregroundAnsi);
     }
     const glyph = glyphForKey(glyphKey);
-    cell = `${this.backgroundAnsi}${foregroundAnsi}${glyph}${RESET}`;
+    cell = `${this.background.ansi}${foregroundAnsi}${glyph}${RESET2}`;
+    this.cellCache.set(cellKey, cell);
+    return cell;
+  }
+  blockCellFor(foregroundKey) {
+    const cellKey = foregroundKey * CELL_GLYPH_KEY_STRIDE + SOLID_BLOCK_GLYPH_KEY;
+    let cell = this.cellCache.get(cellKey);
+    if (cell !== void 0) return cell;
+    const foregroundRed = foregroundKey >> 16 & 255;
+    const foregroundGreen = foregroundKey >> 8 & 255;
+    const foregroundBlue = foregroundKey & 255;
+    cell = `${rgbToAnsiBackground(foregroundRed, foregroundGreen, foregroundBlue)} ${RESET2}`;
     this.cellCache.set(cellKey, cell);
     return cell;
   }
   pruneCaches() {
-    this.toByte.prune();
+    this.colorKeyCache.prune();
     if (this.foregroundAnsiCache.size > MAX_FOREGROUND_ANSI_CACHE_SIZE) {
       this.foregroundAnsiCache.clear();
       this.cellCache.clear();
@@ -4191,13 +4479,8 @@ var ThreeAsciiAnsiGridAssembler = class {
     return grid;
   }
   prepareFrameCaches(cellCount, terminalGlyphMode) {
-    if (this.cachedColorByteKeys.length !== cellCount) {
-      this.cachedColorRawRed = createNaNFloat64Array(cellCount);
-      this.cachedColorRawGreen = createNaNFloat64Array(cellCount);
-      this.cachedColorRawBlue = createNaNFloat64Array(cellCount);
-      this.cachedColorByteKeys = new Uint32Array(cellCount);
-    }
-    if (this.cachedCellForegroundKeys.length === cellCount && this.cachedCellBackgroundKey === this.backgroundKey && this.cachedCellGlyphMode === terminalGlyphMode) {
+    this.colorKeyCache.prepare(cellCount);
+    if (this.cachedCellForegroundKeys.length === cellCount && this.cachedCellBackgroundKey === this.background.key && this.cachedCellGlyphMode === terminalGlyphMode) {
       return;
     }
     this.cachedCellForegroundKeys = new Int32Array(cellCount);
@@ -4205,7 +4488,7 @@ var ThreeAsciiAnsiGridAssembler = class {
     this.cachedCellGlyphKeys = new Int32Array(cellCount);
     this.cachedCellGlyphKeys.fill(-1);
     this.cachedCellStrings = new Array(cellCount);
-    this.cachedCellBackgroundKey = this.backgroundKey;
+    this.cachedCellBackgroundKey = this.background.key;
     this.cachedCellGlyphMode = terminalGlyphMode;
   }
   cachedCellForIndex(index, foregroundKey, glyphKey) {
@@ -4220,61 +4503,10 @@ var ThreeAsciiAnsiGridAssembler = class {
     this.cachedCellStrings[index] = cell;
   }
   byteColorKeyForIndex(index, rawRed, rawGreen, rawBlue) {
-    if (this.cachedColorRawRed[index] === rawRed && this.cachedColorRawGreen[index] === rawGreen && this.cachedColorRawBlue[index] === rawBlue) {
-      return this.cachedColorByteKeys[index];
-    }
-    const foregroundRed = this.toByte(rawRed);
-    const foregroundGreen = this.toByte(rawGreen);
-    const foregroundBlue = this.toByte(rawBlue);
-    const key = foregroundRed << 16 | foregroundGreen << 8 | foregroundBlue;
-    this.cachedColorRawRed[index] = rawRed;
-    this.cachedColorRawGreen[index] = rawGreen;
-    this.cachedColorRawBlue[index] = rawBlue;
-    this.cachedColorByteKeys[index] = key;
-    return key;
-  }
-  setBackground(backgroundColor) {
-    if (!(backgroundColor instanceof Color2)) {
-      const stableInput = backgroundColor ?? 0;
-      if (this.hasStableBackgroundInput && this.stableBackgroundInput === stableInput) {
-        return;
-      }
-      this.hasStableBackgroundInput = true;
-      this.stableBackgroundInput = stableInput;
-      this.stableBackgroundColorRef = void 0;
-      this.setBackgroundColor(colorValue(backgroundColor, 0));
-      return;
-    }
-    this.hasStableBackgroundInput = false;
-    this.stableBackgroundInput = void 0;
-    if (this.stableBackgroundColorRef === backgroundColor && this.stableBackgroundColorRed === backgroundColor.r && this.stableBackgroundColorGreen === backgroundColor.g && this.stableBackgroundColorBlue === backgroundColor.b) {
-      return;
-    }
-    this.stableBackgroundColorRef = backgroundColor;
-    this.stableBackgroundColorRed = backgroundColor.r;
-    this.stableBackgroundColorGreen = backgroundColor.g;
-    this.stableBackgroundColorBlue = backgroundColor.b;
-    this.setBackgroundColor(backgroundColor);
-  }
-  setBackgroundColor(backgroundColor) {
-    const [backgroundRed, backgroundGreen, backgroundBlue] = colorToBytes(backgroundColor);
-    const backgroundKey = backgroundRed << 16 | backgroundGreen << 8 | backgroundBlue;
-    if (backgroundKey === this.backgroundKey) {
-      return;
-    }
-    this.backgroundKey = backgroundKey;
-    this.backgroundRed = backgroundRed;
-    this.backgroundGreen = backgroundGreen;
-    this.backgroundBlue = backgroundBlue;
-    this.backgroundAnsi = rgbToAnsiBackground(backgroundRed, backgroundGreen, backgroundBlue);
-    this.blankAnsi = `${this.backgroundAnsi} ${RESET}`;
-    this.cellCache.clear();
+    return this.colorKeyCache.keyForIndex(index, rawRed, rawGreen, rawBlue);
   }
 };
 var sharedThreeAsciiAnsiGridAssembler = new ThreeAsciiAnsiGridAssembler();
-function colorValue(input2, fallback) {
-  return input2 instanceof Color2 ? input2 : new Color2(input2 ?? fallback);
-}
 function createStringGrid(rows2, columns2) {
   const grid = new Array(rows2);
   for (let row = 0; row < rows2; row += 1) {
@@ -4282,49 +4514,79 @@ function createStringGrid(rows2, columns2) {
   }
   return grid;
 }
-function createNaNFloat64Array(length) {
-  const values = new Float64Array(length);
-  values.fill(Number.NaN);
-  return values;
+function fillSparseBlockBlankRun(outputRow, fillGlyphs, rowOffset, column, columns2, blankAnsi) {
+  const blankStart = column;
+  column += 1;
+  while (column < columns2 && (fillGlyphs[rowOffset + column] ?? 0) < MIN_VISIBLE_BLOCK_FILL_VALUE) {
+    column += 1;
+  }
+  outputRow.fill(blankAnsi, blankStart, column);
+  return column - 1;
 }
-function linearToSrgb(value) {
-  const clamped = Math.max(0, Math.min(1, value));
-  return clamped <= 31308e-7 ? clamped * 12.92 : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
+function fillDenseBlockBlankRun(outputRow, fillGlyphs, rowOffset, column, columns2, blankAnsi) {
+  const blankStart = column;
+  column += 1;
+  while (column < columns2 && fillGlyphs[rowOffset + column] < MIN_VISIBLE_BLOCK_FILL_VALUE) {
+    column += 1;
+  }
+  outputRow.fill(blankAnsi, blankStart, column);
+  return column - 1;
 }
-function linearUnitToByte(value) {
-  return Math.round(linearToSrgb(value) * 255);
-}
-function createLinearByteCache() {
-  const cache = /* @__PURE__ */ new Map();
-  const read = (value) => {
-    if (value <= 0) return 0;
-    if (value >= 1) return 255;
-    const cached = cache.get(value);
-    if (cached !== void 0) return cached;
-    const byte = linearUnitToByte(value);
-    cache.set(value, byte);
-    return byte;
-  };
-  read.clear = () => cache.clear();
-  read.prune = () => {
-    if (cache.size > MAX_LINEAR_BYTE_CACHE_SIZE) {
-      cache.clear();
+function fillDenseBlockColorRun(outputRow, fillGlyphs, colors, rowOffset, column, columns2, rawRed, rawGreen, rawBlue, cell) {
+  const runStart = column;
+  column += 1;
+  while (column < columns2) {
+    const index = rowOffset + column;
+    if (fillGlyphs[index] < MIN_VISIBLE_BLOCK_FILL_VALUE) break;
+    const colorOffset = index * 4;
+    if (colors[colorOffset] !== rawRed || colors[colorOffset + 1] !== rawGreen || colors[colorOffset + 2] !== rawBlue) {
+      break;
     }
-  };
-  return read;
+    column += 1;
+  }
+  outputRow.fill(cell, runStart, column);
+  return column - 1;
 }
-function colorToBytes(color) {
-  return [
-    linearUnitToByte(color.r),
-    linearUnitToByte(color.g),
-    linearUnitToByte(color.b)
-  ];
+function fillAlphaBlockBlankRun(outputRow, colors, rowOffset, column, columns2, blankAnsi) {
+  const blankStart = column;
+  column += 1;
+  while (column < columns2 && (colors[(rowOffset + column) * 4 + 3] ?? 0) < 0.5) {
+    column += 1;
+  }
+  outputRow.fill(blankAnsi, blankStart, column);
+  return column - 1;
 }
-function rgbToAnsiForeground(red, green, blue) {
-  return `\x1B[38;2;${red};${green};${blue}m`;
+function fillAlphaBlockColorRun(outputRow, colors, rowOffset, column, columns2, rawRed, rawGreen, rawBlue, cell) {
+  const runStart = column;
+  column += 1;
+  while (column < columns2) {
+    const colorOffset = (rowOffset + column) * 4;
+    if ((colors[colorOffset + 3] ?? 0) < 0.5) break;
+    if ((colors[colorOffset] ?? 0) !== rawRed || (colors[colorOffset + 1] ?? 0) !== rawGreen || (colors[colorOffset + 2] ?? 0) !== rawBlue) {
+      break;
+    }
+    column += 1;
+  }
+  outputRow.fill(cell, runStart, column);
+  return column - 1;
 }
-function rgbToAnsiBackground(red, green, blue) {
-  return `\x1B[48;2;${red};${green};${blue}m`;
+function fillSparseGlyphBlankRun(outputRow, fillGlyphs, rowOffset, column, columns2, blankAnsi) {
+  const blankStart = column;
+  column += 1;
+  while (column < columns2 && Math.round(fillGlyphs[rowOffset + column] ?? 0) < MIN_VISIBLE_FILL_GLYPH_INDEX) {
+    column += 1;
+  }
+  outputRow.fill(blankAnsi, blankStart, column);
+  return column - 1;
+}
+function fillDenseGlyphBlankRun(outputRow, fillGlyphs, rowOffset, column, columns2, blankAnsi) {
+  const blankStart = column;
+  column += 1;
+  while (column < columns2 && Math.round(fillGlyphs[rowOffset + column]) < MIN_VISIBLE_FILL_GLYPH_INDEX) {
+    column += 1;
+  }
+  outputRow.fill(blankAnsi, blankStart, column);
+  return column - 1;
 }
 
 // src/three_ascii/loadAsciiLuts.ts
@@ -4333,17 +4595,12 @@ import { ClampToEdgeWrapping, LinearFilter as LinearFilter2, NoColorSpace, Textu
 // src/three_ascii/readback.ts
 var FLOAT_BYTE_LENGTH = Float32Array.BYTES_PER_ELEMENT;
 
-// src/three_ascii/webgpu_compat.ts
-var WRITE_BUFFER_PATCHED = Symbol.for("deno_tui.three_ascii.write_buffer_patched");
-var SHADER_MODULE_PATCHED = Symbol.for("deno_tui.three_ascii.shader_module_patched");
-var CREATE_BUFFER_PATCHED = Symbol.for("deno_tui.three_ascii.create_buffer_patched");
-
-// src/three_ascii/renderer.ts
-var TILE_SIZE = 8;
-var WORKGROUP_SIZE = 8;
+// src/three_ascii/shaders.ts
+var THREE_ASCII_TILE_SIZE = 8;
+var THREE_ASCII_WORKGROUP_SIZE = 8;
 var FOG_SCALE = 5e-3 / Math.sqrt(Math.log(2));
 var MIN_VISIBLE_LUMINANCE = 0.015;
-var FILL_SHADER = (
+var THREE_ASCII_FILL_SHADER = (
   /* wgsl */
   `
 struct Params {
@@ -4359,7 +4616,7 @@ struct Params {
 @group(0) @binding(1) var downscaleTex: texture_2d<f32>;
 @group(0) @binding(2) var<storage, read_write> glyphs: array<f32>;
 
-@compute @workgroup_size(${WORKGROUP_SIZE}, ${WORKGROUP_SIZE}, 1)
+@compute @workgroup_size(${THREE_ASCII_WORKGROUP_SIZE}, ${THREE_ASCII_WORKGROUP_SIZE}, 1)
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   let columns = u32(params.dims.x);
   let rows = u32(params.dims.y);
@@ -4394,7 +4651,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 }
 `
 );
-var EDGE_SHADER = (
+var THREE_ASCII_EDGE_SHADER = (
   /* wgsl */
   `
 struct Params {
@@ -4436,7 +4693,7 @@ fn classifyDirection(theta: f32, valid: f32) -> i32 {
   return -1;
 }
 
-@compute @workgroup_size(${WORKGROUP_SIZE}, ${WORKGROUP_SIZE}, 1)
+@compute @workgroup_size(${THREE_ASCII_WORKGROUP_SIZE}, ${THREE_ASCII_WORKGROUP_SIZE}, 1)
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   let columns = u32(params.dims.x);
   let rows = u32(params.dims.y);
@@ -4452,15 +4709,15 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     return;
   }
 
-  let tileBase = vec2<i32>(i32(id.x) * ${TILE_SIZE}, i32(id.y) * ${TILE_SIZE});
+  let tileBase = vec2<i32>(i32(id.x) * ${THREE_ASCII_TILE_SIZE}, i32(id.y) * ${THREE_ASCII_TILE_SIZE});
 
   var bucket0 = 0.0;
   var bucket1 = 0.0;
   var bucket2 = 0.0;
   var bucket3 = 0.0;
 
-  for (var row = 0; row < ${TILE_SIZE}; row += 1) {
-    for (var column = 0; column < ${TILE_SIZE}; column += 1) {
+  for (var row = 0; row < ${THREE_ASCII_TILE_SIZE}; row += 1) {
+    for (var column = 0; column < ${THREE_ASCII_TILE_SIZE}; column += 1) {
       let sample = textureLoad(sobelTex, tileBase + vec2<i32>(column, row), 0);
       let direction = classifyDirection(sample.x, sample.y);
 
@@ -4527,7 +4784,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 }
 `
 );
-var COLOR_SHADER = (
+var THREE_ASCII_COLOR_SHADER = (
   /* wgsl */
   `
 struct Params {
@@ -4544,7 +4801,7 @@ struct Params {
 @group(0) @binding(2) var normalsTex: texture_2d<f32>;
 @group(0) @binding(3) var<storage, read_write> colors: array<vec4<f32>>;
 
-@compute @workgroup_size(${WORKGROUP_SIZE}, ${WORKGROUP_SIZE}, 1)
+@compute @workgroup_size(${THREE_ASCII_WORKGROUP_SIZE}, ${THREE_ASCII_WORKGROUP_SIZE}, 1)
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   let columns = u32(params.dims.x);
   let rows = u32(params.dims.y);
@@ -4555,7 +4812,11 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 
   let index = id.y * columns + id.x;
   let downscale = textureLoad(downscaleTex, vec2<i32>(i32(id.x), i32(id.y)), 0);
-  let center = vec2<i32>(i32(id.x) * ${TILE_SIZE} + ${TILE_SIZE / 2}, i32(id.y) * ${TILE_SIZE} + ${TILE_SIZE / 2});
+  let exposure = params.effect0.x;
+  let attenuation = params.effect0.y;
+  let luminanceValue = clamp(pow(max(downscale.a, 0.0) * exposure, attenuation), 0.0, 1.0);
+  let visibility = select(0.0, 1.0, params.flags.y > 0.5 && luminanceValue > ${MIN_VISIBLE_LUMINANCE});
+  let center = vec2<i32>(i32(id.x) * ${THREE_ASCII_TILE_SIZE} + ${THREE_ASCII_TILE_SIZE / 2}, i32(id.y) * ${THREE_ASCII_TILE_SIZE} + ${THREE_ASCII_TILE_SIZE / 2});
   let normals = textureLoad(normalsTex, center, 0);
   let z = normals.a * 1000.0;
 
@@ -4564,10 +4825,52 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   let fogFactor = exp2(-(fogValue * fogValue));
   let finalColor = mix(params.backgroundColor.rgb, baseAsciiColor, fogFactor);
 
-  colors[index] = vec4<f32>(clamp(finalColor, vec3<f32>(0.0), vec3<f32>(1.0)), 1.0);
+  colors[index] = vec4<f32>(clamp(finalColor, vec3<f32>(0.0), vec3<f32>(1.0)), visibility);
 }
 `
 );
+var THREE_ASCII_FLAT_COLOR_SHADER = (
+  /* wgsl */
+  `
+struct Params {
+  dims: vec4<f32>,
+  flags: vec4<f32>,
+  effect0: vec4<f32>,
+  effect1: vec4<f32>,
+  asciiColor: vec4<f32>,
+  backgroundColor: vec4<f32>,
+};
+
+@group(0) @binding(0) var<uniform> params: Params;
+@group(0) @binding(1) var downscaleTex: texture_2d<f32>;
+@group(0) @binding(2) var<storage, read_write> colors: array<vec4<f32>>;
+
+@compute @workgroup_size(${THREE_ASCII_WORKGROUP_SIZE}, ${THREE_ASCII_WORKGROUP_SIZE}, 1)
+fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+  let columns = u32(params.dims.x);
+  let rows = u32(params.dims.y);
+
+  if (id.x >= columns || id.y >= rows) {
+    return;
+  }
+
+  let index = id.y * columns + id.x;
+  let downscale = textureLoad(downscaleTex, vec2<i32>(i32(id.x), i32(id.y)), 0);
+  let exposure = params.effect0.x;
+  let attenuation = params.effect0.y;
+  let luminanceValue = clamp(pow(max(downscale.a, 0.0) * exposure, attenuation), 0.0, 1.0);
+  let visibility = select(0.0, 1.0, params.flags.y > 0.5 && luminanceValue > ${MIN_VISIBLE_LUMINANCE});
+  let baseAsciiColor = mix(params.asciiColor.rgb, downscale.rgb, params.effect0.z);
+
+  colors[index] = vec4<f32>(clamp(baseAsciiColor, vec3<f32>(0.0), vec3<f32>(1.0)), visibility);
+}
+`
+);
+
+// src/three_ascii/webgpu_compat.ts
+var WRITE_BUFFER_PATCHED = Symbol.for("deno_tui.three_ascii.write_buffer_patched");
+var SHADER_MODULE_PATCHED = Symbol.for("deno_tui.three_ascii.shader_module_patched");
+var CREATE_BUFFER_PATCHED = Symbol.for("deno_tui.three_ascii.create_buffer_patched");
 
 // src/runtime/render_loop.ts
 var RenderLoop = class {
@@ -5040,6 +5343,11 @@ var WindowManagerController = class {
     this.#repairState();
     return this.active();
   }
+  restoreNextMinimized() {
+    const window = firstMinimizedWindow(this.#orderedWindows(false));
+    if (!window) return void 0;
+    return this.restore(window.id);
+  }
   fullscreen(id2 = this.activeId.peek()) {
     if (!id2) return void 0;
     const window = this.#window(id2);
@@ -5195,6 +5503,13 @@ function firstNonMinimizedWindow(windows) {
   for (let index = 0; index < windows.length; index += 1) {
     const window = windows[index];
     if (windowState(window) !== "minimized") return window;
+  }
+  return void 0;
+}
+function firstMinimizedWindow(windows) {
+  for (let index = 0; index < windows.length; index += 1) {
+    const window = windows[index];
+    if (windowState(window) === "minimized") return window;
   }
   return void 0;
 }
@@ -11111,7 +11426,7 @@ function asciiControlValues(key) {
     case "wireframeThickness":
       return [0.5, 0.75, 1, 1.4, 1.8, 2, 2.4, 3, 4, 6, 8, 12, 16, 24, 32];
     case "renderMaxCells":
-      return [960, 1920, 3840, 7680, 15400, 30720];
+      return [60, 120, 240, 480, 960, 1920, 3840, 7680, 15400, 30720];
     case "deferredReadbackSlots":
       return [2, 4, 6, 8, 12];
     case "terminalEdgeBias":
@@ -11465,20 +11780,11 @@ function inset(rect, amount) {
   };
 }
 
-// src/app/workbench_frame.ts
-var RESET2 = "\x1B[0m";
+// src/app/workbench_frame_rows.ts
+var RESET3 = "\x1B[0m";
 var MAX_FRAME_CELL_PARTS_CACHE_SIZE = 32768;
 var frameCellPartsCache = /* @__PURE__ */ new Map();
-var lineSignalRowCache = /* @__PURE__ */ new WeakMap();
-function prepareWorkbenchRows(rows2, count, create, reset) {
-  const rowCount = Math.max(0, Math.floor(count));
-  rows2.length = rowCount;
-  for (let index = 0; index < rowCount; index += 1) {
-    const current = rows2[index] ?? create(index);
-    rows2[index] = reset ? reset(current, index) : current;
-  }
-  return rows2;
-}
+var plainAsciiCellPartsCache = [];
 function toStyledCells(value) {
   const cells = [];
   let style2 = "";
@@ -11512,10 +11818,148 @@ function readSgrSequenceAt(value, start) {
   return value.slice(start, index + 1);
 }
 function renderFrameRow(cells, width) {
-  return renderFrameCells((column) => cells[column] ?? " ", width);
+  return renderFrameArrayCells(cells, 0, width);
 }
 function renderFrameSlice(cells, start, width) {
-  return renderFrameCells((column) => cells[start + column] ?? " ", width);
+  return renderFrameArrayCells(cells, start, width);
+}
+function renderFrameArrayCells(cells, start, width) {
+  const columns2 = Math.max(0, Math.floor(width));
+  if (columns2 <= 0) return "";
+  const offset = Math.floor(start);
+  if (cells.length === 0 || offset >= cells.length) return " ".repeat(columns2);
+  let row = "";
+  for (let column = 0; column < columns2; ) {
+    const firstCell = cells[offset + column] ?? " ";
+    const first = splitFrameCell(firstCell);
+    if (isBackgroundStyledFrameCell(first)) {
+      const styled = renderBackgroundStyledRun(cells, offset, column, columns2, firstCell, first);
+      row += styled.value;
+      column = styled.nextColumn;
+      continue;
+    }
+    let next = column + 1;
+    while (next < columns2 && (cells[offset + next] ?? " ") === firstCell) {
+      next += 1;
+    }
+    let text = next - column === 1 ? first.text : first.text.repeat(next - column);
+    while (next < columns2) {
+      const currentCell = cells[offset + next] ?? " ";
+      const current = splitFrameCell(currentCell);
+      if (current.prefix !== first.prefix || current.suffix !== first.suffix) break;
+      let repeatEnd = next + 1;
+      while (repeatEnd < columns2 && (cells[offset + repeatEnd] ?? " ") === currentCell) {
+        repeatEnd += 1;
+      }
+      text += repeatEnd - next === 1 ? current.text : current.text.repeat(repeatEnd - next);
+      next = repeatEnd;
+    }
+    row += `${first.prefix}${text}${first.suffix}`;
+    column = next;
+  }
+  return row;
+}
+function renderBackgroundStyledRun(cells, start, startColumn, width, firstCell, first) {
+  let next = startColumn;
+  let value = "";
+  let currentCell = firstCell;
+  let current = first;
+  while (next < width) {
+    let repeatEnd = next + 1;
+    while (repeatEnd < width && (cells[start + repeatEnd] ?? " ") === currentCell) {
+      repeatEnd += 1;
+    }
+    let text = repeatEnd - next === 1 ? current.text : current.text.repeat(repeatEnd - next);
+    next = repeatEnd;
+    while (next < width) {
+      const nextCell = cells[start + next] ?? " ";
+      const nextParts = splitFrameCell(nextCell);
+      if (!isBackgroundStyledFrameCell(nextParts) || nextParts.prefix !== current.prefix) break;
+      let samePrefixEnd = next + 1;
+      while (samePrefixEnd < width && (cells[start + samePrefixEnd] ?? " ") === nextCell) {
+        samePrefixEnd += 1;
+      }
+      text += samePrefixEnd - next === 1 ? nextParts.text : nextParts.text.repeat(samePrefixEnd - next);
+      next = samePrefixEnd;
+    }
+    value += `${current.prefix}${text}`;
+    if (next >= width) break;
+    currentCell = cells[start + next] ?? " ";
+    current = splitFrameCell(currentCell);
+    if (!isBackgroundStyledFrameCell(current)) break;
+  }
+  return { value: `${value}${RESET3}`, nextColumn: next };
+}
+function isBackgroundStyledFrameCell(cell) {
+  return cell.backgroundStyled;
+}
+function splitFrameCell(cell) {
+  if (cell.length === 1) {
+    const code = cell.charCodeAt(0);
+    if (code !== 27 && code < 128) {
+      return plainAsciiCellPartsCache[code] ??= plainFrameCellParts(cell);
+    }
+  }
+  if (!cell.includes("\x1B[") || !cell.endsWith("\x1B[0m")) {
+    return plainFrameCellParts(cell);
+  }
+  const cached = frameCellPartsCache.get(cell);
+  if (cached) return cached;
+  const body = cell.slice(0, -RESET3.length);
+  const split = splitFrameCellBody(body);
+  if (!split) {
+    return plainFrameCellParts(cell);
+  }
+  if (frameCellPartsCache.size > MAX_FRAME_CELL_PARTS_CACHE_SIZE) {
+    frameCellPartsCache.clear();
+  }
+  frameCellPartsCache.set(cell, split);
+  return split;
+}
+function splitFrameCellBody(body) {
+  if (body.length === 0) return void 0;
+  const lastCodeUnit = body.charCodeAt(body.length - 1);
+  if (lastCodeUnit < 56320 || lastCodeUnit > 57343) {
+    const text2 = body[body.length - 1];
+    if (text2.charCodeAt(0) === 27) return void 0;
+    return styledFrameCellParts(body.slice(0, -1), text2);
+  }
+  const parts = Array.from(body);
+  const text = parts.pop();
+  if (!text || text.charCodeAt(0) === 27) return void 0;
+  return styledFrameCellParts(parts.join(""), text);
+}
+function plainFrameCellParts(text) {
+  return { prefix: "", text, suffix: "", backgroundStyled: false };
+}
+function styledFrameCellParts(prefix, text) {
+  return {
+    prefix,
+    text,
+    suffix: RESET3,
+    backgroundStyled: prefix.length > 0 && (prefix.includes("[48;") || prefix.includes(";48;"))
+  };
+}
+
+// src/app/workbench_frame.ts
+var lineSignalRowCache = /* @__PURE__ */ new WeakMap();
+function renderFrameRow2(cells, width) {
+  return renderFrameRow(cells, width);
+}
+function renderFrameSlice2(cells, start, width) {
+  return renderFrameSlice(cells, start, width);
+}
+function toStyledCells2(value) {
+  return toStyledCells(value);
+}
+function prepareWorkbenchRows(rows2, count, create, reset) {
+  const rowCount = Math.max(0, Math.floor(count));
+  rows2.length = rowCount;
+  for (let index = 0; index < rowCount; index += 1) {
+    const current = rows2[index] ?? create(index);
+    rows2[index] = reset ? reset(current, index) : current;
+  }
+  return rows2;
 }
 function updateWorkbenchStringLineSignals(signals, frame, width, height) {
   const rows2 = Math.max(0, Math.min(signals.length, Math.floor(height)));
@@ -11558,105 +12002,20 @@ function fallbackLineFingerprint(line, width) {
   }
   return `${width}:line:${hash.toString(36)}`;
 }
-function renderFrameCells(cellAt, width) {
-  let row = "";
-  for (let column = 0; column < width; ) {
-    const firstCell = cellAt(column);
-    const first = splitFrameCell(firstCell);
-    if (isBackgroundStyledFrameCell(first)) {
-      const styled = renderBackgroundStyledRun(cellAt, column, width, firstCell, first);
-      row += styled.value;
-      column = styled.nextColumn;
-      continue;
-    }
-    let next = column + 1;
-    while (next < width && cellAt(next) === firstCell) {
-      next += 1;
-    }
-    let text = next - column === 1 ? first.text : first.text.repeat(next - column);
-    while (next < width) {
-      const currentCell = cellAt(next);
-      const current = splitFrameCell(currentCell);
-      if (current.prefix !== first.prefix || current.suffix !== first.suffix) break;
-      let repeatEnd = next + 1;
-      while (repeatEnd < width && cellAt(repeatEnd) === currentCell) {
-        repeatEnd += 1;
-      }
-      text += repeatEnd - next === 1 ? current.text : current.text.repeat(repeatEnd - next);
-      next = repeatEnd;
-    }
-    row += `${first.prefix}${text}${first.suffix}`;
-    column = next;
-  }
-  return row;
-}
-function renderBackgroundStyledRun(cellAt, startColumn, width, firstCell, first) {
-  let next = startColumn;
-  let value = "";
-  let currentCell = firstCell;
-  let current = first;
-  while (next < width) {
-    let repeatEnd = next + 1;
-    while (repeatEnd < width && cellAt(repeatEnd) === currentCell) {
-      repeatEnd += 1;
-    }
-    let text = repeatEnd - next === 1 ? current.text : current.text.repeat(repeatEnd - next);
-    next = repeatEnd;
-    while (next < width) {
-      const nextCell = cellAt(next);
-      const nextParts = splitFrameCell(nextCell);
-      if (!isBackgroundStyledFrameCell(nextParts) || nextParts.prefix !== current.prefix) break;
-      let samePrefixEnd = next + 1;
-      while (samePrefixEnd < width && cellAt(samePrefixEnd) === nextCell) {
-        samePrefixEnd += 1;
-      }
-      text += samePrefixEnd - next === 1 ? nextParts.text : nextParts.text.repeat(samePrefixEnd - next);
-      next = samePrefixEnd;
-    }
-    value += `${current.prefix}${text}`;
-    if (next >= width) break;
-    currentCell = cellAt(next);
-    current = splitFrameCell(currentCell);
-    if (!isBackgroundStyledFrameCell(current)) break;
-  }
-  return { value: `${value}${RESET2}`, nextColumn: next };
-}
-function isBackgroundStyledFrameCell(cell) {
-  return cell.suffix === RESET2 && cell.prefix.length > 0 && (cell.prefix.includes("[48;") || cell.prefix.includes(";48;"));
-}
-function splitFrameCell(cell) {
-  if (!cell.includes("\x1B[") || !cell.endsWith("\x1B[0m")) {
-    return { prefix: "", text: cell, suffix: "" };
-  }
-  const cached = frameCellPartsCache.get(cell);
-  if (cached) return cached;
-  const body = cell.slice(0, -RESET2.length);
-  const parts = Array.from(body);
-  const text = parts.pop();
-  if (!text || text.charCodeAt(0) === 27) {
-    return { prefix: "", text: cell, suffix: "" };
-  }
-  const split = { prefix: parts.join(""), text, suffix: RESET2 };
-  if (frameCellPartsCache.size > MAX_FRAME_CELL_PARTS_CACHE_SIZE) {
-    frameCellPartsCache.clear();
-  }
-  frameCellPartsCache.set(cell, split);
-  return split;
-}
 function writeStringFrameRow(frame, width, row, column, value) {
   if (row < 0 || row >= frame.length || column >= width) return;
-  const valueCells = toStyledCells(value);
+  const valueCells = toStyledCells2(value);
   if (column <= 0 && column + valueCells.length >= width) {
-    frame[row] = renderFrameSlice(valueCells, -column, width);
+    frame[row] = renderFrameSlice2(valueCells, -column, width);
     return;
   }
-  const cells = toStyledCells(frame[row] ?? "");
+  const cells = toStyledCells2(frame[row] ?? "");
   let targetColumn = column;
   for (let index = 0; index < valueCells.length && targetColumn < width; index += 1) {
     if (targetColumn >= 0) cells[targetColumn] = valueCells[index];
     targetColumn += 1;
   }
-  frame[row] = renderFrameRow(cells, width);
+  frame[row] = renderFrameRow2(cells, width);
 }
 function fillStringFrameRect(frame, width, rect, value) {
   for (let row = rect.row; row < rect.row + rect.height; row += 1) {
@@ -11726,7 +12085,7 @@ function linearRgbChannel(channel) {
   return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
 }
 
-// src/app/workbench_ansi_screen.ts
+// src/app/workbench_ansi_output.ts
 var encoder = new TextEncoder();
 
 // src/app/workbench_help.ts
@@ -12186,6 +12545,13 @@ function workbenchAdaptiveWindowLayout(manager, options) {
   });
   return workbenchWindowLayout(bounds, layout);
 }
+function workbenchVisibleWindowRectsInto(target, rects, options) {
+  target.clear();
+  for (const [id2, rect] of rects) {
+    if (rectanglesIntersect(rect, options.viewport)) target.set(id2, rect);
+  }
+  return target;
+}
 function workbenchVerticalScrollbarRect(options) {
   const minWidth = Math.max(1, Math.floor(options.minWidth ?? 2));
   const bounds = options.bounds;
@@ -12236,6 +12602,54 @@ function scrollbarRenderCommand(target, index, axis, rect) {
   command.rect.width = rect.width;
   command.rect.height = rect.height;
   return command;
+}
+function rectanglesIntersect(left, right) {
+  return left.column < right.column + right.width && left.column + left.width > right.column && left.row < right.row + right.height && left.row + left.height > right.row;
+}
+
+// src/app/workbench_text.ts
+function compactSpaces(value) {
+  return value.replace(/\s+/g, " ").trim();
+}
+function maxTextWidth(values) {
+  let max2 = 0;
+  for (let index = 0; index < values.length; index += 1) {
+    max2 = Math.max(max2, textWidth(values[index]));
+  }
+  return max2;
+}
+function wrapPlainText(value, width, fit2) {
+  return wrapPlainTextInto([], value, width, fit2);
+}
+function wrapPlainTextInto(rows2, value, width, fit2) {
+  const safeWidth = Math.max(1, width);
+  const normalized = compactSpaces(stripStyles(value));
+  if (!normalized) {
+    rows2[0] = "";
+    rows2.length = 1;
+    return rows2;
+  }
+  const words = normalized.split(" ");
+  let rowCount = 0;
+  let line = "";
+  for (const word of words) {
+    const next = line.length > 0 ? `${line} ${word}` : word;
+    if (textWidth(next) <= safeWidth) {
+      line = next;
+      continue;
+    }
+    if (line.length > 0) {
+      rows2[rowCount] = line;
+      rowCount += 1;
+    }
+    line = textWidth(word) <= safeWidth ? word : fit2(word, safeWidth).trimEnd();
+  }
+  if (line.length > 0) {
+    rows2[rowCount] = line;
+    rowCount += 1;
+  }
+  rows2.length = rowCount;
+  return rows2;
 }
 
 // src/app/workbench_menu.ts
@@ -14804,6 +15218,42 @@ function workbenchTerminalSessionTitleFromId(id2, options = {}) {
   const suffix = id2.slice(expectedPrefix.length);
   return /^\d+$/.test(suffix) ? `${label} ${suffix}` : label;
 }
+function workbenchTerminalSessionTabSourcesInto(target, sessions) {
+  target.length = sessions.length;
+  for (let index = 0; index < sessions.length; index += 1) {
+    const session = sessions[index];
+    const row = target[index] ?? { id: session.id, title: session.title };
+    row.id = session.id;
+    row.title = session.title;
+    row.running = session.running ?? session.shell?.running;
+    row.status = session.status ?? session.shell?.status;
+    target[index] = row;
+  }
+  return target;
+}
+function workbenchTerminalToolbarStateFromSnapshot(snapshot) {
+  const scrollback = snapshot.scrollback;
+  return {
+    activeId: snapshot.activeId,
+    sessionCount: snapshot.sessionCount,
+    paneCount: snapshot.paneCount,
+    zoomedPaneId: snapshot.zoomedPaneId,
+    shellRunning: snapshot.shellRunning,
+    shellStarting: snapshot.shellStarting,
+    inputMode: snapshot.inputMode,
+    copyMode: snapshot.copyMode,
+    scrollbackTotalRows: scrollback?.totalRows,
+    scrollbackViewportRows: scrollback?.viewportRows,
+    searchQuery: scrollback?.query,
+    searchMatchCount: scrollback?.matchCount ?? scrollback?.matches?.length
+  };
+}
+function workbenchTerminalProtocolHeaderRowsInto(target, options) {
+  target.length = 2;
+  target[0] = options.title ?? "REMOTE TERMINAL / BROWSER SHELL MODEL";
+  target[1] = `active ${options.activeTitle ?? "none"}  screen ${options.columns}x${options.rows}  cursor ${options.cursorColumn},${options.cursorRow}  sessions ${options.sessionCount}  panes ${options.paneCount}`;
+  return target;
+}
 function workbenchTerminalSessionTabsInto(target, sessions, activeId, rect, options = {}) {
   target.length = 0;
   if (rect.width <= 0 || rect.height <= 0) return target;
@@ -14930,6 +15380,33 @@ function workbenchTerminalPaneProjectionsInto(target, layout, bounds, options = 
       );
       written += 1;
     }
+  }
+  target.length = written;
+  return target;
+}
+function workbenchTerminalPaneTitleRenderCommandsInto(target, panes, theme2, contrast) {
+  let written = 0;
+  for (let index = 0; index < panes.length; index += 1) {
+    const pane = panes[index];
+    if (!pane.titleVisible || pane.rect.width <= 0 || pane.rect.height <= 0) continue;
+    const bg = pane.active ? theme2.accentDeep : theme2.panelSoft;
+    const command = target[written] ?? {
+      text: "",
+      rect: { column: 0, row: 0, width: 0, height: 1 },
+      hitRect: { column: 0, row: 0, width: 0, height: 1 },
+      active: false,
+      style: { fg: "", bg: "", bold: false }
+    };
+    command.text = fitCellText(pane.title, pane.rect.width);
+    setRect3(command.rect, { column: pane.rect.column, row: pane.rect.row, width: pane.rect.width, height: 1 });
+    setRect3(command.hitRect, command.rect);
+    command.paneId = pane.paneId;
+    command.active = pane.active;
+    command.style.fg = pane.active ? contrast(bg, theme2.background, theme2.text) : theme2.soft;
+    command.style.bg = bg;
+    command.style.bold = pane.active;
+    target[written] = command;
+    written += 1;
   }
   target.length = written;
   return target;
@@ -15208,51 +15685,6 @@ function setRect4(target, column, row, width, height) {
   target.row = row;
   target.width = width;
   target.height = height;
-}
-
-// src/app/workbench_text.ts
-function compactSpaces(value) {
-  return value.replace(/\s+/g, " ").trim();
-}
-function maxTextWidth(values) {
-  let max2 = 0;
-  for (let index = 0; index < values.length; index += 1) {
-    max2 = Math.max(max2, textWidth(values[index]));
-  }
-  return max2;
-}
-function wrapPlainText(value, width, fit2) {
-  return wrapPlainTextInto([], value, width, fit2);
-}
-function wrapPlainTextInto(rows2, value, width, fit2) {
-  const safeWidth = Math.max(1, width);
-  const normalized = compactSpaces(stripStyles(value));
-  if (!normalized) {
-    rows2[0] = "";
-    rows2.length = 1;
-    return rows2;
-  }
-  const words = normalized.split(" ");
-  let rowCount = 0;
-  let line = "";
-  for (const word of words) {
-    const next = line.length > 0 ? `${line} ${word}` : word;
-    if (textWidth(next) <= safeWidth) {
-      line = next;
-      continue;
-    }
-    if (line.length > 0) {
-      rows2[rowCount] = line;
-      rowCount += 1;
-    }
-    line = textWidth(word) <= safeWidth ? word : fit2(word, safeWidth).trimEnd();
-  }
-  if (line.length > 0) {
-    rows2[rowCount] = line;
-    rowCount += 1;
-  }
-  rows2.length = rowCount;
-  return rows2;
 }
 
 // src/app/workbench_workspace.ts
@@ -16031,14 +16463,17 @@ var WorkbenchShelfBufferCache = class {
 // src/app/workbench_terminal_cache.ts
 var WorkbenchTerminalBufferCache = class {
   paneProjections = [];
+  paneTitleCommands = [];
   copyRows = [];
   clear() {
     this.paneProjections.length = 0;
+    this.paneTitleCommands.length = 0;
     this.copyRows.length = 0;
   }
   inspect() {
     return {
       paneProjections: this.paneProjections.length,
+      paneTitleCommands: this.paneTitleCommands.length,
       copyRows: this.copyRows.length
     };
   }
@@ -17136,6 +17571,8 @@ function workbenchModalConfirmedContent(options = {}) {
 }
 
 // app/workbench_rows.ts
+var THREE_HEADER_GEOMETRY = "torus knot \xB7 sphere \xB7 block \xB7 floor plane";
+var THREE_HEADER_GEOMETRY_WIDTH = textWidth(THREE_HEADER_GEOMETRY);
 function dataFooterRows(options) {
   const selected = options.selectedKey ?? "-";
   const full = compactSpaces(
@@ -17285,6 +17722,96 @@ function workbenchLogRowsFromSourcesInto(target, sources, theme2) {
   return target;
 }
 
+// app/workbench_frame_render.ts
+function workbenchFrameRenderCommandsInto(target, lineBuffer, options) {
+  if (options.rect.width <= 0 || options.rect.height <= 0) {
+    target.length = 0;
+    return target;
+  }
+  const t = options.theme;
+  const background = options.active ? t.panelSoft : t.panel;
+  const borderStyle = {
+    fg: options.active ? t.accent : t.borderStrong,
+    bg: background,
+    bold: options.active
+  };
+  const titleStyle = {
+    fg: t.background,
+    bg: options.active ? t.accent : t.border,
+    bold: true
+  };
+  target[0] = writeFillCommand2(target[0], options.rect, background);
+  const lines = workbenchFrameBoxLinesInto(lineBuffer, options.rect, options.title);
+  let written = 1;
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    target[written] = writeTextCommand2(
+      target[written],
+      line,
+      line.kind === "title" ? titleStyle : borderStyle
+    );
+    written += 1;
+  }
+  target.length = written;
+  return target;
+}
+function writeFillCommand2(target, source, bg) {
+  if (!target || target.kind !== "fill") {
+    return {
+      kind: "fill",
+      rect: { column: source.column, row: source.row, width: source.width, height: source.height },
+      bg
+    };
+  }
+  target.rect.column = source.column;
+  target.rect.row = source.row;
+  target.rect.width = source.width;
+  target.rect.height = source.height;
+  target.bg = bg;
+  return target;
+}
+function writeTextCommand2(target, line, style2) {
+  if (!target || target.kind !== "text") {
+    return {
+      kind: "text",
+      row: line.row,
+      column: line.column,
+      text: line.text,
+      style: { ...style2 },
+      lineKind: line.kind
+    };
+  }
+  target.row = line.row;
+  target.column = line.column;
+  target.text = line.text;
+  target.style.fg = style2.fg;
+  target.style.bg = style2.bg;
+  target.style.bold = style2.bold;
+  target.lineKind = line.kind;
+  return target;
+}
+
+// app/workbench_row_render.ts
+function workbenchStyledRowsRenderCommandsInto(target, options) {
+  target.length = 0;
+  if (options.rect.width <= 0 || options.rect.height <= 0) return target;
+  const sourceStart = Math.max(0, Math.floor(options.sourceStart ?? 0));
+  const count = Math.min(options.rect.height, Math.max(0, options.rows.length - sourceStart));
+  target.length = count;
+  for (let index = 0; index < count; index += 1) {
+    const row = options.rows[sourceStart + index];
+    target[index] = {
+      row: options.rect.row + index,
+      column: options.rect.column,
+      text: options.fit(row.text, options.rect.width),
+      fg: row.fg ?? options.theme.text,
+      bg: row.bg ?? options.theme.surface,
+      bold: row.bold ?? false
+    };
+  }
+  return target;
+}
+
 // src/app/workbench_ascii.ts
 var defaultWorkbenchAsciiConfigRows = [
   { kind: "preset", label: "Preset" },
@@ -17311,7 +17838,8 @@ function createDefaultWorkbenchAsciiOptions() {
   return {
     ...createDefaultAsciiOptions("sharp"),
     preset: "custom",
-    renderMaxCells: 1920
+    renderMaxCells: 960,
+    deferredReadbackSlots: 2
   };
 }
 function asciiNumericOptionRatio(values, value) {
@@ -17512,6 +18040,75 @@ function workbenchMobileCommandStripItemsInto(target, options) {
   target[5] = { action: "wide", label: "Wide", tone: "muted" };
   target[6] = { action: "dense", label: "Dense", tone: "muted" };
   return target;
+}
+
+// examples/web/api_workbench_terminal_workspace.ts
+function defaultWebTerminalWorkspaceSnapshot() {
+  return {
+    activeId: "pages-shell",
+    sessions: [
+      {
+        id: "pages-shell",
+        title: "Pages Shell",
+        template: { id: "pages-shell", title: "Pages Shell", kind: "command", command: "web-shell" },
+        backendId: "browser-mock",
+        commandLine: "web-shell",
+        status: "running",
+        running: true,
+        columns: 80,
+        rows: 12,
+        reconnectable: false,
+        restartPolicy: "never",
+        createdAt: 0,
+        updatedAt: 0
+      },
+      {
+        id: "remote-attach",
+        title: "Remote Attach",
+        template: {
+          id: "remote-attach",
+          title: "Remote Attach",
+          kind: "attach",
+          sessionId: "ws://localhost:8787/terminal",
+          reconnectable: true
+        },
+        backendId: "remote",
+        status: "idle",
+        running: false,
+        reconnectable: true,
+        restartPolicy: "never",
+        createdAt: 0,
+        updatedAt: 0
+      },
+      {
+        id: "ci-task",
+        title: "CI Task",
+        template: { id: "ci-task", title: "CI Task", kind: "deno-task", command: "deno", args: ["task", "health"] },
+        backendId: "process-template",
+        commandLine: "deno task health",
+        status: "idle",
+        running: false,
+        columns: 100,
+        rows: 30,
+        reconnectable: false,
+        restartPolicy: "on-failure",
+        createdAt: 0,
+        updatedAt: 0
+      }
+    ],
+    layout: {}
+  };
+}
+function normalizeWebTerminalWorkspaceSnapshot(value, options = {}) {
+  if (!value || typeof value !== "object") return void 0;
+  const candidate = value;
+  if (!Array.isArray(candidate.sessions) || candidate.sessions.length === 0) return void 0;
+  try {
+    return normalizeTerminalWorkspaceSnapshot(candidate);
+  } catch (error) {
+    options.onError?.(error);
+    return void 0;
+  }
 }
 
 // src/app/workbench_modal_cache.ts
@@ -17998,13 +18595,16 @@ var inspectorRenderRows = [];
 var inspectorActionTextRows = [];
 var inspectorWrappedTextRows = [];
 var logRenderRows = [];
+var styledRowRenderCommands = [];
 var htmlCssLayoutBoxes = [];
 var htmlCssLayoutRenderCommands = [];
 var shelfBuffers = new WorkbenchShelfBufferCache();
 var menuBarHitLayouts = [];
 var headerLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
 var windowFrameBoxLines = [];
+var windowFrameRenderCommands = [];
 var workspaceScrollbarRenderCommands = [];
+var visiblePanelRects = /* @__PURE__ */ new Map();
 var webTerminalActions = [
   "new",
   "previous",
@@ -18023,6 +18623,7 @@ var webTerminalButtonBuffers = new WorkbenchButtonRowBufferCache();
 var asciiConfigBuffers = new WorkbenchAsciiConfigModalBufferCache();
 var mobileCommandButtonBuffers = new WorkbenchButtonRowBufferCache();
 var webTerminalSessionTabBuffers = new WorkbenchTerminalSessionTabBufferCache();
+var webTerminalHeaderRows = [];
 var controlLineSegments = [];
 var controlLineRenderCommands = [];
 var controlLineHitPlacements = [];
@@ -18382,7 +18983,10 @@ function draw() {
       );
       hitTargets.add({ ...layout.bounds, row: 0 }, { type: "restore" });
     } else {
-      for (const [id2, rect] of layout.rects) {
+      const visibleRects = workbenchVisibleWindowRectsInto(visiblePanelRects, layout.rects, {
+        viewport: { column: layout.bounds.column, row: offset, width: layout.bounds.width, height: body.height }
+      });
+      for (const [id2, rect] of visibleRects) {
         renderPanel(virtual, id2, rect);
       }
     }
@@ -18518,7 +19122,6 @@ function renderPanel(frame, id2, rect) {
   if (rect.width < 10 || rect.height < 4) return;
   hitTargets.add(rect, { type: "focus", id: id2 });
   const selected = active.peek() === id2;
-  fillRect(frame, rect, selected ? theme().panelSoft : theme().panel);
   drawFrame(frame, rect, panelTitle(id2), selected);
   const titlebar = layoutWorkbenchTitlebarInto(titlebarBuffers.layout(id2), {
     rect,
@@ -18570,18 +19173,9 @@ function renderLogs(frame, rect) {
   const offset = logScroll.offset.peek().rows;
   const overflow = logScroll.inspectOverflow();
   const bodyWidth = Math.max(0, rect.width - 1);
-  const end = Math.min(lineCount, offset + rect.height);
   const t = theme();
   const rows2 = workbenchLogRowsFromSourcesInto(logRenderRows, [docs, logRows], t);
-  for (let sourceIndex = offset; sourceIndex < end; sourceIndex += 1) {
-    const row = rows2[sourceIndex];
-    write(
-      frame,
-      rect.row + sourceIndex - offset,
-      rect.column,
-      paint(fit(row.text, bodyWidth), row.fg ?? t.text, row.bg ?? t.surface, row.bold)
-    );
-  }
+  writeStyledRows(frame, { ...rect, width: bodyWidth }, rows2, offset);
   if (!overflow.rows.scrollbarVisible || rect.width < 1) return;
   const column = rect.column + rect.width - 1;
   const thumb = overflow.rows.thumb;
@@ -18598,20 +19192,8 @@ function renderExplorer(frame, rect) {
     theme: theme(),
     contrast: contrastText
   });
-  const rowCount = Math.min(projected.length, rect.height);
-  for (let offset = 0; offset < rowCount; offset += 1) {
-    const row = projected[offset];
-    write(
-      frame,
-      rect.row + offset,
-      rect.column,
-      paint(
-        fit(row.text, rect.width),
-        row.fg ?? theme().text,
-        row.bg ?? theme().surface,
-        row.bold
-      )
-    );
+  writeStyledRows(frame, rect, projected);
+  for (let offset = 0; offset < Math.min(projected.length, rect.height); offset += 1) {
     hitTargets.add({ column: rect.column, row: rect.row + offset, width: rect.width, height: 1 }, {
       type: "explorerRow",
       index: visible[offset].index
@@ -18632,15 +19214,7 @@ function renderInspector(frame, rect) {
       wrappedTextRows: inspectorWrappedTextRows
     }
   });
-  for (let index = 0; index < Math.min(rect.height, rows2.length); index += 1) {
-    const row = rows2[index];
-    write(
-      frame,
-      rect.row + index,
-      rect.column,
-      paint(fit(row.text, rect.width), row.fg ?? t.text, row.bg ?? t.surface, row.bold)
-    );
-  }
+  writeStyledRows(frame, rect, rows2);
 }
 function renderData(frame, rect) {
   const t = theme();
@@ -18665,15 +19239,7 @@ function renderData(frame, rect) {
     contrast: contrastText,
     buffers: { textRows: dataTableTextRows, bodyRows: dataTableBodyRows }
   });
-  for (let index = 0; index < Math.min(rect.height, rows2.length); index += 1) {
-    const row = rows2[index];
-    write(
-      frame,
-      rect.row + index,
-      rect.column,
-      paint(fit(row.text, rect.width), row.fg ?? t.text, row.bg ?? t.surface, row.bold)
-    );
-  }
+  writeStyledRows(frame, rect, rows2);
   for (let index = 0; index < Math.min(view.rows.length, Math.max(0, rect.height - 1)); index += 1) {
     hitTargets.add({ column: rect.column, row: rect.row + 1 + index, width: rect.width, height: 1 }, {
       type: "dataRow",
@@ -18750,10 +19316,15 @@ function renderTerminalProtocol(frame, rect) {
   const workspace = webTerminalWorkspace.inspect();
   const activeScreen = syncWebTerminalScreen(workspace.activeId, screenRect.width, screenRect.height);
   const inspection = activeScreen.inspect();
-  const headerRows = [
-    "REMOTE TERMINAL / BROWSER SHELL MODEL",
-    `active ${workspace.active?.title ?? "none"}  screen ${inspection.columns}x${inspection.rows}  cursor ${inspection.cursor.column},${inspection.cursor.row}  sessions ${workspace.count}  panes ${workspace.layout.count}`
-  ];
+  const headerRows = workbenchTerminalProtocolHeaderRowsInto(webTerminalHeaderRows, {
+    activeTitle: workspace.active?.title,
+    columns: inspection.columns,
+    rows: inspection.rows,
+    cursorColumn: inspection.cursor.column,
+    cursorRow: inspection.cursor.row,
+    sessionCount: workspace.count,
+    paneCount: workspace.layout.count
+  });
   const headerRowCount = Math.min(2, rect.height);
   for (let index = 0; index < headerRowCount; index += 1) {
     const line = headerRows[index];
@@ -18775,16 +19346,17 @@ function renderTerminalToolbar(frame, rect, workspace = webTerminalWorkspace.ins
   if (rect.height <= 0 || rect.width <= 0) return;
   const scrollback = activeWebTerminalScrollback();
   const scrollbackInspection = scrollback?.inspect();
-  workbenchTerminalToolbarItemsInto(webTerminalButtonBuffers.items, {
-    activeId: workspace.activeId,
-    sessionCount: workspace.sessions.length,
-    paneCount: workspace.layout.count,
-    zoomedPaneId: workspace.layout.zoomedPaneId,
-    scrollbackTotalRows: scrollbackInspection?.totalRows,
-    scrollbackViewportRows: scrollbackInspection?.viewportRows,
-    searchQuery: scrollbackInspection?.query,
-    searchMatchCount: scrollbackInspection?.matches.length
-  }, { actions: webTerminalActions });
+  workbenchTerminalToolbarItemsInto(
+    webTerminalButtonBuffers.items,
+    workbenchTerminalToolbarStateFromSnapshot({
+      activeId: workspace.activeId,
+      sessionCount: workspace.sessions.length,
+      paneCount: workspace.layout.count,
+      zoomedPaneId: workspace.layout.zoomedPaneId,
+      scrollback: scrollbackInspection
+    }),
+    { actions: webTerminalActions }
+  );
   layoutWorkbenchButtonRowInto(webTerminalButtonBuffers.placements, webTerminalButtonBuffers.items, rect, rect.row);
   workbenchButtonRowRenderCommandsInto(webTerminalButtonBuffers.commands, webTerminalButtonBuffers.placements);
   for (const command of webTerminalButtonBuffers.commands) {
@@ -18804,15 +19376,7 @@ function renderTerminalSessionTabs(frame, rect) {
   if (rect.height <= 0 || rect.width <= 0) return;
   const workspace = webTerminalWorkspace.inspect();
   const t = theme();
-  webTerminalSessionTabBuffers.sources.length = 0;
-  for (const session of workspace.sessions) {
-    webTerminalSessionTabBuffers.sources.push({
-      id: session.id,
-      title: session.title,
-      running: session.running,
-      status: session.status
-    });
-  }
+  workbenchTerminalSessionTabSourcesInto(webTerminalSessionTabBuffers.sources, workspace.sessions);
   workbenchTerminalSessionTabsInto(
     webTerminalSessionTabBuffers.placements,
     webTerminalSessionTabBuffers.sources,
@@ -18856,34 +19420,36 @@ function renderWebTerminalPanes(frame, rect, workspace = webTerminalWorkspace.in
       titleForSession: (sessionId) => workspace.sessions.find((entry) => entry.id === sessionId)?.title
     }
   );
+  const titleCommands = workbenchTerminalPaneTitleRenderCommandsInto(
+    webTerminalBuffers.paneTitleCommands,
+    projections,
+    theme(),
+    contrastText
+  );
+  let titleIndex = 0;
   for (const projection of projections) {
-    renderWebTerminalPane(frame, projection);
+    const titleCommand = projection.titleVisible ? titleCommands[titleIndex++] : void 0;
+    renderWebTerminalPane(frame, projection, titleCommand);
   }
 }
-function renderWebTerminalPane(frame, projection) {
+function renderWebTerminalPane(frame, projection, titleCommand) {
   const rect = projection.rect;
   if (rect.width <= 0 || rect.height <= 0) return;
   const t = theme();
   const activePane = projection.active;
   fillRect(frame, rect, activePane ? t.background : t.surface);
   const content = projection.contentRect;
-  if (projection.titleVisible) {
-    const bg = activePane ? t.accentDeep : t.panelSoft;
+  if (titleCommand) {
     write(
       frame,
-      rect.row,
-      rect.column,
-      paint(
-        fit(projection.title, rect.width),
-        activePane ? contrastText(bg, t.background, t.text) : t.soft,
-        bg,
-        activePane
-      )
+      titleCommand.rect.row,
+      titleCommand.rect.column,
+      paint(titleCommand.text, titleCommand.style.fg, titleCommand.style.bg, titleCommand.style.bold)
     );
-    if (projection.paneId) {
-      hitTargets.add({ column: rect.column, row: rect.row, width: rect.width, height: 1 }, {
+    if (titleCommand.paneId) {
+      hitTargets.add(titleCommand.hitRect, {
         type: "terminalPane",
-        id: projection.paneId
+        id: titleCommand.paneId
       });
     }
   }
@@ -20086,6 +20652,25 @@ function isTextControlActive() {
 function write(frame, row, column, value) {
   writeStringFrameRow(frame, cols(), row, column, value);
 }
+function writeStyledRows(frame, rect, rows2, sourceStart = 0) {
+  const t = theme();
+  const commands = workbenchStyledRowsRenderCommandsInto(styledRowRenderCommands, {
+    rect,
+    rows: rows2,
+    sourceStart,
+    theme: t,
+    fit
+  });
+  for (let index = 0; index < commands.length; index += 1) {
+    const command = commands[index];
+    write(
+      frame,
+      command.row,
+      command.column,
+      paint(command.text, command.fg, command.bg, command.bold)
+    );
+  }
+}
 function fit(value, width) {
   return fitCellText(value, width);
 }
@@ -20093,17 +20678,23 @@ function fillRect(frame, rect, bg) {
   fillStringFrameRect(frame, cols(), rect, paint(" ".repeat(Math.max(0, rect.width)), theme().text, bg));
 }
 function drawFrame(frame, rect, title, selected) {
-  const border = selected ? theme().accent : theme().borderStrong;
-  const bg = selected ? theme().panelSoft : theme().panel;
-  const lines = workbenchFrameBoxLinesInto(windowFrameBoxLines, rect, title);
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index];
-    write(
-      frame,
-      line.row,
-      line.column,
-      line.kind === "title" ? paint(line.text, theme().background, selected ? theme().accent : theme().border, true) : paint(line.text, border, bg, selected)
-    );
+  const commands = workbenchFrameRenderCommandsInto(windowFrameRenderCommands, windowFrameBoxLines, {
+    rect,
+    title,
+    active: selected,
+    theme: theme()
+  });
+  for (const command of commands) {
+    if (command.kind === "fill") {
+      fillRect(frame, command.rect, command.bg);
+    } else {
+      write(
+        frame,
+        command.row,
+        command.column,
+        paint(command.text, command.style.fg, command.style.bg, command.style.bold)
+      );
+    }
   }
 }
 function buttonText2(label, compact2 = false) {
@@ -20204,7 +20795,7 @@ function normalizeWebWorkspaceState(value) {
     minTileDensity: -3,
     maxTileDensity: 3
   });
-  const terminal = normalizeWebTerminalWorkspaceSnapshot(candidate?.terminal);
+  const terminal = normalizeWebTerminalWorkspaceSnapshot2(candidate?.terminal);
   const asciiOptions = candidate?.ascii ? normalizeAsciiOptions(candidate.ascii, createDefaultWorkbenchAsciiOptions()) : void 0;
   return { ...state, ...terminal ? { terminal } : {}, ...asciiOptions ? { ascii: asciiOptions } : {} };
 }
@@ -20224,16 +20815,10 @@ function persistWebWorkspaceState() {
     diagnosticSource: "web-workbench"
   });
 }
-function normalizeWebTerminalWorkspaceSnapshot(value) {
-  if (!value || typeof value !== "object") return void 0;
-  const candidate = value;
-  if (!Array.isArray(candidate.sessions) || candidate.sessions.length === 0) return void 0;
-  try {
-    return normalizeTerminalWorkspaceSnapshot(candidate);
-  } catch (error) {
-    reportWebStorageDiagnostic("terminal-workspace-normalize", "workspace-state", error);
-    return void 0;
-  }
+function normalizeWebTerminalWorkspaceSnapshot2(value) {
+  return normalizeWebTerminalWorkspaceSnapshot(value, {
+    onError: (error) => reportWebStorageDiagnostic("terminal-workspace-normalize", "workspace-state", error)
+  });
 }
 function applyWebTerminalWorkspaceSnapshot(snapshot) {
   const restored = normalizeTerminalWorkspaceSnapshot(snapshot);
@@ -20241,62 +20826,6 @@ function applyWebTerminalWorkspaceSnapshot(snapshot) {
   webTerminalWorkspace.activeId.value = restored.activeId;
   webTerminalWorkspace.layout.value = restored.layout;
   webTerminalScreenKeys.clear();
-}
-function defaultWebTerminalWorkspaceSnapshot() {
-  return {
-    activeId: "pages-shell",
-    sessions: [
-      {
-        id: "pages-shell",
-        title: "Pages Shell",
-        template: { id: "pages-shell", title: "Pages Shell", kind: "command", command: "web-shell" },
-        backendId: "browser-mock",
-        commandLine: "web-shell",
-        status: "running",
-        running: true,
-        columns: 80,
-        rows: 12,
-        reconnectable: false,
-        restartPolicy: "never",
-        createdAt: 0,
-        updatedAt: 0
-      },
-      {
-        id: "remote-attach",
-        title: "Remote Attach",
-        template: {
-          id: "remote-attach",
-          title: "Remote Attach",
-          kind: "attach",
-          sessionId: "ws://localhost:8787/terminal",
-          reconnectable: true
-        },
-        backendId: "remote",
-        status: "idle",
-        running: false,
-        reconnectable: true,
-        restartPolicy: "never",
-        createdAt: 0,
-        updatedAt: 0
-      },
-      {
-        id: "ci-task",
-        title: "CI Task",
-        template: { id: "ci-task", title: "CI Task", kind: "deno-task", command: "deno", args: ["task", "health"] },
-        backendId: "process-template",
-        commandLine: "deno task health",
-        status: "idle",
-        running: false,
-        columns: 100,
-        rows: 30,
-        reconnectable: false,
-        restartPolicy: "on-failure",
-        createdAt: 0,
-        updatedAt: 0
-      }
-    ],
-    layout: {}
-  };
 }
 function persistThemeIndex(index) {
   try {

@@ -2,12 +2,15 @@
 import type { Rectangle } from "../types.ts";
 import { isSgrReset, mergeSgrStyle } from "../utils/sgr_style.ts";
 import { stripStyles, textWidth } from "../utils/strings.ts";
-import { readSgrSequenceAt, renderFrameRow, renderFrameSlice, toStyledCells } from "./workbench_frame_rows.ts";
+import {
+  readSgrSequenceAt,
+  renderFrameRow as renderFrameRowCells,
+  renderFrameSlice as renderFrameSliceCells,
+  toStyledCells as toStyledFrameCells,
+} from "./workbench_frame_rows.ts";
 
 const lineSignalRowCache = new WeakMap<WorkbenchLineSignal, WorkbenchLineSignalRowCache>();
 const frameRowMetadata = new WeakMap<string[], WorkbenchFrameRowMetadata>();
-
-export { renderFrameRow, renderFrameSlice, toStyledCells } from "./workbench_frame_rows.ts";
 
 /** Cell matrix used by immediate-mode workbench renderers before row assembly. */
 export type WorkbenchFrame = string[][];
@@ -45,6 +48,21 @@ export interface WorkbenchFrameBoxLine {
   row: number;
   column: number;
   text: string;
+}
+
+/** Assembles one frame row from sparse styled cells. */
+export function renderFrameRow(cells: string[], width: number): string {
+  return renderFrameRowCells(cells, width);
+}
+
+/** Assembles a clipped frame row slice from sparse styled cells. */
+export function renderFrameSlice(cells: string[], start: number, width: number): string {
+  return renderFrameSliceCells(cells, start, width);
+}
+
+/** Converts an ANSI-styled string into independently styled terminal cells. */
+export function toStyledCells(value: string): string[] {
+  return toStyledFrameCells(value);
 }
 
 /** Copies a viewport from one sparse frame into another without stringifying ANSI cells. */

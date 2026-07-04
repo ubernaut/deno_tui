@@ -1,8 +1,5 @@
 import { assertEquals } from "./deps.ts";
-import {
-  applyWorkbenchTextPromptInput,
-  dispatchWorkbenchTextPromptInput,
-} from "../src/app/workbench_prompt_input.ts";
+import { applyWorkbenchTextPromptInput, dispatchWorkbenchTextPromptInput } from "../src/app/workbench_prompt_input.ts";
 
 Deno.test("workbench text prompt input edits printable cell-width keys", () => {
   assertEquals(

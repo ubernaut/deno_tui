@@ -9,6 +9,7 @@ export interface ThreeAsciiImageFrame {
   pixelHeight: number;
 }
 
+/** Minimal RGBA readback source used to build renderer image frames. */
 export interface ThreeAsciiImageFrameSource {
   readonly width: number;
   readonly height: number;
@@ -17,6 +18,7 @@ export interface ThreeAsciiImageFrameSource {
   };
 }
 
+/** Reads an RGBA image frame from a renderer surface. */
 export async function readThreeAsciiImageFrame(
   source: ThreeAsciiImageFrameSource,
 ): Promise<ThreeAsciiImageFrame> {

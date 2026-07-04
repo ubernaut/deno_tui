@@ -80,11 +80,9 @@ export function formatThreePanelProbeLines(
     }`,
     `init=${formatMs(summary.averageInitMs)} scene=${formatMs(summary.averageSceneMs)}${
       formatScenePhaseSummary(summary)
-    } readback=${
-      formatMs(summary.averageReadbackMs)
-    } assembly=${formatMs(summary.averageAssemblyMs)} updates=${latest?.updates ?? 0}${
-      formatDeferredQueueSummary(latest)
-    }`,
+    } readback=${formatMs(summary.averageReadbackMs)} assembly=${formatMs(summary.averageAssemblyMs)} updates=${
+      latest?.updates ?? 0
+    }${formatDeferredQueueSummary(latest)}`,
   ];
   for (const sample of samples) {
     lines.push(

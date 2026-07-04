@@ -15,6 +15,7 @@ Deno.test("assembleThreeAsciiReadbackGrid resolves views and delegates assembler
     edgeOffset: 4,
     colorOffset: 20,
     byteLength: 36,
+    includeFill: true,
     fillFloatLength: 1,
     edgeFloatLength: 4,
     colorFloatLength: 4,
@@ -70,6 +71,7 @@ Deno.test("assembleThreeAsciiReadbackGrid resolves views and delegates assembler
     terminalGlyphStyle: "blocks",
     terminalEdgeBias: 2,
     backgroundColor,
+    blockVisibilityFromColorAlpha: false,
   });
   assertEquals(result, {
     grid,
@@ -84,6 +86,7 @@ Deno.test("assembleThreeAsciiReadbackGridWithContext reuses retained assembly de
     edgeOffset: 4,
     colorOffset: 20,
     byteLength: 36,
+    includeFill: true,
     fillFloatLength: 1,
     edgeFloatLength: 4,
     colorFloatLength: 4,

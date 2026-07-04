@@ -281,6 +281,7 @@ export function resolveWorkbenchThreeTerminalPressureBudget(
   };
 }
 
+/** Converts terminal output bytes over a sample window into bytes per second. */
 export function workbenchThreeTerminalBytesPerSecond(options: WorkbenchThreeTerminalByteRateOptions): number {
   if (options.sampleDurationMs === undefined || options.sampleDurationMs <= 0 || options.bytes <= 0) return 0;
   return options.bytes / (options.sampleDurationMs / 1000);

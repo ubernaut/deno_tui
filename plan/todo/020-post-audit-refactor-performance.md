@@ -261,8 +261,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added structured workbench frame viewport blitting so API Workbench windows copy styled cells directly instead of
   stringifying ANSI slices and reparsing them before the final terminal flush, with unit and benchmark coverage for the
   scrolled truecolor blit path.
-- Switched the terminal workbench Three default readback strategy back to blocking at the 120-cell startup budget so
-  the default block renderer publishes fresh frames every draw; deferred readback remains configurable for lower-wait
+- Switched the terminal workbench Three default readback strategy back to blocking at the 120-cell startup budget so the
+  default block renderer publishes fresh frames every draw; deferred readback remains configurable for lower-wait
   experiments but is no longer the default workbench path.
 - Made the shared WebGPU compatibility device cache recoverable: failed `requestDevice` attempts are no longer cached,
   and native `device.lost` signals clear the cached device so later Three ASCII renderer rebuilds can acquire a fresh
