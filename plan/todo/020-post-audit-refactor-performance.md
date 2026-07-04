@@ -270,6 +270,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   lookup closures.
 - Reused Three ASCII readback copy descriptors and source maps so blocking/deferred frames avoid per-frame readback
   planning wrapper allocations.
+- Reused Three ASCII dispatch, readback-layout, and compute-resource option envelopes so steady frames avoid allocating
+  private planner input objects before cache lookups.
 - Added compact live Three ASCII renderer telemetry to the workbench Three pane header so renderer frame, scene,
   readback, assembly, and cell counts are visible during manual profiling.
 - Moved SGR state merging into a shared internal utility and routed workbench frame writes through it, so both

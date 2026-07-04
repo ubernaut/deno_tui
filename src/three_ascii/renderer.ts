@@ -23,9 +23,13 @@ import {
   encodeThreeAsciiComputeDispatchCommands,
   type ThreeAsciiComputeDispatchResources,
 } from "./compute_commands.ts";
-import { ThreeAsciiComputeDispatchPlanCache } from "./compute_plan.ts";
+import { ThreeAsciiComputeDispatchPlanCache, type ThreeAsciiComputeDispatchPlanInput } from "./compute_plan.ts";
 import { createThreeAsciiComputePipeline } from "./compute_pipeline.ts";
-import { applyThreeAsciiComputeResourcePlanState, createThreeAsciiComputeResourcePlan } from "./compute_resources.ts";
+import {
+  applyThreeAsciiComputeResourcePlanState,
+  createThreeAsciiComputeResourcePlan,
+  type ThreeAsciiComputeResourcePlanInput,
+} from "./compute_resources.ts";
 import {
   shouldIncludeThreeAsciiTerminalEdges,
   type ThreeAsciiEffectState,
@@ -49,6 +53,7 @@ import {
   type ThreeAsciiReadbackCopySources,
   type ThreeAsciiReadbackLayout,
   ThreeAsciiReadbackLayoutCache,
+  type ThreeAsciiReadbackLayoutOptions,
   ThreeAsciiReadbackViewCache,
 } from "./readback.ts";
 import {
@@ -183,10 +188,30 @@ export class ThreeAsciiRenderer {
   private readonly readbackCopySources: ThreeAsciiReadbackCopySources<GPUBuffer> = {} as ThreeAsciiReadbackCopySources<
     GPUBuffer
   >;
+  private readonly readbackLayoutOptions: ThreeAsciiReadbackLayoutOptions = {
+    fillByteLength: 0,
+    edgeByteLength: 0,
+    colorByteLength: 0,
+    includeEdges: false,
+  };
   private readonly dispatchPlanCache = new ThreeAsciiComputeDispatchPlanCache();
+  private readonly dispatchPlanOptions: ThreeAsciiComputeDispatchPlanInput = {
+    columns: 0,
+    rows: 0,
+    workgroupSize: THREE_ASCII_WORKGROUP_SIZE,
+    includeEdges: false,
+  };
   private readonly dispatchResources: ThreeAsciiComputeDispatchResources = {
     pipelineForPass: (kind) => this.computePipelineForPass(kind),
     bindGroupForPass: (kind) => this.computeBindGroupForPass(kind),
+  };
+  private readonly computeResourcePlanInput: ThreeAsciiComputeResourcePlanInput = {
+    columns: 0,
+    rows: 0,
+    includeEdges: false,
+    currentCellCount: 0,
+    hasEdgeOutput: false,
+    hasEdgeBindGroup: false,
   };
   private readonly readbackAssemblyContext: ThreeAsciiReadbackGridAssemblyContext = {
     viewCache: this.readbackViewCache,
@@ -416,20 +441,17 @@ export class ThreeAsciiRenderer {
     const commandEncoder = this.device!.createCommandEncoder({
       label: "deno_tui.three_ascii.cells",
     });
-    const dispatchPlan = this.dispatchPlanCache.resolve({
-      columns: this.columns,
-      rows: this.rows,
-      workgroupSize: THREE_ASCII_WORKGROUP_SIZE,
-      includeEdges: includeTerminalEdges,
-    });
+    this.dispatchPlanOptions.columns = this.columns;
+    this.dispatchPlanOptions.rows = this.rows;
+    this.dispatchPlanOptions.includeEdges = includeTerminalEdges;
+    const dispatchPlan = this.dispatchPlanCache.resolve(this.dispatchPlanOptions);
     encodeThreeAsciiComputeDispatchCommands(commandEncoder, dispatchPlan, this.dispatchResources);
 
-    const readbackLayout = this.readbackLayoutCache.resolve({
-      fillByteLength: this.fillOutput!.byteLength,
-      edgeByteLength: this.edgeOutput?.byteLength ?? 0,
-      colorByteLength: this.colorOutput!.byteLength,
-      includeEdges: includeTerminalEdges,
-    });
+    this.readbackLayoutOptions.fillByteLength = this.fillOutput!.byteLength;
+    this.readbackLayoutOptions.edgeByteLength = this.edgeOutput?.byteLength ?? 0;
+    this.readbackLayoutOptions.colorByteLength = this.colorOutput!.byteLength;
+    this.readbackLayoutOptions.includeEdges = includeTerminalEdges;
+    const readbackLayout = this.readbackLayoutCache.resolve(this.readbackLayoutOptions);
     this.readbackCopyFillSource.byteLength = this.fillOutput!.byteLength;
     this.readbackCopyEdgeSource.byteLength = this.edgeOutput?.byteLength ?? 0;
     this.readbackCopyColorSource.byteLength = this.colorOutput!.byteLength;
@@ -706,14 +728,13 @@ export class ThreeAsciiRenderer {
       this.uniformDirty = true;
     }
 
-    const resourcePlan = createThreeAsciiComputeResourcePlan({
-      columns: this.columns,
-      rows: this.rows,
-      includeEdges: includeTerminalEdges,
-      currentCellCount: this.outputCellCount,
-      hasEdgeOutput: this.edgeOutput !== undefined,
-      hasEdgeBindGroup: this.edgeBindGroup !== undefined,
-    });
+    this.computeResourcePlanInput.columns = this.columns;
+    this.computeResourcePlanInput.rows = this.rows;
+    this.computeResourcePlanInput.includeEdges = includeTerminalEdges;
+    this.computeResourcePlanInput.currentCellCount = this.outputCellCount;
+    this.computeResourcePlanInput.hasEdgeOutput = this.edgeOutput !== undefined;
+    this.computeResourcePlanInput.hasEdgeBindGroup = this.edgeBindGroup !== undefined;
+    const resourcePlan = createThreeAsciiComputeResourcePlan(this.computeResourcePlanInput);
     if (resourcePlan.resizeOutputs) {
       this.fillOutput = this.ensureStorageBufferSlot(
         this.fillOutput,

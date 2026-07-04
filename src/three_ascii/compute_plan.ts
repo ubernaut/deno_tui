@@ -9,6 +9,13 @@ export interface ThreeAsciiComputeDispatchPlan {
   readonly passes: readonly ThreeAsciiComputePassPlan[];
 }
 
+export interface ThreeAsciiComputeDispatchPlanInput {
+  columns: number;
+  rows: number;
+  workgroupSize: number;
+  includeEdges: boolean;
+}
+
 /** Reuses compute dispatch plan objects while render size and edge mode are unchanged. */
 export class ThreeAsciiComputeDispatchPlanCache {
   private cached?: ThreeAsciiComputeDispatchPlan;
@@ -17,12 +24,7 @@ export class ThreeAsciiComputeDispatchPlanCache {
   private workgroupSize = -1;
   private includeEdges = false;
 
-  resolve(options: {
-    columns: number;
-    rows: number;
-    workgroupSize: number;
-    includeEdges: boolean;
-  }): ThreeAsciiComputeDispatchPlan {
+  resolve(options: ThreeAsciiComputeDispatchPlanInput): ThreeAsciiComputeDispatchPlan {
     const columns = Math.max(1, Math.floor(options.columns));
     const rows = Math.max(1, Math.floor(options.rows));
     const workgroupSize = Math.max(1, Math.floor(options.workgroupSize));
@@ -74,12 +76,9 @@ const COLOR_PASS: ThreeAsciiComputePassPlan = {
 const FILL_COLOR_PASSES = [FILL_PASS, COLOR_PASS] as const;
 const FILL_EDGE_COLOR_PASSES = [FILL_PASS, EDGE_PASS, COLOR_PASS] as const;
 
-export function createThreeAsciiComputeDispatchPlan(options: {
-  columns: number;
-  rows: number;
-  workgroupSize: number;
-  includeEdges: boolean;
-}): ThreeAsciiComputeDispatchPlan {
+export function createThreeAsciiComputeDispatchPlan(
+  options: ThreeAsciiComputeDispatchPlanInput,
+): ThreeAsciiComputeDispatchPlan {
   const columns = Math.max(1, Math.floor(options.columns));
   const rows = Math.max(1, Math.floor(options.rows));
   const workgroupSize = Math.max(1, Math.floor(options.workgroupSize));
