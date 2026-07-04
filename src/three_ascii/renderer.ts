@@ -5,7 +5,6 @@ import { pass } from "npm:three@0.183.2/tsl";
 import { AcerolaAsciiNode, type AcerolaAsciiNodeOptions } from "./AcerolaAsciiNode.ts";
 import {
   buildThreeAsciiAnsiGrid as buildThreeAsciiAnsiGridInternal,
-  colorValue,
   ThreeAsciiAnsiGridAssembler as InternalThreeAsciiAnsiGridAssembler,
   type ThreeAsciiAnsiGridInput as InternalThreeAsciiAnsiGridInput,
 } from "./ansi_grid.ts";
@@ -22,6 +21,7 @@ import {
   type ThreeAsciiEffectState,
   threeAsciiEffectStateFromSource,
 } from "./effect_state.ts";
+import { patchThreeAsciiEffectOptions } from "./effect_options.ts";
 import {
   destroyThreeAsciiGpuBufferSlot,
   ensureThreeAsciiGpuBufferSlot,
@@ -332,52 +332,6 @@ export class ThreeAsciiReadbackError extends Error {
   }
 }
 
-function threeAsciiEffectOptionsAffectComputeUniforms(options: Partial<AcerolaAsciiNodeOptions>): boolean {
-  return options.edgeThreshold !== undefined ||
-    options.edges !== undefined ||
-    options.fill !== undefined ||
-    options.exposure !== undefined ||
-    options.attenuation !== undefined ||
-    options.invertLuminance !== undefined ||
-    options.blendWithBase !== undefined ||
-    options.depthFalloff !== undefined ||
-    options.depthOffset !== undefined;
-}
-
-const EFFECT_SCALAR_OPTION_KEYS = [
-  "resolutionScale",
-  "zoom",
-  "kernelSize",
-  "sigma",
-  "sigmaScale",
-  "tau",
-  "threshold",
-  "useDepth",
-  "depthThreshold",
-  "useNormals",
-  "normalThreshold",
-  "depthCutoff",
-  "edgeThreshold",
-  "edges",
-  "fill",
-  "exposure",
-  "attenuation",
-  "invertLuminance",
-  "blendWithBase",
-  "depthFalloff",
-  "depthOffset",
-  "viewDog",
-  "viewUncompressed",
-  "viewEdges",
-] as const;
-
-function sameThreeAsciiOffset(
-  left: AcerolaAsciiNodeOptions["offset"],
-  right: NonNullable<AcerolaAsciiNodeOptions["offset"]>,
-): boolean {
-  return left !== undefined && left.x === right.x && left.y === right.y;
-}
-
 /** Input buffers for assembling a terminal ANSI grid from three Ascii GPU readback data. */
 export interface ThreeAsciiAnsiGridInput extends InternalThreeAsciiAnsiGridInput {}
 
@@ -472,45 +426,10 @@ export class ThreeAsciiRenderer {
   }
 
   setEffectOptions(options: Partial<AcerolaAsciiNodeOptions>): void {
-    const patch: Partial<AcerolaAsciiNodeOptions> = {};
-    let uniformDirty = false;
-    if (options.asciiColor !== undefined) {
-      const next = colorValue(options.asciiColor, 0xffffff);
-      const previous = colorValue(this.effectOptions.asciiColor, 0xffffff);
-      if (!previous.equals(next)) {
-        this.effectOptions.asciiColor = next;
-        patch.asciiColor = next;
-        uniformDirty = true;
-      }
-    }
-
-    if (options.backgroundColor !== undefined) {
-      const next = colorValue(options.backgroundColor, 0x000000);
-      const previous = colorValue(this.effectOptions.backgroundColor, 0x000000);
-      if (!previous.equals(next)) {
-        this.effectOptions.backgroundColor = next;
-        patch.backgroundColor = next;
-        uniformDirty = true;
-      }
-    }
-
-    for (const key of EFFECT_SCALAR_OPTION_KEYS) {
-      const value = options[key];
-      if (value === undefined || this.effectOptions[key] === value) continue;
-      (this.effectOptions as Record<string, unknown>)[key] = value;
-      (patch as Record<string, unknown>)[key] = value;
-    }
-
-    if (options.offset !== undefined && !sameThreeAsciiOffset(this.effectOptions.offset, options.offset)) {
-      this.effectOptions.offset = options.offset;
-      patch.offset = options.offset;
-    }
-
-    if (Object.keys(patch).length === 0) return;
-
-    uniformDirty = uniformDirty || threeAsciiEffectOptionsAffectComputeUniforms(patch);
-    this.asciiNode?.applyOptions(patch);
-    if (uniformDirty) this.uniformDirty = true;
+    const result = patchThreeAsciiEffectOptions(this.effectOptions, options);
+    if (!result.changed) return;
+    this.asciiNode?.applyOptions(result.patch);
+    if (result.uniformDirty) this.uniformDirty = true;
   }
 
   getTerminalEdgeBias(): number {
