@@ -7,6 +7,7 @@ const layout: ThreeAsciiReadbackLayout = {
   byteLength: 20,
   fillOffset: 0,
   colorOffset: 4,
+  includeFill: true,
   fillFloatLength: 1,
   edgeFloatLength: 0,
   colorFloatLength: 4,
@@ -73,8 +74,35 @@ Deno.test("deferred readback queue consumes resolved frames and reports timing",
     unresolved: 0,
     resolved: 0,
     saturated: false,
-    generation: 1,
+    generation: 0,
   });
+});
+
+Deno.test("deferred readback queue consumes multiple same-generation frames without self-invalidating", async () => {
+  const queue = new ThreeAsciiDeferredReadbackQueue<FakeDeferredReadbackBuffer>({ mapModeRead: 1 });
+  const first = new FakeDeferredReadbackBuffer(1, [14, 10, 0, 0, 1]);
+  const second = new FakeDeferredReadbackBuffer(2, [14, 20, 0, 0, 1]);
+
+  queue.queue(slot(first, first.source.byteLength), frameOptions());
+  queue.queue(slot(second, second.source.byteLength), frameOptions());
+  first.resolveMap();
+  second.resolveMap();
+  await Promise.resolve();
+
+  const assembled: number[] = [];
+  const result = queue.consumeCompleted((pending) => {
+    const source = new Float32Array(pending.slot.gpu.getMappedRange());
+    assembled.push(pending.slot.gpu.id);
+    return [[`frame ${pending.slot.gpu.id} ${source[1]}`]];
+  }, (error) => new Error(String(error)));
+
+  assertEquals(assembled, [1, 2]);
+  assertEquals(result.grid, [["frame 2 20"]]);
+  assertEquals(queue.lastCompletedGrid(), result.grid);
+  assertEquals(first.unmapCalls, 1);
+  assertEquals(second.unmapCalls, 1);
+  assertEquals(queue.pending.length, 0);
+  assertEquals(queue.inspect().generation, 0);
 });
 
 Deno.test("deferred readback queue exposes an awaitable map promise", async () => {

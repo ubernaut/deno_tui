@@ -177,7 +177,6 @@ export class ThreeAsciiDeferredReadbackQueue<TBuffer extends ThreeAsciiDeferredR
         if (pending.generation === this.generation) {
           grid = assemble(pending);
           this.lastGrid = grid;
-          this.generation += 1;
           readbackMs = pending.readbackMs;
         }
       } finally {

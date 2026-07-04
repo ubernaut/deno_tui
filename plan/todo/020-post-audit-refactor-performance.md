@@ -276,6 +276,9 @@ performance, shared terminal/web workbench projections, and oversized module red
   wraparound coverage so the app no longer reimplements open-window traversal.
 - Extracted standard workbench window action log formatting into the shared controller module and routed terminal
   focus/minimize/maximize/tab wrappers through one sync-and-log helper.
+- Fixed deferred Three ASCII readback self-invalidation: normal readback completion no longer advances the invalidation
+  generation, so sibling in-flight block-mode frames are consumed instead of discarded. The workbench pressure probe now
+  shows live block grids updating every sampled frame at 960/3840 cell caps instead of visibly stalling for many frames.
 - Retuned the default workbench Three ASCII pressure policy for slow terminal links: the default pane now starts at the
   120-cell emergency tier, 240-cell animated output downshifts on sustained byte rates above roughly 35KB/s, and low
   byte-rate recovery remains conservative so SSH/tmux sessions do not immediately climb back into expensive output.
