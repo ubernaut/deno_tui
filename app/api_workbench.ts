@@ -298,6 +298,7 @@ import {
 } from "../src/app/workbench_three_terminal_pressure.ts";
 import { WORKBENCH_THREE_DRAW_INTERVAL_MS, WORKBENCH_THREE_READBACK_STRATEGY } from "./workbench_three_policy.ts";
 import { type WorkbenchThreePanelEntry, WorkbenchThreePanelRegistry } from "./workbench_three_panel_registry.ts";
+import { WorkbenchThreeViewportInteractionController } from "./workbench_three_interaction.ts";
 import { ApiWorkbenchThreeRuntimeController } from "./workbench_three_runtime.ts";
 import type {
   Accent,
@@ -613,7 +614,6 @@ const workbenchThreeRuntime = new ApiWorkbenchThreeRuntimeController({
 const workbenchThreeLiveMaxCells = workbenchThreeRuntime.liveMaxCells;
 const workbenchThreeFrameInterval = workbenchThreeRuntime.frameInterval;
 let dropdownOverlay: DropdownOverlay | null = null;
-let threeDragWindow: WindowId | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
 let workspacePlacementContext: WorkspacePlacementContext | null = null;
 const drawScheduler = new FrameScheduler({ intervalMs: WORKBENCH_THREE_DRAW_INTERVAL_MS });
@@ -821,6 +821,11 @@ const visualizationThreePanels = new WorkbenchThreePanelRegistry<VisualizationWi
   createVisualizationThreePanel,
 );
 const visualizationThreeSupport = new Map<string, boolean>();
+const threeViewportInteraction = new WorkbenchThreeViewportInteractionController<WindowId>({
+  findHit: (x, y) => findHit(x, y),
+  panelForWindow: (id) => threePanelForWindow(id),
+  focusWindow: focusWindowSilently,
+});
 
 tui.rectangle.subscribe(() => {
   screenPainter.reset();
@@ -887,25 +892,15 @@ tui.on("mousePress", (event) => {
     return;
   }
   if (event.release) {
-    threeDragWindow = null;
+    threeViewportInteraction.handlePress(event);
     return;
   }
-  if (event.drag && threeDragWindow) {
-    if (rotateThreeWindow(threeDragWindow, event)) {
-      draw();
-      return;
-    }
-    threeDragWindow = null;
-  }
-  const hit = findHit(event.x, event.y);
-  if (hit?.action.type === "threeViewport") {
-    threeDragWindow = hit.action.id;
-    focusWindowSilently(hit.action.id);
-    if (event.drag) rotateThreeWindow(hit.action.id, event);
+  const threePress = threeViewportInteraction.handlePress(event);
+  if (threePress.handled) {
     draw();
     return;
   }
-  threeDragWindow = null;
+  const hit = findHit(event.x, event.y);
   if (hit) applyHit(hit, event.x, event.y);
   draw();
 });
@@ -920,7 +915,7 @@ tui.on("mouseScroll", (event) => {
     draw();
     return;
   }
-  if (zoomThreeWindowAt(event)) {
+  if (threeViewportInteraction.handleScroll(event)) {
     draw();
     return;
   }
@@ -3049,24 +3044,6 @@ function renderDropdownOverlay(frame: Frame, bounds: Rectangle, offset: number):
 
 function scrollWindow(id: WindowId, columns: number, rows: number): void {
   windowScroll(id).scrollBy(columns, rows);
-}
-
-function zoomThreeWindowAt(event: MouseScrollEvent): boolean {
-  const hit = findHit(event.x, event.y);
-  if (hit?.action.type !== "threeViewport") return false;
-  const panel = threePanelForWindow(hit.action.id);
-  if (!panel) return false;
-  panel.zoomBy(event.scroll);
-  focusWindowSilently(hit.action.id);
-  return true;
-}
-
-function rotateThreeWindow(id: WindowId, event: MousePressEvent): boolean {
-  const panel = threePanelForWindow(id);
-  if (!panel) return false;
-  panel.rotateBy(event.movementX, event.movementY);
-  focusWindowSilently(id);
-  return true;
 }
 
 function threePanelForWindow(id: WindowId): ThreePanelFrameView | undefined {
