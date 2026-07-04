@@ -12,7 +12,11 @@ import {
 import type { TerminalGlyphStyle } from "./glyphs.ts";
 import { HeadlessCanvas } from "./headless_canvas.ts";
 import { loadAsciiLutTextures } from "./loadAsciiLuts.ts";
-import { type ThreeAsciiDeferredReadbackFrame, ThreeAsciiDeferredReadbackQueue } from "./deferred_readback.ts";
+import {
+  type ThreeAsciiDeferredReadbackConsumeResult,
+  type ThreeAsciiDeferredReadbackFrame,
+  ThreeAsciiDeferredReadbackQueue,
+} from "./deferred_readback.ts";
 import {
   shouldIncludeThreeAsciiTerminalEdges,
   type ThreeAsciiEffectState,
@@ -522,6 +526,27 @@ export class ThreeAsciiRenderer {
       return { grid: renderAnsi ? [] : undefined };
     }
 
+    let deferredAnsiGrid: ThreeAsciiDeferredReadbackConsumeResult | undefined;
+    if (renderAnsi && !renderImage && this.readbackStrategy === "deferred") {
+      deferredAnsiGrid = this.consumeDeferredAnsiGrid();
+      if (!deferredAnsiGrid.grid && this.deferredReadbacks.isSaturated()) {
+        const frameEnd = performance.now();
+        const previous = this.lastPerformance;
+        this.lastPerformance = {
+          columns: this.columns,
+          rows: this.rows,
+          cells: this.columns * this.rows,
+          terminalGlyphStyle: this.terminalGlyphStyle,
+          totalMs: previous?.totalMs ?? frameEnd - frameStart,
+          sceneMs: 0,
+          ansiMs: 0,
+          readbackMs: this.lastReadbackMs,
+          assemblyMs: 0,
+        };
+        return { grid: this.deferredReadbacks.lastCompletedGrid() };
+      }
+    }
+
     await this.renderScene(deltaTime, onFrame);
     const sceneEnd = performance.now();
 
@@ -537,7 +562,7 @@ export class ThreeAsciiRenderer {
     }
 
     if (renderAnsi) {
-      frame.grid = await this.computeAnsiGrid();
+      frame.grid = await this.computeAnsiGrid(deferredAnsiGrid);
     }
     const frameEnd = performance.now();
     this.lastPerformance = {
@@ -568,7 +593,9 @@ export class ThreeAsciiRenderer {
     this.renderPipeline!.render();
   }
 
-  private async computeAnsiGrid(): Promise<string[][]> {
+  private async computeAnsiGrid(
+    deferredCompleted?: ThreeAsciiDeferredReadbackConsumeResult,
+  ): Promise<string[][]> {
     const effectState = this.getEffectState();
     const includeTerminalEdges = shouldIncludeThreeAsciiTerminalEdges(effectState, this.terminalGlyphStyle);
     await this.ensureComputeResources(effectState, includeTerminalEdges);
@@ -622,7 +649,13 @@ export class ThreeAsciiRenderer {
     });
 
     if (this.readbackStrategy === "deferred") {
-      return this.deferAnsiGridReadback(commandEncoder, readbackLayout, readbackCopyPlan, effectState.backgroundColor);
+      return this.deferAnsiGridReadback(
+        commandEncoder,
+        readbackLayout,
+        readbackCopyPlan,
+        effectState.backgroundColor,
+        deferredCompleted,
+      );
     }
 
     this.outputReadback = this.ensureReadbackBuffer(this.outputReadback, readbackLayout.byteLength);
@@ -637,14 +670,9 @@ export class ThreeAsciiRenderer {
     readbackLayout: ThreeAsciiReadbackLayout,
     readbackCopyPlan: ReturnType<ThreeAsciiReadbackCopyPlanCache["resolve"]>,
     backgroundColor: Color,
+    deferredCompleted?: ThreeAsciiDeferredReadbackConsumeResult,
   ): string[][] {
-    const completed = this.deferredReadbacks.consumeCompleted(
-      (pending) => this.buildAnsiGridFromMappedReadback(pending),
-      (error) => new ThreeAsciiReadbackError(error),
-    );
-    if (completed.readbackMs !== undefined) {
-      this.lastReadbackMs = completed.readbackMs;
-    }
+    const completed = deferredCompleted ?? this.consumeDeferredAnsiGrid();
 
     const readback = this.deferredReadbacks.nextBuffer(
       readbackLayout.byteLength,
@@ -665,6 +693,17 @@ export class ThreeAsciiRenderer {
       backgroundColor: backgroundColor.clone(),
     });
     return completed.grid ?? this.deferredReadbacks.lastCompletedGrid();
+  }
+
+  private consumeDeferredAnsiGrid(): ThreeAsciiDeferredReadbackConsumeResult {
+    const completed = this.deferredReadbacks.consumeCompleted(
+      (pending) => this.buildAnsiGridFromMappedReadback(pending),
+      (error) => new ThreeAsciiReadbackError(error),
+    );
+    if (completed.readbackMs !== undefined) {
+      this.lastReadbackMs = completed.readbackMs;
+    }
+    return completed;
   }
 
   private copyReadbackCommands(

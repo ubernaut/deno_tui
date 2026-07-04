@@ -63,6 +63,14 @@ export class ThreeAsciiDeferredReadbackQueue<TBuffer extends ThreeAsciiDeferredR
     return this.lastGrid;
   }
 
+  isSaturated(): boolean {
+    let unresolved = 0;
+    for (const pending of this.pending) {
+      if (!pending.resolved) unresolved += 1;
+    }
+    return unresolved >= this.slotCount;
+  }
+
   invalidate(): void {
     this.generation += 1;
     this.lastGrid = [];

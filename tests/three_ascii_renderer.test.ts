@@ -114,3 +114,37 @@ Deno.test("ThreeAsciiRenderer wraps failed GPU readback mapping with a stable er
   assertEquals(error.cause, cause);
   assertEquals(unmapped, false);
 });
+
+Deno.test("ThreeAsciiRenderer skips scene submission when deferred readbacks are saturated", async () => {
+  const renderer = new ThreeAsciiRenderer({
+    scene: new Scene(),
+    camera: new PerspectiveCamera(),
+    columns: 1,
+    rows: 1,
+    readbackStrategy: "deferred",
+  });
+  const cachedGrid = [["cached"]];
+  let sceneSubmissions = 0;
+  const internals = renderer as unknown as {
+    deferredReadbacks: {
+      consumeCompleted: () => { grid?: string[][]; readbackMs?: number };
+      isSaturated: () => boolean;
+      lastCompletedGrid: () => string[][];
+    };
+    renderScene: () => Promise<void>;
+  };
+  internals.deferredReadbacks = {
+    consumeCompleted: () => ({}),
+    isSaturated: () => true,
+    lastCompletedGrid: () => cachedGrid,
+  };
+  internals.renderScene = () => {
+    sceneSubmissions += 1;
+    return Promise.resolve();
+  };
+
+  const frame = await renderer.renderFrame(0, undefined, { ansi: true });
+
+  assertEquals(frame.grid, cachedGrid);
+  assertEquals(sceneSubmissions, 0);
+});

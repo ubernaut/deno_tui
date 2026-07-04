@@ -78,6 +78,21 @@ Deno.test("deferred readback queue skips stale resolved frames after invalidatio
   assertEquals(queue.lastCompletedGrid(), []);
 });
 
+Deno.test("deferred readback queue reports saturation only for unresolved full slots", async () => {
+  const queue = new ThreeAsciiDeferredReadbackQueue<FakeDeferredReadbackBuffer>({ mapModeRead: 1 });
+  const first = new FakeDeferredReadbackBuffer(1);
+  const second = new FakeDeferredReadbackBuffer(2);
+  queue.queue(slot(first, 20), frameOptions());
+  assertEquals(queue.isSaturated(), false);
+
+  queue.queue(slot(second, 20), frameOptions());
+  assertEquals(queue.isSaturated(), true);
+
+  first.resolveMap();
+  await Promise.resolve();
+  assertEquals(queue.isSaturated(), false);
+});
+
 Deno.test("deferred readback queue maps errors and destroys slots", async () => {
   const queue = new ThreeAsciiDeferredReadbackQueue<FakeDeferredReadbackBuffer>({ mapModeRead: 1 });
   const buffer = new FakeDeferredReadbackBuffer(1);
