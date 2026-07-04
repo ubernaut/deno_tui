@@ -446,10 +446,19 @@ Deno.test("workbench Three per-window interactivity follows visible or fullscree
     { id: "three-lattice", state: "normal" },
     { id: "three-hidden", state: "minimized" },
   ];
+  const isThreeWindow = (id: string) => id.startsWith("three");
 
   assertEquals(workbenchThreeWindowIsInteractive({ id: "three", activeId: "three", windows }), true);
   assertEquals(workbenchThreeWindowIsInteractive({ id: "three-lattice", activeId: "three", windows }), true);
   assertEquals(workbenchThreeWindowIsInteractive({ id: "three-lattice", activeId: "three-lattice", windows }), true);
+  assertEquals(
+    workbenchThreeWindowIsInteractive({ id: "three-lattice", activeId: "three", windows, isThreeWindow }),
+    false,
+  );
+  assertEquals(
+    workbenchThreeWindowIsInteractive({ id: "three-lattice", activeId: "three-lattice", windows, isThreeWindow }),
+    true,
+  );
   assertEquals(workbenchThreeWindowIsInteractive({ id: "three-hidden", activeId: "three-hidden", windows }), false);
   assertEquals(
     workbenchThreeWindowIsInteractive({
@@ -457,6 +466,7 @@ Deno.test("workbench Three per-window interactivity follows visible or fullscree
       activeId: "three",
       fullscreenId: "three-lattice",
       windows,
+      isThreeWindow,
     }),
     false,
   );
@@ -466,10 +476,28 @@ Deno.test("workbench Three per-window interactivity follows visible or fullscree
       activeId: "three",
       fullscreenId: "three-lattice",
       windows,
+      isThreeWindow,
     }),
     true,
   );
-  assertEquals(workbenchThreeWindowIsInteractive({ id: "three", activeId: "three", windows, blocked: true }), false);
+  assertEquals(
+    workbenchThreeWindowIsInteractive({ id: "three", activeId: "three", windows, isThreeWindow, blocked: true }),
+    false,
+  );
+});
+
+Deno.test("workbench Three per-window interactivity keeps a single visible pane live", () => {
+  const windows = [
+    { id: "explorer", state: "normal" },
+    { id: "three", state: "normal" },
+    { id: "three-hidden", state: "minimized" },
+  ];
+  const isThreeWindow = (id: string) => id.startsWith("three");
+
+  assertEquals(
+    workbenchThreeWindowIsInteractive({ id: "three", activeId: "explorer", windows, isThreeWindow }),
+    true,
+  );
 });
 
 Deno.test("workbench Three pressure ignores startup fallback grids without renderer telemetry", () => {

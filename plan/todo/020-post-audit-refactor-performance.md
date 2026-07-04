@@ -988,3 +988,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added row-range flush shortcuts for range-aware sinks and a repeated-cell fast path in ANSI range compaction. The
   dense `TextObject` full-row canvas benchmark dropped from roughly 2.57ms to 2.11ms, and the workbench ANSI screen
   flush benchmark dropped from roughly 0.47ms to 0.39ms on this host.
+- Tightened API workbench Three pane interactivity so a single visible Three pane remains live, but multi-Three
+  workspaces only keep the focused or fullscreen pane at foreground cadence. Other visible panes now use the existing
+  idle 30-cell budget instead of every restored Neon/Three window competing as a live renderer.

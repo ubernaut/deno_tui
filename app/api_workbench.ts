@@ -2889,6 +2889,7 @@ function isThreeWindowInteractive(id: WindowId): boolean {
     activeId: activeWindow.peek(),
     fullscreenId: windowManager.fullscreenId.peek(),
     windows: windowManager.orderedWindows(),
+    isThreeWindow: (windowId) => isThreeRenderedWindow(windowId as WindowId),
     blocked: genericModalBlocksThree.peek(),
   });
 }

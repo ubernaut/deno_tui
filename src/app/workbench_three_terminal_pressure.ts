@@ -88,6 +88,7 @@ export interface WorkbenchThreeWindowInteractivityOptions {
   activeId?: string;
   fullscreenId?: string;
   windows: readonly WorkbenchThreeCadenceWindow[];
+  isThreeWindow?: (id: string) => boolean;
   blocked?: boolean;
 }
 
@@ -145,12 +146,29 @@ export function workbenchThreeShouldUseLiveCadence(options: WorkbenchThreeLiveCa
 export function workbenchThreeWindowIsInteractive(options: WorkbenchThreeWindowInteractivityOptions): boolean {
   if (options.blocked) return false;
   if (options.fullscreenId) return options.fullscreenId === options.id;
+  const visibleThreeWindows = options.isThreeWindow
+    ? countVisibleThreeWindows(options.windows, options.isThreeWindow)
+    : 1;
   for (const window of options.windows) {
     if (window.id !== options.id) continue;
     const state = window.state ?? "normal";
+    if (visibleThreeWindows > 1 && options.activeId !== options.id) return false;
     return state === "normal" || state === "fullscreen";
   }
   return false;
+}
+
+function countVisibleThreeWindows(
+  windows: readonly WorkbenchThreeCadenceWindow[],
+  isThreeWindow: (id: string) => boolean,
+): number {
+  let count = 0;
+  for (const window of windows) {
+    if (!isThreeWindow(window.id)) continue;
+    const state = window.state ?? "normal";
+    if (state === "normal" || state === "fullscreen") count += 1;
+  }
+  return count;
 }
 
 /** Returns true when a Three pane should count toward terminal-output pressure adaptation. */
