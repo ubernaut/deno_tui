@@ -355,6 +355,39 @@ Deno.test("ThreePanelFrameView shows startup grid while first frame initializes"
   }
 });
 
+Deno.test("ThreePanelFrameView keeps startup grid across empty deferred frames", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 32, height: 8 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal(createDefaultAsciiOptions("sharp"));
+  const enabled = new Signal(true);
+  let renderer: EmptyThenGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    enabled,
+    frameInterval: 1,
+    rendererFactory: (options) => renderer = new EmptyThenGridRenderer(options.columns, options.rows),
+  });
+
+  try {
+    await waitFor(() => renderer !== undefined && renderer.renderCount >= 1);
+    assertEquals(panel.grid.peek().flat().join("").includes("ASCII RENDERER STARTING"), true);
+
+    renderer!.completeEmptyFrame();
+    await waitFor(() => (renderer?.renderCount ?? 0) >= 2);
+    assertEquals(panel.grid.peek().flat().join("").includes("ASCII RENDERER STARTING"), false);
+    assertEquals(panel.grid.peek().length, 8);
+    assertEquals(panel.grid.peek()[0]?.[0], "█");
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+  }
+});
+
 Deno.test("ThreePanelFrameView exposes renderer performance telemetry", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 16, height: 8 }, { deepObserve: true });
   const scene = new Signal<ThreeSceneState | null>(sceneState());
@@ -1461,6 +1494,37 @@ class ReusedGridRenderer extends FakeGridRenderer {
     const glyph = String(this.renderCount % 10);
     for (const row of this.grid) row.fill(glyph);
     return this.grid;
+  }
+}
+
+class EmptyThenGridRenderer extends FakeGridRenderer {
+  private releaseEmptyFrame?: () => void;
+
+  override async renderFrame(
+    deltaTime?: number,
+    onFrame?: (deltaTime: number) => void | Promise<void>,
+    _options: ThreeAsciiRenderFrameOptions = { ansi: true },
+  ) {
+    this.renderCount += 1;
+    if (this.renderCount === 1) {
+      await onFrame?.(deltaTime ?? 0.016);
+      await new Promise<void>((resolve) => {
+        this.releaseEmptyFrame = resolve;
+      });
+      return { grid: [], gridRevision: 0 };
+    }
+    this.renderCount -= 1;
+    const grid = await super.renderToAnsiGrid(deltaTime, onFrame);
+    return {
+      grid,
+      gridRevision: this.renderCount,
+    };
+  }
+
+  completeEmptyFrame(): void {
+    const release = this.releaseEmptyFrame;
+    this.releaseEmptyFrame = undefined;
+    release?.();
   }
 }
 

@@ -464,11 +464,14 @@ export class ThreePanelFrameView {
 
       this.failed = false;
       const renderSize = this.renderSizeFor(rect, ascii);
-      this.setGrid(
-        policy.renderAscii ? frame.grid ?? [] : this.blankGridFor(renderSize.columns, renderSize.rows),
-        policy.renderAscii,
-        policy.renderAscii ? frame.gridRevision : undefined,
-      );
+      const nextGrid = policy.renderAscii ? frame.grid ?? [] : this.blankGridFor(renderSize.columns, renderSize.rows);
+      if (!policy.renderAscii || this.hasGridCells(nextGrid)) {
+        this.setGrid(
+          nextGrid,
+          policy.renderAscii,
+          policy.renderAscii ? frame.gridRevision : undefined,
+        );
+      }
       this.updateAdaptiveRenderBudget(renderer, ascii);
       this.reportSlowFrame(renderer);
     } catch (error) {
@@ -576,6 +579,10 @@ export class ThreePanelFrameView {
     this.blankGridRows = rows;
     this.blankGridCache = threePanelBlankGrid(columns, rows);
     return this.blankGridCache;
+  }
+
+  private hasGridCells(grid: readonly (readonly string[] | undefined)[]): boolean {
+    return grid.length > 0 && (grid[0]?.length ?? 0) > 0;
   }
 
   private invalidateFrame(): void {

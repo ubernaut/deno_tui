@@ -532,3 +532,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   leaving the API workbench to supply only current selection and surface inspection.
 - Extracted Three ASCII config modal key resolution into the shared ASCII config helper so the API workbench owns only
   state mutation and side effects.
+- Fixed the ThreePanelFrameView deferred-readback startup path so empty deferred frames no longer replace the visible
+  startup/current grid; the live probe now reports real `26x8` block grids instead of staying at `0x0` initializing.
