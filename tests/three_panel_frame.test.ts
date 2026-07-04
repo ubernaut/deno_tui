@@ -26,7 +26,11 @@ import { emptyStyle } from "../src/theme.ts";
 import { View } from "../src/view.ts";
 import type { Camera, Scene } from "npm:three@0.183.2";
 import type { TerminalGlyphStyle } from "../src/three_ascii/glyphs.ts";
-import type { ThreeAsciiRendererPerformance, ThreeAsciiRenderFrameOptions } from "../src/three_ascii/renderer.ts";
+import type {
+  ThreeAsciiRendererOptions,
+  ThreeAsciiRendererPerformance,
+  ThreeAsciiRenderFrameOptions,
+} from "../src/three_ascii/renderer.ts";
 
 Deno.test("resolveThreePanelRenderPolicy selects ASCII and Kitty frame modes", () => {
   const ascii = createDefaultAsciiOptions("sharp");
@@ -386,6 +390,35 @@ Deno.test("ThreePanelFrameView keeps startup grid across empty deferred frames",
     scene.dispose();
     ascii.dispose();
     enabled.dispose();
+  }
+});
+
+Deno.test("ThreePanelFrameView defaults to blocking readback", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 32, height: 8 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal(createDefaultAsciiOptions("sharp"));
+  let readbackStrategy: ThreeAsciiRendererOptions["readbackStrategy"];
+  let renderer: FakeGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    frameInterval: 1,
+    rendererFactory: (options) => {
+      readbackStrategy = options.readbackStrategy;
+      renderer = new FakeGridRenderer(options.columns, options.rows);
+      return renderer;
+    },
+  });
+
+  try {
+    await waitFor(() => (renderer?.renderCount ?? 0) > 0);
+    assertEquals(readbackStrategy, "blocking");
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
   }
 });
 

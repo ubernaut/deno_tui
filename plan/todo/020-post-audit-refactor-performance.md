@@ -1057,3 +1057,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   API Workbench demo-local lifecycle code while preserving hide/dispose semantics for visualization panes.
 - Moved workbench Three scene signal projection/comparison into `src/app` with structural scene mode generics, keeping
   API Workbench-specific scene modes out of shared lifecycle helpers.
+- Aligned `ThreePanelFrameView`'s implicit readback strategy with the renderer/workbench blocking default after live
+  probes showed deferred readback reproducing the reported ~3fps path on this host.
