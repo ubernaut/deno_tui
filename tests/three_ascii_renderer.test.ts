@@ -72,6 +72,29 @@ Deno.test("ThreeAsciiRenderer marks compute resources dirty when terminal glyph 
   assertEquals(internals.computeDirty, true);
 });
 
+Deno.test("ThreeAsciiRenderer avoids compute resource rebuilds for effect option updates", () => {
+  const renderer = new ThreeAsciiRenderer({
+    scene: new Scene(),
+    camera: new PerspectiveCamera(),
+    columns: 8,
+    rows: 4,
+  });
+  const internals = renderer as unknown as {
+    computeDirty: boolean;
+    uniformDirty: boolean;
+  };
+
+  internals.computeDirty = false;
+  internals.uniformDirty = false;
+  renderer.setEffectOptions({ normalThreshold: 0.2 });
+  assertEquals(internals.computeDirty, false);
+  assertEquals(internals.uniformDirty, false);
+
+  renderer.setEffectOptions({ edgeThreshold: 6 });
+  assertEquals(internals.computeDirty, false);
+  assertEquals(internals.uniformDirty, true);
+});
+
 Deno.test("ThreeAsciiRenderer wraps failed GPU readback mapping with a stable error", async () => {
   const renderer = new ThreeAsciiRenderer({
     scene: new Scene(),

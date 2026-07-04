@@ -332,6 +332,18 @@ export class ThreeAsciiReadbackError extends Error {
   }
 }
 
+function threeAsciiEffectOptionsAffectComputeUniforms(options: Partial<AcerolaAsciiNodeOptions>): boolean {
+  return options.edgeThreshold !== undefined ||
+    options.edges !== undefined ||
+    options.fill !== undefined ||
+    options.exposure !== undefined ||
+    options.attenuation !== undefined ||
+    options.invertLuminance !== undefined ||
+    options.blendWithBase !== undefined ||
+    options.depthFalloff !== undefined ||
+    options.depthOffset !== undefined;
+}
+
 /** Input buffers for assembling a terminal ANSI grid from three Ascii GPU readback data. */
 export interface ThreeAsciiAnsiGridInput extends InternalThreeAsciiAnsiGridInput {}
 
@@ -426,19 +438,24 @@ export class ThreeAsciiRenderer {
   }
 
   setEffectOptions(options: Partial<AcerolaAsciiNodeOptions>): void {
+    let uniformDirty = false;
     if (options.asciiColor !== undefined) {
       this.effectOptions.asciiColor = colorValue(options.asciiColor, 0xffffff);
+      uniformDirty = true;
     }
 
     if (options.backgroundColor !== undefined) {
       this.effectOptions.backgroundColor = colorValue(options.backgroundColor, 0x000000);
+      uniformDirty = true;
     }
 
+    uniformDirty = uniformDirty || threeAsciiEffectOptionsAffectComputeUniforms(options);
     this.applyEffectOptionPatch(options);
 
     this.asciiNode?.applyOptions(options);
-    this.computeDirty = true;
-    this.uniformDirty = true;
+    if (uniformDirty) {
+      this.uniformDirty = true;
+    }
   }
 
   private applyEffectOptionPatch(options: Partial<AcerolaAsciiNodeOptions>): void {
