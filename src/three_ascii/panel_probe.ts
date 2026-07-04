@@ -44,6 +44,17 @@ export interface ThreePanelProbeSummary {
   averageAssemblyMs: number;
 }
 
+export interface ThreePanelProbeValidationOptions {
+  minSteadyFrames: number;
+  minGridUpdates: number;
+  maxAverageTotalMs: number;
+}
+
+export interface ThreePanelProbeValidationResult {
+  ok: boolean;
+  errors: string[];
+}
+
 export function summarizeThreePanelProbe(samples: readonly ThreePanelProbeSample[]): ThreePanelProbeSummary {
   const steady = samples.slice(1).filter((sample) => sample.rows > 0 && sample.columns > 0);
   return {
@@ -58,6 +69,28 @@ export function summarizeThreePanelProbe(samples: readonly ThreePanelProbeSample
     averageReadbackMs: average(steady.map((sample) => sample.readbackMs)),
     averageAssemblyMs: average(steady.map((sample) => sample.assemblyMs)),
   };
+}
+
+/** Validates that a live Three panel probe observed real renderer frames and acceptable steady timing. */
+export function validateThreePanelProbeSummary(
+  summary: ThreePanelProbeSummary,
+  options: ThreePanelProbeValidationOptions,
+): ThreePanelProbeValidationResult {
+  const errors: string[] = [];
+  if (summary.steady.length < options.minSteadyFrames) {
+    errors.push(`steady renderer frames ${summary.steady.length} < ${options.minSteadyFrames}`);
+  }
+  if ((summary.latest?.updates ?? 0) < options.minGridUpdates) {
+    errors.push(`grid updates ${summary.latest?.updates ?? 0} < ${options.minGridUpdates}`);
+  }
+  if (summary.averageTotalMs <= 0) {
+    errors.push("average renderer frame time was not observed");
+  } else if (summary.averageTotalMs > options.maxAverageTotalMs) {
+    errors.push(
+      `average renderer frame ${formatMs(summary.averageTotalMs)} > ${formatMs(options.maxAverageTotalMs)}`,
+    );
+  }
+  return { ok: errors.length === 0, errors };
 }
 
 export function formatThreePanelProbeLines(

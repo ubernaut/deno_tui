@@ -6,7 +6,12 @@ import {
 } from "../app/workbench_three_policy.ts";
 import { ThreePanelFrameView, type ThreeSceneState } from "../app/three_panel.ts";
 import { Signal } from "../src/signals/mod.ts";
-import { formatThreePanelProbeLines, type ThreePanelProbeSample } from "../src/three_ascii/panel_probe.ts";
+import {
+  formatThreePanelProbeLines,
+  summarizeThreePanelProbe,
+  type ThreePanelProbeSample,
+  validateThreePanelProbeSummary,
+} from "../src/three_ascii/panel_probe.ts";
 import { choiceArg, delay, numberArg, stringArg } from "../src/three_ascii/probe_cli.ts";
 import type { ThreeAsciiRendererPerformance } from "../src/three_ascii/renderer.ts";
 import type { ThreeAsciiReadbackStrategy } from "../src/three_ascii/renderer_options.ts";
@@ -18,6 +23,10 @@ const height = numberArg(Deno.args, "--height", 24);
 const maxCells = numberArg(Deno.args, "--max-cells", WORKBENCH_THREE_INITIAL_CELLS);
 const intervalMs = numberArg(Deno.args, "--interval", apiWorkbenchThreeFrameIntervalForCells(maxCells, { live: true }));
 const mode = choiceArg(Deno.args, "--mode", "studio" as ThreeSceneMode, threeSceneModes);
+const check = Deno.args.includes("--check");
+const minSteadyFrames = numberArg(Deno.args, "--min-steady-frames", 3);
+const minGridUpdates = numberArg(Deno.args, "--min-grid-updates", 2);
+const maxAverageTotalMs = numberArg(Deno.args, "--max-average-ms", Math.max(80, intervalMs * 1.8));
 const glyphs = stringArg(Deno.args, "--glyphs", "blocks") as ReturnType<
   typeof createDefaultAsciiOptions
 >["terminalGlyphStyle"];
@@ -92,6 +101,18 @@ console.log(
   )
     .join("\n"),
 );
+
+if (check) {
+  const validation = validateThreePanelProbeSummary(summarizeThreePanelProbe(samples), {
+    minSteadyFrames,
+    minGridUpdates,
+    maxAverageTotalMs,
+  });
+  if (!validation.ok) {
+    console.error(`three-panel live probe check failed: ${validation.errors.join("; ")}`);
+    Deno.exit(1);
+  }
+}
 
 function samplePanel(
   index: number,

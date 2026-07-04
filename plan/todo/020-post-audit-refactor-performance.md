@@ -464,6 +464,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   the probe now validates real renderer frames instead of sampling stale fallback grids with zero performance telemetry.
 - Lowered the Three panel adaptive slow-frame floor from 100ms to 50ms so 70-90ms renderer frames at 24-30fps targets
   downshift quality after sustained pressure instead of remaining visibly sluggish.
+- Made `three-panel:live-probe -- --check` enforce real validation for steady renderer frames, grid updates, and average
+  frame time, so future live renderer checks fail on stale/zero-telemetry probes instead of silently passing.
 - Extracted CPU hex-grid selection map updates and selected-tile scroll targeting into the visualization module with
   direct tests, keeping API workbench CPU selection code focused on focus, scroll application, and logging side effects.
 - Reused workbench ANSI changed-span scratch buffers and span objects across flushes, keeping sparse terminal output

@@ -3,6 +3,7 @@ import {
   formatThreePanelProbeLines,
   summarizeThreePanelProbe,
   type ThreePanelProbeSample,
+  validateThreePanelProbeSummary,
 } from "../src/three_ascii/panel_probe.ts";
 
 const samples: ThreePanelProbeSample[] = [
@@ -110,4 +111,27 @@ Deno.test("formatThreePanelProbeLines includes first-grid latency and frame rows
   assertStringIncludes(lines.at(-1)!, "03 total=14.00ms init=3.00ms");
   assertStringIncludes(lines[4], "queue=2/2/0 saturated");
   assertStringIncludes(lines.at(-1)!, "state=idle");
+});
+
+Deno.test("validateThreePanelProbeSummary accepts live renderer samples", () => {
+  const result = validateThreePanelProbeSummary(summarizeThreePanelProbe(samples), {
+    minSteadyFrames: 2,
+    minGridUpdates: 4,
+    maxAverageTotalMs: 20,
+  });
+
+  assertEquals(result, { ok: true, errors: [] });
+});
+
+Deno.test("validateThreePanelProbeSummary rejects stale or slow probes", () => {
+  const result = validateThreePanelProbeSummary(summarizeThreePanelProbe(samples), {
+    minSteadyFrames: 3,
+    minGridUpdates: 5,
+    maxAverageTotalMs: 10,
+  });
+
+  assertEquals(result.ok, false);
+  assertStringIncludes(result.errors.join("\n"), "steady renderer frames 2 < 3");
+  assertStringIncludes(result.errors.join("\n"), "grid updates 4 < 5");
+  assertStringIncludes(result.errors.join("\n"), "average renderer frame 12.00ms > 10.00ms");
 });
