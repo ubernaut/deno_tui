@@ -288,8 +288,8 @@ import {
 } from "./workbench_visualization_window.ts";
 import {
   buildWorkspaceMenuEntriesInto,
-  currentWorkspaceVisualizationIds as workspaceVisualizationIdsFromWindows,
-  currentWorkspaceWindows as currentWorkspaceWindowsFromIds,
+  currentWorkspaceVisualizationIdsInto as workspaceVisualizationIdsFromWindowsInto,
+  currentWorkspaceWindowsInto as currentWorkspaceWindowsFromIdsInto,
   defaultWorkspaceName as defaultWorkspaceNameFromCount,
   deleteWorkspaceModalContent,
   deleteWorkspaceState,
@@ -646,6 +646,8 @@ const windowScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const workspaceScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const dropdownOverlayRenderCommands: WorkbenchDropdownOverlayRenderCommand[] = [];
 const visibleWindowRects = new Map<WindowId, Rectangle>();
+const currentWorkspaceWindowBuffer: SavedWorkspaceWindow[] = [];
+const currentWorkspaceVisualizationIdBuffer: string[] = [];
 const workbenchThreeRuntime = new ApiWorkbenchThreeRuntimeController({
   hasLiveThreeWindow: hasLiveThreeRenderedWindow,
   onPressureChange: pushLog,
@@ -3358,12 +3360,12 @@ function workspaceMenuItemCount(): number {
 }
 
 function currentWorkspaceVisualizationIds(): string[] {
-  return workspaceVisualizationIdsFromWindows(currentWorkspaceWindows());
+  return workspaceVisualizationIdsFromWindowsInto(currentWorkspaceVisualizationIdBuffer, currentWorkspaceWindows());
 }
 
 function currentWorkspaceWindows(): SavedWorkspaceWindow[] {
   const dynamicWindows = dynamicVisualizationWindows.peek();
-  return currentWorkspaceWindowsFromIds({
+  return currentWorkspaceWindowsFromIdsInto(currentWorkspaceWindowBuffer, {
     windowIds: windowManager.ids() as WindowId[],
     isVisualizationWindow,
     visualizationIdForWindow: (windowId) => isVisualizationWindow(windowId) ? dynamicWindows[windowId] : undefined,

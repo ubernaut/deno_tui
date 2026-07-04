@@ -298,26 +298,44 @@ export function normalizeWorkspaceName(name: string, savedWorkspaceCount: number
 
 /** Returns visualization ids in the same order as saved workspace window entries. */
 export function currentWorkspaceVisualizationIds(windows: readonly WorkbenchWorkspaceWindow[]): string[] {
-  const ids = new Array<string>(windows.length);
+  return currentWorkspaceVisualizationIdsInto([], windows);
+}
+
+/** Projects visualization ids from saved workspace window entries into a caller-owned buffer. */
+export function currentWorkspaceVisualizationIdsInto(
+  target: string[],
+  windows: readonly WorkbenchWorkspaceWindow[],
+): string[] {
+  target.length = windows.length;
   for (let index = 0; index < windows.length; index++) {
-    ids[index] = windows[index]!.visualizationId;
+    target[index] = windows[index]!.visualizationId;
   }
-  return ids;
+  return target;
 }
 
 /** Projects currently loaded visualization windows into a fresh persisted workspace window snapshot. */
 export function currentWorkspaceWindows<TWindowId extends string, TAscii = unknown>(
   options: CurrentWorkspaceWindowsOptions<TWindowId, TAscii>,
 ): WorkbenchWorkspaceWindow<TAscii>[] {
-  const windows: WorkbenchWorkspaceWindow<TAscii>[] = [];
+  return currentWorkspaceWindowsInto([], options);
+}
+
+/** Projects currently loaded visualization windows into a caller-owned persisted workspace window snapshot. */
+export function currentWorkspaceWindowsInto<TWindowId extends string, TAscii = unknown>(
+  target: WorkbenchWorkspaceWindow<TAscii>[],
+  options: CurrentWorkspaceWindowsOptions<TWindowId, TAscii>,
+): WorkbenchWorkspaceWindow<TAscii>[] {
+  let written = 0;
   for (let index = 0; index < options.windowIds.length; index++) {
     const windowId = options.windowIds[index]!;
     if (!options.isVisualizationWindow(windowId)) continue;
     const visualizationId = options.visualizationIdForWindow(windowId);
     if (!visualizationId) continue;
-    windows.push({ visualizationId, ascii: options.asciiForWindow(windowId) });
+    target[written] = writeWorkspaceWindow(target[written], visualizationId, options.asciiForWindow(windowId));
+    written += 1;
   }
-  return windows;
+  target.length = written;
+  return target;
 }
 
 /** Plans the close-all cleanup needed before loading a workspace. */
@@ -467,6 +485,17 @@ function copyWorkspaceWindows<TAscii>(
   const copy = new Array<WorkbenchWorkspaceWindow<TAscii>>(windows.length);
   for (let index = 0; index < windows.length; index++) copy[index] = { ...windows[index]! };
   return copy;
+}
+
+function writeWorkspaceWindow<TAscii>(
+  target: WorkbenchWorkspaceWindow<TAscii> | undefined,
+  visualizationId: string,
+  ascii: TAscii,
+): WorkbenchWorkspaceWindow<TAscii> {
+  const next = target ?? { visualizationId };
+  next.visualizationId = visualizationId;
+  next.ascii = ascii;
+  return next;
 }
 
 function workspaceMenuEntry(

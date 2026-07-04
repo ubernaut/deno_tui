@@ -4,7 +4,9 @@ import {
   buildWorkspaceMenuEntries,
   buildWorkspaceMenuEntriesInto,
   currentWorkspaceVisualizationIds,
+  currentWorkspaceVisualizationIdsInto,
   currentWorkspaceWindows,
+  currentWorkspaceWindowsInto,
   defaultWorkspaceName,
   deleteWorkspaceModalContent,
   deleteWorkspaceState,
@@ -129,6 +131,10 @@ Deno.test("currentWorkspaceVisualizationIds preserves window order", () => {
     { visualizationId: "cpu", ascii: { style: "blocks" } },
   ];
   assertEquals(currentWorkspaceVisualizationIds(windows), ["gpu", "cpu"]);
+
+  const target = ["stale", "trim"];
+  assertEquals(currentWorkspaceVisualizationIdsInto(target, windows.slice(0, 1)), ["gpu"]);
+  assertEquals(target, ["gpu"]);
 });
 
 Deno.test("currentWorkspaceWindows projects active visualization windows only", () => {
@@ -152,6 +158,44 @@ Deno.test("currentWorkspaceWindows projects active visualization windows only", 
     { visualizationId: "gpu-monitor", ascii: { style: "glyphs" } },
   ]);
   assertEquals(windows[0]?.ascii === asciiByWindow["viz:cpu"], false);
+});
+
+Deno.test("currentWorkspaceWindowsInto reuses and trims caller-owned workspace windows", () => {
+  const asciiByWindow: Record<string, { style: string }> = {
+    "viz:cpu": { style: "blocks" },
+    "viz:gpu": { style: "glyphs" },
+  };
+  const visualizationByWindow: Partial<Record<string, string>> = {
+    "viz:cpu": "cpu-monitor",
+    "viz:gpu": "gpu-monitor",
+  };
+  const target: WorkbenchWorkspaceWindow<{ style: string }>[] = [
+    { visualizationId: "old", ascii: { style: "old" } },
+    { visualizationId: "trim", ascii: { style: "trim" } },
+  ];
+  const first = target[0];
+
+  const windows = currentWorkspaceWindowsInto(target, {
+    windowIds: ["viz:cpu", "inspector", "viz:gpu", "viz:missing"],
+    isVisualizationWindow: (id) => id.startsWith("viz:"),
+    visualizationIdForWindow: (id) => visualizationByWindow[id],
+    asciiForWindow: (id) => ({ ...asciiByWindow[id]! }),
+  });
+
+  assertStrictEquals(windows, target);
+  assertStrictEquals(windows[0], first);
+  assertEquals(windows, [
+    { visualizationId: "cpu-monitor", ascii: { style: "blocks" } },
+    { visualizationId: "gpu-monitor", ascii: { style: "glyphs" } },
+  ]);
+
+  currentWorkspaceWindowsInto(target, {
+    windowIds: ["inspector"],
+    isVisualizationWindow: (id) => id.startsWith("viz:"),
+    visualizationIdForWindow: (id) => visualizationByWindow[id],
+    asciiForWindow: (id) => ({ ...asciiByWindow[id]! }),
+  });
+  assertEquals(target, []);
 });
 
 Deno.test("workspaceLoadClosePlan identifies visualization cleanup and trims selected tiles", () => {

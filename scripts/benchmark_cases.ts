@@ -52,6 +52,7 @@ import { AudioRegistry } from "../app/audio.ts";
 import { createHtmlCssLayoutDemo } from "../app/html_css_layout_demo.ts";
 import { resolveSourceFramesInto } from "../app/sources.ts";
 import { type ThreeHeaderPerformance, threeHeaderRows, type WorkbenchRowTheme } from "../app/workbench_rows.ts";
+import { currentWorkspaceVisualizationIdsInto, currentWorkspaceWindowsInto } from "../app/workbench_workspace_menu.ts";
 import {
   type ChangedSpan,
   changedSpansInto,
@@ -300,6 +301,18 @@ const benchmarkSourceSystem = syntheticWorkbenchSystem(42, "Monitor", { cpuCoreC
 const benchmarkSourceIds = ["sys:cpu", "sys:gpu", "sys:memory", "sys:network", "sys:alerts"];
 const benchmarkSourceFrameBuffer: ReturnType<typeof resolveSourceFramesInto> = [];
 const benchmarkCpuHexTileBuffer: ReturnType<typeof cpuHexTileLayoutInto> = [];
+const benchmarkWorkspaceWindowIds = Array.from(
+  { length: 80 },
+  (_, index) => index % 4 === 0 ? `panel-${index}` : `viz:${index}`,
+);
+const benchmarkWorkspaceVisualizationIds = Object.fromEntries(
+  benchmarkWorkspaceWindowIds
+    .filter((id) => id.startsWith("viz:") && Number(id.slice(4)) % 7 !== 0)
+    .map((id) => [id, `source-${id.slice(4)}`]),
+) as Partial<Record<string, string>>;
+const benchmarkWorkspaceWindows: ReturnType<typeof currentWorkspaceWindowsInto<string, { preset: string }>> = [];
+const benchmarkWorkspaceVisualizationIdBuffer: string[] = [];
+let benchmarkWorkspaceChecksum = 0;
 const commandSearchRegistry = new CommandRegistry();
 for (let index = 0; index < 1_000; index += 1) {
   commandSearchRegistry.register({
@@ -1015,6 +1028,26 @@ function runWorkbenchVisibleWindowRectsWorkload(): void {
   }
 }
 
+function runWorkbenchWorkspaceSnapshotProjectionWorkload(): void {
+  const offset = benchmarkWorkspaceChecksum % benchmarkWorkspaceWindowIds.length;
+  const ids = benchmarkWorkspaceWindowIds.slice(offset).concat(benchmarkWorkspaceWindowIds.slice(0, offset));
+  const windows = currentWorkspaceWindowsInto(benchmarkWorkspaceWindows, {
+    windowIds: ids,
+    isVisualizationWindow: (id) => id.startsWith("viz:"),
+    visualizationIdForWindow: (id) => benchmarkWorkspaceVisualizationIds[id],
+    asciiForWindow: (id) => ({ preset: Number(id.slice(4)) % 2 === 0 ? "blocks" : "glyphs" }),
+  });
+  const visualizationIds = currentWorkspaceVisualizationIdsInto(benchmarkWorkspaceVisualizationIdBuffer, windows);
+  benchmarkWorkspaceChecksum = (benchmarkWorkspaceChecksum + windows.length + visualizationIds.join("").length) %
+    10_000;
+  if (
+    windows.length === 0 || visualizationIds.length !== windows.length ||
+    windows.some((window) => window.ascii?.preset.length === 0)
+  ) {
+    throw new Error("workbench workspace snapshot projection lost window metadata");
+  }
+}
+
 function runWorkbenchThreeHeaderTelemetryWorkload(): void {
   let checksum = 0;
   for (const mode of workbenchThreeHeaderModes) {
@@ -1453,6 +1486,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 5_000,
     maxAverageMs: 1,
     run: runWorkbenchVisibleWindowRectsWorkload,
+  },
+  {
+    name: "runtime/workbench-workspace-snapshot-projection",
+    category: "runtime",
+    description: "Project current API workbench visualization windows into retained workspace snapshot buffers.",
+    tags: ["runtime", "workbench", "workspace", "reuse"],
+    iterations: 2_000,
+    maxAverageMs: 1,
+    run: runWorkbenchWorkspaceSnapshotProjectionWorkload,
   },
   {
     name: "render/workbench-three-block-span-flush-168x54",
