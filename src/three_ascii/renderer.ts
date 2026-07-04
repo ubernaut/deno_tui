@@ -17,6 +17,7 @@ import {
   type ThreeAsciiDeferredReadbackFrame,
   ThreeAsciiDeferredReadbackQueue,
 } from "./deferred_readback.ts";
+import { createThreeAsciiComputeBindGroups } from "./compute_bind_groups.ts";
 import { createThreeAsciiComputeDispatchPlan } from "./compute_plan.ts";
 import { applyThreeAsciiComputeResourcePlanState, createThreeAsciiComputeResourcePlan } from "./compute_resources.ts";
 import {
@@ -665,44 +666,23 @@ export class ThreeAsciiRenderer {
       return;
     }
 
-    const downscaleTexture = this.getGpuTexture(this.asciiNode.downscaleTarget.texture);
-    const normalsTexture = this.getGpuTexture(this.asciiNode.normalsTarget.texture);
-
-    this.fillBindGroup = this.device.createBindGroup({
-      label: "deno_tui.three_ascii.fill.bindings",
-      layout: this.fillPipeline!.getBindGroupLayout(0),
-      entries: [
-        { binding: 0, resource: { buffer: this.paramsBuffer } },
-        { binding: 1, resource: downscaleTexture.createView() },
-        { binding: 2, resource: { buffer: this.fillOutput!.gpu } },
-      ],
+    const bindGroups = createThreeAsciiComputeBindGroups({
+      device: this.device,
+      paramsBuffer: this.paramsBuffer,
+      fillPipeline: this.fillPipeline!,
+      edgePipeline: this.edgePipeline,
+      colorPipeline: this.colorPipeline!,
+      fillOutput: this.fillOutput!.gpu,
+      edgeOutput: this.edgeOutput?.gpu,
+      colorOutput: this.colorOutput!.gpu,
+      downscaleTexture: this.getGpuTexture(this.asciiNode.downscaleTarget.texture),
+      sobelTexture: includeTerminalEdges ? this.getGpuTexture(this.asciiNode.sobelTarget.texture) : undefined,
+      normalsTexture: this.getGpuTexture(this.asciiNode.normalsTarget.texture),
+      includeEdges: includeTerminalEdges,
     });
-
-    if (includeTerminalEdges) {
-      const sobelTexture = this.getGpuTexture(this.asciiNode.sobelTarget.texture);
-      this.edgeBindGroup = this.device.createBindGroup({
-        label: "deno_tui.three_ascii.edge.bindings",
-        layout: this.edgePipeline!.getBindGroupLayout(0),
-        entries: [
-          { binding: 0, resource: { buffer: this.paramsBuffer } },
-          { binding: 1, resource: sobelTexture.createView() },
-          { binding: 2, resource: { buffer: this.edgeOutput!.gpu } },
-        ],
-      });
-    } else {
-      this.edgeBindGroup = undefined;
-    }
-
-    this.colorBindGroup = this.device.createBindGroup({
-      label: "deno_tui.three_ascii.color.bindings",
-      layout: this.colorPipeline!.getBindGroupLayout(0),
-      entries: [
-        { binding: 0, resource: { buffer: this.paramsBuffer } },
-        { binding: 1, resource: downscaleTexture.createView() },
-        { binding: 2, resource: normalsTexture.createView() },
-        { binding: 3, resource: { buffer: this.colorOutput!.gpu } },
-      ],
-    });
+    this.fillBindGroup = bindGroups.fillBindGroup;
+    this.edgeBindGroup = bindGroups.edgeBindGroup;
+    this.colorBindGroup = bindGroups.colorBindGroup;
 
     this.computeDirty = false;
   }
