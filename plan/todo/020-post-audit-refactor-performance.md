@@ -773,3 +773,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   block assembly can use that alpha mask, and block terminal frames omit the fill payload from GPU readback while glyph
   and mixed modes keep full fill/edge/color data. The workbench pressure probe stays stable at `13x4/52c`; recovery now
   requires output below 7KB/s so the lower-byte block path does not oscillate into 120-cell frames.
+- Added direct benchmark guards for compact block-mode assembly and color-only readback packing. The compact readback
+  guard runs around 0.003ms on this host versus roughly 0.007ms for the full fill/edge/color readback-copy workload,
+  and the `three-ascii` selector now covers 19 renderer-focused cases.

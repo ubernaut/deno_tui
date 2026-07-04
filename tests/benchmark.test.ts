@@ -182,8 +182,8 @@ Deno.test("benchmark CLI catalog covers high-volume TUI workloads", () => {
   const report = createBenchmarkCatalogReport({ cases: benchmarkCases });
   const names = report.cases.map((entry) => entry.name);
 
-  assertEquals(report.inspection.count, 71);
-  assertEquals(report.inspection.thresholded, 71);
+  assertEquals(report.inspection.count, 73);
+  assertEquals(report.inspection.thresholded, 73);
   assertEquals(report.inspection.categories, ["data", "input", "layout", "render", "runtime", "widgets"]);
   assertEquals(names.includes("data/table-select-100k"), true);
   assertEquals(names.includes("data/table-filter-25k"), true);
@@ -223,6 +223,7 @@ Deno.test("benchmark CLI catalog covers high-volume TUI workloads", () => {
   assertEquals(names.includes("render/canvas-dirty-region-400-rects"), true);
   assertEquals(names.includes("render/three-ascii-ansi-grid-96x40"), true);
   assertEquals(names.includes("render/three-ascii-ansi-grid-fill-only-96x40"), true);
+  assertEquals(names.includes("render/three-ascii-ansi-grid-compact-block-96x40"), true);
   assertEquals(names.includes("render/three-ascii-ansi-grid-solid-96x40"), true);
   assertEquals(names.includes("render/three-ascii-ansi-grid-block-runs-96x40"), true);
   assertEquals(names.includes("render/three-ascii-ansi-grid-partial-block-96x40"), true);
@@ -239,6 +240,7 @@ Deno.test("benchmark CLI catalog covers high-volume TUI workloads", () => {
   assertEquals(names.includes("render/three-ascii-range-apply-160"), true);
   assertEquals(names.includes("render/rerender-cell-fractional-1k"), true);
   assertEquals(names.includes("render/three-ascii-readback-copy-96x40"), true);
+  assertEquals(names.includes("render/three-ascii-compact-block-readback-copy-96x40"), true);
   assertEquals(names.includes("render/three-ascii-image-compact-768x320"), true);
   assertEquals(names.includes("render/three-ascii-uniform-clean-1k"), true);
   assertEquals(names.includes("render/three-ascii-probe-report-180"), true);
@@ -248,6 +250,7 @@ Deno.test("benchmark CLI catalog covers high-volume TUI workloads", () => {
     [
       "render/three-ascii-ansi-grid-96x40",
       "render/three-ascii-ansi-grid-block-runs-96x40",
+      "render/three-ascii-ansi-grid-compact-block-96x40",
       "render/three-ascii-ansi-grid-fill-only-96x40",
       "render/three-ascii-ansi-grid-glyph-cache-96x40",
       "render/three-ascii-ansi-grid-partial-block-96x40",
@@ -259,7 +262,11 @@ Deno.test("benchmark CLI catalog covers high-volume TUI workloads", () => {
   );
   assertEquals(
     queryBenchmarkCases(benchmarkCases, { tag: "readback" }).map((entry) => entry.name),
-    ["render/three-ascii-image-compact-768x320", "render/three-ascii-readback-copy-96x40"],
+    [
+      "render/three-ascii-compact-block-readback-copy-96x40",
+      "render/three-ascii-image-compact-768x320",
+      "render/three-ascii-readback-copy-96x40",
+    ],
   );
   assertEquals(names.includes("runtime/terminal-screen-replay"), true);
   assertEquals(names.includes("runtime/terminal-screen-edit-churn"), true);
@@ -294,6 +301,7 @@ Deno.test("benchmark CLI accepts query as a search alias", () => {
       "render/three-ascii-ansi-grid-partial-block-96x40",
       "render/three-ascii-ansi-grid-pattern-96x40",
       "render/three-ascii-ansi-grid-fill-only-96x40",
+      "render/three-ascii-ansi-grid-compact-block-96x40",
       "render/three-ascii-ansi-grid-glyph-cache-96x40",
       "render/three-ascii-ansi-grid-warm-cache-96x40",
       "render/three-ascii-ansi-grid-sparse-96x40",

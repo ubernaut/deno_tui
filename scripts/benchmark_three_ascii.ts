@@ -51,9 +51,19 @@ const threeAsciiReadbackLayout = createThreeAsciiReadbackLayout({
   colorByteLength: threeAsciiReadbackColorSource.byteLength,
   includeEdges: true,
 });
+const threeAsciiCompactBlockReadbackLayout = createThreeAsciiReadbackLayout({
+  fillByteLength: threeAsciiReadbackFillSource.byteLength,
+  edgeByteLength: threeAsciiReadbackEdgeSource.byteLength,
+  colorByteLength: threeAsciiReadbackColorSource.byteLength,
+  includeFill: false,
+  includeEdges: false,
+});
 const threeAsciiReadbackPacked = new ArrayBuffer(threeAsciiReadbackLayout.byteLength);
 const threeAsciiReadbackPackedFloats = new Float32Array(threeAsciiReadbackPacked);
+const threeAsciiCompactBlockReadbackPacked = new ArrayBuffer(threeAsciiCompactBlockReadbackLayout.byteLength);
+const threeAsciiCompactBlockReadbackPackedFloats = new Float32Array(threeAsciiCompactBlockReadbackPacked);
 const threeAsciiReadbackViewCache = new ThreeAsciiReadbackViewCache();
+const threeAsciiCompactBlockReadbackViewCache = new ThreeAsciiReadbackViewCache();
 const threeAsciiGridAssembler = new ThreeAsciiAnsiGridAssembler({ reuseGrid: true });
 const threeAsciiImageWidth = threeAsciiColumns * 8;
 const threeAsciiImageHeight = threeAsciiRows * 8;
@@ -180,6 +190,10 @@ threeAsciiReadbackPackedFloats.set(
   threeAsciiReadbackColorSource,
   threeAsciiReadbackLayout.colorOffset / Float32Array.BYTES_PER_ELEMENT,
 );
+threeAsciiCompactBlockReadbackPackedFloats.set(
+  threeAsciiPatternColors,
+  threeAsciiCompactBlockReadbackLayout.colorOffset / Float32Array.BYTES_PER_ELEMENT,
+);
 for (let index = 0; index < threeAsciiImageSource.length; index += 1) {
   threeAsciiImageSource[index] = (index * 17 + (index >>> 7)) & 0xff;
 }
@@ -286,6 +300,28 @@ function runThreeAsciiReadbackCopyWorkload(): void {
 
   if (!Number.isFinite(threeAsciiReadbackChecksum)) {
     throw new Error("three Ascii readback copy produced invalid data");
+  }
+}
+
+function runThreeAsciiCompactBlockReadbackWorkload(): void {
+  threeAsciiReadbackColorCpu.set(threeAsciiPatternColors);
+  const views = threeAsciiCompactBlockReadbackViewCache.resolve(
+    threeAsciiCompactBlockReadbackPacked,
+    threeAsciiCompactBlockReadbackLayout,
+  );
+
+  const colorIndex = (threeAsciiReadbackCursor * 5) % threeAsciiReadbackColorCpu.length;
+  threeAsciiReadbackCursor = (threeAsciiReadbackCursor + 17) % threeAsciiReadbackColorCpu.length;
+  threeAsciiReadbackChecksum = (
+    threeAsciiReadbackChecksum +
+    threeAsciiReadbackColorCpu[colorIndex] +
+    views.colors[colorIndex] +
+    views.fillGlyphs.length +
+    views.fillGlyphs.byteLength
+  ) % 1_000_000;
+
+  if (views.fillGlyphs.length !== 0 || !Number.isFinite(threeAsciiReadbackChecksum)) {
+    throw new Error("compact three Ascii block readback produced invalid data");
   }
 }
 
@@ -558,6 +594,27 @@ export const threeAsciiBenchmarkCases: BenchmarkCase[] = [
     },
   },
   {
+    name: "render/three-ascii-ansi-grid-compact-block-96x40",
+    category: "render",
+    description: "CPU-assemble a block-mode Three ASCII frame from compact color-alpha visibility readback.",
+    tags: ["render", "three", "ascii", "ansi", "cpu", "assembly", "blocks", "compact"],
+    iterations: 250,
+    maxAverageMs: 5,
+    run: () => {
+      const grid = buildThreeAsciiAnsiGrid({
+        columns: threeAsciiColumns,
+        rows: threeAsciiRows,
+        fillGlyphs: new Float32Array(0),
+        colors: threeAsciiPatternColors,
+        terminalGlyphStyle: "blocks",
+        terminalEdgeBias: 1.15,
+        backgroundColor: 0x000000,
+        blockVisibilityFromColorAlpha: true,
+      });
+      assertThreeAsciiGridDimensions(grid, "compact block three Ascii grid dimensions changed");
+    },
+  },
+  {
     name: "render/three-ascii-ansi-grid-glyph-cache-96x40",
     category: "render",
     description: "CPU-assemble a glyph-mode Three ASCII grid while reusing adjacent ANSI cell strings.",
@@ -655,6 +712,15 @@ export const threeAsciiBenchmarkCases: BenchmarkCase[] = [
     iterations: 1_000,
     maxAverageMs: 2,
     run: runThreeAsciiReadbackCopyWorkload,
+  },
+  {
+    name: "render/three-ascii-compact-block-readback-copy-96x40",
+    category: "render",
+    description: "Copy and view the compact block-mode Three ASCII color-only readback payload.",
+    tags: ["render", "three", "ascii", "readback", "copy", "blocks", "compact"],
+    iterations: 1_000,
+    maxAverageMs: 2,
+    run: runThreeAsciiCompactBlockReadbackWorkload,
   },
   {
     name: "render/three-ascii-image-compact-768x320",
