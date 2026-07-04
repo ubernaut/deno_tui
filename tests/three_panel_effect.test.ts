@@ -1,6 +1,6 @@
 import { assertEquals } from "./deps.ts";
 import { asciiEffectOptions, createDefaultAsciiOptions } from "../app/ascii_options.ts";
-import { threePanelAsciiEffectOptionsEqual, threePanelRendererStateMatches } from "../app/three_panel_effect.ts";
+import { threePanelAsciiEffectOptionsEqual, threePanelRendererStateMatches } from "../src/app/three_panel_effect.ts";
 
 Deno.test("threePanelAsciiEffectOptionsEqual rejects missing previous state", () => {
   const next = asciiEffectOptions(createDefaultAsciiOptions("sharp"));

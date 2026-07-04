@@ -28,7 +28,7 @@ import {
   resolveThreePanelAdaptiveRenderBudget,
   ThreePanelAdaptiveRenderBudgetController,
 } from "./three_panel_adaptive.ts";
-import { threePanelAsciiEffectOptionsEqual, threePanelRendererStateMatches } from "./three_panel_effect.ts";
+import { threePanelAsciiEffectOptionsEqual, threePanelRendererStateMatches } from "../src/app/three_panel_effect.ts";
 import { fingerprintThreePanelGrid, threePanelBlankGrid } from "../src/app/three_panel_grid.ts";
 import {
   resolveThreePanelFrameInterval,

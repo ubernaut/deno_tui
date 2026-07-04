@@ -1,14 +1,25 @@
-import type { asciiEffectOptions } from "./ascii_options.ts";
-import type { AsciiOptions } from "./types.ts";
+import type { TerminalGlyphStyle } from "../three_ascii/glyphs.ts";
 
-export type ThreePanelAsciiEffectOptions = ReturnType<typeof asciiEffectOptions>;
+export interface ThreePanelAsciiEffectOptions {
+  edgeThreshold?: number;
+  normalThreshold?: number;
+  depthThreshold?: number;
+  exposure?: number;
+  attenuation?: number;
+  blendWithBase?: number;
+  depthFalloff?: number;
+  depthOffset?: number;
+  edges?: boolean;
+  fill?: boolean;
+  invertLuminance?: boolean;
+}
 
 export interface ThreePanelRendererStateSnapshot {
   columns: number;
   rows: number;
   effectOptions?: ThreePanelAsciiEffectOptions;
   terminalEdgeBias?: number;
-  terminalGlyphStyle?: AsciiOptions["terminalGlyphStyle"];
+  terminalGlyphStyle?: TerminalGlyphStyle;
 }
 
 /** Compare the Three panel ASCII effect fields that require renderer effect updates. */
