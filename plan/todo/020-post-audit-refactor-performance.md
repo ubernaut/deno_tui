@@ -226,6 +226,10 @@ performance, shared terminal/web workbench projections, and oversized module red
   the retained workbench terminal painter.
 - Added a compact workbench log diagnostic when Three terminal pressure changes the render-cell budget so manual
   profiling can distinguish renderer slowdown from terminal-output throttling.
+- Lowered the API workbench Three startup render-cell budget to the documented 480-cell policy while preserving 960 as
+  the slow-recovery high-quality cap.
+- Extracted the workbench Three block flush benchmark fixture into a focused helper module so the benchmark catalog no
+  longer owns its painter, frame, and animated truecolor fixture state inline.
 - Extracted CPU hex-grid selection map updates and selected-tile scroll targeting into the visualization module with
   direct tests, keeping API workbench CPU selection code focused on focus, scroll application, and logging side effects.
 - Reused workbench ANSI changed-span scratch buffers and span objects across flushes, keeping sparse terminal output

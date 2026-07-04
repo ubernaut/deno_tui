@@ -68,6 +68,7 @@ import {
 } from "../src/canvas/rerender_queue.ts";
 import { createTextObjectFullRowCanvasBenchmark } from "./benchmark_textobject_canvas.ts";
 import { threeAsciiBenchmarkCases } from "./benchmark_three_ascii.ts";
+import { createWorkbenchThreeBlockFlushBenchmark } from "./benchmark_workbench_three_block.ts";
 import { createWorkbenchThreeGridBenchmark } from "./benchmark_workbench_three_grid.ts";
 
 const sparklineValues = Array.from({ length: 200 }, (_, index) => Math.sin(index / 8));
@@ -119,6 +120,14 @@ const workbenchThreeGridBenchmark = createWorkbenchThreeGridBenchmark({
   sourceRows: 34,
   targetColumns: 220,
   targetRows: 70,
+});
+const workbenchThreeBlockBenchmark = createWorkbenchThreeBlockFlushBenchmark({
+  frameWidth: 168,
+  frameRows: 54,
+  panelColumn: 96,
+  panelRow: 12,
+  panelWidth: 40,
+  panelRows: 24,
 });
 const ansiRichRows = Array.from({ length: 250 }, (_, index) => {
   const red = (index * 17) % 256;
@@ -188,7 +197,6 @@ const workbenchStringFrame: string[] = [];
 const workbenchLineSignalFrame: WorkbenchFrame = [];
 const workbenchAnsiScreenFrame: WorkbenchFrame = [];
 const workbenchAnsiSpanFrame: WorkbenchFrame = [];
-const workbenchThreeBlockFrame: WorkbenchFrame = [];
 const workbenchFrameRows = 54;
 const workbenchFrameWidth = 168;
 const workbenchLineSignals = Array.from(
@@ -206,13 +214,6 @@ let workbenchAnsiSpanBytes = 0;
 const workbenchAnsiSpanPainter = new WorkbenchAnsiScreenPainter({
   writeSync(data) {
     workbenchAnsiSpanBytes += data.byteLength;
-    return data.byteLength;
-  },
-});
-let workbenchThreeBlockBytes = 0;
-const workbenchThreeBlockPainter = new WorkbenchAnsiScreenPainter({
-  writeSync(data) {
-    workbenchThreeBlockBytes += data.byteLength;
     return data.byteLength;
   },
 });
@@ -879,64 +880,6 @@ function runWorkbenchAnsiScreenSpanFlushWorkload(): void {
   }
 }
 
-function runWorkbenchThreeBlockSpanFlushWorkload(): void {
-  workbenchLineSignalFrameIndex = (workbenchLineSignalFrameIndex + 1) % 64;
-  const frame = prepareWorkbenchFrame(workbenchThreeBlockFrame, workbenchFrameRows);
-  for (let row = 0; row < workbenchFrameRows; row += 1) {
-    writeFrame(
-      frame,
-      workbenchFrameWidth,
-      row,
-      0,
-      `\x1b[38;2;210;220;235;48;2;8;6;18m${"WORKBENCH ".repeat(17)}\x1b[0m`,
-    );
-  }
-
-  const panelColumn = 96;
-  const panelWidth = 40;
-  const panelRow = 12;
-  const panelRows = 24;
-  const panelCells = new Array<string>(panelWidth);
-  for (let row = 0; row < panelRows; row += 1) {
-    const outputRow = panelRow + row;
-    for (let column = 0; column < panelWidth; column += 1) {
-      const wave = workbenchLineSignalFrameIndex;
-      const red = (column * 9 + row * 5 + wave * 7) % 256;
-      const green = (96 + column * 3 + row * 11 + wave * 13) % 256;
-      const blue = (180 + column * 7 + row * 2 + wave * 5) % 256;
-      panelCells[column] = `\x1b[48;2;${red};${green};${blue}m \x1b[0m`;
-    }
-    writeFrameCells(frame[outputRow]!, panelColumn, panelCells);
-  }
-
-  const first = workbenchThreeBlockPainter.flush(
-    frame,
-    workbenchFrameWidth,
-    workbenchFrameRows,
-    renderFrameRow,
-    renderFrameSlice,
-  );
-  const second = workbenchThreeBlockPainter.flush(
-    frame,
-    workbenchFrameWidth,
-    workbenchFrameRows,
-    renderFrameRow,
-    renderFrameSlice,
-  );
-  workbenchFrameChecksum = (workbenchFrameChecksum + first.changed + first.bytes + second.changed + second.bytes) %
-    1_000_000;
-  if (
-    (first.changed !== panelRows && first.changed !== workbenchFrameRows) ||
-    first.bytes <= 0 ||
-    first.bytes >= workbenchFrameRows * workbenchFrameWidth * 12 ||
-    second.changed !== 0 ||
-    second.bytes !== 0 ||
-    !Number.isFinite(workbenchFrameChecksum + workbenchThreeBlockBytes)
-  ) {
-    throw new Error("workbench Three block span flush workload failed");
-  }
-}
-
 function runAnsiStyledCharacterSplitWorkload(): void {
   const cells = getMultiCodePointCharacters(ansiStyledSplitRow);
   if (cells.length !== 160) {
@@ -1279,7 +1222,7 @@ export const benchmarkCases: BenchmarkCase[] = [
     tags: ["render", "workbench", "three", "ansi", "terminal", "span", "blocks"],
     iterations: 250,
     maxAverageMs: 8,
-    run: runWorkbenchThreeBlockSpanFlushWorkload,
+    run: workbenchThreeBlockBenchmark.run,
   },
   {
     name: "render/textobject-full-row-canvas-220x70",
