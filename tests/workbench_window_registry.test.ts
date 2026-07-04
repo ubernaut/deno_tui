@@ -11,6 +11,7 @@ import {
   workbenchWindowOptionMenuLabel,
   workbenchWindowOptionMenuLabelsInto,
   workbenchWindowOptionMinimums,
+  workbenchWindowOptionTogglePlan,
   workbenchWindowOptionWindowId,
 } from "../src/app/workbench_window_registry.ts";
 
@@ -56,6 +57,33 @@ Deno.test("workbench window registry normalizes visualization window ids and loa
   assertEquals(workbenchWindowOptionWindowId({ ...option, windowId: "cpu" }), "cpu");
   assertEquals(isWorkbenchWindowOptionLoaded(option, [id]), true);
   assertEquals(isWorkbenchWindowOptionLoaded({ ...option, windowId: "cpu" }, ["cpu"]), true);
+});
+
+Deno.test("workbench window registry resolves selected New Window options", () => {
+  const builtIn = {
+    id: "terminal-shell",
+    label: "Shell",
+    group: "Terminal" as const,
+    description: "pty",
+    windowId: "terminalShell",
+  };
+  const visualization = {
+    id: "cpu-hex-grid",
+    label: "CPU Hex Grid",
+    group: "Monitor" as const,
+    description: "cores",
+  };
+
+  assertEquals(workbenchWindowOptionTogglePlan(undefined), { action: "none" });
+  assertEquals(workbenchWindowOptionTogglePlan(builtIn), {
+    action: "builtIn",
+    id: "terminalShell",
+    option: builtIn,
+  });
+  assertEquals(workbenchWindowOptionTogglePlan(visualization), {
+    action: "visualization",
+    option: visualization,
+  });
 });
 
 Deno.test("workbench window registry formats labels and option minimums", () => {

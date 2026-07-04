@@ -74,6 +74,12 @@ export interface WorkbenchBuiltInWindowTogglePlan<TWindowId extends string = str
   startTerminalShell: boolean;
 }
 
+/** Resolved action for a selected New Window menu option. */
+export type WorkbenchWindowOptionTogglePlan<TWindowId extends string = string> =
+  | { action: "none" }
+  | { action: "builtIn"; id: TWindowId; option: WorkbenchWindowOption }
+  | { action: "visualization"; option: WorkbenchWindowOption };
+
 /** Create a stable workbench window option list from built-ins and visualization metadata. */
 export function createWorkbenchWindowOptions(input: WorkbenchWindowOptionCatalogInput): WorkbenchWindowOption[] {
   const builtIns = input.builtIns ?? [];
@@ -152,6 +158,15 @@ export function isWorkbenchWindowOptionLoaded(
 /** Resolve the concrete managed window id for a launcher option. */
 export function workbenchWindowOptionWindowId(option: WorkbenchWindowOption): string {
   return option.windowId ?? workbenchVisualizationWindowId(option.id);
+}
+
+/** Resolves a selected New Window option into the host action needed to toggle it. */
+export function workbenchWindowOptionTogglePlan<TWindowId extends string = string>(
+  option: WorkbenchWindowOption | undefined,
+): WorkbenchWindowOptionTogglePlan<TWindowId> {
+  if (!option) return { action: "none" };
+  if (option.windowId) return { action: "builtIn", id: option.windowId as TWindowId, option };
+  return { action: "visualization", option };
 }
 
 /** Plans whether opening a visualization option should create a window record or restore an existing one. */

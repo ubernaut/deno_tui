@@ -84,6 +84,7 @@ import {
   workbenchVisualizationWindowRegistrationPlan,
   type WorkbenchWindowOption,
   workbenchWindowOptionMenuLabelsInto,
+  workbenchWindowOptionTogglePlan,
   workbenchWindowScrollbarRenderCommandsInto,
   type WorkbenchWorkspace,
   workbenchWorkspaceScrollbarRenderCommandsInto,
@@ -193,9 +194,7 @@ import {
   type ApiWorkbenchBuiltInWindowId,
   apiWorkbenchVisualizationSupportsThree,
   createApiWorkbenchWindowCatalog,
-  TERMINAL_OUTPUT_OPTION_ID,
   TERMINAL_OUTPUT_WINDOW_ID,
-  TERMINAL_SHELL_OPTION_ID,
   TERMINAL_SHELL_WINDOW_ID,
 } from "./api_workbench_windows.ts";
 import {
@@ -236,11 +235,7 @@ import {
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
 } from "./api_workbench_controls.ts";
-import {
-  createHtmlCssLayoutDemo,
-  HTML_CSS_LAYOUT_OPTION_ID,
-  HTML_CSS_LAYOUT_WINDOW_ID,
-} from "../src/markup/demo_fixtures.ts";
+import { createHtmlCssLayoutDemo, HTML_CSS_LAYOUT_WINDOW_ID } from "../src/markup/demo_fixtures.ts";
 import {
   type HtmlCssLayoutRenderCommand,
   htmlCssLayoutRenderCommandsInto,
@@ -4172,20 +4167,9 @@ function toggleNewWindowOption(
   option: NewWindowOption | undefined,
   options: { keepMenuOpen?: boolean; ascii?: AsciiOptions } = {},
 ): void {
-  if (!option) return;
-  if (option.id === HTML_CSS_LAYOUT_OPTION_ID) {
-    toggleBuiltInWindow(HTML_CSS_LAYOUT_WINDOW_ID, options);
-    return;
-  }
-  if (option.id === TERMINAL_OUTPUT_OPTION_ID) {
-    toggleBuiltInWindow(TERMINAL_OUTPUT_WINDOW_ID, options);
-    return;
-  }
-  if (option.id === TERMINAL_SHELL_OPTION_ID) {
-    toggleBuiltInWindow(TERMINAL_SHELL_WINDOW_ID, options);
-    return;
-  }
-  toggleVisualizationWindow(option, options);
+  const plan = workbenchWindowOptionTogglePlan<BuiltInWindowId>(option);
+  if (plan.action === "builtIn") return toggleBuiltInWindow(plan.id, options);
+  if (plan.action === "visualization") return toggleVisualizationWindow(plan.option, options);
 }
 
 function toggleBuiltInWindow(
