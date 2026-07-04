@@ -982,3 +982,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Cached raw string-backed workbench rows alongside fitted line-signal output so repeated browser/web rows skip text
   fitting and line hashing while still restoring externally modified signals. The focused string line-signal diff
   benchmark dropped from roughly 2.56ms to 1.32ms on this host.
+- Added a full-row fast path for string-backed workbench writes with leading SGR styles and a final reset, avoiding
+  per-cell conversion when browser/web rows overwrite the full width. The focused full-row string benchmark dropped
+  from roughly 1.82ms to 0.29ms on this host.

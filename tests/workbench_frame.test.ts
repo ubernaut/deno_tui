@@ -185,6 +185,9 @@ Deno.test("workbench frame writes ANSI strings into string-backed rows", () => {
   writeStringFrameRow(frame, 5, 0, -2, "\x1b[36mabcdefg\x1b[0m");
   assertEquals(frame[0], "\x1b[36mcdefg\x1b[0m");
 
+  writeStringFrameRow(frame, 5, 0, 0, "\x1b[48;2;1;2;3m\x1b[38;2;4;5;6mVWXYZ\x1b[0m");
+  assertEquals(frame[0], "\x1b[38;2;4;5;6;48;2;1;2;3mVWXYZ\x1b[0m");
+
   const rectFrame = [".....", ".....", "....."];
   fillStringFrameRect(rectFrame, 5, { column: 1, row: 1, width: 3, height: 2 }, "\x1b[34m...\x1b[0m");
   assertEquals(rectFrame[0], ".....");

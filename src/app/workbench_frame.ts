@@ -486,6 +486,11 @@ export function writeStringFrameRow(
   value: string,
 ): void {
   if (row < 0 || row >= frame.length || column >= width) return;
+  const fullRow = fullRowStringLine(value, width, column);
+  if (fullRow !== undefined) {
+    frame[row] = fullRow;
+    return;
+  }
   const valueCells = toStyledCells(value);
   if (column <= 0 && column + valueCells.length >= width) {
     frame[row] = renderFrameSlice(valueCells, -column, width);
@@ -498,6 +503,33 @@ export function writeStringFrameRow(
     targetColumn += 1;
   }
   frame[row] = renderFrameRow(cells, width);
+}
+
+function fullRowStringLine(value: string, width: number, column: number): string | undefined {
+  const columns = Math.max(0, Math.floor(width));
+  const sourceColumn = Math.floor(column);
+  if (columns <= 0 || sourceColumn > 0) return undefined;
+  if (!value.includes("\x1b")) {
+    return sourceColumn === 0 && value.length === columns ? value : undefined;
+  }
+
+  let style = "";
+  let index = 0;
+  while (index < value.length) {
+    const sequence = readSgrSequenceAt(value, index);
+    if (!sequence) break;
+    style = mergeSgrStyle(style, sequence);
+    index += sequence.length;
+  }
+  if (!style || !value.endsWith(RESET)) return undefined;
+
+  const resetStart = value.length - RESET.length;
+  if (value.indexOf("\x1b", index) !== resetStart) return undefined;
+  const text = value.slice(index, resetStart);
+  const start = Math.max(0, -sourceColumn);
+  const body = text.slice(start, start + columns);
+  if (body.length !== columns) return undefined;
+  return style ? `${style}${body}${RESET}` : body;
 }
 
 /** Writes a repeated string-backed fill row into a rectangular frame region. */
