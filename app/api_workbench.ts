@@ -20,7 +20,6 @@ import {
   centerCellText as centerText,
   clampWorkbenchTileDensity,
   contrastText,
-  createWorkbenchVisualizationWindowOptions,
   createWorkbenchWorkspaceStore,
   deleteWorkbenchWorkspace,
   fillFrameRect,
@@ -184,6 +183,14 @@ import {
   createApiWorkbenchThemes,
 } from "./api_workbench_catalog.ts";
 import {
+  type ApiWorkbenchBuiltInWindowId,
+  createApiWorkbenchWindowCatalog,
+  TERMINAL_OUTPUT_OPTION_ID,
+  TERMINAL_OUTPUT_WINDOW_ID,
+  TERMINAL_SHELL_OPTION_ID,
+  TERMINAL_SHELL_WINDOW_ID,
+} from "./api_workbench_windows.ts";
+import {
   apiWorkbenchButtonRowInto,
   type ApiWorkbenchCheckboxOption,
   apiWorkbenchCheckboxRowsInto,
@@ -318,34 +325,9 @@ import {
 } from "./workbench_synthetic.ts";
 import type { ComputedLayoutBox } from "../src/layout/mod.ts";
 
-const TERMINAL_OUTPUT_WINDOW_ID = "terminalOutput";
-const TERMINAL_OUTPUT_OPTION_ID = "terminal-output";
-const TERMINAL_SHELL_WINDOW_ID = "terminalShell";
-const TERMINAL_SHELL_OPTION_ID = "terminal-shell";
-
-type BuiltInWindowId =
-  | "explorer"
-  | "inspector"
-  | "data"
-  | "controls"
-  | "logs"
-  | "three"
-  | "htmlLayout"
-  | typeof TERMINAL_OUTPUT_WINDOW_ID
-  | typeof TERMINAL_SHELL_WINDOW_ID;
+type BuiltInWindowId = ApiWorkbenchBuiltInWindowId;
 type VisualizationWindowId = `viz:${string}`;
 type WindowId = BuiltInWindowId | VisualizationWindowId;
-const builtInWindowOrder: readonly BuiltInWindowId[] = [
-  "explorer",
-  "inspector",
-  "data",
-  "controls",
-  "logs",
-  "three",
-  "htmlLayout",
-  TERMINAL_OUTPUT_WINDOW_ID,
-  TERMINAL_SHELL_WINDOW_ID,
-];
 type ControlId = ApiWorkbenchControlId;
 type HitAction =
   | { type: "menu"; index: number }
@@ -442,41 +424,11 @@ const logRenderRows: RowStyle[] = [];
 const terminalOutputContentRows: string[] = [];
 const ASCII_DEMO_PRESET_IDS = asciiDemoPresetIds();
 const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
-const htmlCssLayoutWindowOption: NewWindowOption = {
-  id: HTML_CSS_LAYOUT_OPTION_ID,
-  label: "HTML/CSS Layout",
-  group: "Layout",
-  description: "Renderer-neutral markup, CSS cascade, wrapped flex boxes, and absolute positioning.",
-  windowId: HTML_CSS_LAYOUT_WINDOW_ID,
-};
-const terminalOutputWindowOption: NewWindowOption = {
-  id: TERMINAL_OUTPUT_OPTION_ID,
-  label: "Terminal Output",
-  group: "Terminal",
-  description: "Run a subprocess inside a managed workbench window with stdout/stderr scrollback.",
-  windowId: TERMINAL_OUTPUT_WINDOW_ID,
-};
-const terminalShellWindowOption: NewWindowOption = {
-  id: TERMINAL_SHELL_OPTION_ID,
-  label: "Shell",
-  group: "Terminal",
-  description: "Open an interactive PTY-backed shell using the host OS shell.",
-  windowId: TERMINAL_SHELL_WINDOW_ID,
-};
-const visualizationWindowOptions: NewWindowOption[] = createWorkbenchVisualizationWindowOptions(visualizations);
-const visualizationWindowOptionIds = new Array<string>(visualizationWindowOptions.length);
-const visualizationWindowOptionById = new Map<string, NewWindowOption>();
-for (let index = 0; index < visualizationWindowOptions.length; index += 1) {
-  const option = visualizationWindowOptions[index]!;
-  visualizationWindowOptionIds[index] = option.id;
-  visualizationWindowOptionById.set(option.id, option);
-}
-const newWindowOptions: NewWindowOption[] = [
-  terminalShellWindowOption,
-  terminalOutputWindowOption,
-  htmlCssLayoutWindowOption,
-  ...visualizationWindowOptions,
-];
+const windowCatalog = createApiWorkbenchWindowCatalog(visualizations);
+const builtInWindowOrder = windowCatalog.builtInWindowOrder;
+const visualizationWindowOptionIds = windowCatalog.visualizationWindowOptionIds;
+const visualizationWindowOptionById = windowCatalog.visualizationWindowOptionById;
+const newWindowOptions: NewWindowOption[] = windowCatalog.newWindowOptions;
 const WORKSPACE_STORE_KEY = "api-workbench.workspaces";
 
 requireInteractiveTerminal("deno task api-workbench");

@@ -423,3 +423,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   ANSI grid assembly, and frame-diff guards live with their synthetic buffers instead of inflating the shared registry.
 - Moved API-workbench-specific Three render-cell budgets, pressure thresholds, and live/idle cadence mapping into a
   tested policy module so tuning the default Three pane no longer requires editing the large interactive app file.
+- Extracted the API workbench built-in window ids, launcher option catalog, visualization option ids, and lookup map into
+  a tested window catalog module, reducing static menu setup in the large interactive workbench file.
