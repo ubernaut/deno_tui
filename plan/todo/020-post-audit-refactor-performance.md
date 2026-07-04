@@ -20,6 +20,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - [x] Re-run focused and full health checks after each retained milestone.
 - [ ] Continue reducing oversized app/demo modules only at clean abstraction points.
 - [ ] Keep Three ASCII performance changes benchmark-gated; revert any micro-optimization that loses on focused cases.
+- [ ] Investigate deferred WebGPU readback latency separately from workbench policy; current probes show deferred
+  readback can publish stale grids for many frames at 480/960 cells even when the queue is not saturated.
 
 ## Progress
 
@@ -546,3 +548,7 @@ performance, shared terminal/web workbench projections, and oversized module red
   strings for every stale row; added coverage for width changes and reset behavior.
 - Cached plain ASCII frame-cell split descriptors in the workbench row assembler and added a dedicated
   `render/workbench-plain-frame-row-168` benchmark guard for dense text rows.
+- Raised the API workbench Three draw cadence for small live block-rendering panes, made workbench-hosted Three panels
+  use explicit blocking readback, and updated the pressure probe to match that policy. The default 240-cell probe now
+  publishes changed Three rows every frame at roughly 20ms renderer time against a 33ms target, while 480/960-cell
+  probes publish every frame around 23-24ms instead of returning stale deferred grids for many frames.
