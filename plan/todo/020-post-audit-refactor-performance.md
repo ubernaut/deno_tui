@@ -220,6 +220,9 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted API workbench Logs row projection into a focused helper that reuses row objects across draws.
 - Extracted Three ASCII color conversion, ANSI truecolor sequence, and linear-byte cache helpers into a focused internal
   module so ANSI grid assembly stays concentrated on frame projection while preserving benchmarked block/glyph output.
+- Raised the API workbench's default Three ASCII live render budget from emergency mode to the normal live tier, added
+  higher recovery tiers, shortened low-pressure recovery, and raised the global terminal-byte downshift threshold so
+  full-screen redraws do not immediately pin the default Three pane to low fidelity.
 - Changed workbench Three cadence so any visible normal/fullscreen Three-backed pane uses the live interval instead of
   being throttled to idle just because focus is elsewhere.
 - Tightened API workbench Three terminal-pressure adaptation to step down on the first heavy terminal flush, improving
