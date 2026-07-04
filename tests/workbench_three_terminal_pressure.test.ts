@@ -2,6 +2,7 @@ import { assertEquals } from "./deps.ts";
 import {
   createWorkbenchThreeTerminalPressureState,
   resolveWorkbenchThreeTerminalPressureBudget,
+  resolveWorkbenchThreeTerminalPressureUpdate,
   shouldApplyWorkbenchThreeTerminalPressureSample,
   shouldCountWorkbenchThreeGridPressure,
   workbenchThreeFrameIntervalForCells,
@@ -159,6 +160,62 @@ Deno.test("workbench Three terminal pressure resets counters when no Three grid 
   assertEquals(next.currentCells, 480);
   assertEquals(next.highFrames, 0);
   assertEquals(next.lowFrames, 0);
+  assertEquals(next.changed, false);
+});
+
+Deno.test("workbench Three terminal pressure update scopes flush samples before adapting", () => {
+  const state = createWorkbenchThreeTerminalPressureState(960);
+  const unrelated = resolveWorkbenchThreeTerminalPressureUpdate(state, {
+    currentCells: 960,
+    renderedThreeGrids: 1,
+    renderedThreeRows: 12,
+    changedRows: 40,
+    bytes: 100_000,
+    levels: [240, 480, 960],
+    highBytes: 80_000,
+    lowBytes: 35_000,
+    highFrameThreshold: 1,
+  });
+
+  assertEquals(unrelated.scoped, false);
+  assertEquals(unrelated.currentCells, 960);
+  assertEquals(unrelated.highFrames, 0);
+  assertEquals(unrelated.changed, false);
+
+  const scoped = resolveWorkbenchThreeTerminalPressureUpdate(state, {
+    currentCells: 960,
+    renderedThreeGrids: 1,
+    renderedThreeRows: 36,
+    changedRows: 40,
+    bytes: 100_000,
+    levels: [240, 480, 960],
+    highBytes: 80_000,
+    lowBytes: 35_000,
+    highFrameThreshold: 1,
+  });
+
+  assertEquals(scoped.scoped, true);
+  assertEquals(scoped.currentCells, 480);
+  assertEquals(scoped.direction, "down");
+});
+
+Deno.test("workbench Three terminal pressure update starts from current live cap", () => {
+  const state = { currentCells: 240, highFrames: 0, lowFrames: 0 };
+  const next = resolveWorkbenchThreeTerminalPressureUpdate(state, {
+    currentCells: 960,
+    renderedThreeGrids: 1,
+    renderedThreeRows: 16,
+    changedRows: 16,
+    bytes: 10_000,
+    levels: [240, 480, 960],
+    highBytes: 80_000,
+    lowBytes: 35_000,
+    lowFrameThreshold: 1,
+  });
+
+  assertEquals(next.scoped, true);
+  assertEquals(next.currentCells, 960);
+  assertEquals(next.direction, "steady");
   assertEquals(next.changed, false);
 });
 

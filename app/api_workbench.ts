@@ -294,8 +294,7 @@ import { formatWorkbenchKittyGraphicsStatus, WorkbenchKittyGraphicsController } 
 import { type RowStyle, threeHeaderRows } from "./workbench_rows.ts";
 import {
   createWorkbenchThreeTerminalPressureState,
-  resolveWorkbenchThreeTerminalPressureBudget,
-  shouldApplyWorkbenchThreeTerminalPressureSample,
+  resolveWorkbenchThreeTerminalPressureUpdate,
   shouldCountWorkbenchThreeGridPressure,
   workbenchThreeShouldUseLiveCadence,
 } from "../src/app/workbench_three_terminal_pressure.ts";
@@ -1043,15 +1042,12 @@ function draw(): void {
 }
 
 function updateThreeTerminalPressure(stats: WorkbenchAnsiScreenFlushStats): void {
-  terminalPressure.currentCells = workbenchThreeLiveMaxCells.peek();
-  const scopedPressureSample = shouldApplyWorkbenchThreeTerminalPressureSample({
+  const next = resolveWorkbenchThreeTerminalPressureUpdate(terminalPressure, {
+    ...API_WORKBENCH_THREE_PRESSURE_POLICY,
+    currentCells: workbenchThreeLiveMaxCells.peek(),
     renderedThreeGrids: renderedThreeGridCount,
     renderedThreeRows: renderedThreeGridRows,
     changedRows: stats.changed,
-  });
-  const next = resolveWorkbenchThreeTerminalPressureBudget(terminalPressure, {
-    ...API_WORKBENCH_THREE_PRESSURE_POLICY,
-    renderedThreeGrids: scopedPressureSample ? renderedThreeGridCount : 0,
     bytes: stats.bytes,
     durationMs: stats.durationMs,
   });

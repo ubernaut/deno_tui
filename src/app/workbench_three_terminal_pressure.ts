@@ -26,6 +26,19 @@ export interface WorkbenchThreeTerminalPressureResult extends WorkbenchThreeTerm
   direction: "down" | "up" | "steady";
 }
 
+/** Inputs used to apply terminal-output pressure around the current live render-cell cap. */
+export interface WorkbenchThreeTerminalPressureUpdateOptions extends WorkbenchThreeTerminalPressureOptions {
+  currentCells: number;
+  renderedThreeRows: number;
+  changedRows: number;
+  toleranceRows?: number;
+}
+
+/** Result of applying a terminal flush sample to the current Three pressure state. */
+export interface WorkbenchThreeTerminalPressureUpdateResult extends WorkbenchThreeTerminalPressureResult {
+  scoped: boolean;
+}
+
 /** Inputs used to resolve the live render cadence for a workbench-hosted Three ASCII pane. */
 export interface WorkbenchThreeFrameIntervalOptions {
   live?: boolean;
@@ -106,6 +119,29 @@ export function shouldApplyWorkbenchThreeTerminalPressureSample(input: Workbench
   if (input.renderedThreeGrids <= 0 || input.renderedThreeRows <= 0 || input.changedRows <= 0) return false;
   const toleranceRows = Math.max(0, Math.floor(input.toleranceRows ?? 8));
   return input.changedRows <= Math.max(1, Math.floor(input.renderedThreeRows)) + toleranceRows;
+}
+
+/** Applies scoping and budget adaptation for one terminal flush sample. */
+export function resolveWorkbenchThreeTerminalPressureUpdate(
+  state: WorkbenchThreeTerminalPressureState,
+  options: WorkbenchThreeTerminalPressureUpdateOptions,
+): WorkbenchThreeTerminalPressureUpdateResult {
+  const currentState = {
+    currentCells: Math.max(1, Math.floor(options.currentCells)),
+    highFrames: state.highFrames,
+    lowFrames: state.lowFrames,
+  };
+  const scoped = shouldApplyWorkbenchThreeTerminalPressureSample({
+    renderedThreeGrids: options.renderedThreeGrids,
+    renderedThreeRows: options.renderedThreeRows,
+    changedRows: options.changedRows,
+    toleranceRows: options.toleranceRows,
+  });
+  const next = resolveWorkbenchThreeTerminalPressureBudget(currentState, {
+    ...options,
+    renderedThreeGrids: scoped ? options.renderedThreeGrids : 0,
+  });
+  return { ...next, scoped };
 }
 
 /** Resolves the next render-cell budget for workbench Three panes from terminal flush byte pressure. */

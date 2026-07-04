@@ -389,6 +389,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   shared probe module with direct tests so CLI profiling output stays renderer-aware and script-local code stays small.
 - Returned Three grid projection metadata from the workbench grid writer and routed terminal-pressure row accounting
   through the actual rendered target height, keeping capped/scaled grid pressure measurement aligned with paint output.
+- Extracted the workbench Three terminal-pressure flush update into a pure resolver that combines live-cap resync,
+  sample scoping, and budget adaptation with focused tests for unrelated redraws and current-cap recovery.
 - Added focused benchmark guards for reusable monitor source-frame resolution and 88-core CPU hex tile layout projection
   so future source/monitor refactors keep those hot paths measured.
 - Reused repeated styled cell strings inside ANSI-aware text splitting so block-mode workbench rows avoid rebuilding the
