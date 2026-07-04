@@ -1,6 +1,8 @@
 import { assertEquals } from "./deps.ts";
 import {
   threePanelAdaptiveRenderCellsDiagnostic,
+  threePanelGraphicsFallbackDiagnostic,
+  threePanelGraphicsFallbackReason,
   threePanelSlowFrameDiagnostic,
 } from "../app/three_panel_diagnostics.ts";
 
@@ -63,6 +65,77 @@ Deno.test("threePanelAdaptiveRenderCellsDiagnostic formats direction and rounded
         requestedMaxCells: 960,
         frameMs: 81.3,
         targetMs: 55.6,
+      },
+    },
+  );
+});
+
+Deno.test("threePanelGraphicsFallbackReason classifies unavailable image surfaces", () => {
+  assertEquals(
+    threePanelGraphicsFallbackReason({
+      rect: { width: 4, height: 2 },
+      rendererSupportsImage: true,
+    }),
+    "missing-surface",
+  );
+  assertEquals(
+    threePanelGraphicsFallbackReason({
+      inspection: {
+        kind: "kitty",
+        available: false,
+        reason: "tmux passthrough disabled",
+        handles: [],
+        commandCount: 0,
+      },
+      rect: { width: 4, height: 2 },
+      rendererSupportsImage: true,
+    }),
+    "tmux passthrough disabled",
+  );
+  assertEquals(
+    threePanelGraphicsFallbackReason({
+      inspection: { kind: "kitty", available: true, handles: [], commandCount: 0 },
+      rect: { width: 0, height: 2 },
+      rendererSupportsImage: true,
+    }),
+    "empty-graphics-rectangle",
+  );
+  assertEquals(
+    threePanelGraphicsFallbackReason({
+      inspection: { kind: "kitty", available: true, handles: [], commandCount: 0 },
+      rect: { width: 4, height: 2 },
+      rendererSupportsImage: false,
+    }),
+    "renderer-image-frame-unsupported",
+  );
+});
+
+Deno.test("threePanelGraphicsFallbackDiagnostic includes ascii fallback context", () => {
+  assertEquals(
+    threePanelGraphicsFallbackDiagnostic({
+      inspection: {
+        kind: "kitty",
+        available: false,
+        reason: "raster graphics surface is unavailable",
+        handles: [],
+        commandCount: 0,
+      },
+      rect: { width: 8, height: 4 },
+      rendererSupportsImage: true,
+      kittyDisableAscii: true,
+    }),
+    {
+      source: "three-panel",
+      code: "kitty-graphics-fallback",
+      severity: "warning",
+      message: "Kitty graphics requested but unavailable; rendering ASCII fallback.",
+      detail: "raster graphics surface is unavailable",
+      context: {
+        reason: "raster graphics surface is unavailable",
+        surface: "kitty",
+        available: false,
+        asciiFallback: true,
+        kittyDisableAscii: true,
       },
     },
   );

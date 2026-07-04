@@ -1,4 +1,5 @@
 import type { DiagnosticInput } from "../src/runtime/diagnostics.ts";
+import type { GraphicsSurfaceInspection } from "../src/runtime/graphics_surface.ts";
 import type { ThreeAsciiRendererPerformance } from "../src/three_ascii/renderer.ts";
 
 export interface ThreePanelAdaptiveDiagnosticOptions {
@@ -7,6 +8,16 @@ export interface ThreePanelAdaptiveDiagnosticOptions {
   requestedMaxCells: number;
   frameMs: number;
   targetMs: number;
+}
+
+export interface ThreePanelGraphicsFallbackReasonOptions {
+  inspection?: GraphicsSurfaceInspection;
+  rect: Pick<{ width: number; height: number }, "width" | "height">;
+  rendererSupportsImage: boolean;
+}
+
+export interface ThreePanelGraphicsFallbackDiagnosticOptions extends ThreePanelGraphicsFallbackReasonOptions {
+  kittyDisableAscii: boolean;
 }
 
 export function threePanelSlowFrameDiagnostic(performance: ThreeAsciiRendererPerformance): DiagnosticInput {
@@ -39,6 +50,36 @@ export function threePanelAdaptiveRenderCellsDiagnostic(
       requestedMaxCells: options.requestedMaxCells,
       frameMs: roundTenth(options.frameMs),
       targetMs: roundTenth(options.targetMs),
+    },
+  };
+}
+
+export function threePanelGraphicsFallbackReason(options: ThreePanelGraphicsFallbackReasonOptions): string {
+  const inspection = options.inspection;
+  if (!inspection) return "missing-surface";
+  if (!inspection.available) return inspection.reason ?? "surface-unavailable";
+  if (options.rect.width <= 0 || options.rect.height <= 0) return "empty-graphics-rectangle";
+  if (!options.rendererSupportsImage) return "renderer-image-frame-unsupported";
+  return "inactive";
+}
+
+export function threePanelGraphicsFallbackDiagnostic(
+  options: ThreePanelGraphicsFallbackDiagnosticOptions,
+): DiagnosticInput {
+  const reason = threePanelGraphicsFallbackReason(options);
+  const inspection = options.inspection;
+  return {
+    source: "three-panel",
+    code: "kitty-graphics-fallback",
+    severity: "warning",
+    message: "Kitty graphics requested but unavailable; rendering ASCII fallback.",
+    detail: inspection?.reason ?? reason,
+    context: {
+      reason,
+      surface: inspection?.kind ?? "none",
+      available: inspection?.available ?? false,
+      asciiFallback: true,
+      kittyDisableAscii: options.kittyDisableAscii,
     },
   };
 }

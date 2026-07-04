@@ -407,3 +407,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   direct tests, keeping the no-redundant-redraw path easier to benchmark and optimize independently.
 - Extracted ThreePanelFrameView slow-frame and adaptive-render diagnostic payload construction into a focused tested
   helper so renderer telemetry formatting can evolve independently from the render loop.
+- Moved Kitty graphics fallback reason and diagnostic payload construction into the tested Three panel diagnostics
+  helper, leaving the panel render loop to own only fallback state and rate limiting.

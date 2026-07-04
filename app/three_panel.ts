@@ -17,7 +17,12 @@ import { asciiControlValues, asciiEffectOptions } from "./ascii_options.ts";
 import { createNeonThreeScene, type NeonThreeSceneBundle } from "./neon_three.ts";
 import { ThreePanelInteractionController, type ThreePanelInteractionState } from "./three_panel_interaction.ts";
 import { resolveThreePanelLifecycleState, type ThreePanelLifecycleState } from "./three_panel_lifecycle.ts";
-import { threePanelAdaptiveRenderCellsDiagnostic, threePanelSlowFrameDiagnostic } from "./three_panel_diagnostics.ts";
+import {
+  threePanelAdaptiveRenderCellsDiagnostic,
+  threePanelGraphicsFallbackDiagnostic,
+  threePanelGraphicsFallbackReason,
+  threePanelSlowFrameDiagnostic,
+} from "./three_panel_diagnostics.ts";
 import { fingerprintThreePanelGrid, threePanelBlankGrid } from "./three_panel_grid.ts";
 import type { AsciiOptions, Rect, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 
@@ -863,25 +868,20 @@ export class ThreePanelFrameView {
       return;
     }
 
-    const reason = graphicsFallbackReason(inspection, rect, renderer);
+    const rendererSupportsImage = typeof renderer.renderFrame === "function";
+    const reason = threePanelGraphicsFallbackReason({ inspection, rect, rendererSupportsImage });
     const key = `${reason}|${inspection?.reason ?? ""}|${ascii.kittyDisableAscii ? "kitty-only" : "dual"}`;
     if (key === this.lastGraphicsUnavailableKey) return;
     this.lastGraphicsUnavailableKey = key;
 
-    this.options.diagnostics?.report({
-      source: "three-panel",
-      code: "kitty-graphics-fallback",
-      severity: "warning",
-      message: "Kitty graphics requested but unavailable; rendering ASCII fallback.",
-      detail: inspection?.reason ?? reason,
-      context: {
-        reason,
-        surface: inspection?.kind ?? "none",
-        available: inspection?.available ?? false,
-        asciiFallback: true,
+    this.options.diagnostics?.report(
+      threePanelGraphicsFallbackDiagnostic({
+        inspection,
+        rect,
+        rendererSupportsImage,
         kittyDisableAscii: ascii.kittyDisableAscii,
-      },
-    });
+      }),
+    );
   }
 
   private async putGraphicsImage(
@@ -964,16 +964,4 @@ function threeAsciiEffectOptionsEqual(
     left.edges === right.edges &&
     left.fill === right.fill &&
     left.invertLuminance === right.invertLuminance;
-}
-
-function graphicsFallbackReason(
-  inspection: GraphicsSurfaceInspection | undefined,
-  rect: Pick<Rect, "width" | "height">,
-  renderer: ThreePanelGridRenderer,
-): string {
-  if (!inspection) return "missing-surface";
-  if (!inspection.available) return inspection.reason ?? "surface-unavailable";
-  if (rect.width <= 0 || rect.height <= 0) return "empty-graphics-rectangle";
-  if (typeof renderer.renderFrame !== "function") return "renderer-image-frame-unsupported";
-  return "inactive";
 }
