@@ -24,6 +24,7 @@ import {
   ThreePanelRenderQueue,
   threePanelSlowFrameDiagnostic,
   translateHitTargets,
+  workbenchAnsiSpanRowCleanCacheMatches,
   workbenchContentViewport,
   workbenchFrameRenderCommandsInto,
   workbenchStandardTopMenuDropdownOverlayInto,
@@ -97,6 +98,7 @@ Deno.test("workbench facade exposes renderer-neutral helpers", () => {
   assertEquals(typeof workbenchStandardTopMenuDropdownOverlayInto, "function");
   assertEquals(typeof workbenchStatusSnapshotLine, "function");
   assertEquals(typeof WorkbenchTopMenuController, "function");
+  assertEquals(typeof workbenchAnsiSpanRowCleanCacheMatches, "function");
   assertEquals(
     layoutWorkbenchButtonRow([{ label: "OK", action: "ok" }], { column: 0, row: 0, width: 10, height: 1 }, 0)
       .placements[0]?.rect,

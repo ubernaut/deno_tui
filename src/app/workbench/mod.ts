@@ -19,6 +19,7 @@ export * from "../three_panel_render_queue.ts";
 export * from "../workbench_frame.ts";
 export * from "../workbench_frame_render.ts";
 export * from "../workbench_ansi_screen.ts";
+export * from "../workbench_ansi_span_cache.ts";
 export * from "../workbench_help.ts";
 export * from "../workbench_button_style.ts";
 export * from "../workbench_content_size.ts";

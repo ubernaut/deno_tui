@@ -8,17 +8,16 @@ import {
   workbenchFrameRowRenderedHint,
 } from "./workbench_frame.ts";
 import { type ChangedSpan, changedSpansInto, snapshotChangedSpans, snapshotFrameRow } from "./workbench_ansi_spans.ts";
+import {
+  type WorkbenchAnsiScreenSpanRowCache,
+  workbenchAnsiSpanRowCleanCacheMatches,
+  workbenchAnsiSpanRowRenderedHintCacheMatches,
+} from "./workbench_ansi_span_cache.ts";
 
 interface WorkbenchAnsiScreenRowCache {
   width: number;
   fingerprint: string;
   line: string;
-}
-
-interface WorkbenchAnsiScreenSpanRowCache {
-  width: number;
-  fingerprint: string;
-  line?: string;
 }
 
 export type { WorkbenchAnsiScreenFlushStats } from "./workbench_ansi_output.ts";
@@ -134,11 +133,11 @@ export class WorkbenchAnsiScreenPainter {
 
       const fingerprint = cleanWorkbenchFrameRowFingerprint(frameRow, columns);
       const cached = this.#spanRowCache.get(frameRow);
-      if (fingerprint !== undefined && cached?.width === columns && cached.fingerprint === fingerprint) {
+      if (workbenchAnsiSpanRowCleanCacheMatches(cached, columns, fingerprint)) {
         continue;
       }
       const renderedHint = workbenchFrameRowRenderedHint(frameRow, columns);
-      if (renderedHint !== undefined && cached?.width === columns && cached.line === renderedHint) {
+      if (workbenchAnsiSpanRowRenderedHintCacheMatches(cached, columns, renderedHint)) {
         this.markSpanRowRendered(frameRow, columns, renderedHint);
         continue;
       }

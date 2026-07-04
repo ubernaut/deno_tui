@@ -1144,3 +1144,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   ANSI/background-heavy workbench and Three span flush paths while preserving existing row compaction behavior.
 - Added changed/rendered row counts to the workbench Three header pressure telemetry so renderer FPS, terminal byte
   pressure, and row-scope pressure can be distinguished directly in the live workbench.
+- Extracted workbench ANSI span-row cache matching into a small shared helper with direct coverage, making clean-row and
+  rendered-hint skip policy testable outside the retained terminal screen painter.
