@@ -131,7 +131,7 @@ export class WorkbenchAnsiScreenPainter {
         moveCursor(row, start),
         fullRow ? renderRow(frameRow, columns) : renderSlice(frameRow, start, spanWidth),
       );
-      this.#cells[row] = snapshotFrameRow(frameRow, columns, previous);
+      this.#cells[row] = snapshotFrameRow(frameRow, columns, previous, start, end);
       this.#widths[row] = columns;
       this.#rows[row] = "";
       changed += 1;
@@ -159,10 +159,20 @@ export class WorkbenchAnsiScreenPainter {
   }
 }
 
-function snapshotFrameRow(row: readonly string[], width: number, reuse?: string[]): string[] {
+function snapshotFrameRow(
+  row: readonly string[],
+  width: number,
+  reuse?: string[],
+  start = 0,
+  end = width - 1,
+): string[] {
   const snapshot = reuse ?? [];
-  snapshot.length = width;
-  for (let column = 0; column < width; column += 1) {
+  if (snapshot.length !== width) {
+    snapshot.length = width;
+  }
+  const first = Math.max(0, Math.floor(start));
+  const last = Math.min(width - 1, Math.floor(end));
+  for (let column = first; column <= last; column += 1) {
     snapshot[column] = row[column] ?? " ";
   }
   return snapshot;

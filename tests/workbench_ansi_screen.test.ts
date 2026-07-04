@@ -129,3 +129,27 @@ Deno.test("WorkbenchAnsiScreenPainter redraws safely after switching from span t
   assertEquals(stats.changed, 1);
   assertEquals(new TextDecoder().decode(chunks[0]), "\x1b[1;1HabcZefgh");
 });
+
+Deno.test("WorkbenchAnsiScreenPainter keeps retained span snapshots valid across disjoint edits", () => {
+  const chunks: Uint8Array[] = [];
+  const painter = new WorkbenchAnsiScreenPainter({
+    writeSync(data) {
+      chunks.push(data);
+      return data.byteLength;
+    },
+  });
+  const frame: WorkbenchFrame = [[]];
+  writeFrame(frame, 10, 0, 0, "0123456789");
+  painter.flush(frame, 10, 1, renderFrameRow, renderFrameSlice);
+  chunks.length = 0;
+
+  writeFrame(frame, 10, 0, 2, "A");
+  painter.flush(frame, 10, 1, renderFrameRow, renderFrameSlice);
+  assertEquals(new TextDecoder().decode(chunks[0]), "\x1b[1;3HA");
+  chunks.length = 0;
+
+  writeFrame(frame, 10, 0, 7, "B");
+  const stats = painter.flush(frame, 10, 1, renderFrameRow, renderFrameSlice);
+  assertEquals(stats.changed, 1);
+  assertEquals(new TextDecoder().decode(chunks[0]), "\x1b[1;8HB");
+});
