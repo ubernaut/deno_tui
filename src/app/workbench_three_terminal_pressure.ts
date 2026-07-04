@@ -24,6 +24,15 @@ export interface WorkbenchThreeTerminalPressureResult extends WorkbenchThreeTerm
   direction: "down" | "up" | "steady";
 }
 
+/** Inputs used to resolve the live render cadence for a workbench-hosted Three ASCII pane. */
+export interface WorkbenchThreeFrameIntervalOptions {
+  live?: boolean;
+  liveIntervals: ReadonlyMap<number, number>;
+  idleIntervals: ReadonlyMap<number, number>;
+  liveDefaultMs: number;
+  idleDefaultMs: number;
+}
+
 /** Creates pressure counters initialized to the preferred render-cell budget. */
 export function createWorkbenchThreeTerminalPressureState(defaultCells: number): WorkbenchThreeTerminalPressureState {
   return {
@@ -31,6 +40,16 @@ export function createWorkbenchThreeTerminalPressureState(defaultCells: number):
     highFrames: 0,
     lowFrames: 0,
   };
+}
+
+/** Resolves the frame interval for the current terminal-pressure render-cell budget. */
+export function workbenchThreeFrameIntervalForCells(
+  cells: number,
+  options: WorkbenchThreeFrameIntervalOptions,
+): number {
+  const intervals = options.live ? options.liveIntervals : options.idleIntervals;
+  const fallback = options.live ? options.liveDefaultMs : options.idleDefaultMs;
+  return intervals.get(Math.max(1, Math.floor(cells))) ?? Math.max(1, fallback);
 }
 
 /** Resolves the next render-cell budget for workbench Three panes from terminal flush byte pressure. */

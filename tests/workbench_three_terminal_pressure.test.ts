@@ -2,6 +2,7 @@ import { assertEquals } from "./deps.ts";
 import {
   createWorkbenchThreeTerminalPressureState,
   resolveWorkbenchThreeTerminalPressureBudget,
+  workbenchThreeFrameIntervalForCells,
 } from "../src/app/workbench_three_terminal_pressure.ts";
 
 Deno.test("workbench Three terminal pressure steps down across sustained heavy output", () => {
@@ -99,4 +100,26 @@ Deno.test("workbench Three terminal pressure resets counters when no Three grid 
   assertEquals(next.highFrames, 0);
   assertEquals(next.lowFrames, 0);
   assertEquals(next.changed, false);
+});
+
+Deno.test("workbench Three frame interval policy keeps smaller live budgets smoother", () => {
+  const liveIntervals = new Map([
+    [120, 1000 / 18],
+    [240, 1000 / 16],
+    [480, 1000 / 14],
+    [960, 1000 / 10],
+  ]);
+  const idleIntervals = new Map([[120, 1000 / 6]]);
+  const options = {
+    liveIntervals,
+    idleIntervals,
+    liveDefaultMs: 1000 / 12,
+    idleDefaultMs: 1000 / 6,
+  };
+
+  assertEquals(workbenchThreeFrameIntervalForCells(120, { ...options, live: true }), 1000 / 18);
+  assertEquals(workbenchThreeFrameIntervalForCells(480, { ...options, live: true }), 1000 / 14);
+  assertEquals(workbenchThreeFrameIntervalForCells(960, { ...options, live: true }), 1000 / 10);
+  assertEquals(workbenchThreeFrameIntervalForCells(999, { ...options, live: true }), 1000 / 12);
+  assertEquals(workbenchThreeFrameIntervalForCells(240, { ...options, live: false }), 1000 / 6);
 });

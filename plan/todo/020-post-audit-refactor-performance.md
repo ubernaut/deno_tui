@@ -395,3 +395,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   mutating per-widget ASCII configuration.
 - Extracted workbench Three terminal-pressure budgeting into a tested pure helper and expanded it to stepped source-grid
   levels so slow SSH/tmux sessions can continue reducing payload beyond the initial 960-cell default.
+- Shifted terminal Three pressure policy toward smaller source grids at steadier live cadence: pressure now trades
+  detail for smoother motion, with tested frame-interval selection for live and idle workbench Three panes.

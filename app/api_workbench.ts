@@ -281,6 +281,7 @@ import { type RowStyle, threeHeaderRows } from "./workbench_rows.ts";
 import {
   createWorkbenchThreeTerminalPressureState,
   resolveWorkbenchThreeTerminalPressureBudget,
+  workbenchThreeFrameIntervalForCells,
 } from "../src/app/workbench_three_terminal_pressure.ts";
 import type {
   Accent,
@@ -330,15 +331,15 @@ const WORKBENCH_THREE_PRESSURE_LOW_BYTES = 35_000;
 const WORKBENCH_THREE_PRESSURE_HIGH_DURATION_MS = 50;
 const WORKBENCH_THREE_PRESSURE_HIGH_FRAME_THRESHOLD = 1;
 const WORKBENCH_THREE_FRAME_INTERVAL_BY_CELLS = new Map<number, number>([
-  [WORKBENCH_THREE_EMERGENCY_CELLS, 1000 / 14],
-  [240, 1000 / 8],
-  [WORKBENCH_THREE_INITIAL_CELLS, 1000 / 10],
-  [WORKBENCH_THREE_LIVE_MAX_CELLS, 1000 / 14],
+  [WORKBENCH_THREE_EMERGENCY_CELLS, 1000 / 18],
+  [240, 1000 / 16],
+  [WORKBENCH_THREE_INITIAL_CELLS, 1000 / 14],
+  [WORKBENCH_THREE_LIVE_MAX_CELLS, 1000 / 10],
 ]);
 const WORKBENCH_THREE_IDLE_FRAME_INTERVAL_BY_CELLS = new Map<number, number>([
-  [WORKBENCH_THREE_EMERGENCY_CELLS, 1000 / 4],
-  [240, 1000 / 4],
-  [WORKBENCH_THREE_INITIAL_CELLS, 1000 / 5],
+  [WORKBENCH_THREE_EMERGENCY_CELLS, 1000 / 6],
+  [240, 1000 / 6],
+  [WORKBENCH_THREE_INITIAL_CELLS, 1000 / 6],
   [WORKBENCH_THREE_LIVE_MAX_CELLS, 1000 / 6],
 ]);
 
@@ -2921,10 +2922,13 @@ function syncWorkbenchThreeFrameInterval(): void {
 }
 
 function frameIntervalForWorkbenchThreeCells(cells: number, options: { live?: boolean } = {}): number {
-  const intervals = options.live
-    ? WORKBENCH_THREE_FRAME_INTERVAL_BY_CELLS
-    : WORKBENCH_THREE_IDLE_FRAME_INTERVAL_BY_CELLS;
-  return intervals.get(cells) ?? (options.live ? 1000 / 10 : 1000 / 5);
+  return workbenchThreeFrameIntervalForCells(cells, {
+    live: options.live,
+    liveIntervals: WORKBENCH_THREE_FRAME_INTERVAL_BY_CELLS,
+    idleIntervals: WORKBENCH_THREE_IDLE_FRAME_INTERVAL_BY_CELLS,
+    liveDefaultMs: 1000 / 12,
+    idleDefaultMs: 1000 / 6,
+  });
 }
 
 function hasLiveThreeRenderedWindow(): boolean {
