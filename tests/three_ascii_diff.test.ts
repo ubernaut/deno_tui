@@ -55,6 +55,44 @@ Deno.test("three ascii grid diff clips changed cells to the active view", () => 
   assertEquals(rerenderCells[1], undefined);
 });
 
+Deno.test("three ascii grid diff queues fully visible ranges without cell expansion", () => {
+  const previous = createThreeAsciiGridDiffState();
+  const rerenderCells: Array<Set<number> | undefined> = [];
+  const rerenderRanges: Array<Array<{ row: number; startColumn: number; endColumn: number }> | undefined> = [];
+
+  assertEquals(
+    queueChangedThreeAsciiGridCells(
+      [["A", "B", "C"], ["D", "E", "F"]],
+      { column: 2, row: 1, width: 3, height: 2 },
+      { columns: 8, rows: 8 },
+      rerenderCells,
+      previous,
+      undefined,
+      rerenderRanges,
+    ),
+    true,
+  );
+
+  assertEquals(rerenderCells.length, 0);
+  assertEquals(rerenderRanges[1], [{ row: 1, startColumn: 2, endColumn: 5 }]);
+  assertEquals(rerenderRanges[2], [{ row: 2, startColumn: 2, endColumn: 5 }]);
+
+  rerenderRanges.length = 0;
+  assertEquals(
+    queueChangedThreeAsciiGridCells(
+      [["A", "B", "C"], ["D", "Z", "F"]],
+      { column: 2, row: 1, width: 3, height: 2 },
+      { columns: 8, rows: 8 },
+      rerenderCells,
+      previous,
+      undefined,
+      rerenderRanges,
+    ),
+    true,
+  );
+  assertEquals(rerenderRanges[2], [{ row: 2, startColumn: 3, endColumn: 4 }]);
+});
+
 Deno.test("three ascii grid diff keeps sparse row fallback cells stable", () => {
   const previous = createThreeAsciiGridDiffState();
   const rerenderCells: Array<Set<number> | undefined> = [];

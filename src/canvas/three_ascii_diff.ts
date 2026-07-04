@@ -141,16 +141,12 @@ function queueChangedFullyVisibleIntegerCells(options: QueueFullyVisibleIntegerC
         const cell = outputRow[column] as string;
         if (cacheValid && previousCells[index] === cell) {
           if (runStart !== -1) {
-            queueChangedRun(
+            queueFullyVisibleChangedRun(
               rerenderCells,
               rerenderRanges,
               canvasRow,
               rectangleColumn + runStart,
               rectangleColumn + column,
-              {
-                columns: rectangleColumn + columns,
-                rows: canvasRow + 1,
-              },
             );
             runStart = -1;
           }
@@ -161,16 +157,12 @@ function queueChangedFullyVisibleIntegerCells(options: QueueFullyVisibleIntegerC
         changed = true;
       }
       if (runStart !== -1) {
-        queueChangedRun(
+        queueFullyVisibleChangedRun(
           rerenderCells,
           rerenderRanges,
           canvasRow,
           rectangleColumn + runStart,
           rectangleColumn + columns,
-          {
-            columns: rectangleColumn + columns,
-            rows: canvasRow + 1,
-          },
         );
       }
       continue;
@@ -181,16 +173,12 @@ function queueChangedFullyVisibleIntegerCells(options: QueueFullyVisibleIntegerC
       const cell = outputRow?.[column] ?? " ";
       if (cacheValid && previousCells[index] === cell) {
         if (runStart !== -1) {
-          queueChangedRun(
+          queueFullyVisibleChangedRun(
             rerenderCells,
             rerenderRanges,
             canvasRow,
             rectangleColumn + runStart,
             rectangleColumn + column,
-            {
-              columns: rectangleColumn + columns,
-              rows: canvasRow + 1,
-            },
           );
           runStart = -1;
         }
@@ -201,10 +189,13 @@ function queueChangedFullyVisibleIntegerCells(options: QueueFullyVisibleIntegerC
       changed = true;
     }
     if (runStart !== -1) {
-      queueChangedRun(rerenderCells, rerenderRanges, canvasRow, rectangleColumn + runStart, rectangleColumn + columns, {
-        columns: rectangleColumn + columns,
-        rows: canvasRow + 1,
-      });
+      queueFullyVisibleChangedRun(
+        rerenderCells,
+        rerenderRanges,
+        canvasRow,
+        rectangleColumn + runStart,
+        rectangleColumn + columns,
+      );
     }
   }
 
@@ -352,4 +343,22 @@ function queueChangedRun(
     return;
   }
   queueRerenderRangeInto(rerenderCells, row, startColumn, endColumn, canvasSize, viewRectangle);
+}
+
+function queueFullyVisibleChangedRun(
+  rerenderCells: ThreeAsciiDiffQueue,
+  rerenderRanges: ThreeAsciiDiffRangeQueue | undefined,
+  row: number,
+  startColumn: number,
+  endColumn: number,
+): void {
+  if (rerenderRanges) {
+    (rerenderRanges[row] ??= []).push({ row, startColumn, endColumn });
+    return;
+  }
+
+  const queueRow = rerenderCells[row] ??= new Set<number>();
+  for (let column = startColumn; column < endColumn; column += 1) {
+    queueRow.add(column);
+  }
 }

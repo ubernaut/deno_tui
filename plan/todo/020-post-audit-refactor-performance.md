@@ -279,6 +279,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   labels and item counts no longer rebuild a fresh entry list on every draw.
 - Added caller-owned source-frame resolution for monitor visualization contexts and routed real workbench monitor
   windows through it so redraws reuse the frame array while keeping sampled source payloads fresh.
+- Added a direct fully visible range enqueue path for Three ASCII grid diffs, avoiding redundant clipping/allocation in
+  the default object path and reducing the focused frame-diff benchmark to about 1.48ms.
 - Routed the standalone visualization monitor through per-slot source-frame buffers so each panel reuses its source
   array without sharing mutable context across sibling slots.
 - Added caller-owned synthetic workbench source projection and routed non-monitor workbench visualization contexts
