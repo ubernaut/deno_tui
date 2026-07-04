@@ -1,6 +1,6 @@
 import { assertEquals } from "./deps.ts";
 import { asciiEffectOptions, createDefaultAsciiOptions } from "../app/ascii_options.ts";
-import { threePanelAsciiEffectOptionsEqual } from "../app/three_panel_effect.ts";
+import { threePanelAsciiEffectOptionsEqual, threePanelRendererStateMatches } from "../app/three_panel_effect.ts";
 
 Deno.test("threePanelAsciiEffectOptionsEqual rejects missing previous state", () => {
   const next = asciiEffectOptions(createDefaultAsciiOptions("sharp"));
@@ -16,4 +16,34 @@ Deno.test("threePanelAsciiEffectOptionsEqual detects changed renderer effect fie
   const base = createDefaultAsciiOptions("sharp");
   const changed = { ...base, edgeThreshold: base.edgeThreshold + 1 };
   assertEquals(threePanelAsciiEffectOptionsEqual(asciiEffectOptions(base), asciiEffectOptions(changed)), false);
+});
+
+Deno.test("threePanelRendererStateMatches ignores scene signal churn and detects renderer changes", () => {
+  const base = createDefaultAsciiOptions("sharp");
+  const effectOptions = asciiEffectOptions(base);
+  const current = {
+    columns: 40,
+    rows: 12,
+    effectOptions,
+    terminalEdgeBias: base.terminalEdgeBias,
+    terminalGlyphStyle: base.terminalGlyphStyle,
+  };
+
+  assertEquals(threePanelRendererStateMatches(current, { ...current, effectOptions }), true);
+  assertEquals(threePanelRendererStateMatches(current, { ...current, columns: 41, effectOptions }), false);
+  assertEquals(
+    threePanelRendererStateMatches(current, {
+      ...current,
+      effectOptions: asciiEffectOptions({ ...base, edgeThreshold: base.edgeThreshold + 1 }),
+    }),
+    false,
+  );
+  assertEquals(
+    threePanelRendererStateMatches(current, {
+      ...current,
+      terminalGlyphStyle: "glyphs",
+      effectOptions,
+    }),
+    false,
+  );
 });

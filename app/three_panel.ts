@@ -27,7 +27,7 @@ import {
   resolveThreePanelAdaptiveRenderBudget,
   ThreePanelAdaptiveRenderBudgetController,
 } from "./three_panel_adaptive.ts";
-import { threePanelAsciiEffectOptionsEqual } from "./three_panel_effect.ts";
+import { threePanelAsciiEffectOptionsEqual, threePanelRendererStateMatches } from "./three_panel_effect.ts";
 import { fingerprintThreePanelGrid, threePanelBlankGrid } from "./three_panel_grid.ts";
 import {
   resolveThreePanelRenderPolicy,
@@ -368,7 +368,24 @@ export class ThreePanelFrameView {
     if (this.rendering) {
       const renderSize = this.renderSizeFor(rect, ascii);
       const effectOptions = asciiEffectOptions(ascii);
-      if (this.rendererStateMatches(rect, ascii, effectOptions, renderSize)) {
+      if (
+        threePanelRendererStateMatches(
+          {
+            columns: this.appliedColumns,
+            rows: this.appliedRows,
+            effectOptions: this.appliedEffectOptions,
+            terminalEdgeBias: this.appliedTerminalEdgeBias,
+            terminalGlyphStyle: this.appliedTerminalGlyphStyle,
+          },
+          {
+            columns: renderSize.columns,
+            rows: renderSize.rows,
+            effectOptions,
+            terminalEdgeBias: ascii.terminalEdgeBias,
+            terminalGlyphStyle: ascii.terminalGlyphStyle,
+          },
+        )
+      ) {
         return;
       }
       this.invalidateFrame();
@@ -712,19 +729,6 @@ export class ThreePanelFrameView {
       renderer.setTerminalGlyphStyle(ascii.terminalGlyphStyle);
       this.appliedTerminalGlyphStyle = ascii.terminalGlyphStyle;
     }
-  }
-
-  private rendererStateMatches(
-    rect: Pick<Rect, "width" | "height">,
-    ascii: AsciiOptions,
-    effectOptions = asciiEffectOptions(ascii),
-    renderSize = this.renderSizeFor(rect, ascii),
-  ): boolean {
-    return this.appliedColumns === renderSize.columns &&
-      this.appliedRows === renderSize.rows &&
-      threePanelAsciiEffectOptionsEqual(this.appliedEffectOptions, effectOptions) &&
-      this.appliedTerminalEdgeBias === ascii.terminalEdgeBias &&
-      this.appliedTerminalGlyphStyle === ascii.terminalGlyphStyle;
   }
 
   private renderSizeFor(

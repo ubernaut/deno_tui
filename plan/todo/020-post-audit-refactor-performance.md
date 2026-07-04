@@ -538,3 +538,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   probes from silently falling back to default cell budgets during renderer investigations.
 - Fixed ThreePanelFrameView sync handling so signal-only scene updates no longer invalidate in-flight renderer frames,
   and expanded the live panel probe with deferred queue telemetry to distinguish static grids from readback saturation.
+- Extracted ThreePanelFrameView renderer-state matching into the tested Three panel effect helper, keeping signal-churn
+  sync policy reusable and easier to reason about outside the large frame lifecycle class.
