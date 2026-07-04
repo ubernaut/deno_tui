@@ -221,6 +221,9 @@ performance, shared terminal/web workbench projections, and oversized module red
   keeping model rotation/zoom focus behavior tested without starting a TUI session or renderer.
 - Moved API workbench Three rendered-grid pressure sampling into `ApiWorkbenchThreeRuntimeController`, keeping per-draw
   reset/record/update bookkeeping tested outside the main renderer.
+- Lowered the terminal workbench Three startup cap to 240 cells and aligned the live probe default with the workbench's
+  blocking readback path; the pressure probe now starts with roughly 26x8 renderer grids and much smaller per-frame
+  terminal output while preserving recovery to the 960-cell live quality tier.
 - Stabilized default Three ASCII block rendering by using ASCII-safe shared window controls and removing fog from the
   default block preset so truecolor block cells keep source color depth.
 - Extracted the workbench Three ASCII config modal geometry into a tested internal layout helper, reducing inline modal

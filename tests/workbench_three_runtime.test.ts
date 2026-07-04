@@ -9,7 +9,7 @@ Deno.test("ApiWorkbenchThreeRuntimeController owns live cadence signals", () => 
   });
 
   assertEquals(controller.liveMaxCells.peek(), WORKBENCH_THREE_INITIAL_CELLS);
-  assertEquals(controller.frameInterval.peek(), 1000 / 20);
+  assertEquals(controller.frameInterval.peek(), 1000 / 30);
 
   live = false;
   controller.syncFrameInterval();
@@ -52,17 +52,17 @@ Deno.test("ApiWorkbenchThreeRuntimeController applies sustained pressure and log
   const sample = { renderedThreeGrids: 1, renderedThreeRows: 17 };
 
   controller.updatePressure(stats, sample);
-  assertEquals(controller.liveMaxCells.peek(), 960);
+  assertEquals(controller.liveMaxCells.peek(), 240);
   assertEquals(controller.inspectPressure().highFrames, 1);
   controller.updatePressure(stats, sample);
-  assertEquals(controller.liveMaxCells.peek(), 960);
+  assertEquals(controller.liveMaxCells.peek(), 240);
   assertEquals(controller.inspectPressure().highFrames, 2);
   controller.updatePressure(stats, sample);
 
-  assertEquals(controller.liveMaxCells.peek(), 480);
+  assertEquals(controller.liveMaxCells.peek(), 120);
   assertEquals(controller.inspectPressure().highFrames, 0);
   assertEquals(logs.length, 1);
-  assertStringIncludes(logs[0]!, "three pressure down 480 cells");
+  assertStringIncludes(logs[0]!, "three pressure down 120 cells");
 
   controller.dispose();
 });

@@ -2,6 +2,7 @@ import { createDefaultAsciiOptions } from "../app/ascii_options.ts";
 import {
   apiWorkbenchThreeFrameIntervalForCells,
   WORKBENCH_THREE_INITIAL_CELLS,
+  WORKBENCH_THREE_READBACK_STRATEGY,
 } from "../app/workbench_three_policy.ts";
 import { ThreePanelFrameView, type ThreeSceneState } from "../app/three_panel.ts";
 import { Signal } from "../src/signals/mod.ts";
@@ -23,7 +24,7 @@ const glyphs = stringArg(Deno.args, "--glyphs", "blocks") as ReturnType<
 const readbackStrategy = choiceArg(
   Deno.args,
   "--readback",
-  "deferred" as ThreeAsciiReadbackStrategy,
+  WORKBENCH_THREE_READBACK_STRATEGY as ThreeAsciiReadbackStrategy,
   [
     "blocking",
     "deferred",
