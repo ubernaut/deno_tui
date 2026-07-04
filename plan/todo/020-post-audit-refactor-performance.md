@@ -201,6 +201,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   byte-rate diagnostics reflect actual cadence changes after pressure updates.
 - Made high-pressure workbench Three samples downshift immediately, so manually raised 480/960-cell caps do not spend a
   second expensive terminal frame before backing off on slow sessions.
+- Added test coverage that locks Kitty/image-only Three panels to `{ ansi: false, image: true }`, guarding against
+  accidental ANSI readback/grid work when raster graphics is the selected output.
 - Stabilized default Three ASCII block rendering by using ASCII-safe shared window controls and removing fog from the
   default block preset so truecolor block cells keep source color depth.
 - Extracted the workbench Three ASCII config modal geometry into a tested internal layout helper, reducing inline modal

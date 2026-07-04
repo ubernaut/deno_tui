@@ -1052,6 +1052,7 @@ Deno.test("ThreePanelFrameView can use Kitty image frames without drawing ASCII 
   const enabled = new Signal(true);
   const surface = new FakeGraphicsSurface();
   let updates = 0;
+  let renderer: FakeGridRenderer | undefined;
   const panel = new ThreePanelFrameView({
     rectangle,
     graphicsRectangle,
@@ -1063,15 +1064,20 @@ Deno.test("ThreePanelFrameView can use Kitty image frames without drawing ASCII 
     onUpdate: () => {
       updates += 1;
     },
-    rendererFactory: (options) => new FakeGridRenderer(options.columns, options.rows),
+    rendererFactory: (options) => renderer = new FakeGridRenderer(options.columns, options.rows),
   });
 
   try {
     await waitFor(() => surface.puts.length >= 1);
+    assert(renderer);
+    assertEquals(renderer.renderFrameOptions[0], { ansi: false, image: true });
+    assertEquals(renderer.renderCount, 0);
     assertEquals(panel.grid.peek(), Array.from({ length: 4 }, () => Array.from({ length: 8 }, () => " ")));
     const firstGrid = panel.grid.peek();
     const updatesAfterFirstGrid = updates;
     await waitFor(() => surface.puts.length >= 2);
+    assertEquals(renderer.renderFrameOptions.every((options) => options.ansi === false && options.image === true), true);
+    assertEquals(renderer.renderCount, 0);
     assertEquals(panel.grid.peek() === firstGrid, true);
     assertEquals(updates, updatesAfterFirstGrid);
     assertEquals(surface.puts[0]!.image.format, 32);
@@ -1401,6 +1407,7 @@ class FakeGridRenderer implements ThreePanelGridRenderer, ThreeAsciiGridRenderer
   setTerminalEdgeBiasCalls = 0;
   setTerminalGlyphStyleCalls = 0;
   renderCount = 0;
+  renderFrameOptions: ThreeAsciiRenderFrameOptions[] = [];
   sizes: Array<[number, number]> = [];
   private terminalEdgeBias = 1;
   private terminalGlyphStyle: TerminalGlyphStyle = "blocks";
@@ -1460,6 +1467,7 @@ class FakeGridRenderer implements ThreePanelGridRenderer, ThreeAsciiGridRenderer
     onFrame?: (deltaTime: number) => void | Promise<void>,
     options: ThreeAsciiRenderFrameOptions = { ansi: true },
   ) {
+    this.renderFrameOptions.push({ ...options });
     const frame: {
       grid?: string[][];
       image?: { data: Uint8Array; encoding: "bytes"; format: 32; pixelWidth: number; pixelHeight: number };
