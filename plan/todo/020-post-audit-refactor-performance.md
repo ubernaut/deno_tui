@@ -684,3 +684,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   detector allocation-light for default terminal flushes while preserving configured merge/cap behavior.
 - Consolidated canvas dirty row range merging into `mergeDirtyRowSegmentsInPlace`, replacing duplicate canvas, box, and
   text object implementations with one tested helper for future render invalidation tuning.
+- Reused `DirtyRegion` row segment arrays during incremental and batched merges instead of cloning and replacing them,
+  trimming allocation in canvas invalidation while preserving cloned public inspection output.

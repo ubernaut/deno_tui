@@ -61,9 +61,13 @@ export class DirtyRegion {
     const end = Math.floor(Math.max(startColumn, endColumn));
     if (end <= start) return;
 
-    const segments = this.#rows.get(normalizedRow) ?? [];
-    segments.push({ row: normalizedRow, startColumn: start, endColumn: end });
-    this.#rows.set(normalizedRow, mergeRowSegments(segments));
+    const segments = this.#rows.get(normalizedRow);
+    if (segments) {
+      segments.push({ row: normalizedRow, startColumn: start, endColumn: end });
+      mergeDirtyRowSegmentsInPlace(segments);
+    } else {
+      this.#rows.set(normalizedRow, [{ row: normalizedRow, startColumn: start, endColumn: end }]);
+    }
   }
 
   /** Removes all row segments from the dirty region. */
@@ -159,19 +163,10 @@ export class DirtyRegion {
   }
 
   private mergeRows(): void {
-    for (const [row, segments] of this.#rows) {
-      this.#rows.set(row, mergeRowSegments(segments));
+    for (const segments of this.#rows.values()) {
+      mergeDirtyRowSegmentsInPlace(segments);
     }
   }
-}
-
-function mergeRowSegments(segments: readonly DirtyRowSegment[]): DirtyRowSegment[] {
-  const sorted = new Array<DirtyRowSegment>(segments.length);
-  for (let index = 0; index < segments.length; index += 1) {
-    sorted[index] = { ...segments[index]! };
-  }
-  mergeDirtyRowSegmentsInPlace(sorted);
-  return sorted;
 }
 
 /** Sorts and merges overlapping or adjacent row segments in place. */
