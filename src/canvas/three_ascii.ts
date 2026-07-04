@@ -12,6 +12,7 @@ import {
   createThreeAsciiGridDiffState,
   queueChangedThreeAsciiGridCells,
 } from "./three_ascii_diff.ts";
+import { applyThreeAsciiRerenderRanges } from "./three_ascii_ranges.ts";
 import {
   type ThreeAsciiImageFrame,
   ThreeAsciiRenderer,
@@ -160,26 +161,17 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
         const hasOmissions = !!omitColumns?.size;
         const queueRanges = hasOmissions ? undefined : rerenderRanges[row] ??= [];
         const fallbackQueueRow = hasOmissions ? rerenderQueue[row] ??= new Set<number>() : undefined;
-
-        for (const range of ranges) {
-          const start = Math.max(range.startColumn, rectangle.column);
-          const end = Math.min(range.endColumn, columnLimit);
-          if (end <= start) continue;
-
-          if (!hasOmissions) {
-            for (let column = start; column < end; column += 1) {
-              frameRow[column] = outputRow?.[column - rectangle.column] ?? " ";
-            }
-            queueRanges!.push({ row, startColumn: start, endColumn: end });
-            continue;
-          }
-
-          for (let column = start; column < end; column += 1) {
-            if (omitColumns!.has(column)) continue;
-            frameRow[column] = outputRow?.[column - rectangle.column] ?? " ";
-            fallbackQueueRow!.add(column);
-          }
-        }
+        applyThreeAsciiRerenderRanges({
+          frameRow,
+          outputRow,
+          ranges,
+          row,
+          rectangleColumn: rectangle.column,
+          columnLimit,
+          omitColumns,
+          directRanges: queueRanges,
+          fallbackCells: fallbackQueueRow,
+        });
 
         ranges.length = 0;
       }

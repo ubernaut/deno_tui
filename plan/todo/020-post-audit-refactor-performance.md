@@ -639,3 +639,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   automatic recovery to higher tiers when terminal output stays cheap.
 - Added a shared terminal toolbar state normalizer and routed console plus browser shell toolbars through it, keeping
   scrollback/search match state projection out of renderer-specific toolbar loops.
+- Extracted ThreeAsciiObject range application into a focused helper with direct tests, keeping the range-copy hot loop
+  independently covered while preserving frame-diff and rerender-range benchmark guardrails.
