@@ -198,7 +198,7 @@ import {
   layoutWorkbenchAsciiConfigModal,
   type WorkbenchAsciiConfigModalAction,
   workbenchAsciiConfigModalActionRenderCommandsInto,
-  type WorkbenchAsciiConfigRowPlacement,
+  WorkbenchAsciiConfigModalBufferCache,
   workbenchAsciiConfigRowPlacementsInto,
 } from "../../src/app/workbench_ascii_modal.ts";
 import {
@@ -402,10 +402,7 @@ const webTerminalActions: readonly WebTerminalAction[] = [
 const webTerminalButtonItems: WorkbenchButtonRowItem<WebTerminalAction>[] = [];
 const webTerminalButtonPlacements: WorkbenchButtonRowPlacement<WebTerminalAction>[] = [];
 const webTerminalButtonCommands: WorkbenchButtonRowRenderCommand<WebTerminalAction>[] = [];
-const asciiConfigRowPlacements: WorkbenchAsciiConfigRowPlacement<AsciiConfigRow>[] = [];
-const asciiConfigActionButtonItems: WorkbenchButtonRowItem<WorkbenchAsciiConfigModalAction>[] = [];
-const asciiConfigActionButtonPlacements: WorkbenchButtonRowPlacement<WorkbenchAsciiConfigModalAction>[] = [];
-const asciiConfigActionButtonCommands: WorkbenchButtonRowRenderCommand<WorkbenchAsciiConfigModalAction>[] = [];
+const asciiConfigBuffers = new WorkbenchAsciiConfigModalBufferCache<AsciiConfigRow>();
 const mobileCommandButtonItems: WorkbenchButtonRowItem<MobileAction>[] = [];
 const mobileCommandButtonPlacements: WorkbenchButtonRowPlacement<MobileAction>[] = [];
 const mobileCommandButtonCommands: WorkbenchButtonRowRenderCommand<MobileAction>[] = [];
@@ -1943,7 +1940,7 @@ function renderThreeConfigModal(frame: string[]): void {
     ),
   );
 
-  const placements = workbenchAsciiConfigRowPlacementsInto(asciiConfigRowPlacements, asciiConfigRows, {
+  const placements = workbenchAsciiConfigRowPlacementsInto(asciiConfigBuffers.rowPlacements, asciiConfigRows, {
     inner: layout.inner,
     rowsTop: layout.rowsTop,
     visibleRows: layout.visibleRows,
@@ -1969,12 +1966,12 @@ function renderThreeConfigModal(frame: string[]): void {
   }
 
   workbenchAsciiConfigModalActionRenderCommandsInto(
-    asciiConfigActionButtonCommands,
-    asciiConfigActionButtonItems,
-    asciiConfigActionButtonPlacements,
+    asciiConfigBuffers.actionCommands,
+    asciiConfigBuffers.actionItems,
+    asciiConfigBuffers.actionPlacements,
     { inner: layout.inner, actionRow: layout.actionRow },
   );
-  for (const command of asciiConfigActionButtonCommands) {
+  for (const command of asciiConfigBuffers.actionCommands) {
     const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
     write(
       frame,

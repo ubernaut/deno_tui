@@ -111,9 +111,8 @@ import {
   layoutWorkbenchAsciiConfigModal,
   type WorkbenchAsciiConfigModalAction,
   workbenchAsciiConfigModalActionRenderCommandsInto,
-  type WorkbenchAsciiConfigRowPlacement,
+  WorkbenchAsciiConfigModalBufferCache,
   workbenchAsciiConfigRowPlacementsInto,
-  type WorkbenchAsciiConfigRowRenderCommand,
   workbenchAsciiConfigRowRenderCommandsInto,
 } from "../src/app/workbench_ascii_modal.ts";
 import { handleInput } from "../src/input.ts";
@@ -417,9 +416,6 @@ const controlSliderSetHit: ApiWorkbenchControlHitPlacement = {
   action: "set",
 };
 const controlStepperHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
-const asciiConfigActionButtonItems: WorkbenchButtonRowItem<WorkbenchAsciiConfigModalAction>[] = [];
-const asciiConfigActionButtonPlacements: WorkbenchButtonRowPlacement<WorkbenchAsciiConfigModalAction>[] = [];
-const asciiConfigActionButtonCommands: WorkbenchButtonRowRenderCommand<WorkbenchAsciiConfigModalAction>[] = [];
 const modalBuffers = new WorkbenchModalBufferCache<number>();
 const themes: ThemeSpec[] = createApiWorkbenchThemes();
 const themeLabels = themes.map((entry) => entry.label);
@@ -2547,8 +2543,7 @@ function renderModalOverlay(frame: Frame): void {
 type ThreeConfigRow = WorkbenchAsciiConfigRow;
 
 const threeConfigRows: readonly ThreeConfigRow[] = defaultWorkbenchAsciiConfigRows;
-const threeConfigRowPlacements: WorkbenchAsciiConfigRowPlacement<ThreeConfigRow>[] = [];
-const threeConfigRowRenderCommands: WorkbenchAsciiConfigRowRenderCommand<ThreeConfigRow>[] = [];
+const threeConfigBuffers = new WorkbenchAsciiConfigModalBufferCache<ThreeConfigRow>();
 
 function renderThreeConfigModal(frame: Frame): void {
   const t = theme();
@@ -2563,13 +2558,13 @@ function renderThreeConfigModal(frame: Frame): void {
   const current = configuredAscii().peek();
   const title = formatWorkbenchAsciiConfigTitle(windowTitle(configuredAsciiWindow()), current);
   write(frame, inner.row, inner.column, paint(fit(title, inner.width), { fg: t.accent, bg: t.panelSoft, bold: true }));
-  const placements = workbenchAsciiConfigRowPlacementsInto(threeConfigRowPlacements, threeConfigRows, {
+  const placements = workbenchAsciiConfigRowPlacementsInto(threeConfigBuffers.rowPlacements, threeConfigRows, {
     inner,
     rowsTop: layout.rowsTop,
     visibleRows: layout.visibleRows,
     selectedIndex: threeConfigSelected.peek(),
   });
-  const rowCommands = workbenchAsciiConfigRowRenderCommandsInto(threeConfigRowRenderCommands, placements, {
+  const rowCommands = workbenchAsciiConfigRowRenderCommandsInto(threeConfigBuffers.rowRenderCommands, placements, {
     text: threeConfigRowText,
   });
   for (const command of rowCommands) {
@@ -2597,12 +2592,12 @@ function renderThreeConfigModal(frame: Frame): void {
     });
   }
   workbenchAsciiConfigModalActionRenderCommandsInto(
-    asciiConfigActionButtonCommands,
-    asciiConfigActionButtonItems,
-    asciiConfigActionButtonPlacements,
+    threeConfigBuffers.actionCommands,
+    threeConfigBuffers.actionItems,
+    threeConfigBuffers.actionPlacements,
     { inner, actionRow: layout.actionRow },
   );
-  for (const command of asciiConfigActionButtonCommands) {
+  for (const command of threeConfigBuffers.actionCommands) {
     const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
     write(
       frame,

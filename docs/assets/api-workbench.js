@@ -17449,6 +17449,36 @@ var WorkbenchTitlebarBufferCache = class {
 };
 
 // src/app/workbench_ascii_modal.ts
+var WorkbenchAsciiConfigModalBufferCache = class {
+  /** Reusable visible row placement buffer. */
+  rowPlacements = [];
+  /** Reusable row render-command buffer. */
+  rowRenderCommands = [];
+  /** Reusable action button descriptors. */
+  actionItems = [];
+  /** Reusable action button placements. */
+  actionPlacements = [];
+  /** Reusable action button render commands. */
+  actionCommands = [];
+  /** Clears retained buffers without replacing their array identities. */
+  clear() {
+    this.rowPlacements.length = 0;
+    this.rowRenderCommands.length = 0;
+    this.actionItems.length = 0;
+    this.actionPlacements.length = 0;
+    this.actionCommands.length = 0;
+  }
+  /** Reports retained buffer sizes for diagnostics and tests. */
+  inspect() {
+    return {
+      rowPlacements: this.rowPlacements.length,
+      rowRenderCommands: this.rowRenderCommands.length,
+      actionItems: this.actionItems.length,
+      actionPlacements: this.actionPlacements.length,
+      actionCommands: this.actionCommands.length
+    };
+  }
+};
 function layoutWorkbenchAsciiConfigModal(options) {
   const bounds = normalizeRect4(options.bounds);
   const minWidth = Math.max(1, Math.floor(options.minWidth ?? 54));
@@ -17844,10 +17874,7 @@ var webTerminalActions = [
 var webTerminalButtonItems = [];
 var webTerminalButtonPlacements = [];
 var webTerminalButtonCommands = [];
-var asciiConfigRowPlacements = [];
-var asciiConfigActionButtonItems = [];
-var asciiConfigActionButtonPlacements = [];
-var asciiConfigActionButtonCommands = [];
+var asciiConfigBuffers = new WorkbenchAsciiConfigModalBufferCache();
 var mobileCommandButtonItems = [];
 var mobileCommandButtonPlacements = [];
 var mobileCommandButtonCommands = [];
@@ -19271,7 +19298,7 @@ function renderThreeConfigModal(frame) {
       theme().panelSoft
     )
   );
-  const placements = workbenchAsciiConfigRowPlacementsInto(asciiConfigRowPlacements, asciiConfigRows, {
+  const placements = workbenchAsciiConfigRowPlacementsInto(asciiConfigBuffers.rowPlacements, asciiConfigRows, {
     inner: layout.inner,
     rowsTop: layout.rowsTop,
     visibleRows: layout.visibleRows,
@@ -19296,12 +19323,12 @@ function renderThreeConfigModal(frame) {
     hitTargets.add(placement.nextRect, { type: "asciiConfig", index: placement.rowIndex, action: "next" });
   }
   workbenchAsciiConfigModalActionRenderCommandsInto(
-    asciiConfigActionButtonCommands,
-    asciiConfigActionButtonItems,
-    asciiConfigActionButtonPlacements,
+    asciiConfigBuffers.actionCommands,
+    asciiConfigBuffers.actionItems,
+    asciiConfigBuffers.actionPlacements,
     { inner: layout.inner, actionRow: layout.actionRow }
   );
-  for (const command of asciiConfigActionButtonCommands) {
+  for (const command of asciiConfigBuffers.actionCommands) {
     const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
     write(
       frame,

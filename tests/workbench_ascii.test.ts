@@ -21,6 +21,7 @@ import {
   type WorkbenchAsciiConfigModalAction,
   workbenchAsciiConfigModalActionItemsInto,
   workbenchAsciiConfigModalActionRenderCommandsInto,
+  WorkbenchAsciiConfigModalBufferCache,
   workbenchAsciiConfigRowPlacementsInto,
   workbenchAsciiConfigRowRenderCommandsInto,
 } from "../src/app/workbench_ascii_modal.ts";
@@ -351,4 +352,52 @@ Deno.test("workbench ascii config action button commands project reusable render
   assertEquals(reused, commands);
   assertEquals(reused[0], firstCommand);
   assertEquals(reused.map((command) => command.text), ["[ Can…"]);
+});
+
+Deno.test("workbench ascii config modal buffer cache preserves retained arrays", () => {
+  const cache = new WorkbenchAsciiConfigModalBufferCache<(typeof defaultWorkbenchAsciiConfigRows)[number]>();
+  const rowPlacements = cache.rowPlacements;
+  const rowRenderCommands = cache.rowRenderCommands;
+  const actionItems = cache.actionItems;
+  const actionPlacements = cache.actionPlacements;
+  const actionCommands = cache.actionCommands;
+  const layout = layoutWorkbenchAsciiConfigModal({
+    bounds: { column: 0, row: 0, width: 64, height: 18 },
+    rowCount: defaultWorkbenchAsciiConfigRows.length,
+  });
+
+  workbenchAsciiConfigRowPlacementsInto(cache.rowPlacements, defaultWorkbenchAsciiConfigRows, {
+    inner: layout.inner,
+    rowsTop: layout.rowsTop,
+    visibleRows: 2,
+    selectedIndex: 0,
+  });
+  workbenchAsciiConfigRowRenderCommandsInto(cache.rowRenderCommands, cache.rowPlacements, {
+    text: (row) => row.label,
+  });
+  workbenchAsciiConfigModalActionRenderCommandsInto(cache.actionCommands, cache.actionItems, cache.actionPlacements, {
+    inner: layout.inner,
+    actionRow: layout.actionRow,
+  });
+
+  assertEquals(cache.inspect(), {
+    rowPlacements: 2,
+    rowRenderCommands: 4,
+    actionItems: 3,
+    actionPlacements: 3,
+    actionCommands: 3,
+  });
+  cache.clear();
+  assertEquals(cache.inspect(), {
+    rowPlacements: 0,
+    rowRenderCommands: 0,
+    actionItems: 0,
+    actionPlacements: 0,
+    actionCommands: 0,
+  });
+  assert(cache.rowPlacements === rowPlacements);
+  assert(cache.rowRenderCommands === rowRenderCommands);
+  assert(cache.actionItems === actionItems);
+  assert(cache.actionPlacements === actionPlacements);
+  assert(cache.actionCommands === actionCommands);
 });

@@ -56,6 +56,50 @@ export interface WorkbenchAsciiConfigRowRenderCommand<Row> {
 /** Action ids used by Three ASCII config modal buttons. */
 export type WorkbenchAsciiConfigModalAction = "cancel" | "apply" | "ok";
 
+/** Retained buffers used by Three ASCII config modal render adapters. */
+export class WorkbenchAsciiConfigModalBufferCache<Row> {
+  /** Reusable visible row placement buffer. */
+  readonly rowPlacements: WorkbenchAsciiConfigRowPlacement<Row>[] = [];
+
+  /** Reusable row render-command buffer. */
+  readonly rowRenderCommands: WorkbenchAsciiConfigRowRenderCommand<Row>[] = [];
+
+  /** Reusable action button descriptors. */
+  readonly actionItems: WorkbenchButtonRowItem<WorkbenchAsciiConfigModalAction>[] = [];
+
+  /** Reusable action button placements. */
+  readonly actionPlacements: WorkbenchButtonRowPlacement<WorkbenchAsciiConfigModalAction>[] = [];
+
+  /** Reusable action button render commands. */
+  readonly actionCommands: WorkbenchButtonRowRenderCommand<WorkbenchAsciiConfigModalAction>[] = [];
+
+  /** Clears retained buffers without replacing their array identities. */
+  clear(): void {
+    this.rowPlacements.length = 0;
+    this.rowRenderCommands.length = 0;
+    this.actionItems.length = 0;
+    this.actionPlacements.length = 0;
+    this.actionCommands.length = 0;
+  }
+
+  /** Reports retained buffer sizes for diagnostics and tests. */
+  inspect(): {
+    rowPlacements: number;
+    rowRenderCommands: number;
+    actionItems: number;
+    actionPlacements: number;
+    actionCommands: number;
+  } {
+    return {
+      rowPlacements: this.rowPlacements.length,
+      rowRenderCommands: this.rowRenderCommands.length,
+      actionItems: this.actionItems.length,
+      actionPlacements: this.actionPlacements.length,
+      actionCommands: this.actionCommands.length,
+    };
+  }
+}
+
 /** Calculates centered, clipped geometry for the Three ASCII renderer configuration modal. */
 export function layoutWorkbenchAsciiConfigModal(
   options: WorkbenchAsciiConfigModalLayoutOptions,

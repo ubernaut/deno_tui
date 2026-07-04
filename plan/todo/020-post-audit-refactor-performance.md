@@ -287,6 +287,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   hosts, removing duplicate mutable map helpers from both large demo adapters.
 - Extracted retained modal row/action-button buffers into a shared cache used by terminal and browser workbench hosts,
   trimming duplicate overlay buffer plumbing while preserving renderer-local paint and hit registration.
+- Added a retained Three ASCII config modal buffer cache and routed terminal/browser config modals through it so row
+  placements, row commands, and action buttons reuse one tested buffer shape.
 - Routed the standalone visualization monitor through per-slot source-frame buffers so each panel reuses its source
   array without sharing mutable context across sibling slots.
 - Added caller-owned synthetic workbench source projection and routed non-monitor workbench visualization contexts
