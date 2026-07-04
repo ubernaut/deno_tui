@@ -93,6 +93,39 @@ Deno.test("three ascii block mode preserves truecolor backgrounds for low visibl
   assertEquals(grid[0][1].includes("\x1b[38;2;"), false);
 });
 
+Deno.test("three ascii block mode preserves rounded visibility threshold", () => {
+  const grid = buildThreeAsciiAnsiGrid({
+    columns: 4,
+    rows: 1,
+    fillGlyphs: new Float32Array([5.49, 5.5, 5.51, Number.NaN]),
+    colors: new Float32Array([
+      1,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+    ]),
+    terminalGlyphStyle: "blocks",
+    backgroundColor: 0x000000,
+  });
+
+  assertEquals(grid[0][0], "\x1b[48;2;0;0;0m \x1b[0m");
+  assertEquals(grid[0][1], "\x1b[48;2;0;255;0m \x1b[0m");
+  assertEquals(grid[0][2], "\x1b[48;2;0;0;255m \x1b[0m");
+  assertEquals(grid[0][3], "\x1b[48;2;255;255;0m \x1b[0m");
+});
+
 Deno.test("three ascii ANSI grid assembly reuses repeated non-adjacent block cells", () => {
   const grid = buildThreeAsciiAnsiGrid({
     columns: 4,

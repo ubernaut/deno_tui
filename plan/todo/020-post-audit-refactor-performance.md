@@ -488,3 +488,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   common 96x40 block cases on this host.
 - Deferred terminal fill-key and edge-bias setup until glyph/mixed assembly needs it, keeping default block-mode frames
   on the shortest setup path.
+- Replaced block-mode per-cell fill bucket rounding with the equivalent 5.5 visibility threshold, preserving rounded
+  boundary and NaN behavior while trimming work from dense block frame assembly.

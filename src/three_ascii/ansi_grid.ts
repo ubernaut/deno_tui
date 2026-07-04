@@ -20,6 +20,7 @@ const MAX_LINEAR_BYTE_CACHE_SIZE = 65536;
 const MAX_FOREGROUND_ANSI_CACHE_SIZE = 4096;
 const MAX_CELL_CACHE_SIZE = 16384;
 const MIN_VISIBLE_FILL_GLYPH_INDEX = 6;
+const MIN_VISIBLE_BLOCK_FILL_VALUE = MIN_VISIBLE_FILL_GLYPH_INDEX - 0.5;
 const SOLID_BLOCK_GLYPH_KEY = 14;
 
 /** Input buffers for assembling a terminal ANSI grid from three Ascii GPU readback data. */
@@ -264,12 +265,12 @@ export class ThreeAsciiAnsiGridAssembler {
 
       for (let column = 0; column < columns; column += 1) {
         const index = rowOffset + column;
-        const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
-        if (fillGlyphIndex < MIN_VISIBLE_FILL_GLYPH_INDEX) {
+        const fillGlyphValue = fillGlyphs[index] ?? 0;
+        if (fillGlyphValue < MIN_VISIBLE_BLOCK_FILL_VALUE) {
           const blankStart = column;
           column += 1;
           while (
-            column < columns && Math.round(fillGlyphs[rowOffset + column] ?? 0) < MIN_VISIBLE_FILL_GLYPH_INDEX
+            column < columns && (fillGlyphs[rowOffset + column] ?? 0) < MIN_VISIBLE_BLOCK_FILL_VALUE
           ) {
             column += 1;
           }
@@ -341,12 +342,12 @@ export class ThreeAsciiAnsiGridAssembler {
 
       for (let column = 0; column < columns; column += 1) {
         const index = rowOffset + column;
-        const fillGlyphIndex = Math.round(fillGlyphs[index] as number);
-        if (fillGlyphIndex < MIN_VISIBLE_FILL_GLYPH_INDEX) {
+        const fillGlyphValue = fillGlyphs[index] as number;
+        if (fillGlyphValue < MIN_VISIBLE_BLOCK_FILL_VALUE) {
           const blankStart = column;
           column += 1;
           while (
-            column < columns && Math.round(fillGlyphs[rowOffset + column] as number) < MIN_VISIBLE_FILL_GLYPH_INDEX
+            column < columns && (fillGlyphs[rowOffset + column] as number) < MIN_VISIBLE_BLOCK_FILL_VALUE
           ) {
             column += 1;
           }
