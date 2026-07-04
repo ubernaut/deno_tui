@@ -120,16 +120,37 @@ Deno.test("ApiWorkbenchThreeRuntimeController backs off when observed cadence is
   const stats = { changed: 6, bytes: 1_200, durationMs: 0.05 };
   const sample = { renderedThreeGrids: 1, renderedThreeRows: 6 };
 
-  controller.updatePressure(stats, sample, { observedFps: 3, targetFps: 24, observedFrameCount: 6 });
+  controller.updatePressure(stats, sample, { observedFps: 3, targetFps: 24, observedFrameCount: 18 });
 
   assertEquals(controller.liveMaxCells.peek(), 960);
-  controller.updatePressure(stats, sample, { observedFps: 3, targetFps: 24, observedFrameCount: 7 });
+  controller.updatePressure(stats, sample, { observedFps: 3, targetFps: 24, observedFrameCount: 19 });
   assertEquals(controller.liveMaxCells.peek(), 960);
-  controller.updatePressure(stats, sample, { observedFps: 3, targetFps: 24, observedFrameCount: 8 });
+  controller.updatePressure(stats, sample, { observedFps: 3, targetFps: 24, observedFrameCount: 20 });
   assertEquals(controller.liveMaxCells.peek(), 480);
   assertEquals(controller.inspectPressure().highFrames, 0);
   assertEquals(logs.length, 1);
   assertStringIncludes(logs[0]!, "three pressure down 480 cells");
+
+  controller.dispose();
+});
+
+Deno.test("ApiWorkbenchThreeRuntimeController preserves default Three budget during startup ramp", () => {
+  const controller = new ApiWorkbenchThreeRuntimeController({
+    hasLiveThreeWindow: () => true,
+  });
+  const stats = { changed: 18, bytes: 9_500, durationMs: 0.08 };
+  const sample = { renderedThreeGrids: 1, renderedThreeRows: 18 };
+
+  for (let update = 2; update <= 17; update += 1) {
+    controller.updatePressure(stats, sample, {
+      observedFps: Math.min(20, update * 1.2),
+      targetFps: 20,
+      observedFrameCount: update,
+    });
+  }
+
+  assertEquals(controller.liveMaxCells.peek(), WORKBENCH_THREE_INITIAL_CELLS);
+  assertEquals(controller.inspectPressure().highFrames, 0);
 
   controller.dispose();
 });
@@ -143,17 +164,17 @@ Deno.test("ApiWorkbenchThreeRuntimeController derives pressure telemetry from ca
 
   controller.updatePressureFromCadence(
     { changed: 40, bytes: 1_200, durationMs: 0.05 },
-    { measuredFps: 10, updates: 6 },
+    { measuredFps: 10, updates: 18 },
     { renderedThreeGrids: 1, renderedThreeRows: 8 },
   );
   controller.updatePressureFromCadence(
     { changed: 40, bytes: 1_200, durationMs: 0.05 },
-    { measuredFps: 10, updates: 7 },
+    { measuredFps: 10, updates: 19 },
     { renderedThreeGrids: 1, renderedThreeRows: 8 },
   );
   controller.updatePressureFromCadence(
     { changed: 40, bytes: 1_200, durationMs: 0.05 },
-    { measuredFps: 10, updates: 8 },
+    { measuredFps: 10, updates: 20 },
     { renderedThreeGrids: 1, renderedThreeRows: 8 },
   );
 

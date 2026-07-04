@@ -1117,3 +1117,7 @@ performance, shared terminal/web workbench projections, and oversized module red
   overlays, but overlay-heavy redraws no longer shrink the Three render-cell budget; the PTY smoke run held the default
   workbench Three pane at `185c live` around 19-20fps instead of collapsing through tiny rescue grids while the quit
   modal was open.
+- Retuned API Workbench Three terminal-pressure thresholds after serial probes showed deferred block rendering itself
+  holding roughly 20fps at the 960-cell default, while the adaptive policy could still downshift during startup cadence
+  ramp. Healthy 960-cell block output now survives warmup; slow terminal flush duration, sustained heavier byte output,
+  or collapsed cadence after the startup window still back off.

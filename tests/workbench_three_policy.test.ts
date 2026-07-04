@@ -28,9 +28,9 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
     960,
   ]);
   assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 960);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 360_000);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 10_000);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 180_000);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 480_000);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 24_000);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 320_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerGrid, 2_500);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerSecond, 50_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowFpsRatio, WORKBENCH_THREE_PRESSURE_LOW_FPS_RATIO);
@@ -295,7 +295,7 @@ Deno.test("API workbench Three policy downshifts sustained 240-cell terminal byt
   assertEquals(state.highFrames, 0);
 });
 
-Deno.test("API workbench Three policy rejects sustained 960-cell block output pressure", () => {
+Deno.test("API workbench Three policy preserves sustained default 960-cell block output", () => {
   const state = createWorkbenchThreeTerminalPressureState(960);
   const sample = {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
@@ -310,7 +310,7 @@ Deno.test("API workbench Three policy rejects sustained 960-cell block output pr
     Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
   }
 
-  assertEquals(state.currentCells, 480);
+  assertEquals(state.currentCells, 960);
   assertEquals(state.highFrames, 0);
 });
 
