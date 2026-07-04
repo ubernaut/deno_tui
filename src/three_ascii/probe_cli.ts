@@ -29,6 +29,22 @@ export function average(values: readonly number[]): number {
   return values.reduce((total, value) => total + value, 0) / values.length;
 }
 
+export function averageWhere<T>(
+  values: readonly T[],
+  select: (value: T) => number,
+  include: (value: T) => boolean = () => true,
+): number {
+  let total = 0;
+  let count = 0;
+  for (let index = 0; index < values.length; index += 1) {
+    const value = values[index]!;
+    if (!include(value)) continue;
+    total += select(value);
+    count += 1;
+  }
+  return count === 0 ? 0 : total / count;
+}
+
 export function formatMs(value: number | undefined): string {
   return `${(value ?? 0).toFixed(2)}ms`;
 }

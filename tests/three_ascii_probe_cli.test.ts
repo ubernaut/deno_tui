@@ -1,5 +1,5 @@
 import { assertEquals } from "./deps.ts";
-import { average, choiceArg, formatFps, formatMs, numberArg, stringArg } from "../src/three_ascii/probe_cli.ts";
+import { average, averageWhere, choiceArg, formatFps, formatMs, numberArg, stringArg } from "../src/three_ascii/probe_cli.ts";
 
 Deno.test("Three ASCII probe CLI helpers parse typed arguments", () => {
   const args = ["--frames=24", "--mode=studio", "--name=demo"];
@@ -23,6 +23,8 @@ Deno.test("Three ASCII probe CLI helpers parse typed arguments", () => {
 Deno.test("Three ASCII probe CLI helpers format timing summaries", () => {
   assertEquals(average([]), 0);
   assertEquals(average([2, 4, 6]), 4);
+  assertEquals(averageWhere([{ n: 1 }, { n: 5 }, { n: 7 }], (entry) => entry.n, (entry) => entry.n > 1), 6);
+  assertEquals(averageWhere([{ n: 1 }], (entry) => entry.n, (entry) => entry.n > 10), 0);
   assertEquals(formatMs(1.234), "1.23ms");
   assertEquals(formatMs(undefined), "0.00ms");
   assertEquals(formatFps(20), "50.0");

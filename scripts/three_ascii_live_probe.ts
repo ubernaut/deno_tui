@@ -1,7 +1,15 @@
 import { asciiEffectOptions, createDefaultAsciiOptions } from "../app/ascii_options.ts";
 import { createNeonThreeScene } from "../app/neon_three.ts";
 import { type ThreeSceneMode, threeSceneModes, type ThreeSceneSignal } from "../app/types.ts";
-import { average, choiceArg, delay, formatFps, formatMs, numberArg, stringArg } from "../src/three_ascii/probe_cli.ts";
+import {
+  averageWhere,
+  choiceArg,
+  delay,
+  formatFps,
+  formatMs,
+  numberArg,
+  stringArg,
+} from "../src/three_ascii/probe_cli.ts";
 import { ThreeAsciiRenderer } from "../src/three_ascii/renderer.ts";
 import type { ThreeAsciiReadbackStrategy } from "../src/three_ascii/renderer_options.ts";
 
@@ -86,12 +94,12 @@ try {
 }
 
 const warmup = samples[0];
-const steady = samples.slice(1).filter((sample) => sample.rows > 0 && sample.columns > 0);
-const averageTotalMs = average(steady.map((sample) => sample.totalMs));
-const averageInitMs = average(steady.map((sample) => sample.initMs));
-const averageSceneMs = average(steady.map((sample) => sample.sceneMs));
-const averageReadbackMs = average(steady.map((sample) => sample.readbackMs));
-const averageAssemblyMs = average(steady.map((sample) => sample.assemblyMs));
+const isSteadyVisible = (sample: ProbeSample) => sample.index > 0 && sample.rows > 0 && sample.columns > 0;
+const averageTotalMs = averageWhere(samples, (sample) => sample.totalMs, isSteadyVisible);
+const averageInitMs = averageWhere(samples, (sample) => sample.initMs, isSteadyVisible);
+const averageSceneMs = averageWhere(samples, (sample) => sample.sceneMs, isSteadyVisible);
+const averageReadbackMs = averageWhere(samples, (sample) => sample.readbackMs, isSteadyVisible);
+const averageAssemblyMs = averageWhere(samples, (sample) => sample.assemblyMs, isSteadyVisible);
 
 console.log(`three-ascii live probe`);
 console.log(
