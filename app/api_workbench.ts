@@ -251,7 +251,7 @@ import { workbenchExplorerRowsInto } from "./workbench_explorer.ts";
 import { workbenchInspectorRowsInto } from "./workbench_inspector.ts";
 import { workbenchLogRowsFromSourcesInto } from "./workbench_logs.ts";
 import { writeWorkbenchThreeGrid } from "./workbench_three_grid.ts";
-import { setWorkbenchThreeRect, workbenchThreeGraphicsRect } from "./workbench_three_geometry.ts";
+import { setWorkbenchThreeRect, workbenchThreeContentGraphicsRect } from "./workbench_three_geometry.ts";
 import { setWorkbenchThreeSceneSignal, type WorkbenchThreeScene } from "./workbench_three_scene.ts";
 import {
   threeRendererModeLabel,
@@ -3024,8 +3024,7 @@ function withWorkspacePlacement(bounds: Rectangle, offset: number, render: () =>
 }
 
 function contentRectToGraphicsRect(rect: Rectangle): Rectangle {
-  return workbenchThreeGraphicsRect({
-    rect,
+  return workbenchThreeContentGraphicsRect(rect, {
     window: windowRenderContext,
     workspace: workspacePlacementContext,
   });

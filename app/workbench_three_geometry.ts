@@ -23,6 +23,11 @@ export interface WorkbenchThreeGraphicsRectOptions {
   workspace?: WorkbenchPlacementContext | null;
 }
 
+export interface WorkbenchThreeContentGraphicsRectOptions {
+  window?: WorkbenchWindowRenderContext | null;
+  workspace?: WorkbenchPlacementContext | null;
+}
+
 export function setWorkbenchThreeRect(target: WorkbenchThreeRectTarget, rect: Rectangle): boolean {
   const current = target.peek();
   if (
@@ -63,6 +68,17 @@ export function workbenchThreeGraphicsRect(options: WorkbenchThreeGraphicsRectOp
     return hiddenGraphicsRect(visibleOnScreen);
   }
   return screenRect;
+}
+
+export function workbenchThreeContentGraphicsRect(
+  rect: Rectangle,
+  options: WorkbenchThreeContentGraphicsRectOptions = {},
+): Rectangle {
+  return workbenchThreeGraphicsRect({
+    rect,
+    window: options.window,
+    workspace: options.workspace,
+  });
 }
 
 function hiddenGraphicsRect(visible: Rectangle): Rectangle {

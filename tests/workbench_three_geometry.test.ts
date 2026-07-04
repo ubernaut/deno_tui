@@ -1,5 +1,9 @@
 import { assertEquals } from "./deps.ts";
-import { setWorkbenchThreeRect, workbenchThreeGraphicsRect } from "../app/workbench_three_geometry.ts";
+import {
+  setWorkbenchThreeRect,
+  workbenchThreeContentGraphicsRect,
+  workbenchThreeGraphicsRect,
+} from "../app/workbench_three_geometry.ts";
 import type { Rectangle } from "../src/types.ts";
 
 Deno.test("setWorkbenchThreeRect skips unchanged rectangle writes", () => {
@@ -57,6 +61,26 @@ Deno.test("workbenchThreeGraphicsRect hides partially clipped image surfaces", (
       },
     }),
     { column: 5, row: 17, width: 0, height: 0 },
+  );
+});
+
+Deno.test("workbenchThreeContentGraphicsRect preserves content rect semantics", () => {
+  assertEquals(
+    workbenchThreeContentGraphicsRect(
+      { column: 2, row: 3, width: 10, height: 4 },
+      {
+        window: {
+          viewport: { column: 20, row: 8, width: 40, height: 15 },
+          offset: { columns: 1, rows: 2 },
+        },
+        workspace: {
+          columnDelta: 5,
+          rowDelta: 4,
+          clip: { column: 0, row: 0, width: 80, height: 40 },
+        },
+      },
+    ),
+    { column: 26, row: 13, width: 10, height: 4 },
   );
 });
 
