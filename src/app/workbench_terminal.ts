@@ -142,6 +142,18 @@ export interface WorkbenchTerminalOutputToolbarState {
   inputMode?: "raw" | "workbench";
 }
 
+/** Minimal state needed to project the browser/remote terminal protocol header. */
+export interface WorkbenchTerminalProtocolHeaderOptions {
+  activeTitle?: string;
+  columns: number;
+  rows: number;
+  cursorColumn: number;
+  cursorRow: number;
+  sessionCount: number;
+  paneCount: number;
+  title?: string;
+}
+
 /** Options for resolving a Workbench terminal input-mode toggle. */
 export interface WorkbenchTerminalInputModeToggleOptions {
   mode: TerminalInputMode;
@@ -397,6 +409,19 @@ export function workbenchTerminalSearchModalBody(options: WorkbenchTerminalSearc
     matches > 0 ? `Matches ${matches}${active}` : "Matches none yet",
     "Enter searches, Escape cancels, N/Shift+N move between matches in copy mode.",
   ];
+}
+
+/** Projects browser-safe terminal protocol header rows into caller-owned storage. */
+export function workbenchTerminalProtocolHeaderRowsInto(
+  target: string[],
+  options: WorkbenchTerminalProtocolHeaderOptions,
+): string[] {
+  target.length = 2;
+  target[0] = options.title ?? "REMOTE TERMINAL / BROWSER SHELL MODEL";
+  target[1] = `active ${options.activeTitle ?? "none"}  screen ${options.columns}x${options.rows}  cursor ${
+    options.cursorColumn
+  },${options.cursorRow}  sessions ${options.sessionCount}  panes ${options.paneCount}`;
+  return target;
 }
 
 /** Projects terminal session tabs into a single row, returning caller-owned placements for rendering and hit testing. */

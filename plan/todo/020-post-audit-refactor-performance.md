@@ -558,3 +558,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   deferred probe publishes changed rows every frame at roughly 12.7ms renderer time versus roughly 24ms blocking.
 - Extracted deferred readback stale-frame threshold policy into a focused tested helper so renderer lifecycle code
   delegates the force-blocking decision instead of owning another inline state machine.
+- Extracted browser/remote terminal protocol header projection into the shared workbench terminal helper, letting the
+  web API workbench reuse caller-owned header rows instead of rebuilding the strings inline every draw.

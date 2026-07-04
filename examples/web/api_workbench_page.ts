@@ -93,6 +93,7 @@ import {
   workbenchTerminalCopyRowsInto,
   type WorkbenchTerminalPaneProjection,
   workbenchTerminalPaneProjectionsInto,
+  workbenchTerminalProtocolHeaderRowsInto,
   workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
   workbenchTerminalSessionTitleFromId,
@@ -394,6 +395,7 @@ const webTerminalButtonBuffers = new WorkbenchButtonRowBufferCache<WebTerminalAc
 const asciiConfigBuffers = new WorkbenchAsciiConfigModalBufferCache<AsciiConfigRow>();
 const mobileCommandButtonBuffers = new WorkbenchButtonRowBufferCache<MobileAction>();
 const webTerminalSessionTabBuffers = new WorkbenchTerminalSessionTabBufferCache();
+const webTerminalHeaderRows: string[] = [];
 const controlLineSegments: ApiWorkbenchControlLineSegment[] = [];
 const controlLineRenderCommands: ApiWorkbenchControlLineRenderCommand[] = [];
 const controlLineHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
@@ -1154,12 +1156,15 @@ function renderTerminalProtocol(frame: string[], rect: Rectangle): void {
   const workspace = webTerminalWorkspace.inspect();
   const activeScreen = syncWebTerminalScreen(workspace.activeId, screenRect.width, screenRect.height);
   const inspection = activeScreen.inspect();
-  const headerRows = [
-    "REMOTE TERMINAL / BROWSER SHELL MODEL",
-    `active ${
-      workspace.active?.title ?? "none"
-    }  screen ${inspection.columns}x${inspection.rows}  cursor ${inspection.cursor.column},${inspection.cursor.row}  sessions ${workspace.count}  panes ${workspace.layout.count}`,
-  ];
+  const headerRows = workbenchTerminalProtocolHeaderRowsInto(webTerminalHeaderRows, {
+    activeTitle: workspace.active?.title,
+    columns: inspection.columns,
+    rows: inspection.rows,
+    cursorColumn: inspection.cursor.column,
+    cursorRow: inspection.cursor.row,
+    sessionCount: workspace.count,
+    paneCount: workspace.layout.count,
+  });
   const headerRowCount = Math.min(2, rect.height);
   for (let index = 0; index < headerRowCount; index += 1) {
     const line = headerRows[index]!;

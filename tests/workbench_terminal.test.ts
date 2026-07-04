@@ -21,6 +21,7 @@ import {
   type WorkbenchTerminalOutputToolbarAction,
   workbenchTerminalOutputToolbarItemsInto,
   workbenchTerminalPaneProjectionsInto,
+  workbenchTerminalProtocolHeaderRowsInto,
   workbenchTerminalSearchModalBody,
   workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
@@ -92,6 +93,39 @@ Deno.test("workbenchTerminalSearchModalBody projects active match state", () => 
       "Enter searches, Escape cancels, N/Shift+N move between matches in copy mode.",
     ],
   );
+});
+
+Deno.test("workbenchTerminalProtocolHeaderRowsInto projects reusable browser terminal headers", () => {
+  const target = ["stale"];
+  const rows = workbenchTerminalProtocolHeaderRowsInto(target, {
+    activeTitle: "Pages Shell",
+    columns: 80,
+    rows: 24,
+    cursorColumn: 7,
+    cursorRow: 3,
+    sessionCount: 2,
+    paneCount: 4,
+  });
+
+  assertEquals(rows, target);
+  assertEquals(rows, [
+    "REMOTE TERMINAL / BROWSER SHELL MODEL",
+    "active Pages Shell  screen 80x24  cursor 7,3  sessions 2  panes 4",
+  ]);
+
+  workbenchTerminalProtocolHeaderRowsInto(rows, {
+    columns: 100,
+    rows: 30,
+    cursorColumn: 0,
+    cursorRow: 0,
+    sessionCount: 0,
+    paneCount: 1,
+    title: "Terminal",
+  });
+  assertEquals(rows, [
+    "Terminal",
+    "active none  screen 100x30  cursor 0,0  sessions 0  panes 1",
+  ]);
 });
 
 Deno.test("resolveWorkbenchShellBackend prefers an available PTY backend", async () => {
