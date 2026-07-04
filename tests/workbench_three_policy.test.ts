@@ -24,7 +24,7 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
     480,
     960,
   ]);
-  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 60);
+  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 120);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 240_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 96_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 35_000);
@@ -51,11 +51,11 @@ Deno.test("API workbench Three policy keeps live panes faster than idle panes", 
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: false }), 1000 / 5);
 });
 
-Deno.test("API workbench Three policy starts above rescue but keeps rescue available", () => {
-  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 60);
+Deno.test("API workbench Three policy starts at the normal live tier but keeps rescue available", () => {
+  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 120);
   assertEquals(
     apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
-    WORKBENCH_THREE_EMERGENCY_DRAW_INTERVAL_MS,
+    WORKBENCH_THREE_DRAW_INTERVAL_MS,
   );
   assertEquals(
     apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_RESCUE_CELLS, { live: true }),
@@ -66,13 +66,13 @@ Deno.test("API workbench Three policy starts above rescue but keeps rescue avail
 });
 
 Deno.test("API workbench Three policy recovers startup tier after sustained quiet output", () => {
-  const state = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_INITIAL_CELLS);
+  const state = createWorkbenchThreeTerminalPressureState(60);
   const sample = {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
     renderedThreeGrids: 1,
     bytes: 300,
     durationMs: 0.05,
-    sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
+    sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(60, { live: true }),
   };
 
   const frames = API_WORKBENCH_THREE_PRESSURE_POLICY.lowFrameThreshold ?? 1;

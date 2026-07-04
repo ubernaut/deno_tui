@@ -1,3 +1,5 @@
+import type { ThreeAsciiRendererPerformance } from "../src/three_ascii/renderer.ts";
+
 export interface ThreeHeaderPerformance {
   totalMs: number;
   initMs?: number;
@@ -17,6 +19,44 @@ export interface ThreeHeaderPerformance {
   pressureLowFrames?: number;
   pressureByteRate?: number;
   pressureScoped?: boolean;
+}
+
+export interface ThreeHeaderWorkbenchTelemetry {
+  sourceMaxCells?: number;
+  targetFps?: number;
+  measuredFps?: number;
+  pressureCells?: number;
+  pressureHighFrames?: number;
+  pressureLowFrames?: number;
+  pressureByteRate?: number;
+  pressureScoped?: boolean;
+}
+
+/** Copies renderer and workbench telemetry into a caller-owned header snapshot. */
+export function writeThreeHeaderPerformance(
+  target: ThreeHeaderPerformance,
+  renderer: ThreeAsciiRendererPerformance,
+  telemetry: ThreeHeaderWorkbenchTelemetry = {},
+): ThreeHeaderPerformance {
+  target.totalMs = renderer.totalMs;
+  target.initMs = renderer.initMs;
+  target.sceneMs = renderer.sceneMs;
+  target.readbackMs = renderer.readbackMs;
+  target.assemblyMs = renderer.assemblyMs;
+  target.cells = renderer.cells;
+  target.deferredReadbackSlots = renderer.deferredReadbackSlots;
+  target.deferredReadbackPending = renderer.deferredReadbackPending;
+  target.deferredReadbackUnresolved = renderer.deferredReadbackUnresolved;
+  target.deferredReadbackSaturated = renderer.deferredReadbackSaturated;
+  target.sourceMaxCells = telemetry.sourceMaxCells;
+  target.targetFps = telemetry.targetFps;
+  target.measuredFps = telemetry.measuredFps;
+  target.pressureCells = telemetry.pressureCells;
+  target.pressureHighFrames = telemetry.pressureHighFrames;
+  target.pressureLowFrames = telemetry.pressureLowFrames;
+  target.pressureByteRate = telemetry.pressureByteRate;
+  target.pressureScoped = telemetry.pressureScoped;
+  return target;
 }
 
 /** Builds the responsive performance segment shown in the workbench Three header. */

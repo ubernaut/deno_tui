@@ -3,10 +3,7 @@ import {
   ApiWorkbenchThreeRuntimeController,
   resolveApiWorkbenchThreePressureChange,
 } from "../app/workbench_three_runtime.ts";
-import {
-  WORKBENCH_THREE_EMERGENCY_DRAW_INTERVAL_MS,
-  WORKBENCH_THREE_INITIAL_CELLS,
-} from "../app/workbench_three_policy.ts";
+import { WORKBENCH_THREE_DRAW_INTERVAL_MS, WORKBENCH_THREE_INITIAL_CELLS } from "../app/workbench_three_policy.ts";
 
 Deno.test("ApiWorkbenchThreeRuntimeController owns live cadence signals", () => {
   let live = true;
@@ -15,7 +12,7 @@ Deno.test("ApiWorkbenchThreeRuntimeController owns live cadence signals", () => 
   });
 
   assertEquals(controller.liveMaxCells.peek(), WORKBENCH_THREE_INITIAL_CELLS);
-  assertEquals(controller.frameInterval.peek(), WORKBENCH_THREE_EMERGENCY_DRAW_INTERVAL_MS);
+  assertEquals(controller.frameInterval.peek(), WORKBENCH_THREE_DRAW_INTERVAL_MS);
 
   live = false;
   controller.syncFrameInterval();
@@ -140,11 +137,11 @@ Deno.test("ApiWorkbenchThreeRuntimeController exposes last pressure diagnostics"
   );
 
   assertEquals(controller.inspectPressureDetails(), {
-    currentCells: 30,
+    currentCells: 60,
     highFrames: 0,
     lowFrames: 0,
     lastBytes: 2_000,
-    lastByteRate: 40_000,
+    lastByteRate: 60_000,
     lastChangedRows: 4,
     lastRenderedGrids: 1,
     lastRenderedRows: 4,
@@ -169,11 +166,11 @@ Deno.test("ApiWorkbenchThreeRuntimeController can reuse pressure inspection targ
 
   assertStrictEquals(result, target);
   assertEquals(target, {
-    currentCells: 30,
+    currentCells: 60,
     highFrames: 0,
     lowFrames: 0,
     lastBytes: 2_000,
-    lastByteRate: 40_000,
+    lastByteRate: 60_000,
     lastChangedRows: 4,
     lastRenderedGrids: 1,
     lastRenderedRows: 4,

@@ -316,7 +316,8 @@ import {
   workbenchQuitModalContent,
 } from "./workbench_modal_content.ts";
 import { formatWorkbenchKittyGraphicsStatus, WorkbenchKittyGraphicsController } from "./workbench_kitty_graphics.ts";
-import { type RowStyle, threeHeaderRows } from "./workbench_rows.ts";
+import { type RowStyle, type ThreeHeaderPerformance, threeHeaderRows } from "./workbench_rows.ts";
+import { writeThreeHeaderPerformance } from "./workbench_three_header.ts";
 import {
   shouldCountWorkbenchThreeGridPressure,
   workbenchThreeShouldUseLiveCadence,
@@ -331,8 +332,8 @@ import {
 import { type WorkbenchThreePanelEntry, WorkbenchThreePanelRegistry } from "./workbench_three_panel_registry.ts";
 import { WorkbenchThreeViewportInteractionController } from "./workbench_three_interaction.ts";
 import {
-  ApiWorkbenchThreeRuntimeController,
   type ApiWorkbenchThreePressureInspection,
+  ApiWorkbenchThreeRuntimeController,
 } from "./workbench_three_runtime.ts";
 import type {
   Accent,
@@ -650,7 +651,16 @@ const workbenchThreeRuntime = new ApiWorkbenchThreeRuntimeController({
 });
 const workbenchThreeLiveMaxCells = workbenchThreeRuntime.liveMaxCells;
 const workbenchThreeFrameInterval = workbenchThreeRuntime.frameInterval;
-const workbenchThreePressureDetails: ApiWorkbenchThreePressureInspection = workbenchThreeRuntime.inspectPressureDetails();
+const workbenchThreePressureDetails: ApiWorkbenchThreePressureInspection = workbenchThreeRuntime
+  .inspectPressureDetails();
+const workbenchThreeHeaderPerformance: ThreeHeaderPerformance = {
+  totalMs: 0,
+  initMs: 0,
+  sceneMs: 0,
+  readbackMs: 0,
+  assemblyMs: 0,
+  cells: 0,
+};
 let dropdownOverlay: DropdownOverlay | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
 let workspacePlacementContext: WorkspacePlacementContext | null = null;
@@ -1415,8 +1425,7 @@ function renderThree(frame: Frame, rect: Rectangle): void {
         rect.width,
         t,
         performance
-          ? {
-            ...performance,
+          ? writeThreeHeaderPerformance(workbenchThreeHeaderPerformance, performance, {
             sourceMaxCells: workbenchThreeLiveMaxCells.peek(),
             targetFps: 1000 / workbenchThreeFrameInterval.peek(),
             measuredFps: threeCadence.measuredFps(),
@@ -1425,7 +1434,7 @@ function renderThree(frame: Frame, rect: Rectangle): void {
             pressureLowFrames: pressure.lowFrames,
             pressureByteRate: pressure.lastByteRate,
             pressureScoped: pressure.lastScoped,
-          }
+          })
           : undefined,
       ),
     );
