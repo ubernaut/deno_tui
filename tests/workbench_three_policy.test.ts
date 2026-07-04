@@ -17,8 +17,8 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
   ]);
   assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 960);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 240_000);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 24_000);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerGrid, 9_000);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 96_000);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerGrid, 18_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highFrameThreshold, 1);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowFrameThreshold, 90);
 });

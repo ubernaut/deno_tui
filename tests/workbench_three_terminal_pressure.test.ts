@@ -103,6 +103,26 @@ Deno.test("workbench Three terminal pressure can step down from per-grid byte pr
   assertEquals(next.direction, "down");
 });
 
+Deno.test("workbench Three terminal pressure permits larger block frames under tuned per-grid budget", () => {
+  const state = createWorkbenchThreeTerminalPressureState(1_920);
+  const next = resolveWorkbenchThreeTerminalPressureBudget(state, {
+    renderedThreeGrids: 1,
+    bytes: 72_000,
+    levels: [120, 240, 480, 960, 1_920, 3_840],
+    highBytes: 240_000,
+    lowBytes: 35_000,
+    highBytesPerGrid: 96_000,
+    lowBytesPerGrid: 18_000,
+    highDurationMs: 50,
+    durationMs: 18,
+    highFrameThreshold: 1,
+    lowFrameThreshold: 90,
+  });
+
+  assertEquals(next.currentCells, 1_920);
+  assertEquals(next.direction, "steady");
+});
+
 Deno.test("workbench Three terminal pressure only recovers when total and per-grid output are low", () => {
   const state = createWorkbenchThreeTerminalPressureState(240);
   const base = {
