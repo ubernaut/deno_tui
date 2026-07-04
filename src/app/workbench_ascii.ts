@@ -52,6 +52,19 @@ export interface WorkbenchAsciiConfigActionResult {
   message: string;
 }
 
+/** Minimal key event shape for Three ASCII config modal navigation. */
+export interface WorkbenchAsciiConfigKeyEvent {
+  key: string;
+  shift?: boolean;
+}
+
+/** Renderer-neutral action resolved from a Three ASCII config modal key press. */
+export type WorkbenchAsciiConfigKeyResolution =
+  | { kind: "modal"; action: "cancel" | "apply" | "ok" }
+  | { kind: "selection"; delta: number }
+  | { kind: "row"; action: WorkbenchAsciiConfigAction }
+  | { kind: "none" };
+
 /** Default row set for workbench Three ASCII configuration modals. */
 export const defaultWorkbenchAsciiConfigRows: readonly WorkbenchAsciiConfigRow[] = [
   { kind: "preset", label: "Preset" },
@@ -171,6 +184,36 @@ export function moveWorkbenchAsciiConfigSelection(current: number, rowCount: num
   const count = Math.max(0, Math.floor(rowCount));
   if (count === 0) return 0;
   return (Math.floor(current) + Math.floor(delta) + count) % count;
+}
+
+/** Resolves a keyboard event into a Three ASCII config modal action. */
+export function resolveWorkbenchAsciiConfigKey(
+  event: WorkbenchAsciiConfigKeyEvent,
+): WorkbenchAsciiConfigKeyResolution {
+  switch (event.key) {
+    case "escape":
+    case "q":
+      return { kind: "modal", action: "cancel" };
+    case "a":
+    case "A":
+      return { kind: "modal", action: "apply" };
+    case "o":
+    case "O":
+      return { kind: "modal", action: "ok" };
+    case "up":
+      return { kind: "selection", delta: -1 };
+    case "down":
+    case "tab":
+      return { kind: "selection", delta: event.shift ? -1 : 1 };
+    case "left":
+      return { kind: "row", action: "previous" };
+    case "right":
+    case "return":
+    case "space":
+      return { kind: "row", action: "next" };
+    default:
+      return { kind: "none" };
+  }
 }
 
 /** Returns the first row index that keeps the selected row visible in a clipped config modal. */

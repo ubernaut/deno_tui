@@ -530,3 +530,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   API workbench no longer owns that renderer-neutral disclosure bookkeeping inline.
 - Extracted Kitty graphics modal status formatting into the workbench Kitty controller module with focused coverage,
   leaving the API workbench to supply only current selection and surface inspection.
+- Extracted Three ASCII config modal key resolution into the shared ASCII config helper so the API workbench owns only
+  state mutation and side effects.

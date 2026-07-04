@@ -8,6 +8,7 @@ import {
   formatWorkbenchAsciiConfigRowText,
   formatWorkbenchAsciiConfigTitle,
   moveWorkbenchAsciiConfigSelection,
+  resolveWorkbenchAsciiConfigKey,
   stepWorkbenchAsciiGlyphStyle,
   stepWorkbenchAsciiNumericOption,
   stepWorkbenchAsciiPreset,
@@ -144,6 +145,20 @@ Deno.test("workbench ascii config selection helpers wrap and keep selected row v
   assertEquals(workbenchAsciiConfigVisibleRowStart(17, 18, 4), 14);
   assertEquals(workbenchAsciiConfigVisibleRowStart(99, 18, 4), 14);
   assertEquals(workbenchAsciiConfigVisibleRowStart(3, 18, 0), 0);
+});
+
+Deno.test("workbench ascii config key resolver maps keyboard controls", () => {
+  assertEquals(resolveWorkbenchAsciiConfigKey({ key: "escape" }), { kind: "modal", action: "cancel" });
+  assertEquals(resolveWorkbenchAsciiConfigKey({ key: "q" }), { kind: "modal", action: "cancel" });
+  assertEquals(resolveWorkbenchAsciiConfigKey({ key: "A" }), { kind: "modal", action: "apply" });
+  assertEquals(resolveWorkbenchAsciiConfigKey({ key: "o" }), { kind: "modal", action: "ok" });
+  assertEquals(resolveWorkbenchAsciiConfigKey({ key: "up" }), { kind: "selection", delta: -1 });
+  assertEquals(resolveWorkbenchAsciiConfigKey({ key: "down" }), { kind: "selection", delta: 1 });
+  assertEquals(resolveWorkbenchAsciiConfigKey({ key: "tab", shift: true }), { kind: "selection", delta: -1 });
+  assertEquals(resolveWorkbenchAsciiConfigKey({ key: "left" }), { kind: "row", action: "previous" });
+  assertEquals(resolveWorkbenchAsciiConfigKey({ key: "right" }), { kind: "row", action: "next" });
+  assertEquals(resolveWorkbenchAsciiConfigKey({ key: "return" }), { kind: "row", action: "next" });
+  assertEquals(resolveWorkbenchAsciiConfigKey({ key: "x" }), { kind: "none" });
 });
 
 Deno.test("workbench ascii helpers report ratios closest values and renderer modes", () => {

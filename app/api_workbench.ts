@@ -103,6 +103,7 @@ import {
   formatWorkbenchAsciiConfigRowText,
   formatWorkbenchAsciiConfigTitle,
   moveWorkbenchAsciiConfigSelection,
+  resolveWorkbenchAsciiConfigKey,
   WorkbenchAsciiConfigController,
   type WorkbenchAsciiConfigRow,
 } from "../src/app/workbench_ascii.ts";
@@ -4172,41 +4173,23 @@ function restoreNextMinimizedWindow(): void {
 }
 
 function handleThreeConfigKey(event: { key: string; shift?: boolean }): void {
-  if (event.key === "escape" || event.key === "q") {
-    applyThreeConfigModalAction("cancel");
-    return;
-  }
-  if (event.key === "a" || event.key === "A") {
-    applyThreeConfigModalAction("apply");
-    return;
-  }
-  if (event.key === "o" || event.key === "O") {
-    applyThreeConfigModalAction("ok");
-    return;
-  }
-  if (event.key === "up") {
-    threeConfigSelected.value = moveWorkbenchAsciiConfigSelection(
-      threeConfigSelected.peek(),
-      threeConfigRows.length,
-      -1,
-    );
-    return;
-  }
-  if (event.key === "down" || event.key === "tab") {
-    const delta = event.shift ? -1 : 1;
-    threeConfigSelected.value = moveWorkbenchAsciiConfigSelection(
-      threeConfigSelected.peek(),
-      threeConfigRows.length,
-      delta,
-    );
-    return;
-  }
-  if (event.key === "left") {
-    applyThreeConfigRow(threeConfigSelected.peek(), "previous");
-    return;
-  }
-  if (event.key === "right" || event.key === "return" || event.key === "space") {
-    applyThreeConfigRow(threeConfigSelected.peek(), "next");
+  const action = resolveWorkbenchAsciiConfigKey(event);
+  switch (action.kind) {
+    case "modal":
+      applyThreeConfigModalAction(action.action);
+      return;
+    case "selection":
+      threeConfigSelected.value = moveWorkbenchAsciiConfigSelection(
+        threeConfigSelected.peek(),
+        threeConfigRows.length,
+        action.delta,
+      );
+      return;
+    case "row":
+      applyThreeConfigRow(threeConfigSelected.peek(), action.action);
+      return;
+    case "none":
+      return;
   }
 }
 
