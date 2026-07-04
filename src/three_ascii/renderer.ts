@@ -306,6 +306,7 @@ export interface ThreeAsciiRenderFrameOptions {
 /** Combined render output from one three Ascii renderer pass. */
 export interface ThreeAsciiRenderFrame {
   grid?: string[][];
+  gridRevision?: number;
   image?: ThreeAsciiImageFrame;
 }
 
@@ -395,6 +396,7 @@ export class ThreeAsciiRenderer {
   private lastPerformance?: ThreeAsciiRendererPerformance;
   private lastReadbackMs = 0;
   private lastAssemblyMs = 0;
+  private gridRevision = 0;
 
   constructor(options: ThreeAsciiRendererOptions) {
     this.scene = options.scene;
@@ -521,7 +523,7 @@ export class ThreeAsciiRenderer {
           deferredReadbackResolved: queue.resolved,
           deferredReadbackSaturated: true,
         };
-        return { grid: this.deferredReadbacks.lastCompletedGrid() };
+        return { grid: this.deferredReadbacks.lastCompletedGrid(), gridRevision: this.gridRevision };
       }
     }
 
@@ -541,6 +543,7 @@ export class ThreeAsciiRenderer {
 
     if (renderAnsi) {
       frame.grid = await this.computeAnsiGrid(deferredAnsiGrid);
+      frame.gridRevision = this.gridRevision;
     }
     const frameEnd = performance.now();
     const queue = this.readbackStrategy === "deferred" ? this.deferredReadbacks.inspect() : undefined;
@@ -990,6 +993,7 @@ export class ThreeAsciiRenderer {
       terminalEdgeBias: pending.terminalEdgeBias,
       backgroundColor: pending.backgroundColor,
     });
+    this.gridRevision += 1;
     this.lastAssemblyMs = performance.now() - assemblyStart;
     return grid;
   }
@@ -1041,6 +1045,7 @@ export class ThreeAsciiRenderer {
         terminalEdgeBias: this.terminalEdgeBias,
         backgroundColor,
       });
+      this.gridRevision += 1;
       this.lastAssemblyMs = performance.now() - assemblyStart;
       return grid;
     } finally {

@@ -348,6 +348,7 @@ export class ThreePanelFrameView {
   private adaptiveSlowFrames = 0;
   private adaptiveFastFrames = 0;
   private gridFingerprint = "";
+  private gridRevision?: number;
 
   constructor(
     private readonly options: {
@@ -540,7 +541,7 @@ export class ThreePanelFrameView {
         bundle.tick(performance.now(), latest.signal);
         this.interaction.apply(this.bundle);
       };
-      const frame = policy.kittyActive && renderer.renderFrame
+      const frame = renderer.renderFrame
         ? await renderer.renderFrame(deltaTime, onFrame, policy.frameOptions)
         : { grid: await renderer.renderToAnsiGrid(deltaTime, onFrame) };
 
@@ -563,6 +564,7 @@ export class ThreePanelFrameView {
       this.setGrid(
         policy.renderAscii ? frame.grid ?? [] : this.blankGridFor(renderSize.columns, renderSize.rows),
         policy.renderAscii,
+        policy.renderAscii ? frame.gridRevision : undefined,
       );
       this.updateAdaptiveRenderBudget(renderer, ascii);
       this.reportSlowFrame(renderer);
@@ -686,8 +688,17 @@ export class ThreePanelFrameView {
     this.syncScheduler.schedule(this.syncCallback);
   }
 
-  private setGrid(grid: string[][], forceUpdate = false): void {
+  private setGrid(grid: string[][], forceUpdate = false, revision?: number): void {
     if (this.disposed) return;
+    if (revision !== undefined) {
+      if (this.gridRevision === revision && this.grid.peek() === grid) return;
+      this.gridRevision = revision;
+      this.gridFingerprint = "";
+      this.grid.jink(grid);
+      this.onUpdate?.();
+      return;
+    }
+    this.gridRevision = undefined;
     if (!forceUpdate && this.grid.peek() === grid) return;
     const fingerprint = fingerprintGrid(grid);
     if (this.gridFingerprint === fingerprint) return;
