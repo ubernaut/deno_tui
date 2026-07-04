@@ -409,3 +409,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   helper so renderer telemetry formatting can evolve independently from the render loop.
 - Moved Kitty graphics fallback reason and diagnostic payload construction into the tested Three panel diagnostics
   helper, leaving the panel render loop to own only fallback state and rate limiting.
+- Restored the API workbench startup Three pane to a 960-cell live block-render budget, made it the initially focused
+  window, and prevented terminal-pressure downshifts from warm-up placeholder frames.

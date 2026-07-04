@@ -318,7 +318,7 @@ const TERMINAL_OUTPUT_WINDOW_ID = "terminalOutput";
 const TERMINAL_OUTPUT_OPTION_ID = "terminal-output";
 const TERMINAL_SHELL_WINDOW_ID = "terminalShell";
 const TERMINAL_SHELL_OPTION_ID = "terminal-shell";
-const WORKBENCH_THREE_INITIAL_CELLS = 480;
+const WORKBENCH_THREE_INITIAL_CELLS = 960;
 const WORKBENCH_THREE_LIVE_MAX_CELLS = 960;
 const WORKBENCH_THREE_EMERGENCY_CELLS = 120;
 const WORKBENCH_THREE_PRESSURE_LEVELS = [
@@ -330,12 +330,12 @@ const WORKBENCH_THREE_PRESSURE_LEVELS = [
 const WORKBENCH_THREE_PRESSURE_HIGH_BYTES = 80_000;
 const WORKBENCH_THREE_PRESSURE_LOW_BYTES = 35_000;
 const WORKBENCH_THREE_PRESSURE_HIGH_DURATION_MS = 50;
-const WORKBENCH_THREE_PRESSURE_HIGH_FRAME_THRESHOLD = 1;
+const WORKBENCH_THREE_PRESSURE_HIGH_FRAME_THRESHOLD = 2;
 const WORKBENCH_THREE_FRAME_INTERVAL_BY_CELLS = new Map<number, number>([
   [WORKBENCH_THREE_EMERGENCY_CELLS, 1000 / 18],
   [240, 1000 / 16],
   [WORKBENCH_THREE_INITIAL_CELLS, 1000 / 14],
-  [WORKBENCH_THREE_LIVE_MAX_CELLS, 1000 / 10],
+  [WORKBENCH_THREE_LIVE_MAX_CELLS, 1000 / 12],
 ]);
 const WORKBENCH_THREE_IDLE_FRAME_INTERVAL_BY_CELLS = new Map<number, number>([
   [WORKBENCH_THREE_EMERGENCY_CELLS, 1000 / 6],
@@ -598,7 +598,7 @@ const terminalShellSearchDraft = new Signal("");
 const terminalShellSearchPromptOpen = new Signal(false);
 const menuFocused = new Signal(false);
 const workbenchController = new WorkbenchController<"theme" | "newWindow" | "workspace">({
-  activeId: "inspector",
+  activeId: "three",
   menu: { onChange: syncTopMenuState },
   windows: [
     { id: "explorer", title: apiWorkbenchPanelTitle("explorer"), minWidth: 26, minHeight: 12 },
@@ -624,7 +624,7 @@ const threeConfigOpen = new Signal(false);
 const threeConfigSelected = new Signal(0);
 const threeConfigWindow = new Signal<WindowId>("three");
 const threeConfigBaseline = new Signal<AsciiOptions | null>(null);
-const activeWindow = new Signal<WindowId>("inspector");
+const activeWindow = new Signal<WindowId>("three");
 const activeControl = new Signal<ControlId>("button");
 const maximized = new Signal<WindowId | null>(null);
 const minimized = new Signal<Record<string, boolean>>({
@@ -1505,7 +1505,6 @@ function renderThree(frame: Frame, rect: Rectangle): void {
 
 function renderThreeGrid(frame: Frame, rect: Rectangle, grid: string[][], t: ThemeSpec): void {
   if (rect.width <= 0 || rect.height <= 0) return;
-  renderedThreeGridCount += 1;
 
   if (grid.length === 0) {
     const message = threeAsciiAvailable.peek() ? "renderer warming up" : "renderer unavailable";
@@ -1518,6 +1517,7 @@ function renderThreeGrid(frame: Frame, rect: Rectangle, grid: string[][], t: The
     return;
   }
 
+  renderedThreeGridCount += 1;
   writeWorkbenchThreeGrid(frame, rect, grid, paint(" ", { bg: t.surface }), {
     scale: "down",
     rowBuffer: threeGridRowBuffer,
