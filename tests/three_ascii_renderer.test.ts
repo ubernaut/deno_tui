@@ -179,6 +179,7 @@ Deno.test("ThreeAsciiRenderer skips scene submission when deferred readbacks are
   });
   const cachedGrid = [["cached"]];
   let sceneSubmissions = 0;
+  let inspectCalls = 0;
   const internals = renderer as unknown as {
     deferredReadbacks: {
       consumeCompleted: () => { grid?: string[][]; readbackMs?: number };
@@ -198,14 +199,17 @@ Deno.test("ThreeAsciiRenderer skips scene submission when deferred readbacks are
   internals.deferredReadbacks = {
     consumeCompleted: () => ({}),
     isSaturated: () => true,
-    inspect: () => ({
-      slotCount: 6,
-      pending: 6,
-      unresolved: 6,
-      resolved: 0,
-      saturated: true,
-      generation: 0,
-    }),
+    inspect: () => {
+      inspectCalls += 1;
+      return {
+        slotCount: 6,
+        pending: 6,
+        unresolved: 6,
+        resolved: 0,
+        saturated: true,
+        generation: 0,
+      };
+    },
     lastCompletedGrid: () => cachedGrid,
   };
   internals.renderScene = () => {
@@ -217,6 +221,7 @@ Deno.test("ThreeAsciiRenderer skips scene submission when deferred readbacks are
 
   assertEquals(frame.grid, cachedGrid);
   assertEquals(sceneSubmissions, 0);
+  assertEquals(inspectCalls, 1);
   assertEquals(renderer.inspectPerformance()?.deferredReadbackSaturated, true);
   assertEquals(renderer.inspectPerformance()?.deferredReadbackUnresolved, 6);
 });

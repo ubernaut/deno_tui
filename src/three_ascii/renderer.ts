@@ -395,7 +395,7 @@ export class ThreeAsciiRenderer {
         if (!forceBlockingDeferredReadback) {
           const frameEnd = performance.now();
           const previous = this.lastPerformance;
-          const queue = this.deferredReadbacks.inspect();
+          const queue = deferredQueue ?? this.deferredReadbacks.inspect();
           this.lastPerformance = createThreeAsciiRendererSaturatedPerformance({
             columns: this.columns,
             rows: this.rows,

@@ -386,6 +386,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   renderer readback planning allocation-light while preserving benchmarked copy and ANSI-grid throughput.
 - Reused Three ASCII readback copy source-slot records so blocking and deferred readback copies no longer allocate a
   temporary GPU slot wrapper before updating the retained source map.
+- Reused the deferred readback queue inspection snapshot on saturated early-return frames, avoiding a second queue
+  inspection/allocation while preserving saturated-frame telemetry.
 - Split workbench styled-cell tokenization and row/slice assembly into `workbench_frame_rows.ts`, preserving the
   existing frame facade while keeping the terminal hot path independently testable and benchmarked.
 - Extracted ThreePanelFrameView graphics-image handle ownership into `ThreePanelGraphicsImageController` with direct
