@@ -19,6 +19,7 @@ export class WorkbenchAnsiScreenPainter {
   #widths: number[] = [];
   #changedSpans: ChangedSpan[] = [];
   #changedSpanPool: ChangedSpan[] = [];
+  #output: string[] = [];
   #rowCache = new WeakMap<string[], WorkbenchAnsiScreenRowCache>();
   #cursorCache = new WorkbenchAnsiCursorCache();
   #blankWidth = -1;
@@ -40,7 +41,8 @@ export class WorkbenchAnsiScreenPainter {
     const columns = Math.max(0, Math.floor(width));
     let changed = 0;
     let cleared = 0;
-    const output: string[] = [];
+    const output = this.#output;
+    output.length = 0;
 
     for (let row = 0; row < rows; row += 1) {
       const frameRow = frame[row] ?? [];
@@ -76,6 +78,7 @@ export class WorkbenchAnsiScreenPainter {
     this.#cells.length = 0;
     this.#widths.length = 0;
     this.#changedSpans.length = 0;
+    this.#output.length = 0;
     this.#blankWidth = -1;
     this.#blankLine = "";
     this.#rowCache = new WeakMap();
@@ -97,7 +100,8 @@ export class WorkbenchAnsiScreenPainter {
     const columns = Math.max(0, Math.floor(width));
     let changed = 0;
     let cleared = 0;
-    const output: string[] = [];
+    const output = this.#output;
+    output.length = 0;
 
     for (let row = 0; row < rows; row += 1) {
       const frameRow = frame[row] ?? [];

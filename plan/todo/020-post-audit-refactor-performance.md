@@ -668,3 +668,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   scaling rows, plus a benchmark guard for the 109x70 vertical projection workload.
 - Added a retained ANSI cursor-position cache for workbench screen flushes so repeated full-row, clear-row, and span
   updates reuse cursor escape strings instead of rebuilding them throughout animated Three block frames.
+- Reused the retained workbench ANSI output chunk array across full-row and changed-span flushes, trimming per-frame
+  allocation in terminal screen writes while preserving synchronous write stats.
