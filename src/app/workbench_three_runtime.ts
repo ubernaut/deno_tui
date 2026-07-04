@@ -11,6 +11,7 @@ import {
   apiWorkbenchThreeFrameIntervalForCells,
   WORKBENCH_THREE_INITIAL_CELLS,
 } from "./workbench_three_policy.ts";
+import type { WorkbenchThreeCadenceInspection } from "./workbench_three_cadence.ts";
 
 export interface ApiWorkbenchThreeFlushStats {
   changed: number;
@@ -185,6 +186,18 @@ export class ApiWorkbenchThreeRuntimeController {
     this.liveMaxCells.value = change.nextCells;
     this.syncFrameInterval();
     if (change.logMessage) this.options.onPressureChange?.(change.logMessage);
+  }
+
+  updatePressureFromCadence(
+    stats: ApiWorkbenchThreeFlushStats,
+    cadence: Pick<WorkbenchThreeCadenceInspection, "measuredFps" | "updates">,
+    sample: ApiWorkbenchThreePressureSample = this.#pressureSample,
+  ): void {
+    this.updatePressure(stats, sample, {
+      observedFps: cadence.measuredFps,
+      observedFrameCount: cadence.updates,
+      targetFps: 1000 / this.frameInterval.peek(),
+    });
   }
 
   inspectPressure(): WorkbenchThreeTerminalPressureState {

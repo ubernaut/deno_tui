@@ -112,6 +112,27 @@ Deno.test("ApiWorkbenchThreeRuntimeController backs off when observed cadence is
   controller.dispose();
 });
 
+Deno.test("ApiWorkbenchThreeRuntimeController derives pressure telemetry from cadence inspection", () => {
+  const logs: string[] = [];
+  const controller = new ApiWorkbenchThreeRuntimeController({
+    hasLiveThreeWindow: () => true,
+    onPressureChange: (message) => logs.push(message),
+  });
+
+  controller.updatePressureFromCadence(
+    { changed: 40, bytes: 1_200, durationMs: 0.05 },
+    { measuredFps: 10, updates: 6 },
+    { renderedThreeGrids: 1, renderedThreeRows: 8 },
+  );
+
+  assertEquals(controller.liveMaxCells.peek(), 120);
+  assertEquals(controller.inspectPressureDetails().lastScoped, true);
+  assertEquals(logs.length, 1);
+  assertStringIncludes(logs[0]!, "three pressure down 120 cells");
+
+  controller.dispose();
+});
+
 Deno.test("resolveApiWorkbenchThreePressureChange reports steady pressure without log text", () => {
   const change = resolveApiWorkbenchThreePressureChange({
     pressure: { currentCells: 120, highFrames: 0, lowFrames: 0 },
