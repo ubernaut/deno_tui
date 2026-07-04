@@ -28,6 +28,11 @@ export interface WorkbenchThreeContentGraphicsRectOptions {
   workspace?: WorkbenchPlacementContext | null;
 }
 
+export interface WorkbenchThreeBodyRectOptions {
+  headerRows?: number;
+  footerRows?: number;
+}
+
 export const WORKBENCH_THREE_HIDDEN_RECT: Rectangle = { column: 0, row: 0, width: 0, height: 0 };
 
 export function setWorkbenchThreeRect(target: WorkbenchThreeRectTarget, rect: Rectangle): boolean {
@@ -85,6 +90,20 @@ export function workbenchThreeContentGraphicsRect(
     window: options.window,
     workspace: options.workspace,
   });
+}
+
+export function workbenchThreeBodyRect(
+  rect: Rectangle,
+  options: WorkbenchThreeBodyRectOptions = {},
+): Rectangle {
+  const headerRows = Math.max(0, Math.floor(options.headerRows ?? 0));
+  const footerRows = Math.max(0, Math.floor(options.footerRows ?? 0));
+  return {
+    column: rect.column,
+    row: rect.row + headerRows,
+    width: Math.max(0, rect.width),
+    height: Math.max(0, rect.height - headerRows - footerRows),
+  };
 }
 
 function hiddenGraphicsRect(visible: Rectangle): Rectangle {

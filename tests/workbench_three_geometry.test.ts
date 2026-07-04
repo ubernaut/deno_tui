@@ -3,6 +3,7 @@ import {
   hideWorkbenchThreeRect,
   setWorkbenchThreeRect,
   WORKBENCH_THREE_HIDDEN_RECT,
+  workbenchThreeBodyRect,
   workbenchThreeContentGraphicsRect,
   workbenchThreeGraphicsRect,
 } from "../src/app/workbench_three_geometry.ts";
@@ -96,6 +97,17 @@ Deno.test("workbenchThreeContentGraphicsRect preserves content rect semantics", 
       },
     ),
     { column: 26, row: 13, width: 10, height: 4 },
+  );
+});
+
+Deno.test("workbenchThreeBodyRect derives the render body below chrome rows", () => {
+  assertEquals(
+    workbenchThreeBodyRect({ column: 4, row: 6, width: 30, height: 12 }, { headerRows: 3, footerRows: 1 }),
+    { column: 4, row: 9, width: 30, height: 8 },
+  );
+  assertEquals(
+    workbenchThreeBodyRect({ column: 4, row: 6, width: 30, height: 2 }, { headerRows: 3, footerRows: 1 }),
+    { column: 4, row: 9, width: 30, height: 0 },
   );
 });
 

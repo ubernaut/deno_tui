@@ -282,6 +282,7 @@ import { WorkbenchThreeGridProjectionCache, writeWorkbenchThreeGrid } from "../s
 import {
   hideWorkbenchThreeRect,
   setWorkbenchThreeRect,
+  workbenchThreeBodyRect,
   workbenchThreeContentGraphicsRect,
 } from "../src/app/workbench_three_geometry.ts";
 import { WorkbenchThreeCadenceMeter } from "../src/app/workbench_three_cadence.ts";
@@ -1397,12 +1398,7 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
         paint(fit(rendered.footer, rect.width), { fg: t.muted, bg: t.panelSoft }),
       );
     }
-    const sceneRect = {
-      column: rect.column,
-      row: rect.row + 3,
-      width: rect.width,
-      height: Math.max(0, rect.height - 4),
-    };
+    const sceneRect = workbenchThreeBodyRect(rect, { headerRows: 3, footerRows: 1 });
     addHit(sceneRect, { type: "threeViewport", id });
     const entry = ensureVisualizationThreePanel(id);
     setWorkbenchThreeRect(entry.rectangle, { column: 0, row: 0, width: sceneRect.width, height: sceneRect.height });
@@ -1468,12 +1464,7 @@ function renderThree(frame: Frame, rect: Rectangle): void {
           : undefined,
       ),
     );
-    const sceneRect = {
-      column: rect.column,
-      row: rect.row + 3,
-      width: rect.width,
-      height: Math.max(0, rect.height - 3),
-    };
+    const sceneRect = workbenchThreeBodyRect(rect, { headerRows: 3 });
     addHit(sceneRect, { type: "threeViewport", id: "three" });
     setThreeBodyRect({ column: 0, row: 0, width: sceneRect.width, height: sceneRect.height });
     setThreeGraphicsRect(contentRectToGraphicsRect(sceneRect));
