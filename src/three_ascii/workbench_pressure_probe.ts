@@ -18,6 +18,8 @@ export interface WorkbenchThreePressureProbeSample {
   bytes: number;
   changedRows: number;
   sourceChangedRows: number;
+  observedFps?: number;
+  observedFrameCount?: number;
   gridUpdates: number;
   columns: number;
   rows: number;
@@ -34,6 +36,7 @@ export interface WorkbenchThreePressureProbeSummary {
   averageByteRate: number;
   averageChangedRows: number;
   averageSourceChangedRows: number;
+  averageObservedFps: number;
 }
 
 export interface WorkbenchThreePressureProbeValidationOptions {
@@ -164,6 +167,8 @@ export function summarizeWorkbenchThreePressureProbe(
   let totalByteRate = 0;
   let totalChangedRows = 0;
   let totalSourceChangedRows = 0;
+  let totalObservedFps = 0;
+  let observedFpsCount = 0;
   for (let index = 0; index < samples.length; index += 1) {
     const sample = samples[index]!;
     if (sample.rows <= 0 || sample.columns <= 0 || sample.cells <= 0 || sample.rendererMs <= 0) continue;
@@ -178,6 +183,10 @@ export function summarizeWorkbenchThreePressureProbe(
     totalByteRate += workbenchThreeTerminalBytesPerSecond(sample);
     totalChangedRows += sample.changedRows;
     totalSourceChangedRows += sample.sourceChangedRows;
+    if (sample.observedFps !== undefined) {
+      totalObservedFps += sample.observedFps;
+      observedFpsCount += 1;
+    }
   }
   const steadyCount = steady.length;
   return {
@@ -190,6 +199,7 @@ export function summarizeWorkbenchThreePressureProbe(
     averageByteRate: steadyCount > 0 ? totalByteRate / steadyCount : 0,
     averageChangedRows: steadyCount > 0 ? totalChangedRows / steadyCount : 0,
     averageSourceChangedRows: steadyCount > 0 ? totalSourceChangedRows / steadyCount : 0,
+    averageObservedFps: observedFpsCount > 0 ? totalObservedFps / observedFpsCount : 0,
   };
 }
 
@@ -252,9 +262,9 @@ export function formatWorkbenchThreePressureProbeSummaryLines(
     }${options.adaptive ? " adaptive" : ""} interval=${formatMs(options.intervalMs)}`,
     `warmup=${formatMs(summary.warmup?.rendererMs)} renderer=${formatMs(summary.averageRendererMs)} fps=${
       formatFps(summary.averageRendererMs)
-    } flush=${formatMs(summary.averageFlushMs)} bytes=${Math.round(summary.averageBytes)} rate=${
-      Math.round(summary.averageByteRate)
-    }B/s changedRows=${summary.averageChangedRows.toFixed(1)} sourceRows=${
+    } observed=${formatObservedFps(summary.averageObservedFps)} flush=${formatMs(summary.averageFlushMs)} bytes=${
+      Math.round(summary.averageBytes)
+    } rate=${Math.round(summary.averageByteRate)}B/s changedRows=${summary.averageChangedRows.toFixed(1)} sourceRows=${
       summary.averageSourceChangedRows.toFixed(1)
     } updates=${latest?.gridUpdates ?? 0} latest=${
       latest ? `${latest.columns}x${latest.rows}/${latest.cells}c` : "none"
@@ -270,10 +280,16 @@ export function formatWorkbenchThreePressureProbeSummaryLines(
         Math.round(workbenchThreeTerminalBytesPerSecond(sample))
       }B/s changed=${sample.changedRows} sourceChanged=${sample.sourceChangedRows} cap=${sample.maxCells} interval=${
         formatMs(sample.sampleDurationMs)
+      } observed=${formatObservedFps(sample.observedFps)} observedFrames=${
+        sample.observedFrameCount ?? 0
       } updates=${sample.gridUpdates} grid=${sample.columns}x${sample.rows}`,
     );
   }
   return lines;
+}
+
+function formatObservedFps(value: number | undefined): string {
+  return value === undefined || value <= 0 ? "-" : `${formatFps(1000 / value)}fps`;
 }
 
 function formatScenePhases(sample: WorkbenchThreePressureProbeSample): string {

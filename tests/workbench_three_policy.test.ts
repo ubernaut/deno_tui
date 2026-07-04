@@ -6,6 +6,8 @@ import {
   WORKBENCH_THREE_EMERGENCY_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_INITIAL_CELLS,
   WORKBENCH_THREE_PRESSURE_LEVELS,
+  WORKBENCH_THREE_PRESSURE_LOW_FPS_RATIO,
+  WORKBENCH_THREE_PRESSURE_MIN_FPS_FRAMES,
   WORKBENCH_THREE_READBACK_STRATEGY,
   WORKBENCH_THREE_RESCUE_CELLS,
   WORKBENCH_THREE_RESCUE_DRAW_INTERVAL_MS,
@@ -30,6 +32,8 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 750_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerGrid, 12_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerSecond, 180_000);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowFpsRatio, WORKBENCH_THREE_PRESSURE_LOW_FPS_RATIO);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.minObservedFpsFrames, WORKBENCH_THREE_PRESSURE_MIN_FPS_FRAMES);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highFrameThreshold, 1);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowFrameThreshold, 30);
   assertEquals(WORKBENCH_THREE_READBACK_STRATEGY, "blocking");
@@ -129,8 +133,9 @@ Deno.test("API workbench Three policy backs off when observed FPS collapses", ()
     bytes: 1_200,
     durationMs: 0.05,
     sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
-    observedFps: 3,
+    observedFps: 4,
     targetFps: 24,
+    observedFrameCount: WORKBENCH_THREE_PRESSURE_MIN_FPS_FRAMES,
   };
 
   const frames = API_WORKBENCH_THREE_PRESSURE_POLICY.highFrameThreshold ?? 1;
@@ -139,6 +144,28 @@ Deno.test("API workbench Three policy backs off when observed FPS collapses", ()
   }
 
   assertEquals(state.currentCells, 120);
+  assertEquals(state.highFrames, 0);
+});
+
+Deno.test("API workbench Three policy ignores early startup-skewed cadence samples", () => {
+  const state = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_INITIAL_CELLS);
+  const sample = {
+    ...API_WORKBENCH_THREE_PRESSURE_POLICY,
+    renderedThreeGrids: 1,
+    bytes: 1_200,
+    durationMs: 0.05,
+    sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
+    observedFps: 3,
+    targetFps: 24,
+    observedFrameCount: WORKBENCH_THREE_PRESSURE_MIN_FPS_FRAMES - 1,
+  };
+
+  const frames = API_WORKBENCH_THREE_PRESSURE_POLICY.highFrameThreshold ?? 1;
+  for (let index = 0; index < frames; index += 1) {
+    Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
+  }
+
+  assertEquals(state.currentCells, WORKBENCH_THREE_INITIAL_CELLS);
   assertEquals(state.highFrames, 0);
 });
 

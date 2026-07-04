@@ -1048,3 +1048,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   not immediately force the default block renderer into a lower terminal budget.
 - Raised the workbench Three sustained byte-rate pressure thresholds so healthy truecolor block animation stays at the
   240-cell startup tier; slow flush duration, collapsed measured FPS, and genuinely heavy frames still back off.
+- Added observed-cadence telemetry to the workbench Three pressure probe and fed adaptive probe runs through the same
+  FPS-pressure inputs as the live workbench; the FPS pressure path now requires sustained severe collapse so startup
+  placeholder cadence no longer knocks healthy 240-cell block rendering down to rescue tiers.

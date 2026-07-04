@@ -31,6 +31,7 @@ Deno.test("summarizeWorkbenchThreePressureProbe excludes placeholder and startup
   assertEquals(summary.averageByteRate, 1000);
   assertEquals(summary.averageChangedRows, 2);
   assertEquals(summary.averageSourceChangedRows, 6);
+  assertEquals(summary.averageObservedFps, 0);
 });
 
 Deno.test("summarizeWorkbenchThreePressureProbe reports empty steady metrics without valid renderer frames", () => {
@@ -47,6 +48,7 @@ Deno.test("summarizeWorkbenchThreePressureProbe reports empty steady metrics wit
   assertEquals(summary.averageByteRate, 0);
   assertEquals(summary.averageChangedRows, 0);
   assertEquals(summary.averageSourceChangedRows, 0);
+  assertEquals(summary.averageObservedFps, 0);
 });
 
 Deno.test("workbench Three probe grid snapshots preserve mutable renderer frame history", () => {
@@ -154,6 +156,8 @@ Deno.test("formatWorkbenchThreePressureProbeLines reports source changes and upd
       cells: 901,
       bytes: 20,
       sampleDurationMs: 100,
+      observedFps: 12.5,
+      observedFrameCount: 2,
       sourceChangedRows: 16,
       gridUpdates: 2,
     }),
@@ -168,6 +172,7 @@ Deno.test("formatWorkbenchThreePressureProbeLines reports source changes and upd
   assertStringIncludes(lines[1], "mode=studio glyphs=blocks readback=deferred");
   assertStringIncludes(lines[1], "frame=168x54 panel=96x32 maxCells=960 interval=50.00ms");
   assertStringIncludes(lines[2], "renderer=12.00ms");
+  assertStringIncludes(lines[2], "observed=12.5fps");
   assertStringIncludes(lines[2], "rate=200B/s");
   assertStringIncludes(lines[2], "sourceRows=16.0");
   assertStringIncludes(lines[2], "updates=2");
@@ -176,7 +181,8 @@ Deno.test("formatWorkbenchThreePressureProbeLines reports source changes and upd
   assertStringIncludes(lines[5], "03 renderer=12.00ms init=0.00ms");
   assertStringIncludes(lines[5], "update=3.00ms render=7.00ms");
   assertStringIncludes(lines[5], "bytes=20 rate=200B/s");
-  assertStringIncludes(lines[5], "sourceChanged=16 cap=960 interval=100.00ms updates=2 grid=53x17");
+  assertStringIncludes(lines[5], "sourceChanged=16 cap=960 interval=100.00ms observed=12.5fps observedFrames=2");
+  assertStringIncludes(lines[5], "updates=2 grid=53x17");
 });
 
 Deno.test("parseWorkbenchThreePressureProbeCliOptions separates pressure and saved ASCII cell budgets", () => {
@@ -245,6 +251,8 @@ function sample(
     bytes: overrides.bytes ?? 10,
     changedRows: overrides.changedRows ?? 1,
     sourceChangedRows: overrides.sourceChangedRows ?? 1,
+    observedFps: overrides.observedFps,
+    observedFrameCount: overrides.observedFrameCount,
     gridUpdates: overrides.gridUpdates ?? 1,
     columns: overrides.columns ?? 26,
     rows: overrides.rows ?? 8,

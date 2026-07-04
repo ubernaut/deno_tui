@@ -31,6 +31,7 @@ import {
   createWorkbenchThreeTerminalPressureState,
   resolveWorkbenchThreeTerminalPressureUpdate,
 } from "../src/app/workbench_three_terminal_pressure.ts";
+import { WorkbenchThreeCadenceMeter } from "../src/app/workbench_three_cadence.ts";
 
 const options = parseWorkbenchThreePressureProbeCliOptions<ThreeSceneMode>(Deno.args, {
   initialCells: WORKBENCH_THREE_INITIAL_CELLS,
@@ -82,6 +83,7 @@ const ascii = new Signal({
 const maxRenderCells = new Signal(maxCells);
 const frameInterval = new Signal(intervalMs);
 const terminalPressure = createWorkbenchThreeTerminalPressureState(maxCells);
+const cadence = new WorkbenchThreeCadenceMeter();
 let gridUpdates = 0;
 const panel = new ThreePanelFrameView({
   rectangle,
@@ -92,6 +94,7 @@ const panel = new ThreePanelFrameView({
   readbackStrategy,
   onUpdate: () => {
     gridUpdates += 1;
+    cadence.record();
   },
 });
 
@@ -187,6 +190,7 @@ function drawSample(index: number): WorkbenchThreePressureProbeSample {
   snapshotWorkbenchThreeProbeGridRowsInto(previousGrid, grid);
   const cellsBeforePressureUpdate = maxRenderCells.peek();
   const sampleDurationMs = frameInterval.peek();
+  const cadenceInspection = cadence.inspect();
   if (adaptive) {
     const next = resolveWorkbenchThreeTerminalPressureUpdate(terminalPressure, {
       ...API_WORKBENCH_THREE_PRESSURE_POLICY,
@@ -197,6 +201,9 @@ function drawSample(index: number): WorkbenchThreePressureProbeSample {
       bytes: stats.bytes,
       durationMs: stats.durationMs,
       sampleDurationMs,
+      observedFps: cadenceInspection.measuredFps,
+      observedFrameCount: cadenceInspection.updates,
+      targetFps: 1000 / sampleDurationMs,
     });
     terminalPressure.currentCells = next.currentCells;
     terminalPressure.highFrames = next.highFrames;
@@ -221,6 +228,8 @@ function drawSample(index: number): WorkbenchThreePressureProbeSample {
     bytes: stats.bytes,
     changedRows: stats.changed,
     sourceChangedRows,
+    observedFps: cadenceInspection.measuredFps,
+    observedFrameCount: cadenceInspection.updates,
     gridUpdates,
     columns: performance?.columns ?? grid[0]?.length ?? 0,
     rows: performance?.rows ?? grid.length,
