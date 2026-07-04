@@ -214,7 +214,29 @@ Deno.test("API workbench Three policy ignores early startup-skewed cadence sampl
   assertEquals(state.highFrames, 0);
 });
 
-Deno.test("API workbench Three policy ignores collapsed global cadence outside Three rows", () => {
+Deno.test("API workbench Three policy reacts to collapsed cadence after the startup window", () => {
+  const state = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_INITIAL_CELLS);
+  const sample = {
+    ...API_WORKBENCH_THREE_PRESSURE_POLICY,
+    renderedThreeGrids: 1,
+    bytes: 1_200,
+    durationMs: 0.05,
+    sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
+    observedFps: 3,
+    targetFps: 24,
+    observedFrameCount: WORKBENCH_THREE_PRESSURE_MIN_FPS_FRAMES,
+  };
+
+  const frames = API_WORKBENCH_THREE_PRESSURE_POLICY.highFrameThreshold ?? 1;
+  for (let index = 0; index < frames; index += 1) {
+    Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
+  }
+
+  assertEquals(state.currentCells, 480);
+  assertEquals(state.highFrames, 0);
+});
+
+Deno.test("API workbench Three policy scopes collapsed cadence even with mixed redraw rows", () => {
   const state = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_INITIAL_CELLS);
   const next = resolveWorkbenchThreeTerminalPressureUpdate(state, {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
@@ -230,9 +252,9 @@ Deno.test("API workbench Three policy ignores collapsed global cadence outside T
     observedFrameCount: WORKBENCH_THREE_PRESSURE_MIN_FPS_FRAMES,
   });
 
-  assertEquals(next.scoped, false);
+  assertEquals(next.scoped, true);
   assertEquals(next.currentCells, WORKBENCH_THREE_INITIAL_CELLS);
-  assertEquals(next.highFrames, 0);
+  assertEquals(next.highFrames, 1);
 });
 
 Deno.test("API workbench Three policy recovers from moderate animated output under the byte-rate floor", () => {

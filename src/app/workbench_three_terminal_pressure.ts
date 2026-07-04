@@ -105,6 +105,11 @@ export interface WorkbenchThreePressureSampleScope {
   renderedThreeRows: number;
   changedRows: number;
   toleranceRows?: number;
+  observedFps?: number;
+  targetFps?: number;
+  lowFpsRatio?: number;
+  observedFrameCount?: number;
+  minObservedFpsFrames?: number;
 }
 
 /** Inputs used to convert terminal output bytes over a frame/sample window into bytes per second. */
@@ -185,7 +190,8 @@ export function shouldCountWorkbenchThreeGridPressure(
 export function shouldApplyWorkbenchThreeTerminalPressureSample(input: WorkbenchThreePressureSampleScope): boolean {
   if (input.renderedThreeGrids <= 0 || input.renderedThreeRows <= 0 || input.changedRows <= 0) return false;
   const toleranceRows = Math.max(0, Math.floor(input.toleranceRows ?? 8));
-  return input.changedRows <= Math.max(1, Math.floor(input.renderedThreeRows)) + toleranceRows;
+  if (input.changedRows <= Math.max(1, Math.floor(input.renderedThreeRows)) + toleranceRows) return true;
+  return hasLowObservedWorkbenchThreeFps(input);
 }
 
 /** Applies scoping and budget adaptation for one terminal flush sample. */
@@ -203,6 +209,11 @@ export function resolveWorkbenchThreeTerminalPressureUpdate(
     renderedThreeRows: options.renderedThreeRows,
     changedRows: options.changedRows,
     toleranceRows: options.toleranceRows,
+    observedFps: options.observedFps,
+    targetFps: options.targetFps,
+    lowFpsRatio: options.lowFpsRatio,
+    observedFrameCount: options.observedFrameCount,
+    minObservedFpsFrames: options.minObservedFpsFrames,
   });
   const scoped = rowScoped;
   const next = resolveWorkbenchThreeTerminalPressureBudget(currentState, {

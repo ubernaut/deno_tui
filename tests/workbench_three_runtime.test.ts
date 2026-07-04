@@ -81,7 +81,13 @@ Deno.test("ApiWorkbenchThreeRuntimeController backs off on scoped pressure and l
   const sample = { renderedThreeGrids: 1, renderedThreeRows: 17 };
 
   controller.updatePressure(stats, sample);
+  assertEquals(controller.liveMaxCells.peek(), 240);
+  controller.updatePressure(stats, sample);
+  assertEquals(controller.liveMaxCells.peek(), 240);
+  controller.updatePressure(stats, sample);
   assertEquals(controller.liveMaxCells.peek(), 120);
+  controller.updatePressure(stats, sample);
+  controller.updatePressure(stats, sample);
   controller.updatePressure(stats, sample);
   assertEquals(controller.liveMaxCells.peek(), 60);
   assertEquals(controller.inspectPressure().highFrames, 0);
@@ -102,12 +108,16 @@ Deno.test("ApiWorkbenchThreeRuntimeController backs off when observed cadence is
   const stats = { changed: 6, bytes: 1_200, durationMs: 0.05 };
   const sample = { renderedThreeGrids: 1, renderedThreeRows: 6 };
 
-  controller.updatePressure(stats, sample, { observedFps: 3, targetFps: 24 });
+  controller.updatePressure(stats, sample, { observedFps: 3, targetFps: 24, observedFrameCount: 6 });
 
-  assertEquals(controller.liveMaxCells.peek(), 120);
+  assertEquals(controller.liveMaxCells.peek(), 960);
+  controller.updatePressure(stats, sample, { observedFps: 3, targetFps: 24, observedFrameCount: 7 });
+  assertEquals(controller.liveMaxCells.peek(), 960);
+  controller.updatePressure(stats, sample, { observedFps: 3, targetFps: 24, observedFrameCount: 8 });
+  assertEquals(controller.liveMaxCells.peek(), 480);
   assertEquals(controller.inspectPressure().highFrames, 0);
   assertEquals(logs.length, 1);
-  assertStringIncludes(logs[0]!, "three pressure down 120 cells");
+  assertStringIncludes(logs[0]!, "three pressure down 480 cells");
 
   controller.dispose();
 });
@@ -124,11 +134,21 @@ Deno.test("ApiWorkbenchThreeRuntimeController derives pressure telemetry from ca
     { measuredFps: 10, updates: 6 },
     { renderedThreeGrids: 1, renderedThreeRows: 8 },
   );
+  controller.updatePressureFromCadence(
+    { changed: 40, bytes: 1_200, durationMs: 0.05 },
+    { measuredFps: 10, updates: 7 },
+    { renderedThreeGrids: 1, renderedThreeRows: 8 },
+  );
+  controller.updatePressureFromCadence(
+    { changed: 40, bytes: 1_200, durationMs: 0.05 },
+    { measuredFps: 10, updates: 8 },
+    { renderedThreeGrids: 1, renderedThreeRows: 8 },
+  );
 
-  assertEquals(controller.liveMaxCells.peek(), 120);
+  assertEquals(controller.liveMaxCells.peek(), 480);
   assertEquals(controller.inspectPressureDetails().lastScoped, true);
   assertEquals(logs.length, 1);
-  assertStringIncludes(logs[0]!, "three pressure down 120 cells");
+  assertStringIncludes(logs[0]!, "three pressure down 480 cells");
 
   controller.dispose();
 });
@@ -228,7 +248,7 @@ Deno.test("ApiWorkbenchThreeRuntimeController exposes last pressure diagnostics"
   assertEquals(controller.inspectPressureDetails(), {
     currentCells: WORKBENCH_THREE_INITIAL_CELLS,
     highFrames: 0,
-    lowFrames: 1,
+    lowFrames: 0,
     lastBytes: 300,
     lastByteRate: 6_000,
     lastChangedRows: 4,
@@ -257,7 +277,7 @@ Deno.test("ApiWorkbenchThreeRuntimeController can reuse pressure inspection targ
   assertEquals(target, {
     currentCells: WORKBENCH_THREE_INITIAL_CELLS,
     highFrames: 0,
-    lowFrames: 1,
+    lowFrames: 0,
     lastBytes: 300,
     lastByteRate: 6_000,
     lastChangedRows: 4,

@@ -220,9 +220,10 @@ performance, shared terminal/web workbench projections, and oversized module red
   byte-rate diagnostics reflect actual cadence changes after pressure updates.
 - Simplified Three ASCII fill-only ANSI assembly locals so no-edge block/glyph paths avoid dead caller-plumbed state,
   with focused glyph/readback tests and `three-ascii-ansi-grid` benchmarks guarding output and throughput.
-- Tightened workbench Three pressure scoping so slow full-workbench redraws and collapsed global cadence no longer
-  downshift the renderer unless the changed rows are attributable to visible Three panes; default probes continue to
-  hold 960 block cells at the 20 FPS full-resolution cadence.
+- Tightened workbench Three terminal-pressure adaptation for real slow terminals by shortening the low-FPS warmup and
+  scoping collapsed-cadence samples even when non-Three rows changed in the same flush.
+- Previously tightened workbench Three pressure scoping to avoid non-Three redraw false positives; later slow-terminal
+  testing showed collapsed visible Three cadence still needs to downshift even when other rows changed too.
 - Added an intermediate compact Three header telemetry format so narrow workbench panes keep showing measured/target FPS
   before falling back to the bare frame-time and cell-count label.
 - Added an optional observed-FPS gate to the workbench Three pressure probe so default and narrow workbench-shaped

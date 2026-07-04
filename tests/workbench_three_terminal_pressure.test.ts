@@ -353,6 +353,32 @@ Deno.test("workbench Three terminal pressure update ignores slow full-screen red
   assertEquals(slow.direction, "steady");
 });
 
+Deno.test("workbench Three terminal pressure update scopes collapsed cadence with mixed redraw rows", () => {
+  const state = createWorkbenchThreeTerminalPressureState(960);
+  const next = resolveWorkbenchThreeTerminalPressureUpdate(state, {
+    currentCells: 960,
+    renderedThreeGrids: 1,
+    renderedThreeRows: 12,
+    changedRows: 54,
+    bytes: 6_000,
+    durationMs: 10,
+    sampleDurationMs: 50,
+    observedFps: 3,
+    targetFps: 20,
+    lowFpsRatio: 0.6,
+    observedFrameCount: 6,
+    minObservedFpsFrames: 6,
+    levels: [120, 240, 480, 960],
+    highBytes: 80_000,
+    lowBytes: 35_000,
+    highFrameThreshold: 1,
+  });
+
+  assertEquals(next.scoped, true);
+  assertEquals(next.currentCells, 480);
+  assertEquals(next.direction, "down");
+});
+
 Deno.test("workbench Three terminal pressure update starts from current live cap", () => {
   const state = { currentCells: 240, highFrames: 0, lowFrames: 0 };
   const next = resolveWorkbenchThreeTerminalPressureUpdate(state, {
@@ -566,6 +592,22 @@ Deno.test("workbench Three pressure samples ignore unrelated full-screen redraws
       changedRows: 54,
     }),
     false,
+  );
+});
+
+Deno.test("workbench Three pressure samples scope low cadence even with other changed rows", () => {
+  assertEquals(
+    shouldApplyWorkbenchThreeTerminalPressureSample({
+      renderedThreeGrids: 1,
+      renderedThreeRows: 18,
+      changedRows: 54,
+      observedFps: 3,
+      targetFps: 20,
+      lowFpsRatio: 0.6,
+      observedFrameCount: 6,
+      minObservedFpsFrames: 6,
+    }),
+    true,
   );
 });
 
