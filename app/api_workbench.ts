@@ -289,6 +289,7 @@ import { type RowStyle, threeHeaderRows } from "./workbench_rows.ts";
 import {
   createWorkbenchThreeTerminalPressureState,
   resolveWorkbenchThreeTerminalPressureBudget,
+  shouldApplyWorkbenchThreeTerminalPressureSample,
   shouldCountWorkbenchThreeGridPressure,
   workbenchThreeShouldUseLiveCadence,
 } from "../src/app/workbench_three_terminal_pressure.ts";
@@ -615,6 +616,7 @@ let workspacePlacementContext: WorkspacePlacementContext | null = null;
 const drawScheduler = new FrameScheduler({ intervalMs: 1000 / 18 });
 const renderedVisualizationThreePanels = new Set<VisualizationWindowId>();
 let renderedThreeGridCount = 0;
+let renderedThreeGridRows = 0;
 const terminalPressure = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_INITIAL_CELLS);
 type Frame = WorkbenchFrame;
 interface DropdownOverlay {
@@ -1019,6 +1021,7 @@ function draw(): void {
   hitTargets.clear();
   dropdownOverlay = null;
   renderedThreeGridCount = 0;
+  renderedThreeGridRows = 0;
   syncWorkbenchThreeFrameInterval();
   const frame = prepareWorkbenchFrame(screenFrame, height);
   renderHeader(frame);
@@ -1032,9 +1035,14 @@ function draw(): void {
 
 function updateThreeTerminalPressure(stats: WorkbenchAnsiScreenFlushStats): void {
   terminalPressure.currentCells = workbenchThreeLiveMaxCells.peek();
+  const scopedPressureSample = shouldApplyWorkbenchThreeTerminalPressureSample({
+    renderedThreeGrids: renderedThreeGridCount,
+    renderedThreeRows: renderedThreeGridRows,
+    changedRows: stats.changed,
+  });
   const next = resolveWorkbenchThreeTerminalPressureBudget(terminalPressure, {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
-    renderedThreeGrids: renderedThreeGridCount,
+    renderedThreeGrids: scopedPressureSample ? renderedThreeGridCount : 0,
     bytes: stats.bytes,
     durationMs: stats.durationMs,
   });
@@ -1481,6 +1489,7 @@ function renderThreeGrid(
 
   if (options.countForPressure ?? true) {
     renderedThreeGridCount += 1;
+    renderedThreeGridRows += Math.min(rect.height, grid.length);
   }
   writeWorkbenchThreeGrid(frame, rect, grid, paint(" ", { bg: t.surface }), {
     scale: "down",

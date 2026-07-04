@@ -2,6 +2,7 @@ import { assertEquals } from "./deps.ts";
 import {
   createWorkbenchThreeTerminalPressureState,
   resolveWorkbenchThreeTerminalPressureBudget,
+  shouldApplyWorkbenchThreeTerminalPressureSample,
   shouldCountWorkbenchThreeGridPressure,
   workbenchThreeFrameIntervalForCells,
   workbenchThreeShouldUseLiveCadence,
@@ -233,6 +234,44 @@ Deno.test("workbench Three pressure counts visible renderer-backed grids", () =>
   );
   assertEquals(
     shouldCountWorkbenchThreeGridPressure([], { cells: 1 }),
+    false,
+  );
+});
+
+Deno.test("workbench Three pressure samples ignore unrelated full-screen redraws", () => {
+  assertEquals(
+    shouldApplyWorkbenchThreeTerminalPressureSample({
+      renderedThreeGrids: 1,
+      renderedThreeRows: 18,
+      changedRows: 24,
+    }),
+    true,
+  );
+  assertEquals(
+    shouldApplyWorkbenchThreeTerminalPressureSample({
+      renderedThreeGrids: 1,
+      renderedThreeRows: 18,
+      changedRows: 54,
+    }),
+    false,
+  );
+});
+
+Deno.test("workbench Three pressure samples require real rendered Three rows", () => {
+  assertEquals(
+    shouldApplyWorkbenchThreeTerminalPressureSample({
+      renderedThreeGrids: 0,
+      renderedThreeRows: 18,
+      changedRows: 18,
+    }),
+    false,
+  );
+  assertEquals(
+    shouldApplyWorkbenchThreeTerminalPressureSample({
+      renderedThreeGrids: 1,
+      renderedThreeRows: 0,
+      changedRows: 18,
+    }),
     false,
   );
 });

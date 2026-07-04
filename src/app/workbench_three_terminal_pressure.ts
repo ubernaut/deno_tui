@@ -54,6 +54,14 @@ export interface WorkbenchThreeGridPressureTelemetry {
   cells?: number;
 }
 
+/** Inputs used to decide whether a terminal flush is attributable to rendered Three panes. */
+export interface WorkbenchThreePressureSampleScope {
+  renderedThreeGrids: number;
+  renderedThreeRows: number;
+  changedRows: number;
+  toleranceRows?: number;
+}
+
 /** Creates pressure counters initialized to the preferred render-cell budget. */
 export function createWorkbenchThreeTerminalPressureState(defaultCells: number): WorkbenchThreeTerminalPressureState {
   return {
@@ -91,6 +99,13 @@ export function shouldCountWorkbenchThreeGridPressure(
   telemetry: WorkbenchThreeGridPressureTelemetry | undefined,
 ): boolean {
   return Boolean(telemetry && (telemetry.cells ?? 0) > 0 && grid && grid.length > 0);
+}
+
+/** Returns true when a flush sample is narrow enough to represent Three pane output pressure. */
+export function shouldApplyWorkbenchThreeTerminalPressureSample(input: WorkbenchThreePressureSampleScope): boolean {
+  if (input.renderedThreeGrids <= 0 || input.renderedThreeRows <= 0 || input.changedRows <= 0) return false;
+  const toleranceRows = Math.max(0, Math.floor(input.toleranceRows ?? 8));
+  return input.changedRows <= Math.max(1, Math.floor(input.renderedThreeRows)) + toleranceRows;
 }
 
 /** Resolves the next render-cell budget for workbench Three panes from terminal flush byte pressure. */
