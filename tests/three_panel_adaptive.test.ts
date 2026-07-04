@@ -33,7 +33,19 @@ Deno.test("resolveThreePanelAdaptiveRenderBudget recovers to saved request after
   assertEquals(recovered, { maxCells: undefined, slowFrames: 0, fastFrames: 0, direction: "up" });
 });
 
-Deno.test("resolveThreePanelAdaptiveRenderBudget floors tiny requests to the minimum render budget", () => {
+Deno.test("resolveThreePanelAdaptiveRenderBudget adapts within pressure render tiers", () => {
+  const next = resolveThreePanelAdaptiveRenderBudget({
+    requestedMaxCells: 240,
+    frameMs: 300,
+    targetMs: 1000 / 18,
+    slowFrames: 1,
+    fastFrames: 0,
+  });
+  assertEquals(next.direction, "down");
+  assertEquals(next.maxCells, 120);
+});
+
+Deno.test("resolveThreePanelAdaptiveRenderBudget holds the emergency minimum render tier", () => {
   const next = resolveThreePanelAdaptiveRenderBudget({
     requestedMaxCells: 120,
     frameMs: 300,

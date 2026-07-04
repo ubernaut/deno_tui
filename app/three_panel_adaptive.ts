@@ -1,7 +1,8 @@
 import { asciiControlValues } from "./ascii_options.ts";
 import { resolveThreePanelRenderSize, type ThreePanelRenderSize } from "./three_panel_policy.ts";
 
-const ADAPTIVE_RENDER_CELLS_MIN = 960;
+const ADAPTIVE_RENDER_CELLS_MIN = 120;
+const ADAPTIVE_PRESSURE_RENDER_CELL_STEPS = [120, 240, 480] as const;
 const ADAPTIVE_RENDER_CELLS_SLOW_FRAMES = 2;
 const ADAPTIVE_RENDER_CELLS_FAST_FRAMES = 120;
 export const THREE_PANEL_ADAPTIVE_WARMUP_FRAMES = 1;
@@ -98,7 +99,7 @@ export function resolveThreePanelAdaptiveRenderBudget(
     ADAPTIVE_RENDER_CELLS_MIN,
     Math.min(requestedMaxCells, Math.floor(input.currentMaxCells ?? requestedMaxCells)),
   );
-  const budgetSteps = asciiControlValues("renderMaxCells")
+  const budgetSteps = [...ADAPTIVE_PRESSURE_RENDER_CELL_STEPS, ...asciiControlValues("renderMaxCells")]
     .filter((value) => value >= ADAPTIVE_RENDER_CELLS_MIN && value <= requestedMaxCells)
     .sort((a, b) => a - b);
   const steps = budgetSteps.length ? budgetSteps : [requestedMaxCells];

@@ -260,6 +260,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   previous color change.
 - Restored the terminal workbench Three policy to blocking readback with a conservative 240-cell startup cap after live
   probes showed deferred readback could publish a stale visible grid while reporting low renderer timings.
+- Extended Three panel frame-time adaptation to the internal 120/240/480 pressure tiers so slow blocking-readback
+  sessions can downshift below the user-facing 960-cell render setting without mutating saved ASCII config.
 - Added compact live Three ASCII renderer telemetry to the workbench Three pane header so renderer frame, scene,
   readback, assembly, and cell counts are visible during manual profiling.
 - Moved SGR state merging into a shared internal utility and routed workbench frame writes through it, so both
