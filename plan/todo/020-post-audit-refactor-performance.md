@@ -403,3 +403,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   trimming inline resize/Kitty geometry logic from the large API workbench module.
 - Reduced ThreePanelFrameView renderer startup churn by resolving the initial adaptive render size once and reusing it
   for renderer construction, applied-state capture, and the startup fallback grid.
+- Extracted ThreePanelFrameView blank-grid allocation and unchanged-grid fingerprinting into a focused helper with
+  direct tests, keeping the no-redundant-redraw path easier to benchmark and optimize independently.

@@ -17,6 +17,7 @@ import { asciiControlValues, asciiEffectOptions } from "./ascii_options.ts";
 import { createNeonThreeScene, type NeonThreeSceneBundle } from "./neon_three.ts";
 import { ThreePanelInteractionController, type ThreePanelInteractionState } from "./three_panel_interaction.ts";
 import { resolveThreePanelLifecycleState, type ThreePanelLifecycleState } from "./three_panel_lifecycle.ts";
+import { fingerprintThreePanelGrid, threePanelBlankGrid } from "./three_panel_grid.ts";
 import type { AsciiOptions, Rect, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 
 export type { ThreePanelInteractionState } from "./three_panel_interaction.ts";
@@ -703,7 +704,7 @@ export class ThreePanelFrameView {
     }
     this.gridRevision = undefined;
     if (!forceUpdate && this.grid.peek() === grid) return;
-    const fingerprint = fingerprintGrid(grid);
+    const fingerprint = fingerprintThreePanelGrid(grid);
     if (this.gridFingerprint === fingerprint) return;
     this.gridFingerprint = fingerprint;
     this.grid.jink(grid);
@@ -714,7 +715,7 @@ export class ThreePanelFrameView {
     if (this.blankGridColumns === columns && this.blankGridRows === rows) return this.blankGridCache;
     this.blankGridColumns = columns;
     this.blankGridRows = rows;
-    this.blankGridCache = blankGrid(columns, rows);
+    this.blankGridCache = threePanelBlankGrid(columns, rows);
     return this.blankGridCache;
   }
 
@@ -978,42 +979,6 @@ export class ThreePanelFrameView {
       });
     }
   }
-}
-
-function blankGrid(width: number, height: number): string[][] {
-  const columns = Math.max(0, width);
-  const rows = Math.max(0, height);
-  const grid = new Array<string[]>(rows);
-  for (let row = 0; row < rows; row += 1) {
-    const gridRow = new Array<string>(columns);
-    for (let column = 0; column < columns; column += 1) {
-      gridRow[column] = " ";
-    }
-    grid[row] = gridRow;
-  }
-  return grid;
-}
-
-function fingerprintGrid(grid: readonly (readonly string[] | undefined)[]): string {
-  let hash = 2166136261;
-  const mix = (value: number) => {
-    hash ^= value;
-    hash = Math.imul(hash, 16777619) >>> 0;
-  };
-
-  mix(grid.length);
-  for (const row of grid) {
-    const columns = row?.length ?? 0;
-    mix(columns);
-    if (!row) continue;
-    for (const cell of row) {
-      mix(cell.length);
-      for (let index = 0; index < cell.length; index += 1) {
-        mix(cell.charCodeAt(index));
-      }
-    }
-  }
-  return `${grid.length}:${hash.toString(36)}`;
 }
 
 function threeAsciiEffectOptionsEqual(
