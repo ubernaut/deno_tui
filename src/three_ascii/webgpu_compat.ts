@@ -1,4 +1,5 @@
 let compatibleDevicePromise: Promise<GPUDevice> | undefined;
+let compatibleDevice: GPUDevice | undefined;
 type RafCallback = (time: number) => void;
 const WRITE_BUFFER_PATCHED = Symbol.for("deno_tui.three_ascii.write_buffer_patched");
 const SHADER_MODULE_PATCHED = Symbol.for("deno_tui.three_ascii.shader_module_patched");
@@ -31,6 +32,27 @@ function ensureDeviceLostPromise(device: GPUDevice): GPUDevice {
   }
 
   return device;
+}
+
+function hasNativeDeviceLostPromise(device: GPUDevice): boolean {
+  return (device as GPUDevice & { lost?: Promise<GPUDeviceLostInfo> }).lost !== undefined;
+}
+
+function watchCompatibleDeviceLoss(device: GPUDevice): void {
+  const lost = (device as GPUDevice & { lost?: Promise<GPUDeviceLostInfo> }).lost;
+  if (!lost) return;
+  lost.then(
+    () => {
+      if (compatibleDevice !== device) return;
+      compatibleDevice = undefined;
+      compatibleDevicePromise = undefined;
+    },
+    () => {
+      if (compatibleDevice !== device) return;
+      compatibleDevice = undefined;
+      compatibleDevicePromise = undefined;
+    },
+  );
 }
 
 function patchQueueWriteBuffer(device: GPUDevice): GPUDevice {
@@ -132,7 +154,8 @@ function patchMappedAtCreationBuffers(device: GPUDevice): GPUDevice {
 export async function getCompatibleWebGPUDevice(): Promise<GPUDevice> {
   ensureAnimationFrame();
 
-  compatibleDevicePromise ??= (async () => {
+  if (compatibleDevice) return compatibleDevice;
+  const promise = compatibleDevicePromise ??= (async () => {
     if (typeof navigator === "undefined" || navigator.gpu === undefined) {
       throw new Error("WebGPU is not available in this Deno runtime.");
     }
@@ -151,13 +174,25 @@ export async function getCompatibleWebGPUDevice(): Promise<GPUDevice> {
       requiredFeatures: [],
       requiredLimits: {},
     });
+    const nativeLost = hasNativeDeviceLostPromise(device);
 
-    return patchMappedAtCreationBuffers(
+    const patched = patchMappedAtCreationBuffers(
       patchErrorScopes(patchShaderModules(patchQueueWriteBuffer(ensureDeviceLostPromise(device)))),
     );
+    compatibleDevice = patched;
+    if (nativeLost) watchCompatibleDeviceLoss(patched);
+    return patched;
   })();
 
-  return await compatibleDevicePromise;
+  try {
+    return await promise;
+  } catch (error) {
+    if (compatibleDevicePromise === promise) {
+      compatibleDevicePromise = undefined;
+      compatibleDevice = undefined;
+    }
+    throw error;
+  }
 }
 
 /** Public helper for probe Compatible Web GPUDevice. */
@@ -168,4 +203,10 @@ export async function probeCompatibleWebGPUDevice(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/** Clears the shared WebGPU device cache for tests and explicit recovery probes. */
+export function resetCompatibleWebGPUDeviceCache(): void {
+  compatibleDevicePromise = undefined;
+  compatibleDevice = undefined;
 }

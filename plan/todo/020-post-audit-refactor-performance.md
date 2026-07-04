@@ -264,6 +264,9 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Switched the terminal workbench Three default readback strategy back to blocking at the 120-cell startup budget so
   the default block renderer publishes fresh frames every draw; deferred readback remains configurable for lower-wait
   experiments but is no longer the default workbench path.
+- Made the shared WebGPU compatibility device cache recoverable: failed `requestDevice` attempts are no longer cached,
+  and native `device.lost` signals clear the cached device so later Three ASCII renderer rebuilds can acquire a fresh
+  device after transient GPU pressure.
 - Extracted workspace save, rename, delete, and active-workspace refresh state transitions into tested pure helpers so
   the terminal workbench renderer no longer owns direct workspace collection mutation details.
 - Extracted workspace-load close planning into a typed pure helper so renderer cleanup, selected CPU tile pruning, and
