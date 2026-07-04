@@ -315,6 +315,7 @@ export class ThreePanelFrameView {
   private bundle?: NeonThreeSceneBundle;
   private activeMode?: ThreeSceneMode;
   private activeWireframeThickness?: number;
+  private activeDeferredReadbackSlots?: number;
   private readonly syncCallback = () => this.sync();
   private readonly effect: Effect;
   private readonly syncScheduler = new SignalBatchScheduler();
@@ -421,6 +422,7 @@ export class ThreePanelFrameView {
     const needsRenderer = !this.renderer ||
       this.activeMode !== current.mode ||
       this.activeWireframeThickness !== ascii.wireframeThickness ||
+      this.activeDeferredReadbackSlots !== ascii.deferredReadbackSlots ||
       !this.isOperational();
 
     if (needsRenderer) {
@@ -437,6 +439,7 @@ export class ThreePanelFrameView {
       this.bundle = bundle;
       this.activeMode = current.mode;
       this.activeWireframeThickness = ascii.wireframeThickness;
+      this.activeDeferredReadbackSlots = ascii.deferredReadbackSlots;
       this.interaction.captureBaseTransform(bundle);
       this.failed = false;
       const rendererFactory = this.options.rendererFactory ??
@@ -449,6 +452,7 @@ export class ThreePanelFrameView {
         effect: effectOptions,
         terminalEdgeBias: ascii.terminalEdgeBias,
         terminalGlyphStyle: ascii.terminalGlyphStyle,
+        deferredReadbackSlots: ascii.deferredReadbackSlots,
       });
       this.captureAppliedRendererState(rect, ascii, effectOptions);
       const renderSize = this.renderSizeFor(rect, ascii);
@@ -769,6 +773,7 @@ export class ThreePanelFrameView {
     this.bundle = undefined;
     this.activeMode = undefined;
     this.activeWireframeThickness = undefined;
+    this.activeDeferredReadbackSlots = undefined;
     this.interaction.clearBaseTransform();
   }
 

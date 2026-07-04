@@ -24,6 +24,7 @@ export interface ThreeAsciiConfigOptions {
   depthOffset: number;
   wireframeThickness: number;
   renderMaxCells: number;
+  deferredReadbackSlots: number;
   edges: boolean;
   fill: boolean;
   invertLuminance: boolean;
@@ -74,6 +75,7 @@ export function buildAsciiOptionsFromPreset(presetId: string, border: ThreeAscii
     depthOffset: effect.depthOffset ?? 110,
     wireframeThickness: 8,
     renderMaxCells: 3_840,
+    deferredReadbackSlots: 6,
     edges: effect.edges ?? true,
     fill: effect.fill ?? true,
     invertLuminance: effect.invertLuminance ?? false,
@@ -114,6 +116,7 @@ export function normalizeAsciiOptions(
     depthOffset: numeric("depthOffset"),
     wireframeThickness: numeric("wireframeThickness"),
     renderMaxCells: numeric("renderMaxCells"),
+    deferredReadbackSlots: numeric("deferredReadbackSlots"),
     edges: typeof candidate.edges === "boolean" ? candidate.edges : base.edges,
     fill: typeof candidate.fill === "boolean" ? candidate.fill : base.fill,
     invertLuminance: typeof candidate.invertLuminance === "boolean" ? candidate.invertLuminance : base.invertLuminance,
@@ -141,8 +144,9 @@ export function applyAsciiPreset(target: ThreeAsciiConfigOptions, presetId: stri
   const kittyGraphics = target.kittyGraphics;
   const kittyDisableAscii = target.kittyDisableAscii;
   const renderMaxCells = target.renderMaxCells;
+  const deferredReadbackSlots = target.deferredReadbackSlots;
   const next = buildAsciiOptionsFromPreset(presetId, target.border);
-  Object.assign(target, next, { kittyGraphics, kittyDisableAscii, renderMaxCells });
+  Object.assign(target, next, { kittyGraphics, kittyDisableAscii, renderMaxCells, deferredReadbackSlots });
 }
 
 /** Return the display label for a named ASCII preset. */
@@ -193,6 +197,8 @@ export function asciiControlValues(
       return [0.5, 0.75, 1, 1.4, 1.8, 2, 2.4, 3, 4, 6, 8, 12, 16, 24, 32];
     case "renderMaxCells":
       return [960, 1_920, 3_840, 7_680, 15_400, 30_720];
+    case "deferredReadbackSlots":
+      return [2, 4, 6, 8, 12];
     case "terminalEdgeBias":
       return [0.6, 0.8, 0.92, 1, 1.15, 1.3, 1.4, 1.6, 1.8];
   }
@@ -211,6 +217,7 @@ export type ThreeAsciiOptionNumericControlKey = keyof Pick<
   | "depthOffset"
   | "wireframeThickness"
   | "renderMaxCells"
+  | "deferredReadbackSlots"
   | "terminalEdgeBias"
 >;
 
@@ -233,6 +240,7 @@ export function formatAsciiControlValue(
       return value.toFixed(1);
     case "depthOffset":
     case "renderMaxCells":
+    case "deferredReadbackSlots":
       return value.toFixed(0);
     default:
       return value.toFixed(2);

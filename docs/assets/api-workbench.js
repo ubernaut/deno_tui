@@ -11030,6 +11030,7 @@ function buildAsciiOptionsFromPreset(presetId, border) {
     depthOffset: effect.depthOffset ?? 110,
     wireframeThickness: 8,
     renderMaxCells: 3840,
+    deferredReadbackSlots: 6,
     edges: effect.edges ?? true,
     fill: effect.fill ?? true,
     invertLuminance: effect.invertLuminance ?? false,
@@ -11060,6 +11061,7 @@ function normalizeAsciiOptions(value, fallback = createDefaultAsciiOptions("shar
     depthOffset: numeric("depthOffset"),
     wireframeThickness: numeric("wireframeThickness"),
     renderMaxCells: numeric("renderMaxCells"),
+    deferredReadbackSlots: numeric("deferredReadbackSlots"),
     edges: typeof candidate.edges === "boolean" ? candidate.edges : base.edges,
     fill: typeof candidate.fill === "boolean" ? candidate.fill : base.fill,
     invertLuminance: typeof candidate.invertLuminance === "boolean" ? candidate.invertLuminance : base.invertLuminance,
@@ -11081,8 +11083,9 @@ function applyAsciiPreset(target, presetId) {
   const kittyGraphics = target.kittyGraphics;
   const kittyDisableAscii = target.kittyDisableAscii;
   const renderMaxCells = target.renderMaxCells;
+  const deferredReadbackSlots = target.deferredReadbackSlots;
   const next = buildAsciiOptionsFromPreset(presetId, target.border);
-  Object.assign(target, next, { kittyGraphics, kittyDisableAscii, renderMaxCells });
+  Object.assign(target, next, { kittyGraphics, kittyDisableAscii, renderMaxCells, deferredReadbackSlots });
 }
 function asciiPresetLabel(presetId) {
   return presetMap.get(presetId)?.label ?? presetId.toUpperCase();
@@ -11109,6 +11112,8 @@ function asciiControlValues(key) {
       return [0.5, 0.75, 1, 1.4, 1.8, 2, 2.4, 3, 4, 6, 8, 12, 16, 24, 32];
     case "renderMaxCells":
       return [960, 1920, 3840, 7680, 15400, 30720];
+    case "deferredReadbackSlots":
+      return [2, 4, 6, 8, 12];
     case "terminalEdgeBias":
       return [0.6, 0.8, 0.92, 1, 1.15, 1.3, 1.4, 1.6, 1.8];
   }
@@ -11126,6 +11131,7 @@ function formatAsciiControlValue(key, value) {
       return value.toFixed(1);
     case "depthOffset":
     case "renderMaxCells":
+    case "deferredReadbackSlots":
       return value.toFixed(0);
     default:
       return value.toFixed(2);
@@ -17215,6 +17221,7 @@ var defaultWorkbenchAsciiConfigRows = [
   { kind: "numeric", key: "terminalEdgeBias", label: "Edge glyph bias" },
   { kind: "numeric", key: "wireframeThickness", label: "Wire thickness" },
   { kind: "numeric", key: "renderMaxCells", label: "Render cells" },
+  { kind: "numeric", key: "deferredReadbackSlots", label: "Readback slots" },
   { kind: "toggle", key: "edges", label: "Edge pass" },
   { kind: "toggle", key: "fill", label: "Fill pass" },
   { kind: "toggle", key: "invertLuminance", label: "Invert luminance" },

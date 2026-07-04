@@ -70,6 +70,10 @@ Deno.test("workbench ascii option helpers step presets glyphs toggles and numeri
   const renderCells = stepWorkbenchAsciiNumericOption(initial, "renderMaxCells", 1);
   assertEquals(renderCells.renderMaxCells, 3840);
   assertEquals(renderCells.preset, "custom");
+
+  const readbackSlots = stepWorkbenchAsciiNumericOption(initial, "deferredReadbackSlots", 1);
+  assertEquals(readbackSlots.deferredReadbackSlots, 8);
+  assertEquals(readbackSlots.preset, "custom");
 });
 
 Deno.test("workbench ascii config action helper applies rows and formats messages", () => {
@@ -119,6 +123,15 @@ Deno.test("workbench ascii config action helper applies rows and formats message
   );
   assertEquals(renderCells.options.renderMaxCells, 960);
   assertEquals(renderCells.message, "renderMaxCells 960");
+
+  const readbackSlots = applyWorkbenchAsciiConfigRowAction(
+    initial,
+    { kind: "numeric", key: "deferredReadbackSlots", label: "Readback slots" },
+    "next",
+    [],
+  );
+  assertEquals(readbackSlots.options.deferredReadbackSlots, 8);
+  assertEquals(readbackSlots.message, "deferredReadbackSlots 8");
 });
 
 Deno.test("workbench ascii config selection helpers wrap and keep selected row visible", () => {
@@ -164,6 +177,7 @@ Deno.test("workbench ascii config rows expose reusable modal text", () => {
     "numeric",
     "numeric",
     "numeric",
+    "numeric",
     "toggle",
     "toggle",
     "toggle",
@@ -206,6 +220,14 @@ Deno.test("workbench ascii config rows expose reusable modal text", () => {
     ),
     "Render cells       [<] ░░░░  1920 [>]",
   );
+  assertEquals(
+    formatWorkbenchAsciiConfigRowText(
+      { kind: "numeric", key: "deferredReadbackSlots", label: "Readback slots" },
+      options,
+      { trackWidth: 4 },
+    ),
+    "Readback slots     [<] ██░░     6 [>]",
+  );
 });
 
 Deno.test("workbench ascii config title composes window preset and glyph style", () => {
@@ -231,13 +253,13 @@ Deno.test("workbench ascii config modal layout centers rows actions and footer",
     rowCount: defaultWorkbenchAsciiConfigRows.length,
   });
 
-  assertEquals(layout.rect, { column: 19, row: 7, width: 82, height: 25 });
-  assertEquals(layout.inner, { column: 20, row: 8, width: 80, height: 23 });
+  assertEquals(layout.rect, { column: 19, row: 7, width: 82, height: 26 });
+  assertEquals(layout.inner, { column: 20, row: 8, width: 80, height: 24 });
   assertEquals(layout.rowsTop, 10);
-  assertEquals(layout.actionRow, 29);
-  assertEquals(layout.footerRow, 30);
-  assertEquals(layout.visibleRows, 19);
-  assertEquals(layout.shadow, { column: 21, row: 8, width: 82, height: 25 });
+  assertEquals(layout.actionRow, 30);
+  assertEquals(layout.footerRow, 31);
+  assertEquals(layout.visibleRows, 20);
+  assertEquals(layout.shadow, { column: 21, row: 8, width: 82, height: 26 });
 });
 
 Deno.test("workbench ascii config modal layout stays inside cramped bounds", () => {
@@ -268,8 +290,8 @@ Deno.test("workbench ascii config row placements keep selected rows visible and 
   });
 
   assertEquals(placements.length, 4);
-  assertEquals(placements.map((placement) => placement.rowIndex), [14, 15, 16, 17]);
-  assertEquals(placements[2]?.selected, true);
+  assertEquals(placements.map((placement) => placement.rowIndex), [15, 16, 17, 18]);
+  assertEquals(placements[1]?.selected, true);
   assertEquals(placements[0]?.rect, { column: 4, row: 6, width: 36, height: 1 });
   assertEquals(placements[0]?.previousRect, { column: 4, row: 6, width: 18, height: 1 });
   assertEquals(placements[0]?.nextRect, { column: 22, row: 6, width: 18, height: 1 });

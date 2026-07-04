@@ -57,6 +57,7 @@ Deno.test("workbench ascii defaults favor terminal-visible wire thickness", () =
   assertEquals(options.depthFalloff, 0);
   assertEquals(options.wireframeThickness, 8);
   assertEquals(options.renderMaxCells, 3840);
+  assertEquals(options.deferredReadbackSlots, 6);
   assertEquals(options.kittyGraphics, false);
   assertEquals(options.kittyDisableAscii, false);
 
@@ -64,6 +65,7 @@ Deno.test("workbench ascii defaults favor terminal-visible wire thickness", () =
   assertEquals(values.includes(8), true);
   assertEquals(values.at(-1), 32);
   assertEquals(asciiControlValues("renderMaxCells"), [960, 1920, 3840, 7680, 15400, 30720]);
+  assertEquals(asciiControlValues("deferredReadbackSlots"), [2, 4, 6, 8, 12]);
 });
 
 Deno.test("app ascii option shim preserves package option behavior", () => {
@@ -89,10 +91,12 @@ Deno.test("ascii option normalization clamps numeric config to control ranges", 
     exposure: -4,
     terminalEdgeBias: 99,
     renderMaxCells: 99_999,
+    deferredReadbackSlots: 99,
   });
 
   assertEquals(normalized.wireframeThickness, 32);
   assertEquals(normalized.exposure, 0.8);
   assertEquals(normalized.terminalEdgeBias, 1.8);
   assertEquals(normalized.renderMaxCells, 30720);
+  assertEquals(normalized.deferredReadbackSlots, 12);
 });

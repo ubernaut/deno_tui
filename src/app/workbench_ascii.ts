@@ -61,6 +61,7 @@ export const defaultWorkbenchAsciiConfigRows: readonly WorkbenchAsciiConfigRow[]
   { kind: "numeric", key: "terminalEdgeBias", label: "Edge glyph bias" },
   { kind: "numeric", key: "wireframeThickness", label: "Wire thickness" },
   { kind: "numeric", key: "renderMaxCells", label: "Render cells" },
+  { kind: "numeric", key: "deferredReadbackSlots", label: "Readback slots" },
   { kind: "toggle", key: "edges", label: "Edge pass" },
   { kind: "toggle", key: "fill", label: "Fill pass" },
   { kind: "toggle", key: "invertLuminance", label: "Invert luminance" },
