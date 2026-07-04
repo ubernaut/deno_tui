@@ -731,3 +731,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   API workbench's inactive-pane idle cadence policy out of renderer-local inline logic.
 - Threaded a single Three ASCII effect-state snapshot through `renderFrame`, `renderScene`, and ANSI compute assembly so
   terminal frames do not inspect the same effect uniforms twice while preserving deferred stale-frame fallback behavior.
+- Extracted Three ASCII terminal compute-mode resolution into a pure helper covering block/glyph edge and depth-color
+  pass selection. Focused compute-mode tests, renderer/resource tests, the default workbench pressure probe, and the
+  `three-ascii` benchmark suite passed.

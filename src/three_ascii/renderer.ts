@@ -30,11 +30,8 @@ import {
   createThreeAsciiComputeResourcePlan,
   type ThreeAsciiComputeResourcePlanInput,
 } from "./compute_resources.ts";
-import {
-  shouldIncludeThreeAsciiTerminalEdges,
-  type ThreeAsciiEffectState,
-  threeAsciiEffectStateFromSource,
-} from "./effect_state.ts";
+import { resolveThreeAsciiComputeMode } from "./compute_mode.ts";
+import { type ThreeAsciiEffectState, threeAsciiEffectStateFromSource } from "./effect_state.ts";
 import { patchThreeAsciiEffectOptions } from "./effect_options.ts";
 import {
   destroyThreeAsciiGpuBufferSlot,
@@ -450,10 +447,11 @@ export class ThreeAsciiRenderer {
       return { image: true, terminalEdges: true, terminalDepthColor: true };
     }
     const effectState = state ?? this.getEffectState();
+    const computeMode = resolveThreeAsciiComputeMode(effectState, this.terminalGlyphStyle);
     return {
       image: false,
-      terminalEdges: options.renderAnsi && shouldIncludeThreeAsciiTerminalEdges(effectState, this.terminalGlyphStyle),
-      terminalDepthColor: options.renderAnsi && effectState.depthFalloff > 0,
+      terminalEdges: options.renderAnsi && computeMode.includeEdges,
+      terminalDepthColor: options.renderAnsi && computeMode.includeDepthColor,
     };
   }
 
@@ -462,9 +460,8 @@ export class ThreeAsciiRenderer {
     deferredCompleted?: ThreeAsciiDeferredReadbackConsumeResult,
     forceBlockingDeferredReadback = false,
   ): Promise<string[][]> {
-    const includeTerminalEdges = shouldIncludeThreeAsciiTerminalEdges(effectState, this.terminalGlyphStyle);
-    const includeTerminalDepthColor = effectState.depthFalloff > 0;
-    await this.ensureComputeResources(effectState, includeTerminalEdges, includeTerminalDepthColor);
+    const computeMode = resolveThreeAsciiComputeMode(effectState, this.terminalGlyphStyle);
+    await this.ensureComputeResources(effectState, computeMode.includeEdges, computeMode.includeDepthColor);
     this.writeUniforms(effectState);
 
     const commandEncoder = this.device!.createCommandEncoder({
@@ -472,14 +469,14 @@ export class ThreeAsciiRenderer {
     });
     this.dispatchPlanOptions.columns = this.columns;
     this.dispatchPlanOptions.rows = this.rows;
-    this.dispatchPlanOptions.includeEdges = includeTerminalEdges;
+    this.dispatchPlanOptions.includeEdges = computeMode.includeEdges;
     const dispatchPlan = this.dispatchPlanCache.resolve(this.dispatchPlanOptions);
     encodeThreeAsciiComputeDispatchCommands(commandEncoder, dispatchPlan, this.dispatchResources);
 
     this.readbackLayoutOptions.fillByteLength = this.fillOutput!.byteLength;
     this.readbackLayoutOptions.edgeByteLength = this.edgeOutput?.byteLength ?? 0;
     this.readbackLayoutOptions.colorByteLength = this.colorOutput!.byteLength;
-    this.readbackLayoutOptions.includeEdges = includeTerminalEdges;
+    this.readbackLayoutOptions.includeEdges = computeMode.includeEdges;
     const readbackLayout = this.readbackLayoutCache.resolve(this.readbackLayoutOptions);
     this.readbackCopyFillSource.byteLength = this.fillOutput!.byteLength;
     this.readbackCopyEdgeSource.byteLength = this.edgeOutput?.byteLength ?? 0;
@@ -488,7 +485,7 @@ export class ThreeAsciiRenderer {
       fill: this.readbackCopyFillSource,
       edge: this.edgeOutput ? this.readbackCopyEdgeSource : undefined,
       color: this.readbackCopyColorSource,
-      includeEdges: includeTerminalEdges,
+      includeEdges: computeMode.includeEdges,
       layout: readbackLayout,
     });
 
