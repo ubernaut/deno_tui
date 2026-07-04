@@ -41,6 +41,7 @@ const WORKGROUP_SIZE = 8;
 const FOG_SCALE = 0.005 / Math.sqrt(Math.log(2));
 const DEFAULT_PIXEL_ASPECT_RATIO = 0.5;
 const DEFAULT_TERMINAL_EDGE_BIAS = 1;
+const DEFAULT_DEFERRED_READBACK_SLOTS = 6;
 const TERMINAL_EDGE_THRESHOLD_SCALE = 2;
 const MIN_VISIBLE_LUMINANCE = 0.015;
 const GPU_MAP_READ = 1;
@@ -281,6 +282,7 @@ export interface ThreeAsciiRendererOptions {
   terminalEdgeBias?: number;
   terminalGlyphStyle?: TerminalGlyphStyle;
   readbackStrategy?: "blocking" | "deferred";
+  deferredReadbackSlots?: number;
   effect?: AcerolaAsciiNodeOptions;
 }
 
@@ -375,9 +377,7 @@ export class ThreeAsciiRenderer {
   private edgeOutput?: ThreeAsciiGpuBufferSlot<GPUBuffer>;
   private colorOutput?: ThreeAsciiGpuBufferSlot<GPUBuffer>;
   private outputReadback?: ThreeAsciiGpuBufferSlot<GPUBuffer>;
-  private readonly deferredReadbacks = new ThreeAsciiDeferredReadbackQueue<GPUBuffer>({
-    mapModeRead: GPU_MAP_READ,
-  });
+  private readonly deferredReadbacks: ThreeAsciiDeferredReadbackQueue<GPUBuffer>;
   private uniformValues = new Float32Array(THREE_ASCII_UNIFORM_FLOAT_COUNT);
   private readonly ansiGridAssembler = new ThreeAsciiAnsiGridAssembler({ reuseGrid: true });
   private readonly readbackLayoutCache = new ThreeAsciiReadbackLayoutCache();
@@ -401,6 +401,10 @@ export class ThreeAsciiRenderer {
     this.terminalEdgeBias = Math.max(0.5, options.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
     this.terminalGlyphStyle = options.terminalGlyphStyle ?? "blocks";
     this.readbackStrategy = options.readbackStrategy ?? "blocking";
+    this.deferredReadbacks = new ThreeAsciiDeferredReadbackQueue<GPUBuffer>({
+      mapModeRead: GPU_MAP_READ,
+      slotCount: options.deferredReadbackSlots ?? DEFAULT_DEFERRED_READBACK_SLOTS,
+    });
     this.canvas = new HeadlessCanvas(1, 1);
   }
 

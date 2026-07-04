@@ -72,6 +72,22 @@ Deno.test("ThreeAsciiRenderer marks compute resources dirty when terminal glyph 
   assertEquals(internals.computeDirty, true);
 });
 
+Deno.test("ThreeAsciiRenderer configures deferred readback queue depth", () => {
+  const renderer = new ThreeAsciiRenderer({
+    scene: new Scene(),
+    camera: new PerspectiveCamera(),
+    columns: 8,
+    rows: 4,
+    readbackStrategy: "deferred",
+    deferredReadbackSlots: 5,
+  });
+  const internals = renderer as unknown as {
+    deferredReadbacks: { slotCount: number };
+  };
+
+  assertEquals(internals.deferredReadbacks.slotCount, 5);
+});
+
 Deno.test("ThreeAsciiRenderer avoids compute resource rebuilds for effect option updates", () => {
   const renderer = new ThreeAsciiRenderer({
     scene: new Scene(),
