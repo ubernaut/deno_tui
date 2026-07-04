@@ -15,7 +15,7 @@ Deno.test("WorkbenchAnsiScreenPainter writes only changed ANSI rows", () => {
     return text.length >= width ? text.slice(0, width) : text + " ".repeat(width - text.length);
   };
 
-  assertEquals(painter.flush([["A"], ["\x1b[31mB\x1b[0m"]], 4, 2, renderRow), {
+  assertFlushStats(painter.flush([["A"], ["\x1b[31mB\x1b[0m"]], 4, 2, renderRow), {
     rows: 2,
     changed: 2,
     cleared: 0,
@@ -24,7 +24,7 @@ Deno.test("WorkbenchAnsiScreenPainter writes only changed ANSI rows", () => {
   assertStringIncludes(new TextDecoder().decode(chunks[0]), "\x1b[1;1HA   \x1b[2;1H\x1b[3");
 
   chunks.length = 0;
-  assertEquals(painter.flush([["A"], ["\x1b[31mB\x1b[0m"]], 4, 2, renderRow), {
+  assertFlushStats(painter.flush([["A"], ["\x1b[31mB\x1b[0m"]], 4, 2, renderRow), {
     rows: 2,
     changed: 0,
     cleared: 0,
@@ -32,7 +32,7 @@ Deno.test("WorkbenchAnsiScreenPainter writes only changed ANSI rows", () => {
   });
   assertEquals(chunks.length, 0);
 
-  assertEquals(painter.flush([["A"], ["C"]], 4, 2, renderRow), {
+  assertFlushStats(painter.flush([["A"], ["C"]], 4, 2, renderRow), {
     rows: 2,
     changed: 1,
     cleared: 0,
@@ -54,7 +54,7 @@ Deno.test("WorkbenchAnsiScreenPainter clears stale rows after shrink", () => {
   painter.flush([["one"], ["two"], ["three"]], 5, 3, renderRow);
   chunks.length = 0;
 
-  assertEquals(painter.flush([["one"]], 5, 1, renderRow), {
+  assertFlushStats(painter.flush([["one"]], 5, 1, renderRow), {
     rows: 1,
     changed: 0,
     cleared: 2,
@@ -195,3 +195,16 @@ Deno.test("WorkbenchAnsiScreenPainter resets retained span state safely", () => 
   assertEquals(stats.changed, 1);
   assertEquals(new TextDecoder().decode(chunks[0]), "\x1b[1;1Habcdefghijkl");
 });
+
+function assertFlushStats(
+  actual: { rows: number; changed: number; cleared: number; bytes: number; durationMs: number },
+  expected: { rows: number; changed: number; cleared: number; bytes: number },
+): void {
+  assertEquals({
+    rows: actual.rows,
+    changed: actual.changed,
+    cleared: actual.cleared,
+    bytes: actual.bytes,
+  }, expected);
+  assertEquals(actual.durationMs >= 0, true);
+}

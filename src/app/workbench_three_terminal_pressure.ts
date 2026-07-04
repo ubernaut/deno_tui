@@ -9,9 +9,11 @@ export interface WorkbenchThreeTerminalPressureState {
 export interface WorkbenchThreeTerminalPressureOptions {
   renderedThreeGrids: number;
   bytes: number;
+  durationMs?: number;
   levels: readonly number[];
   highBytes: number;
   lowBytes: number;
+  highDurationMs?: number;
   highFrameThreshold?: number;
   lowFrameThreshold?: number;
 }
@@ -51,7 +53,9 @@ export function resolveWorkbenchThreeTerminalPressureBudget(
     };
   }
 
-  if (options.bytes >= options.highBytes && current > levels[0]!) {
+  const highDurationMs = Math.max(1, options.highDurationMs ?? Number.POSITIVE_INFINITY);
+  const highPressure = options.bytes >= options.highBytes || (options.durationMs ?? 0) >= highDurationMs;
+  if (highPressure && current > levels[0]!) {
     const highFrames = state.highFrames + 1;
     if (highFrames >= highFrameThreshold) {
       const next = nextLowerLevel(current, levels);

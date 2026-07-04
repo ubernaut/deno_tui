@@ -67,6 +67,24 @@ Deno.test("workbench Three terminal pressure can step down on the first high-out
   assertEquals(next.direction, "down");
 });
 
+Deno.test("workbench Three terminal pressure can step down from slow terminal writes", () => {
+  const state = createWorkbenchThreeTerminalPressureState(240);
+  const next = resolveWorkbenchThreeTerminalPressureBudget(state, {
+    renderedThreeGrids: 1,
+    bytes: 10_000,
+    durationMs: 80,
+    levels: [120, 240, 480, 960],
+    highBytes: 80_000,
+    lowBytes: 35_000,
+    highDurationMs: 50,
+    highFrameThreshold: 1,
+  });
+
+  assertEquals(next.currentCells, 120);
+  assertEquals(next.highFrames, 0);
+  assertEquals(next.direction, "down");
+});
+
 Deno.test("workbench Three terminal pressure resets counters when no Three grid was rendered", () => {
   const state = { currentCells: 480, highFrames: 1, lowFrames: 2 };
   const next = resolveWorkbenchThreeTerminalPressureBudget(state, {

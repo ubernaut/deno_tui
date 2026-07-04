@@ -18,6 +18,7 @@ export interface WorkbenchAnsiScreenFlushStats {
   changed: number;
   cleared: number;
   bytes: number;
+  durationMs: number;
 }
 
 /** Retained ANSI-row painter for full-screen workbench frames. */
@@ -74,11 +75,12 @@ export class WorkbenchAnsiScreenPainter {
     this.#rows.length = rows;
 
     if (output.length === 0) {
-      return { rows, changed, cleared, bytes: 0 };
+      return { rows, changed, cleared, bytes: 0, durationMs: 0 };
     }
+    const flushStart = performance.now();
     const bytes = encoder.encode(output.join(""));
     this.stdout.writeSync(bytes);
-    return { rows, changed, cleared, bytes: bytes.byteLength };
+    return { rows, changed, cleared, bytes: bytes.byteLength, durationMs: performance.now() - flushStart };
   }
 
   reset(): void {
@@ -151,11 +153,12 @@ export class WorkbenchAnsiScreenPainter {
     this.#rows.length = rows;
 
     if (output.length === 0) {
-      return { rows, changed, cleared, bytes: 0 };
+      return { rows, changed, cleared, bytes: 0, durationMs: 0 };
     }
+    const flushStart = performance.now();
     const bytes = encoder.encode(output.join(""));
     this.stdout.writeSync(bytes);
-    return { rows, changed, cleared, bytes: bytes.byteLength };
+    return { rows, changed, cleared, bytes: bytes.byteLength, durationMs: performance.now() - flushStart };
   }
 }
 
