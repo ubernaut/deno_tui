@@ -729,3 +729,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   with fog/depth falloff. Focused shader/resource tests and 60/960-cell guarded workbench probes passed.
 - Extracted per-window Three pane interactivity into the shared terminal-pressure helper with direct tests, keeping the
   API workbench's inactive-pane idle cadence policy out of renderer-local inline logic.
+- Threaded a single Three ASCII effect-state snapshot through `renderFrame`, `renderScene`, and ANSI compute assembly so
+  terminal frames do not inspect the same effect uniforms twice while preserving deferred stale-frame fallback behavior.

@@ -323,6 +323,7 @@ Deno.test("ThreeAsciiRenderer forces a blocking deferred readback after stale ca
     };
     renderScene: () => Promise<void>;
     computeAnsiGrid: (
+      effectState: unknown,
       completed?: { grid?: string[][]; readbackMs?: number },
       forceBlockingDeferredReadback?: boolean,
     ) => Promise<string[][]>;
@@ -341,7 +342,7 @@ Deno.test("ThreeAsciiRenderer forces a blocking deferred readback after stale ca
     lastCompletedGrid: () => cachedGrid,
   };
   internals.renderScene = () => Promise.resolve();
-  internals.computeAnsiGrid = (_completed, forceBlockingDeferredReadback = false) => {
+  internals.computeAnsiGrid = (_effectState, _completed, forceBlockingDeferredReadback = false) => {
     forcedFlags.push(forceBlockingDeferredReadback);
     return Promise.resolve(forceBlockingDeferredReadback ? [["fresh"]] : cachedGrid);
   };
