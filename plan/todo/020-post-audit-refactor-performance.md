@@ -540,3 +540,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   and expanded the live panel probe with deferred queue telemetry to distinguish static grids from readback saturation.
 - Extracted ThreePanelFrameView renderer-state matching into the tested Three panel effect helper, keeping signal-churn
   sync policy reusable and easier to reason about outside the large frame lifecycle class.
+- Extracted the workbench Three pressure-probe summary into a tested helper and separated placeholder/startup renderer
+  samples from steady-state averages, so warm WebGPU frames are not misreported as 3-13 FPS renderer regressions.

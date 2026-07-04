@@ -15,21 +15,11 @@ import {
   WORKBENCH_THREE_INITIAL_CELLS,
 } from "../app/workbench_three_policy.ts";
 import { choiceArg, delay, formatFps, formatMs, numberArg } from "../src/three_ascii/probe_cli.ts";
+import {
+  summarizeWorkbenchThreePressureProbe,
+  type WorkbenchThreePressureProbeSample,
+} from "../src/three_ascii/workbench_pressure_probe.ts";
 import { type ThreeSceneMode, threeSceneModes } from "../app/types.ts";
-
-interface WorkbenchPressureSample {
-  index: number;
-  rendererMs: number;
-  sceneMs: number;
-  readbackMs: number;
-  assemblyMs: number;
-  flushMs: number;
-  bytes: number;
-  changedRows: number;
-  columns: number;
-  rows: number;
-  cells: number;
-}
 
 const frames = numberArg(Deno.args, "--frames", 24);
 const frameWidth = numberArg(Deno.args, "--frame-width", 168);
@@ -71,7 +61,7 @@ const panel = new ThreePanelFrameView({
   frameInterval: intervalMs,
 });
 
-const samples: WorkbenchPressureSample[] = [];
+const samples: WorkbenchThreePressureProbeSample[] = [];
 
 try {
   for (let index = 1; index <= frames; index += 1) {
@@ -99,12 +89,8 @@ try {
   maxRenderCells.dispose();
 }
 
-const steady = samples.slice(1).filter((sample) => sample.rows > 0 && sample.columns > 0);
-const averageRendererMs = average(steady.map((sample) => sample.rendererMs));
-const averageFlushMs = average(steady.map((sample) => sample.flushMs));
-const averageBytes = average(steady.map((sample) => sample.bytes));
-const averageChangedRows = average(steady.map((sample) => sample.changedRows));
-const latest = samples.at(-1);
+const summary = summarizeWorkbenchThreePressureProbe(samples);
+const latest = summary.latest;
 
 console.log("three-workbench pressure probe");
 console.log(
@@ -113,11 +99,11 @@ console.log(
   }`,
 );
 console.log(
-  `renderer=${formatMs(averageRendererMs)} fps=${formatFps(averageRendererMs)} flush=${
-    formatMs(averageFlushMs)
-  } bytes=${Math.round(averageBytes)} changedRows=${averageChangedRows.toFixed(1)} latest=${
-    latest ? `${latest.columns}x${latest.rows}/${latest.cells}c` : "none"
-  } totalBytes=${bytesWritten}`,
+  `warmup=${formatMs(summary.warmup?.rendererMs)} renderer=${formatMs(summary.averageRendererMs)} fps=${
+    formatFps(summary.averageRendererMs)
+  } flush=${formatMs(summary.averageFlushMs)} bytes=${Math.round(summary.averageBytes)} changedRows=${
+    summary.averageChangedRows.toFixed(1)
+  } latest=${latest ? `${latest.columns}x${latest.rows}/${latest.cells}c` : "none"} totalBytes=${bytesWritten}`,
 );
 for (const sample of samples) {
   console.log(
@@ -129,7 +115,7 @@ for (const sample of samples) {
   );
 }
 
-function drawSample(index: number): WorkbenchPressureSample {
+function drawSample(index: number): WorkbenchThreePressureProbeSample {
   const prepared = prepareWorkbenchFrame(frame, frameHeight);
   writeFrame(
     prepared,
@@ -167,9 +153,4 @@ function drawSample(index: number): WorkbenchPressureSample {
     rows: performance?.rows ?? grid.length,
     cells: performance?.cells ?? (grid[0]?.length ?? 0) * grid.length,
   };
-}
-
-function average(values: readonly number[]): number {
-  if (values.length === 0) return 0;
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
