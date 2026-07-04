@@ -41,6 +41,17 @@ export interface ThreeHeaderPerformance {
   targetFps?: number;
 }
 
+interface ThreeHeaderLabels {
+  title: string;
+  titleWidth: number;
+  compactTitle: string;
+}
+
+const THREE_HEADER_GEOMETRY = "torus knot · sphere · block · floor plane";
+const THREE_HEADER_COMPACT_GEOMETRY = "torus · sphere · block · floor";
+const THREE_HEADER_GEOMETRY_WIDTH = textWidth(THREE_HEADER_GEOMETRY);
+const threeHeaderLabelCache = new Map<string, ThreeHeaderLabels>();
+
 /** Builds responsive title/detail rows for the built-in Three ASCII workbench window. */
 export function threeHeaderRows(
   mode: string,
@@ -48,13 +59,10 @@ export function threeHeaderRows(
   theme: WorkbenchRowTheme,
   performance?: ThreeHeaderPerformance,
 ): RowStyle[] {
-  const title = compactSpaces(`ACEROLA THREE.JS ASCII · ${mode} · STUDIO GEOMETRY`);
-  const compactTitle = compactSpaces(`THREE ASCII · ${mode}`);
-  const geometry = "torus knot · sphere · block · floor plane";
-  const compactGeometry = "torus · sphere · block · floor";
+  const labels = threeHeaderLabels(mode);
   const perf = performance ? formatThreeHeaderPerformance(performance, width) : "";
-  const titleText = width >= textWidth(` ${title} `) ? ` ${title} ` : ` ${compactTitle} `;
-  const detailBase = width >= textWidth(geometry) ? geometry : compactGeometry;
+  const titleText = width >= labels.titleWidth ? labels.title : labels.compactTitle;
+  const detailBase = width >= THREE_HEADER_GEOMETRY_WIDTH ? THREE_HEADER_GEOMETRY : THREE_HEADER_COMPACT_GEOMETRY;
   const detailText = perf && width >= textWidth(`${detailBase} · ${perf}`)
     ? `${detailBase} · ${perf}`
     : perf && width >= textWidth(perf)
@@ -70,6 +78,20 @@ export function threeHeaderRows(
     { text: detailText, fg: theme.soft, bg: theme.surface },
     { text: "", bg: theme.surface },
   ];
+}
+
+function threeHeaderLabels(mode: string): ThreeHeaderLabels {
+  const cached = threeHeaderLabelCache.get(mode);
+  if (cached) return cached;
+  const title = ` ${compactSpaces(`ACEROLA THREE.JS ASCII · ${mode} · STUDIO GEOMETRY`)} `;
+  const compactTitle = ` ${compactSpaces(`THREE ASCII · ${mode}`)} `;
+  const labels = {
+    title,
+    titleWidth: textWidth(title),
+    compactTitle,
+  };
+  threeHeaderLabelCache.set(mode, labels);
+  return labels;
 }
 
 function formatThreeHeaderPerformance(performance: ThreeHeaderPerformance, width: number): string {

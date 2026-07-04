@@ -84,6 +84,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   panes at the 18 FPS workbench scheduler cap through the normal 960-cell budget.
 - Added a benchmark guard for responsive workbench Three header telemetry so cadence/readback diagnostics stay cheap
   while the renderer pane is active.
+- Cached per-mode Three header label widths and static geometry widths, roughly halving the new header telemetry
+  benchmark on this host without changing responsive row output.
 - Added a standalone Three ASCII demo titlebar shell with mouse-enabled minimize, maximize, restore, and close controls
   so the default renderer launch has the same basic window affordances as the portfolio demos.
 - Extracted standalone Three ASCII demo window geometry and titlebar hit testing into a small tested helper instead of
