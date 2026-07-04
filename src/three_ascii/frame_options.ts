@@ -16,8 +16,11 @@ export interface ThreeAsciiRenderFrameSelection {
   renderImage: boolean;
 }
 
+export const THREE_ASCII_ANSI_FRAME_OPTIONS: Readonly<ThreeAsciiRenderFrameOptions> = { ansi: true };
+export const THREE_ASCII_IMAGE_FRAME_OPTIONS: Readonly<ThreeAsciiRenderFrameOptions> = { ansi: false, image: true };
+
 export function resolveThreeAsciiRenderFrameSelection(
-  options: ThreeAsciiRenderFrameOptions = { ansi: true },
+  options: ThreeAsciiRenderFrameOptions = THREE_ASCII_ANSI_FRAME_OPTIONS,
 ): ThreeAsciiRenderFrameSelection {
   return {
     renderAnsi: options.ansi ?? true,

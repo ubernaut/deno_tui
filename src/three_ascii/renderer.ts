@@ -66,6 +66,8 @@ import { resolveThreeAsciiDeferredReadbackSubmission } from "./readback_submissi
 import {
   emptyThreeAsciiRenderFrame,
   resolveThreeAsciiRenderFrameSelection,
+  THREE_ASCII_ANSI_FRAME_OPTIONS,
+  THREE_ASCII_IMAGE_FRAME_OPTIONS,
   type ThreeAsciiRenderFrameOptions,
 } from "./frame_options.ts";
 import { readThreeAsciiImageFrame, type ThreeAsciiImageFrame } from "./image_frame.ts";
@@ -303,7 +305,7 @@ export class ThreeAsciiRenderer {
     deltaTime = 0,
     onFrame?: (deltaTime: number) => void | Promise<void>,
   ): Promise<string[][]> {
-    const frame = await this.renderFrame(deltaTime, onFrame, { ansi: true });
+    const frame = await this.renderFrame(deltaTime, onFrame, THREE_ASCII_ANSI_FRAME_OPTIONS);
     return frame.grid ?? [];
   }
 
@@ -311,7 +313,7 @@ export class ThreeAsciiRenderer {
     deltaTime = 0,
     onFrame?: (deltaTime: number) => void | Promise<void>,
   ): Promise<ThreeAsciiImageFrame> {
-    const frame = await this.renderFrame(deltaTime, onFrame, { ansi: false, image: true });
+    const frame = await this.renderFrame(deltaTime, onFrame, THREE_ASCII_IMAGE_FRAME_OPTIONS);
     if (!frame.image) {
       throw new Error("ThreeAsciiRenderer did not produce an image frame.");
     }
@@ -321,7 +323,7 @@ export class ThreeAsciiRenderer {
   async renderFrame(
     deltaTime = 0,
     onFrame?: (deltaTime: number) => void | Promise<void>,
-    options: ThreeAsciiRenderFrameOptions = { ansi: true },
+    options: ThreeAsciiRenderFrameOptions = THREE_ASCII_ANSI_FRAME_OPTIONS,
   ): Promise<ThreeAsciiRenderFrame> {
     const frameStart = performance.now();
     const { renderAnsi, renderImage } = resolveThreeAsciiRenderFrameSelection(options);
