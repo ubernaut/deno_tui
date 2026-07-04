@@ -13,6 +13,7 @@ import { createDefaultWorkbenchAsciiOptions } from "../src/app/workbench_ascii.t
 import {
   apiWorkbenchThreeFrameIntervalForCells,
   WORKBENCH_THREE_INITIAL_CELLS,
+  WORKBENCH_THREE_READBACK_STRATEGY,
 } from "../app/workbench_three_policy.ts";
 import { choiceArg, delay, formatFps, formatMs, numberArg } from "../src/three_ascii/probe_cli.ts";
 import {
@@ -59,6 +60,7 @@ const panel = new ThreePanelFrameView({
   ascii,
   maxRenderCells,
   frameInterval: intervalMs,
+  readbackStrategy: WORKBENCH_THREE_READBACK_STRATEGY,
 });
 
 const samples: WorkbenchThreePressureProbeSample[] = [];

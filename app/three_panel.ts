@@ -12,6 +12,7 @@ import {
   type ThreeAsciiRenderFrame,
   type ThreeAsciiRenderFrameOptions,
 } from "../src/three_ascii/renderer.ts";
+import type { ThreeAsciiReadbackStrategy } from "../src/three_ascii/renderer_options.ts";
 import { asciiEffectOptions } from "./ascii_options.ts";
 import { createNeonThreeScene, type NeonThreeSceneBundle } from "./neon_three.ts";
 import { ThreePanelGraphicsImageController } from "./three_panel_graphics.ts";
@@ -257,6 +258,7 @@ export class ThreePanelFrameView {
       diagnostics?: DiagnosticsCollector;
       frameInterval?: number | Signal<number>;
       maxRenderCells?: number | Signal<number>;
+      readbackStrategy?: ThreeAsciiReadbackStrategy;
       onUpdate?: () => void;
       rendererFactory?: ThreePanelRendererFactory;
     },
@@ -347,7 +349,11 @@ export class ThreePanelFrameView {
       this.interaction.captureBaseTransform(bundle);
       this.failed = false;
       const rendererFactory = this.options.rendererFactory ??
-        ((rendererOptions) => new ThreeAsciiRenderer({ ...rendererOptions, readbackStrategy: "deferred" }));
+        ((rendererOptions) =>
+          new ThreeAsciiRenderer({
+            ...rendererOptions,
+            readbackStrategy: this.options.readbackStrategy ?? "deferred",
+          }));
       const effectOptions = asciiEffectOptions(ascii);
       const renderSize = this.renderSizeFor(rect, ascii);
       this.renderer = rendererFactory({

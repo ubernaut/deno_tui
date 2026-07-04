@@ -302,7 +302,9 @@ import {
 import {
   API_WORKBENCH_THREE_PRESSURE_POLICY,
   apiWorkbenchThreeFrameIntervalForCells as frameIntervalForWorkbenchThreeCells,
+  WORKBENCH_THREE_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_INITIAL_CELLS,
+  WORKBENCH_THREE_READBACK_STRATEGY,
 } from "./workbench_three_policy.ts";
 import type {
   Accent,
@@ -619,7 +621,7 @@ let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
 let workspacePlacementContext: WorkspacePlacementContext | null = null;
-const drawScheduler = new FrameScheduler({ intervalMs: 1000 / 18 });
+const drawScheduler = new FrameScheduler({ intervalMs: WORKBENCH_THREE_DRAW_INTERVAL_MS });
 const renderedVisualizationThreePanels = new Set<VisualizationWindowId>();
 let renderedThreeGridCount = 0;
 let renderedThreeGridRows = 0;
@@ -822,6 +824,7 @@ const threePanel = new ThreePanelFrameView({
   graphicsSurface: () => kittyGraphics.surfaceFor(ascii.peek()),
   frameInterval: workbenchThreeFrameInterval,
   maxRenderCells: workbenchThreeLiveMaxCells,
+  readbackStrategy: WORKBENCH_THREE_READBACK_STRATEGY,
   diagnostics: workbenchDiagnostics,
   onUpdate: scheduleDraw,
 });
@@ -2871,6 +2874,7 @@ function ensureVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
     graphicsSurface: () => kittyGraphics.surfaceFor(asciiForWindow(id).peek()),
     frameInterval: workbenchThreeFrameInterval,
     maxRenderCells: workbenchThreeLiveMaxCells,
+    readbackStrategy: WORKBENCH_THREE_READBACK_STRATEGY,
     diagnostics: workbenchDiagnostics,
     onUpdate: scheduleDraw,
   });
