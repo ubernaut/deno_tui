@@ -360,7 +360,7 @@ export class ThreePanelFrameView {
       graphicsRectangle?: SignalOfObject<Rect>;
       diagnostics?: DiagnosticsCollector;
       frameInterval?: number;
-      maxRenderCells?: number;
+      maxRenderCells?: number | Signal<number>;
       onUpdate?: () => void;
       rendererFactory?: ThreePanelRendererFactory;
     },
@@ -372,6 +372,7 @@ export class ThreePanelFrameView {
       void options.scene.value;
       void options.ascii.value;
       if (options.enabled instanceof Signal) void options.enabled.value;
+      if (options.maxRenderCells instanceof Signal) void options.maxRenderCells.value;
       this.scheduleSync();
     });
     this.scheduleSync();
@@ -853,7 +854,10 @@ export class ThreePanelFrameView {
   }
 
   private requestedRenderMaxCells(ascii: Pick<AsciiOptions, "renderMaxCells">): number {
-    return Math.max(1, Math.floor(this.options.maxRenderCells ?? ascii.renderMaxCells));
+    const maxRenderCells = this.options.maxRenderCells instanceof Signal
+      ? this.options.maxRenderCells.peek()
+      : this.options.maxRenderCells;
+    return Math.max(1, Math.floor(maxRenderCells ?? ascii.renderMaxCells));
   }
 
   dispose(): void {

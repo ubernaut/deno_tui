@@ -55,6 +55,7 @@ import {
   translateHitTargets,
   upsertWorkbenchWorkspace,
   workbenchAdaptiveWindowLayout,
+  type WorkbenchAnsiScreenFlushStats,
   WorkbenchAnsiScreenPainter,
   workbenchButtonPaintOptions,
   type WorkbenchButtonTone,
@@ -309,6 +310,9 @@ const TERMINAL_OUTPUT_OPTION_ID = "terminal-output";
 const TERMINAL_SHELL_WINDOW_ID = "terminalShell";
 const TERMINAL_SHELL_OPTION_ID = "terminal-shell";
 const WORKBENCH_THREE_LIVE_MAX_CELLS = 960;
+const WORKBENCH_THREE_PRESSURE_MIN_CELLS = 480;
+const WORKBENCH_THREE_PRESSURE_HIGH_BYTES = 80_000;
+const WORKBENCH_THREE_PRESSURE_LOW_BYTES = 35_000;
 
 type BuiltInWindowId =
   | "explorer"
@@ -637,12 +641,16 @@ const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
 const windowScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const workspaceScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const dropdownOverlayRenderCommands: WorkbenchDropdownOverlayRenderCommand[] = [];
+const workbenchThreeLiveMaxCells = new Signal(WORKBENCH_THREE_LIVE_MAX_CELLS);
 let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
 let workspacePlacementContext: WorkspacePlacementContext | null = null;
 const drawScheduler = new FrameScheduler({ intervalMs: 1000 / 18 });
 const renderedVisualizationThreePanels = new Set<VisualizationWindowId>();
+let renderedThreeGridCount = 0;
+let terminalPressureHighFrames = 0;
+let terminalPressureLowFrames = 0;
 type Frame = WorkbenchFrame;
 interface DropdownOverlay {
   kind: "control" | "theme" | "newWindow" | "workspace";
@@ -840,7 +848,7 @@ const threePanel = new ThreePanelFrameView({
   enabled: threeAsciiAvailable,
   graphicsSurface: () => kittyGraphics.surfaceFor(ascii.peek()),
   frameInterval: 1000 / 18,
-  maxRenderCells: WORKBENCH_THREE_LIVE_MAX_CELLS,
+  maxRenderCells: workbenchThreeLiveMaxCells,
   diagnostics: workbenchDiagnostics,
   onUpdate: scheduleDraw,
 });
@@ -1030,6 +1038,7 @@ tui.on("destroy", () => {
   workbenchAudioRegistry.dispose();
   asciiConfigs.dispose();
   threeAsciiAvailable.dispose();
+  workbenchThreeLiveMaxCells.dispose();
   drawScheduler.cancel();
 });
 
@@ -1043,13 +1052,47 @@ function draw(): void {
   const height = currentHeight();
   hitTargets.clear();
   dropdownOverlay = null;
+  renderedThreeGridCount = 0;
   const frame = prepareWorkbenchFrame(screenFrame, height);
   renderHeader(frame);
   renderWorkspace(frame);
   renderStatus(frame);
   renderActiveDropdownOverlay(frame);
   renderModalOverlay(frame);
-  screenPainter.flush(frame, width, height, renderFrameRow, renderFrameSlice);
+  const flushStats = screenPainter.flush(frame, width, height, renderFrameRow, renderFrameSlice);
+  updateThreeTerminalPressure(flushStats);
+}
+
+function updateThreeTerminalPressure(stats: WorkbenchAnsiScreenFlushStats): void {
+  if (renderedThreeGridCount <= 0 || stats.bytes <= 0) {
+    terminalPressureHighFrames = 0;
+    terminalPressureLowFrames = 0;
+    return;
+  }
+
+  const current = workbenchThreeLiveMaxCells.peek();
+  if (stats.bytes >= WORKBENCH_THREE_PRESSURE_HIGH_BYTES && current > WORKBENCH_THREE_PRESSURE_MIN_CELLS) {
+    terminalPressureHighFrames += 1;
+    terminalPressureLowFrames = 0;
+    if (terminalPressureHighFrames >= 2) {
+      workbenchThreeLiveMaxCells.value = WORKBENCH_THREE_PRESSURE_MIN_CELLS;
+      terminalPressureHighFrames = 0;
+    }
+    return;
+  }
+
+  if (stats.bytes <= WORKBENCH_THREE_PRESSURE_LOW_BYTES && current < WORKBENCH_THREE_LIVE_MAX_CELLS) {
+    terminalPressureLowFrames += 1;
+    terminalPressureHighFrames = 0;
+    if (terminalPressureLowFrames >= 120) {
+      workbenchThreeLiveMaxCells.value = WORKBENCH_THREE_LIVE_MAX_CELLS;
+      terminalPressureLowFrames = 0;
+    }
+    return;
+  }
+
+  terminalPressureHighFrames = 0;
+  terminalPressureLowFrames = 0;
 }
 
 function scheduleDraw(): void {
@@ -1440,6 +1483,7 @@ function renderThree(frame: Frame, rect: Rectangle): void {
 
 function renderThreeGrid(frame: Frame, rect: Rectangle, grid: string[][], t: ThemeSpec): void {
   if (rect.width <= 0 || rect.height <= 0) return;
+  renderedThreeGridCount += 1;
 
   if (grid.length === 0) {
     const message = threeAsciiAvailable.peek() ? "renderer warming up" : "renderer unavailable";
@@ -2838,7 +2882,7 @@ function ensureVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
     enabled: threeAsciiAvailable,
     graphicsSurface: () => kittyGraphics.surfaceFor(asciiForWindow(id).peek()),
     frameInterval: 1000 / 18,
-    maxRenderCells: WORKBENCH_THREE_LIVE_MAX_CELLS,
+    maxRenderCells: workbenchThreeLiveMaxCells,
     diagnostics: workbenchDiagnostics,
     onUpdate: scheduleDraw,
   });

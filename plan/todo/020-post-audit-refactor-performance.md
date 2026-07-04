@@ -366,3 +366,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Lowered the API workbench-hosted live Three ASCII render cap to 960 cells for unsaved defaults, reducing SSH/tmux
   truecolor block payload pressure while keeping standalone/package renderer defaults and saved per-widget overrides
   unchanged.
+- Made workbench-hosted Three panel render caps reactive and connected them to terminal flush byte pressure, so live
+  terminal sessions can step down to a smaller source grid when SSH/tmux truecolor output gets too heavy without
+  mutating per-widget ASCII configuration.

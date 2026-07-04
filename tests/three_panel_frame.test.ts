@@ -487,6 +487,42 @@ Deno.test("ThreePanelFrameView caps large ASCII renderer sizes", async () => {
   }
 });
 
+Deno.test("ThreePanelFrameView accepts reactive render cell caps", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 160, height: 60 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal({ ...createDefaultAsciiOptions("sharp"), renderMaxCells: 7_680 });
+  const enabled = new Signal(true);
+  const maxRenderCells = new Signal(960);
+  let renderer: FakeGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    enabled,
+    maxRenderCells,
+    frameInterval: 1,
+    rendererFactory: (options) => renderer = new FakeGridRenderer(options.columns, options.rows),
+  });
+
+  try {
+    await waitFor(() => (renderer?.renderCount ?? 0) >= 1);
+
+    assert(renderer);
+    assert(renderer.sizes.some(([columns, rows]) => columns * rows <= 960));
+
+    maxRenderCells.value = 1_920;
+    await waitFor(() => renderer?.sizes.some(([columns, rows]) => columns * rows > 960) === true);
+    assertEquals(ascii.peek().renderMaxCells, 7_680);
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+    maxRenderCells.dispose();
+  }
+});
+
 Deno.test("ThreePanelFrameView lowers render cells after slow renderer telemetry", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 160, height: 60 }, { deepObserve: true });
   const scene = new Signal<ThreeSceneState | null>(sceneState());
