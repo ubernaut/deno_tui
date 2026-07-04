@@ -32,6 +32,7 @@ import {
   ThreePanelAdaptiveRenderBudgetController,
 } from "../src/app/three_panel_adaptive.ts";
 import { threePanelAsciiEffectOptionsEqual, threePanelRendererStateMatches } from "../src/app/three_panel_effect.ts";
+import { type ThreePanelFrameUpdate, threePanelFrameUpdate } from "../src/app/three_panel_frame_update.ts";
 import { threePanelBlankGrid, ThreePanelGridPublicationCache } from "../src/app/three_panel_grid.ts";
 import {
   resolveThreePanelFrameInterval,
@@ -45,6 +46,7 @@ import { defaultThreePanelRenderQueue, ThreePanelRenderQueue } from "../src/app/
 import type { AsciiOptions, Rect, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 
 export type { ThreePanelInteractionState } from "../src/app/three_panel_interaction.ts";
+export type { ThreePanelFrameUpdate } from "../src/app/three_panel_frame_update.ts";
 export {
   resolveThreePanelAdaptiveRenderBudget,
   ThreePanelAdaptiveRenderBudgetController,
@@ -81,12 +83,6 @@ export interface ThreePanelLifecycleInspection {
   rebuildPending: boolean;
   syncPending: boolean;
   frameGeneration: number;
-}
-
-export interface ThreePanelFrameUpdate {
-  rendererBacked: boolean;
-  rows: number;
-  columns: number;
 }
 
 type ThreePanelLiveValue = boolean | Signal<boolean> | (() => boolean);
@@ -527,11 +523,7 @@ export class ThreePanelFrameView {
       this.failed = false;
       const renderSize = this.renderSizeFor(rect, ascii);
       const nextGrid = policy.renderAscii ? frame.grid ?? [] : this.blankGridFor(renderSize.columns, renderSize.rows);
-      this.onFrame?.({
-        rendererBacked: true,
-        rows: nextGrid.length,
-        columns: nextGrid[0]?.length ?? 0,
-      });
+      this.onFrame?.(threePanelFrameUpdate(nextGrid, true));
       if (!policy.renderAscii || this.hasGridCells(nextGrid)) {
         this.setGrid(
           nextGrid,
@@ -634,11 +626,7 @@ export class ThreePanelFrameView {
       return;
     }
     this.grid.jink(grid);
-    this.onUpdate?.({
-      rendererBacked,
-      rows: grid.length,
-      columns: grid[0]?.length ?? 0,
-    });
+    this.onUpdate?.(threePanelFrameUpdate(grid, rendererBacked));
   }
 
   private blankGridFor(columns: number, rows: number): string[][] {

@@ -1131,3 +1131,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   all 90 renderer frames and the default workbench pressure probe holds the 960-cell block budget at roughly 20fps.
 - Aligned the named workbench startup/narrow probe tasks with the shared deferred readback default so task runs exercise
   the same readback path as the API Workbench instead of forcing the older blocking path.
+- Moved Three panel frame-update event shaping into `src/app` and kept the app adapter re-export stable. Cadence and
+  redraw callbacks now share a tested payload helper instead of duplicating grid row/column projection in the demo
+  adapter.
