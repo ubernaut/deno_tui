@@ -1129,3 +1129,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Split Three panel renderer-frame cadence from grid-publication redraws. Startup/fallback grids no longer count as live
   renderer frames, while tiny unchanged block grids still report real renderer cadence; the narrow live probe now sees
   all 90 renderer frames and the default workbench pressure probe holds the 960-cell block budget at roughly 20fps.
+- Aligned the named workbench startup/narrow probe tasks with the shared deferred readback default so task runs exercise
+  the same readback path as the API Workbench instead of forcing the older blocking path.
