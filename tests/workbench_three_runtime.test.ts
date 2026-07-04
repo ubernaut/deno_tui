@@ -4,7 +4,7 @@ import {
   ApiWorkbenchThreeRuntimeController,
   resolveApiWorkbenchThreePressureChange,
   resolveApiWorkbenchThreePressureChangeInto,
-} from "../app/workbench_three_runtime.ts";
+} from "../src/app/workbench_three_runtime.ts";
 import {
   apiWorkbenchThreeFrameIntervalForCells,
   WORKBENCH_THREE_INITIAL_CELLS,

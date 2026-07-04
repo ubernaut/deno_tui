@@ -1,16 +1,16 @@
-import { Signal } from "../src/signals/mod.ts";
+import { Signal } from "../signals/mod.ts";
 import {
   createWorkbenchThreeTerminalPressureState,
   formatWorkbenchThreeTerminalPressureUpdateLog,
   resolveWorkbenchThreeTerminalPressureUpdate,
   workbenchThreeTerminalBytesPerSecond,
   type WorkbenchThreeTerminalPressureState,
-} from "../src/app/workbench_three_terminal_pressure.ts";
+} from "./workbench_three_terminal_pressure.ts";
 import {
   API_WORKBENCH_THREE_PRESSURE_POLICY,
   apiWorkbenchThreeFrameIntervalForCells,
   WORKBENCH_THREE_INITIAL_CELLS,
-} from "../src/app/workbench_three_policy.ts";
+} from "./workbench_three_policy.ts";
 
 export interface ApiWorkbenchThreeFlushStats {
   changed: number;

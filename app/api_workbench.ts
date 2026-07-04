@@ -346,7 +346,7 @@ import { WorkbenchThreeViewportInteractionController } from "../src/app/workbenc
 import {
   type ApiWorkbenchThreePressureInspection,
   ApiWorkbenchThreeRuntimeController,
-} from "./workbench_three_runtime.ts";
+} from "../src/app/workbench_three_runtime.ts";
 import type {
   Accent,
   AsciiOptions,
