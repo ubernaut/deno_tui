@@ -47,6 +47,7 @@ Deno.test("ApiWorkbenchThreeRuntimeController backs off on scoped pressure and l
     hasLiveThreeWindow: () => true,
     onPressureChange: (message) => logs.push(message),
   });
+  controller.liveMaxCells.value = 240;
 
   const stats = { changed: 18, bytes: 120_000, durationMs: 0.1 };
   const sample = { renderedThreeGrids: 1, renderedThreeRows: 17 };

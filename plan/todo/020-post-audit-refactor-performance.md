@@ -634,3 +634,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   delegates the force-blocking decision instead of owning another inline state machine.
 - Extracted browser/remote terminal protocol header projection into the shared workbench terminal helper, letting the
   web API workbench reuse caller-owned header rows instead of rebuilding the strings inline every draw.
+- Moved the default workbench Three startup budget back to the 120-cell emergency tier after the current pressure probe
+  measured roughly 25-32KB/s steady terminal output at 120 cells versus roughly 45-55KB/s at 240 cells, preserving
+  automatic recovery to higher tiers when terminal output stays cheap.
