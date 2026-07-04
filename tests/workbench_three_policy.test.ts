@@ -27,15 +27,15 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
     480,
     960,
   ]);
-  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 240);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 240_000);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 6_000);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 120_000);
+  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 960);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 360_000);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 10_000);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 180_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerGrid, 2_500);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerSecond, 50_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowFpsRatio, WORKBENCH_THREE_PRESSURE_LOW_FPS_RATIO);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.minObservedFpsFrames, WORKBENCH_THREE_PRESSURE_MIN_FPS_FRAMES);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highFrameThreshold, 1);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highFrameThreshold, 3);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowFrameThreshold, 30);
   assertEquals(WORKBENCH_THREE_READBACK_STRATEGY, "blocking");
 });
@@ -56,11 +56,11 @@ Deno.test("API workbench Three policy keeps live panes faster than idle panes", 
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: false }), 1000 / 5);
 });
 
-Deno.test("API workbench Three policy starts at a remote-terminal friendly live tier but keeps rescue available", () => {
-  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 240);
+Deno.test("API workbench Three policy starts at full live resolution but keeps rescue available", () => {
+  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 960);
   assertEquals(
     apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
-    1000 / 20,
+    1000 / 18,
   );
   assertEquals(
     apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_RESCUE_CELLS, { live: true }),
@@ -112,7 +112,7 @@ Deno.test("API workbench Three policy keeps ordinary startup block frames at the
   const sample = {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
     renderedThreeGrids: 1,
-    bytes: 1_600,
+    bytes: 4_600,
     durationMs: 0.05,
     sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
   };
@@ -144,7 +144,7 @@ Deno.test("API workbench Three policy backs off when observed FPS collapses", ()
     Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
   }
 
-  assertEquals(state.currentCells, 120);
+  assertEquals(state.currentCells, 480);
   assertEquals(state.highFrames, 0);
 });
 
@@ -161,9 +161,12 @@ Deno.test("API workbench Three policy backs off when observed FPS is visibly bel
     observedFrameCount: WORKBENCH_THREE_PRESSURE_MIN_FPS_FRAMES,
   };
 
-  Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
+  const frames = API_WORKBENCH_THREE_PRESSURE_POLICY.highFrameThreshold ?? 1;
+  for (let index = 0; index < frames; index += 1) {
+    Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
+  }
 
-  assertEquals(state.currentCells, 120);
+  assertEquals(state.currentCells, 480);
   assertEquals(state.highFrames, 0);
 });
 
@@ -228,8 +231,8 @@ Deno.test("API workbench Three policy scopes collapsed cadence even when other r
   });
 
   assertEquals(next.scoped, true);
-  assertEquals(next.currentCells, 120);
-  assertEquals(next.highFrames, 0);
+  assertEquals(next.currentCells, WORKBENCH_THREE_INITIAL_CELLS);
+  assertEquals(next.highFrames, 1);
 });
 
 Deno.test("API workbench Three policy recovers from moderate animated output under the byte-rate floor", () => {
@@ -275,7 +278,7 @@ Deno.test("API workbench Three policy rejects sustained 960-cell block output pr
   const sample = {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
     renderedThreeGrids: 1,
-    bytes: 7_000,
+    bytes: 12_000,
     durationMs: 0.05,
     sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(960, { live: true }),
   };
