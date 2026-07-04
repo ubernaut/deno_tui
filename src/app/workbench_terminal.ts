@@ -234,6 +234,21 @@ export interface WorkbenchTerminalOutputRowsOptions {
   sourcePrefix?: boolean;
 }
 
+/** One renderer-neutral row in a process-output terminal window. */
+export interface WorkbenchTerminalOutputWindowRow {
+  kind: "status" | "hint" | "empty" | "output";
+  text: string;
+  source?: TerminalOutputLine["source"];
+}
+
+/** Inputs for projecting the process-output terminal window body below its toolbar. */
+export interface WorkbenchTerminalOutputWindowRowsOptions extends WorkbenchTerminalOutputRowsOptions {
+  statusText: string;
+  hintText: string;
+  lines: readonly TerminalOutputLine[];
+  emptyText?: string;
+}
+
 /** Projected pane frame metadata shared by terminal and browser workbench shell renderers. */
 export interface WorkbenchTerminalPaneProjection {
   pane?: TerminalWorkspacePaneRect;
@@ -804,6 +819,37 @@ export function workbenchTerminalOutputRowsInto(
   return target;
 }
 
+/** Projects status, hint, and visible process output into reusable renderer-neutral rows. */
+export function workbenchTerminalOutputWindowRowsInto(
+  target: WorkbenchTerminalOutputWindowRow[],
+  options: WorkbenchTerminalOutputWindowRowsOptions,
+): WorkbenchTerminalOutputWindowRow[] {
+  let written = 0;
+  written = writeTerminalOutputWindowRow(target, written, "status", options.statusText);
+  written = writeTerminalOutputWindowRow(target, written, "hint", options.hintText);
+  if (options.lines.length === 0) {
+    written = writeTerminalOutputWindowRow(
+      target,
+      written,
+      "empty",
+      options.emptyText ?? "No output yet. Press [Run] to start the demo command.",
+    );
+  } else {
+    for (let index = 0; index < options.lines.length; index += 1) {
+      const line = options.lines[index]!;
+      written = writeTerminalOutputWindowRow(
+        target,
+        written,
+        "output",
+        formatTerminalOutputLine(line, options),
+        line.source,
+      );
+    }
+  }
+  target.length = written;
+  return target;
+}
+
 /** Projects a terminal workspace layout into pane frames with content rectangles and optional title rows. */
 export function workbenchTerminalPaneProjectionsInto(
   target: WorkbenchTerminalPaneProjection[],
@@ -1054,6 +1100,21 @@ function writeTerminalPaneProjection(
     setRect(projection.contentRect, rect);
   }
   target[index] = projection;
+}
+
+function writeTerminalOutputWindowRow(
+  target: WorkbenchTerminalOutputWindowRow[],
+  index: number,
+  kind: WorkbenchTerminalOutputWindowRow["kind"],
+  text: string,
+  source?: TerminalOutputLine["source"],
+): number {
+  const row = target[index] ?? { kind, text: "" };
+  row.kind = kind;
+  row.text = text;
+  row.source = source;
+  target[index] = row;
+  return index + 1;
 }
 
 function setRect(target: Rectangle, source: Rectangle): void {

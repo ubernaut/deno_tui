@@ -23,6 +23,7 @@ import {
   workbenchTerminalOutputRowsInto,
   type WorkbenchTerminalOutputToolbarAction,
   workbenchTerminalOutputToolbarItemsInto,
+  workbenchTerminalOutputWindowRowsInto,
   workbenchTerminalPaneProjectionsInto,
   workbenchTerminalPaneTitleRenderCommandsInto,
   workbenchTerminalProtocolHeaderRowsInto,
@@ -722,6 +723,39 @@ Deno.test("workbenchTerminalOutputRowsInto formats process output into caller-ow
   assertEquals(rows, target);
   assertEquals(rows, ["[out] ready", "[err] warn", "[sys] done"]);
   assertEquals(workbenchTerminalOutputRowsInto(rows, [{ source: "stdout", text: "plain" }]), ["plain"]);
+});
+
+Deno.test("workbenchTerminalOutputWindowRowsInto projects status hint and output rows", () => {
+  const target = [{ kind: "empty" as const, text: "stale" }];
+  const rows = workbenchTerminalOutputWindowRowsInto(target, {
+    statusText: "running process",
+    hintText: "raw input available",
+    lines: [
+      { source: "stdout", text: "ready" },
+      { source: "stderr", text: "warn" },
+    ],
+    sourcePrefix: true,
+  });
+
+  assertEquals(rows, target);
+  assertEquals(rows.map((row) => row.kind), ["status", "hint", "output", "output"]);
+  assertEquals(rows.map((row) => row.text), ["running process", "raw input available", "[out] ready", "[err] warn"]);
+  assertEquals(rows[2]?.source, "stdout");
+  assertEquals(rows[3]?.source, "stderr");
+
+  const first = rows[0];
+  const empty = workbenchTerminalOutputWindowRowsInto(rows, {
+    statusText: "stopped",
+    hintText: "press run",
+    lines: [],
+  });
+  assertEquals(empty[0] === first, true);
+  assertEquals(empty.map((row) => row.kind), ["status", "hint", "empty"]);
+  assertEquals(empty.map((row) => row.text), [
+    "stopped",
+    "press run",
+    "No output yet. Press [Run] to start the demo command.",
+  ]);
 });
 
 Deno.test("resolveWorkbenchTerminalOutputKeyAction maps process terminal shortcuts", () => {

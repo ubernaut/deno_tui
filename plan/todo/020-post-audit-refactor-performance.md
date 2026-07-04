@@ -230,6 +230,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   future adapters reuse caller-owned row projection instead of local loops.
 - Routed the terminal-output window render path through the same shared process-output row projector, keeping visible
   output rendering and content-size measurement aligned.
+- Extracted terminal-output status, hint, empty-state, and visible output row ordering into a renderer-neutral projector
+  so the API workbench paints shared row commands instead of assembling the terminal body inline.
 - Added an intermediate compact Three header telemetry format so narrow workbench panes keep showing measured/target FPS
   before falling back to the bare frame-time and cell-count label.
 - Added an optional observed-FPS gate to the workbench Three pressure probe so default and narrow workbench-shaped

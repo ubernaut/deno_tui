@@ -81,6 +81,8 @@ import {
   workbenchTerminalOutputRowsInto,
   type WorkbenchTerminalOutputToolbarAction,
   workbenchTerminalOutputToolbarItemsInto,
+  type WorkbenchTerminalOutputWindowRow,
+  workbenchTerminalOutputWindowRowsInto,
   workbenchTitlebarButtonRenderCommandsInto,
   workbenchVisibleWindowRectsInto,
   workbenchVisualizationIdFromWindowId,
@@ -485,6 +487,7 @@ const threeFallbackRowsBuffer: RowStyle[] = [];
 const logRenderRows: RowStyle[] = [];
 const styledRowRenderCommands: WorkbenchStyledRowRenderCommand[] = [];
 const terminalOutputContentRows: string[] = [];
+const terminalOutputWindowRows: WorkbenchTerminalOutputWindowRow[] = [];
 const ASCII_DEMO_PRESET_IDS = asciiDemoPresetIds();
 const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
 const windowCatalog = createApiWorkbenchWindowCatalog(visualizations);
@@ -1810,50 +1813,33 @@ function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
     backendId: "process",
     width: rect.width,
   });
-  write(
-    frame,
-    row,
-    rect.column,
-    paint(fit(statusSummary.text, rect.width), {
-      fg: contrastText(statusTone, t.background, t.text),
-      bg: statusTone,
-      bold: true,
-    }),
-  );
-  row += 1;
-
-  write(
-    frame,
-    row,
-    rect.column,
-    paint(fit(formatTerminalOutputHint(terminalInputMode.peek()), rect.width), { fg: t.soft, bg: t.panelSoft }),
-  );
-  row += 1;
-
-  const outputHeight = Math.max(0, rect.row + rect.height - row);
+  const outputHeight = Math.max(0, rect.row + rect.height - row - 2);
   const lines = terminalOutputSession.output.visible(outputHeight);
-  const textRows = workbenchTerminalOutputRowsInto(terminalOutputContentRows, lines, { sourcePrefix: true });
-  if (lines.length === 0) {
-    write(
-      frame,
-      row,
-      rect.column,
-      paint(fit("No output yet. Press [Run] to start the demo command.", rect.width), {
-        fg: t.muted,
-        bg: t.surface,
-      }),
-    );
-    return;
-  }
-
-  for (let index = 0; index < Math.min(outputHeight, lines.length); index += 1) {
-    const line = lines[index]!;
-    const style = terminalOutputLineStyle(line.source, t);
+  const projectedRows = workbenchTerminalOutputWindowRowsInto(terminalOutputWindowRows, {
+    statusText: statusSummary.text,
+    hintText: formatTerminalOutputHint(terminalInputMode.peek()),
+    lines,
+    sourcePrefix: true,
+  });
+  const maxRows = Math.min(projectedRows.length, Math.max(0, rect.row + rect.height - row));
+  for (let index = 0; index < maxRows; index += 1) {
+    const projected = projectedRows[index]!;
+    const style = projected.kind === "status"
+      ? {
+        fg: contrastText(statusTone, t.background, t.text),
+        bg: statusTone,
+        bold: true,
+      }
+      : projected.kind === "hint"
+      ? { fg: t.soft, bg: t.panelSoft }
+      : projected.kind === "empty"
+      ? { fg: t.muted, bg: t.surface }
+      : terminalOutputLineStyle(projected.source ?? "stdout", t);
     write(
       frame,
       row + index,
       rect.column,
-      paint(fit(textRows[index] ?? "", rect.width), style),
+      paint(fit(projected.text, rect.width), style),
     );
   }
 }
