@@ -37,6 +37,8 @@ export interface ThreeHeaderPerformance {
   deferredReadbackPending?: number;
   deferredReadbackUnresolved?: number;
   deferredReadbackSaturated?: boolean;
+  sourceMaxCells?: number;
+  targetFps?: number;
 }
 
 /** Builds responsive title/detail rows for the built-in Three ASCII workbench window. */
@@ -53,7 +55,11 @@ export function threeHeaderRows(
   const perf = performance ? formatThreeHeaderPerformance(performance, width) : "";
   const titleText = width >= textWidth(` ${title} `) ? ` ${title} ` : ` ${compactTitle} `;
   const detailBase = width >= textWidth(geometry) ? geometry : compactGeometry;
-  const detailText = perf && width >= textWidth(`${detailBase} · ${perf}`) ? `${detailBase} · ${perf}` : detailBase;
+  const detailText = perf && width >= textWidth(`${detailBase} · ${perf}`)
+    ? `${detailBase} · ${perf}`
+    : perf && width >= textWidth(perf)
+    ? perf
+    : detailBase;
   return [
     {
       text: titleText,
@@ -69,12 +75,16 @@ export function threeHeaderRows(
 function formatThreeHeaderPerformance(performance: ThreeHeaderPerformance, width: number): string {
   const total = `${Math.round(performance.totalMs)}ms`;
   const cells = `${performance.cells}c`;
+  const cap = performance.sourceMaxCells && performance.sourceMaxCells !== performance.cells
+    ? ` cap ${performance.sourceMaxCells}c`
+    : "";
+  const target = performance.targetFps ? ` @${Math.round(performance.targetFps)}fps` : "";
   const queue = formatThreeHeaderQueuePressure(performance);
   const detailed = `frame ${total} scene ${Math.round(performance.sceneMs)} read ${
     Math.round(performance.readbackMs)
-  } asm ${Math.round(performance.assemblyMs)} ${cells}${queue ? ` ${queue}` : ""}`;
+  } asm ${Math.round(performance.assemblyMs)} ${cells}${cap}${target}${queue ? ` ${queue}` : ""}`;
   if (width >= textWidth(detailed)) return detailed;
-  const compact = `${total} ${cells}${queue ? ` ${queue}` : ""}`;
+  const compact = `${total} ${cells}${target}${queue ? ` ${queue}` : ""}`;
   return width >= textWidth(compact) ? compact : `${total} ${cells}`;
 }
 

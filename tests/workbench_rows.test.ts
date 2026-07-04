@@ -22,7 +22,7 @@ Deno.test("threeHeaderRows adapts title and geometry labels to width", () => {
 });
 
 Deno.test("threeHeaderRows includes compact renderer telemetry when it fits", () => {
-  const rows = threeHeaderRows("BLOCKS", 96, theme, {
+  const rows = threeHeaderRows("BLOCKS", 132, theme, {
     totalMs: 17.4,
     sceneMs: 12.2,
     readbackMs: 4.1,
@@ -30,13 +30,15 @@ Deno.test("threeHeaderRows includes compact renderer telemetry when it fits", ()
     cells: 1920,
     deferredReadbackSlots: 6,
     deferredReadbackUnresolved: 2,
+    sourceMaxCells: 3840,
+    targetFps: 14.2,
   });
   assertEquals(
     rows[1]?.text,
-    "torus knot · sphere · block · floor plane · frame 17ms scene 12 read 4 asm 1 1920c q2/6",
+    "torus knot · sphere · block · floor plane · frame 17ms scene 12 read 4 asm 1 1920c cap 3840c @14fps q2/6",
   );
   assertEquals(
-    threeHeaderRows("BLOCKS", 18, theme, {
+    threeHeaderRows("BLOCKS", 30, theme, {
       totalMs: 17.4,
       sceneMs: 12.2,
       readbackMs: 4.1,
@@ -45,8 +47,9 @@ Deno.test("threeHeaderRows includes compact renderer telemetry when it fits", ()
       deferredReadbackSlots: 6,
       deferredReadbackUnresolved: 6,
       deferredReadbackSaturated: true,
+      targetFps: 18,
     })[1]?.text,
-    "torus · sphere · block · floor",
+    "17ms 1920c @18fps sat6/6",
   );
 });
 
