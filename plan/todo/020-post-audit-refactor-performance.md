@@ -521,3 +521,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   boundary and NaN behavior while trimming work from dense block frame assembly.
 - Removed the now-dead block-mode branches from generic fill-only glyph assembly so the default block fast path stays
   isolated and glyph/mixed assembly no longer pays for block-mode conditionals.
+- Added an awaited first-frame deferred readback bootstrap for Three ASCII renderers so deferred mode publishes a real
+  ANSI grid on startup instead of returning blank cached frames until an async map happens to resolve; steady-state
+  frames continue to use nonblocking deferred readback slots.

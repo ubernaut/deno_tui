@@ -24,6 +24,7 @@ export interface ThreeAsciiDeferredReadbackFrame<TBuffer extends ThreeAsciiDefer
   error?: unknown;
   readbackStart: number;
   readbackMs: number;
+  mapPromise: Promise<void>;
 }
 
 export interface ThreeAsciiDeferredReadbackQueueOptions {
@@ -123,9 +124,9 @@ export class ThreeAsciiDeferredReadbackQueue<TBuffer extends ThreeAsciiDeferredR
     slot: ThreeAsciiGpuBufferSlot<TBuffer>,
     options: Omit<
       ThreeAsciiDeferredReadbackFrame<TBuffer>,
-      "slot" | "generation" | "resolved" | "error" | "readbackStart" | "readbackMs"
+      "slot" | "generation" | "resolved" | "error" | "readbackStart" | "readbackMs" | "mapPromise"
     >,
-  ): void {
+  ): ThreeAsciiDeferredReadbackFrame<TBuffer> {
     const pending: ThreeAsciiDeferredReadbackFrame<TBuffer> = {
       ...options,
       slot,
@@ -133,9 +134,10 @@ export class ThreeAsciiDeferredReadbackQueue<TBuffer extends ThreeAsciiDeferredR
       resolved: false,
       readbackStart: this.now(),
       readbackMs: 0,
+      mapPromise: Promise.resolve(),
     };
     this.pending.push(pending);
-    slot.gpu.mapAsync(this.mapModeRead).then(
+    pending.mapPromise = slot.gpu.mapAsync(this.mapModeRead).then(
       () => {
         pending.readbackMs = this.now() - pending.readbackStart;
         pending.resolved = true;
@@ -145,6 +147,7 @@ export class ThreeAsciiDeferredReadbackQueue<TBuffer extends ThreeAsciiDeferredR
         pending.resolved = true;
       },
     );
+    return pending;
   }
 
   consumeCompleted(

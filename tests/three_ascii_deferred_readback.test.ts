@@ -70,6 +70,24 @@ Deno.test("deferred readback queue consumes resolved frames and reports timing",
   assertEquals(queue.inspect().pending, 0);
 });
 
+Deno.test("deferred readback queue exposes an awaitable map promise", async () => {
+  const queue = new ThreeAsciiDeferredReadbackQueue<FakeDeferredReadbackBuffer>({ mapModeRead: 1 });
+  const buffer = new FakeDeferredReadbackBuffer(1, [14, 1, 1, 1, 1]);
+  const pending = queue.queue(slot(buffer, buffer.source.byteLength), frameOptions());
+  let settled = false;
+  pending.mapPromise.then(() => {
+    settled = true;
+  });
+
+  await Promise.resolve();
+  assertEquals(settled, false);
+  buffer.resolveMap();
+  await pending.mapPromise;
+
+  assertEquals(settled, true);
+  assertEquals(pending.resolved, true);
+});
+
 Deno.test("deferred readback queue skips stale resolved frames after invalidation", async () => {
   const queue = new ThreeAsciiDeferredReadbackQueue<FakeDeferredReadbackBuffer>({ mapModeRead: 1 });
   const buffer = new FakeDeferredReadbackBuffer(1, [14, 1, 1, 1, 1]);
