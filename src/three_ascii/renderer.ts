@@ -18,6 +18,7 @@ import {
   ThreeAsciiDeferredReadbackQueue,
 } from "./deferred_readback.ts";
 import { createThreeAsciiComputeBindGroups } from "./compute_bind_groups.ts";
+import { encodeThreeAsciiComputeDispatchCommands } from "./compute_commands.ts";
 import { createThreeAsciiComputeDispatchPlan } from "./compute_plan.ts";
 import { applyThreeAsciiComputeResourcePlanState, createThreeAsciiComputeResourcePlan } from "./compute_resources.ts";
 import {
@@ -366,16 +367,10 @@ export class ThreeAsciiRenderer {
       workgroupSize: THREE_ASCII_WORKGROUP_SIZE,
       includeEdges: includeTerminalEdges,
     });
-    for (const pass of dispatchPlan.passes) {
-      this.dispatchComputePass(
-        commandEncoder,
-        pass.label,
-        this.computePipelineForPass(pass.kind),
-        this.computeBindGroupForPass(pass.kind),
-        dispatchPlan.workgroupsX,
-        dispatchPlan.workgroupsY,
-      );
-    }
+    encodeThreeAsciiComputeDispatchCommands(commandEncoder, dispatchPlan, {
+      pipelineForPass: (kind) => this.computePipelineForPass(kind),
+      bindGroupForPass: (kind) => this.computeBindGroupForPass(kind),
+    });
 
     const readbackLayout = this.readbackLayoutCache.resolve({
       fillByteLength: this.fillOutput!.byteLength,
@@ -773,21 +768,6 @@ export class ThreeAsciiRenderer {
     this.gridRevision += 1;
     this.lastAssemblyMs = assembly.assemblyMs;
     return assembly.grid;
-  }
-
-  private dispatchComputePass(
-    commandEncoder: GPUCommandEncoder,
-    label: string,
-    pipeline: GPUComputePipeline,
-    bindGroup: GPUBindGroup,
-    workgroupsX: number,
-    workgroupsY: number,
-  ): void {
-    const passEncoder = commandEncoder.beginComputePass({ label });
-    passEncoder.setPipeline(pipeline);
-    passEncoder.setBindGroup(0, bindGroup);
-    passEncoder.dispatchWorkgroups(workgroupsX, workgroupsY, 1);
-    passEncoder.end();
   }
 
   private async buildAnsiGridFromReadback(
