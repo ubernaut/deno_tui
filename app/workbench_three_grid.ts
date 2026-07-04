@@ -4,6 +4,8 @@ import { type WorkbenchFrame, writeFrameCells } from "../src/app/workbench_frame
 
 export type WorkbenchThreeGridScaleMode = boolean | "down";
 
+const scaleIndexMetadata = new WeakMap<number[], { targetSize: number; sourceSize: number }>();
+
 /** Copies a Three ASCII ANSI grid into a workbench frame rectangle. */
 export function writeWorkbenchThreeGrid(
   frame: WorkbenchFrame,
@@ -71,9 +73,15 @@ function maxGridColumns(grid: readonly (readonly string[] | undefined)[]): numbe
 }
 
 function scaledIndexesInto(target: number[], targetSize: number, sourceSize: number): number[] {
+  const metadata = scaleIndexMetadata.get(target);
+  if (metadata?.targetSize === targetSize && metadata.sourceSize === sourceSize && target.length === targetSize) {
+    return target;
+  }
+
   target.length = targetSize;
   for (let index = 0; index < targetSize; index += 1) {
     target[index] = Math.min(sourceSize - 1, Math.floor((index * sourceSize) / targetSize));
   }
+  scaleIndexMetadata.set(target, { targetSize, sourceSize });
   return target;
 }

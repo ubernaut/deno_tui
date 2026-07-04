@@ -96,6 +96,38 @@ Deno.test("workbench three grid reuses caller-owned scale index buffers", () => 
   assertEquals(sourceColumnIndexes, [0, 0, 1, 1]);
 });
 
+Deno.test("workbench three grid refreshes retained scale indexes after dimension changes", () => {
+  const sourceRowIndexes: number[] = [];
+  const sourceColumnIndexes: number[] = [];
+  const firstFrame: WorkbenchFrame = [];
+  writeWorkbenchThreeGrid(
+    firstFrame,
+    { column: 0, row: 0, width: 4, height: 4 },
+    [["A", "B"], ["C", "D"]],
+    ".",
+    { scale: true, sourceColumns: 2, sourceRowIndexes, sourceColumnIndexes },
+  );
+  assertEquals(sourceRowIndexes, [0, 0, 1, 1]);
+  assertEquals(sourceColumnIndexes, [0, 0, 1, 1]);
+
+  const secondFrame: WorkbenchFrame = [];
+  writeWorkbenchThreeGrid(
+    secondFrame,
+    { column: 0, row: 0, width: 3, height: 3 },
+    [["A", "B", "C"], ["D", "E", "F"], ["G", "H", "I"]],
+    ".",
+    { scale: true, sourceColumns: 3, sourceRowIndexes, sourceColumnIndexes },
+  );
+
+  assertEquals(secondFrame, [
+    ["A", "B", "C"],
+    ["D", "E", "F"],
+    ["G", "H", "I"],
+  ]);
+  assertEquals(sourceRowIndexes, [0, 1, 2]);
+  assertEquals(sourceColumnIndexes, [0, 1, 2]);
+});
+
 Deno.test("workbench three grid source column hints avoid scanning wider hidden rows", () => {
   const frame: WorkbenchFrame = [];
   writeWorkbenchThreeGrid(
