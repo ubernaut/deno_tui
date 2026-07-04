@@ -1124,3 +1124,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added a post-overlay pressure cooldown for the API Workbench Three pane. Modal/dropdown/config frames reset cadence and
   pressure counters while they are active and for a short window after closing, preventing quit/config/menu overlays from
   poisoning measured FPS and shrinking a healthy renderer after the overlay disappears.
+- Extracted the workbench Three overlay pressure gate into `src/app` with focused tests, keeping modal/dropdown/config
+  cooldown behavior renderer-neutral and reducing pressure-policy state in the large API Workbench demo file.

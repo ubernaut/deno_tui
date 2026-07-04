@@ -83,6 +83,7 @@ import {
   workbenchTerminalOutputToolbarItemsInto,
   type WorkbenchTerminalOutputWindowRow,
   workbenchTerminalOutputWindowRowsInto,
+  WorkbenchThreeOverlayPressureGate,
   workbenchTitlebarButtonRenderCommandsInto,
   workbenchVisibleWindowRectsInto,
   workbenchVisualizationIdFromWindowId,
@@ -689,8 +690,9 @@ const workbenchThreeHeaderPerformance: ThreeHeaderPerformance = {
   cells: 0,
 };
 const WORKBENCH_THREE_OVERLAY_PRESSURE_COOLDOWN_FRAMES = 6;
-let workbenchThreeOverlayWasOpen = false;
-let workbenchThreeOverlayPressureCooldown = 0;
+const workbenchThreeOverlayPressureGate = new WorkbenchThreeOverlayPressureGate(
+  WORKBENCH_THREE_OVERLAY_PRESSURE_COOLDOWN_FRAMES,
+);
 let dropdownOverlay: DropdownOverlay | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
 let workspacePlacementContext: WorkspacePlacementContext | null = null;
@@ -1109,21 +1111,14 @@ function draw(): void {
 
 function updateThreeTerminalPressure(stats: WorkbenchAnsiScreenFlushStats): void {
   const overlayOpen = modal.openState.peek() || screenDropdownOpen() || threeConfigOpen.peek();
-  if (overlayOpen) {
-    workbenchThreeOverlayWasOpen = true;
-    workbenchThreeOverlayPressureCooldown = WORKBENCH_THREE_OVERLAY_PRESSURE_COOLDOWN_FRAMES;
+  const pressureGate = workbenchThreeOverlayPressureGate.resolve(overlayOpen);
+  if (pressureGate.resetCadence) {
     threeCadence.reset();
-    workbenchThreeRuntime.resetPressureCounters();
-    return;
   }
-  if (workbenchThreeOverlayWasOpen) {
-    workbenchThreeOverlayWasOpen = false;
-    workbenchThreeOverlayPressureCooldown = WORKBENCH_THREE_OVERLAY_PRESSURE_COOLDOWN_FRAMES;
-    threeCadence.reset();
+  if (pressureGate.resetPressureCounters) {
     workbenchThreeRuntime.resetPressureCounters();
   }
-  if (workbenchThreeOverlayPressureCooldown > 0) {
-    workbenchThreeOverlayPressureCooldown -= 1;
+  if (!pressureGate.updatePressure) {
     return;
   }
   workbenchThreeRuntime.updatePressureFromCadence(stats, threeCadence.inspect());

@@ -43,6 +43,7 @@ export * from "../workbench_three_interaction.ts";
 export * from "../workbench_three_panel_defaults.ts";
 export * from "../workbench_three_panel_registry.ts";
 export * from "../workbench_three_policy.ts";
+export * from "../workbench_three_overlay_pressure.ts";
 export * from "../workbench_three_runtime.ts";
 export * from "../workbench_three_scene.ts";
 export * from "../workbench_three_terminal_pressure.ts";
