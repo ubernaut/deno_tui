@@ -12,7 +12,8 @@ import {
   type TerminalGlyphMode,
   terminalGlyphModeForStyle,
 } from "./ansi_glyph_keys.ts";
-import { colorToBytes, colorValue, createLinearByteCache, rgbToAnsiBackground, rgbToAnsiForeground } from "./colors.ts";
+import { ThreeAsciiAnsiBackgroundState } from "./ansi_background.ts";
+import { createLinearByteCache, rgbToAnsiBackground, rgbToAnsiForeground } from "./colors.ts";
 import type { TerminalGlyphStyle } from "./glyphs.ts";
 
 const DEFAULT_TERMINAL_EDGE_BIAS = 1;
@@ -40,14 +41,9 @@ export class ThreeAsciiAnsiGridAssembler {
   private readonly toByte = createLinearByteCache();
   private readonly foregroundAnsiCache = new Map<number, string>();
   private readonly cellCache = new Map<number, string>();
+  private readonly background = new ThreeAsciiAnsiBackgroundState();
   private readonly reuseGrid: boolean;
   private reusableGrid: string[][] = [];
-  private backgroundKey = -1;
-  private backgroundAnsi = "";
-  private blankAnsi = "";
-  private backgroundRed = 0;
-  private backgroundGreen = 0;
-  private backgroundBlue = 0;
   private cachedColorRawRed = new Float64Array(0);
   private cachedColorRawGreen = new Float64Array(0);
   private cachedColorRawBlue = new Float64Array(0);
@@ -57,12 +53,6 @@ export class ThreeAsciiAnsiGridAssembler {
   private cachedCellStrings: string[] = [];
   private cachedCellBackgroundKey = -1;
   private cachedCellGlyphMode = -1;
-  private stableBackgroundInput: string | number | undefined;
-  private hasStableBackgroundInput = false;
-  private stableBackgroundColorRef?: Color;
-  private stableBackgroundColorRed = Number.NaN;
-  private stableBackgroundColorGreen = Number.NaN;
-  private stableBackgroundColorBlue = Number.NaN;
 
   constructor(options: { reuseGrid?: boolean } = {}) {
     this.reuseGrid = options.reuseGrid ?? false;
@@ -80,7 +70,9 @@ export class ThreeAsciiAnsiGridAssembler {
     const cellCount = columns * rows;
     const denseFill = fillGlyphs.length >= cellCount;
     const denseColors = colors.length >= cellCount * 4;
-    this.setBackground(input.backgroundColor);
+    if (this.background.set(input.backgroundColor)) {
+      this.cellCache.clear();
+    }
     this.prepareFrameCaches(cellCount, terminalGlyphMode);
     this.pruneCaches();
     let lastForegroundKey = -1;
@@ -153,7 +145,7 @@ export class ThreeAsciiAnsiGridAssembler {
           fillGlyphIndex < MIN_VISIBLE_FILL_GLYPH_INDEX &&
           (edgeGlyphIndex <= 0 || dominantCount <= 0 || totalCount <= 0)
         ) {
-          outputRow[column] = this.blankAnsi;
+          outputRow[column] = this.background.blankAnsi;
           continue;
         }
 
@@ -223,15 +215,7 @@ export class ThreeAsciiAnsiGridAssembler {
     this.foregroundAnsiCache.clear();
     this.cellCache.clear();
     this.reusableGrid = [];
-    this.backgroundKey = -1;
-    this.backgroundAnsi = "";
-    this.blankAnsi = "";
-    this.hasStableBackgroundInput = false;
-    this.stableBackgroundInput = undefined;
-    this.stableBackgroundColorRef = undefined;
-    this.stableBackgroundColorRed = Number.NaN;
-    this.stableBackgroundColorGreen = Number.NaN;
-    this.stableBackgroundColorBlue = Number.NaN;
+    this.background.clear();
     this.cachedColorRawRed = new Float64Array(0);
     this.cachedColorRawGreen = new Float64Array(0);
     this.cachedColorRawBlue = new Float64Array(0);
@@ -272,7 +256,7 @@ export class ThreeAsciiAnsiGridAssembler {
           ) {
             column += 1;
           }
-          outputRow.fill(this.blankAnsi, blankStart, column);
+          outputRow.fill(this.background.blankAnsi, blankStart, column);
           column -= 1;
           continue;
         }
@@ -349,7 +333,7 @@ export class ThreeAsciiAnsiGridAssembler {
           ) {
             column += 1;
           }
-          outputRow.fill(this.blankAnsi, blankStart, column);
+          outputRow.fill(this.background.blankAnsi, blankStart, column);
           column -= 1;
           continue;
         }
@@ -428,7 +412,7 @@ export class ThreeAsciiAnsiGridAssembler {
           ) {
             column += 1;
           }
-          outputRow.fill(this.blankAnsi, blankStart, column);
+          outputRow.fill(this.background.blankAnsi, blankStart, column);
           column -= 1;
           continue;
         }
@@ -516,7 +500,7 @@ export class ThreeAsciiAnsiGridAssembler {
           ) {
             column += 1;
           }
-          outputRow.fill(this.blankAnsi, blankStart, column);
+          outputRow.fill(this.background.blankAnsi, blankStart, column);
           column -= 1;
           continue;
         }
@@ -595,7 +579,7 @@ export class ThreeAsciiAnsiGridAssembler {
     }
 
     const glyph = glyphForKey(glyphKey);
-    cell = `${this.backgroundAnsi}${foregroundAnsi}${glyph}${RESET}`;
+    cell = `${this.background.ansi}${foregroundAnsi}${glyph}${RESET}`;
     this.cellCache.set(cellKey, cell);
     return cell;
   }
@@ -641,7 +625,7 @@ export class ThreeAsciiAnsiGridAssembler {
 
     if (
       this.cachedCellForegroundKeys.length === cellCount &&
-      this.cachedCellBackgroundKey === this.backgroundKey &&
+      this.cachedCellBackgroundKey === this.background.key &&
       this.cachedCellGlyphMode === terminalGlyphMode
     ) {
       return;
@@ -652,7 +636,7 @@ export class ThreeAsciiAnsiGridAssembler {
     this.cachedCellGlyphKeys = new Int32Array(cellCount);
     this.cachedCellGlyphKeys.fill(-1);
     this.cachedCellStrings = new Array<string>(cellCount);
-    this.cachedCellBackgroundKey = this.backgroundKey;
+    this.cachedCellBackgroundKey = this.background.key;
     this.cachedCellGlyphMode = terminalGlyphMode;
   }
 
@@ -690,52 +674,6 @@ export class ThreeAsciiAnsiGridAssembler {
     this.cachedColorRawBlue[index] = rawBlue;
     this.cachedColorByteKeys[index] = key;
     return key;
-  }
-
-  private setBackground(backgroundColor: Color | string | number | undefined): void {
-    if (!(backgroundColor instanceof Color)) {
-      const stableInput = backgroundColor ?? 0;
-      if (this.hasStableBackgroundInput && this.stableBackgroundInput === stableInput) {
-        return;
-      }
-      this.hasStableBackgroundInput = true;
-      this.stableBackgroundInput = stableInput;
-      this.stableBackgroundColorRef = undefined;
-      this.setBackgroundColor(colorValue(backgroundColor, 0x000000));
-      return;
-    }
-
-    this.hasStableBackgroundInput = false;
-    this.stableBackgroundInput = undefined;
-    if (
-      this.stableBackgroundColorRef === backgroundColor &&
-      this.stableBackgroundColorRed === backgroundColor.r &&
-      this.stableBackgroundColorGreen === backgroundColor.g &&
-      this.stableBackgroundColorBlue === backgroundColor.b
-    ) {
-      return;
-    }
-    this.stableBackgroundColorRef = backgroundColor;
-    this.stableBackgroundColorRed = backgroundColor.r;
-    this.stableBackgroundColorGreen = backgroundColor.g;
-    this.stableBackgroundColorBlue = backgroundColor.b;
-    this.setBackgroundColor(backgroundColor);
-  }
-
-  private setBackgroundColor(backgroundColor: Color): void {
-    const [backgroundRed, backgroundGreen, backgroundBlue] = colorToBytes(backgroundColor);
-    const backgroundKey = (backgroundRed << 16) | (backgroundGreen << 8) | backgroundBlue;
-    if (backgroundKey === this.backgroundKey) {
-      return;
-    }
-
-    this.backgroundKey = backgroundKey;
-    this.backgroundRed = backgroundRed;
-    this.backgroundGreen = backgroundGreen;
-    this.backgroundBlue = backgroundBlue;
-    this.backgroundAnsi = rgbToAnsiBackground(backgroundRed, backgroundGreen, backgroundBlue);
-    this.blankAnsi = `${this.backgroundAnsi} ${RESET}`;
-    this.cellCache.clear();
   }
 }
 
