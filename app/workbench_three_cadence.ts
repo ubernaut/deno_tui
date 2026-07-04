@@ -46,11 +46,24 @@ export class WorkbenchThreeCadenceMeter {
   }
 
   inspect(): WorkbenchThreeCadenceInspection {
+    return this.inspectAt(performance.now());
+  }
+
+  inspectAt(now: number): WorkbenchThreeCadenceInspection {
     const averageFrameMs = this.#averageFrameMs;
     return {
       updates: this.#updates,
-      averageFrameMs,
-      measuredFps: averageFrameMs && averageFrameMs > 0 ? 1000 / averageFrameMs : undefined,
+      averageFrameMs: this.isFresh(now) ? averageFrameMs : undefined,
+      measuredFps: this.measuredFps(now),
     };
+  }
+
+  measuredFps(now = performance.now()): number | undefined {
+    const averageFrameMs = this.#averageFrameMs;
+    return averageFrameMs && averageFrameMs > 0 && this.isFresh(now) ? 1000 / averageFrameMs : undefined;
+  }
+
+  private isFresh(now: number): boolean {
+    return this.#lastUpdateAt === undefined || now - this.#lastUpdateAt <= this.#resetAfterMs;
   }
 }

@@ -23,3 +23,14 @@ Deno.test("WorkbenchThreeCadenceMeter resets stale gaps without retaining old ca
   meter.reset();
   assertEquals(meter.inspect(), { updates: 0, averageFrameMs: undefined, measuredFps: undefined });
 });
+
+Deno.test("WorkbenchThreeCadenceMeter hides stale measured fps before the next update", () => {
+  const meter = new WorkbenchThreeCadenceMeter({ resetAfterMs: 100 });
+
+  meter.record(0);
+  meter.record(50);
+
+  assertEquals(meter.inspectAt(75), { updates: 2, averageFrameMs: 50, measuredFps: 20 });
+  assertEquals(meter.measuredFps(151), undefined);
+  assertEquals(meter.inspectAt(151), { updates: 2, averageFrameMs: undefined, measuredFps: undefined });
+});

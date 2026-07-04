@@ -854,3 +854,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added a lightweight workbench Three cadence meter and surfaced observed grid-publication FPS in the built-in Three
   header alongside configured target FPS, making manual renderer profiling distinguish intended cadence from actual
   visible update rate. Focused row/cadence tests and the `workbench-three-header-telemetry` benchmark passed.
+- Tightened the cadence meter so stale observed FPS ages out while panes are paused or hidden, and routed the workbench
+  header through a primitive `measuredFps()` read instead of allocating an inspection object during render.

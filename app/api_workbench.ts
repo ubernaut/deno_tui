@@ -1415,7 +1415,7 @@ function renderThree(frame: Frame, rect: Rectangle): void {
             ...performance,
             sourceMaxCells: workbenchThreeLiveMaxCells.peek(),
             targetFps: 1000 / workbenchThreeFrameInterval.peek(),
-            measuredFps: threeCadence.inspect().measuredFps,
+            measuredFps: threeCadence.measuredFps(),
             pressureCells: pressure.currentCells,
             pressureHighFrames: pressure.highFrames,
             pressureLowFrames: pressure.lowFrames,
