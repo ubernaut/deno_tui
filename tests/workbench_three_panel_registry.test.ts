@@ -1,5 +1,8 @@
 import { assertEquals, assertStrictEquals } from "./deps.ts";
-import { type WorkbenchThreePanelEntry, WorkbenchThreePanelRegistry } from "../app/workbench_three_panel_registry.ts";
+import {
+  type WorkbenchThreePanelEntry,
+  WorkbenchThreePanelRegistry,
+} from "../src/app/workbench_three_panel_registry.ts";
 import type { WorkbenchThreeScene } from "../app/workbench_three_scene.ts";
 import type { Rectangle } from "../src/types.ts";
 
@@ -49,7 +52,7 @@ Deno.test("WorkbenchThreePanelRegistry disposes individual entries and clears al
   assertEquals(registry.entries.size, 0);
 });
 
-function fakeEntry(id: string): WorkbenchThreePanelEntry<FakePanel> {
+function fakeEntry(id: string): WorkbenchThreePanelEntry<FakePanel, WorkbenchThreeScene> {
   return {
     rectangle: new FakeSignal({ column: 2, row: 3, width: 4, height: 5 }),
     graphicsRectangle: new FakeSignal({ column: 8, row: 9, width: 10, height: 11 }),

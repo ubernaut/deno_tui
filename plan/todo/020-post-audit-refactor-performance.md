@@ -1053,3 +1053,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   placeholder cadence no longer knocks healthy 240-cell block rendering down to rescue tiers.
 - Moved Three panel mouse interaction state and transform application into `src/app` behind a structural Three transform
   interface, keeping zoom/rotate behavior reusable outside the Neon/workbench demo modules.
+- Moved dynamic workbench Three panel registry ownership into `src/app` with generic nullable scene signals, reducing
+  API Workbench demo-local lifecycle code while preserving hide/dispose semantics for visualization panes.

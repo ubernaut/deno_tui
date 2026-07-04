@@ -1,10 +1,4 @@
-import type { Rectangle } from "../src/types.ts";
-import { setWorkbenchThreeRect, type WorkbenchThreeRectTarget } from "../src/app/workbench_three_geometry.ts";
-import {
-  setWorkbenchThreeSceneSignal,
-  type WorkbenchThreeScene,
-  type WorkbenchThreeSceneSignalTarget,
-} from "./workbench_three_scene.ts";
+import { setWorkbenchThreeRect, type WorkbenchThreeRectTarget } from "./workbench_three_geometry.ts";
 
 export interface WorkbenchThreePanelLifecycle {
   dispose(): void;
@@ -14,24 +8,33 @@ export interface WorkbenchThreeDisposableSignal {
   dispose(): void;
 }
 
-export interface WorkbenchThreePanelEntry<TPanel extends WorkbenchThreePanelLifecycle> {
+export interface WorkbenchThreeNullableSignal<TValue> {
+  peek(): TValue | null;
+  value: TValue | null;
+}
+
+export interface WorkbenchThreePanelEntry<TPanel extends WorkbenchThreePanelLifecycle, TScene = unknown> {
   rectangle: WorkbenchThreeRectTarget & WorkbenchThreeDisposableSignal;
   graphicsRectangle: WorkbenchThreeRectTarget & WorkbenchThreeDisposableSignal;
-  scene: WorkbenchThreeSceneSignalTarget & WorkbenchThreeDisposableSignal;
+  scene: WorkbenchThreeNullableSignal<TScene> & WorkbenchThreeDisposableSignal;
   panel: TPanel;
 }
 
-export type WorkbenchThreePanelFactory<TId extends string, TPanel extends WorkbenchThreePanelLifecycle> = (
+export type WorkbenchThreePanelFactory<TId extends string, TPanel extends WorkbenchThreePanelLifecycle, TScene> = (
   id: TId,
-) => WorkbenchThreePanelEntry<TPanel>;
+) => WorkbenchThreePanelEntry<TPanel, TScene>;
 
 /** Owns lazily-created Three panel instances for dynamic workbench visualization windows. */
-export class WorkbenchThreePanelRegistry<TId extends string, TPanel extends WorkbenchThreePanelLifecycle> {
-  readonly entries = new Map<TId, WorkbenchThreePanelEntry<TPanel>>();
+export class WorkbenchThreePanelRegistry<
+  TId extends string,
+  TPanel extends WorkbenchThreePanelLifecycle,
+  TScene = unknown,
+> {
+  readonly entries = new Map<TId, WorkbenchThreePanelEntry<TPanel, TScene>>();
 
-  constructor(private readonly createEntry: WorkbenchThreePanelFactory<TId, TPanel>) {}
+  constructor(private readonly createEntry: WorkbenchThreePanelFactory<TId, TPanel, TScene>) {}
 
-  ensure(id: TId): WorkbenchThreePanelEntry<TPanel> {
+  ensure(id: TId): WorkbenchThreePanelEntry<TPanel, TScene> {
     const existing = this.entries.get(id);
     if (existing) return existing;
     const entry = this.createEntry(id);
@@ -39,14 +42,14 @@ export class WorkbenchThreePanelRegistry<TId extends string, TPanel extends Work
     return entry;
   }
 
-  get(id: TId): WorkbenchThreePanelEntry<TPanel> | undefined {
+  get(id: TId): WorkbenchThreePanelEntry<TPanel, TScene> | undefined {
     return this.entries.get(id);
   }
 
   hide(id: TId): void {
     const entry = this.entries.get(id);
     if (!entry) return;
-    setWorkbenchThreeSceneSignal(entry.scene, null);
+    hideWorkbenchThreePanelScene(entry.scene);
     hideWorkbenchThreePanelRect(entry.rectangle);
     hideWorkbenchThreePanelRect(entry.graphicsRectangle);
   }
@@ -76,8 +79,12 @@ function hideWorkbenchThreePanelRect(target: WorkbenchThreeRectTarget): void {
   setWorkbenchThreeRect(target, { column: 0, row: 0, width: 0, height: 0 });
 }
 
+function hideWorkbenchThreePanelScene<TScene>(target: WorkbenchThreeNullableSignal<TScene>): void {
+  if (target.peek() !== null) target.value = null;
+}
+
 function disposeWorkbenchThreePanelEntry<TPanel extends WorkbenchThreePanelLifecycle>(
-  entry: WorkbenchThreePanelEntry<TPanel>,
+  entry: WorkbenchThreePanelEntry<TPanel, unknown>,
 ): void {
   entry.panel.dispose();
   entry.scene.dispose();

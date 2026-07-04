@@ -26,6 +26,7 @@ import {
   workbenchFrameRenderCommandsInto,
   workbenchStyledRowsRenderCommandsInto,
   WorkbenchThreeCadenceMeter,
+  WorkbenchThreePanelRegistry,
   WorkbenchThreeViewportInteractionController,
   WorkbenchTopMenuController,
   workbenchWindowContentSize,
@@ -81,6 +82,7 @@ Deno.test("workbench facade exposes renderer-neutral helpers", () => {
   assertEquals(typeof resolveWorkbenchThreeGridProjection, "function");
   assertEquals(typeof ApiWorkbenchThreeRuntimeController, "function");
   assertEquals(typeof WorkbenchThreeCadenceMeter, "function");
+  assertEquals(typeof WorkbenchThreePanelRegistry, "function");
   assertEquals(typeof WorkbenchThreeViewportInteractionController, "function");
   assertEquals(typeof workbenchWindowContentSize, "function");
   assertEquals(typeof workspaceMenuLabels, "function");

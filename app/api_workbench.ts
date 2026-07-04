@@ -341,7 +341,10 @@ import {
   WORKBENCH_THREE_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_INITIAL_CELLS,
 } from "../src/app/workbench_three_policy.ts";
-import { type WorkbenchThreePanelEntry, WorkbenchThreePanelRegistry } from "./workbench_three_panel_registry.ts";
+import {
+  type WorkbenchThreePanelEntry,
+  WorkbenchThreePanelRegistry,
+} from "../src/app/workbench_three_panel_registry.ts";
 import { WorkbenchThreeViewportInteractionController } from "../src/app/workbench_three_interaction.ts";
 import {
   type ApiWorkbenchThreePressureInspection,
@@ -695,7 +698,7 @@ interface DropdownOverlay {
   itemIndexes?: number[];
   selectedIndex?: number;
 }
-type DynamicThreePanel = WorkbenchThreePanelEntry<ThreePanelFrameView>;
+type DynamicThreePanel = WorkbenchThreePanelEntry<ThreePanelFrameView, WorkbenchThreeScene>;
 interface WindowRenderContext {
   viewport: Rectangle;
   offset: { columns: number; rows: number };
@@ -888,9 +891,11 @@ const threePanel = createWorkbenchThreePanelFrameView({
     scheduleDraw();
   },
 });
-const visualizationThreePanels = new WorkbenchThreePanelRegistry<VisualizationWindowId, ThreePanelFrameView>(
-  createVisualizationThreePanel,
-);
+const visualizationThreePanels = new WorkbenchThreePanelRegistry<
+  VisualizationWindowId,
+  ThreePanelFrameView,
+  WorkbenchThreeScene
+>(createVisualizationThreePanel);
 const visualizationThreeSupport = new Map<string, boolean>();
 const threeViewportInteraction = new WorkbenchThreeViewportInteractionController<WindowId>({
   findHit: (x, y) => findHit(x, y),
