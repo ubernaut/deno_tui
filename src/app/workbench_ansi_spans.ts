@@ -18,12 +18,16 @@ export function changedSpansInto(
   previous: readonly string[],
   next: readonly string[],
   width: number,
-  options: ChangedSpansOptions = {},
+  options?: ChangedSpansOptions,
 ): ChangedSpan[] {
   spans.length = 0;
   const columns = Math.max(0, Math.floor(width));
-  const maxSpans = Math.max(1, Math.floor(options.maxSpans ?? DEFAULT_MAX_CHANGED_SPANS_PER_ROW));
-  const mergeGap = Math.max(0, Math.floor(options.mergeGap ?? DEFAULT_MERGE_CHANGED_SPAN_GAP));
+  const maxSpans = options?.maxSpans === undefined
+    ? DEFAULT_MAX_CHANGED_SPANS_PER_ROW
+    : Math.max(1, Math.floor(options.maxSpans));
+  const mergeGap = options?.mergeGap === undefined
+    ? DEFAULT_MERGE_CHANGED_SPAN_GAP
+    : Math.max(0, Math.floor(options.mergeGap));
   let spanStart = -1;
   let lastChanged = -1;
 

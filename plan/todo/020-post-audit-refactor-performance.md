@@ -680,3 +680,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Split the fully visible Three ASCII grid-diff path into dedicated range and cell-queue implementations so the common
   unclipped direct-range path avoids per-run queue-mode dispatch; the object-level frame-diff guard now stays near the
   direct helper cost.
+- Removed the default options-object allocation from `changedSpansInto`, keeping the retained workbench ANSI span
+  detector allocation-light for default terminal flushes while preserving configured merge/cap behavior.
