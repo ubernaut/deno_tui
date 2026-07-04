@@ -1,6 +1,10 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { assertEquals, assertStrictEquals } from "./deps.ts";
-import { detectTmuxPassthroughAllowed, WorkbenchKittyGraphicsController } from "../app/workbench_kitty_graphics.ts";
+import {
+  detectTmuxPassthroughAllowed,
+  formatWorkbenchKittyGraphicsStatus,
+  WorkbenchKittyGraphicsController,
+} from "../app/workbench_kitty_graphics.ts";
 
 const encoder = new TextEncoder();
 
@@ -64,4 +68,43 @@ Deno.test("WorkbenchKittyGraphicsController selects auto and forced surfaces", (
 
   assertStrictEquals(controller.surfaceFor({ kittyGraphics: false }), controller.autoSurface);
   assertStrictEquals(controller.surfaceFor({ kittyGraphics: true }), controller.forcedSurface);
+});
+
+Deno.test("formatWorkbenchKittyGraphicsStatus projects modal status text", () => {
+  assertEquals(
+    formatWorkbenchKittyGraphicsStatus({
+      selected: { kittyGraphics: true },
+      tmux: "/tmp/tmux",
+      tmuxPassthroughAllowed: false,
+      surface: { kind: "none", available: false, handles: [], commandCount: 0, reason: "blocked" },
+    }),
+    "[unavailable: tmux allow-passthrough off]",
+  );
+  assertEquals(
+    formatWorkbenchKittyGraphicsStatus({
+      selected: { kittyGraphics: true },
+      tmux: null,
+      tmuxPassthroughAllowed: true,
+      surface: { kind: "kitty", available: true, handles: [], commandCount: 0, mode: "direct" },
+    }),
+    "[direct]",
+  );
+  assertEquals(
+    formatWorkbenchKittyGraphicsStatus({
+      selected: { kittyGraphics: false },
+      tmux: null,
+      tmuxPassthroughAllowed: true,
+      surface: { kind: "none", available: false, handles: [], commandCount: 0, reason: "not kitty" },
+    }),
+    "[unavailable: not kitty]",
+  );
+  assertEquals(
+    formatWorkbenchKittyGraphicsStatus({
+      selected: { kittyGraphics: false },
+      tmux: null,
+      tmuxPassthroughAllowed: true,
+      surface: { kind: "none", available: false, handles: [], commandCount: 0 },
+    }),
+    "[unavailable: not detected]",
+  );
 });

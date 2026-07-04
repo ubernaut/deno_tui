@@ -289,7 +289,7 @@ import {
   workbenchModalDetailsContent,
   workbenchQuitModalContent,
 } from "./workbench_modal_content.ts";
-import { WorkbenchKittyGraphicsController } from "./workbench_kitty_graphics.ts";
+import { formatWorkbenchKittyGraphicsStatus, WorkbenchKittyGraphicsController } from "./workbench_kitty_graphics.ts";
 import { type RowStyle, threeHeaderRows } from "./workbench_rows.ts";
 import {
   createWorkbenchThreeTerminalPressureState,
@@ -2657,12 +2657,13 @@ function applyThreeConfigRow(index: number, action: ConfigHitAction = "activate"
 }
 
 function kittyGraphicsStatus(): string {
-  if (configuredAscii().peek().kittyGraphics && kittyGraphics.tmux && !kittyGraphics.tmuxPassthroughAllowed) {
-    return "[unavailable: tmux allow-passthrough off]";
-  }
-  const inspection = kittyGraphics.surfaceFor(configuredAscii().peek()).inspect();
-  if (inspection.available) return `[${inspection.mode ?? "available"}]`;
-  return `[unavailable: ${inspection.reason ?? "not detected"}]`;
+  const current = configuredAscii().peek();
+  return formatWorkbenchKittyGraphicsStatus({
+    selected: current,
+    tmux: kittyGraphics.tmux,
+    tmuxPassthroughAllowed: kittyGraphics.tmuxPassthroughAllowed,
+    surface: kittyGraphics.surfaceFor(current).inspect(),
+  });
 }
 
 function drawFrame(frame: Frame, rect: Rectangle, title: string, active: boolean): void {

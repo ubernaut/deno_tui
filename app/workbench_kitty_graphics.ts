@@ -2,6 +2,7 @@
 import {
   createKittyGraphicsSurface,
   type GraphicsSurface,
+  type GraphicsSurfaceInspection,
   type GraphicsSurfaceWriter,
 } from "../src/runtime/graphics_surface.ts";
 import type { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
@@ -33,6 +34,13 @@ export interface CreateWorkbenchKittyGraphicsControllerOptions
 
 export interface WorkbenchKittyGraphicsSelection {
   kittyGraphics?: boolean;
+}
+
+export interface WorkbenchKittyGraphicsStatusOptions {
+  selected: WorkbenchKittyGraphicsSelection;
+  tmux?: string | null;
+  tmuxPassthroughAllowed: boolean;
+  surface: GraphicsSurfaceInspection;
 }
 
 /** Detects whether the current tmux session permits Kitty graphics passthrough. */
@@ -95,6 +103,15 @@ export class WorkbenchKittyGraphicsController {
       diagnostics: options.diagnostics,
     });
   }
+}
+
+/** Formats the status suffix shown beside the Kitty graphics checkbox. */
+export function formatWorkbenchKittyGraphicsStatus(options: WorkbenchKittyGraphicsStatusOptions): string {
+  if (options.selected.kittyGraphics && options.tmux && !options.tmuxPassthroughAllowed) {
+    return "[unavailable: tmux allow-passthrough off]";
+  }
+  if (options.surface.available) return `[${options.surface.mode ?? "available"}]`;
+  return `[unavailable: ${options.surface.reason ?? "not detected"}]`;
 }
 
 async function defaultTmuxPassthroughCommand(): Promise<TmuxPassthroughProbeResult> {
