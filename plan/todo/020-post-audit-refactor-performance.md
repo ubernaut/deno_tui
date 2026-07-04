@@ -421,3 +421,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   grid guards reusable while continuing to track the 220x70 performance envelopes.
 - Split the Three ASCII benchmark family out of the main benchmark catalog, so readback, image compaction, uniform-clean,
   ANSI grid assembly, and frame-diff guards live with their synthetic buffers instead of inflating the shared registry.
+- Moved API-workbench-specific Three render-cell budgets, pressure thresholds, and live/idle cadence mapping into a
+  tested policy module so tuning the default Three pane no longer requires editing the large interactive app file.
