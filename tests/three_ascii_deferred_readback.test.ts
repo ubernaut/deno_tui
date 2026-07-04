@@ -67,7 +67,14 @@ Deno.test("deferred readback queue consumes resolved frames and reports timing",
   assertEquals(buffer.getMappedRangeCalls, 1);
   assertEquals(buffer.unmapCalls, 1);
   assertEquals(queue.pending.length, 0);
-  assertEquals(queue.inspect().pending, 0);
+  assertEquals(queue.inspect(), {
+    slotCount: 2,
+    pending: 0,
+    unresolved: 0,
+    resolved: 0,
+    saturated: false,
+    generation: 1,
+  });
 });
 
 Deno.test("deferred readback queue exposes an awaitable map promise", async () => {

@@ -670,3 +670,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   updates reuse cursor escape strings instead of rebuilding them throughout animated Three block frames.
 - Reused the retained workbench ANSI output chunk array across full-row and changed-span flushes, trimming per-frame
   allocation in terminal screen writes while preserving synchronous write stats.
+- Fixed deferred Three ASCII readback publication by advancing the deferred queue generation whenever a completed
+  readback becomes the visible cached grid; the workbench pressure probe now publishes live deferred updates at the
+  120/240-cell tiers instead of reusing a stale revision.
