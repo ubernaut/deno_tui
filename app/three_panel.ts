@@ -713,7 +713,9 @@ export class ThreePanelFrameView {
     const maxRenderCells = this.options.maxRenderCells instanceof Signal
       ? this.options.maxRenderCells.peek()
       : this.options.maxRenderCells;
-    return Math.max(1, Math.floor(maxRenderCells ?? ascii.renderMaxCells));
+    const userCells = Math.max(1, Math.floor(ascii.renderMaxCells));
+    const pressureCap = maxRenderCells === undefined ? userCells : Math.max(1, Math.floor(maxRenderCells));
+    return Math.min(userCells, pressureCap);
   }
 
   private currentFrameInterval(): number {

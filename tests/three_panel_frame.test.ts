@@ -567,6 +567,42 @@ Deno.test("ThreePanelFrameView accepts reactive render cell caps", async () => {
   }
 });
 
+Deno.test("ThreePanelFrameView keeps user render cells under reactive pressure caps", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 160, height: 60 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal({ ...createDefaultAsciiOptions("sharp"), renderMaxCells: 480 });
+  const enabled = new Signal(true);
+  const maxRenderCells = new Signal(1_920);
+  let renderer: FakeGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    enabled,
+    maxRenderCells,
+    frameInterval: 1,
+    rendererFactory: (options) => renderer = new FakeGridRenderer(options.columns, options.rows),
+  });
+
+  try {
+    await waitFor(() => (renderer?.renderCount ?? 0) >= 1);
+
+    assert(renderer);
+    assert(renderer.sizes.some(([columns, rows]) => columns * rows <= 480));
+
+    ascii.value = { ...ascii.peek(), renderMaxCells: 960 };
+    await waitFor(() => renderer?.sizes.some(([columns, rows]) => columns * rows > 480) === true);
+    assert(renderer.sizes.every(([columns, rows]) => columns * rows <= 1_920));
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+    maxRenderCells.dispose();
+  }
+});
+
 Deno.test("ThreePanelFrameView accepts reactive frame intervals", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 32, height: 12 }, { deepObserve: true });
   const scene = new Signal<ThreeSceneState | null>(sceneState());
