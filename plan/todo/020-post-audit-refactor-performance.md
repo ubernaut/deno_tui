@@ -193,6 +193,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   used by the policy.
 - Lowered the workbench Three sustained terminal byte-rate pressure threshold to make the default block renderer back
   off from 480 to 240 cells after measured ~104KB/s output repeats on slower terminal sessions.
+- Added an adaptive mode to the workbench Three pressure probe so it can run the same closed-loop terminal pressure
+  controller as the workbench and report per-frame render-cell caps.
 - Stabilized default Three ASCII block rendering by using ASCII-safe shared window controls and removing fog from the
   default block preset so truecolor block cells keep source color depth.
 - Extracted the workbench Three ASCII config modal geometry into a tested internal layout helper, reducing inline modal

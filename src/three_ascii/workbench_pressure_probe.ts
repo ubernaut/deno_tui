@@ -3,6 +3,7 @@ import { workbenchThreeTerminalBytesPerSecond } from "../app/workbench_three_ter
 
 export interface WorkbenchThreePressureProbeSample {
   index: number;
+  maxCells: number;
   rendererMs: number;
   sceneMs: number;
   readbackMs: number;
@@ -37,6 +38,7 @@ export interface WorkbenchThreePressureProbeOptions {
   panelWidth: number;
   panelHeight: number;
   maxCells: number;
+  adaptive?: boolean;
   intervalMs: number;
   totalBytes: number;
 }
@@ -93,7 +95,9 @@ export function formatWorkbenchThreePressureProbeLines(
   const latest = summary.latest;
   const lines = [
     "three-workbench pressure probe",
-    `mode=${options.mode} glyphs=${options.glyphs} readback=${options.readback} frame=${options.frameWidth}x${options.frameHeight} panel=${options.panelWidth}x${options.panelHeight} maxCells=${options.maxCells} interval=${
+    `mode=${options.mode} glyphs=${options.glyphs} readback=${options.readback} frame=${options.frameWidth}x${options.frameHeight} panel=${options.panelWidth}x${options.panelHeight} maxCells=${options.maxCells}${
+      options.adaptive ? " adaptive" : ""
+    } interval=${
       formatMs(options.intervalMs)
     }`,
     `warmup=${formatMs(summary.warmup?.rendererMs)} renderer=${formatMs(summary.averageRendererMs)} fps=${
@@ -115,9 +119,9 @@ export function formatWorkbenchThreePressureProbeLines(
         formatMs(sample.sceneMs)
       } read=${formatMs(sample.readbackMs)} asm=${formatMs(sample.assemblyMs)} flush=${
         formatMs(sample.flushMs)
-      } bytes=${sample.bytes} changed=${sample.changedRows} sourceChanged=${sample.sourceChangedRows} updates=${
-        sample.gridUpdates
-      } grid=${sample.columns}x${sample.rows}`,
+      } bytes=${sample.bytes} changed=${sample.changedRows} sourceChanged=${sample.sourceChangedRows} cap=${
+        sample.maxCells
+      } updates=${sample.gridUpdates} grid=${sample.columns}x${sample.rows}`,
     );
   }
   return lines;

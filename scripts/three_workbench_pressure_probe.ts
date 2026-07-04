@@ -12,6 +12,7 @@ import { writeWorkbenchThreeGrid } from "../app/workbench_three_grid.ts";
 import { createDefaultWorkbenchAsciiOptions } from "../src/app/workbench_ascii.ts";
 import {
   apiWorkbenchThreeFrameIntervalForCells,
+  API_WORKBENCH_THREE_PRESSURE_POLICY,
   WORKBENCH_THREE_INITIAL_CELLS,
   WORKBENCH_THREE_READBACK_STRATEGY,
 } from "../app/workbench_three_policy.ts";
@@ -23,6 +24,10 @@ import {
   type WorkbenchThreePressureProbeSample,
 } from "../src/three_ascii/workbench_pressure_probe.ts";
 import { type ThreeSceneMode, threeSceneModes } from "../app/types.ts";
+import {
+  createWorkbenchThreeTerminalPressureState,
+  resolveWorkbenchThreeTerminalPressureUpdate,
+} from "../src/app/workbench_three_terminal_pressure.ts";
 
 const frames = numberArg(Deno.args, "--frames", 24);
 const frameWidth = numberArg(Deno.args, "--frame-width", 168);
@@ -36,6 +41,7 @@ const readbackStrategy = choiceArg(Deno.args, "--readback", WORKBENCH_THREE_READ
   "blocking",
   "deferred",
 ] as const);
+const adaptive = Deno.args.includes("--adaptive");
 const intervalMs = numberArg(Deno.args, "--interval", apiWorkbenchThreeFrameIntervalForCells(maxCells, { live: true }));
 
 let bytesWritten = 0;
@@ -60,13 +66,15 @@ const ascii = new Signal({
   renderMaxCells: maxCells,
 });
 const maxRenderCells = new Signal(maxCells);
+const frameInterval = new Signal(intervalMs);
+const terminalPressure = createWorkbenchThreeTerminalPressureState(maxCells);
 let gridUpdates = 0;
 const panel = new ThreePanelFrameView({
   rectangle,
   scene,
   ascii,
   maxRenderCells,
-  frameInterval: intervalMs,
+  frameInterval,
   readbackStrategy,
   onUpdate: () => {
     gridUpdates += 1;
@@ -100,6 +108,7 @@ try {
   scene.dispose();
   ascii.dispose();
   maxRenderCells.dispose();
+  frameInterval.dispose();
 }
 
 console.log(
@@ -112,7 +121,8 @@ console.log(
     panelWidth,
     panelHeight,
     maxCells,
-    intervalMs,
+    adaptive,
+    intervalMs: frameInterval.peek(),
     totalBytes: bytesWritten,
   }, samples).join("\n"),
 );
@@ -127,7 +137,7 @@ function drawSample(index: number): WorkbenchThreePressureProbeSample {
     `\x1b[38;2;242;236;255;48;2;32;17;47mTHREE WORKBENCH PRESSURE ${index.toString().padStart(2, "0")}\x1b[0m`,
   );
   const grid = panel.grid.peek();
-  writeWorkbenchThreeGrid(
+  const projection = writeWorkbenchThreeGrid(
     prepared,
     { column: 4, row: 3, width: panelWidth, height: panelHeight },
     grid,
@@ -144,8 +154,29 @@ function drawSample(index: number): WorkbenchThreePressureProbeSample {
   const performance = panel.inspectPerformance();
   const sourceChangedRows = countWorkbenchThreeProbeChangedGridRows(previousGrid, grid);
   previousGrid = snapshotWorkbenchThreeProbeGridRows(grid);
+  const cellsBeforePressureUpdate = maxRenderCells.peek();
+  if (adaptive) {
+    const next = resolveWorkbenchThreeTerminalPressureUpdate(terminalPressure, {
+      ...API_WORKBENCH_THREE_PRESSURE_POLICY,
+      currentCells: cellsBeforePressureUpdate,
+      renderedThreeGrids: projection ? 1 : 0,
+      renderedThreeRows: projection?.targetHeight ?? 0,
+      changedRows: stats.changed,
+      bytes: stats.bytes,
+      durationMs: stats.durationMs,
+      sampleDurationMs: frameInterval.peek(),
+    });
+    terminalPressure.currentCells = next.currentCells;
+    terminalPressure.highFrames = next.highFrames;
+    terminalPressure.lowFrames = next.lowFrames;
+    if (next.changed) {
+      maxRenderCells.value = next.currentCells;
+      frameInterval.value = apiWorkbenchThreeFrameIntervalForCells(next.currentCells, { live: true });
+    }
+  }
   return {
     index,
+    maxCells: cellsBeforePressureUpdate,
     rendererMs: performance?.totalMs ?? 0,
     sceneMs: performance?.sceneMs ?? 0,
     readbackMs: performance?.readbackMs ?? 0,
