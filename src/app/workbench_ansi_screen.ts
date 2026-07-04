@@ -1,8 +1,14 @@
 import { moveCursor } from "../utils/ansi_codes.ts";
 import type { CanvasStdout } from "../canvas/sink.ts";
-import { fitCellText } from "./workbench_frame.ts";
+import { cleanWorkbenchFrameRowFingerprint, fitCellText, markWorkbenchFrameRowRendered } from "./workbench_frame.ts";
 
 const encoder = new TextEncoder();
+
+interface WorkbenchAnsiScreenRowCache {
+  width: number;
+  fingerprint: string;
+  line: string;
+}
 
 /** Diagnostics returned from a retained ANSI screen-row flush. */
 export interface WorkbenchAnsiScreenFlushStats {
@@ -15,6 +21,7 @@ export interface WorkbenchAnsiScreenFlushStats {
 /** Retained ANSI-row painter for full-screen workbench frames. */
 export class WorkbenchAnsiScreenPainter {
   #rows: string[] = [];
+  #rowCache = new WeakMap<string[], WorkbenchAnsiScreenRowCache>();
 
   constructor(private readonly stdout: CanvasStdout) {}
 
@@ -28,13 +35,22 @@ export class WorkbenchAnsiScreenPainter {
     const columns = Math.max(0, Math.floor(width));
     let changed = 0;
     let cleared = 0;
-    let output = "";
+    const output: string[] = [];
 
     for (let row = 0; row < rows; row += 1) {
-      const next = renderRow(frame[row] ?? [], columns);
+      const frameRow = frame[row] ?? [];
+      const fingerprint = cleanWorkbenchFrameRowFingerprint(frameRow, columns);
+      const cached = this.#rowCache.get(frameRow);
+      const next = fingerprint !== undefined && cached?.width === columns && cached.fingerprint === fingerprint
+        ? cached.line
+        : renderRow(frameRow, columns);
+      const nextFingerprint = fingerprint ?? markWorkbenchFrameRowRendered(frameRow, columns, next);
+      if (!cached || cached.line !== next || cached.width !== columns || cached.fingerprint !== nextFingerprint) {
+        this.#rowCache.set(frameRow, { width: columns, fingerprint: nextFingerprint, line: next });
+      }
       if (this.#rows[row] === next) continue;
       this.#rows[row] = next;
-      output += `${moveCursor(row, 0)}${next}`;
+      output.push(moveCursor(row, 0), next);
       changed += 1;
     }
 
@@ -42,7 +58,7 @@ export class WorkbenchAnsiScreenPainter {
       if (this.#rows[row] === "") continue;
       const blank = fitCellText("", columns);
       this.#rows[row] = "";
-      output += `${moveCursor(row, 0)}${blank}`;
+      output.push(moveCursor(row, 0), blank);
       cleared += 1;
     }
     this.#rows.length = rows;
@@ -50,13 +66,14 @@ export class WorkbenchAnsiScreenPainter {
     if (output.length === 0) {
       return { rows, changed, cleared, bytes: 0 };
     }
-    const bytes = encoder.encode(output);
+    const bytes = encoder.encode(output.join(""));
     this.stdout.writeSync(bytes);
     return { rows, changed, cleared, bytes: bytes.byteLength };
   }
 
   reset(): void {
     this.#rows.length = 0;
+    this.#rowCache = new WeakMap();
   }
 
   inspectRows(): readonly string[] {

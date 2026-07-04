@@ -299,6 +299,21 @@ export function updateWorkbenchStringLineSignals(
   return { rows, changed, cleared };
 }
 
+/** Returns a stable fingerprint when a frame row is known to be clean. */
+export function cleanWorkbenchFrameRowFingerprint(cells: string[], width: number): string | undefined {
+  const metadata = frameRowMetadata.get(cells);
+  if (!metadata || metadata.dirty) return undefined;
+  return revisionFrameRowFingerprint(metadata, Math.max(0, Math.floor(width)));
+}
+
+/** Marks a rendered frame row clean and returns the fingerprint for the rendered state. */
+export function markWorkbenchFrameRowRendered(cells: string[], width: number, renderedLine: string): string {
+  const columns = Math.max(0, Math.floor(width));
+  const metadata = frameRowMetadata.get(cells);
+  if (!metadata) return fallbackLineFingerprint(renderedLine, columns);
+  return revisionFrameRowFingerprint(markFrameRowClean(metadata), columns);
+}
+
 function fingerprintFrameRow(cells: string[], width: number): string {
   let hash = 2166136261;
   const mix = (value: number) => {

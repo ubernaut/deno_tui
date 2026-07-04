@@ -3665,6 +3665,13 @@
     },
     {
       "module": "src/app/workbench_frame.ts",
+      "name": "cleanWorkbenchFrameRowFingerprint",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_frame.ts",
       "name": "contrastText",
       "kind": "function",
       "typeOnly": false,
@@ -3694,6 +3701,13 @@
     {
       "module": "src/app/workbench_frame.ts",
       "name": "fitCellText",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_frame.ts",
+      "name": "markWorkbenchFrameRowRendered",
       "kind": "function",
       "typeOnly": false,
       "documented": true

@@ -44,6 +44,7 @@ import {
   updateWorkbenchStringLineSignals,
   visibleListRows,
   WindowManagerController,
+  WorkbenchAnsiScreenPainter,
   type WorkbenchFrame,
   workbenchTerminalCopyRowsInto,
   wrapTextBoxLinesInto,
@@ -253,6 +254,7 @@ class BenchmarkLineSignal {
 const workbenchSparseFrame: WorkbenchFrame = [];
 const workbenchStringFrame: string[] = [];
 const workbenchLineSignalFrame: WorkbenchFrame = [];
+const workbenchAnsiScreenFrame: WorkbenchFrame = [];
 const workbenchScaledThreeFrame: WorkbenchFrame = [];
 const workbenchFrameRows = 54;
 const workbenchFrameWidth = 168;
@@ -260,6 +262,13 @@ const workbenchLineSignals = Array.from(
   { length: workbenchFrameRows + 10 },
   () => new BenchmarkLineSignal(""),
 );
+let workbenchAnsiScreenBytes = 0;
+const workbenchAnsiScreenPainter = new WorkbenchAnsiScreenPainter({
+  writeSync(data) {
+    workbenchAnsiScreenBytes += data.byteLength;
+    return data.byteLength;
+  },
+});
 const workbenchScaledThreeSourceRows = 34;
 const workbenchScaledThreeSourceColumns = 109;
 const workbenchScaledThreeTargetRows = 70;
@@ -1070,6 +1079,37 @@ function runWorkbenchStringLineSignalDiffWorkload(): void {
   }
 }
 
+function runWorkbenchAnsiScreenFlushWorkload(): void {
+  workbenchLineSignalFrameIndex = 1 - workbenchLineSignalFrameIndex;
+  const frame = prepareWorkbenchFrame(workbenchAnsiScreenFrame, workbenchFrameRows);
+  for (let row = 0; row < workbenchFrameRows; row += 1) {
+    const accent = 80 + ((row + workbenchLineSignalFrameIndex * 31) % 120);
+    writeFrame(
+      frame,
+      workbenchFrameWidth,
+      row,
+      0,
+      `\x1b[1;38;2;${accent};255;180;48;2;12;8;28m${row.toString().padStart(2, "0")} ${
+        "API WORKBENCH ".repeat(13)
+      }\x1b[0m`,
+    );
+  }
+
+  const first = workbenchAnsiScreenPainter.flush(frame, workbenchFrameWidth, workbenchFrameRows, renderFrameRow);
+  const second = workbenchAnsiScreenPainter.flush(frame, workbenchFrameWidth, workbenchFrameRows, renderFrameRow);
+  workbenchFrameChecksum = (workbenchFrameChecksum + first.changed + first.bytes + second.changed + second.bytes) %
+    1_000_000;
+  if (
+    first.changed !== workbenchFrameRows ||
+    first.bytes <= 0 ||
+    second.changed !== 0 ||
+    second.bytes !== 0 ||
+    !Number.isFinite(workbenchFrameChecksum + workbenchAnsiScreenBytes)
+  ) {
+    throw new Error("workbench ANSI screen flush workload failed");
+  }
+}
+
 function runWorkbenchScaledThreeGridWorkload(): void {
   const frame = prepareWorkbenchFrame(workbenchScaledThreeFrame, workbenchScaledThreeTargetRows);
   writeWorkbenchThreeGrid(
@@ -1426,6 +1466,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 250,
     maxAverageMs: 8,
     run: runWorkbenchStringLineSignalDiffWorkload,
+  },
+  {
+    name: "render/workbench-ansi-screen-flush-168x54",
+    category: "render",
+    description: "Flush changed full-screen ANSI workbench rows directly and skip unchanged rows.",
+    tags: ["render", "workbench", "frame", "ansi", "terminal"],
+    iterations: 250,
+    maxAverageMs: 6,
+    run: runWorkbenchAnsiScreenFlushWorkload,
   },
   {
     name: "render/textobject-full-row-canvas-220x70",
