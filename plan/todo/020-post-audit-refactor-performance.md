@@ -380,6 +380,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   so CPU hex interaction geometry stops allocating tile arrays on every draw or selection reveal.
 - Extracted the browser API workbench default terminal workspace fixture and guarded snapshot normalizer into a focused
   module with direct tests, keeping browser restore defaults out of the large page renderer.
+- Switched workbench-hosted Three ASCII panes back to bounded deferred readback after probes showed blocking WebGPU
+  readback could stall real frame publication on this host while deferred kept steady post-warmup renderer timings.
 - Added focused benchmark guards for reusable monitor source-frame resolution and 88-core CPU hex tile layout projection
   so future source/monitor refactors keep those hot paths measured.
 - Reused repeated styled cell strings inside ANSI-aware text splitting so block-mode workbench rows avoid rebuilding the
