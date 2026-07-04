@@ -658,6 +658,40 @@ Deno.test("ThreePanelFrameView skips redraws for unchanged revisioned grid conte
   }
 });
 
+Deno.test("ThreePanelFrameView treats unchanged grid revisions as unchanged frames", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 4, height: 2 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal(createDefaultAsciiOptions("sharp"));
+  const enabled = new Signal(true);
+  let updates = 0;
+  let renderer: StableRevisionGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    enabled,
+    frameInterval: 1,
+    onUpdate: () => {
+      updates += 1;
+    },
+    rendererFactory: (options) => renderer = new StableRevisionGridRenderer(options.columns, options.rows),
+  });
+
+  try {
+    await waitFor(() => (renderer?.renderCount ?? 0) >= 5);
+
+    assert(renderer);
+    assert(renderer.renderCount >= 5);
+    assertEquals(updates, 2);
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+  }
+});
+
 Deno.test("ThreePanelFrameView caps large ASCII renderer sizes", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 160, height: 60 }, { deepObserve: true });
   const scene = new Signal<ThreeSceneState | null>(sceneState());
@@ -1687,6 +1721,17 @@ class RevisionedStableGridRenderer extends FakeGridRenderer {
   ) {
     const frame = await super.renderFrame(deltaTime, onFrame, options);
     return { ...frame, gridRevision: this.renderCount };
+  }
+}
+
+class StableRevisionGridRenderer extends FakeGridRenderer {
+  override async renderFrame(
+    deltaTime?: number,
+    onFrame?: (deltaTime: number) => void | Promise<void>,
+    options: ThreeAsciiRenderFrameOptions = { ansi: true },
+  ) {
+    const frame = await super.renderFrame(deltaTime, onFrame, options);
+    return { ...frame, gridRevision: 1 };
   }
 }
 

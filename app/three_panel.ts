@@ -607,8 +607,9 @@ export class ThreePanelFrameView {
 
   private setGrid(grid: string[][], forceUpdate = false, revision?: number): void {
     if (this.disposed) return;
-    const fingerprint = fingerprintThreePanelGrid(grid);
     if (revision !== undefined) {
+      if (this.gridRevision === revision) return;
+      const fingerprint = fingerprintThreePanelGrid(grid);
       if (this.gridFingerprint === fingerprint) {
         this.gridRevision = revision;
         return;
@@ -620,6 +621,7 @@ export class ThreePanelFrameView {
       return;
     }
     this.gridRevision = undefined;
+    const fingerprint = fingerprintThreePanelGrid(grid);
     if (!forceUpdate && this.grid.peek() === grid) return;
     if (this.gridFingerprint === fingerprint) return;
     this.gridFingerprint = fingerprint;
