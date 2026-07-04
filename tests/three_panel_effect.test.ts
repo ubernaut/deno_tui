@@ -1,6 +1,11 @@
 import { assertEquals } from "./deps.ts";
 import { asciiEffectOptions, createDefaultAsciiOptions } from "../app/ascii_options.ts";
-import { threePanelAsciiEffectOptionsEqual, threePanelRendererStateMatches } from "../src/app/three_panel_effect.ts";
+import {
+  emptyThreePanelRendererState,
+  resolveThreePanelRendererStateUpdate,
+  threePanelAsciiEffectOptionsEqual,
+  threePanelRendererStateMatches,
+} from "../src/app/three_panel_effect.ts";
 
 Deno.test("threePanelAsciiEffectOptionsEqual rejects missing previous state", () => {
   const next = asciiEffectOptions(createDefaultAsciiOptions("sharp"));
@@ -46,4 +51,64 @@ Deno.test("threePanelRendererStateMatches ignores scene signal churn and detects
     }),
     false,
   );
+});
+
+Deno.test("resolveThreePanelRendererStateUpdate reports setter-specific changes", () => {
+  const base = createDefaultAsciiOptions("sharp");
+  const effectOptions = asciiEffectOptions(base);
+  const current = {
+    columns: 40,
+    rows: 12,
+    effectOptions,
+    terminalEdgeBias: base.terminalEdgeBias,
+    terminalGlyphStyle: base.terminalGlyphStyle,
+  };
+
+  assertEquals(resolveThreePanelRendererStateUpdate(current, { ...current, effectOptions }).changed, false);
+
+  assertEquals(resolveThreePanelRendererStateUpdate(current, { ...current, columns: 41, effectOptions }), {
+    next: { ...current, columns: 41, effectOptions },
+    resize: true,
+    effect: false,
+    terminalEdgeBias: false,
+    terminalGlyphStyle: false,
+    changed: true,
+  });
+
+  assertEquals(
+    resolveThreePanelRendererStateUpdate(current, {
+      ...current,
+      effectOptions: asciiEffectOptions({ ...base, exposure: base.exposure + 0.1 }),
+    }).effect,
+    true,
+  );
+  assertEquals(
+    resolveThreePanelRendererStateUpdate(current, { ...current, terminalEdgeBias: base.terminalEdgeBias + 0.1 })
+      .terminalEdgeBias,
+    true,
+  );
+  assertEquals(
+    resolveThreePanelRendererStateUpdate(current, { ...current, terminalGlyphStyle: "glyphs" }).terminalGlyphStyle,
+    true,
+  );
+});
+
+Deno.test("emptyThreePanelRendererState forces initial renderer configuration", () => {
+  const base = createDefaultAsciiOptions("sharp");
+  const next = {
+    columns: 80,
+    rows: 24,
+    effectOptions: asciiEffectOptions(base),
+    terminalEdgeBias: base.terminalEdgeBias,
+    terminalGlyphStyle: base.terminalGlyphStyle,
+  };
+
+  assertEquals(resolveThreePanelRendererStateUpdate(emptyThreePanelRendererState(), next), {
+    next,
+    resize: true,
+    effect: true,
+    terminalEdgeBias: true,
+    terminalGlyphStyle: true,
+    changed: true,
+  });
 });

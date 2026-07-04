@@ -1138,3 +1138,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   render-cell cap decisions are pure, tested, and reusable outside the demo adapter.
 - Moved Three panel frame ownership/current-frame checks into the shared lifecycle module, preserving renderer and bundle
   identity semantics while making stale-frame drop behavior testable outside the large demo adapter.
+- Consolidated Three panel applied renderer state into a shared snapshot/update planner, reducing per-field adapter state
+  while keeping resize/effect/glyph setter decisions pure and tested.

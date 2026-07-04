@@ -22,6 +22,22 @@ export interface ThreePanelRendererStateSnapshot {
   terminalGlyphStyle?: TerminalGlyphStyle;
 }
 
+export interface ThreePanelRendererStateUpdate {
+  next: ThreePanelRendererStateSnapshot;
+  resize: boolean;
+  effect: boolean;
+  terminalEdgeBias: boolean;
+  terminalGlyphStyle: boolean;
+  changed: boolean;
+}
+
+export function emptyThreePanelRendererState(): ThreePanelRendererStateSnapshot {
+  return {
+    columns: 0,
+    rows: 0,
+  };
+}
+
 /** Compare the Three panel ASCII effect fields that require renderer effect updates. */
 export function threePanelAsciiEffectOptionsEqual(
   left: ThreePanelAsciiEffectOptions | undefined,
@@ -52,4 +68,23 @@ export function threePanelRendererStateMatches(
     threePanelAsciiEffectOptionsEqual(current.effectOptions, next.effectOptions) &&
     current.terminalEdgeBias === next.terminalEdgeBias &&
     current.terminalGlyphStyle === next.terminalGlyphStyle;
+}
+
+export function resolveThreePanelRendererStateUpdate(
+  current: ThreePanelRendererStateSnapshot,
+  next: ThreePanelRendererStateSnapshot,
+): ThreePanelRendererStateUpdate {
+  const resize = current.columns !== next.columns || current.rows !== next.rows;
+  const effect = next.effectOptions !== undefined &&
+    !threePanelAsciiEffectOptionsEqual(current.effectOptions, next.effectOptions);
+  const terminalEdgeBias = current.terminalEdgeBias !== next.terminalEdgeBias;
+  const terminalGlyphStyle = current.terminalGlyphStyle !== next.terminalGlyphStyle;
+  return {
+    next,
+    resize,
+    effect,
+    terminalEdgeBias,
+    terminalGlyphStyle,
+    changed: resize || effect || terminalEdgeBias || terminalGlyphStyle,
+  };
 }

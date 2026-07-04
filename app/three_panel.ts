@@ -36,7 +36,12 @@ import {
   resolveThreePanelAdaptiveRenderBudget,
   ThreePanelAdaptiveRenderBudgetController,
 } from "../src/app/three_panel_adaptive.ts";
-import { threePanelAsciiEffectOptionsEqual, threePanelRendererStateMatches } from "../src/app/three_panel_effect.ts";
+import {
+  emptyThreePanelRendererState,
+  resolveThreePanelRendererStateUpdate,
+  threePanelRendererStateMatches,
+  type ThreePanelRendererStateSnapshot,
+} from "../src/app/three_panel_effect.ts";
 import { type ThreePanelFrameUpdate, threePanelFrameUpdate } from "../src/app/three_panel_frame_update.ts";
 import { threePanelBlankGrid, ThreePanelGridPublicationCache } from "../src/app/three_panel_grid.ts";
 import {
@@ -260,11 +265,7 @@ export class ThreePanelFrameView {
   private readonly interaction = new ThreePanelInteractionController();
   private readonly graphics: ThreePanelGraphicsImageController;
   private lastGraphicsUnavailableKey?: string;
-  private appliedColumns = 0;
-  private appliedRows = 0;
-  private appliedEffectOptions?: ReturnType<typeof asciiEffectOptions>;
-  private appliedTerminalEdgeBias?: number;
-  private appliedTerminalGlyphStyle?: AsciiOptions["terminalGlyphStyle"];
+  private appliedRendererState: ThreePanelRendererStateSnapshot = emptyThreePanelRendererState();
   private blankGridCache: string[][] = [];
   private blankGridColumns = -1;
   private blankGridRows = -1;
@@ -410,13 +411,7 @@ export class ThreePanelFrameView {
       const effectOptions = asciiEffectOptions(ascii);
       if (
         threePanelRendererStateMatches(
-          {
-            columns: this.appliedColumns,
-            rows: this.appliedRows,
-            effectOptions: this.appliedEffectOptions,
-            terminalEdgeBias: this.appliedTerminalEdgeBias,
-            terminalGlyphStyle: this.appliedTerminalGlyphStyle,
-          },
+          this.appliedRendererState,
           {
             columns: renderSize.columns,
             rows: renderSize.rows,
@@ -739,11 +734,7 @@ export class ThreePanelFrameView {
   }
 
   private resetAppliedRendererState(): void {
-    this.appliedColumns = 0;
-    this.appliedRows = 0;
-    this.appliedEffectOptions = undefined;
-    this.appliedTerminalEdgeBias = undefined;
-    this.appliedTerminalGlyphStyle = undefined;
+    this.appliedRendererState = emptyThreePanelRendererState();
   }
 
   private captureAppliedRendererState(
@@ -752,11 +743,13 @@ export class ThreePanelFrameView {
     effectOptions = asciiEffectOptions(ascii),
     renderSize = this.renderSizeFor(rect, ascii),
   ): void {
-    this.appliedColumns = renderSize.columns;
-    this.appliedRows = renderSize.rows;
-    this.appliedEffectOptions = effectOptions;
-    this.appliedTerminalEdgeBias = ascii.terminalEdgeBias;
-    this.appliedTerminalGlyphStyle = ascii.terminalGlyphStyle;
+    this.appliedRendererState = {
+      columns: renderSize.columns,
+      rows: renderSize.rows,
+      effectOptions,
+      terminalEdgeBias: ascii.terminalEdgeBias,
+      terminalGlyphStyle: ascii.terminalGlyphStyle,
+    };
   }
 
   private applyRendererState(
@@ -764,28 +757,25 @@ export class ThreePanelFrameView {
     rect: Pick<Rect, "width" | "height">,
     ascii: AsciiOptions,
   ) {
-    const { columns, rows } = this.renderSizeFor(rect, ascii);
-    if (this.appliedColumns !== columns || this.appliedRows !== rows) {
-      renderer.setSize(columns, rows);
-      this.appliedColumns = columns;
-      this.appliedRows = rows;
-    }
-
+    const renderSize = this.renderSizeFor(rect, ascii);
     const effectOptions = asciiEffectOptions(ascii);
-    if (!threePanelAsciiEffectOptionsEqual(this.appliedEffectOptions, effectOptions)) {
-      renderer.setEffectOptions(effectOptions);
-      this.appliedEffectOptions = effectOptions;
-    }
+    const update = resolveThreePanelRendererStateUpdate(this.appliedRendererState, {
+      columns: renderSize.columns,
+      rows: renderSize.rows,
+      effectOptions,
+      terminalEdgeBias: ascii.terminalEdgeBias,
+      terminalGlyphStyle: ascii.terminalGlyphStyle,
+    });
 
-    if (this.appliedTerminalEdgeBias !== ascii.terminalEdgeBias) {
+    if (update.resize) renderer.setSize(update.next.columns, update.next.rows);
+    if (update.effect && update.next.effectOptions) renderer.setEffectOptions(update.next.effectOptions);
+    if (update.terminalEdgeBias && update.next.terminalEdgeBias !== undefined) {
       renderer.setTerminalEdgeBias(ascii.terminalEdgeBias);
-      this.appliedTerminalEdgeBias = ascii.terminalEdgeBias;
     }
-
-    if (this.appliedTerminalGlyphStyle !== ascii.terminalGlyphStyle) {
+    if (update.terminalGlyphStyle && update.next.terminalGlyphStyle !== undefined) {
       renderer.setTerminalGlyphStyle(ascii.terminalGlyphStyle);
-      this.appliedTerminalGlyphStyle = ascii.terminalGlyphStyle;
     }
+    this.appliedRendererState = update.next;
   }
 
   private renderSizeFor(
