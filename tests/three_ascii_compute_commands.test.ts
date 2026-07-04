@@ -31,6 +31,34 @@ Deno.test("encodeThreeAsciiComputeDispatchCommands encodes fill and color passes
   assertEquals(resources.bindGroupLookups, ["fill", "color"]);
 });
 
+Deno.test("encodeThreeAsciiComputeDispatchCommands encodes color-only passes", () => {
+  const encoder = new FakeCommandEncoder();
+  const resources = new FakeDispatchResources();
+  encodeThreeAsciiComputeDispatchCommands(
+    encoder,
+    createThreeAsciiComputeDispatchPlan({
+      columns: 17,
+      rows: 9,
+      workgroupSize: 8,
+      includeFill: false,
+      includeEdges: false,
+    }),
+    resources,
+  );
+
+  assertEquals(encoder.records, [
+    {
+      label: "deno_tui.three_ascii.color",
+      pipeline: "pipeline:color",
+      bindGroup: "bind-group:color",
+      workgroups: [3, 2, 1],
+      ended: true,
+    },
+  ]);
+  assertEquals(resources.pipelineLookups, ["color"]);
+  assertEquals(resources.bindGroupLookups, ["color"]);
+});
+
 Deno.test("encodeThreeAsciiComputeDispatchCommands includes edge pass when planned", () => {
   const encoder = new FakeCommandEncoder();
   const resources = new FakeDispatchResources();

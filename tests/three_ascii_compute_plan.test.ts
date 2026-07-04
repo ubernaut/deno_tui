@@ -23,6 +23,25 @@ Deno.test("createThreeAsciiComputeDispatchPlan omits edge pass for block/fill-on
   );
 });
 
+Deno.test("createThreeAsciiComputeDispatchPlan can emit color-only block passes", () => {
+  assertEquals(
+    createThreeAsciiComputeDispatchPlan({
+      columns: 40,
+      rows: 24,
+      workgroupSize: 8,
+      includeFill: false,
+      includeEdges: false,
+    }),
+    {
+      workgroupsX: 5,
+      workgroupsY: 3,
+      passes: [
+        { kind: "color", label: "deno_tui.three_ascii.color" },
+      ],
+    },
+  );
+});
+
 Deno.test("createThreeAsciiComputeDispatchPlan includes edge pass between fill and color", () => {
   assertEquals(
     createThreeAsciiComputeDispatchPlan({
@@ -64,6 +83,10 @@ Deno.test("ThreeAsciiComputeDispatchPlanCache reuses stable dispatch plans", () 
   const edge = cache.resolve({ columns: 40, rows: 24, workgroupSize: 8, includeEdges: true });
   assertEquals(edge === first, false);
   assertEquals(edge.passes.map((pass) => pass.kind), ["fill", "edge", "color"]);
+
+  const colorOnly = cache.resolve({ columns: 40, rows: 24, workgroupSize: 8, includeFill: false, includeEdges: false });
+  assertEquals(colorOnly === edge, false);
+  assertEquals(colorOnly.passes.map((pass) => pass.kind), ["color"]);
 
   cache.clear();
   const afterClear = cache.resolve({ columns: 40, rows: 24, workgroupSize: 8, includeEdges: true });

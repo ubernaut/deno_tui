@@ -618,8 +618,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Retuned the API workbench startup Three ASCII policy to start at the 120-cell emergency tier, recover much more
   slowly, and reduce high-detail live cadences so SSH/tmux truecolor block rendering favors smooth motion by default
   while retaining higher-detail per-widget configuration.
-- Added a 30-cell rescue render tier and shared Three panel render queue so multiple workbench-hosted Three panes do
-  not compete for WebGPU/readback work; focused probes now show live deferred block frames at roughly 4.7KB/s for the
+- Added a 30-cell rescue render tier and shared Three panel render queue so multiple workbench-hosted Three panes do not
+  compete for WebGPU/readback work; focused probes now show live deferred block frames at roughly 4.7KB/s for the
   30-cell tier and 9.6KB/s for the 60-cell tier after startup while keeping panel concurrency covered by direct tests.
 - Paused workbench-hosted Three scenes behind generic modal dialogs while preserving live rendering for the dedicated
   ASCII config overlay; manual PTY verification showed the quit modal stops the animated truecolor stream instead of
@@ -628,8 +628,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   lowest-bandwidth live profile immediately; the default pressure probe now reports roughly 9x3 source grids at about
   4.6KB/s steady terminal output after startup.
 - Moved modal-blocked Three cadence/interactivity decisions into the shared terminal-pressure helper so workbench hosts
-  can pause renderer work behind blocking overlays through the same tested policy path instead of carrying renderer-local
-  early returns.
+  can pause renderer work behind blocking overlays through the same tested policy path instead of carrying
+  renderer-local early returns.
 - Extracted the API workbench's static studio Three scene projection into the shared Three scene helper, covering
   control-to-scene signal mapping and blocked/minimized/unavailable gates with direct tests while preserving the default
   30-cell pressure-probe behavior.
@@ -766,13 +766,16 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Switched `FrameScheduler` throttling to measure frame spacing from callback completion instead of callback start,
   preventing slow terminal flushes from immediately draining queued invalidations and compounding perceived lag.
 - Promoted API workbench Three panes from the 30-cell rescue startup tier to the 60-cell emergency tier while keeping
-  the 30-cell fallback available under terminal pressure. Normal animated block output now stays at `13x4/52c` and
-  20fps cadence instead of starting at `9x3/27c`; recovery into 120 cells requires quieter output below 10KB/s to avoid
+  the 30-cell fallback available under terminal pressure. Normal animated block output now stays at `13x4/52c` and 20fps
+  cadence instead of starting at `9x3/27c`; recovery into 120 cells requires quieter output below 10KB/s to avoid
   periodic expensive up/down oscillation.
-- Added a compact block-mode Three ASCII readback path: color compute shaders now carry block visibility in alpha,
-  block assembly can use that alpha mask, and block terminal frames omit the fill payload from GPU readback while glyph
-  and mixed modes keep full fill/edge/color data. The workbench pressure probe stays stable at `13x4/52c`; recovery now
+- Added a compact block-mode Three ASCII readback path: color compute shaders now carry block visibility in alpha, block
+  assembly can use that alpha mask, and block terminal frames omit the fill payload from GPU readback while glyph and
+  mixed modes keep full fill/edge/color data. The workbench pressure probe stays stable at `13x4/52c`; recovery now
   requires output below 7KB/s so the lower-byte block path does not oscillate into 120-cell frames.
 - Added direct benchmark guards for compact block-mode assembly and color-only readback packing. The compact readback
-  guard runs around 0.003ms on this host versus roughly 0.007ms for the full fill/edge/color readback-copy workload,
-  and the `three-ascii` selector now covers 19 renderer-focused cases.
+  guard runs around 0.003ms on this host versus roughly 0.007ms for the full fill/edge/color readback-copy workload, and
+  the `three-ascii` selector now covers 19 renderer-focused cases.
+- Removed the now-redundant fill compute pass and fill storage buffer from compact block-mode terminal frames. Block
+  mode dispatches color-only compute while glyph/mixed modes still run fill/edge/color as needed; focused compute policy
+  tests, the 90-frame workbench probe, and the `three-ascii` plus `workbench-three` benchmark selectors passed.

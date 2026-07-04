@@ -5,21 +5,22 @@ type ThreeAsciiComputeTextureLike = Pick<GPUTexture, "createView">;
 export interface ThreeAsciiComputeBindGroupInput {
   device: ThreeAsciiComputeDeviceLike;
   paramsBuffer: GPUBuffer;
-  fillPipeline: ThreeAsciiComputePipelineLike;
+  fillPipeline?: ThreeAsciiComputePipelineLike;
   edgePipeline?: ThreeAsciiComputePipelineLike;
   colorPipeline: ThreeAsciiComputePipelineLike;
-  fillOutput: GPUBuffer;
+  fillOutput?: GPUBuffer;
   edgeOutput?: GPUBuffer;
   colorOutput: GPUBuffer;
   downscaleTexture: ThreeAsciiComputeTextureLike;
   sobelTexture?: ThreeAsciiComputeTextureLike;
   normalsTexture?: ThreeAsciiComputeTextureLike;
+  includeFill?: boolean;
   includeEdges: boolean;
   colorUsesDepthTexture: boolean;
 }
 
 export interface ThreeAsciiComputeBindGroups {
-  fillBindGroup: GPUBindGroup;
+  fillBindGroup?: GPUBindGroup;
   edgeBindGroup?: GPUBindGroup;
   colorBindGroup: GPUBindGroup;
 }
@@ -28,7 +29,23 @@ export function createThreeAsciiComputeBindGroups(
   input: ThreeAsciiComputeBindGroupInput,
 ): ThreeAsciiComputeBindGroups {
   const downscaleView = input.downscaleTexture.createView();
-  const fillBindGroup = input.device.createBindGroup({
+  const fillBindGroup = input.includeFill ?? true ? createThreeAsciiFillBindGroup(input, downscaleView) : undefined;
+
+  const edgeBindGroup = input.includeEdges ? createThreeAsciiEdgeBindGroup(input) : undefined;
+  const colorBindGroup = createThreeAsciiColorBindGroup(input, downscaleView);
+
+  return { fillBindGroup, edgeBindGroup, colorBindGroup };
+}
+
+function createThreeAsciiFillBindGroup(
+  input: ThreeAsciiComputeBindGroupInput,
+  downscaleView: GPUTextureView,
+): GPUBindGroup {
+  if (!input.fillPipeline || !input.fillOutput) {
+    throw new Error("ThreeAsciiRenderer fill compute resources have not been initialized.");
+  }
+
+  return input.device.createBindGroup({
     label: "deno_tui.three_ascii.fill.bindings",
     layout: input.fillPipeline.getBindGroupLayout(0),
     entries: [
@@ -37,11 +54,6 @@ export function createThreeAsciiComputeBindGroups(
       { binding: 2, resource: { buffer: input.fillOutput } },
     ],
   });
-
-  const edgeBindGroup = input.includeEdges ? createThreeAsciiEdgeBindGroup(input) : undefined;
-  const colorBindGroup = createThreeAsciiColorBindGroup(input, downscaleView);
-
-  return { fillBindGroup, edgeBindGroup, colorBindGroup };
 }
 
 function createThreeAsciiColorBindGroup(

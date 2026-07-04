@@ -194,6 +194,7 @@ export class ThreeAsciiRenderer {
     fillByteLength: 0,
     edgeByteLength: 0,
     colorByteLength: 0,
+    includeFill: true,
     includeEdges: false,
   };
   private readonly dispatchPlanCache = new ThreeAsciiComputeDispatchPlanCache();
@@ -201,6 +202,7 @@ export class ThreeAsciiRenderer {
     columns: 0,
     rows: 0,
     workgroupSize: THREE_ASCII_WORKGROUP_SIZE,
+    includeFill: true,
     includeEdges: false,
   };
   private readonly dispatchResources: ThreeAsciiComputeDispatchResources = {
@@ -210,9 +212,12 @@ export class ThreeAsciiRenderer {
   private readonly computeResourcePlanInput: ThreeAsciiComputeResourcePlanInput = {
     columns: 0,
     rows: 0,
+    includeFill: true,
     includeEdges: false,
     includeDepthColor: false,
     currentCellCount: 0,
+    hasFillOutput: false,
+    hasFillBindGroup: false,
     hasEdgeOutput: false,
     hasEdgeBindGroup: false,
     hasDepthColorBindGroup: false,
@@ -461,7 +466,12 @@ export class ThreeAsciiRenderer {
     forceBlockingDeferredReadback = false,
   ): Promise<string[][]> {
     const computeMode = resolveThreeAsciiComputeMode(effectState, this.terminalGlyphStyle);
-    await this.ensureComputeResources(effectState, computeMode.includeEdges, computeMode.includeDepthColor);
+    await this.ensureComputeResources(
+      effectState,
+      computeMode.includeFill,
+      computeMode.includeEdges,
+      computeMode.includeDepthColor,
+    );
     this.writeUniforms(effectState);
 
     const commandEncoder = this.device!.createCommandEncoder({
@@ -469,17 +479,18 @@ export class ThreeAsciiRenderer {
     });
     this.dispatchPlanOptions.columns = this.columns;
     this.dispatchPlanOptions.rows = this.rows;
+    this.dispatchPlanOptions.includeFill = computeMode.includeFill;
     this.dispatchPlanOptions.includeEdges = computeMode.includeEdges;
     const dispatchPlan = this.dispatchPlanCache.resolve(this.dispatchPlanOptions);
     encodeThreeAsciiComputeDispatchCommands(commandEncoder, dispatchPlan, this.dispatchResources);
 
-    this.readbackLayoutOptions.fillByteLength = this.fillOutput!.byteLength;
+    this.readbackLayoutOptions.fillByteLength = this.fillOutput?.byteLength ?? 0;
     this.readbackLayoutOptions.edgeByteLength = this.edgeOutput?.byteLength ?? 0;
     this.readbackLayoutOptions.colorByteLength = this.colorOutput!.byteLength;
     this.readbackLayoutOptions.includeFill = computeMode.includeFillReadback;
     this.readbackLayoutOptions.includeEdges = computeMode.includeEdges;
     const readbackLayout = this.readbackLayoutCache.resolve(this.readbackLayoutOptions);
-    this.readbackCopyFillSource.byteLength = this.fillOutput!.byteLength;
+    this.readbackCopyFillSource.byteLength = this.fillOutput?.byteLength ?? 0;
     this.readbackCopyEdgeSource.byteLength = this.edgeOutput?.byteLength ?? 0;
     this.readbackCopyColorSource.byteLength = this.colorOutput!.byteLength;
     const readbackCopyPlan = this.readbackCopyPlanCache.resolve({
@@ -595,7 +606,11 @@ export class ThreeAsciiRenderer {
     readbackCopyPlan: ReturnType<ThreeAsciiReadbackCopyPlanCache["resolve"]>,
     readback: ThreeAsciiGpuBufferSlot<GPUBuffer> | undefined,
   ): void {
-    this.readbackCopySources.fill = this.fillOutput!.gpu;
+    if (this.fillOutput) {
+      this.readbackCopySources.fill = this.fillOutput.gpu;
+    } else {
+      delete (this.readbackCopySources as Partial<ThreeAsciiReadbackCopySources<GPUBuffer>>).fill;
+    }
     this.readbackCopySources.edge = this.edgeOutput?.gpu;
     this.readbackCopySources.color = this.colorOutput!.gpu;
     executeThreeAsciiReadbackCopyPlan(
@@ -720,6 +735,7 @@ export class ThreeAsciiRenderer {
 
   private async ensureComputeResources(
     effectState: ThreeAsciiEffectState,
+    includeTerminalFill = true,
     includeTerminalEdges = effectState.edges,
     includeTerminalDepthColor = effectState.depthFalloff > 0,
   ): Promise<void> {
@@ -727,12 +743,15 @@ export class ThreeAsciiRenderer {
       throw new Error("ThreeAsciiRenderer has not been initialized.");
     }
 
-    if (!this.fillPipeline) {
+    if (includeTerminalFill && !this.fillPipeline) {
       this.fillPipeline = createThreeAsciiComputePipeline({
         device: this.device,
         label: "deno_tui.three_ascii.fill",
         code: THREE_ASCII_FILL_SHADER,
       });
+    }
+
+    if (!this.colorFlatPipeline) {
       this.colorFlatPipeline = createThreeAsciiComputePipeline({
         device: this.device,
         label: "deno_tui.three_ascii.color.flat",
@@ -768,24 +787,32 @@ export class ThreeAsciiRenderer {
 
     this.computeResourcePlanInput.columns = this.columns;
     this.computeResourcePlanInput.rows = this.rows;
+    this.computeResourcePlanInput.includeFill = includeTerminalFill;
     this.computeResourcePlanInput.includeEdges = includeTerminalEdges;
     this.computeResourcePlanInput.includeDepthColor = includeTerminalDepthColor;
     this.computeResourcePlanInput.currentCellCount = this.outputCellCount;
+    this.computeResourcePlanInput.hasFillOutput = this.fillOutput !== undefined;
+    this.computeResourcePlanInput.hasFillBindGroup = this.fillBindGroup !== undefined;
     this.computeResourcePlanInput.hasEdgeOutput = this.edgeOutput !== undefined;
     this.computeResourcePlanInput.hasEdgeBindGroup = this.edgeBindGroup !== undefined;
     this.computeResourcePlanInput.hasDepthColorBindGroup = this.colorUsesDepthTexture;
     const resourcePlan = createThreeAsciiComputeResourcePlan(this.computeResourcePlanInput);
     if (resourcePlan.resizeOutputs) {
-      this.fillOutput = this.ensureStorageBufferSlot(
-        this.fillOutput,
-        resourcePlan.fillByteLength,
-        "fill",
-      );
       this.colorOutput = this.ensureStorageBufferSlot(
         this.colorOutput,
         resourcePlan.colorByteLength,
         "color",
       );
+    }
+
+    if (resourcePlan.ensureFillOutput) {
+      this.fillOutput = this.ensureStorageBufferSlot(
+        this.fillOutput,
+        resourcePlan.fillByteLength,
+        "fill",
+      );
+    } else if (resourcePlan.releaseFillOutput) {
+      this.fillOutput = destroyThreeAsciiGpuBufferSlot(this.fillOutput);
     }
 
     if (resourcePlan.ensureEdgeOutput) {
@@ -804,6 +831,9 @@ export class ThreeAsciiRenderer {
     }, resourcePlan);
     this.outputCellCount = resourceState.outputCellCount;
     this.computeDirty = resourceState.computeDirty;
+    if (resourceState.clearFillBindGroup) {
+      this.fillBindGroup = undefined;
+    }
     if (resourceState.clearEdgeBindGroup) {
       this.edgeBindGroup = undefined;
     }
@@ -819,12 +849,13 @@ export class ThreeAsciiRenderer {
       fillPipeline: this.fillPipeline!,
       edgePipeline: this.edgePipeline,
       colorPipeline: this.colorPipeline!,
-      fillOutput: this.fillOutput!.gpu,
+      fillOutput: this.fillOutput?.gpu,
       edgeOutput: this.edgeOutput?.gpu,
       colorOutput: this.colorOutput!.gpu,
       downscaleTexture: this.getGpuTexture(this.asciiNode.downscaleTarget.texture),
       sobelTexture: includeTerminalEdges ? this.getGpuTexture(this.asciiNode.sobelTarget.texture) : undefined,
       normalsTexture: includeTerminalDepthColor ? this.getGpuTexture(this.asciiNode.normalsTarget.texture) : undefined,
+      includeFill: includeTerminalFill,
       includeEdges: includeTerminalEdges,
       colorUsesDepthTexture: includeTerminalDepthColor,
     });
@@ -910,7 +941,10 @@ export class ThreeAsciiRenderer {
     backgroundColor: Color,
   ): Promise<string[][]> {
     const readback = this.outputReadback;
-    if (!readback || !this.fillOutput || !this.colorOutput || (layout.edgeOffset !== undefined && !this.edgeOutput)) {
+    if (
+      !readback || (layout.includeFill && !this.fillOutput) || !this.colorOutput ||
+      (layout.edgeOffset !== undefined && !this.edgeOutput)
+    ) {
       throw new Error("ThreeAsciiRenderer readback buffers have not been initialized.");
     }
 

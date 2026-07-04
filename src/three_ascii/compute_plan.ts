@@ -13,6 +13,7 @@ export interface ThreeAsciiComputeDispatchPlanInput {
   columns: number;
   rows: number;
   workgroupSize: number;
+  includeFill?: boolean;
   includeEdges: boolean;
 }
 
@@ -22,17 +23,20 @@ export class ThreeAsciiComputeDispatchPlanCache {
   private columns = -1;
   private rows = -1;
   private workgroupSize = -1;
+  private includeFill = true;
   private includeEdges = false;
 
   resolve(options: ThreeAsciiComputeDispatchPlanInput): ThreeAsciiComputeDispatchPlan {
     const columns = Math.max(1, Math.floor(options.columns));
     const rows = Math.max(1, Math.floor(options.rows));
     const workgroupSize = Math.max(1, Math.floor(options.workgroupSize));
+    const includeFill = options.includeFill ?? true;
     if (
       this.cached &&
       this.columns === columns &&
       this.rows === rows &&
       this.workgroupSize === workgroupSize &&
+      this.includeFill === includeFill &&
       this.includeEdges === options.includeEdges
     ) {
       return this.cached;
@@ -41,11 +45,13 @@ export class ThreeAsciiComputeDispatchPlanCache {
     this.columns = columns;
     this.rows = rows;
     this.workgroupSize = workgroupSize;
+    this.includeFill = includeFill;
     this.includeEdges = options.includeEdges;
     this.cached = createThreeAsciiComputeDispatchPlan({
       columns,
       rows,
       workgroupSize,
+      includeFill,
       includeEdges: options.includeEdges,
     });
     return this.cached;
@@ -56,6 +62,7 @@ export class ThreeAsciiComputeDispatchPlanCache {
     this.columns = -1;
     this.rows = -1;
     this.workgroupSize = -1;
+    this.includeFill = true;
     this.includeEdges = false;
   }
 }
@@ -75,6 +82,8 @@ const COLOR_PASS: ThreeAsciiComputePassPlan = {
 
 const FILL_COLOR_PASSES = [FILL_PASS, COLOR_PASS] as const;
 const FILL_EDGE_COLOR_PASSES = [FILL_PASS, EDGE_PASS, COLOR_PASS] as const;
+const COLOR_PASSES = [COLOR_PASS] as const;
+const EDGE_COLOR_PASSES = [EDGE_PASS, COLOR_PASS] as const;
 
 export function createThreeAsciiComputeDispatchPlan(
   options: ThreeAsciiComputeDispatchPlanInput,
@@ -82,9 +91,14 @@ export function createThreeAsciiComputeDispatchPlan(
   const columns = Math.max(1, Math.floor(options.columns));
   const rows = Math.max(1, Math.floor(options.rows));
   const workgroupSize = Math.max(1, Math.floor(options.workgroupSize));
+  const includeFill = options.includeFill ?? true;
   return {
     workgroupsX: Math.ceil(columns / workgroupSize),
     workgroupsY: Math.ceil(rows / workgroupSize),
-    passes: options.includeEdges ? FILL_EDGE_COLOR_PASSES : FILL_COLOR_PASSES,
+    passes: includeFill
+      ? options.includeEdges ? FILL_EDGE_COLOR_PASSES : FILL_COLOR_PASSES
+      : options.includeEdges
+      ? EDGE_COLOR_PASSES
+      : COLOR_PASSES,
   };
 }

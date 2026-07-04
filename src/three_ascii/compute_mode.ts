@@ -3,6 +3,7 @@ import type { TerminalGlyphStyle } from "./glyphs.ts";
 
 /** Resolved terminal compute passes needed for the current renderer state. */
 export interface ThreeAsciiComputeMode {
+  includeFill: boolean;
   includeEdges: boolean;
   includeDepthColor: boolean;
   includeFillReadback: boolean;
@@ -14,6 +15,7 @@ export function resolveThreeAsciiComputeMode(
   terminalGlyphStyle: TerminalGlyphStyle,
 ): ThreeAsciiComputeMode {
   return {
+    includeFill: terminalGlyphStyle !== "blocks",
     includeEdges: shouldIncludeThreeAsciiTerminalEdges(effectState, terminalGlyphStyle),
     includeDepthColor: effectState.depthFalloff > 0,
     includeFillReadback: terminalGlyphStyle !== "blocks",
