@@ -15,7 +15,7 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
     1_920,
     3_840,
   ]);
-  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 960);
+  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 480);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 240_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 96_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerGrid, 18_000);
@@ -24,12 +24,12 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
 });
 
 Deno.test("API workbench Three policy keeps live panes faster than idle panes", () => {
-  assertEquals(apiWorkbenchThreeFrameIntervalForCells(120, { live: true }), 1000 / 20);
-  assertEquals(apiWorkbenchThreeFrameIntervalForCells(240, { live: true }), 1000 / 16);
-  assertEquals(apiWorkbenchThreeFrameIntervalForCells(480, { live: true }), 1000 / 12);
-  assertEquals(apiWorkbenchThreeFrameIntervalForCells(960, { live: true }), 1000 / 10);
-  assertEquals(apiWorkbenchThreeFrameIntervalForCells(1_920, { live: true }), 1000 / 8);
-  assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: true }), 1000 / 6);
-  assertEquals(apiWorkbenchThreeFrameIntervalForCells(240, { live: false }), 1000 / 6);
-  assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: false }), 1000 / 3);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(120, { live: true }), 1000 / 18);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(240, { live: true }), 1000 / 18);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(480, { live: true }), 1000 / 18);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(960, { live: true }), 1000 / 18);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(1_920, { live: true }), 1000 / 14);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: true }), 1000 / 10);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(240, { live: false }), 1000 / 8);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: false }), 1000 / 5);
 });
