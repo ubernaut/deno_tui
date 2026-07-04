@@ -9,6 +9,7 @@ import {
   layoutWorkbenchTopMenuItemRect,
   moveWorkbenchMenuIndex,
   projectWorkbenchStandardTopMenuState,
+  resolveWorkbenchScreenDropdownKey,
   workbenchStandardTopMenuIdForItem,
   WorkbenchTopMenuController,
 } from "../src/app/workbench_menu.ts";
@@ -57,6 +58,62 @@ Deno.test("workbench menu page movement uses configurable page size", () => {
   assertEquals(moveWorkbenchMenuIndex(3, 10, { key: "pagedown" }), 9);
   assertEquals(moveWorkbenchMenuIndex(3, 10, { key: "pagedown" }, { pageSize: 2 }), 5);
   assertEquals(moveWorkbenchMenuIndex(3, 0, { key: "down" }), 0);
+});
+
+Deno.test("workbench screen dropdown key resolver separates global and menu-local actions", () => {
+  const base = {
+    openId: "newWindow" as const,
+    indexes: { theme: 1, newWindow: 2, workspace: 0 },
+    counts: { theme: 4, newWindow: 5, workspace: 3 },
+  };
+
+  assertEquals(resolveWorkbenchScreenDropdownKey({ ...base, event: { key: "q" } }), { kind: "quit" });
+  assertEquals(resolveWorkbenchScreenDropdownKey({ ...base, event: { key: "h" } }), { kind: "help" });
+  assertEquals(resolveWorkbenchScreenDropdownKey({ ...base, event: { key: "escape" } }), { kind: "close" });
+  assertEquals(resolveWorkbenchScreenDropdownKey({ ...base, event: { key: "tab", shift: true } }), {
+    kind: "focusWindow",
+    delta: -1,
+  });
+  assertEquals(resolveWorkbenchScreenDropdownKey({ ...base, event: { key: "right" } }), {
+    kind: "moveTopMenu",
+    delta: 1,
+  });
+  assertEquals(resolveWorkbenchScreenDropdownKey({ ...base, event: { key: "down" } }), {
+    kind: "menuItem",
+    menuId: "newWindow",
+    index: 3,
+    activate: false,
+  });
+  assertEquals(resolveWorkbenchScreenDropdownKey({ ...base, event: { key: "return" } }), {
+    kind: "menuItem",
+    menuId: "newWindow",
+    index: 2,
+    activate: true,
+  });
+  assertEquals(resolveWorkbenchScreenDropdownKey({ ...base, event: { key: "down", ctrl: true } }), {
+    kind: "ignore",
+  });
+});
+
+Deno.test("workbench screen dropdown key resolver ignores missing or empty menus", () => {
+  assertEquals(
+    resolveWorkbenchScreenDropdownKey({
+      event: { key: "down" },
+      openId: null,
+      indexes: {},
+      counts: {},
+    }),
+    { kind: "ignore" },
+  );
+  assertEquals(
+    resolveWorkbenchScreenDropdownKey({
+      event: { key: "return" },
+      openId: "workspace",
+      indexes: { workspace: 0 },
+      counts: { workspace: 0 },
+    }),
+    { kind: "ignore" },
+  );
 });
 
 Deno.test("WorkbenchTopMenuController keeps one top menu open and focus synchronized", () => {

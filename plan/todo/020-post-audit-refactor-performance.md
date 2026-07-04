@@ -279,6 +279,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Fixed deferred Three ASCII readback self-invalidation: normal readback completion no longer advances the invalidation
   generation, so sibling in-flight block-mode frames are consumed instead of discarded. The workbench pressure probe now
   shows live block grids updating every sampled frame at 960/3840 cell caps instead of visibly stalling for many frames.
+- Extracted top-menu dropdown keyboard action resolution into the shared workbench menu helper so the terminal workbench
+  only applies renderer-specific side effects for quit/help/focus/menu item actions.
 - Retuned the default workbench Three ASCII pressure policy for slow terminal links: the default pane now starts at the
   120-cell emergency tier, 240-cell animated output downshifts on sustained byte rates above roughly 35KB/s, and low
   byte-rate recovery remains conservative so SSH/tmux sessions do not immediately climb back into expensive output.

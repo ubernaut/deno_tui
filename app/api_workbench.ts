@@ -48,6 +48,7 @@ import {
   projectWorkbenchStandardTopMenuState,
   renderFrameRow,
   renderFrameSlice,
+  resolveWorkbenchScreenDropdownKey,
   subscribeWorkbenchDiagnosticLog,
   translateHitTargets,
   workbenchAdaptiveWindowLayout,
@@ -3995,55 +3996,55 @@ function handleMenuFocusKey(event: { key: string; ctrl?: boolean; meta?: boolean
 }
 
 function handleScreenDropdownKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
-  if (event.ctrl || event.meta) return;
-  if (event.key === "q") {
-    openQuitModal();
-    return;
-  }
-  if (event.key === "?" || event.key === "h") {
-    closeTopMenus();
-    openHelpModal();
-    return;
-  }
-  if (event.key === "escape") {
-    closeTopMenus();
-    return;
-  }
-  if (event.key === "tab") {
-    closeTopMenus();
-    event.shift ? focusPrevious() : focusNext();
-    return;
-  }
-  if (event.key === "left" || event.key === "right") {
-    const delta = event.key === "left" ? -1 : 1;
-    menu.move(delta);
-    openActiveTopMenu();
-    return;
-  }
-  if (themeMenuOpen.peek()) {
-    if (event.key === "up") themeIndex.value = (themeIndex.peek() - 1 + themes.length) % themes.length;
-    else if (event.key === "down") themeIndex.value = (themeIndex.peek() + 1) % themes.length;
-    else if (event.key === "home") themeIndex.value = 0;
-    else if (event.key === "end") themeIndex.value = themes.length - 1;
-    else if (isWorkbenchMenuActivationKey(event.key)) setTheme(themeIndex.peek());
-    return;
-  }
-  if (newWindowMenuOpen.peek()) {
-    const count = newWindowOptions.length;
-    if (count === 0) return;
-    newWindowMenuIndex.value = workbenchController.moveMenuIndex("newWindow", count, event.key);
-    if (isWorkbenchMenuActivationKey(event.key)) {
-      toggleNewWindowOption(newWindowOptions[newWindowMenuIndex.peek()], { keepMenuOpen: true });
-    }
-    return;
-  }
-  if (workspaceMenuOpen.peek()) {
-    const count = workspaceMenuItemCount();
-    if (count === 0) return;
-    workspaceMenuIndex.value = workbenchController.moveMenuIndex("workspace", count, event.key);
-    if (isWorkbenchMenuActivationKey(event.key)) {
-      applyWorkspaceMenuItem(workspaceMenuIndex.peek());
-    }
+  const action = resolveWorkbenchScreenDropdownKey({
+    event,
+    openId: topMenus.inspect().openId,
+    indexes: {
+      theme: themeIndex.peek(),
+      newWindow: newWindowMenuIndex.peek(),
+      workspace: workspaceMenuIndex.peek(),
+    },
+    counts: {
+      theme: themes.length,
+      newWindow: newWindowOptions.length,
+      workspace: workspaceMenuItemCount(),
+    },
+  });
+
+  switch (action.kind) {
+    case "ignore":
+      return;
+    case "quit":
+      openQuitModal();
+      return;
+    case "help":
+      closeTopMenus();
+      openHelpModal();
+      return;
+    case "close":
+      closeTopMenus();
+      return;
+    case "focusWindow":
+      closeTopMenus();
+      action.delta < 0 ? focusPrevious() : focusNext();
+      return;
+    case "moveTopMenu":
+      menu.move(action.delta);
+      openActiveTopMenu();
+      return;
+    case "menuItem":
+      if (action.menuId === "theme") {
+        themeIndex.value = action.index;
+        if (action.activate) setTheme(action.index);
+      } else if (action.menuId === "newWindow") {
+        newWindowMenuIndex.value = action.index;
+        if (action.activate) {
+          toggleNewWindowOption(newWindowOptions[action.index], { keepMenuOpen: true });
+        }
+      } else {
+        workspaceMenuIndex.value = action.index;
+        if (action.activate) applyWorkspaceMenuItem(action.index);
+      }
   }
 }
 

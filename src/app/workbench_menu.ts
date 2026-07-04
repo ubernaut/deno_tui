@@ -82,6 +82,32 @@ export interface WorkbenchStandardTopMenuSignalState {
   menuFocused: boolean;
 }
 
+/** Minimal key event shape for top-menu dropdown navigation. */
+export interface WorkbenchScreenDropdownKey {
+  key: string;
+  ctrl?: boolean;
+  meta?: boolean;
+  shift?: boolean;
+}
+
+/** Inputs for resolving a key press while a workbench top-menu dropdown is active. */
+export interface WorkbenchScreenDropdownKeyOptions {
+  event: WorkbenchScreenDropdownKey;
+  openId: WorkbenchStandardTopMenuId | null;
+  indexes: Partial<Record<WorkbenchStandardTopMenuId, number>>;
+  counts: Partial<Record<WorkbenchStandardTopMenuId, number>>;
+}
+
+/** Renderer-neutral action requested by a top-menu dropdown key press. */
+export type WorkbenchScreenDropdownKeyAction =
+  | { kind: "ignore" }
+  | { kind: "quit" }
+  | { kind: "help" }
+  | { kind: "close" }
+  | { kind: "focusWindow"; delta: -1 | 1 }
+  | { kind: "moveTopMenu"; delta: -1 | 1 }
+  | { kind: "menuItem"; menuId: WorkbenchStandardTopMenuId; index: number; activate: boolean };
+
 /** Options for configuring a renderer-neutral top menu disclosure controller. */
 export interface WorkbenchTopMenuControllerOptions<MenuId extends string> {
   onChange?: (inspection: WorkbenchTopMenuInspection<MenuId>) => void;
@@ -168,6 +194,41 @@ export function projectWorkbenchStandardTopMenuState(
     newWindowMenuOpen: state.openId === "newWindow",
     workspaceMenuOpen: state.openId === "workspace",
     menuFocused: state.focused,
+  };
+}
+
+/** Resolve global/menu-local keyboard behavior while a top menu dropdown is visible. */
+export function resolveWorkbenchScreenDropdownKey(
+  options: WorkbenchScreenDropdownKeyOptions,
+): WorkbenchScreenDropdownKeyAction {
+  const { event } = options;
+  if (event.ctrl || event.meta) return { kind: "ignore" };
+  switch (event.key) {
+    case "q":
+      return { kind: "quit" };
+    case "?":
+    case "h":
+      return { kind: "help" };
+    case "escape":
+      return { kind: "close" };
+    case "tab":
+      return { kind: "focusWindow", delta: event.shift ? -1 : 1 };
+    case "left":
+      return { kind: "moveTopMenu", delta: -1 };
+    case "right":
+      return { kind: "moveTopMenu", delta: 1 };
+  }
+
+  const menuId = options.openId;
+  if (!menuId) return { kind: "ignore" };
+  const count = Math.max(0, Math.floor(options.counts[menuId] ?? 0));
+  if (count <= 0) return { kind: "ignore" };
+  const current = options.indexes[menuId] ?? 0;
+  return {
+    kind: "menuItem",
+    menuId,
+    index: moveWorkbenchMenuIndex(current, count, event),
+    activate: isWorkbenchMenuActivationKey(event.key),
   };
 }
 
