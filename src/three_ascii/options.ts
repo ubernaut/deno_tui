@@ -196,7 +196,7 @@ export function asciiControlValues(
     case "wireframeThickness":
       return [0.5, 0.75, 1, 1.4, 1.8, 2, 2.4, 3, 4, 6, 8, 12, 16, 24, 32];
     case "renderMaxCells":
-      return [960, 1_920, 3_840, 7_680, 15_400, 30_720];
+      return [60, 120, 240, 480, 960, 1_920, 3_840, 7_680, 15_400, 30_720];
     case "deferredReadbackSlots":
       return [2, 4, 6, 8, 12];
     case "terminalEdgeBias":

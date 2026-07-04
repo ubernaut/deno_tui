@@ -64,7 +64,7 @@ Deno.test("workbench ascii defaults favor terminal-visible wire thickness", () =
   const values = asciiControlValues("wireframeThickness");
   assertEquals(values.includes(8), true);
   assertEquals(values.at(-1), 32);
-  assertEquals(asciiControlValues("renderMaxCells"), [960, 1920, 3840, 7680, 15400, 30720]);
+  assertEquals(asciiControlValues("renderMaxCells"), [60, 120, 240, 480, 960, 1920, 3840, 7680, 15400, 30720]);
   assertEquals(asciiControlValues("deferredReadbackSlots"), [2, 4, 6, 8, 12]);
 });
 
@@ -82,7 +82,7 @@ Deno.test("ascii option normalization defaults to blocks but preserves saved gly
 Deno.test("ascii option normalization clamps numeric config to control ranges", () => {
   assertEquals(clampAsciiControlValue("wireframeThickness", 99), 32);
   assertEquals(clampAsciiControlValue("wireframeThickness", -1), 0.5);
-  assertEquals(clampAsciiControlValue("renderMaxCells", 99), 960);
+  assertEquals(clampAsciiControlValue("renderMaxCells", 99), 99);
   assertEquals(clampAsciiControlValue("renderMaxCells", 99_999), 30720);
   assertEquals(clampAsciiControlValue("exposure", 1.33), 1.33);
 

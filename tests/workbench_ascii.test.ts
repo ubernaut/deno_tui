@@ -69,7 +69,7 @@ Deno.test("workbench ascii option helpers step presets glyphs toggles and numeri
   assertEquals(stepped.preset, "custom");
 
   const renderCells = stepWorkbenchAsciiNumericOption(initial, "renderMaxCells", 1);
-  assertEquals(renderCells.renderMaxCells, 3840);
+  assertEquals(renderCells.renderMaxCells, 1920);
   assertEquals(renderCells.preset, "custom");
 
   const readbackSlots = stepWorkbenchAsciiNumericOption(initial, "deferredReadbackSlots", 1);
@@ -122,8 +122,8 @@ Deno.test("workbench ascii config action helper applies rows and formats message
     "previous",
     [],
   );
-  assertEquals(renderCells.options.renderMaxCells, 960);
-  assertEquals(renderCells.message, "renderMaxCells 960");
+  assertEquals(renderCells.options.renderMaxCells, 480);
+  assertEquals(renderCells.message, "renderMaxCells 480");
 
   const readbackSlots = applyWorkbenchAsciiConfigRowAction(
     initial,
@@ -233,7 +233,7 @@ Deno.test("workbench ascii config rows expose reusable modal text", () => {
       options,
       { trackWidth: 4 },
     ),
-    "Render cells       [<] ░░░░  1920 [>]",
+    "Render cells       [<] ░░░░   960 [>]",
   );
   assertEquals(
     formatWorkbenchAsciiConfigRowText(

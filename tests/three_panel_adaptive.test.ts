@@ -47,7 +47,7 @@ Deno.test("resolveThreePanelAdaptiveRenderBudget adapts within pressure render t
 
 Deno.test("resolveThreePanelAdaptiveRenderBudget holds the emergency minimum render tier", () => {
   const next = resolveThreePanelAdaptiveRenderBudget({
-    requestedMaxCells: 120,
+    requestedMaxCells: 60,
     frameMs: 300,
     targetMs: 1000 / 18,
     slowFrames: 1,

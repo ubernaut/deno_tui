@@ -85,7 +85,7 @@ Deno.test("resolveThreePanelRequestedMaxCells clamps user settings under pressur
   assertEquals(resolveThreePanelRequestedMaxCells({ userMaxCells: 1_920 }), 1_920);
   assertEquals(resolveThreePanelRequestedMaxCells({ userMaxCells: 1_920, pressureMaxCells: 240 }), 240);
   assertEquals(resolveThreePanelRequestedMaxCells({ userMaxCells: 240, pressureMaxCells: 1_920 }), 240);
-  assertEquals(resolveThreePanelRequestedMaxCells({ userMaxCells: 240.9, pressureMaxCells: 120.9 }), 120);
+  assertEquals(resolveThreePanelRequestedMaxCells({ userMaxCells: 240.9, pressureMaxCells: 60.9 }), 60);
   assertEquals(resolveThreePanelRequestedMaxCells({ userMaxCells: 0, pressureMaxCells: 0 }), 1);
 });
 
