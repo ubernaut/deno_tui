@@ -253,7 +253,7 @@ export function createThreeAsciiReadbackCopyPlan(options: {
 }): ThreeAsciiReadbackCopyPlan {
   const includeFill = options.includeFill ?? true;
   const commands: ThreeAsciiReadbackCopyCommand[] = [];
-  if (includeFill) {
+  if (includeFill && options.fill.byteLength > 0) {
     commands.push({
       label: "fill",
       byteLength: options.fill.byteLength,
@@ -265,18 +265,22 @@ export function createThreeAsciiReadbackCopyPlan(options: {
     if (!options.edge || options.layout.edgeOffset === undefined) {
       throw new Error("Three ASCII edge readback requested without an edge output layout.");
     }
-    commands.push({
-      label: "edge",
-      byteLength: options.edge.byteLength,
-      targetOffset: options.layout.edgeOffset,
-    });
+    if (options.edge.byteLength > 0) {
+      commands.push({
+        label: "edge",
+        byteLength: options.edge.byteLength,
+        targetOffset: options.layout.edgeOffset,
+      });
+    }
   }
 
-  commands.push({
-    label: "color",
-    byteLength: options.color.byteLength,
-    targetOffset: options.layout.colorOffset,
-  });
+  if (options.color.byteLength > 0) {
+    commands.push({
+      label: "color",
+      byteLength: options.color.byteLength,
+      targetOffset: options.layout.colorOffset,
+    });
+  }
 
   return { layout: options.layout, commands };
 }

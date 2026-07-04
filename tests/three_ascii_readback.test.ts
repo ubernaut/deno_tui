@@ -142,6 +142,45 @@ Deno.test("three ascii readback copy plan can omit fill copy for compact block f
   ]);
 });
 
+Deno.test("three ascii readback copy plan omits zero-byte GPU copy commands", () => {
+  const layout = createThreeAsciiReadbackLayout({
+    fillByteLength: 0,
+    edgeByteLength: 0,
+    colorByteLength: 32,
+    includeEdges: true,
+  });
+
+  const plan = createThreeAsciiReadbackCopyPlan({
+    fill: { label: "fill", byteLength: 0 },
+    edge: { label: "edge", byteLength: 0 },
+    color: { label: "color", byteLength: 32 },
+    includeEdges: true,
+    layout,
+  });
+
+  assertEquals(plan.commands, [
+    { label: "color", byteLength: 32, targetOffset: 0 },
+  ]);
+});
+
+Deno.test("three ascii readback copy plan can omit all zero-byte copies", () => {
+  const layout = createThreeAsciiReadbackLayout({
+    fillByteLength: 0,
+    edgeByteLength: 0,
+    colorByteLength: 0,
+    includeEdges: false,
+  });
+
+  const plan = createThreeAsciiReadbackCopyPlan({
+    fill: { label: "fill", byteLength: 0 },
+    color: { label: "color", byteLength: 0 },
+    includeEdges: false,
+    layout,
+  });
+
+  assertEquals(plan.commands, []);
+});
+
 Deno.test("three ascii readback copy plan rejects missing requested edge output", () => {
   const layout = createThreeAsciiReadbackLayout({
     fillByteLength: 8,

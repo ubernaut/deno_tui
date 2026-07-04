@@ -838,3 +838,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Cached clean retained rows in the ANSI span-mode screen painter so unchanged workbench rows skip repeat span detection
   after they are proven equal to the retained snapshot. Focused painter/frame tests passed, and the repeated workbench
   Three block span benchmark improved to roughly 2.2ms on this host.
+- Omitted zero-byte GPU readback copy commands from Three ASCII readback plans so compact or empty payload shapes do not
+  submit no-op buffer copies. Focused readback and renderer tests passed; readback-copy benchmarks stayed well under
+  guardrails at roughly 0.009ms for full payloads and 0.004ms for compact block payloads.
