@@ -6,6 +6,7 @@ import {
   resolveWorkbenchThreeTerminalPressureUpdate,
   shouldApplyWorkbenchThreeTerminalPressureSample,
   shouldCountWorkbenchThreeGridPressure,
+  workbenchThreeTerminalBytesPerSecond,
   workbenchThreeFrameIntervalForCells,
   workbenchThreeShouldUseLiveCadence,
 } from "../src/app/workbench_three_terminal_pressure.ts";
@@ -145,6 +146,13 @@ Deno.test("workbench Three terminal pressure ignores byte rate without a sample 
 
   assertEquals(next.currentCells, 960);
   assertEquals(next.direction, "steady");
+});
+
+Deno.test("workbench Three terminal byte rate handles valid and missing sample windows", () => {
+  assertEquals(workbenchThreeTerminalBytesPerSecond({ bytes: 6_000, sampleDurationMs: 50 }), 120_000);
+  assertEquals(workbenchThreeTerminalBytesPerSecond({ bytes: 6_000 }), 0);
+  assertEquals(workbenchThreeTerminalBytesPerSecond({ bytes: 6_000, sampleDurationMs: 0 }), 0);
+  assertEquals(workbenchThreeTerminalBytesPerSecond({ bytes: -1, sampleDurationMs: 50 }), 0);
 });
 
 Deno.test("workbench Three terminal pressure permits larger block frames under tuned per-grid budget", () => {

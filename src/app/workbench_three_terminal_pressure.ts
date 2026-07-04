@@ -86,6 +86,12 @@ export interface WorkbenchThreePressureSampleScope {
   toleranceRows?: number;
 }
 
+/** Inputs used to convert terminal output bytes over a frame/sample window into bytes per second. */
+export interface WorkbenchThreeTerminalByteRateOptions {
+  bytes: number;
+  sampleDurationMs?: number;
+}
+
 /** Creates pressure counters initialized to the preferred render-cell budget. */
 export function createWorkbenchThreeTerminalPressureState(defaultCells: number): WorkbenchThreeTerminalPressureState {
   return {
@@ -188,7 +194,7 @@ export function resolveWorkbenchThreeTerminalPressureBudget(
   const bytesPerGrid = options.bytes / Math.max(1, options.renderedThreeGrids);
   const highBytesPerGrid = options.highBytesPerGrid ?? Number.POSITIVE_INFINITY;
   const highBytesPerSecond = options.highBytesPerSecond ?? Number.POSITIVE_INFINITY;
-  const bytesPerSecond = bytesPerSecondForSample(options.bytes, options.sampleDurationMs);
+  const bytesPerSecond = workbenchThreeTerminalBytesPerSecond(options);
   const lowBytesPerGrid = options.lowBytesPerGrid ?? Number.POSITIVE_INFINITY;
   const highPressure = options.bytes >= options.highBytes || bytesPerGrid >= highBytesPerGrid ||
     (options.durationMs ?? 0) >= highDurationMs || bytesPerSecond >= highBytesPerSecond;
@@ -237,9 +243,9 @@ export function resolveWorkbenchThreeTerminalPressureBudget(
   };
 }
 
-function bytesPerSecondForSample(bytes: number, sampleDurationMs: number | undefined): number {
-  if (sampleDurationMs === undefined || sampleDurationMs <= 0) return 0;
-  return bytes / (sampleDurationMs / 1000);
+export function workbenchThreeTerminalBytesPerSecond(options: WorkbenchThreeTerminalByteRateOptions): number {
+  if (options.sampleDurationMs === undefined || options.sampleDurationMs <= 0 || options.bytes <= 0) return 0;
+  return options.bytes / (options.sampleDurationMs / 1000);
 }
 
 function normalizedLevels(levels: readonly number[]): number[] {
