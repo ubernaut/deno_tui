@@ -40,6 +40,7 @@ export interface WorkbenchThreePressureProbeOptions {
   panelWidth: number;
   panelHeight: number;
   maxCells: number;
+  asciiCells?: number;
   adaptive?: boolean;
   intervalMs: number;
   totalBytes: number;
@@ -98,8 +99,10 @@ export function formatWorkbenchThreePressureProbeLines(
   const lines = [
     "three-workbench pressure probe",
     `mode=${options.mode} glyphs=${options.glyphs} readback=${options.readback} frame=${options.frameWidth}x${options.frameHeight} panel=${options.panelWidth}x${options.panelHeight} maxCells=${options.maxCells}${
-      options.adaptive ? " adaptive" : ""
-    } interval=${formatMs(options.intervalMs)}`,
+      options.asciiCells === undefined || options.asciiCells === options.maxCells
+        ? ""
+        : ` asciiCells=${options.asciiCells}`
+    }${options.adaptive ? " adaptive" : ""} interval=${formatMs(options.intervalMs)}`,
     `warmup=${formatMs(summary.warmup?.rendererMs)} renderer=${formatMs(summary.averageRendererMs)} fps=${
       formatFps(summary.averageRendererMs)
     } flush=${formatMs(summary.averageFlushMs)} bytes=${Math.round(summary.averageBytes)} rate=${

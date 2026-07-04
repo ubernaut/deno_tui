@@ -645,3 +645,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   measured directly; the guard currently runs around 0.001ms on this host.
 - Extracted ThreeAsciiObject per-cell rerender application into the same focused helper with direct clipped, omitted,
   and sparse-cell coverage while preserving existing frame-diff and range benchmark guardrails.
+- Tightened API workbench Three terminal-pressure recovery after an accurate probe showed the default saved
+  `renderMaxCells` could auto-climb from the 120-cell startup cap into 480/960-cell output over SSH; the probe now
+  models saved ASCII cells separately and the tuned policy settles around the 240-cell tier for animated output.

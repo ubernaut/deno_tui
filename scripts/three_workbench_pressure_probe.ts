@@ -35,6 +35,7 @@ const frameHeight = numberArg(Deno.args, "--frame-height", 54);
 const panelWidth = numberArg(Deno.args, "--panel-width", 96);
 const panelHeight = numberArg(Deno.args, "--panel-height", 32);
 const maxCells = numberArg(Deno.args, "--max-cells", WORKBENCH_THREE_INITIAL_CELLS);
+const asciiCells = numberArg(Deno.args, "--ascii-cells", maxCells);
 const mode = choiceArg(Deno.args, "--mode", "studio" as ThreeSceneMode, threeSceneModes);
 const glyphs = choiceArg(Deno.args, "--glyphs", "blocks", ["blocks", "glyphs", "mixed"] as const);
 const readbackStrategy = choiceArg(
@@ -68,7 +69,7 @@ const scene = new Signal<ThreeSceneState | null>({
 const ascii = new Signal({
   ...createDefaultWorkbenchAsciiOptions(),
   terminalGlyphStyle: glyphs,
-  renderMaxCells: maxCells,
+  renderMaxCells: asciiCells,
 });
 const maxRenderCells = new Signal(maxCells);
 const frameInterval = new Signal(intervalMs);
