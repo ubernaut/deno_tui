@@ -249,15 +249,14 @@ export class ThreeAsciiAnsiGridAssembler {
         const index = rowOffset + column;
         const fillGlyphValue = fillGlyphs[index] ?? 0;
         if (fillGlyphValue < MIN_VISIBLE_BLOCK_FILL_VALUE) {
-          const blankStart = column;
-          column += 1;
-          while (
-            column < columns && (fillGlyphs[rowOffset + column] ?? 0) < MIN_VISIBLE_BLOCK_FILL_VALUE
-          ) {
-            column += 1;
-          }
-          outputRow.fill(this.background.blankAnsi, blankStart, column);
-          column -= 1;
+          column = fillSparseBlockBlankRun(
+            outputRow,
+            fillGlyphs,
+            rowOffset,
+            column,
+            columns,
+            this.background.blankAnsi,
+          );
           continue;
         }
 
@@ -326,15 +325,7 @@ export class ThreeAsciiAnsiGridAssembler {
         const index = rowOffset + column;
         const fillGlyphValue = fillGlyphs[index] as number;
         if (fillGlyphValue < MIN_VISIBLE_BLOCK_FILL_VALUE) {
-          const blankStart = column;
-          column += 1;
-          while (
-            column < columns && (fillGlyphs[rowOffset + column] as number) < MIN_VISIBLE_BLOCK_FILL_VALUE
-          ) {
-            column += 1;
-          }
-          outputRow.fill(this.background.blankAnsi, blankStart, column);
-          column -= 1;
+          column = fillDenseBlockBlankRun(outputRow, fillGlyphs, rowOffset, column, columns, this.background.blankAnsi);
           continue;
         }
 
@@ -405,15 +396,14 @@ export class ThreeAsciiAnsiGridAssembler {
         const index = rowOffset + column;
         const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
         if (fillGlyphIndex < MIN_VISIBLE_FILL_GLYPH_INDEX) {
-          const blankStart = column;
-          column += 1;
-          while (
-            column < columns && Math.round(fillGlyphs[rowOffset + column] ?? 0) < MIN_VISIBLE_FILL_GLYPH_INDEX
-          ) {
-            column += 1;
-          }
-          outputRow.fill(this.background.blankAnsi, blankStart, column);
-          column -= 1;
+          column = fillSparseGlyphBlankRun(
+            outputRow,
+            fillGlyphs,
+            rowOffset,
+            column,
+            columns,
+            this.background.blankAnsi,
+          );
           continue;
         }
 
@@ -492,16 +482,7 @@ export class ThreeAsciiAnsiGridAssembler {
         const index = rowOffset + column;
         const fillGlyphIndex = Math.round(fillGlyphs[index] as number);
         if (fillGlyphIndex < MIN_VISIBLE_FILL_GLYPH_INDEX) {
-          const blankStart = column;
-          column += 1;
-          while (
-            column < columns &&
-            Math.round(fillGlyphs[rowOffset + column] as number) < MIN_VISIBLE_FILL_GLYPH_INDEX
-          ) {
-            column += 1;
-          }
-          outputRow.fill(this.background.blankAnsi, blankStart, column);
-          column -= 1;
+          column = fillDenseGlyphBlankRun(outputRow, fillGlyphs, rowOffset, column, columns, this.background.blankAnsi);
           continue;
         }
 
@@ -696,4 +677,72 @@ function createNaNFloat64Array(length: number): Float64Array<ArrayBuffer> {
   const values = new Float64Array(length);
   values.fill(Number.NaN);
   return values;
+}
+
+function fillSparseBlockBlankRun(
+  outputRow: string[],
+  fillGlyphs: ArrayLike<number>,
+  rowOffset: number,
+  column: number,
+  columns: number,
+  blankAnsi: string,
+): number {
+  const blankStart = column;
+  column += 1;
+  while (column < columns && (fillGlyphs[rowOffset + column] ?? 0) < MIN_VISIBLE_BLOCK_FILL_VALUE) {
+    column += 1;
+  }
+  outputRow.fill(blankAnsi, blankStart, column);
+  return column - 1;
+}
+
+function fillDenseBlockBlankRun(
+  outputRow: string[],
+  fillGlyphs: ArrayLike<number>,
+  rowOffset: number,
+  column: number,
+  columns: number,
+  blankAnsi: string,
+): number {
+  const blankStart = column;
+  column += 1;
+  while (column < columns && (fillGlyphs[rowOffset + column] as number) < MIN_VISIBLE_BLOCK_FILL_VALUE) {
+    column += 1;
+  }
+  outputRow.fill(blankAnsi, blankStart, column);
+  return column - 1;
+}
+
+function fillSparseGlyphBlankRun(
+  outputRow: string[],
+  fillGlyphs: ArrayLike<number>,
+  rowOffset: number,
+  column: number,
+  columns: number,
+  blankAnsi: string,
+): number {
+  const blankStart = column;
+  column += 1;
+  while (column < columns && Math.round(fillGlyphs[rowOffset + column] ?? 0) < MIN_VISIBLE_FILL_GLYPH_INDEX) {
+    column += 1;
+  }
+  outputRow.fill(blankAnsi, blankStart, column);
+  return column - 1;
+}
+
+function fillDenseGlyphBlankRun(
+  outputRow: string[],
+  fillGlyphs: ArrayLike<number>,
+  rowOffset: number,
+  column: number,
+  columns: number,
+  blankAnsi: string,
+): number {
+  const blankStart = column;
+  column += 1;
+  while (column < columns && Math.round(fillGlyphs[rowOffset + column] as number) < MIN_VISIBLE_FILL_GLYPH_INDEX) {
+    column += 1;
+  }
+  outputRow.fill(blankAnsi, blankStart, column);
+  return column - 1;
 }
