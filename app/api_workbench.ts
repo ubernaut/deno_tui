@@ -289,6 +289,7 @@ import { type RowStyle, threeHeaderRows } from "./workbench_rows.ts";
 import {
   createWorkbenchThreeTerminalPressureState,
   resolveWorkbenchThreeTerminalPressureBudget,
+  shouldCountWorkbenchThreeGridPressure,
   workbenchThreeShouldUseLiveCadence,
 } from "../src/app/workbench_three_terminal_pressure.ts";
 import {
@@ -1372,7 +1373,10 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
     setWorkbenchThreeRect(entry.graphicsRectangle, contentRectToGraphicsRect(sceneRect));
     setWorkbenchThreeSceneSignal(entry.scene, rendered.three ?? null);
     renderedVisualizationThreePanels.add(id);
-    renderThreeGrid(frame, sceneRect, entry.panel.grid.peek(), t);
+    const grid = entry.panel.grid.peek();
+    renderThreeGrid(frame, sceneRect, grid, t, {
+      countForPressure: shouldCountWorkbenchThreeGridPressure(grid, entry.panel.inspectPerformance()),
+    });
     return;
   }
   hideVisualizationThreePanel(id);
@@ -1435,7 +1439,10 @@ function renderThree(frame: Frame, rect: Rectangle): void {
     addHit(sceneRect, { type: "threeViewport", id: "three" });
     setThreeBodyRect({ column: 0, row: 0, width: sceneRect.width, height: sceneRect.height });
     setThreeGraphicsRect(contentRectToGraphicsRect(sceneRect));
-    renderThreeGrid(frame, sceneRect, threePanel.grid.peek(), t);
+    const grid = threePanel.grid.peek();
+    renderThreeGrid(frame, sceneRect, grid, t, {
+      countForPressure: shouldCountWorkbenchThreeGridPressure(grid, performance),
+    });
     return;
   }
 
@@ -1452,7 +1459,13 @@ function renderThree(frame: Frame, rect: Rectangle): void {
   writeRows(frame, rect, fallback);
 }
 
-function renderThreeGrid(frame: Frame, rect: Rectangle, grid: string[][], t: ThemeSpec): void {
+function renderThreeGrid(
+  frame: Frame,
+  rect: Rectangle,
+  grid: string[][],
+  t: ThemeSpec,
+  options: { countForPressure?: boolean } = {},
+): void {
   if (rect.width <= 0 || rect.height <= 0) return;
 
   if (grid.length === 0) {
@@ -1466,7 +1479,9 @@ function renderThreeGrid(frame: Frame, rect: Rectangle, grid: string[][], t: The
     return;
   }
 
-  renderedThreeGridCount += 1;
+  if (options.countForPressure ?? true) {
+    renderedThreeGridCount += 1;
+  }
   writeWorkbenchThreeGrid(frame, rect, grid, paint(" ", { bg: t.surface }), {
     scale: "down",
     rowBuffer: threeGridRowBuffer,

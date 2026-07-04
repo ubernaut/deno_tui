@@ -49,6 +49,11 @@ export interface WorkbenchThreeLiveCadenceOptions {
   isThreeWindow: (id: string) => boolean;
 }
 
+/** Minimal renderer telemetry needed to decide whether a visible grid is real Three output. */
+export interface WorkbenchThreeGridPressureTelemetry {
+  cells?: number;
+}
+
 /** Creates pressure counters initialized to the preferred render-cell budget. */
 export function createWorkbenchThreeTerminalPressureState(defaultCells: number): WorkbenchThreeTerminalPressureState {
   return {
@@ -78,6 +83,14 @@ export function workbenchThreeShouldUseLiveCadence(options: WorkbenchThreeLiveCa
     }
   }
   return false;
+}
+
+/** Returns true when a Three pane should count toward terminal-output pressure adaptation. */
+export function shouldCountWorkbenchThreeGridPressure(
+  grid: readonly (readonly string[] | undefined)[] | undefined,
+  telemetry: WorkbenchThreeGridPressureTelemetry | undefined,
+): boolean {
+  return Boolean(telemetry && (telemetry.cells ?? 0) > 0 && grid && grid.length > 0);
 }
 
 /** Resolves the next render-cell budget for workbench Three panes from terminal flush byte pressure. */

@@ -2,6 +2,7 @@ import { assertEquals } from "./deps.ts";
 import {
   createWorkbenchThreeTerminalPressureState,
   resolveWorkbenchThreeTerminalPressureBudget,
+  shouldCountWorkbenchThreeGridPressure,
   workbenchThreeFrameIntervalForCells,
   workbenchThreeShouldUseLiveCadence,
 } from "../src/app/workbench_three_terminal_pressure.ts";
@@ -212,4 +213,26 @@ Deno.test("workbench Three live cadence ignores hidden Three panes", () => {
   const isThreeWindow = (id: string) => id.startsWith("three");
 
   assertEquals(workbenchThreeShouldUseLiveCadence({ activeId: "explorer", windows, isThreeWindow }), false);
+});
+
+Deno.test("workbench Three pressure ignores startup fallback grids without renderer telemetry", () => {
+  assertEquals(
+    shouldCountWorkbenchThreeGridPressure([["INITIALIZING"]], undefined),
+    false,
+  );
+  assertEquals(
+    shouldCountWorkbenchThreeGridPressure([["INITIALIZING"]], { cells: 0 }),
+    false,
+  );
+});
+
+Deno.test("workbench Three pressure counts visible renderer-backed grids", () => {
+  assertEquals(
+    shouldCountWorkbenchThreeGridPressure([["█"]], { cells: 1 }),
+    true,
+  );
+  assertEquals(
+    shouldCountWorkbenchThreeGridPressure([], { cells: 1 }),
+    false,
+  );
 });
