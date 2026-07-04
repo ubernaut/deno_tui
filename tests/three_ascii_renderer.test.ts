@@ -296,6 +296,70 @@ Deno.test("ThreeAsciiRenderer skips scene submission when deferred readbacks are
   assertEquals(renderer.inspectPerformance()?.deferredReadbackUnresolved, 6);
 });
 
+Deno.test("ThreeAsciiRenderer forces blocking recovery after saturated stale deferred frames", async () => {
+  const renderer = new ThreeAsciiRenderer({
+    scene: new Scene(),
+    camera: new PerspectiveCamera(),
+    columns: 1,
+    rows: 1,
+    readbackStrategy: "deferred",
+    deferredReadbackMaxStaleFrames: 2,
+  });
+  const cachedGrid = [["cached"]];
+  const forcedFlags: boolean[] = [];
+  let sceneSubmissions = 0;
+  const internals = renderer as unknown as {
+    deferredReadbacks: {
+      consumeCompleted: () => { grid?: string[][]; readbackMs?: number };
+      inspect: () => {
+        slotCount: number;
+        pending: number;
+        unresolved: number;
+        resolved: number;
+        saturated: boolean;
+        generation: number;
+      };
+      lastCompletedGrid: () => string[][];
+      replaceLastCompletedGrid: (grid: string[][]) => void;
+    };
+    renderScene: () => Promise<void>;
+    computeAnsiGrid: (
+      effectState: unknown,
+      completed?: { grid?: string[][]; readbackMs?: number },
+      forceBlockingDeferredReadback?: boolean,
+    ) => Promise<string[][]>;
+  };
+  internals.deferredReadbacks = {
+    consumeCompleted: () => ({}),
+    inspect: () => ({
+      slotCount: 2,
+      pending: 2,
+      unresolved: 2,
+      resolved: 0,
+      saturated: true,
+      generation: 0,
+    }),
+    lastCompletedGrid: () => cachedGrid,
+    replaceLastCompletedGrid: () => {},
+  };
+  internals.renderScene = () => {
+    sceneSubmissions += 1;
+    return Promise.resolve();
+  };
+  internals.computeAnsiGrid = (_effectState, _completed, forceBlockingDeferredReadback = false) => {
+    forcedFlags.push(forceBlockingDeferredReadback);
+    return Promise.resolve(forceBlockingDeferredReadback ? [["fresh"]] : cachedGrid);
+  };
+
+  const first = await renderer.renderFrame(0, undefined, { ansi: true });
+  const second = await renderer.renderFrame(0, undefined, { ansi: true });
+
+  assertEquals(first.grid, cachedGrid);
+  assertEquals(second.grid, [["fresh"]]);
+  assertEquals(sceneSubmissions, 1);
+  assertEquals(forcedFlags, [true]);
+});
+
 Deno.test("ThreeAsciiRenderer avoids blocking stale fallback while deferred readbacks are pending", async () => {
   const renderer = new ThreeAsciiRenderer({
     scene: new Scene(),

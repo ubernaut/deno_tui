@@ -13,7 +13,7 @@ Deno.test("resolveThreeAsciiDeferredReadbackStaleness resets after completed gri
   );
 });
 
-Deno.test("resolveThreeAsciiDeferredReadbackStaleness ignores disabled or uncached deferred grids", () => {
+Deno.test("resolveThreeAsciiDeferredReadbackStaleness ignores disabled deferred recovery", () => {
   assertEquals(
     resolveThreeAsciiDeferredReadbackStaleness({
       staleFrames: 1,
@@ -23,6 +23,9 @@ Deno.test("resolveThreeAsciiDeferredReadbackStaleness ignores disabled or uncach
     }),
     { staleFrames: 1, forceBlockingReadback: false },
   );
+});
+
+Deno.test("resolveThreeAsciiDeferredReadbackStaleness counts uncached startup frames", () => {
   assertEquals(
     resolveThreeAsciiDeferredReadbackStaleness({
       staleFrames: 1,
@@ -30,7 +33,7 @@ Deno.test("resolveThreeAsciiDeferredReadbackStaleness ignores disabled or uncach
       completedGrid: false,
       hasCachedGrid: false,
     }),
-    { staleFrames: 1, forceBlockingReadback: false },
+    { staleFrames: 2, forceBlockingReadback: true },
   );
 });
 

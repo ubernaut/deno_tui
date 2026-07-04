@@ -813,3 +813,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added blank-run and same-color-run filling to compact alpha-mask block assembly so color-only block frames get the
   same row-fill treatment as the fill-buffer block path. Focused glyph tests and the `three-ascii-ansi-grid` benchmark
   selector passed after the change.
+- Fixed deferred readback starvation for saturated queues by honoring stale-frame blocking recovery and counting
+  uncached startup frames toward that recovery threshold. Because Deno/WebGPU deferred block readbacks still stall under
+  forced synchronization at high cell counts, the API workbench now defaults its Three panes to blocking readback; the
+  default 60-cell block probe runs around 58fps renderer-side and a saved 960-cell block probe stays around 55fps on
+  this host instead of the deferred 3-5fps path.

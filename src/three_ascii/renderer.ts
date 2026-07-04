@@ -373,19 +373,21 @@ export class ThreeAsciiRenderer {
         return { grid: deferredAnsiGrid.grid ?? [], gridRevision: this.gridRevision };
       }
       if (deferredFrame.kind === "saturated") {
-        const frameEnd = performance.now();
-        const previous = this.lastPerformance;
-        const queue = this.deferredReadbacks.inspect();
-        this.lastPerformance = createThreeAsciiRendererSaturatedPerformance({
-          columns: this.columns,
-          rows: this.rows,
-          terminalGlyphStyle: this.terminalGlyphStyle,
-          frameMs: frameEnd - frameStart,
-          previousFrameMs: previous?.totalMs,
-          readbackMs: this.lastReadbackMs,
-          queue,
-        });
-        return { grid: this.deferredReadbacks.lastCompletedGrid(), gridRevision: this.gridRevision };
+        if (!forceBlockingDeferredReadback) {
+          const frameEnd = performance.now();
+          const previous = this.lastPerformance;
+          const queue = this.deferredReadbacks.inspect();
+          this.lastPerformance = createThreeAsciiRendererSaturatedPerformance({
+            columns: this.columns,
+            rows: this.rows,
+            terminalGlyphStyle: this.terminalGlyphStyle,
+            frameMs: frameEnd - frameStart,
+            previousFrameMs: previous?.totalMs,
+            readbackMs: this.lastReadbackMs,
+            queue,
+          });
+          return { grid: this.deferredReadbacks.lastCompletedGrid(), gridRevision: this.gridRevision };
+        }
       }
     }
 

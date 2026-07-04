@@ -17,7 +17,7 @@ export function resolveThreeAsciiDeferredReadbackStaleness(
   if (input.completedGrid) {
     return { staleFrames: 0, forceBlockingReadback: false };
   }
-  if (input.maxStaleFrames <= 0 || !input.hasCachedGrid) {
+  if (input.maxStaleFrames <= 0) {
     return { staleFrames: input.staleFrames, forceBlockingReadback: false };
   }
   const staleFrames = input.staleFrames + 1;

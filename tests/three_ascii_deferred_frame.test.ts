@@ -62,6 +62,40 @@ Deno.test("resolveThreeAsciiDeferredPreSceneFrame reports saturated queues befor
   );
 });
 
+Deno.test("resolveThreeAsciiDeferredPreSceneFrame forces blocking after saturated stale cached frames", () => {
+  assertEquals(
+    resolveThreeAsciiDeferredPreSceneFrame({
+      renderAnsi: true,
+      renderImage: false,
+      readbackStrategy: "deferred",
+      completed: {},
+      staleFrames: 1,
+      maxStaleFrames: 2,
+      hasCachedGrid: true,
+      pendingReadbacks: 2,
+      saturated: true,
+    }),
+    { kind: "saturated", staleFrames: 2, forceBlockingReadback: true },
+  );
+});
+
+Deno.test("resolveThreeAsciiDeferredPreSceneFrame forces blocking after saturated uncached startup frames", () => {
+  assertEquals(
+    resolveThreeAsciiDeferredPreSceneFrame({
+      renderAnsi: true,
+      renderImage: false,
+      readbackStrategy: "deferred",
+      completed: {},
+      staleFrames: 2,
+      maxStaleFrames: 3,
+      hasCachedGrid: false,
+      pendingReadbacks: 2,
+      saturated: true,
+    }),
+    { kind: "saturated", staleFrames: 3, forceBlockingReadback: true },
+  );
+});
+
 Deno.test("resolveThreeAsciiDeferredPreSceneFrame forces blocking after stale cached frames", () => {
   assertEquals(
     resolveThreeAsciiDeferredPreSceneFrame({
