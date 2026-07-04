@@ -440,6 +440,10 @@ performance, shared terminal/web workbench projections, and oversized module red
   shared probe module with direct tests so CLI profiling output stays renderer-aware and script-local code stays small.
 - Extracted API workbench control-row snapshot projection into a tested helper so `renderControls` no longer owns
   checkbox/radio option buffer assembly before painting and hit registration.
+- Changed workbench Three terminal-pressure policy to downshift on the first scoped high-pressure frame, so slow
+  SSH/tmux sessions that spend hundreds of milliseconds flushing the default Three pane do not wait through repeated
+  bad frames before dropping to the emergency render budget; local pressure probes still hold the 240-cell tier when
+  steady output stays under threshold.
 - Returned Three grid projection metadata from the workbench grid writer and routed terminal-pressure row accounting
   through the actual rendered target height, keeping capped/scaled grid pressure measurement aligned with paint output.
 - Extracted the workbench Three terminal-pressure flush update into a pure resolver that combines live-cap resync,

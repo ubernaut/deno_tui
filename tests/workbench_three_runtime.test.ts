@@ -41,7 +41,7 @@ Deno.test("ApiWorkbenchThreeRuntimeController records and resets rendered grid p
   controller.dispose();
 });
 
-Deno.test("ApiWorkbenchThreeRuntimeController applies sustained pressure and logs changes", () => {
+Deno.test("ApiWorkbenchThreeRuntimeController backs off on scoped pressure and logs changes", () => {
   const logs: string[] = [];
   const controller = new ApiWorkbenchThreeRuntimeController({
     hasLiveThreeWindow: () => true,
@@ -52,13 +52,6 @@ Deno.test("ApiWorkbenchThreeRuntimeController applies sustained pressure and log
   const sample = { renderedThreeGrids: 1, renderedThreeRows: 17 };
 
   controller.updatePressure(stats, sample);
-  assertEquals(controller.liveMaxCells.peek(), 240);
-  assertEquals(controller.inspectPressure().highFrames, 1);
-  controller.updatePressure(stats, sample);
-  assertEquals(controller.liveMaxCells.peek(), 240);
-  assertEquals(controller.inspectPressure().highFrames, 2);
-  controller.updatePressure(stats, sample);
-
   assertEquals(controller.liveMaxCells.peek(), 120);
   assertEquals(controller.inspectPressure().highFrames, 0);
   assertEquals(logs.length, 1);
