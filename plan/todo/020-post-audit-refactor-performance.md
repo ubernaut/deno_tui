@@ -21,7 +21,7 @@ performance, shared terminal/web workbench projections, and oversized module red
 - [ ] Continue reducing oversized app/demo modules only at clean abstraction points.
 - [ ] Keep Three ASCII performance changes benchmark-gated; revert any micro-optimization that loses on focused cases.
 - [x] Investigate deferred WebGPU readback latency separately from workbench policy; current probes show deferred
-  readback can publish stale grids for many frames at 480/960 cells even when the queue is not saturated.
+      readback can publish stale grids for many frames at 480/960 cells even when the queue is not saturated.
 
 ## Progress
 
@@ -263,6 +263,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   byte-rate recovery remains conservative so SSH/tmux sessions do not immediately climb back into expensive output.
 - Cached normalized workbench Three pressure levels behind a mutation-aware source snapshot and added a focused
   `workbench-three-pressure-policy` benchmark so the adaptive controller stays measured alongside frame flushing.
+- Reused a timing scratch buffer while projecting Three ASCII probe reports and added a `three-ascii-probe-report-180`
+  benchmark so renderer diagnostics stay covered by the performance catalog.
 - Restored the terminal workbench Three policy to blocking readback with a conservative 240-cell startup cap after live
   probes showed deferred readback could publish a stale visible grid while reporting low renderer timings.
 - Extended Three panel frame-time adaptation to the internal 120/240/480 pressure tiers so slow blocking-readback
@@ -462,9 +464,9 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted API workbench control-row snapshot projection into a tested helper so `renderControls` no longer owns
   checkbox/radio option buffer assembly before painting and hit registration.
 - Changed workbench Three terminal-pressure policy to downshift on the first scoped high-pressure frame, so slow
-  SSH/tmux sessions that spend hundreds of milliseconds flushing the default Three pane do not wait through repeated
-  bad frames before dropping to the emergency render budget; local pressure probes still hold the 240-cell tier when
-  steady output stays under threshold.
+  SSH/tmux sessions that spend hundreds of milliseconds flushing the default Three pane do not wait through repeated bad
+  frames before dropping to the emergency render budget; local pressure probes still hold the 240-cell tier when steady
+  output stays under threshold.
 - Extended Three terminal-pressure scoping so fast unrelated full-screen redraws remain ignored, but slow full-screen
   flushes with visible Three output can still trigger the emergency budget immediately on constrained terminals.
 - Added a shared terminal session-tab source projector and routed console plus browser workbench shell tabs through it,
@@ -670,8 +672,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   `renderMaxCells` could auto-climb from the 120-cell startup cap into 480/960-cell output over SSH; the probe now
   models saved ASCII cells separately and the tuned policy settles around the 240-cell tier for animated output.
 - Extracted workbench Three pressure-probe CLI parsing into the shared probe helper with tests for separate pressure
-  caps and saved ASCII cell budgets, keeping future renderer tuning measurements aligned with the real workbench
-  startup path.
+  caps and saved ASCII cell budgets, keeping future renderer tuning measurements aligned with the real workbench startup
+  path.
 - Extracted API workbench Three pressure-change resolution out of the runtime controller into a directly tested helper,
   leaving the controller to apply signal mutations while pressure policy, cadence, and log projection stay inspectable.
 - Switched the API workbench Three startup renderer policy back to deferred readback after the bounded stale-grid
@@ -696,8 +698,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   120/240-cell tiers instead of reusing a stale revision.
 - Hardened the benchmark CLI so targeted runs with no matching cases fail with a selector diagnostic instead of
   returning a green zero-case summary, making renderer performance checks harder to misuse.
-- Added a direct Three ASCII grid-diff benchmark for `queueChangedThreeAsciiGridCells`, separating pure diff-helper
-  cost from `ThreeAsciiObject` lifecycle overhead before further canvas update tuning.
+- Added a direct Three ASCII grid-diff benchmark for `queueChangedThreeAsciiGridCells`, separating pure diff-helper cost
+  from `ThreeAsciiObject` lifecycle overhead before further canvas update tuning.
 - Split the fully visible Three ASCII grid-diff path into dedicated range and cell-queue implementations so the common
   unclipped direct-range path avoids per-run queue-mode dispatch; the object-level frame-diff guard now stays near the
   direct helper cost.

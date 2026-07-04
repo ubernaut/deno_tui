@@ -12,6 +12,8 @@ import {
   ThreeAsciiRenderer,
 } from "../mod.ts";
 import { compactMappedRgbaRows } from "../src/three_ascii/headless_canvas.ts";
+import { defaultThreeAsciiProbeOptions, threeAsciiProbeReport } from "../src/three_ascii/probe.ts";
+import type { ThreeAsciiRendererPerformance } from "../src/three_ascii/performance.ts";
 import { createThreeAsciiReadbackLayout, ThreeAsciiReadbackViewCache } from "../src/three_ascii/readback.ts";
 import { createThreeAsciiGridDiffState, queueChangedThreeAsciiGridCells } from "../src/canvas/three_ascii_diff.ts";
 
@@ -206,6 +208,27 @@ const threeAsciiDirectDiffState = createThreeAsciiGridDiffState();
 const threeAsciiDirectDiffCells: Array<Set<number> | undefined> = [];
 const threeAsciiDirectDiffRanges: Array<Array<{ row: number; startColumn: number; endColumn: number }> | undefined> =
   [];
+const threeAsciiProbeOptions = { ...defaultThreeAsciiProbeOptions(), columns: threeAsciiColumns, rows: threeAsciiRows };
+const threeAsciiProbeSamples: ThreeAsciiRendererPerformance[] = Array.from({ length: 180 }, (_, index) => ({
+  columns: threeAsciiColumns,
+  rows: threeAsciiRows,
+  cells: threeAsciiCellCount,
+  terminalGlyphStyle: index % 3 === 0 ? "blocks" : index % 3 === 1 ? "glyphs" : "mixed",
+  totalMs: 12 + (index % 17) * 0.25,
+  initMs: index === 0 ? 180 : 0,
+  sceneMs: 7 + (index % 11) * 0.2,
+  sceneUpdateMs: 0.1 + (index % 5) * 0.02,
+  sceneRenderMs: 6 + (index % 7) * 0.15,
+  ansiMs: 2 + (index % 13) * 0.1,
+  readbackMs: 1.5 + (index % 9) * 0.12,
+  assemblyMs: 0.4 + (index % 8) * 0.05,
+  deferredReadbackSlots: 6,
+  deferredReadbackPending: index % 4,
+  deferredReadbackUnresolved: index % 3,
+  deferredReadbackResolved: index % 5,
+  deferredReadbackSaturated: index % 19 === 0,
+}));
+let threeAsciiProbeReportChecksum = 0;
 
 function assertThreeAsciiGridDimensions(grid: string[][], errorMessage: string): void {
   if (grid.length !== threeAsciiRows || grid[0]?.length !== threeAsciiColumns) {
@@ -263,6 +286,21 @@ function runThreeAsciiUniformCleanWorkload(): void {
   }
   if (threeAsciiUniformWrites !== before) {
     throw new Error("clean Three ASCII uniforms were uploaded again");
+  }
+}
+
+function runThreeAsciiProbeReportWorkload(): void {
+  const report = threeAsciiProbeReport(threeAsciiProbeOptions, threeAsciiProbeSamples);
+  threeAsciiProbeReportChecksum =
+    (threeAsciiProbeReportChecksum + report.frames + report.totalMs.p95 + report.ansiMs.avg) %
+    1_000_000;
+  if (
+    report.frames !== threeAsciiProbeSamples.length ||
+    report.cells !== threeAsciiCellCount ||
+    !report.deferred ||
+    !Number.isFinite(threeAsciiProbeReportChecksum)
+  ) {
+    throw new Error("three Ascii probe report workload failed");
   }
 }
 
@@ -592,6 +630,15 @@ export const threeAsciiBenchmarkCases: BenchmarkCase[] = [
     iterations: 500,
     maxAverageMs: 2,
     run: runThreeAsciiUniformCleanWorkload,
+  },
+  {
+    name: "render/three-ascii-probe-report-180",
+    category: "render",
+    description: "Project Three ASCII renderer probe timing summaries from a 180-frame sample set.",
+    tags: ["render", "three", "ascii", "probe", "telemetry"],
+    iterations: 1_000,
+    maxAverageMs: 2,
+    run: runThreeAsciiProbeReportWorkload,
   },
   {
     name: "render/three-ascii-direct-frame-diff-96x40",

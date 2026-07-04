@@ -103,8 +103,12 @@ export function parseThreeAsciiProbeOptions(args: readonly string[]): ThreeAscii
 
 export function summarizeThreeAsciiProbeTimings(values: readonly number[]): ThreeAsciiProbeTimingSummary {
   if (values.length === 0) return { min: 0, avg: 0, p50: 0, p95: 0, max: 0 };
-  const sorted = values.slice().sort((left, right) => left - right);
-  const total = values.reduce((sum, value) => sum + value, 0);
+  const sorted = values.slice();
+  sorted.sort((left, right) => left - right);
+  let total = 0;
+  for (let index = 0; index < values.length; index += 1) {
+    total += values[index]!;
+  }
   return {
     min: round(sorted[0]!),
     avg: round(total / values.length),
@@ -119,15 +123,16 @@ export function threeAsciiProbeReport(
   samples: readonly ThreeAsciiRendererPerformance[],
 ): ThreeAsciiProbeReport {
   const latest = samples.at(-1);
+  const timings: number[] = [];
   return {
     options,
     frames: samples.length,
     cells: options.columns * options.rows,
-    totalMs: summarizeThreeAsciiProbeTimings(samples.map((sample) => sample.totalMs)),
-    sceneMs: summarizeThreeAsciiProbeTimings(samples.map((sample) => sample.sceneMs)),
-    ansiMs: summarizeThreeAsciiProbeTimings(samples.map((sample) => sample.ansiMs)),
-    readbackMs: summarizeThreeAsciiProbeTimings(samples.map((sample) => sample.readbackMs)),
-    assemblyMs: summarizeThreeAsciiProbeTimings(samples.map((sample) => sample.assemblyMs)),
+    totalMs: summarizeThreeAsciiProbeSampleTimings(samples, timings, "totalMs"),
+    sceneMs: summarizeThreeAsciiProbeSampleTimings(samples, timings, "sceneMs"),
+    ansiMs: summarizeThreeAsciiProbeSampleTimings(samples, timings, "ansiMs"),
+    readbackMs: summarizeThreeAsciiProbeSampleTimings(samples, timings, "readbackMs"),
+    assemblyMs: summarizeThreeAsciiProbeSampleTimings(samples, timings, "assemblyMs"),
     deferred: latest
       ? {
         slots: latest.deferredReadbackSlots,
@@ -138,6 +143,18 @@ export function threeAsciiProbeReport(
       }
       : undefined,
   };
+}
+
+function summarizeThreeAsciiProbeSampleTimings(
+  samples: readonly ThreeAsciiRendererPerformance[],
+  timings: number[],
+  key: "totalMs" | "sceneMs" | "ansiMs" | "readbackMs" | "assemblyMs",
+): ThreeAsciiProbeTimingSummary {
+  timings.length = samples.length;
+  for (let index = 0; index < samples.length; index += 1) {
+    timings[index] = samples[index]![key];
+  }
+  return summarizeThreeAsciiProbeTimings(timings);
 }
 
 function positiveInteger(value: string | undefined, name: string): number {
