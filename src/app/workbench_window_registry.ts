@@ -57,6 +57,23 @@ export interface WorkbenchVisualizationWindowRegistrationOptions {
   currentWindowCount: number;
 }
 
+/** Inputs for deciding how a built-in workbench window should toggle. */
+export interface WorkbenchBuiltInWindowToggleOptions<TWindowId extends string = string> {
+  id: TWindowId;
+  loadedWindowIds: Iterable<string>;
+  keepMenuOpen?: boolean;
+  terminalShellWindowId?: TWindowId;
+}
+
+/** Side-effect-free built-in workbench window toggle decision. */
+export interface WorkbenchBuiltInWindowTogglePlan<TWindowId extends string = string> {
+  id: TWindowId;
+  action: "close" | "restore";
+  keepMenuOpen: boolean;
+  focusTopMenuAfterAction: boolean;
+  startTerminalShell: boolean;
+}
+
 /** Create a stable workbench window option list from built-ins and visualization metadata. */
 export function createWorkbenchWindowOptions(input: WorkbenchWindowOptionCatalogInput): WorkbenchWindowOption[] {
   const builtIns = input.builtIns ?? [];
@@ -157,6 +174,22 @@ export function workbenchVisualizationWindowRegistrationPlan(
       closable: true,
       order: Math.max(0, Math.floor(options.currentWindowCount)),
     },
+  };
+}
+
+/** Decides whether toggling a built-in workbench window closes or restores it. */
+export function workbenchBuiltInWindowTogglePlan<TWindowId extends string>(
+  options: WorkbenchBuiltInWindowToggleOptions<TWindowId>,
+): WorkbenchBuiltInWindowTogglePlan<TWindowId> {
+  const ids = options.loadedWindowIds instanceof Set ? options.loadedWindowIds : new Set(options.loadedWindowIds);
+  const isTerminalShell = options.terminalShellWindowId !== undefined && options.id === options.terminalShellWindowId;
+  const keepMenuOpen = isTerminalShell ? false : Boolean(options.keepMenuOpen);
+  return {
+    id: options.id,
+    action: ids.has(options.id) ? "close" : "restore",
+    keepMenuOpen,
+    focusTopMenuAfterAction: keepMenuOpen,
+    startTerminalShell: isTerminalShell,
   };
 }
 

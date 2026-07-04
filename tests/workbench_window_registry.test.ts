@@ -4,6 +4,7 @@ import {
   createWorkbenchWindowOptions,
   isWorkbenchVisualizationWindowId,
   isWorkbenchWindowOptionLoaded,
+  workbenchBuiltInWindowTogglePlan,
   workbenchVisualizationIdFromWindowId,
   workbenchVisualizationWindowId,
   workbenchVisualizationWindowRegistrationPlan,
@@ -114,6 +115,55 @@ Deno.test("workbench window registry plans visualization window creation and res
       id: "viz:cpu-hex-grid",
       visualizationId: "cpu-hex-grid",
       action: "restore",
+    },
+  );
+});
+
+Deno.test("workbench window registry plans built-in window toggles", () => {
+  assertEquals(
+    workbenchBuiltInWindowTogglePlan({
+      id: "logs",
+      loadedWindowIds: ["logs", "controls"],
+      keepMenuOpen: true,
+      terminalShellWindowId: "terminalShell",
+    }),
+    {
+      id: "logs",
+      action: "close",
+      keepMenuOpen: true,
+      focusTopMenuAfterAction: true,
+      startTerminalShell: false,
+    },
+  );
+
+  assertEquals(
+    workbenchBuiltInWindowTogglePlan({
+      id: "data",
+      loadedWindowIds: ["logs", "controls"],
+      terminalShellWindowId: "terminalShell",
+    }),
+    {
+      id: "data",
+      action: "restore",
+      keepMenuOpen: false,
+      focusTopMenuAfterAction: false,
+      startTerminalShell: false,
+    },
+  );
+
+  assertEquals(
+    workbenchBuiltInWindowTogglePlan({
+      id: "terminalShell",
+      loadedWindowIds: [],
+      keepMenuOpen: true,
+      terminalShellWindowId: "terminalShell",
+    }),
+    {
+      id: "terminalShell",
+      action: "restore",
+      keepMenuOpen: false,
+      focusTopMenuAfterAction: false,
+      startTerminalShell: true,
     },
   );
 });

@@ -53,6 +53,7 @@ import {
   workbenchAdaptiveWindowLayout,
   type WorkbenchAnsiScreenFlushStats,
   WorkbenchAnsiScreenPainter,
+  workbenchBuiltInWindowTogglePlan,
   workbenchButtonPaintOptions,
   type WorkbenchButtonTone,
   workbenchContentViewport,
@@ -4191,25 +4192,30 @@ function toggleBuiltInWindow(
   id: BuiltInWindowId,
   options: { keepMenuOpen?: boolean } = {},
 ): void {
-  const keepMenuOpen = id === TERMINAL_SHELL_WINDOW_ID ? false : options.keepMenuOpen;
-  if (windowManager.ids().includes(id)) {
+  const plan = workbenchBuiltInWindowTogglePlan({
+    id,
+    loadedWindowIds: windowManager.ids(),
+    keepMenuOpen: options.keepMenuOpen,
+    terminalShellWindowId: TERMINAL_SHELL_WINDOW_ID,
+  });
+  if (plan.action === "close") {
     closeWindow(id);
-    if (!keepMenuOpen) closeTopMenus();
+    if (!plan.keepMenuOpen) closeTopMenus();
     else topMenus.focus();
     return;
   }
-  if (!keepMenuOpen) closeTopMenus();
+  if (!plan.keepMenuOpen) closeTopMenus();
   windowManager.restore(id);
   syncWindowSignalsFromManager();
   focus(id);
   const shell = activeTerminalShell();
-  if (id === TERMINAL_SHELL_WINDOW_ID && shell && !shell.running && shell.status.peek() !== "starting") {
+  if (plan.startTerminalShell && shell && !shell.running && shell.status.peek() !== "starting") {
     void terminalShell.start().then((started) => {
       if (started) terminalShellInputMode.value = "raw";
       scheduleDraw();
     });
   }
-  if (keepMenuOpen) topMenus.focus();
+  if (plan.focusTopMenuAfterAction) topMenus.focus();
   pushLog(`add window ${windowTitle(id)}`);
 }
 

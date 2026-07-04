@@ -266,6 +266,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   restore/create decisions, minimum dimensions, and order assignment are tested outside the terminal workbench app.
 - Extracted single-window close planning into a typed pure helper so visualization renderer disposal, selected CPU tile
   cleanup, and terminal-shell stop decisions are computed outside the terminal workbench app.
+- Extracted built-in workbench window toggle decisions into the shared window registry so close/restore action,
+  menu-focus behavior, and terminal-shell startup policy are tested outside the terminal workbench app.
 - Retuned the default workbench Three ASCII pressure policy for slow terminal links: the default pane now starts at the
   120-cell emergency tier, 240-cell animated output downshifts on sustained byte rates above roughly 35KB/s, and low
   byte-rate recovery remains conservative so SSH/tmux sessions do not immediately climb back into expensive output.
