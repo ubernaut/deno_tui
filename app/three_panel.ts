@@ -372,11 +372,7 @@ export class ThreePanelFrameView {
       this.interaction.captureBaseTransform(bundle);
       this.failed = false;
       const rendererFactory = this.options.rendererFactory ??
-        ((rendererOptions) =>
-          new ThreeAsciiRenderer({
-            ...rendererOptions,
-            readbackStrategy: this.options.readbackStrategy ?? "deferred",
-          }));
+        ((rendererOptions) => new ThreeAsciiRenderer(rendererOptions));
       const effectOptions = asciiEffectOptions(ascii);
       const renderSize = this.renderSizeFor(rect, ascii);
       this.renderer = rendererFactory({
@@ -387,6 +383,7 @@ export class ThreePanelFrameView {
         terminalEdgeBias: ascii.terminalEdgeBias,
         terminalGlyphStyle: ascii.terminalGlyphStyle,
         deferredReadbackSlots: ascii.deferredReadbackSlots,
+        readbackStrategy: this.options.readbackStrategy ?? "deferred",
       });
       this.captureAppliedRendererState(rect, ascii, effectOptions, renderSize);
       this.setGrid(

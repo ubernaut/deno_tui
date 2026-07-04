@@ -265,6 +265,7 @@ import { makeStyle } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelFrameView } from "./three_panel.ts";
+import { createWorkbenchThreePanelFrameView } from "./workbench_three_panel.ts";
 import { workbenchDataTablePageSize, workbenchDataTableRowsInto } from "./workbench_data_table.ts";
 import { explorerTextRowsInto, workbenchWindowContentSize } from "./workbench_content_size.ts";
 import { workbenchExplorerRowsInto } from "./workbench_explorer.ts";
@@ -327,8 +328,6 @@ import {
   apiWorkbenchThreeFrameIntervalForCells,
   WORKBENCH_THREE_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_INITIAL_CELLS,
-  WORKBENCH_THREE_READBACK_STRATEGY,
-  WORKBENCH_THREE_RESCUE_CELLS,
 } from "./workbench_three_policy.ts";
 import { type WorkbenchThreePanelEntry, WorkbenchThreePanelRegistry } from "./workbench_three_panel_registry.ts";
 import { WorkbenchThreeViewportInteractionController } from "./workbench_three_interaction.ts";
@@ -858,7 +857,7 @@ const threeScene = new Computed<WorkbenchThreeScene | null>(() =>
     pressed: activeControl.value === "button",
   })
 );
-const threePanel = new ThreePanelFrameView({
+const threePanel = createWorkbenchThreePanelFrameView({
   rectangle: threeBodyRect,
   graphicsRectangle: threeGraphicsRect,
   scene: threeScene,
@@ -869,8 +868,6 @@ const threePanel = new ThreePanelFrameView({
   idleFrameInterval: workbenchThreeIdleFrameInterval,
   interactive: () => isThreeWindowInteractive("three"),
   maxRenderCells: workbenchThreeLiveMaxCells,
-  idleMaxRenderCells: WORKBENCH_THREE_RESCUE_CELLS,
-  readbackStrategy: WORKBENCH_THREE_READBACK_STRATEGY,
   diagnostics: workbenchDiagnostics,
   onUpdate: () => {
     threeCadence.record();
@@ -2841,7 +2838,7 @@ function createVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
   const rectangle = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
   const graphicsRectangle = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
   const scene = new Signal<WorkbenchThreeScene | null>(null);
-  const panel = new ThreePanelFrameView({
+  const panel = createWorkbenchThreePanelFrameView({
     rectangle,
     graphicsRectangle,
     scene,
@@ -2852,8 +2849,6 @@ function createVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
     idleFrameInterval: workbenchThreeIdleFrameInterval,
     interactive: () => isThreeWindowInteractive(id),
     maxRenderCells: workbenchThreeLiveMaxCells,
-    idleMaxRenderCells: WORKBENCH_THREE_RESCUE_CELLS,
-    readbackStrategy: WORKBENCH_THREE_READBACK_STRATEGY,
     diagnostics: workbenchDiagnostics,
     onUpdate: scheduleDraw,
   });

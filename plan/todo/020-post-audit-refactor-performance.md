@@ -407,6 +407,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   live quality budget.
 - Re-aligned API workbench Three runtime tests with the current sustained-pressure policy so startup recovery,
   multi-frame downshift thresholds, and pressure inspection diagnostics are covered by a passing focused suite again.
+- Extracted API workbench Three panel construction behind a shared factory so built-in and dynamic Three panes use the
+  same idle rescue cap and deferred readback defaults, with injected-renderer test coverage for the resolved options.
 - Split workbench styled-cell tokenization and row/slice assembly into `workbench_frame_rows.ts`, preserving the
   existing frame facade while keeping the terminal hot path independently testable and benchmarked.
 - Extracted ThreePanelFrameView graphics-image handle ownership into `ThreePanelGraphicsImageController` with direct
