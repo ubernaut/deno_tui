@@ -46,6 +46,7 @@ import {
   nextWorkbenchTerminalSessionId,
   normalizeTerminalWorkspaceSnapshot,
   normalizeWorkbenchPanelWorkspaceState,
+  parseHexColor,
   persistWorkbenchPanelWorkspaceState,
   prepareWorkbenchRows,
   ProgressBarController,
@@ -574,7 +575,7 @@ new BoxObject({
   canvas: host.canvas,
   rectangle: new Computed(() => ({ column: 0, row: 0, width: cols(), height: rowsCount() })),
   filler: " ",
-  style: new Computed(() => createAnsiStyle({ background: hex(theme().background) })),
+  style: new Computed(() => createAnsiStyle({ background: parseHexColor(theme().background) ?? [0, 0, 0] })),
   zIndex: -2,
 }).draw();
 
@@ -2713,14 +2714,6 @@ function isTouchOptimizedLayout(): boolean {
     columns: cols(),
     rows: rowsCount(),
   });
-}
-function hex(value: string): [number, number, number] {
-  const color = value.replace("#", "");
-  return [
-    Number.parseInt(color.slice(0, 2), 16),
-    Number.parseInt(color.slice(2, 4), 16),
-    Number.parseInt(color.slice(4, 6), 16),
-  ];
 }
 function initialThemeIndex(): number {
   try {

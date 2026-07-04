@@ -224,6 +224,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   shared cadence meter so terminal-pressure adaptation sees all live Three windows instead of only the built-in pane.
 - Extracted API workbench touch-hit expansion and compact/coarse layout detection into shared hit helpers, so terminal
   and browser workbench adapters use the same enlarged pointer targets on mobile-sized layouts.
+- Routed the browser API workbench background canvas through the shared `parseHexColor` helper instead of carrying a
+  local hex parser, keeping web theme color parsing aligned with terminal contrast helpers.
 - Moved API workbench Three rendered-grid pressure sampling into `ApiWorkbenchThreeRuntimeController`, keeping per-draw
   reset/record/update bookkeeping tested outside the main renderer.
 - Lowered the terminal workbench Three startup cap to 240 cells and aligned the live probe default with the workbench's
