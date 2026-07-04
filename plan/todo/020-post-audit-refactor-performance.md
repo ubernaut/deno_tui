@@ -405,3 +405,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   for renderer construction, applied-state capture, and the startup fallback grid.
 - Extracted ThreePanelFrameView blank-grid allocation and unchanged-grid fingerprinting into a focused helper with
   direct tests, keeping the no-redundant-redraw path easier to benchmark and optimize independently.
+- Extracted ThreePanelFrameView slow-frame and adaptive-render diagnostic payload construction into a focused tested
+  helper so renderer telemetry formatting can evolve independently from the render loop.

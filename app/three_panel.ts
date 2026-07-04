@@ -17,6 +17,7 @@ import { asciiControlValues, asciiEffectOptions } from "./ascii_options.ts";
 import { createNeonThreeScene, type NeonThreeSceneBundle } from "./neon_three.ts";
 import { ThreePanelInteractionController, type ThreePanelInteractionState } from "./three_panel_interaction.ts";
 import { resolveThreePanelLifecycleState, type ThreePanelLifecycleState } from "./three_panel_lifecycle.ts";
+import { threePanelAdaptiveRenderCellsDiagnostic, threePanelSlowFrameDiagnostic } from "./three_panel_diagnostics.ts";
 import { fingerprintThreePanelGrid, threePanelBlankGrid } from "./three_panel_grid.ts";
 import type { AsciiOptions, Rect, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 
@@ -611,36 +612,7 @@ export class ThreePanelFrameView {
     const slowThreshold = Math.max(80, targetMs * 1.5);
     if (performanceInfo.totalMs < slowThreshold || now - this.lastSlowFrameReportTime < 2_000) return;
     this.lastSlowFrameReportTime = now;
-    this.options.diagnostics?.report({
-      source: "three-panel",
-      code: "three-ascii-slow-frame",
-      severity: "debug",
-      message: `Three ASCII frame ${
-        performanceInfo.totalMs.toFixed(1)
-      }ms at ${performanceInfo.columns}x${performanceInfo.rows}`,
-      detail: `scene ${performanceInfo.sceneMs.toFixed(1)}ms, ansi ${performanceInfo.ansiMs.toFixed(1)}ms, readback ${
-        performanceInfo.readbackMs.toFixed(1)
-      }ms, assembly ${performanceInfo.assemblyMs.toFixed(1)}ms${
-        performanceInfo.deferredReadbackSlots
-          ? `, queue ${performanceInfo.deferredReadbackUnresolved ?? 0}/${performanceInfo.deferredReadbackSlots}`
-          : ""
-      }`,
-      context: {
-        columns: performanceInfo.columns,
-        rows: performanceInfo.rows,
-        cells: performanceInfo.cells,
-        glyphStyle: performanceInfo.terminalGlyphStyle,
-        totalMs: Math.round(performanceInfo.totalMs * 10) / 10,
-        sceneMs: Math.round(performanceInfo.sceneMs * 10) / 10,
-        ansiMs: Math.round(performanceInfo.ansiMs * 10) / 10,
-        readbackMs: Math.round(performanceInfo.readbackMs * 10) / 10,
-        assemblyMs: Math.round(performanceInfo.assemblyMs * 10) / 10,
-        deferredReadbackSlots: performanceInfo.deferredReadbackSlots,
-        deferredReadbackPending: performanceInfo.deferredReadbackPending,
-        deferredReadbackUnresolved: performanceInfo.deferredReadbackUnresolved,
-        deferredReadbackSaturated: performanceInfo.deferredReadbackSaturated,
-      },
-    });
+    this.options.diagnostics?.report(threePanelSlowFrameDiagnostic(performanceInfo));
   }
 
   private updateAdaptiveRenderBudget(
@@ -671,20 +643,15 @@ export class ThreePanelFrameView {
     if (next.direction === "steady") return;
 
     const maxCells = next.maxCells ?? requestedMaxCells;
-    this.options.diagnostics?.report({
-      source: "three-panel",
-      code: "three-ascii-adaptive-render-cells",
-      severity: "debug",
-      message: `Three ASCII render budget ${next.direction === "down" ? "reduced" : "raised"} to ${maxCells} cells.`,
-      detail: `frame ${performanceInfo.totalMs.toFixed(1)}ms, target ${targetMs.toFixed(1)}ms`,
-      context: {
+    this.options.diagnostics?.report(
+      threePanelAdaptiveRenderCellsDiagnostic({
         direction: next.direction,
         maxCells,
         requestedMaxCells,
-        frameMs: Math.round(performanceInfo.totalMs * 10) / 10,
-        targetMs: Math.round(targetMs * 10) / 10,
-      },
-    });
+        frameMs: performanceInfo.totalMs,
+        targetMs,
+      }),
+    );
   }
 
   private scheduleSync(): void {
