@@ -50,6 +50,7 @@ import {
 import { AudioRegistry } from "../app/audio.ts";
 import { createHtmlCssLayoutDemo } from "../app/html_css_layout_demo.ts";
 import { resolveSourceFramesInto } from "../app/sources.ts";
+import { type ThreeHeaderPerformance, threeHeaderRows, type WorkbenchRowTheme } from "../app/workbench_rows.ts";
 import {
   type ChangedSpan,
   changedSpansInto,
@@ -150,6 +151,27 @@ const textBoxWrapRows = Array.from({ length: 250 }, (_, index) => [
   index % 5 === 0 ? "" : `tail segment ${index} tracks cursor projection and viewport stability`,
 ]).flat();
 const textBoxWrapVisualLines: ReturnType<typeof wrapTextBoxLinesInto> = [];
+const workbenchThreeHeaderTheme: WorkbenchRowTheme = {
+  buttonActiveText: "#09040f",
+  buttonActiveBg: "#9cff4f",
+  muted: "#b7a4c8",
+  panelSoft: "#2f1b44",
+  soft: "#d9c8f0",
+  surface: "#42255f",
+};
+const workbenchThreeHeaderModes = ["BLOCKS", "GLYPHS", "MIXED", "KITTY"];
+const workbenchThreeHeaderWidths = [30, 48, 80, 132];
+const workbenchThreeHeaderPerformance: ThreeHeaderPerformance = {
+  totalMs: 17.4,
+  sceneMs: 12.2,
+  readbackMs: 4.1,
+  assemblyMs: 1.3,
+  cells: 1_920,
+  sourceMaxCells: 3_840,
+  targetFps: 14.2,
+  deferredReadbackSlots: 6,
+  deferredReadbackUnresolved: 2,
+};
 const terminalInputEncoder = new TextEncoder();
 const terminalInputDecodeBatch = terminalInputEncoder.encode(
   [
@@ -925,6 +947,20 @@ function runWorkbenchChangedSpanDetectionWorkload(): void {
   }
 }
 
+function runWorkbenchThreeHeaderTelemetryWorkload(): void {
+  let checksum = 0;
+  for (const mode of workbenchThreeHeaderModes) {
+    for (const width of workbenchThreeHeaderWidths) {
+      const rows = threeHeaderRows(mode, width, workbenchThreeHeaderTheme, workbenchThreeHeaderPerformance);
+      checksum += rows[0]?.text.length ?? 0;
+      checksum += rows[1]?.text.length ?? 0;
+    }
+  }
+  if (checksum <= 0) {
+    throw new Error("Three workbench header telemetry produced no rows");
+  }
+}
+
 function runAnsiStyledCharacterSplitWorkload(): void {
   const cells = getMultiCodePointCharacters(ansiStyledSplitRow);
   if (cells.length !== 160) {
@@ -1277,6 +1313,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 250,
     maxAverageMs: 8,
     run: workbenchThreeBlockBenchmark.run,
+  },
+  {
+    name: "render/workbench-three-header-telemetry",
+    category: "render",
+    description: "Project responsive Three renderer header rows with live cadence and readback telemetry.",
+    tags: ["render", "workbench", "three", "telemetry"],
+    iterations: 2_000,
+    maxAverageMs: 1,
+    run: runWorkbenchThreeHeaderTelemetryWorkload,
   },
   {
     name: "render/textobject-full-row-canvas-220x70",
