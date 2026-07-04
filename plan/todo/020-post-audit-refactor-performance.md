@@ -234,6 +234,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   saturated deferred-readback telemetry out of the WebGPU orchestration path.
 - Extracted Three ASCII compute dispatch planning into a tested helper so renderer GPU orchestration executes a small
   pass plan instead of owning edge/no-edge workgroup sequencing inline.
+- Extracted Three ASCII compute resource sizing and edge-buffer transition decisions into a tested helper, keeping
+  buffer byte lengths and dirty-resource classification outside the renderer allocation path.
 - Extracted CPU hex-grid selection map updates and selected-tile scroll targeting into the visualization module with
   direct tests, keeping API workbench CPU selection code focused on focus, scroll application, and logging side effects.
 - Reused workbench ANSI changed-span scratch buffers and span objects across flushes, keeping sparse terminal output

@@ -17,6 +17,7 @@ import {
   ThreeAsciiDeferredReadbackQueue,
 } from "./deferred_readback.ts";
 import { createThreeAsciiComputeDispatchPlan } from "./compute_plan.ts";
+import { createThreeAsciiComputeResourcePlan } from "./compute_resources.ts";
 import {
   shouldIncludeThreeAsciiTerminalEdges,
   type ThreeAsciiEffectState,
@@ -835,35 +836,42 @@ export class ThreeAsciiRenderer {
       this.uniformDirty = true;
     }
 
-    const cellCount = this.columns * this.rows;
-    if (this.outputCellCount !== cellCount) {
+    const resourcePlan = createThreeAsciiComputeResourcePlan({
+      columns: this.columns,
+      rows: this.rows,
+      includeEdges: includeTerminalEdges,
+      currentCellCount: this.outputCellCount,
+      hasEdgeOutput: this.edgeOutput !== undefined,
+      hasEdgeBindGroup: this.edgeBindGroup !== undefined,
+    });
+    if (resourcePlan.resizeOutputs) {
       this.fillOutput = this.ensureStorageBufferSlot(
         this.fillOutput,
-        cellCount * Float32Array.BYTES_PER_ELEMENT,
+        resourcePlan.fillByteLength,
         "fill",
       );
       this.colorOutput = this.ensureStorageBufferSlot(
         this.colorOutput,
-        cellCount * 4 * Float32Array.BYTES_PER_ELEMENT,
+        resourcePlan.colorByteLength,
         "color",
       );
-      this.outputCellCount = cellCount;
+      this.outputCellCount = resourcePlan.cellCount;
       this.computeDirty = true;
     }
 
-    if (includeTerminalEdges) {
-      const hadEdgeOutput = this.edgeOutput !== undefined;
+    if (resourcePlan.ensureEdgeOutput) {
       this.edgeOutput = this.ensureStorageBufferSlot(
         this.edgeOutput,
-        cellCount * 4 * Float32Array.BYTES_PER_ELEMENT,
+        resourcePlan.edgeByteLength,
         "edge",
       );
-      if (!hadEdgeOutput || !this.edgeBindGroup) {
+      if (resourcePlan.dirty) {
         this.computeDirty = true;
       }
-    } else if (this.edgeOutput) {
+    } else if (resourcePlan.releaseEdgeOutput) {
       this.edgeOutput = destroyThreeAsciiGpuBufferSlot(this.edgeOutput);
       this.edgeBindGroup = undefined;
+      this.computeDirty = true;
     }
 
     if (!this.computeDirty) {
