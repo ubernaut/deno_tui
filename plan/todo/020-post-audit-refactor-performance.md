@@ -258,6 +258,9 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Fixed a block-mode workbench performance regression caused by cumulative SGR style prefixes in styled text splitting;
   repeated truecolor background cells now keep only the active foreground/background state instead of replaying every
   previous color change.
+- Lowered the default workbench Three ASCII live tier from 240 to 120 cells and slowed that tier to 24 FPS so the
+  startup pane targets roughly 24KB/s of terminal output on the pressure probe instead of the prior 40-60KB/s range,
+  while preserving manual recovery to higher detail when terminal output is quiet.
 - Added structured workbench frame viewport blitting so API Workbench windows copy styled cells directly instead of
   stringifying ANSI slices and reparsing them before the final terminal flush, with unit and benchmark coverage for the
   scrolled truecolor blit path.

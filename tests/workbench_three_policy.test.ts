@@ -24,7 +24,7 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
     480,
     960,
   ]);
-  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 240);
+  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 120);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 240_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 160_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 60_000);
@@ -41,7 +41,7 @@ Deno.test("API workbench Three policy keeps live panes faster than idle panes", 
     WORKBENCH_THREE_RESCUE_DRAW_INTERVAL_MS,
   );
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(60, { live: true }), WORKBENCH_THREE_EMERGENCY_DRAW_INTERVAL_MS);
-  assertEquals(apiWorkbenchThreeFrameIntervalForCells(120, { live: true }), WORKBENCH_THREE_DRAW_INTERVAL_MS);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(120, { live: true }), 1000 / 24);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(240, { live: true }), WORKBENCH_THREE_DRAW_INTERVAL_MS);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(480, { live: true }), 1000 / 24);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(960, { live: true }), 1000 / 20);
@@ -52,10 +52,10 @@ Deno.test("API workbench Three policy keeps live panes faster than idle panes", 
 });
 
 Deno.test("API workbench Three policy starts at a lower-bandwidth live tier but keeps rescue available", () => {
-  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 240);
+  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 120);
   assertEquals(
     apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
-    WORKBENCH_THREE_DRAW_INTERVAL_MS,
+    1000 / 24,
   );
   assertEquals(
     apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_RESCUE_CELLS, { live: true }),
