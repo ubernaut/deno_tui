@@ -824,3 +824,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted API workbench hit-action-to-window resolution into a focused helper with direct tests, keeping hover/focus
   routing for window chrome, terminal shell content, controls, data rows, and explorer rows out of the large terminal
   renderer.
+- Moved API workbench titlebar button hit-action mapping into the same focused hit helper with tests for config,
+  minimize, maximize, restore, and close actions.

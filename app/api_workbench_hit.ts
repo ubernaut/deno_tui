@@ -5,9 +5,37 @@ export interface ApiWorkbenchHitWindowIds<TWindowId extends string> {
   explorer: TWindowId;
 }
 
+export type ApiWorkbenchTitlebarButtonKind = "minimize" | "maximize" | "restore" | "close" | "config";
+
+export type ApiWorkbenchTitlebarHitAction<TWindowId extends string> =
+  | { type: "threeConfig"; id: TWindowId }
+  | { type: "minimize"; id: TWindowId }
+  | { type: "maximize"; id: TWindowId }
+  | { type: "restore"; id: TWindowId }
+  | { type: "close"; id: TWindowId };
+
 export interface ApiWorkbenchHitActionWindowSource {
   type: string;
   id?: unknown;
+}
+
+/** Maps a renderer-neutral titlebar button kind to the workbench hit action it should trigger. */
+export function resolveApiWorkbenchTitlebarHitAction<TWindowId extends string>(
+  id: TWindowId,
+  kind: ApiWorkbenchTitlebarButtonKind,
+): ApiWorkbenchTitlebarHitAction<TWindowId> {
+  switch (kind) {
+    case "config":
+      return { type: "threeConfig", id };
+    case "minimize":
+      return { type: "minimize", id };
+    case "maximize":
+      return { type: "maximize", id };
+    case "close":
+      return { type: "close", id };
+    case "restore":
+      return { type: "restore", id };
+  }
 }
 
 /** Resolves the workbench window associated with a pointer hit action, when the action implies one. */

@@ -1,5 +1,5 @@
 import { assertEquals } from "./deps.ts";
-import { resolveApiWorkbenchHitWindowId } from "../app/api_workbench_hit.ts";
+import { resolveApiWorkbenchHitWindowId, resolveApiWorkbenchTitlebarHitAction } from "../app/api_workbench_hit.ts";
 
 const ids = {
   terminalShell: "terminal-shell",
@@ -23,6 +23,14 @@ Deno.test("resolveApiWorkbenchHitWindowId returns explicit window ids for chrome
   ) {
     assertEquals(resolveApiWorkbenchHitWindowId({ type, id: "three" }, ids), "three");
   }
+});
+
+Deno.test("resolveApiWorkbenchTitlebarHitAction maps button kinds to hit actions", () => {
+  assertEquals(resolveApiWorkbenchTitlebarHitAction("three", "config"), { type: "threeConfig", id: "three" });
+  assertEquals(resolveApiWorkbenchTitlebarHitAction("data", "minimize"), { type: "minimize", id: "data" });
+  assertEquals(resolveApiWorkbenchTitlebarHitAction("data", "maximize"), { type: "maximize", id: "data" });
+  assertEquals(resolveApiWorkbenchTitlebarHitAction("data", "restore"), { type: "restore", id: "data" });
+  assertEquals(resolveApiWorkbenchTitlebarHitAction("data", "close"), { type: "close", id: "data" });
 });
 
 Deno.test("resolveApiWorkbenchHitWindowId maps content hits to owning built-in windows", () => {

@@ -80,7 +80,6 @@ import {
   workbenchTabEntriesInto,
   type WorkbenchTerminalOutputToolbarAction,
   workbenchTerminalOutputToolbarItemsInto,
-  type WorkbenchTitlebarButtonKind,
   workbenchTitlebarButtonRenderCommandsInto,
   workbenchTopMenuDropdownOverlayInto,
   workbenchVisibleWindowRectsInto,
@@ -201,7 +200,7 @@ import {
   apiWorkbenchWindowTitle,
   createApiWorkbenchThemes,
 } from "./api_workbench_catalog.ts";
-import { resolveApiWorkbenchHitWindowId } from "./api_workbench_hit.ts";
+import { resolveApiWorkbenchHitWindowId, resolveApiWorkbenchTitlebarHitAction } from "./api_workbench_hit.ts";
 import {
   type ApiWorkbenchBuiltInWindowId,
   apiWorkbenchVisualizationSupportsThree,
@@ -1240,7 +1239,7 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
       compact: command.compact,
       tone: command.tone,
     });
-    addHit(command.hitRect, titlebarHit(id, command.kind));
+    addHit(command.hitRect, resolveApiWorkbenchTitlebarHitAction(id, command.kind));
   }
 
   const inner = inset(rect, 1);
@@ -1268,14 +1267,6 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
   translateContentHits(contentHitStart, viewport, scroll.offset.peek());
   blitWindowContent(frame, contentFrame, viewport, scroll.offset.peek());
   renderWindowScrollbars(frame, id, inner, viewport, contentSize);
-}
-
-function titlebarHit(id: WindowId, kind: WorkbenchTitlebarButtonKind): HitAction {
-  if (kind === "config") return { type: "threeConfig", id };
-  if (kind === "minimize") return { type: "minimize", id };
-  if (kind === "maximize") return { type: "maximize", id };
-  if (kind === "close") return { type: "close", id };
-  return { type: "restore", id };
 }
 
 function windowContentFrame(id: WindowId, rows: number): Frame {
