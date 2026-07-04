@@ -52,6 +52,12 @@ export interface ApiWorkbenchThreePressureInspection extends WorkbenchThreeTermi
   lastScoped: boolean;
 }
 
+export interface ApiWorkbenchThreePressureUpdateGate {
+  modalOpen?: boolean;
+  dropdownOpen?: boolean;
+  configOpen?: boolean;
+}
+
 export interface ApiWorkbenchThreeRuntimeOptions {
   hasLiveThreeWindow: () => boolean;
   onPressureChange?: (message: string) => void;
@@ -105,6 +111,11 @@ export function resolveApiWorkbenchThreePressureChangeInto(
     renderedThreeGrids: input.sample.renderedThreeGrids,
   });
   return target;
+}
+
+/** Returns true when a frame should be allowed to adapt Three terminal-pressure budgets. */
+export function shouldUpdateApiWorkbenchThreePressure(input: ApiWorkbenchThreePressureUpdateGate): boolean {
+  return !input.modalOpen && !input.dropdownOpen && !input.configOpen;
 }
 
 /** Owns API workbench Three renderer cadence and terminal-pressure state. */

@@ -1113,3 +1113,7 @@ performance, shared terminal/web workbench projections, and oversized module red
   showed block-mode renderer time dropping from roughly 18ms with blocking readback to roughly 7ms with deferred
   readback at the same 960-cell budget. Deferred remains backed by the existing queue warmup/placeholder behavior and
   focused pressure tests now pin the faster default.
+- Added a pressure-update gate for modal, dropdown, and ASCII-config overlay frames. Three panes still render under
+  overlays, but overlay-heavy redraws no longer shrink the Three render-cell budget; the PTY smoke run held the default
+  workbench Three pane at `185c live` around 19-20fps instead of collapsing through tiny rescue grids while the quit
+  modal was open.

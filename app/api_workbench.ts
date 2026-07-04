@@ -355,6 +355,7 @@ import { WorkbenchThreeViewportInteractionController } from "../src/app/workbenc
 import {
   type ApiWorkbenchThreePressureInspection,
   ApiWorkbenchThreeRuntimeController,
+  shouldUpdateApiWorkbenchThreePressure,
 } from "../src/app/workbench_three_runtime.ts";
 import type {
   Accent,
@@ -1105,6 +1106,13 @@ function draw(): void {
 }
 
 function updateThreeTerminalPressure(stats: WorkbenchAnsiScreenFlushStats): void {
+  if (
+    !shouldUpdateApiWorkbenchThreePressure({
+      modalOpen: modal.openState.peek(),
+      dropdownOpen: screenDropdownOpen(),
+      configOpen: threeConfigOpen.peek(),
+    })
+  ) return;
   workbenchThreeRuntime.updatePressureFromCadence(stats, threeCadence.inspect());
 }
 

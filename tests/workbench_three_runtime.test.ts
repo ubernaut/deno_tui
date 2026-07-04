@@ -4,6 +4,7 @@ import {
   ApiWorkbenchThreeRuntimeController,
   resolveApiWorkbenchThreePressureChange,
   resolveApiWorkbenchThreePressureChangeInto,
+  shouldUpdateApiWorkbenchThreePressure,
 } from "../src/app/workbench_three_runtime.ts";
 import {
   apiWorkbenchThreeFrameIntervalForCells,
@@ -27,6 +28,17 @@ Deno.test("ApiWorkbenchThreeRuntimeController owns live cadence signals", () => 
   assertEquals(controller.frameInterval.peek(), 1000 / 8);
 
   controller.dispose();
+});
+
+Deno.test("workbench Three pressure gate skips overlay frames", () => {
+  assertEquals(shouldUpdateApiWorkbenchThreePressure({}), true);
+  assertEquals(shouldUpdateApiWorkbenchThreePressure({ modalOpen: true }), false);
+  assertEquals(shouldUpdateApiWorkbenchThreePressure({ dropdownOpen: true }), false);
+  assertEquals(shouldUpdateApiWorkbenchThreePressure({ configOpen: true }), false);
+  assertEquals(
+    shouldUpdateApiWorkbenchThreePressure({ modalOpen: false, dropdownOpen: false, configOpen: false }),
+    true,
+  );
 });
 
 Deno.test("ApiWorkbenchThreeRuntimeController recovers toward live max under quiet scoped output", () => {
