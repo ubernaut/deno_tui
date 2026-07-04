@@ -45,6 +45,9 @@ function getPlainAsciiCharacters(text: string): string[] | undefined {
 }
 
 function getStyledCharacters(text: string): string[] {
+  const simpleStyledAscii = getSimpleStyledAsciiCharacters(text);
+  if (simpleStyledAscii) return simpleStyledAscii;
+
   const cells: string[] = [];
   let style = "";
   let lastStyle = "";
@@ -75,6 +78,57 @@ function getStyledCharacters(text: string): string[] {
     index += char.length;
   }
 
+  return cells;
+}
+
+function getSimpleStyledAsciiCharacters(text: string): string[] | undefined {
+  if (text.charCodeAt(0) !== 0x1b) return undefined;
+  let style = "";
+  let bodyStart = 0;
+  for (let index = 0; index < text.length;) {
+    const sequence = readCsiSequenceAt(text, index);
+    if (!sequence || !sequence.endsWith("m")) break;
+    style = mergeSgrStyle(style, sequence);
+    index += sequence.length;
+    bodyStart = index;
+  }
+  if (bodyStart <= 0 || bodyStart >= text.length) return undefined;
+
+  let bodyEnd = text.length;
+  while (bodyEnd > bodyStart) {
+    const resetStart = previousCsiSequenceStart(text, bodyEnd);
+    if (resetStart === undefined || resetStart < bodyStart) break;
+    const sequence = text.slice(resetStart, bodyEnd);
+    if (!sequence.endsWith("m") || !isSgrReset(sequence)) break;
+    bodyEnd = resetStart;
+  }
+  if (bodyEnd <= bodyStart) return undefined;
+  for (let index = bodyStart; index < bodyEnd; index += 1) {
+    const code = text.charCodeAt(index);
+    if (code === 0x1b || code >= 0x80) return undefined;
+  }
+
+  const bodyLength = bodyEnd - bodyStart;
+  const cells = new Array<string>(bodyLength);
+  if (!style) {
+    for (let index = 0; index < bodyLength; index += 1) {
+      cells[index] = text[bodyStart + index] ?? "";
+    }
+    return cells;
+  }
+
+  let lastChar = "";
+  let lastCell = "";
+  for (let index = 0; index < bodyLength; index += 1) {
+    const char = text[bodyStart + index] ?? "";
+    if (char === lastChar) {
+      cells[index] = lastCell;
+      continue;
+    }
+    lastChar = char;
+    lastCell = `${style}${char}\x1b[0m`;
+    cells[index] = lastCell;
+  }
   return cells;
 }
 
@@ -231,6 +285,13 @@ function readCsiSequenceAt(value: string, start: number): string | undefined {
   const finalCode = value.charCodeAt(index);
   if (!(finalCode >= 0x40 && finalCode <= 0x7e)) return undefined;
   return value.slice(start, index + 1);
+}
+
+function previousCsiSequenceStart(value: string, end: number): number | undefined {
+  const start = value.lastIndexOf("\x1b[", end - 1);
+  if (start < 0) return undefined;
+  const sequence = readCsiSequenceAt(value, start);
+  return sequence && start + sequence.length === end ? start : undefined;
 }
 
 function readOscSequenceAt(value: string, start: number): string | undefined {

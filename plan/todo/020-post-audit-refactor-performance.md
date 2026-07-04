@@ -994,3 +994,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Reused full-row rendered hints in the changed-span ANSI screen painter so rows rewritten with the same full-width
   styled background skip span diffing. The focused Three block span flush benchmark dropped from roughly 1.40ms to
   1.02ms on this host.
+- Added a simple leading-SGR ASCII row splitter and avoided duplicate first-cell parsing in ANSI range compaction. The
+  focused ANSI styled character split benchmark dropped from roughly 0.006-0.007ms to roughly 0.005ms on this host,
+  with dense TextObject full-row canvas remaining around 2.01ms on longer repeats.

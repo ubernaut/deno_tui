@@ -108,9 +108,12 @@ interface AnsiCellParts {
 interface AnsiCellSpan {
   text: string;
   cells: number;
+  first: AnsiCellParts;
 }
 
-interface AnsiUpdateSpan extends AnsiCellSpan {
+interface AnsiUpdateSpan {
+  text: string;
+  cells: number;
   row: number;
   column: number;
 }
@@ -149,6 +152,7 @@ function compactAnsiCellSpan(values: readonly (string | Uint8Array)[], start: nu
     return {
       text: `${first.prefix}${first.text.repeat(repeatedCells)}${first.suffix}`,
       cells: repeatedCells,
+      first,
     };
   }
 
@@ -163,6 +167,7 @@ function compactAnsiCellSpan(values: readonly (string | Uint8Array)[], start: nu
   return {
     text: `${first.prefix}${text}${first.suffix}`,
     cells: index - start,
+    first,
   };
 }
 
@@ -174,7 +179,7 @@ function compactAnsiCellRange(values: readonly (string | Uint8Array)[]): string 
 
   for (let index = 0; index < values.length;) {
     const span = compactAnsiCellSpan(values, index);
-    const first = splitAnsiCellValue(values[index]!);
+    const { first } = span;
     if (first.prefix !== activePrefix) {
       const nextState = ansiPrefixState(first.prefix);
       if (needsReset && !ansiPrefixCanOverrideActive(activeState, nextState)) {
