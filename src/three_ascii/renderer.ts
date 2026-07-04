@@ -468,7 +468,6 @@ export class ThreeAsciiRenderer {
     } catch (error) {
       if (error instanceof ThreeAsciiReadbackError) {
         const grid = this.deferredReadbacks.lastCompletedGrid();
-        this.readbackStrategy = "blocking";
         this.deferredReadbacks.destroy();
         this.lastReadbackMs = 0;
         return { grid, readbackUnavailable: true };

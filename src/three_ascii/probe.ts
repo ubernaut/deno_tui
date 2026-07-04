@@ -96,6 +96,8 @@ export function parseThreeAsciiProbeOptions(args: readonly string[]): ThreeAscii
     }
   }
 
+  options.delayMs = Math.max(1, options.delayMs);
+
   return options;
 }
 

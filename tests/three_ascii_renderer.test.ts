@@ -221,7 +221,7 @@ Deno.test("ThreeAsciiRenderer skips scene submission when deferred readbacks are
   assertEquals(renderer.inspectPerformance()?.deferredReadbackUnresolved, 6);
 });
 
-Deno.test("ThreeAsciiRenderer demotes deferred readback failures to blocking mode", () => {
+Deno.test("ThreeAsciiRenderer isolates deferred readback failures without demoting", () => {
   const renderer = new ThreeAsciiRenderer({
     scene: new Scene(),
     camera: new PerspectiveCamera(),
@@ -254,7 +254,7 @@ Deno.test("ThreeAsciiRenderer demotes deferred readback failures to blocking mod
     grid: cachedGrid,
     readbackUnavailable: true,
   });
-  assertEquals(internals.readbackStrategy, "blocking");
+  assertEquals(internals.readbackStrategy, "deferred");
   assertEquals(destroyed, 1);
 });
 

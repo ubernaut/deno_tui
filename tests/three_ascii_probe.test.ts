@@ -35,6 +35,11 @@ Deno.test("parseThreeAsciiProbeOptions accepts task forwarded options", () => {
   );
 });
 
+Deno.test("parseThreeAsciiProbeOptions clamps real WebGPU probes to a one tick delay", () => {
+  assertEquals(parseThreeAsciiProbeOptions(["--delay=0", "--readback=deferred"]).delayMs, 1);
+  assertEquals(parseThreeAsciiProbeOptions(["--delay=0", "--readback=blocking"]).delayMs, 1);
+});
+
 Deno.test("parseThreeAsciiProbeOptions rejects invalid modes and numeric values", () => {
   assertThrows(() => parseThreeAsciiProbeOptions(["--style=emoji"]), Error, "Unsupported style");
   assertThrows(() => parseThreeAsciiProbeOptions(["--readback=sync"]), Error, "Unsupported readback");
