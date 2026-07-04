@@ -4,6 +4,7 @@ export interface ThreePanelProbeSample {
   index: number;
   elapsedMs: number;
   totalMs: number;
+  initMs: number;
   sceneMs: number;
   readbackMs: number;
   assemblyMs: number;
@@ -33,6 +34,7 @@ export interface ThreePanelProbeSummary {
   latest?: ThreePanelProbeSample;
   steady: ThreePanelProbeSample[];
   averageTotalMs: number;
+  averageInitMs: number;
   averageSceneMs: number;
   averageReadbackMs: number;
   averageAssemblyMs: number;
@@ -45,6 +47,7 @@ export function summarizeThreePanelProbe(samples: readonly ThreePanelProbeSample
     latest: samples.at(-1),
     steady,
     averageTotalMs: average(steady.map((sample) => sample.totalMs)),
+    averageInitMs: average(steady.map((sample) => sample.initMs)),
     averageSceneMs: average(steady.map((sample) => sample.sceneMs)),
     averageReadbackMs: average(steady.map((sample) => sample.readbackMs)),
     averageAssemblyMs: average(steady.map((sample) => sample.assemblyMs)),
@@ -69,13 +72,17 @@ export function formatThreePanelProbeLines(
     } latest=${latest ? `${latest.columns}x${latest.rows}/${latest.cells}c` : "none"} firstGrid=${
       formatMs(firstGridElapsedMs)
     }`,
-    `scene=${formatMs(summary.averageSceneMs)} readback=${formatMs(summary.averageReadbackMs)} assembly=${
-      formatMs(summary.averageAssemblyMs)
-    } updates=${latest?.updates ?? 0}${formatDeferredQueueSummary(latest)}`,
+    `init=${formatMs(summary.averageInitMs)} scene=${formatMs(summary.averageSceneMs)} readback=${
+      formatMs(summary.averageReadbackMs)
+    } assembly=${formatMs(summary.averageAssemblyMs)} updates=${latest?.updates ?? 0}${
+      formatDeferredQueueSummary(latest)
+    }`,
   ];
   for (const sample of samples) {
     lines.push(
-      `${sample.index.toString().padStart(2, "0")} total=${formatMs(sample.totalMs)} elapsed=${
+      `${sample.index.toString().padStart(2, "0")} total=${formatMs(sample.totalMs)} init=${
+        formatMs(sample.initMs)
+      } elapsed=${
         formatMs(sample.elapsedMs)
       } grid=${sample.columns}x${sample.rows} cells=${sample.cells} state=${sample.lifecycle} updates=${sample.updates}${
         formatDeferredQueueSummary(sample)

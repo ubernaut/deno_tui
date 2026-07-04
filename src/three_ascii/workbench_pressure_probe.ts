@@ -6,6 +6,7 @@ export interface WorkbenchThreePressureProbeSample {
   maxCells: number;
   sampleDurationMs: number;
   rendererMs: number;
+  initMs: number;
   sceneMs: number;
   readbackMs: number;
   assemblyMs: number;
@@ -98,9 +99,7 @@ export function formatWorkbenchThreePressureProbeLines(
     "three-workbench pressure probe",
     `mode=${options.mode} glyphs=${options.glyphs} readback=${options.readback} frame=${options.frameWidth}x${options.frameHeight} panel=${options.panelWidth}x${options.panelHeight} maxCells=${options.maxCells}${
       options.adaptive ? " adaptive" : ""
-    } interval=${
-      formatMs(options.intervalMs)
-    }`,
+    } interval=${formatMs(options.intervalMs)}`,
     `warmup=${formatMs(summary.warmup?.rendererMs)} renderer=${formatMs(summary.averageRendererMs)} fps=${
       formatFps(summary.averageRendererMs)
     } flush=${formatMs(summary.averageFlushMs)} bytes=${Math.round(summary.averageBytes)} rate=${
@@ -113,11 +112,11 @@ export function formatWorkbenchThreePressureProbeLines(
   ];
   for (const sample of samples) {
     lines.push(
-      `${sample.index.toString().padStart(2, "0")} renderer=${formatMs(sample.rendererMs)} scene=${
-        formatMs(sample.sceneMs)
-      } read=${formatMs(sample.readbackMs)} asm=${formatMs(sample.assemblyMs)} flush=${
-        formatMs(sample.flushMs)
-      } bytes=${sample.bytes} rate=${
+      `${sample.index.toString().padStart(2, "0")} renderer=${formatMs(sample.rendererMs)} init=${
+        formatMs(sample.initMs)
+      } scene=${formatMs(sample.sceneMs)} read=${formatMs(sample.readbackMs)} asm=${
+        formatMs(sample.assemblyMs)
+      } flush=${formatMs(sample.flushMs)} bytes=${sample.bytes} rate=${
         Math.round(workbenchThreeTerminalBytesPerSecond(sample))
       }B/s changed=${sample.changedRows} sourceChanged=${sample.sourceChangedRows} cap=${sample.maxCells} interval=${
         formatMs(sample.sampleDurationMs)

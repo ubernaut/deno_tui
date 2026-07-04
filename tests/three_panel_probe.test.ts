@@ -10,6 +10,7 @@ const samples: ThreePanelProbeSample[] = [
     index: 1,
     elapsedMs: 500,
     totalMs: 2,
+    initMs: 0,
     sceneMs: 0,
     readbackMs: 0,
     assemblyMs: 0,
@@ -27,6 +28,7 @@ const samples: ThreePanelProbeSample[] = [
     index: 2,
     elapsedMs: 56,
     totalMs: 10,
+    initMs: 1,
     sceneMs: 8,
     readbackMs: 11,
     assemblyMs: 0.5,
@@ -44,6 +46,7 @@ const samples: ThreePanelProbeSample[] = [
     index: 3,
     elapsedMs: 56,
     totalMs: 14,
+    initMs: 3,
     sceneMs: 12,
     readbackMs: 13,
     assemblyMs: 0.7,
@@ -66,6 +69,7 @@ Deno.test("summarizeThreePanelProbe skips startup samples for steady timing", ()
   assertEquals(summary.latest?.index, 3);
   assertEquals(summary.steady.map((sample) => sample.index), [2, 3]);
   assertEquals(summary.averageTotalMs, 12);
+  assertEquals(summary.averageInitMs, 2);
   assertEquals(summary.averageSceneMs, 10);
   assertEquals(summary.averageReadbackMs, 12);
   assertEquals(summary.averageAssemblyMs, 0.6);
@@ -93,8 +97,9 @@ Deno.test("formatThreePanelProbeLines includes first-grid latency and frame rows
   assertStringIncludes(lines[2], "latest=40x12/480c");
   assertStringIncludes(lines[2], "firstGrid=420.25ms");
   assertStringIncludes(lines[3], "updates=4");
+  assertStringIncludes(lines[3], "init=2.00ms");
   assertStringIncludes(lines[3], "queue=2/1/1");
-  assertStringIncludes(lines.at(-1)!, "03 total=14.00ms");
+  assertStringIncludes(lines.at(-1)!, "03 total=14.00ms init=3.00ms");
   assertStringIncludes(lines[4], "queue=2/2/0 saturated");
   assertStringIncludes(lines.at(-1)!, "state=idle");
 });

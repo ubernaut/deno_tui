@@ -35,6 +35,31 @@ Deno.test("createThreeAsciiComputePipeline accepts custom entrypoints", () => {
   assertEquals(device.computePipelines[0]?.entryPoint, "alternate");
 });
 
+Deno.test("createThreeAsciiComputePipeline reuses pipelines by device shader and entrypoint", () => {
+  const device = new FakeComputePipelineDevice();
+  const first = createThreeAsciiComputePipeline({
+    device,
+    label: "first",
+    code: "fn main() {}",
+  });
+  const second = createThreeAsciiComputePipeline({
+    device,
+    label: "second",
+    code: "fn main() {}",
+  });
+  const alternate = createThreeAsciiComputePipeline({
+    device,
+    label: "alternate",
+    code: "fn alternate() {}",
+    entryPoint: "alternate",
+  });
+
+  assertEquals(second, first);
+  assertEquals(device.shaderModules.length, 2);
+  assertEquals(device.computePipelines.length, 2);
+  assertEquals(alternate, "pipeline:alternate" as unknown as GPUComputePipeline);
+});
+
 interface FakeShaderModuleDescriptor {
   label?: string;
   code: string;

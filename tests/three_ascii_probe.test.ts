@@ -69,6 +69,7 @@ Deno.test("threeAsciiProbeReport projects renderer performance samples", () => {
       cells: 6,
       terminalGlyphStyle: "blocks",
       totalMs: 10,
+      initMs: 0,
       sceneMs: 6,
       ansiMs: 4,
       readbackMs: 3,

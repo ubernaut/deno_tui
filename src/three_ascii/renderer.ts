@@ -325,7 +325,7 @@ export class ThreeAsciiRenderer {
       }
     }
 
-    await this.renderScene(deltaTime, onFrame);
+    const sceneTiming = await this.renderScene(deltaTime, onFrame) ?? { initMs: 0 };
     const sceneEnd = performance.now();
 
     const frame: ThreeAsciiRenderFrame = {};
@@ -344,6 +344,7 @@ export class ThreeAsciiRenderer {
       rows: this.rows,
       terminalGlyphStyle: this.terminalGlyphStyle,
       frameMs: frameEnd - frameStart,
+      initMs: sceneTiming.initMs,
       sceneMs: sceneEnd - frameStart,
       ansiMs: renderAnsi ? frameEnd - sceneEnd : 0,
       readbackMs: renderAnsi ? this.lastReadbackMs : 0,
@@ -357,14 +358,18 @@ export class ThreeAsciiRenderer {
   private async renderScene(
     deltaTime: number,
     onFrame?: (deltaTime: number) => void | Promise<void>,
-  ): Promise<void> {
+  ): Promise<{ initMs: number }> {
+    const initialized = this.renderer !== undefined;
+    const initStart = initialized ? 0 : performance.now();
     await this.init();
+    const initMs = initialized ? 0 : performance.now() - initStart;
     if (onFrame) {
       await onFrame(deltaTime);
     }
     this.applySize();
     this.updateCameraAspect();
     this.renderPipeline!.render();
+    return { initMs };
   }
 
   private async computeAnsiGrid(

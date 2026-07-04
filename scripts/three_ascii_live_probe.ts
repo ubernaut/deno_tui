@@ -8,6 +8,7 @@ interface ProbeSample {
   index: number;
   elapsedMs: number;
   totalMs: number;
+  initMs: number;
   sceneMs: number;
   readbackMs: number;
   assemblyMs: number;
@@ -57,6 +58,7 @@ try {
         index,
         elapsedMs,
         totalMs: performanceInfo.totalMs,
+        initMs: performanceInfo.initMs,
         sceneMs: performanceInfo.sceneMs,
         readbackMs: performanceInfo.readbackMs,
         assemblyMs: performanceInfo.assemblyMs,
@@ -76,6 +78,7 @@ try {
 const warmup = samples[0];
 const steady = samples.slice(1).filter((sample) => sample.rows > 0 && sample.columns > 0);
 const averageTotalMs = average(steady.map((sample) => sample.totalMs));
+const averageInitMs = average(steady.map((sample) => sample.initMs));
 const averageSceneMs = average(steady.map((sample) => sample.sceneMs));
 const averageReadbackMs = average(steady.map((sample) => sample.readbackMs));
 const averageAssemblyMs = average(steady.map((sample) => sample.assemblyMs));
@@ -84,13 +87,15 @@ console.log(`three-ascii live probe`);
 console.log(`scene=${mode} glyphs=${ascii.terminalGlyphStyle} size=${columns}x${rows} frames=${frames}`);
 console.log(`warmup=${formatMs(warmup?.totalMs)} steady=${formatMs(averageTotalMs)} fps=${formatFps(averageTotalMs)}`);
 console.log(
-  `scene=${formatMs(averageSceneMs)} readback=${formatMs(averageReadbackMs)} assembly=${formatMs(averageAssemblyMs)}`,
+  `init=${formatMs(averageInitMs)} scene=${formatMs(averageSceneMs)} readback=${formatMs(averageReadbackMs)} assembly=${
+    formatMs(averageAssemblyMs)
+  }`,
 );
 for (const sample of samples) {
   console.log(
-    `${sample.index.toString().padStart(2, "0")} total=${formatMs(sample.totalMs)} elapsed=${
-      formatMs(sample.elapsedMs)
-    } grid=${sample.columns}x${sample.rows}`,
+    `${sample.index.toString().padStart(2, "0")} total=${formatMs(sample.totalMs)} init=${
+      formatMs(sample.initMs)
+    } elapsed=${formatMs(sample.elapsedMs)} grid=${sample.columns}x${sample.rows}`,
   );
 }
 

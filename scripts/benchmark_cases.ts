@@ -168,6 +168,7 @@ const workbenchThreeHeaderModes = ["BLOCKS", "GLYPHS", "MIXED", "KITTY"];
 const workbenchThreeHeaderWidths = [30, 48, 80, 132];
 const workbenchThreeHeaderPerformance: ThreeHeaderPerformance = {
   totalMs: 17.4,
+  initMs: 0,
   sceneMs: 12.2,
   readbackMs: 4.1,
   assemblyMs: 1.3,

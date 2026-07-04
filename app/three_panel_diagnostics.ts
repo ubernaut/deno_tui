@@ -26,9 +26,11 @@ export function threePanelSlowFrameDiagnostic(performance: ThreeAsciiRendererPer
     code: "three-ascii-slow-frame",
     severity: "debug",
     message: `Three ASCII frame ${performance.totalMs.toFixed(1)}ms at ${performance.columns}x${performance.rows}`,
-    detail: `scene ${performance.sceneMs.toFixed(1)}ms, ansi ${performance.ansiMs.toFixed(1)}ms, readback ${
-      performance.readbackMs.toFixed(1)
-    }ms, assembly ${performance.assemblyMs.toFixed(1)}ms${threePanelReadbackQueueDetail(performance)}`,
+    detail: `init ${performance.initMs.toFixed(1)}ms, scene ${performance.sceneMs.toFixed(1)}ms, ansi ${
+      performance.ansiMs.toFixed(1)
+    }ms, readback ${performance.readbackMs.toFixed(1)}ms, assembly ${performance.assemblyMs.toFixed(1)}ms${
+      threePanelReadbackQueueDetail(performance)
+    }`,
     context: threePanelPerformanceContext(performance),
   };
 }
@@ -91,6 +93,7 @@ function threePanelPerformanceContext(performance: ThreeAsciiRendererPerformance
     cells: performance.cells,
     glyphStyle: performance.terminalGlyphStyle,
     totalMs: roundTenth(performance.totalMs),
+    initMs: roundTenth(performance.initMs),
     sceneMs: roundTenth(performance.sceneMs),
     ansiMs: roundTenth(performance.ansiMs),
     readbackMs: roundTenth(performance.readbackMs),

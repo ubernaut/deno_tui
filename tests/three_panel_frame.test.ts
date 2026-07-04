@@ -1076,7 +1076,10 @@ Deno.test("ThreePanelFrameView can use Kitty image frames without drawing ASCII 
     const firstGrid = panel.grid.peek();
     const updatesAfterFirstGrid = updates;
     await waitFor(() => surface.puts.length >= 2);
-    assertEquals(renderer.renderFrameOptions.every((options) => options.ansi === false && options.image === true), true);
+    assertEquals(
+      renderer.renderFrameOptions.every((options) => options.ansi === false && options.image === true),
+      true,
+    );
     assertEquals(renderer.renderCount, 0);
     assertEquals(panel.grid.peek() === firstGrid, true);
     assertEquals(updates, updatesAfterFirstGrid);
@@ -1502,6 +1505,7 @@ class FakeGridRenderer implements ThreePanelGridRenderer, ThreeAsciiGridRenderer
       cells: this.columns * this.rows,
       terminalGlyphStyle: this.terminalGlyphStyle,
       totalMs: 16,
+      initMs: 0,
       sceneMs: 10,
       ansiMs: 6,
       readbackMs: 4,
@@ -1584,6 +1588,7 @@ class TelemetryGridRenderer extends FakeGridRenderer {
       cells: this.columns * this.rows,
       terminalGlyphStyle: this.getTerminalGlyphStyle(),
       totalMs: this.totalMs,
+      initMs: 0,
       sceneMs: this.totalMs * 0.7,
       ansiMs: this.totalMs * 0.3,
       readbackMs: this.totalMs * 0.2,
@@ -1606,6 +1611,7 @@ class SequenceTelemetryGridRenderer extends FakeGridRenderer {
       cells: this.columns * this.rows,
       terminalGlyphStyle: this.getTerminalGlyphStyle(),
       totalMs,
+      initMs: 0,
       sceneMs: totalMs * 0.7,
       ansiMs: totalMs * 0.3,
       readbackMs: totalMs * 0.2,

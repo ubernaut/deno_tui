@@ -11,8 +11,8 @@ import { ThreePanelFrameView, type ThreeSceneState } from "../app/three_panel.ts
 import { writeWorkbenchThreeGrid } from "../app/workbench_three_grid.ts";
 import { createDefaultWorkbenchAsciiOptions } from "../src/app/workbench_ascii.ts";
 import {
-  apiWorkbenchThreeFrameIntervalForCells,
   API_WORKBENCH_THREE_PRESSURE_POLICY,
+  apiWorkbenchThreeFrameIntervalForCells,
   WORKBENCH_THREE_INITIAL_CELLS,
   WORKBENCH_THREE_READBACK_STRATEGY,
 } from "../app/workbench_three_policy.ts";
@@ -37,10 +37,15 @@ const panelHeight = numberArg(Deno.args, "--panel-height", 32);
 const maxCells = numberArg(Deno.args, "--max-cells", WORKBENCH_THREE_INITIAL_CELLS);
 const mode = choiceArg(Deno.args, "--mode", "studio" as ThreeSceneMode, threeSceneModes);
 const glyphs = choiceArg(Deno.args, "--glyphs", "blocks", ["blocks", "glyphs", "mixed"] as const);
-const readbackStrategy = choiceArg(Deno.args, "--readback", WORKBENCH_THREE_READBACK_STRATEGY, [
-  "blocking",
-  "deferred",
-] as const);
+const readbackStrategy = choiceArg(
+  Deno.args,
+  "--readback",
+  WORKBENCH_THREE_READBACK_STRATEGY,
+  [
+    "blocking",
+    "deferred",
+  ] as const,
+);
 const adaptive = Deno.args.includes("--adaptive");
 const intervalMs = numberArg(Deno.args, "--interval", apiWorkbenchThreeFrameIntervalForCells(maxCells, { live: true }));
 
@@ -180,6 +185,7 @@ function drawSample(index: number): WorkbenchThreePressureProbeSample {
     maxCells: cellsBeforePressureUpdate,
     sampleDurationMs,
     rendererMs: performance?.totalMs ?? 0,
+    initMs: performance?.initMs ?? 0,
     sceneMs: performance?.sceneMs ?? 0,
     readbackMs: performance?.readbackMs ?? 0,
     assemblyMs: performance?.assemblyMs ?? 0,

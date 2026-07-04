@@ -13,6 +13,7 @@ Deno.test("threePanelSlowFrameDiagnostic formats renderer timings and readback q
     cells: 240,
     terminalGlyphStyle: "blocks",
     totalMs: 123.45,
+    initMs: 15.12,
     sceneMs: 70.12,
     ansiMs: 30.34,
     readbackMs: 20.56,
@@ -26,13 +27,17 @@ Deno.test("threePanelSlowFrameDiagnostic formats renderer timings and readback q
   assertEquals(diagnostic.source, "three-panel");
   assertEquals(diagnostic.code, "three-ascii-slow-frame");
   assertEquals(diagnostic.message, "Three ASCII frame 123.5ms at 24x10");
-  assertEquals(diagnostic.detail, "scene 70.1ms, ansi 30.3ms, readback 20.6ms, assembly 9.9ms, queue 2/6");
+  assertEquals(
+    diagnostic.detail,
+    "init 15.1ms, scene 70.1ms, ansi 30.3ms, readback 20.6ms, assembly 9.9ms, queue 2/6",
+  );
   assertEquals(diagnostic.context, {
     columns: 24,
     rows: 10,
     cells: 240,
     glyphStyle: "blocks",
     totalMs: 123.5,
+    initMs: 15.1,
     sceneMs: 70.1,
     ansiMs: 30.3,
     readbackMs: 20.6,

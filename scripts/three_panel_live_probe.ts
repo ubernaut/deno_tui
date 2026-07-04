@@ -106,6 +106,7 @@ function samplePanel(
     index,
     elapsedMs,
     totalMs: performanceInfo.totalMs,
+    initMs: performanceInfo.initMs,
     sceneMs: performanceInfo.sceneMs,
     readbackMs: performanceInfo.readbackMs,
     assemblyMs: performanceInfo.assemblyMs,

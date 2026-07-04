@@ -224,6 +224,10 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Lowered the terminal workbench Three startup cap to 240 cells and aligned the live probe default with the workbench's
   blocking readback path; the pressure probe now starts with roughly 26x8 renderer grids and much smaller per-frame
   terminal output while preserving recovery to the 960-cell live quality tier.
+- Cached Three ASCII compute pipelines per WebGPU device and shader entry point so multiple renderer windows and
+  renderer rebuilds reuse fill/color/edge compute pipelines instead of recreating identical GPU pipelines.
+- Added explicit Three ASCII renderer `initMs` telemetry to performance snapshots, diagnostics, workbench headers, and
+  probes; serial live probing now separates the first-frame WebGPU init/pipeline stall from steady scene/readback cost.
 - Stabilized default Three ASCII block rendering by using ASCII-safe shared window controls and removing fog from the
   default block preset so truecolor block cells keep source color depth.
 - Extracted the workbench Three ASCII config modal geometry into a tested internal layout helper, reducing inline modal

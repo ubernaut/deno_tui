@@ -7,6 +7,7 @@ export interface ThreeAsciiRendererPerformance {
   cells: number;
   terminalGlyphStyle: TerminalGlyphStyle;
   totalMs: number;
+  initMs: number;
   sceneMs: number;
   ansiMs: number;
   readbackMs: number;
@@ -31,6 +32,7 @@ export interface ThreeAsciiRendererPerformanceInput {
   rows: number;
   terminalGlyphStyle: TerminalGlyphStyle;
   frameMs: number;
+  initMs?: number;
   sceneMs: number;
   ansiMs: number;
   readbackMs: number;
@@ -57,6 +59,7 @@ export function createThreeAsciiRendererPerformance(
     cells: input.columns * input.rows,
     terminalGlyphStyle: input.terminalGlyphStyle,
     totalMs: input.frameMs,
+    initMs: input.initMs ?? 0,
     sceneMs: input.sceneMs,
     ansiMs: input.ansiMs,
     readbackMs: input.readbackMs,
@@ -78,6 +81,7 @@ export function createThreeAsciiRendererSaturatedPerformance(
     cells: input.columns * input.rows,
     terminalGlyphStyle: input.terminalGlyphStyle,
     totalMs: input.previousFrameMs ?? input.frameMs,
+    initMs: 0,
     sceneMs: 0,
     ansiMs: 0,
     readbackMs: input.readbackMs,

@@ -29,6 +29,7 @@ export interface DataFooterRowsOptions {
 
 export interface ThreeHeaderPerformance {
   totalMs: number;
+  initMs?: number;
   sceneMs: number;
   readbackMs: number;
   assemblyMs: number;
@@ -102,7 +103,8 @@ function formatThreeHeaderPerformance(performance: ThreeHeaderPerformance, width
     : "";
   const target = performance.targetFps ? ` @${Math.round(performance.targetFps)}fps` : "";
   const queue = formatThreeHeaderQueuePressure(performance);
-  const detailed = `frame ${total} scene ${Math.round(performance.sceneMs)} read ${
+  const init = performance.initMs && performance.initMs > 0 ? ` init ${Math.round(performance.initMs)}` : "";
+  const detailed = `frame ${total}${init} scene ${Math.round(performance.sceneMs)} read ${
     Math.round(performance.readbackMs)
   } asm ${Math.round(performance.assemblyMs)} ${cells}${cap}${target}${queue ? ` ${queue}` : ""}`;
   if (width >= textWidth(detailed)) return detailed;

@@ -103,7 +103,7 @@ Deno.test("formatWorkbenchThreePressureProbeLines reports source changes and upd
   assertStringIncludes(lines[2], "updates=2");
   assertStringIncludes(lines[2], "latest=53x17/901c");
   assertStringIncludes(lines[2], "totalBytes=12345");
-  assertStringIncludes(lines[5], "03 renderer=12.00ms");
+  assertStringIncludes(lines[5], "03 renderer=12.00ms init=0.00ms");
   assertStringIncludes(lines[5], "bytes=20 rate=200B/s");
   assertStringIncludes(lines[5], "sourceChanged=16 cap=960 interval=100.00ms updates=2 grid=53x17");
 });
@@ -116,6 +116,7 @@ function sample(
     maxCells: overrides.maxCells ?? 960,
     sampleDurationMs: overrides.sampleDurationMs ?? 50,
     rendererMs: overrides.rendererMs ?? 1,
+    initMs: overrides.initMs ?? 0,
     sceneMs: overrides.sceneMs ?? 0.5,
     readbackMs: overrides.readbackMs ?? 0.1,
     assemblyMs: overrides.assemblyMs ?? 0.05,
