@@ -1,5 +1,5 @@
 import { assertEquals } from "./deps.ts";
-import { writeWorkbenchThreeGrid } from "../app/workbench_three_grid.ts";
+import { resolveWorkbenchThreeGridProjection, writeWorkbenchThreeGrid } from "../app/workbench_three_grid.ts";
 import type { WorkbenchFrame } from "../src/app/workbench_frame.ts";
 
 Deno.test("workbench three grid writes ANSI cells into a frame rectangle", () => {
@@ -162,7 +162,7 @@ Deno.test("workbench three grid scales ragged rows by each row width without sou
 
 Deno.test("workbench three grid scale-down mode centers capped grids instead of scaling up", () => {
   const frame: WorkbenchFrame = [];
-  writeWorkbenchThreeGrid(
+  const projection = writeWorkbenchThreeGrid(
     frame,
     { column: 0, row: 0, width: 4, height: 4 },
     [["A", "B"], ["C", "D"]],
@@ -176,11 +176,21 @@ Deno.test("workbench three grid scale-down mode centers capped grids instead of 
   assertEquals(frame[2]?.[0], undefined);
   assertEquals(frame[2]?.slice(1, 3), ["C", "D"]);
   assertEquals(frame[3], undefined);
+  assertEquals(projection, {
+    sourceRows: 2,
+    sourceColumns: 2,
+    targetHeight: 2,
+    targetWidth: 2,
+    rowOffset: 1,
+    columnOffset: 1,
+    scaled: false,
+    capped: true,
+  });
 });
 
 Deno.test("workbench three grid scale-down mode still scales oversized grids into the target", () => {
   const frame: WorkbenchFrame = [];
-  writeWorkbenchThreeGrid(
+  const projection = writeWorkbenchThreeGrid(
     frame,
     { column: 0, row: 0, width: 2, height: 2 },
     [
@@ -197,12 +207,42 @@ Deno.test("workbench three grid scale-down mode still scales oversized grids int
     ["A", "C"],
     ["I", "K"],
   ]);
+  assertEquals(projection, {
+    sourceRows: 4,
+    sourceColumns: 4,
+    targetHeight: 2,
+    targetWidth: 2,
+    rowOffset: 0,
+    columnOffset: 0,
+    scaled: true,
+    capped: false,
+  });
 });
 
 Deno.test("workbench three grid ignores empty rectangles", () => {
   const frame: WorkbenchFrame = [["keep"]];
-  writeWorkbenchThreeGrid(frame, { column: 0, row: 0, width: 0, height: 2 }, [["A"]], ".");
-  writeWorkbenchThreeGrid(frame, { column: 0, row: 0, width: 2, height: 0 }, [["B"]], ".");
+  assertEquals(writeWorkbenchThreeGrid(frame, { column: 0, row: 0, width: 0, height: 2 }, [["A"]], "."), undefined);
+  assertEquals(writeWorkbenchThreeGrid(frame, { column: 0, row: 0, width: 2, height: 0 }, [["B"]], "."), undefined);
 
   assertEquals(frame, [["keep"]]);
+});
+
+Deno.test("workbench three grid projection honors source column hints", () => {
+  assertEquals(
+    resolveWorkbenchThreeGridProjection(
+      { width: 4, height: 4 },
+      [["A", "B"], ["C", "D", "E", "F", "G"]],
+      { scale: "down", sourceColumns: 2 },
+    ),
+    {
+      sourceRows: 2,
+      sourceColumns: 2,
+      targetHeight: 2,
+      targetWidth: 2,
+      rowOffset: 1,
+      columnOffset: 1,
+      scaled: false,
+      capped: true,
+    },
+  );
 });

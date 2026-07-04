@@ -387,6 +387,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   for the default scene even though the renderer was submitting frames.
 - Extracted workbench Three pressure-probe grid snapshot, source-row diffing, and line formatting helpers into the
   shared probe module with direct tests so CLI profiling output stays renderer-aware and script-local code stays small.
+- Returned Three grid projection metadata from the workbench grid writer and routed terminal-pressure row accounting
+  through the actual rendered target height, keeping capped/scaled grid pressure measurement aligned with paint output.
 - Added focused benchmark guards for reusable monitor source-frame resolution and 88-core CPU hex tile layout projection
   so future source/monitor refactors keep those hot paths measured.
 - Reused repeated styled cell strings inside ANSI-aware text splitting so block-mode workbench rows avoid rebuilding the

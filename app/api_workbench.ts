@@ -1496,17 +1496,17 @@ function renderThreeGrid(
     return;
   }
 
-  if (options.countForPressure ?? true) {
-    renderedThreeGridCount += 1;
-    renderedThreeGridRows += Math.min(rect.height, grid.length);
-  }
-  writeWorkbenchThreeGrid(frame, rect, grid, paint(" ", { bg: t.surface }), {
+  const projection = writeWorkbenchThreeGrid(frame, rect, grid, paint(" ", { bg: t.surface }), {
     scale: "down",
     rowBuffer: threeGridRowBuffer,
     sourceColumns: grid[0]?.length ?? 0,
     sourceRowIndexes: threeGridSourceRowIndexes,
     sourceColumnIndexes: threeGridSourceColumnIndexes,
   });
+  if ((options.countForPressure ?? true) && projection) {
+    renderedThreeGridCount += 1;
+    renderedThreeGridRows += projection.targetHeight;
+  }
 }
 
 function renderExplorer(frame: Frame, rect: Rectangle): void {

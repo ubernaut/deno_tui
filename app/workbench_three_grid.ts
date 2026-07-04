@@ -6,6 +6,17 @@ export type WorkbenchThreeGridScaleMode = boolean | "down";
 
 const scaleIndexMetadata = new WeakMap<number[], { targetSize: number; sourceSize: number }>();
 
+export interface WorkbenchThreeGridProjection {
+  sourceRows: number;
+  sourceColumns: number;
+  targetHeight: number;
+  targetWidth: number;
+  rowOffset: number;
+  columnOffset: number;
+  scaled: boolean;
+  capped: boolean;
+}
+
 /** Copies a Three ASCII ANSI grid into a workbench frame rectangle. */
 export function writeWorkbenchThreeGrid(
   frame: WorkbenchFrame,
@@ -19,20 +30,14 @@ export function writeWorkbenchThreeGrid(
     sourceRowIndexes?: number[];
     sourceColumnIndexes?: number[];
   } = {},
-): void {
-  if (rect.width <= 0 || rect.height <= 0) return;
-  const sourceRows = grid.length;
-  const sourceColumns = options.sourceColumns === undefined
-    ? maxGridColumns(grid)
-    : Math.max(0, Math.floor(options.sourceColumns));
-  const scaleMode = options.scale;
-  const shouldScale = scaleMode === true ||
-    (scaleMode === "down" && (sourceRows > rect.height || sourceColumns > rect.width));
-  const capOutput = scaleMode === "down" && !shouldScale;
-  const targetHeight = capOutput ? Math.min(rect.height, sourceRows || rect.height) : rect.height;
-  const targetWidth = capOutput ? Math.min(rect.width, sourceColumns || rect.width) : rect.width;
-  const rowOffset = capOutput ? Math.max(0, Math.floor((rect.height - targetHeight) / 2)) : 0;
-  const columnOffset = capOutput ? Math.max(0, Math.floor((rect.width - targetWidth) / 2)) : 0;
+): WorkbenchThreeGridProjection | undefined {
+  const projection = resolveWorkbenchThreeGridProjection(rect, grid, {
+    scale: options.scale,
+    sourceColumns: options.sourceColumns,
+  });
+  if (!projection) return undefined;
+  const { sourceRows, sourceColumns, targetHeight, targetWidth, rowOffset, columnOffset } = projection;
+  const shouldScale = projection.scaled;
   const rowBuffer = options.rowBuffer ?? [];
   const sourceRowIndexes = shouldScale && sourceRows > 0
     ? scaledIndexesInto(options.sourceRowIndexes ?? [], targetHeight, sourceRows)
@@ -83,6 +88,38 @@ export function writeWorkbenchThreeGrid(
     lastProjectedSourceRow = sourceRow;
     lastProjectedRow = rowBuffer;
   }
+  return projection;
+}
+
+export function resolveWorkbenchThreeGridProjection(
+  rect: Pick<Rectangle, "width" | "height">,
+  grid: readonly (readonly string[] | undefined)[],
+  options: {
+    scale?: WorkbenchThreeGridScaleMode;
+    sourceColumns?: number;
+  } = {},
+): WorkbenchThreeGridProjection | undefined {
+  if (rect.width <= 0 || rect.height <= 0) return undefined;
+  const sourceRows = grid.length;
+  const sourceColumns = options.sourceColumns === undefined
+    ? maxGridColumns(grid)
+    : Math.max(0, Math.floor(options.sourceColumns));
+  const scaleMode = options.scale;
+  const scaled = scaleMode === true ||
+    (scaleMode === "down" && (sourceRows > rect.height || sourceColumns > rect.width));
+  const capped = scaleMode === "down" && !scaled;
+  const targetHeight = capped ? Math.min(rect.height, sourceRows || rect.height) : rect.height;
+  const targetWidth = capped ? Math.min(rect.width, sourceColumns || rect.width) : rect.width;
+  return {
+    sourceRows,
+    sourceColumns,
+    targetHeight,
+    targetWidth,
+    rowOffset: capped ? Math.max(0, Math.floor((rect.height - targetHeight) / 2)) : 0,
+    columnOffset: capped ? Math.max(0, Math.floor((rect.width - targetWidth) / 2)) : 0,
+    scaled,
+    capped,
+  };
 }
 
 function maxGridColumns(grid: readonly (readonly string[] | undefined)[]): number {
