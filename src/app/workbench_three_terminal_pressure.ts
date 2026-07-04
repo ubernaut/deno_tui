@@ -78,6 +78,14 @@ export interface WorkbenchThreeLiveCadenceOptions {
   isThreeWindow: (id: string) => boolean;
 }
 
+/** Inputs used to decide whether one workbench Three pane should use live cadence. */
+export interface WorkbenchThreeWindowInteractivityOptions {
+  id: string;
+  activeId?: string;
+  fullscreenId?: string;
+  windows: readonly WorkbenchThreeCadenceWindow[];
+}
+
 /** Minimal renderer telemetry needed to decide whether a visible grid is real Three output. */
 export interface WorkbenchThreeGridPressureTelemetry {
   cells?: number;
@@ -126,6 +134,16 @@ export function workbenchThreeShouldUseLiveCadence(options: WorkbenchThreeLiveCa
     return state === "normal" || state === "fullscreen";
   }
   return false;
+}
+
+/** Returns true when a specific Three pane is the focused or fullscreen interactive target. */
+export function workbenchThreeWindowIsInteractive(options: WorkbenchThreeWindowInteractivityOptions): boolean {
+  return workbenchThreeShouldUseLiveCadence({
+    activeId: options.activeId === options.id ? options.id : undefined,
+    fullscreenId: options.fullscreenId,
+    windows: options.windows,
+    isThreeWindow: (candidate) => candidate === options.id,
+  });
 }
 
 /** Returns true when a Three pane should count toward terminal-output pressure adaptation. */

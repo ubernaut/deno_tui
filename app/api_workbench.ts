@@ -298,6 +298,7 @@ import { type RowStyle, threeHeaderRows } from "./workbench_rows.ts";
 import {
   shouldCountWorkbenchThreeGridPressure,
   workbenchThreeShouldUseLiveCadence,
+  workbenchThreeWindowIsInteractive,
 } from "../src/app/workbench_three_terminal_pressure.ts";
 import {
   apiWorkbenchThreeFrameIntervalForCells,
@@ -2847,11 +2848,11 @@ function hasLiveThreeRenderedWindow(): boolean {
 }
 
 function isThreeWindowInteractive(id: WindowId): boolean {
-  return workbenchThreeShouldUseLiveCadence({
-    activeId: activeWindow.peek() === id ? id : undefined,
+  return workbenchThreeWindowIsInteractive({
+    id,
+    activeId: activeWindow.peek(),
     fullscreenId: windowManager.fullscreenId.peek(),
     windows: windowManager.orderedWindows(),
-    isThreeWindow: (candidate) => candidate === id,
   });
 }
 

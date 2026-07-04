@@ -9,6 +9,7 @@ import {
   workbenchThreeFrameIntervalForCells,
   workbenchThreeShouldUseLiveCadence,
   workbenchThreeTerminalBytesPerSecond,
+  workbenchThreeWindowIsInteractive,
 } from "../src/app/workbench_three_terminal_pressure.ts";
 
 Deno.test("workbench Three terminal pressure steps down across sustained heavy output", () => {
@@ -423,6 +424,27 @@ Deno.test("workbench Three live cadence ignores hidden Three panes", () => {
   const isThreeWindow = (id: string) => id.startsWith("three");
 
   assertEquals(workbenchThreeShouldUseLiveCadence({ activeId: "explorer", windows, isThreeWindow }), false);
+});
+
+Deno.test("workbench Three per-window interactivity follows only the targeted pane", () => {
+  const windows = [
+    { id: "three", state: "normal" },
+    { id: "three-lattice", state: "normal" },
+    { id: "three-hidden", state: "minimized" },
+  ];
+
+  assertEquals(workbenchThreeWindowIsInteractive({ id: "three", activeId: "three", windows }), true);
+  assertEquals(workbenchThreeWindowIsInteractive({ id: "three-lattice", activeId: "three", windows }), false);
+  assertEquals(workbenchThreeWindowIsInteractive({ id: "three-hidden", activeId: "three-hidden", windows }), false);
+  assertEquals(
+    workbenchThreeWindowIsInteractive({
+      id: "three-lattice",
+      activeId: "three",
+      fullscreenId: "three-lattice",
+      windows,
+    }),
+    true,
+  );
 });
 
 Deno.test("workbench Three pressure ignores startup fallback grids without renderer telemetry", () => {
