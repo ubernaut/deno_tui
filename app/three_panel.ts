@@ -20,7 +20,12 @@ import {
   ThreePanelInteractionController,
   type ThreePanelInteractionState,
 } from "../src/app/three_panel_interaction.ts";
-import { resolveThreePanelLifecycleState, type ThreePanelLifecycleState } from "../src/app/three_panel_lifecycle.ts";
+import {
+  isCurrentThreePanelFrame,
+  ownsThreePanelFrame,
+  resolveThreePanelLifecycleState,
+  type ThreePanelLifecycleState,
+} from "../src/app/three_panel_lifecycle.ts";
 import {
   threePanelAdaptiveRenderCellsDiagnostic,
   threePanelGraphicsFallbackDiagnostic,
@@ -652,8 +657,15 @@ export class ThreePanelFrameView {
     renderer: ThreePanelGridRenderer,
     bundle: NeonThreeSceneBundle,
   ): boolean {
-    return !this.disposed && this.frameGeneration === generation && this.renderer === renderer &&
-      this.bundle === bundle;
+    return ownsThreePanelFrame({
+      disposed: this.disposed,
+      currentGeneration: this.frameGeneration,
+      frameGeneration: generation,
+      currentRenderer: this.renderer,
+      frameRenderer: renderer,
+      currentBundle: this.bundle,
+      frameBundle: bundle,
+    });
   }
 
   private isCurrentFrame(
@@ -661,7 +673,16 @@ export class ThreePanelFrameView {
     renderer: ThreePanelGridRenderer,
     bundle: NeonThreeSceneBundle,
   ): boolean {
-    return this.running && this.ownsFrame(generation, renderer, bundle);
+    return isCurrentThreePanelFrame({
+      disposed: this.disposed,
+      running: this.running,
+      currentGeneration: this.frameGeneration,
+      frameGeneration: generation,
+      currentRenderer: this.renderer,
+      frameRenderer: renderer,
+      currentBundle: this.bundle,
+      frameBundle: bundle,
+    });
   }
 
   rotateBy(deltaColumns: number, deltaRows: number): ThreePanelInteractionState {

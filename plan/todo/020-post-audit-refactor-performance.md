@@ -1136,3 +1136,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   adapter.
 - Moved Three panel live/idle runtime budget selection into the shared `three_panel_policy` module, so frame cadence and
   render-cell cap decisions are pure, tested, and reusable outside the demo adapter.
+- Moved Three panel frame ownership/current-frame checks into the shared lifecycle module, preserving renderer and bundle
+  identity semantics while making stale-frame drop behavior testable outside the large demo adapter.
