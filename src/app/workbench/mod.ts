@@ -6,6 +6,7 @@
  * flat `src/app/*` modules and public root exports.
  */
 export * from "../hit_targets.ts";
+export * from "../three_panel_grid.ts";
 export * from "../three_panel_lifecycle.ts";
 export * from "../three_panel_render_queue.ts";
 export * from "../workbench_frame.ts";

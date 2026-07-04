@@ -1,5 +1,5 @@
 import { assertEquals, assertNotEquals } from "./deps.ts";
-import { fingerprintThreePanelGrid, threePanelBlankGrid } from "../app/three_panel_grid.ts";
+import { fingerprintThreePanelGrid, threePanelBlankGrid } from "../src/app/three_panel_grid.ts";
 
 Deno.test("threePanelBlankGrid creates stable space-filled rows", () => {
   assertEquals(threePanelBlankGrid(-1, 2), [[], []]);

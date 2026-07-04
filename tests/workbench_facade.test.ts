@@ -13,6 +13,7 @@ import {
   resolveWorkbenchThreeTerminalPressureBudget,
   setWorkbenchThreeRect,
   threeHeaderRows,
+  threePanelBlankGrid,
   ThreePanelRenderQueue,
   translateHitTargets,
   workbenchContentViewport,
@@ -57,6 +58,7 @@ Deno.test("workbench facade exposes renderer-neutral helpers", () => {
   );
   assertEquals(typeof resolveWorkbenchShellBackend, "function");
   assertEquals(typeof createWorkbenchShellSession, "function");
+  assertEquals(typeof threePanelBlankGrid, "function");
   assertEquals(typeof ThreePanelRenderQueue, "function");
   assertEquals(typeof resolveWorkbenchThreeTerminalPressureBudget, "function");
   assertEquals(typeof workbenchFrameRenderCommandsInto, "function");

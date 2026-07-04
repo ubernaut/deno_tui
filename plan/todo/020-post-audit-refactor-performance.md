@@ -233,6 +233,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   signals and render effects while shared tests own the policy-state transitions.
 - Moved Three panel lifecycle state resolution and the serialized render queue into `src/app`, keeping WebGPU frame
   scheduling primitives available to app/demo callers through tested shared modules.
+- Moved Three panel blank-grid creation and grid fingerprinting into `src/app`, keeping unchanged-frame publication
+  checks available from shared renderer helpers instead of demo-local paths.
 - Extracted API workbench touch-hit expansion and compact/coarse layout detection into shared hit helpers, so terminal
   and browser workbench adapters use the same enlarged pointer targets on mobile-sized layouts.
 - Routed the browser API workbench background canvas through the shared `parseHexColor` helper instead of carrying a
