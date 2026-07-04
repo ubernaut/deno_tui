@@ -42,6 +42,7 @@ import {
   ThreeAsciiReadbackLayoutCache,
   ThreeAsciiReadbackViewCache,
 } from "./readback.ts";
+import { assembleThreeAsciiReadbackGrid } from "./readback_assembly.ts";
 import { handleThreeAsciiDeferredReadbackFailure } from "./readback_failure.ts";
 import {
   normalizeThreeAsciiRendererOptions,
@@ -789,22 +790,20 @@ export class ThreeAsciiRenderer {
   }
 
   private buildAnsiGridFromMappedReadback(pending: ThreeAsciiDeferredReadbackFrame<GPUBuffer>): string[][] {
-    const assemblyStart = performance.now();
-    const source = pending.slot.gpu.getMappedRange();
-    const views = this.readbackViewCache.resolve(source, pending.layout);
-    const grid = this.ansiGridAssembler.build({
+    const assembly = assembleThreeAsciiReadbackGrid({
+      source: pending.slot.gpu.getMappedRange(),
+      layout: pending.layout,
+      viewCache: this.readbackViewCache,
+      assembler: this.ansiGridAssembler,
       columns: pending.columns,
       rows: pending.rows,
-      fillGlyphs: views.fillGlyphs,
-      edgeGlyphs: views.edgeGlyphs,
-      colors: views.colors,
       terminalGlyphStyle: pending.terminalGlyphStyle,
       terminalEdgeBias: pending.terminalEdgeBias,
       backgroundColor: pending.backgroundColor,
     });
     this.gridRevision += 1;
-    this.lastAssemblyMs = performance.now() - assemblyStart;
-    return grid;
+    this.lastAssemblyMs = assembly.assemblyMs;
+    return assembly.grid;
   }
 
   private dispatchComputePass(
@@ -841,22 +840,20 @@ export class ThreeAsciiRenderer {
     }
 
     try {
-      const assemblyStart = performance.now();
-      const source = readback.gpu.getMappedRange();
-      const views = this.readbackViewCache.resolve(source, layout);
-      const grid = this.ansiGridAssembler.build({
+      const assembly = assembleThreeAsciiReadbackGrid({
+        source: readback.gpu.getMappedRange(),
+        layout,
+        viewCache: this.readbackViewCache,
+        assembler: this.ansiGridAssembler,
         columns: this.columns,
         rows: this.rows,
-        fillGlyphs: views.fillGlyphs,
-        edgeGlyphs: views.edgeGlyphs,
-        colors: views.colors,
         terminalGlyphStyle: this.terminalGlyphStyle,
         terminalEdgeBias: this.terminalEdgeBias,
         backgroundColor,
       });
       this.gridRevision += 1;
-      this.lastAssemblyMs = performance.now() - assemblyStart;
-      return grid;
+      this.lastAssemblyMs = assembly.assemblyMs;
+      return assembly.grid;
     } finally {
       readback.gpu.unmap();
     }

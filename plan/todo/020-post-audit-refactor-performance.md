@@ -476,3 +476,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   giving the extracted span detector a tight performance guard before further terminal-output tuning.
 - Extracted Three ASCII deferred readback failure handling into a focused tested helper, preserving cached-grid retry
   behavior while keeping the renderer catch path small and the real WebGPU probe non-saturated.
+- Extracted Three ASCII readback grid assembly into a focused tested helper so blocking and deferred readback paths share
+  the same view-resolution, assembler wiring, and timing logic without duplicating renderer code.
+- Retuned the API workbench startup Three ASCII policy to start at the 120-cell emergency tier, recover much more slowly,
+  and reduce high-detail live cadences so SSH/tmux truecolor block rendering favors smooth motion by default while
+  retaining higher-detail per-widget configuration.
