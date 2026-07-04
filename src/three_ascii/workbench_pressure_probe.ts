@@ -1,5 +1,7 @@
-import { average, formatFps, formatMs } from "./probe_cli.ts";
+import { average, choiceArg, formatFps, formatMs, numberArg } from "./probe_cli.ts";
 import { workbenchThreeTerminalBytesPerSecond } from "../app/workbench_three_terminal_pressure.ts";
+import type { TerminalGlyphStyle } from "./glyphs.ts";
+import type { ThreeAsciiReadbackStrategy } from "./renderer_options.ts";
 
 export interface WorkbenchThreePressureProbeSample {
   index: number;
@@ -44,6 +46,50 @@ export interface WorkbenchThreePressureProbeOptions {
   adaptive?: boolean;
   intervalMs: number;
   totalBytes: number;
+}
+
+export interface WorkbenchThreePressureProbeCliDefaults<Mode extends string> {
+  initialCells: number;
+  readbackStrategy: ThreeAsciiReadbackStrategy;
+  mode: Mode;
+  modes: readonly Mode[];
+  frameIntervalForCells: (cells: number) => number;
+}
+
+export interface WorkbenchThreePressureProbeCliOptions<Mode extends string> {
+  frames: number;
+  frameWidth: number;
+  frameHeight: number;
+  panelWidth: number;
+  panelHeight: number;
+  maxCells: number;
+  asciiCells: number;
+  mode: Mode;
+  glyphs: TerminalGlyphStyle;
+  readbackStrategy: ThreeAsciiReadbackStrategy;
+  adaptive: boolean;
+  intervalMs: number;
+}
+
+export function parseWorkbenchThreePressureProbeCliOptions<Mode extends string>(
+  args: readonly string[],
+  defaults: WorkbenchThreePressureProbeCliDefaults<Mode>,
+): WorkbenchThreePressureProbeCliOptions<Mode> {
+  const maxCells = numberArg(args, "--max-cells", defaults.initialCells);
+  return {
+    frames: numberArg(args, "--frames", 24),
+    frameWidth: numberArg(args, "--frame-width", 168),
+    frameHeight: numberArg(args, "--frame-height", 54),
+    panelWidth: numberArg(args, "--panel-width", 96),
+    panelHeight: numberArg(args, "--panel-height", 32),
+    maxCells,
+    asciiCells: numberArg(args, "--ascii-cells", maxCells),
+    mode: choiceArg(args, "--mode", defaults.mode, defaults.modes),
+    glyphs: choiceArg(args, "--glyphs", "blocks" as TerminalGlyphStyle, ["blocks", "glyphs", "mixed"] as const),
+    readbackStrategy: choiceArg(args, "--readback", defaults.readbackStrategy, ["blocking", "deferred"] as const),
+    adaptive: args.includes("--adaptive"),
+    intervalMs: numberArg(args, "--interval", defaults.frameIntervalForCells(maxCells)),
+  };
 }
 
 /** Clones a Three ASCII grid row-by-row so mutable renderer grids can be compared across frames. */

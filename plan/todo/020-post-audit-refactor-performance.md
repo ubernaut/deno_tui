@@ -648,3 +648,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Tightened API workbench Three terminal-pressure recovery after an accurate probe showed the default saved
   `renderMaxCells` could auto-climb from the 120-cell startup cap into 480/960-cell output over SSH; the probe now
   models saved ASCII cells separately and the tuned policy settles around the 240-cell tier for animated output.
+- Extracted workbench Three pressure-probe CLI parsing into the shared probe helper with tests for separate pressure
+  caps and saved ASCII cell budgets, keeping future renderer tuning measurements aligned with the real workbench
+  startup path.

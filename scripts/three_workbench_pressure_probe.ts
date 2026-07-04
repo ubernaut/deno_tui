@@ -16,10 +16,11 @@ import {
   WORKBENCH_THREE_INITIAL_CELLS,
   WORKBENCH_THREE_READBACK_STRATEGY,
 } from "../app/workbench_three_policy.ts";
-import { choiceArg, delay, numberArg } from "../src/three_ascii/probe_cli.ts";
+import { delay } from "../src/three_ascii/probe_cli.ts";
 import {
   countWorkbenchThreeProbeChangedGridRows,
   formatWorkbenchThreePressureProbeLines,
+  parseWorkbenchThreePressureProbeCliOptions,
   snapshotWorkbenchThreeProbeGridRows,
   type WorkbenchThreePressureProbeSample,
 } from "../src/three_ascii/workbench_pressure_probe.ts";
@@ -29,26 +30,27 @@ import {
   resolveWorkbenchThreeTerminalPressureUpdate,
 } from "../src/app/workbench_three_terminal_pressure.ts";
 
-const frames = numberArg(Deno.args, "--frames", 24);
-const frameWidth = numberArg(Deno.args, "--frame-width", 168);
-const frameHeight = numberArg(Deno.args, "--frame-height", 54);
-const panelWidth = numberArg(Deno.args, "--panel-width", 96);
-const panelHeight = numberArg(Deno.args, "--panel-height", 32);
-const maxCells = numberArg(Deno.args, "--max-cells", WORKBENCH_THREE_INITIAL_CELLS);
-const asciiCells = numberArg(Deno.args, "--ascii-cells", maxCells);
-const mode = choiceArg(Deno.args, "--mode", "studio" as ThreeSceneMode, threeSceneModes);
-const glyphs = choiceArg(Deno.args, "--glyphs", "blocks", ["blocks", "glyphs", "mixed"] as const);
-const readbackStrategy = choiceArg(
-  Deno.args,
-  "--readback",
-  WORKBENCH_THREE_READBACK_STRATEGY,
-  [
-    "blocking",
-    "deferred",
-  ] as const,
-);
-const adaptive = Deno.args.includes("--adaptive");
-const intervalMs = numberArg(Deno.args, "--interval", apiWorkbenchThreeFrameIntervalForCells(maxCells, { live: true }));
+const options = parseWorkbenchThreePressureProbeCliOptions<ThreeSceneMode>(Deno.args, {
+  initialCells: WORKBENCH_THREE_INITIAL_CELLS,
+  readbackStrategy: WORKBENCH_THREE_READBACK_STRATEGY,
+  mode: "studio",
+  modes: threeSceneModes,
+  frameIntervalForCells: (cells) => apiWorkbenchThreeFrameIntervalForCells(cells, { live: true }),
+});
+const {
+  frames,
+  frameWidth,
+  frameHeight,
+  panelWidth,
+  panelHeight,
+  maxCells,
+  asciiCells,
+  mode,
+  glyphs,
+  readbackStrategy,
+  adaptive,
+  intervalMs,
+} = options;
 
 let bytesWritten = 0;
 const painter = new WorkbenchAnsiScreenPainter({

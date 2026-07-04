@@ -2,6 +2,7 @@ import { assertEquals, assertStringIncludes } from "./deps.ts";
 import {
   countWorkbenchThreeProbeChangedGridRows,
   formatWorkbenchThreePressureProbeLines,
+  parseWorkbenchThreePressureProbeCliOptions,
   snapshotWorkbenchThreeProbeGridRows,
   summarizeWorkbenchThreePressureProbe,
   type WorkbenchThreePressureProbeSample,
@@ -108,6 +109,44 @@ Deno.test("formatWorkbenchThreePressureProbeLines reports source changes and upd
   assertStringIncludes(lines[5], "sourceChanged=16 cap=960 interval=100.00ms updates=2 grid=53x17");
 });
 
+Deno.test("parseWorkbenchThreePressureProbeCliOptions separates pressure and saved ASCII cell budgets", () => {
+  const options = parseWorkbenchThreePressureProbeCliOptions(
+    [
+      "--frames",
+      "40",
+      "--max-cells",
+      "120",
+      "--ascii-cells",
+      "1920",
+      "--mode",
+      "relay",
+      "--glyphs",
+      "mixed",
+      "--readback",
+      "deferred",
+      "--adaptive",
+    ],
+    probeDefaults(),
+  );
+
+  assertEquals(options.frames, 40);
+  assertEquals(options.maxCells, 120);
+  assertEquals(options.asciiCells, 1920);
+  assertEquals(options.mode, "relay");
+  assertEquals(options.glyphs, "mixed");
+  assertEquals(options.readbackStrategy, "deferred");
+  assertEquals(options.adaptive, true);
+  assertEquals(options.intervalMs, 33);
+});
+
+Deno.test("parseWorkbenchThreePressureProbeCliOptions falls back to pressure cells for ASCII cells", () => {
+  const options = parseWorkbenchThreePressureProbeCliOptions(["--max-cells=240", "--interval", "50"], probeDefaults());
+
+  assertEquals(options.maxCells, 240);
+  assertEquals(options.asciiCells, 240);
+  assertEquals(options.intervalMs, 50);
+});
+
 function sample(
   overrides: Partial<WorkbenchThreePressureProbeSample> & Pick<WorkbenchThreePressureProbeSample, "index">,
 ): WorkbenchThreePressureProbeSample {
@@ -128,5 +167,15 @@ function sample(
     columns: overrides.columns ?? 26,
     rows: overrides.rows ?? 8,
     cells: overrides.cells ?? 208,
+  };
+}
+
+function probeDefaults() {
+  return {
+    initialCells: 120,
+    readbackStrategy: "blocking" as const,
+    mode: "studio",
+    modes: ["studio", "relay"] as const,
+    frameIntervalForCells: (cells: number) => cells === 120 ? 33 : 66,
   };
 }
