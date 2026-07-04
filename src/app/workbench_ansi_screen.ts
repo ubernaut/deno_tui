@@ -1,9 +1,8 @@
 import { moveCursor } from "../utils/ansi_codes.ts";
 import type { CanvasStdout } from "../canvas/sink.ts";
+import { type WorkbenchAnsiScreenFlushStats, writeWorkbenchAnsiScreenOutput } from "./workbench_ansi_output.ts";
 import { cleanWorkbenchFrameRowFingerprint, fitCellText, markWorkbenchFrameRowRendered } from "./workbench_frame.ts";
 import { type ChangedSpan, changedSpansInto, snapshotChangedSpans, snapshotFrameRow } from "./workbench_ansi_spans.ts";
-
-const encoder = new TextEncoder();
 
 interface WorkbenchAnsiScreenRowCache {
   width: number;
@@ -11,14 +10,7 @@ interface WorkbenchAnsiScreenRowCache {
   line: string;
 }
 
-/** Diagnostics returned from a retained ANSI screen-row flush. */
-export interface WorkbenchAnsiScreenFlushStats {
-  rows: number;
-  changed: number;
-  cleared: number;
-  bytes: number;
-  durationMs: number;
-}
+export type { WorkbenchAnsiScreenFlushStats } from "./workbench_ansi_output.ts";
 
 /** Retained ANSI-row painter for full-screen workbench frames. */
 export class WorkbenchAnsiScreenPainter {
@@ -73,13 +65,7 @@ export class WorkbenchAnsiScreenPainter {
     }
     this.#rows.length = rows;
 
-    if (output.length === 0) {
-      return { rows, changed, cleared, bytes: 0, durationMs: 0 };
-    }
-    const flushStart = performance.now();
-    const bytes = encoder.encode(output.join(""));
-    this.stdout.writeSync(bytes);
-    return { rows, changed, cleared, bytes: bytes.byteLength, durationMs: performance.now() - flushStart };
+    return writeWorkbenchAnsiScreenOutput(this.stdout, output, { rows, changed, cleared });
   }
 
   reset(): void {
@@ -151,12 +137,6 @@ export class WorkbenchAnsiScreenPainter {
     this.#widths.length = rows;
     this.#rows.length = rows;
 
-    if (output.length === 0) {
-      return { rows, changed, cleared, bytes: 0, durationMs: 0 };
-    }
-    const flushStart = performance.now();
-    const bytes = encoder.encode(output.join(""));
-    this.stdout.writeSync(bytes);
-    return { rows, changed, cleared, bytes: bytes.byteLength, durationMs: performance.now() - flushStart };
+    return writeWorkbenchAnsiScreenOutput(this.stdout, output, { rows, changed, cleared });
   }
 }

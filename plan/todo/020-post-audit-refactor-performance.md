@@ -470,3 +470,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   roughly 2.5ms on this host.
 - Extracted retained ANSI screen changed-span detection and snapshot updates into a focused tested helper, keeping the
   Three block span flush path independently tunable while preserving the roughly 2.2-2.3ms benchmark guard on this host.
+- Extracted retained ANSI screen output joining, encoding, writing, and flush-stat construction into a focused tested
+  helper, removing duplicated output code from full-row and changed-span painter paths without benchmark regression.
