@@ -14871,6 +14871,35 @@ function workbenchTerminalPaneProjectionsInto(target, layout, bounds, options = 
   target.length = written;
   return target;
 }
+function workbenchTerminalCopyRowsInto(target, options) {
+  const height = Math.max(0, Math.floor(options.height));
+  const offset = Math.max(0, Math.floor(options.offset));
+  const prefixWidth = Math.max(1, Math.floor(options.prefixWidth ?? 5));
+  const selectionStart = options.selection ? Math.min(options.selection.anchor, options.selection.focus) : -1;
+  const selectionEnd = options.selection ? Math.max(options.selection.anchor, options.selection.focus) : -1;
+  target.length = height;
+  for (let screenRow = 0; screenRow < height; screenRow += 1) {
+    const rowIndex = offset + screenRow;
+    const lineNumber = rowIndex + 1;
+    const selected = rowIndex >= selectionStart && rowIndex <= selectionEnd;
+    const current = target[screenRow] ?? {
+      screenRow,
+      rowIndex,
+      lineNumber,
+      prefix: "",
+      text: "",
+      selected
+    };
+    current.screenRow = screenRow;
+    current.rowIndex = rowIndex;
+    current.lineNumber = lineNumber;
+    current.prefix = `${lineNumber.toString().padStart(Math.max(1, prefixWidth - 1), " ")} `;
+    current.text = options.visibleRows[screenRow] ?? "";
+    current.selected = selected;
+    target[screenRow] = current;
+  }
+  return target;
+}
 function projectToolbarItemsInto(target, actions, prepare, applyState) {
   let written = 0;
   for (let index = 0; index < actions.length; index += 1) {
@@ -17702,6 +17731,7 @@ var webTerminalScreens = /* @__PURE__ */ new Map();
 var webTerminalScrollbacks = /* @__PURE__ */ new Map();
 var webTerminalScreenKeys = /* @__PURE__ */ new Map();
 var webTerminalPaneProjections = [];
+var webTerminalCopyRows = [];
 var hitTargets = new HitTargetStack();
 var titlebarLayouts = /* @__PURE__ */ new Map();
 var titlebarRenderCommands = /* @__PURE__ */ new Map();
@@ -18641,26 +18671,43 @@ function renderWebTerminalPane(frame, projection) {
   const scrollback = syncWebTerminalScrollback(sessionId, screen, content.height);
   hitTargets.add(content, { type: "terminalContent", sessionId, paneId: projection.paneId });
   const inspection = scrollback.inspect();
-  const rows2 = inspection.mode === "copy" ? inspection.visibleRows : screen.textRows();
-  const selection = inspection.selection;
-  const selectionStart = selection ? Math.min(selection.anchor, selection.focus) : -1;
-  const selectionEnd = selection ? Math.max(selection.anchor, selection.focus) : -1;
-  const screenRowCount = Math.min(rows2.length, content.height);
-  for (let index = 0; index < screenRowCount; index += 1) {
-    const line = rows2[index];
-    const rowIndex = inspection.offset + index;
-    const selected = inspection.mode === "copy" && rowIndex >= selectionStart && rowIndex <= selectionEnd;
-    write(
-      frame,
-      content.row + index,
-      content.column,
-      paint(
-        fit(line, content.width),
-        selected ? t.background : t.text,
-        selected ? t.warn : activePane ? t.background : t.surface,
-        selected
-      )
-    );
+  if (inspection.mode === "copy") {
+    const copyRows = workbenchTerminalCopyRowsInto(webTerminalCopyRows, {
+      visibleRows: inspection.visibleRows,
+      offset: inspection.offset,
+      height: content.height,
+      selection: inspection.selection,
+      prefixWidth: 5
+    });
+    for (const row of copyRows) {
+      write(
+        frame,
+        content.row + row.screenRow,
+        content.column,
+        paint(
+          fit(row.text, content.width),
+          row.selected ? t.background : t.text,
+          row.selected ? t.warn : activePane ? t.background : t.surface,
+          row.selected
+        )
+      );
+    }
+  } else {
+    const rows2 = screen.textRows();
+    const screenRowCount = Math.min(rows2.length, content.height);
+    for (let index = 0; index < screenRowCount; index += 1) {
+      write(
+        frame,
+        content.row + index,
+        content.column,
+        paint(
+          fit(rows2[index], content.width),
+          t.text,
+          activePane ? t.background : t.surface,
+          false
+        )
+      );
+    }
   }
   if (inspection.mode === "copy") {
     const status = inspection.query ? `search "${inspection.query}" ${inspection.matches.length} hit(s)` : `copy rows ${inspection.offset + 1}-${Math.min(inspection.offset + inspection.viewportRows, inspection.totalRows)}`;

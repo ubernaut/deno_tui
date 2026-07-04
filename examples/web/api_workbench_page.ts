@@ -95,6 +95,8 @@ import {
   workbenchShelfRenderCommandsInto,
   workbenchStatusLine,
   workbenchTabEntriesInto,
+  type WorkbenchTerminalCopyRowProjection,
+  workbenchTerminalCopyRowsInto,
   type WorkbenchTerminalPaneProjection,
   workbenchTerminalPaneProjectionsInto,
   type WorkbenchTerminalSessionTab,
@@ -358,6 +360,7 @@ const webTerminalScreens = new Map<string, TerminalScreenController>();
 const webTerminalScrollbacks = new Map<string, TerminalScrollbackController>();
 const webTerminalScreenKeys = new Map<string, string>();
 const webTerminalPaneProjections: WorkbenchTerminalPaneProjection[] = [];
+const webTerminalCopyRows: WorkbenchTerminalCopyRowProjection[] = [];
 const hitTargets = new HitTargetStack<Hit>();
 const titlebarLayouts = new Map<PanelId, WorkbenchTitlebarLayout>();
 const titlebarRenderCommands = new Map<PanelId, WorkbenchTitlebarButtonRenderCommand[]>();
@@ -1352,26 +1355,43 @@ function renderWebTerminalPane(
   const scrollback = syncWebTerminalScrollback(sessionId, screen, content.height);
   hitTargets.add(content, { type: "terminalContent", sessionId, paneId: projection.paneId });
   const inspection = scrollback.inspect();
-  const rows = inspection.mode === "copy" ? inspection.visibleRows : screen.textRows();
-  const selection = inspection.selection;
-  const selectionStart = selection ? Math.min(selection.anchor, selection.focus) : -1;
-  const selectionEnd = selection ? Math.max(selection.anchor, selection.focus) : -1;
-  const screenRowCount = Math.min(rows.length, content.height);
-  for (let index = 0; index < screenRowCount; index += 1) {
-    const line = rows[index]!;
-    const rowIndex = inspection.offset + index;
-    const selected = inspection.mode === "copy" && rowIndex >= selectionStart && rowIndex <= selectionEnd;
-    write(
-      frame,
-      content.row + index,
-      content.column,
-      paint(
-        fit(line, content.width),
-        selected ? t.background : t.text,
-        selected ? t.warn : activePane ? t.background : t.surface,
-        selected,
-      ),
-    );
+  if (inspection.mode === "copy") {
+    const copyRows = workbenchTerminalCopyRowsInto(webTerminalCopyRows, {
+      visibleRows: inspection.visibleRows,
+      offset: inspection.offset,
+      height: content.height,
+      selection: inspection.selection,
+      prefixWidth: 5,
+    });
+    for (const row of copyRows) {
+      write(
+        frame,
+        content.row + row.screenRow,
+        content.column,
+        paint(
+          fit(row.text, content.width),
+          row.selected ? t.background : t.text,
+          row.selected ? t.warn : activePane ? t.background : t.surface,
+          row.selected,
+        ),
+      );
+    }
+  } else {
+    const rows = screen.textRows();
+    const screenRowCount = Math.min(rows.length, content.height);
+    for (let index = 0; index < screenRowCount; index += 1) {
+      write(
+        frame,
+        content.row + index,
+        content.column,
+        paint(
+          fit(rows[index]!, content.width),
+          t.text,
+          activePane ? t.background : t.surface,
+          false,
+        ),
+      );
+    }
   }
   if (inspection.mode === "copy") {
     const status = inspection.query
