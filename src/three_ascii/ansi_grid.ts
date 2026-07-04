@@ -76,8 +76,6 @@ export class ThreeAsciiAnsiGridAssembler {
     const terminalGlyphMode = terminalGlyphModeForStyle(terminalGlyphStyle);
     const edgeGlyphs = input.edgeGlyphs;
     const hasEdges = edgeGlyphs !== undefined && terminalGlyphMode !== GLYPH_MODE_BLOCKS;
-    const terminalFillGlyphKeys = terminalFillGlyphKeysForMode(terminalGlyphMode);
-    const terminalEdgeBias = Math.max(0.5, input.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
     const cellCount = columns * rows;
     const denseFill = fillGlyphs.length >= cellCount;
     const denseColors = colors.length >= cellCount * 4;
@@ -99,6 +97,7 @@ export class ThreeAsciiAnsiGridAssembler {
           ? this.buildDenseBlockGrid(grid, columns, rows, fillGlyphs, colors)
           : this.buildBlockGrid(grid, columns, rows, fillGlyphs, colors);
       }
+      const terminalFillGlyphKeys = terminalFillGlyphKeysForMode(terminalGlyphMode);
       if (denseFill && denseColors) {
         return this.buildDenseFillOnlyGrid(
           grid,
@@ -134,6 +133,9 @@ export class ThreeAsciiAnsiGridAssembler {
         lastFillGlyphIndex,
       );
     }
+
+    const terminalFillGlyphKeys = terminalFillGlyphKeysForMode(terminalGlyphMode);
+    const terminalEdgeBias = Math.max(0.5, input.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
 
     for (let row = 0; row < rows; row += 1) {
       const outputRow = grid[row];

@@ -486,3 +486,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added a dedicated Three ASCII block-mode grid assembly path that skips glyph/edge selection for full-cell block
   rendering while preserving exact truecolor backgrounds; block assembly benchmarks now sit around 0.04-0.07ms for
   common 96x40 block cases on this host.
+- Deferred terminal fill-key and edge-bias setup until glyph/mixed assembly needs it, keeping default block-mode frames
+  on the shortest setup path.
