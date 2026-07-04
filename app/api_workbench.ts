@@ -297,6 +297,7 @@ import {
   workbenchThreeShouldUseLiveCadence,
 } from "../src/app/workbench_three_terminal_pressure.ts";
 import { WORKBENCH_THREE_DRAW_INTERVAL_MS, WORKBENCH_THREE_READBACK_STRATEGY } from "./workbench_three_policy.ts";
+import { type WorkbenchThreePanelEntry, WorkbenchThreePanelRegistry } from "./workbench_three_panel_registry.ts";
 import { ApiWorkbenchThreeRuntimeController } from "./workbench_three_runtime.ts";
 import type {
   Accent,
@@ -628,12 +629,7 @@ interface DropdownOverlay {
   itemIndexes?: number[];
   selectedIndex?: number;
 }
-interface DynamicThreePanel {
-  rectangle: Signal<Rectangle>;
-  graphicsRectangle: Signal<Rectangle>;
-  scene: Signal<WorkbenchThreeScene | null>;
-  panel: ThreePanelFrameView;
-}
+type DynamicThreePanel = WorkbenchThreePanelEntry<ThreePanelFrameView>;
 interface WindowRenderContext {
   viewport: Rectangle;
   offset: { columns: number; rows: number };
@@ -821,7 +817,9 @@ const threePanel = new ThreePanelFrameView({
   diagnostics: workbenchDiagnostics,
   onUpdate: scheduleDraw,
 });
-const visualizationThreePanels = new Map<VisualizationWindowId, DynamicThreePanel>();
+const visualizationThreePanels = new WorkbenchThreePanelRegistry<VisualizationWindowId, ThreePanelFrameView>(
+  createVisualizationThreePanel,
+);
 const visualizationThreeSupport = new Map<string, boolean>();
 
 tui.rectangle.subscribe(() => {
@@ -987,12 +985,6 @@ tui.on("destroy", () => {
   explorer.dispose();
   table.dispose();
   threePanel.dispose();
-  for (const entry of visualizationThreePanels.values()) {
-    entry.panel.dispose();
-    entry.scene.dispose();
-    entry.rectangle.dispose();
-    entry.graphicsRectangle.dispose();
-  }
   visualizationThreePanels.clear();
   threeScene.dispose();
   threeBodyRect.dispose();
@@ -2832,9 +2824,10 @@ function renderWindowScrollbars(
 }
 
 function ensureVisualizationThreePanel(id: VisualizationWindowId): DynamicThreePanel {
-  const existing = visualizationThreePanels.get(id);
-  if (existing) return existing;
+  return visualizationThreePanels.ensure(id);
+}
 
+function createVisualizationThreePanel(id: VisualizationWindowId): DynamicThreePanel {
   const rectangle = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
   const graphicsRectangle = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
   const scene = new Signal<WorkbenchThreeScene | null>(null);
@@ -2851,9 +2844,7 @@ function ensureVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
     diagnostics: workbenchDiagnostics,
     onUpdate: scheduleDraw,
   });
-  const entry = { rectangle, graphicsRectangle, scene, panel };
-  visualizationThreePanels.set(id, entry);
-  return entry;
+  return { rectangle, graphicsRectangle, scene, panel };
 }
 
 function syncWorkbenchThreeFrameInterval(): void {
@@ -2870,27 +2861,15 @@ function hasLiveThreeRenderedWindow(): boolean {
 }
 
 function hideVisualizationThreePanel(id: VisualizationWindowId): void {
-  const entry = visualizationThreePanels.get(id);
-  if (!entry) return;
-  setWorkbenchThreeSceneSignal(entry.scene, null);
-  setWorkbenchThreeRect(entry.rectangle, { column: 0, row: 0, width: 0, height: 0 });
-  setWorkbenchThreeRect(entry.graphicsRectangle, { column: 0, row: 0, width: 0, height: 0 });
+  visualizationThreePanels.hide(id);
 }
 
 function hideVisualizationThreePanelsExcept(visibleIds: ReadonlySet<VisualizationWindowId>): void {
-  for (const id of visualizationThreePanels.keys()) {
-    if (!visibleIds.has(id)) hideVisualizationThreePanel(id);
-  }
+  visualizationThreePanels.hideExcept(visibleIds);
 }
 
 function disposeVisualizationThreePanel(id: VisualizationWindowId): void {
-  const entry = visualizationThreePanels.get(id);
-  if (!entry) return;
-  entry.panel.dispose();
-  entry.scene.dispose();
-  entry.rectangle.dispose();
-  entry.graphicsRectangle.dispose();
-  visualizationThreePanels.delete(id);
+  visualizationThreePanels.dispose(id);
 }
 
 function setThreeBodyRect(rect: Rectangle): void {
