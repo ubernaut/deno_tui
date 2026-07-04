@@ -334,7 +334,7 @@ import {
   workbenchStyledRowsRenderCommandsInto,
 } from "../src/app/workbench_row_render.ts";
 import { type RowStyle, type ThreeHeaderPerformance, threeHeaderRows } from "../src/app/workbench_rows.ts";
-import { writeThreeHeaderPerformance } from "../src/app/workbench_three_header.ts";
+import { writeThreeHeaderRuntimePerformance } from "../src/app/workbench_three_header.ts";
 import {
   shouldCountWorkbenchThreeGridPressure,
   workbenchThreeShouldUseLiveCadence,
@@ -1439,15 +1439,11 @@ function renderThree(frame: Frame, rect: Rectangle): void {
         rect.width,
         t,
         performance
-          ? writeThreeHeaderPerformance(workbenchThreeHeaderPerformance, performance, {
+          ? writeThreeHeaderRuntimePerformance(workbenchThreeHeaderPerformance, performance, {
             sourceMaxCells: workbenchThreeLiveMaxCells.peek(),
-            targetFps: 1000 / workbenchThreeFrameInterval.peek(),
+            frameIntervalMs: workbenchThreeFrameInterval.peek(),
             measuredFps: threeCadence.measuredFps(),
-            pressureCells: pressure.currentCells,
-            pressureHighFrames: pressure.highFrames,
-            pressureLowFrames: pressure.lowFrames,
-            pressureByteRate: pressure.lastByteRate,
-            pressureScoped: pressure.lastScoped,
+            pressure,
           })
           : undefined,
       ),

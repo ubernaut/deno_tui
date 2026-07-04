@@ -203,6 +203,11 @@ performance, shared terminal/web workbench projections, and oversized module red
   with the projection helper instead of the oversized terminal workbench renderer.
 - Added a shared `hideWorkbenchThreeRect` geometry helper and routed built-in/dynamic Three panes through it so hidden
   renderer surfaces reuse the same unchanged-write guard as visible rect updates.
+- Retuned the default workbench Three block renderer to start at the full 960-cell tier, avoid startup pressure
+  collapse, and use deferred readback at the 20 FPS full-resolution cadence after default probes held 960 cells without
+  terminal-pressure downshift.
+- Moved workbench Three header runtime telemetry composition into the shared header helper so the terminal adapter no
+  longer assembles pressure/cadence fields inline.
 - Added sustained byte-rate context to workbench Three pressure change logs so adaptive downshifts show the same signal
   used by the policy.
 - Lowered the workbench Three sustained terminal byte-rate pressure threshold to make the default block renderer back

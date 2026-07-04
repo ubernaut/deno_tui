@@ -32,6 +32,19 @@ export interface ThreeHeaderWorkbenchTelemetry {
   pressureScoped?: boolean;
 }
 
+export interface ThreeHeaderRuntimeTelemetry {
+  sourceMaxCells: number;
+  frameIntervalMs: number;
+  measuredFps?: number;
+  pressure: {
+    currentCells: number;
+    highFrames: number;
+    lowFrames: number;
+    lastByteRate: number;
+    lastScoped: boolean;
+  };
+}
+
 /** Copies renderer and workbench telemetry into a caller-owned header snapshot. */
 export function writeThreeHeaderPerformance(
   target: ThreeHeaderPerformance,
@@ -57,6 +70,24 @@ export function writeThreeHeaderPerformance(
   target.pressureByteRate = telemetry.pressureByteRate;
   target.pressureScoped = telemetry.pressureScoped;
   return target;
+}
+
+/** Copies renderer telemetry plus workbench runtime pressure/cadence into a caller-owned header snapshot. */
+export function writeThreeHeaderRuntimePerformance(
+  target: ThreeHeaderPerformance,
+  renderer: ThreeAsciiRendererPerformance,
+  telemetry: ThreeHeaderRuntimeTelemetry,
+): ThreeHeaderPerformance {
+  return writeThreeHeaderPerformance(target, renderer, {
+    sourceMaxCells: telemetry.sourceMaxCells,
+    targetFps: telemetry.frameIntervalMs > 0 ? 1000 / telemetry.frameIntervalMs : undefined,
+    measuredFps: telemetry.measuredFps,
+    pressureCells: telemetry.pressure.currentCells,
+    pressureHighFrames: telemetry.pressure.highFrames,
+    pressureLowFrames: telemetry.pressure.lowFrames,
+    pressureByteRate: telemetry.pressure.lastByteRate,
+    pressureScoped: telemetry.pressure.lastScoped,
+  });
 }
 
 /** Builds the responsive performance segment shown in the workbench Three header. */

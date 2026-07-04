@@ -3,6 +3,7 @@ import {
   type ThreeHeaderPerformance,
   threeHeaderPerformanceText,
   writeThreeHeaderPerformance,
+  writeThreeHeaderRuntimePerformance,
 } from "../src/app/workbench_three_header.ts";
 
 Deno.test("threeHeaderPerformanceText formats detailed target measured queue and pressure telemetry", () => {
@@ -108,4 +109,49 @@ Deno.test("writeThreeHeaderPerformance reuses caller-owned snapshots", () => {
     pressureByteRate: 2048,
     pressureScoped: true,
   });
+});
+
+Deno.test("writeThreeHeaderRuntimePerformance composes pressure cadence telemetry", () => {
+  const target: ThreeHeaderPerformance = {
+    totalMs: 0,
+    initMs: 0,
+    sceneMs: 0,
+    readbackMs: 0,
+    assemblyMs: 0,
+    cells: 0,
+  };
+
+  const result = writeThreeHeaderRuntimePerformance(target, {
+    columns: 24,
+    rows: 10,
+    cells: 240,
+    terminalGlyphStyle: "blocks",
+    totalMs: 6.5,
+    initMs: 0,
+    sceneMs: 4.5,
+    ansiMs: 0.4,
+    readbackMs: 1.2,
+    assemblyMs: 0.8,
+  }, {
+    sourceMaxCells: 960,
+    frameIntervalMs: 50,
+    measuredFps: 19.6,
+    pressure: {
+      currentCells: 960,
+      highFrames: 1,
+      lowFrames: 2,
+      lastByteRate: 123_456,
+      lastScoped: true,
+    },
+  });
+
+  assertStrictEquals(result, target);
+  assertEquals(result.sourceMaxCells, 960);
+  assertEquals(result.targetFps, 20);
+  assertEquals(result.measuredFps, 19.6);
+  assertEquals(result.pressureCells, 960);
+  assertEquals(result.pressureHighFrames, 1);
+  assertEquals(result.pressureLowFrames, 2);
+  assertEquals(result.pressureByteRate, 123_456);
+  assertEquals(result.pressureScoped, true);
 });
