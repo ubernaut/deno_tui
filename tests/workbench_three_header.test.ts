@@ -24,8 +24,10 @@ Deno.test("threeHeaderPerformanceText formats detailed target measured queue and
       pressureLowFrames: 12,
       pressureByteRate: 12_581,
       pressureScoped: true,
+      pressureChangedRows: 18,
+      pressureRenderedRows: 17,
     }, 120),
-    "frame 17ms scene 12 read 4 asm 1 1920c cap 3840c @14fps live 12fps q2/6 io 13KB/s tier 60c h0/l12",
+    "frame 17ms scene 12 read 4 asm 1 1920c cap 3840c @14fps live 12fps q2/6 io 13KB/s rows 18/17 tier 60c h0/l12",
   );
 });
 
@@ -45,9 +47,11 @@ Deno.test("threeHeaderPerformanceText prefers measured fps in compact mode and f
     pressureHighFrames: 1,
     pressureLowFrames: 0,
     pressureScoped: false,
+    pressureChangedRows: 54,
+    pressureRenderedRows: 17,
   };
 
-  assertEquals(threeHeaderPerformanceText(input, 64), "17ms 1920c live 10fps sat6/6 wide tier 30c h1/l0");
+  assertEquals(threeHeaderPerformanceText(input, 80), "17ms 1920c live 10fps sat6/6 wide rows 54/17 tier 30c h1/l0");
   assertEquals(threeHeaderPerformanceText(input, 32), "17ms 1920c live 10fps");
   assertEquals(threeHeaderPerformanceText(input, 20), "17ms 1920c");
 });
@@ -87,6 +91,8 @@ Deno.test("writeThreeHeaderPerformance reuses caller-owned snapshots", () => {
     pressureLowFrames: 4,
     pressureByteRate: 2048,
     pressureScoped: true,
+    pressureChangedRows: 18,
+    pressureRenderedRows: 17,
   });
 
   assertStrictEquals(result, target);
@@ -109,6 +115,8 @@ Deno.test("writeThreeHeaderPerformance reuses caller-owned snapshots", () => {
     pressureLowFrames: 4,
     pressureByteRate: 2048,
     pressureScoped: true,
+    pressureChangedRows: 18,
+    pressureRenderedRows: 17,
   });
 });
 
@@ -143,6 +151,8 @@ Deno.test("writeThreeHeaderRuntimePerformance composes pressure cadence telemetr
       lowFrames: 2,
       lastByteRate: 123_456,
       lastScoped: true,
+      lastChangedRows: 18,
+      lastRenderedRows: 17,
     },
   });
 
@@ -155,4 +165,6 @@ Deno.test("writeThreeHeaderRuntimePerformance composes pressure cadence telemetr
   assertEquals(result.pressureLowFrames, 2);
   assertEquals(result.pressureByteRate, 123_456);
   assertEquals(result.pressureScoped, true);
+  assertEquals(result.pressureChangedRows, 18);
+  assertEquals(result.pressureRenderedRows, 17);
 });

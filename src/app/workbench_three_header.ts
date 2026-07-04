@@ -19,6 +19,8 @@ export interface ThreeHeaderPerformance {
   pressureLowFrames?: number;
   pressureByteRate?: number;
   pressureScoped?: boolean;
+  pressureChangedRows?: number;
+  pressureRenderedRows?: number;
 }
 
 export interface ThreeHeaderWorkbenchTelemetry {
@@ -30,6 +32,8 @@ export interface ThreeHeaderWorkbenchTelemetry {
   pressureLowFrames?: number;
   pressureByteRate?: number;
   pressureScoped?: boolean;
+  pressureChangedRows?: number;
+  pressureRenderedRows?: number;
 }
 
 export interface ThreeHeaderRuntimeTelemetry {
@@ -42,6 +46,8 @@ export interface ThreeHeaderRuntimeTelemetry {
     lowFrames: number;
     lastByteRate: number;
     lastScoped: boolean;
+    lastChangedRows: number;
+    lastRenderedRows: number;
   };
 }
 
@@ -69,6 +75,8 @@ export function writeThreeHeaderPerformance(
   target.pressureLowFrames = telemetry.pressureLowFrames;
   target.pressureByteRate = telemetry.pressureByteRate;
   target.pressureScoped = telemetry.pressureScoped;
+  target.pressureChangedRows = telemetry.pressureChangedRows;
+  target.pressureRenderedRows = telemetry.pressureRenderedRows;
   return target;
 }
 
@@ -87,6 +95,8 @@ export function writeThreeHeaderRuntimePerformance(
     pressureLowFrames: telemetry.pressure.lowFrames,
     pressureByteRate: telemetry.pressure.lastByteRate,
     pressureScoped: telemetry.pressure.lastScoped,
+    pressureChangedRows: telemetry.pressure.lastChangedRows,
+    pressureRenderedRows: telemetry.pressure.lastRenderedRows,
   });
 }
 
@@ -133,7 +143,15 @@ function threeHeaderTerminalPressureText(performance: ThreeHeaderPerformance): s
   const high = Math.max(0, Math.floor(performance.pressureHighFrames ?? 0));
   const low = Math.max(0, Math.floor(performance.pressureLowFrames ?? 0));
   const scoped = performance.pressureScoped === false ? "wide" : "io";
-  return `${scoped}${byteRate} tier ${Math.max(1, Math.floor(performance.pressureCells))}c h${high}/l${low}`;
+  const rows = threeHeaderTerminalPressureRowsText(performance);
+  return `${scoped}${byteRate}${rows} tier ${Math.max(1, Math.floor(performance.pressureCells))}c h${high}/l${low}`;
+}
+
+function threeHeaderTerminalPressureRowsText(performance: ThreeHeaderPerformance): string {
+  if (performance.pressureChangedRows === undefined && performance.pressureRenderedRows === undefined) return "";
+  const changed = Math.max(0, Math.floor(performance.pressureChangedRows ?? 0));
+  const rendered = Math.max(0, Math.floor(performance.pressureRenderedRows ?? 0));
+  return ` rows ${changed}/${rendered}`;
 }
 
 function formatCompactByteRate(bytesPerSecond: number): string {

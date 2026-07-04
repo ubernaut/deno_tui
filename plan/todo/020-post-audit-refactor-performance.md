@@ -1142,3 +1142,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   while keeping resize/effect/glyph setter decisions pure and tested.
 - Reused a scratch result object in workbench frame row background-run assembly, removing per-run result allocation on
   ANSI/background-heavy workbench and Three span flush paths while preserving existing row compaction behavior.
+- Added changed/rendered row counts to the workbench Three header pressure telemetry so renderer FPS, terminal byte
+  pressure, and row-scope pressure can be distinguished directly in the live workbench.
