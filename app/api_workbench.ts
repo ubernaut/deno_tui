@@ -23,7 +23,6 @@ import {
   clampWorkbenchTileDensity,
   clipRect,
   contrastText,
-  createWorkbenchShelfLayoutBuffers,
   createWorkbenchVisualizationWindowOptions,
   createWorkbenchWorkspaceStore,
   deleteWorkbenchWorkspace,
@@ -97,6 +96,7 @@ import {
   writeFrame,
 } from "../src/app/workbench/mod.ts";
 import { inspectWorkbenchWindowSignalState, WorkbenchController } from "../src/app/workbench/controller.ts";
+import { WorkbenchShelfBufferCache } from "../src/app/workbench_shelf_cache.ts";
 import {
   applyWorkbenchAsciiConfigRowAction,
   createDefaultWorkbenchAsciiOptions,
@@ -641,12 +641,7 @@ const cpuHexHitTileBuffer: CpuHexTileLayout[] = [];
 const cpuHexRevealTileBuffer: CpuHexTileLayout[] = [];
 const menuBarHitLayouts: WorkbenchMenuBarHitLayout[] = [];
 const headerLayout: WorkbenchHeaderLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
-const minimizedShelfEntries: Array<{ id: WindowId; title: string }> = [];
-const fullscreenTabEntries: Array<{ id: WindowId; title: string; selected?: boolean; hidden?: boolean }> = [];
-const minimizedShelfLayoutBuffers = createWorkbenchShelfLayoutBuffers<WindowId>();
-const fullscreenTabLayoutBuffers = createWorkbenchShelfLayoutBuffers<WindowId>();
-const minimizedShelfRenderCommands: ReturnType<typeof workbenchShelfRenderCommandsInto<WindowId>> = [];
-const fullscreenTabRenderCommands: ReturnType<typeof workbenchShelfRenderCommandsInto<WindowId>> = [];
+const shelfBuffers = new WorkbenchShelfBufferCache<WindowId>();
 const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
 const windowScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const workspaceScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
@@ -2401,15 +2396,15 @@ function addInlineStepperHits(rect: Rectangle, row: number): void {
 
 function renderShelf(frame: Frame): void {
   const row = currentHeight() - 2;
-  const entries = workbenchShelfEntriesInto(minimizedShelfEntries, windowManager.inspect().windows, windowTitle);
+  const entries = workbenchShelfEntriesInto(shelfBuffers.entries, windowManager.inspect().windows, windowTitle);
   if (entries.length === 0) return;
-  const layout = layoutWorkbenchShelfInto(minimizedShelfLayoutBuffers, {
+  const layout = layoutWorkbenchShelfInto(shelfBuffers.shelfLayout, {
     row,
     column: 1,
     width: Math.max(0, currentWidth() - 1),
     entries,
   });
-  const commands = workbenchShelfRenderCommandsInto(minimizedShelfRenderCommands, layout);
+  const commands = workbenchShelfRenderCommandsInto(shelfBuffers.shelfCommands, layout);
   for (const command of commands) {
     if (command.kind === "prefix") {
       write(
@@ -2433,13 +2428,13 @@ function renderWindowTabs(frame: Frame): void {
   const row = currentHeight() - 2;
   const t = theme();
   fillRow(frame, row, t.backgroundSoft);
-  const layout = layoutWorkbenchTabsInto(fullscreenTabLayoutBuffers, {
+  const layout = layoutWorkbenchTabsInto(shelfBuffers.tabLayout, {
     row,
     column: 1,
     width: Math.max(0, currentWidth() - 1),
-    tabs: workbenchTabEntriesInto(fullscreenTabEntries, windowManager.inspect().tabs, windowTitle),
+    tabs: workbenchTabEntriesInto(shelfBuffers.tabs, windowManager.inspect().tabs, windowTitle),
   });
-  const commands = workbenchShelfRenderCommandsInto(fullscreenTabRenderCommands, layout);
+  const commands = workbenchShelfRenderCommandsInto(shelfBuffers.tabCommands, layout);
   for (const command of commands) {
     if (command.kind === "prefix") {
       write(frame, command.rect.row, command.rect.column, paint(command.text, { fg: t.muted, bg: t.backgroundSoft }));

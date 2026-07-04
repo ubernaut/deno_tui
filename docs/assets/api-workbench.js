@@ -15929,6 +15929,42 @@ function createWebTui(options) {
 // src/web/remote_terminal.ts
 var textDecoder5 = new TextDecoder();
 
+// src/app/workbench_shelf_cache.ts
+var WorkbenchShelfBufferCache = class {
+  entries = [];
+  tabs = [];
+  shelfLayout = createWorkbenchShelfLayoutBuffers();
+  tabLayout = createWorkbenchShelfLayoutBuffers();
+  shelfCommands = [];
+  tabCommands = [];
+  clear() {
+    this.entries.length = 0;
+    this.tabs.length = 0;
+    this.shelfLayout.buttons.length = 0;
+    this.shelfLayout.items.length = 0;
+    this.shelfLayout.placements.length = 0;
+    this.tabLayout.buttons.length = 0;
+    this.tabLayout.items.length = 0;
+    this.tabLayout.placements.length = 0;
+    this.shelfCommands.length = 0;
+    this.tabCommands.length = 0;
+  }
+  inspect() {
+    return {
+      entries: this.entries.length,
+      tabs: this.tabs.length,
+      shelfButtons: this.shelfLayout.buttons.length,
+      shelfItems: this.shelfLayout.items.length,
+      shelfPlacements: this.shelfLayout.placements.length,
+      tabButtons: this.tabLayout.buttons.length,
+      tabItems: this.tabLayout.items.length,
+      tabPlacements: this.tabLayout.placements.length,
+      shelfCommands: this.shelfCommands.length,
+      tabCommands: this.tabCommands.length
+    };
+  }
+};
+
 // app/api_workbench_catalog.ts
 var apiWorkbenchPanelTitles = {
   explorer: "Explorer",
@@ -17847,12 +17883,7 @@ var inspectorWrappedTextRows = [];
 var logRenderRows = [];
 var htmlCssLayoutBoxes = [];
 var htmlCssLayoutRenderCommands = [];
-var minimizedShelfEntries = [];
-var fullscreenTabEntries = [];
-var minimizedShelfLayoutBuffers = createWorkbenchShelfLayoutBuffers();
-var fullscreenTabLayoutBuffers = createWorkbenchShelfLayoutBuffers();
-var minimizedShelfRenderCommands = [];
-var fullscreenTabRenderCommands = [];
+var shelfBuffers = new WorkbenchShelfBufferCache();
 var menuBarHitLayouts = [];
 var headerLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
 var windowFrameBoxLines = [];
@@ -18278,15 +18309,15 @@ function draw() {
 function renderShelf(frame) {
   const row = rowsCount() - 2;
   syncWebWindowManagerState();
-  const entries = workbenchShelfEntriesInto(minimizedShelfEntries, webWindows.inspect().windows, panelTitle);
+  const entries = workbenchShelfEntriesInto(shelfBuffers.entries, webWindows.inspect().windows, panelTitle);
   if (entries.length === 0) return;
-  const layout = layoutWorkbenchShelfInto(minimizedShelfLayoutBuffers, {
+  const layout = layoutWorkbenchShelfInto(shelfBuffers.shelfLayout, {
     row,
     column: 2,
     width: Math.max(0, cols() - 2),
     entries
   });
-  const commands = workbenchShelfRenderCommandsInto(minimizedShelfRenderCommands, layout);
+  const commands = workbenchShelfRenderCommandsInto(shelfBuffers.shelfCommands, layout);
   for (const command of commands) {
     if (command.kind === "prefix") {
       write(frame, command.rect.row, command.rect.column, paint(command.text, theme().muted, theme().backgroundSoft));
@@ -18353,13 +18384,13 @@ function menuItemRect(menuStart, itemId, preferredWidth, preferredHeight) {
 function renderWindowTabs(frame) {
   const row = rowsCount() - 2;
   syncWebWindowManagerState();
-  const layout = layoutWorkbenchTabsInto(fullscreenTabLayoutBuffers, {
+  const layout = layoutWorkbenchTabsInto(shelfBuffers.tabLayout, {
     row,
     column: 2,
     width: Math.max(0, cols() - 2),
-    tabs: workbenchTabEntriesInto(fullscreenTabEntries, webWindows.inspect().tabs, panelTitle)
+    tabs: workbenchTabEntriesInto(shelfBuffers.tabs, webWindows.inspect().tabs, panelTitle)
   });
-  const commands = workbenchShelfRenderCommandsInto(fullscreenTabRenderCommands, layout);
+  const commands = workbenchShelfRenderCommandsInto(shelfBuffers.tabCommands, layout);
   for (const command of commands) {
     if (command.kind === "prefix") {
       write(frame, command.rect.row, command.rect.column, paint(command.text, theme().muted, theme().backgroundSoft));

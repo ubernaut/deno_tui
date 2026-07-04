@@ -17,7 +17,6 @@ import {
   createRuntimeStore,
   createTerminalWorkspaceController,
   createWebTui,
-  createWorkbenchShelfLayoutBuffers,
   DataTableController,
   defaultWorkbenchMinimizedState,
   FileExplorerController,
@@ -112,6 +111,7 @@ import {
   wrappedControlOptionRowCount,
   writeStringFrameRow,
 } from "../../mod.web.ts";
+import { WorkbenchShelfBufferCache } from "../../src/app/workbench_shelf_cache.ts";
 import {
   apiWorkbenchColumns,
   apiWorkbenchDocs,
@@ -375,12 +375,7 @@ const inspectorWrappedTextRows: string[] = [];
 const logRenderRows: RowStyle[] = [];
 const htmlCssLayoutBoxes: ComputedLayoutBox[] = [];
 const htmlCssLayoutRenderCommands: HtmlCssLayoutRenderCommand[] = [];
-const minimizedShelfEntries: Array<{ id: PanelId; title: string }> = [];
-const fullscreenTabEntries: Array<{ id: PanelId; title: string; selected?: boolean; hidden?: boolean }> = [];
-const minimizedShelfLayoutBuffers = createWorkbenchShelfLayoutBuffers<PanelId>();
-const fullscreenTabLayoutBuffers = createWorkbenchShelfLayoutBuffers<PanelId>();
-const minimizedShelfRenderCommands: ReturnType<typeof workbenchShelfRenderCommandsInto<PanelId>> = [];
-const fullscreenTabRenderCommands: ReturnType<typeof workbenchShelfRenderCommandsInto<PanelId>> = [];
+const shelfBuffers = new WorkbenchShelfBufferCache<PanelId>();
 const menuBarHitLayouts: WorkbenchMenuBarHitLayout[] = [];
 const headerLayout: WorkbenchHeaderLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
 const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
@@ -823,15 +818,15 @@ function draw(): void {
 function renderShelf(frame: string[]): void {
   const row = rowsCount() - 2;
   syncWebWindowManagerState();
-  const entries = workbenchShelfEntriesInto(minimizedShelfEntries, webWindows.inspect().windows, panelTitle);
+  const entries = workbenchShelfEntriesInto(shelfBuffers.entries, webWindows.inspect().windows, panelTitle);
   if (entries.length === 0) return;
-  const layout = layoutWorkbenchShelfInto(minimizedShelfLayoutBuffers, {
+  const layout = layoutWorkbenchShelfInto(shelfBuffers.shelfLayout, {
     row,
     column: 2,
     width: Math.max(0, cols() - 2),
     entries,
   });
-  const commands = workbenchShelfRenderCommandsInto(minimizedShelfRenderCommands, layout);
+  const commands = workbenchShelfRenderCommandsInto(shelfBuffers.shelfCommands, layout);
   for (const command of commands) {
     if (command.kind === "prefix") {
       write(frame, command.rect.row, command.rect.column, paint(command.text, theme().muted, theme().backgroundSoft));
@@ -902,13 +897,13 @@ function menuItemRect(menuStart: number, itemId: string, preferredWidth: number,
 function renderWindowTabs(frame: string[]): void {
   const row = rowsCount() - 2;
   syncWebWindowManagerState();
-  const layout = layoutWorkbenchTabsInto(fullscreenTabLayoutBuffers, {
+  const layout = layoutWorkbenchTabsInto(shelfBuffers.tabLayout, {
     row,
     column: 2,
     width: Math.max(0, cols() - 2),
-    tabs: workbenchTabEntriesInto(fullscreenTabEntries, webWindows.inspect().tabs, panelTitle),
+    tabs: workbenchTabEntriesInto(shelfBuffers.tabs, webWindows.inspect().tabs, panelTitle),
   });
-  const commands = workbenchShelfRenderCommandsInto(fullscreenTabRenderCommands, layout);
+  const commands = workbenchShelfRenderCommandsInto(shelfBuffers.tabCommands, layout);
   for (const command of commands) {
     if (command.kind === "prefix") {
       write(frame, command.rect.row, command.rect.column, paint(command.text, theme().muted, theme().backgroundSoft));
