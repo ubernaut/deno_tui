@@ -354,6 +354,27 @@ export function writeThreeAsciiReadbackCopySourceDescriptors(
   return targets;
 }
 
+/** Writes current GPU output buffer slots into a caller-owned slot record. */
+export function writeThreeAsciiReadbackCopySourceSlots<TBuffer>(
+  target: ThreeAsciiReadbackCopySourceSlots<TBuffer>,
+  fill: ThreeAsciiReadbackCopyTarget<TBuffer> | undefined,
+  edge: ThreeAsciiReadbackCopyTarget<TBuffer> | undefined,
+  color: ThreeAsciiReadbackCopyTarget<TBuffer>,
+): ThreeAsciiReadbackCopySourceSlots<TBuffer> {
+  if (fill) {
+    target.fill = fill;
+  } else {
+    delete target.fill;
+  }
+  if (edge) {
+    target.edge = edge;
+  } else {
+    delete target.edge;
+  }
+  target.color = color;
+  return target;
+}
+
 /** Writes current GPU readback source buffers into a caller-owned source map. */
 export function writeThreeAsciiReadbackCopySources<TBuffer>(
   target: ThreeAsciiReadbackCopySources<TBuffer>,

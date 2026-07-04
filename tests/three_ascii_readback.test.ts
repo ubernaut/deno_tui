@@ -7,11 +7,13 @@ import {
   ThreeAsciiReadbackCopyPlanCache,
   type ThreeAsciiReadbackCopySource,
   type ThreeAsciiReadbackCopySources,
+  type ThreeAsciiReadbackCopySourceSlots,
   ThreeAsciiReadbackLayoutCache,
   type ThreeAsciiReadbackLayoutOptions,
   ThreeAsciiReadbackViewCache,
   writeThreeAsciiReadbackCopySourceDescriptors,
   writeThreeAsciiReadbackCopySources,
+  writeThreeAsciiReadbackCopySourceSlots,
   writeThreeAsciiReadbackLayoutOptions,
 } from "../src/three_ascii/readback.ts";
 
@@ -323,6 +325,26 @@ Deno.test("writeThreeAsciiReadbackCopySources reuses source maps and clears stal
   });
   assertEquals(target, {
     color: "compact-color-buffer",
+  });
+});
+
+Deno.test("writeThreeAsciiReadbackCopySourceSlots reuses slot records and clears stale optional buffers", () => {
+  const target: ThreeAsciiReadbackCopySourceSlots<string> = {
+    fill: { gpu: "old-fill" },
+    edge: { gpu: "old-edge" },
+    color: { gpu: "old-color" },
+  };
+  const fill = { gpu: "fill-buffer" };
+  const edge = { gpu: "edge-buffer" };
+  const color = { gpu: "color-buffer" };
+
+  assertEquals(writeThreeAsciiReadbackCopySourceSlots(target, fill, edge, color), target);
+  assertEquals(target, { fill, edge, color });
+
+  const compactColor = { gpu: "compact-color-buffer" };
+  writeThreeAsciiReadbackCopySourceSlots(target, undefined, undefined, compactColor);
+  assertEquals(target, {
+    color: compactColor,
   });
 });
 

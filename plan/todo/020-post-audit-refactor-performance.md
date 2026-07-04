@@ -384,6 +384,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   explicit in the type, preventing stale fill/edge GPU sources from carrying across compact block-mode frames.
 - Extracted Three ASCII readback layout-option and copy-descriptor updates into caller-owned readback helpers, keeping
   renderer readback planning allocation-light while preserving benchmarked copy and ANSI-grid throughput.
+- Reused Three ASCII readback copy source-slot records so blocking and deferred readback copies no longer allocate a
+  temporary GPU slot wrapper before updating the retained source map.
 - Split workbench styled-cell tokenization and row/slice assembly into `workbench_frame_rows.ts`, preserving the
   existing frame facade while keeping the terminal hot path independently testable and benchmarked.
 - Extracted ThreePanelFrameView graphics-image handle ownership into `ThreePanelGraphicsImageController` with direct
