@@ -490,3 +490,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   on the shortest setup path.
 - Replaced block-mode per-cell fill bucket rounding with the equivalent 5.5 visibility threshold, preserving rounded
   boundary and NaN behavior while trimming work from dense block frame assembly.
+- Removed the now-dead block-mode branches from generic fill-only glyph assembly so the default block fast path stays
+  isolated and glyph/mixed assembly no longer pays for block-mode conditionals.

@@ -106,7 +106,6 @@ export class ThreeAsciiAnsiGridAssembler {
           rows,
           fillGlyphs,
           colors,
-          terminalGlyphMode,
           terminalFillGlyphKeys,
           lastForegroundKey,
           lastGlyphKey,
@@ -123,7 +122,6 @@ export class ThreeAsciiAnsiGridAssembler {
         rows,
         fillGlyphs,
         colors,
-        terminalGlyphMode,
         terminalFillGlyphKeys,
         lastForegroundKey,
         lastGlyphKey,
@@ -406,7 +404,6 @@ export class ThreeAsciiAnsiGridAssembler {
     rows: number,
     fillGlyphs: ArrayLike<number>,
     colors: ArrayLike<number>,
-    terminalGlyphMode: TerminalGlyphMode,
     terminalFillGlyphKeys: readonly number[],
     lastForegroundKey: number,
     lastGlyphKey: number,
@@ -416,7 +413,6 @@ export class ThreeAsciiAnsiGridAssembler {
     lastRawBlue: number,
     lastFillGlyphIndex: number,
   ): string[][] {
-    const blockMode = terminalGlyphMode === GLYPH_MODE_BLOCKS;
     for (let row = 0; row < rows; row += 1) {
       const outputRow = grid[row];
       const rowOffset = row * columns;
@@ -437,16 +433,14 @@ export class ThreeAsciiAnsiGridAssembler {
           continue;
         }
 
-        const glyphKey = blockMode
-          ? SOLID_BLOCK_GLYPH_KEY
-          : fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
+        const glyphKey = fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
         const colorOffset = index * 4;
         const rawRed = colors[colorOffset] ?? 0;
         const rawGreen = colors[colorOffset + 1] ?? 0;
         const rawBlue = colors[colorOffset + 2] ?? 0;
         if (
           rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey &&
-          (blockMode || fillGlyphIndex === lastFillGlyphIndex)
+          fillGlyphIndex === lastFillGlyphIndex
         ) {
           outputRow[column] = lastCell;
           continue;
@@ -497,7 +491,6 @@ export class ThreeAsciiAnsiGridAssembler {
     rows: number,
     fillGlyphs: ArrayLike<number>,
     colors: ArrayLike<number>,
-    terminalGlyphMode: TerminalGlyphMode,
     terminalFillGlyphKeys: readonly number[],
     lastForegroundKey: number,
     lastGlyphKey: number,
@@ -507,7 +500,6 @@ export class ThreeAsciiAnsiGridAssembler {
     lastRawBlue: number,
     lastFillGlyphIndex: number,
   ): string[][] {
-    const blockMode = terminalGlyphMode === GLYPH_MODE_BLOCKS;
     for (let row = 0; row < rows; row += 1) {
       const outputRow = grid[row];
       const rowOffset = row * columns;
@@ -529,16 +521,14 @@ export class ThreeAsciiAnsiGridAssembler {
           continue;
         }
 
-        const glyphKey = blockMode
-          ? SOLID_BLOCK_GLYPH_KEY
-          : fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
+        const glyphKey = fillGlyphKeyForIndex(terminalFillGlyphKeys, fillGlyphIndex);
         const colorOffset = index * 4;
         const rawRed = colors[colorOffset] as number;
         const rawGreen = colors[colorOffset + 1] as number;
         const rawBlue = colors[colorOffset + 2] as number;
         if (
           rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue && glyphKey === lastGlyphKey &&
-          (blockMode || fillGlyphIndex === lastFillGlyphIndex)
+          fillGlyphIndex === lastFillGlyphIndex
         ) {
           outputRow[column] = lastCell;
           continue;
