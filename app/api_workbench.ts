@@ -272,6 +272,7 @@ import { workbenchInspectorRowsInto } from "./workbench_inspector.ts";
 import { workbenchLogRowsFromSourcesInto } from "./workbench_logs.ts";
 import { writeWorkbenchThreeGrid } from "./workbench_three_grid.ts";
 import { setWorkbenchThreeRect, workbenchThreeContentGraphicsRect } from "./workbench_three_geometry.ts";
+import { WorkbenchThreeCadenceMeter } from "./workbench_three_cadence.ts";
 import {
   setWorkbenchThreeSceneSignal,
   workbenchStudioScene,
@@ -824,6 +825,7 @@ const table = new DataTableController<ProcessRow>({
 });
 const threeBodyRect = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
 const threeGraphicsRect = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
+const threeCadence = new WorkbenchThreeCadenceMeter();
 const threeScene = new Computed<WorkbenchThreeScene | null>(() =>
   workbenchStudioScene({
     blocked: genericModalBlocksThree.value,
@@ -851,7 +853,10 @@ const threePanel = new ThreePanelFrameView({
   maxRenderCells: workbenchThreeLiveMaxCells,
   readbackStrategy: WORKBENCH_THREE_READBACK_STRATEGY,
   diagnostics: workbenchDiagnostics,
-  onUpdate: scheduleDraw,
+  onUpdate: () => {
+    threeCadence.record();
+    scheduleDraw();
+  },
 });
 const visualizationThreePanels = new WorkbenchThreePanelRegistry<VisualizationWindowId, ThreePanelFrameView>(
   createVisualizationThreePanel,
@@ -1410,6 +1415,7 @@ function renderThree(frame: Frame, rect: Rectangle): void {
             ...performance,
             sourceMaxCells: workbenchThreeLiveMaxCells.peek(),
             targetFps: 1000 / workbenchThreeFrameInterval.peek(),
+            measuredFps: threeCadence.inspect().measuredFps,
             pressureCells: pressure.currentCells,
             pressureHighFrames: pressure.highFrames,
             pressureLowFrames: pressure.lowFrames,

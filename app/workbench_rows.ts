@@ -40,6 +40,7 @@ export interface ThreeHeaderPerformance {
   deferredReadbackSaturated?: boolean;
   sourceMaxCells?: number;
   targetFps?: number;
+  measuredFps?: number;
   pressureCells?: number;
   pressureHighFrames?: number;
   pressureLowFrames?: number;
@@ -107,16 +108,17 @@ function formatThreeHeaderPerformance(performance: ThreeHeaderPerformance, width
     ? ` cap ${performance.sourceMaxCells}c`
     : "";
   const target = performance.targetFps ? ` @${Math.round(performance.targetFps)}fps` : "";
+  const measured = performance.measuredFps ? ` live ${Math.round(performance.measuredFps)}fps` : "";
   const queue = formatThreeHeaderQueuePressure(performance);
   const pressure = formatThreeHeaderTerminalPressure(performance);
   const init = performance.initMs && performance.initMs > 0 ? ` init ${Math.round(performance.initMs)}` : "";
   const detailed = `frame ${total}${init} scene ${Math.round(performance.sceneMs)} read ${
     Math.round(performance.readbackMs)
-  } asm ${Math.round(performance.assemblyMs)} ${cells}${cap}${target}${queue ? ` ${queue}` : ""}${
+  } asm ${Math.round(performance.assemblyMs)} ${cells}${cap}${target}${measured}${queue ? ` ${queue}` : ""}${
     pressure ? ` ${pressure}` : ""
   }`;
   if (width >= textWidth(detailed)) return detailed;
-  const compact = `${total} ${cells}${target}${queue ? ` ${queue}` : ""}${pressure ? ` ${pressure}` : ""}`;
+  const compact = `${total} ${cells}${measured || target}${queue ? ` ${queue}` : ""}${pressure ? ` ${pressure}` : ""}`;
   return width >= textWidth(compact) ? compact : `${total} ${cells}`;
 }
 

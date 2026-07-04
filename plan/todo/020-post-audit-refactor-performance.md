@@ -851,3 +851,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   GPU contention from concurrent WebGPU probes. Sequential default block-mode probes now show the panel path around
   6-7ms steady renderer work at the 60-cell startup tier, versus roughly 14-17ms with blocking readback; focused policy,
   runtime, frame, renderer-option, and pressure-probe tests passed.
+- Added a lightweight workbench Three cadence meter and surfaced observed grid-publication FPS in the built-in Three
+  header alongside configured target FPS, making manual renderer profiling distinguish intended cadence from actual
+  visible update rate. Focused row/cadence tests and the `workbench-three-header-telemetry` benchmark passed.
