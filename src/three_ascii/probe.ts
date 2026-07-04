@@ -45,7 +45,7 @@ export function defaultThreeAsciiProbeOptions(): ThreeAsciiProbeOptions {
     rows: 24,
     frames: 90,
     warmup: 12,
-    delayMs: 0,
+    delayMs: 1,
     style: "blocks",
     readbackStrategy: "deferred",
   };

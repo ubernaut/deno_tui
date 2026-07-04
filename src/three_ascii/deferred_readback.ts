@@ -35,6 +35,7 @@ export interface ThreeAsciiDeferredReadbackQueueOptions {
 export interface ThreeAsciiDeferredReadbackConsumeResult {
   grid?: string[][];
   readbackMs?: number;
+  readbackUnavailable?: boolean;
 }
 
 /** Current deferred-readback queue pressure for live renderer telemetry. */

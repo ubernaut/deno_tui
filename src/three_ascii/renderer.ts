@@ -281,6 +281,20 @@ export class ThreeAsciiRenderer {
     let deferredAnsiGrid: ThreeAsciiDeferredReadbackConsumeResult | undefined;
     if (renderAnsi && !renderImage && this.readbackStrategy === "deferred") {
       deferredAnsiGrid = this.consumeDeferredAnsiGrid();
+      if (deferredAnsiGrid.readbackUnavailable) {
+        const frameEnd = performance.now();
+        this.lastPerformance = createThreeAsciiRendererPerformance({
+          columns: this.columns,
+          rows: this.rows,
+          terminalGlyphStyle: this.terminalGlyphStyle,
+          frameMs: frameEnd - frameStart,
+          sceneMs: 0,
+          ansiMs: 0,
+          readbackMs: 0,
+          assemblyMs: 0,
+        });
+        return { grid: deferredAnsiGrid.grid ?? [], gridRevision: this.gridRevision };
+      }
       if (!deferredAnsiGrid.grid && this.deferredReadbacks.isSaturated()) {
         const frameEnd = performance.now();
         const previous = this.lastPerformance;
@@ -413,6 +427,9 @@ export class ThreeAsciiRenderer {
     deferredCompleted?: ThreeAsciiDeferredReadbackConsumeResult,
   ): Promise<string[][]> {
     const completed = deferredCompleted ?? this.consumeDeferredAnsiGrid();
+    if (completed.readbackUnavailable) {
+      return completed.grid ?? [];
+    }
     if (this.readbackStrategy !== "deferred") {
       this.outputReadback = this.ensureReadbackBuffer(this.outputReadback, readbackLayout.byteLength);
       this.copyReadbackCommands(commandEncoder, readbackCopyPlan, this.outputReadback);
@@ -450,10 +467,11 @@ export class ThreeAsciiRenderer {
       );
     } catch (error) {
       if (error instanceof ThreeAsciiReadbackError) {
+        const grid = this.deferredReadbacks.lastCompletedGrid();
         this.readbackStrategy = "blocking";
         this.deferredReadbacks.destroy();
         this.lastReadbackMs = 0;
-        return {};
+        return { grid, readbackUnavailable: true };
       }
       throw error;
     }

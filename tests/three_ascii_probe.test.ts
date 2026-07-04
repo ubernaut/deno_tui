@@ -6,6 +6,10 @@ import {
   threeAsciiProbeReport,
 } from "../src/three_ascii/probe.ts";
 
+Deno.test("defaultThreeAsciiProbeOptions yields between deferred frames", () => {
+  assertEquals(defaultThreeAsciiProbeOptions().delayMs, 1);
+});
+
 Deno.test("parseThreeAsciiProbeOptions accepts task forwarded options", () => {
   assertEquals(
     parseThreeAsciiProbeOptions([

@@ -460,3 +460,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   reducing duplicate clamps in the renderer constructor and mutators without changing benchmarked frame paths.
 - Extracted Three ASCII perspective-camera aspect math into a focused tested helper, preserving resize behavior while
   making terminal pixel-ratio aspect decisions independently testable.
+- Hardened deferred Three ASCII readback demotion so failed deferred maps return the cached grid instead of immediately
+  falling into a blocking map/rebuild path, and changed the real WebGPU probe default to yield one tick between deferred
+  frames; the default 960-cell block probe now runs non-saturated at roughly 2.9ms frame-side work on this host.

@@ -235,9 +235,11 @@ Deno.test("ThreeAsciiRenderer demotes deferred readback failures to blocking mod
     deferredReadbacks: {
       consumeCompleted: () => never;
       destroy: () => void;
+      lastCompletedGrid: () => string[][];
     };
-    consumeDeferredAnsiGrid(): { grid?: string[][] };
+    consumeDeferredAnsiGrid(): { grid?: string[][]; readbackUnavailable?: boolean };
   };
+  const cachedGrid = [["cached"]];
   internals.deferredReadbacks = {
     consumeCompleted: () => {
       throw new ThreeAsciiReadbackError(new Error("deferred map rejected"));
@@ -245,9 +247,81 @@ Deno.test("ThreeAsciiRenderer demotes deferred readback failures to blocking mod
     destroy: () => {
       destroyed += 1;
     },
+    lastCompletedGrid: () => cachedGrid,
   };
 
-  assertEquals(internals.consumeDeferredAnsiGrid(), {});
+  assertEquals(internals.consumeDeferredAnsiGrid(), {
+    grid: cachedGrid,
+    readbackUnavailable: true,
+  });
   assertEquals(internals.readbackStrategy, "blocking");
   assertEquals(destroyed, 1);
+});
+
+Deno.test("ThreeAsciiRenderer skips immediate blocking fallback after deferred readback failure", async () => {
+  const renderer = new ThreeAsciiRenderer({
+    scene: new Scene(),
+    camera: new PerspectiveCamera(),
+    columns: 1,
+    rows: 1,
+    readbackStrategy: "deferred",
+  });
+  const cachedGrid = [["cached"]];
+  let sceneSubmissions = 0;
+  const internals = renderer as unknown as {
+    deferredReadbacks: {
+      consumeCompleted: () => never;
+      destroy: () => void;
+      lastCompletedGrid: () => string[][];
+    };
+    renderScene: () => Promise<void>;
+  };
+  internals.deferredReadbacks = {
+    consumeCompleted: () => {
+      throw new ThreeAsciiReadbackError(new Error("deferred map rejected"));
+    },
+    destroy: () => {},
+    lastCompletedGrid: () => cachedGrid,
+  };
+  internals.renderScene = () => {
+    sceneSubmissions += 1;
+    return Promise.resolve();
+  };
+
+  const frame = await renderer.renderFrame(0, undefined, { ansi: true });
+
+  assertEquals(frame.grid, cachedGrid);
+  assertEquals(sceneSubmissions, 0);
+});
+
+Deno.test("ThreeAsciiRenderer skips post-compute blocking fallback after deferred readback failure", async () => {
+  const renderer = new ThreeAsciiRenderer({
+    scene: new Scene(),
+    camera: new PerspectiveCamera(),
+    columns: 1,
+    rows: 1,
+    readbackStrategy: "deferred",
+  });
+  const cachedGrid = [["cached"]];
+  const internals = renderer as unknown as {
+    readbackStrategy: string;
+    deferAnsiGridReadback(
+      commandEncoder: unknown,
+      readbackLayout: unknown,
+      readbackCopyPlan: unknown,
+      backgroundColor: unknown,
+      deferredCompleted: { grid?: string[][]; readbackUnavailable?: boolean },
+    ): Promise<string[][]>;
+  };
+  internals.readbackStrategy = "blocking";
+
+  const grid = await internals.deferAnsiGridReadback(
+    {},
+    {},
+    {},
+    {},
+    { grid: cachedGrid, readbackUnavailable: true },
+  );
+
+  assertEquals(grid, cachedGrid);
 });
