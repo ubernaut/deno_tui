@@ -14,7 +14,7 @@ Deno.test("ApiWorkbenchThreeRuntimeController owns live cadence signals", () => 
   });
 
   assertEquals(controller.liveMaxCells.peek(), WORKBENCH_THREE_INITIAL_CELLS);
-  assertEquals(controller.frameInterval.peek(), 1000 / 24);
+  assertEquals(controller.frameInterval.peek(), WORKBENCH_THREE_DRAW_INTERVAL_MS);
 
   live = false;
   controller.syncFrameInterval();
@@ -30,7 +30,7 @@ Deno.test("ApiWorkbenchThreeRuntimeController recovers toward live max under qui
   const stats = { changed: 5, bytes: 300, durationMs: 0.05 };
   const sample = { renderedThreeGrids: 1, renderedThreeRows: 4 };
 
-  for (let index = 0; index < 45; index += 1) {
+  for (let index = 0; index < 60; index += 1) {
     controller.updatePressure(stats, sample);
   }
 
@@ -74,7 +74,7 @@ Deno.test("ApiWorkbenchThreeRuntimeController backs off on scoped pressure and l
   const stats = { changed: 18, bytes: 120_000, durationMs: 0.1 };
   const sample = { renderedThreeGrids: 1, renderedThreeRows: 17 };
 
-  for (let index = 0; index < 4; index += 1) {
+  for (let index = 0; index < 2; index += 1) {
     controller.updatePressure(stats, sample);
   }
   assertEquals(controller.liveMaxCells.peek(), 120);
@@ -179,10 +179,10 @@ Deno.test("ApiWorkbenchThreeRuntimeController exposes last pressure diagnostics"
 
   assertEquals(controller.inspectPressureDetails(), {
     currentCells: WORKBENCH_THREE_INITIAL_CELLS,
-    highFrames: 0,
+    highFrames: 1,
     lowFrames: 0,
     lastBytes: 2_000,
-    lastByteRate: 48_000,
+    lastByteRate: 60_000,
     lastChangedRows: 4,
     lastRenderedGrids: 1,
     lastRenderedRows: 4,
@@ -208,10 +208,10 @@ Deno.test("ApiWorkbenchThreeRuntimeController can reuse pressure inspection targ
   assertStrictEquals(result, target);
   assertEquals(target, {
     currentCells: WORKBENCH_THREE_INITIAL_CELLS,
-    highFrames: 0,
+    highFrames: 1,
     lowFrames: 0,
     lastBytes: 2_000,
-    lastByteRate: 48_000,
+    lastByteRate: 60_000,
     lastChangedRows: 4,
     lastRenderedGrids: 1,
     lastRenderedRows: 4,

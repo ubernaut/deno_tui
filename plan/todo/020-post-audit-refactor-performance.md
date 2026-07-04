@@ -941,3 +941,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted terminal workspace pane title rendering into reusable commands and routed terminal/browser shell panes
   through shared title paint and hit geometry. Focused terminal/cache tests, terminal/web type checks, and a new
   `terminal-pane-title-render-commands` benchmark guard passed.
+- Retuned the default API workbench Three ASCII pressure policy for tmux/SSH: startup now uses a 240-cell block grid
+  instead of 480 cells, sustained byte-rate pressure starts at 60KB/s, and scoped high-pressure samples downshift after
+  two frames. Focused policy/runtime/probe tests, default/adaptive pressure probes, and pressure benchmarks passed.

@@ -24,13 +24,13 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
     480,
     960,
   ]);
-  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 480);
+  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 240);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 240_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 160_000);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 180_000);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 60_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerGrid, 12_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerSecond, 20_000);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highFrameThreshold, 4);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highFrameThreshold, 2);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowFrameThreshold, 30);
   assertEquals(WORKBENCH_THREE_READBACK_STRATEGY, "blocking");
 });
@@ -51,11 +51,11 @@ Deno.test("API workbench Three policy keeps live panes faster than idle panes", 
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: false }), 1000 / 5);
 });
 
-Deno.test("API workbench Three policy starts at a visible live tier but keeps rescue available", () => {
-  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 480);
+Deno.test("API workbench Three policy starts at a lower-bandwidth live tier but keeps rescue available", () => {
+  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 240);
   assertEquals(
     apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
-    1000 / 24,
+    WORKBENCH_THREE_DRAW_INTERVAL_MS,
   );
   assertEquals(
     apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_RESCUE_CELLS, { live: true }),
@@ -102,12 +102,12 @@ Deno.test("API workbench Three policy backs off after sustained high-pressure te
   assertEquals(state.highFrames, 0);
 });
 
-Deno.test("API workbench Three policy keeps ordinary block frames at the startup tier", () => {
+Deno.test("API workbench Three policy keeps ordinary startup block frames at the startup tier", () => {
   const state = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_INITIAL_CELLS);
   const sample = {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
     renderedThreeGrids: 1,
-    bytes: 3_400,
+    bytes: 1_600,
     durationMs: 0.05,
     sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
   };
