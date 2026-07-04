@@ -93,9 +93,6 @@ import {
   workbenchTerminalCopyRowsInto,
   type WorkbenchTerminalPaneProjection,
   workbenchTerminalPaneProjectionsInto,
-  type WorkbenchTerminalSessionTab,
-  type WorkbenchTerminalSessionTabPlacement,
-  type WorkbenchTerminalSessionTabRenderCommand,
   workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
   workbenchTerminalSessionTitleFromId,
@@ -109,6 +106,7 @@ import {
   writeStringFrameRow,
 } from "../../mod.web.ts";
 import { WorkbenchShelfBufferCache } from "../../src/app/workbench_shelf_cache.ts";
+import { WorkbenchTerminalSessionTabBufferCache } from "../../src/app/workbench_terminal_tab_cache.ts";
 import {
   apiWorkbenchColumns,
   apiWorkbenchDocs,
@@ -395,9 +393,7 @@ const webTerminalActions: readonly WebTerminalAction[] = [
 const webTerminalButtonBuffers = new WorkbenchButtonRowBufferCache<WebTerminalAction>();
 const asciiConfigBuffers = new WorkbenchAsciiConfigModalBufferCache<AsciiConfigRow>();
 const mobileCommandButtonBuffers = new WorkbenchButtonRowBufferCache<MobileAction>();
-const webTerminalSessionTabSources: WorkbenchTerminalSessionTab[] = [];
-const webTerminalSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
-const webTerminalSessionTabCommands: WorkbenchTerminalSessionTabRenderCommand[] = [];
+const webTerminalSessionTabBuffers = new WorkbenchTerminalSessionTabBufferCache();
 const controlLineSegments: ApiWorkbenchControlLineSegment[] = [];
 const controlLineRenderCommands: ApiWorkbenchControlLineRenderCommand[] = [];
 const controlLineHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
@@ -1224,9 +1220,9 @@ function renderTerminalSessionTabs(frame: string[], rect: Rectangle): void {
   if (rect.height <= 0 || rect.width <= 0) return;
   const workspace = webTerminalWorkspace.inspect();
   const t = theme();
-  webTerminalSessionTabSources.length = 0;
+  webTerminalSessionTabBuffers.sources.length = 0;
   for (const session of workspace.sessions) {
-    webTerminalSessionTabSources.push({
+    webTerminalSessionTabBuffers.sources.push({
       id: session.id,
       title: session.title,
       running: session.running,
@@ -1234,13 +1230,17 @@ function renderTerminalSessionTabs(frame: string[], rect: Rectangle): void {
     });
   }
   workbenchTerminalSessionTabsInto(
-    webTerminalSessionTabPlacements,
-    webTerminalSessionTabSources,
+    webTerminalSessionTabBuffers.placements,
+    webTerminalSessionTabBuffers.sources,
     workspace.activeId,
     rect,
   );
-  workbenchTerminalSessionTabRenderCommandsInto(webTerminalSessionTabCommands, webTerminalSessionTabPlacements, rect);
-  for (const command of webTerminalSessionTabCommands) {
+  workbenchTerminalSessionTabRenderCommandsInto(
+    webTerminalSessionTabBuffers.commands,
+    webTerminalSessionTabBuffers.placements,
+    rect,
+  );
+  for (const command of webTerminalSessionTabBuffers.commands) {
     write(
       frame,
       command.rect.row,

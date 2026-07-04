@@ -15965,6 +15965,25 @@ var WorkbenchShelfBufferCache = class {
   }
 };
 
+// src/app/workbench_terminal_tab_cache.ts
+var WorkbenchTerminalSessionTabBufferCache = class {
+  sources = [];
+  placements = [];
+  commands = [];
+  clear() {
+    this.sources.length = 0;
+    this.placements.length = 0;
+    this.commands.length = 0;
+  }
+  inspect() {
+    return {
+      sources: this.sources.length,
+      placements: this.placements.length,
+      commands: this.commands.length
+    };
+  }
+};
+
 // app/api_workbench_catalog.ts
 var apiWorkbenchPanelTitles = {
   explorer: "Explorer",
@@ -17924,9 +17943,7 @@ var webTerminalActions = [
 var webTerminalButtonBuffers = new WorkbenchButtonRowBufferCache();
 var asciiConfigBuffers = new WorkbenchAsciiConfigModalBufferCache();
 var mobileCommandButtonBuffers = new WorkbenchButtonRowBufferCache();
-var webTerminalSessionTabSources = [];
-var webTerminalSessionTabPlacements = [];
-var webTerminalSessionTabCommands = [];
+var webTerminalSessionTabBuffers = new WorkbenchTerminalSessionTabBufferCache();
 var controlLineSegments = [];
 var controlLineRenderCommands = [];
 var controlLineHitPlacements = [];
@@ -18709,9 +18726,9 @@ function renderTerminalSessionTabs(frame, rect) {
   if (rect.height <= 0 || rect.width <= 0) return;
   const workspace = webTerminalWorkspace.inspect();
   const t = theme();
-  webTerminalSessionTabSources.length = 0;
+  webTerminalSessionTabBuffers.sources.length = 0;
   for (const session of workspace.sessions) {
-    webTerminalSessionTabSources.push({
+    webTerminalSessionTabBuffers.sources.push({
       id: session.id,
       title: session.title,
       running: session.running,
@@ -18719,13 +18736,17 @@ function renderTerminalSessionTabs(frame, rect) {
     });
   }
   workbenchTerminalSessionTabsInto(
-    webTerminalSessionTabPlacements,
-    webTerminalSessionTabSources,
+    webTerminalSessionTabBuffers.placements,
+    webTerminalSessionTabBuffers.sources,
     workspace.activeId,
     rect
   );
-  workbenchTerminalSessionTabRenderCommandsInto(webTerminalSessionTabCommands, webTerminalSessionTabPlacements, rect);
-  for (const command of webTerminalSessionTabCommands) {
+  workbenchTerminalSessionTabRenderCommandsInto(
+    webTerminalSessionTabBuffers.commands,
+    webTerminalSessionTabBuffers.placements,
+    rect
+  );
+  for (const command of webTerminalSessionTabBuffers.commands) {
     write(
       frame,
       command.rect.row,

@@ -166,15 +166,13 @@ import {
   workbenchTerminalCopyRowsInto,
   type WorkbenchTerminalPaneProjection,
   workbenchTerminalPaneProjectionsInto,
-  type WorkbenchTerminalSessionTab,
-  type WorkbenchTerminalSessionTabPlacement,
-  type WorkbenchTerminalSessionTabRenderCommand,
   workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
   workbenchTerminalSessionTitleFromId,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
 } from "../src/app/workbench_terminal.ts";
+import { WorkbenchTerminalSessionTabBufferCache } from "../src/app/workbench_terminal_tab_cache.ts";
 import { AudioRegistry } from "./audio.ts";
 import {
   apiWorkbenchColumns,
@@ -385,9 +383,7 @@ type SavedWorkspaceWindow = WorkbenchWorkspaceWindow<AsciiOptions>;
 type WorkspaceNameMode = "save" | "rename";
 const terminalOutputButtonBuffers = new WorkbenchButtonRowBufferCache<TerminalOutputAction>();
 const terminalShellButtonBuffers = new WorkbenchButtonRowBufferCache<TerminalShellAction>();
-const terminalShellSessionTabSources: WorkbenchTerminalSessionTab[] = [];
-const terminalShellSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
-const terminalShellSessionTabCommands: WorkbenchTerminalSessionTabRenderCommand[] = [];
+const terminalShellSessionTabBuffers = new WorkbenchTerminalSessionTabBufferCache();
 const terminalShellPaneProjections: WorkbenchTerminalPaneProjection[] = [];
 const terminalShellCopyRows: WorkbenchTerminalCopyRowProjection[] = [];
 const controlLineSegments: ApiWorkbenchControlLineSegment[] = [];
@@ -2259,9 +2255,9 @@ function renderTerminalShellSessionTabs(
 ): number {
   const t = theme();
   if (startRow >= rect.row + rect.height) return startRow;
-  terminalShellSessionTabSources.length = 0;
+  terminalShellSessionTabBuffers.sources.length = 0;
   for (const session of inspection.sessions) {
-    terminalShellSessionTabSources.push({
+    terminalShellSessionTabBuffers.sources.push({
       id: session.id,
       title: session.title,
       running: session.shell.running,
@@ -2269,18 +2265,22 @@ function renderTerminalShellSessionTabs(
     });
   }
   workbenchTerminalSessionTabsInto(
-    terminalShellSessionTabPlacements,
-    terminalShellSessionTabSources,
+    terminalShellSessionTabBuffers.placements,
+    terminalShellSessionTabBuffers.sources,
     inspection.activeId,
     { column: rect.column, row: startRow, width: rect.width, height: 1 },
   );
-  workbenchTerminalSessionTabRenderCommandsInto(terminalShellSessionTabCommands, terminalShellSessionTabPlacements, {
-    column: rect.column,
-    row: startRow,
-    width: rect.width,
-    height: 1,
-  });
-  for (const command of terminalShellSessionTabCommands) {
+  workbenchTerminalSessionTabRenderCommandsInto(
+    terminalShellSessionTabBuffers.commands,
+    terminalShellSessionTabBuffers.placements,
+    {
+      column: rect.column,
+      row: startRow,
+      width: rect.width,
+      height: 1,
+    },
+  );
+  for (const command of terminalShellSessionTabBuffers.commands) {
     const style = command.active
       ? { fg: contrastText(t.accent, t.background, t.text), bg: t.accent, bold: true }
       : { fg: t.text, bg: t.panelSoft, bold: false };
