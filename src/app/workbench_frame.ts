@@ -394,6 +394,13 @@ export function cleanWorkbenchFrameRowFingerprint(cells: string[], width: number
   return revisionFrameRowFingerprint(metadata, Math.max(0, Math.floor(width)));
 }
 
+/** Returns a known rendered full-row line for a dirty row when a writer provided one. */
+export function workbenchFrameRowRenderedHint(cells: string[], width: number): string | undefined {
+  const columns = Math.max(0, Math.floor(width));
+  const hint = frameRowMetadata.get(cells)?.renderedHint;
+  return hint?.width === columns ? hint.line : undefined;
+}
+
 /** Marks a rendered frame row clean and returns the fingerprint for the rendered state. */
 export function markWorkbenchFrameRowRendered(cells: string[], width: number, renderedLine: string): string {
   const columns = Math.max(0, Math.floor(width));

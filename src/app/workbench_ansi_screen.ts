@@ -1,7 +1,12 @@
 import type { CanvasStdout } from "../canvas/sink.ts";
 import { WorkbenchAnsiCursorCache } from "./workbench_ansi_cursor.ts";
 import { type WorkbenchAnsiScreenFlushStats, writeWorkbenchAnsiScreenOutput } from "./workbench_ansi_output.ts";
-import { cleanWorkbenchFrameRowFingerprint, fitCellText, markWorkbenchFrameRowRendered } from "./workbench_frame.ts";
+import {
+  cleanWorkbenchFrameRowFingerprint,
+  fitCellText,
+  markWorkbenchFrameRowRendered,
+  workbenchFrameRowRenderedHint,
+} from "./workbench_frame.ts";
 import { type ChangedSpan, changedSpansInto, snapshotChangedSpans, snapshotFrameRow } from "./workbench_ansi_spans.ts";
 
 interface WorkbenchAnsiScreenRowCache {
@@ -13,6 +18,7 @@ interface WorkbenchAnsiScreenRowCache {
 interface WorkbenchAnsiScreenSpanRowCache {
   width: number;
   fingerprint: string;
+  line?: string;
 }
 
 export type { WorkbenchAnsiScreenFlushStats } from "./workbench_ansi_output.ts";
@@ -131,6 +137,11 @@ export class WorkbenchAnsiScreenPainter {
       if (fingerprint !== undefined && cached?.width === columns && cached.fingerprint === fingerprint) {
         continue;
       }
+      const renderedHint = workbenchFrameRowRenderedHint(frameRow, columns);
+      if (renderedHint !== undefined && cached?.width === columns && cached.line === renderedHint) {
+        this.markSpanRowRendered(frameRow, columns, renderedHint);
+        continue;
+      }
 
       const spans = changedSpansInto(
         this.#changedSpans,
@@ -140,7 +151,7 @@ export class WorkbenchAnsiScreenPainter {
         columns,
       );
       if (spans.length === 0) {
-        this.markSpanRowRendered(frameRow, columns);
+        this.markSpanRowRendered(frameRow, columns, renderedHint);
         continue;
       }
       for (const span of spans) {
@@ -148,7 +159,7 @@ export class WorkbenchAnsiScreenPainter {
       }
       this.#cells[row] = snapshotChangedSpans(frameRow, previous, spans);
       this.#widths[row] = columns;
-      this.markSpanRowRendered(frameRow, columns);
+      this.markSpanRowRendered(frameRow, columns, renderedHint);
       this.#rows[row] = "";
       changed += 1;
     }
@@ -176,10 +187,15 @@ export class WorkbenchAnsiScreenPainter {
     return this.#blankLine;
   }
 
-  private markSpanRowRendered(frameRow: string[], columns: number): void {
+  private markSpanRowRendered(
+    frameRow: string[],
+    columns: number,
+    line = workbenchFrameRowRenderedHint(frameRow, columns),
+  ): void {
     this.#spanRowCache.set(frameRow, {
       width: columns,
       fingerprint: markWorkbenchFrameRowRendered(frameRow, columns, ""),
+      line,
     });
   }
 }

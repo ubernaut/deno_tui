@@ -991,3 +991,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Tightened API workbench Three pane interactivity so a single visible Three pane remains live, but multi-Three
   workspaces only keep the focused or fullscreen pane at foreground cadence. Other visible panes now use the existing
   idle 30-cell budget instead of every restored Neon/Three window competing as a live renderer.
+- Reused full-row rendered hints in the changed-span ANSI screen painter so rows rewritten with the same full-width
+  styled background skip span diffing. The focused Three block span flush benchmark dropped from roughly 1.40ms to
+  1.02ms on this host.

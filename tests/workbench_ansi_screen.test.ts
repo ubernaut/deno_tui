@@ -160,6 +160,30 @@ Deno.test("WorkbenchAnsiScreenPainter skips span detection for clean unchanged r
   assertEquals(sliceCalls, 1);
 });
 
+Deno.test("WorkbenchAnsiScreenPainter skips span detection for unchanged full-row hints", () => {
+  const painter = new WorkbenchAnsiScreenPainter({
+    writeSync(data) {
+      return data.byteLength;
+    },
+  });
+  const frame: WorkbenchFrame = [[]];
+  let sliceCalls = 0;
+  const renderSliceWithCount = (cells: string[], start: number, width: number) => {
+    sliceCalls += 1;
+    return renderFrameSlice(cells, start, width);
+  };
+
+  writeFrame(frame, 10, 0, 0, "\x1b[48;2;1;2;3m          \x1b[0m");
+  painter.flush(frame, 10, 1, renderFrameRow, renderSliceWithCount);
+  frame[0]!.length = 0;
+  writeFrame(frame, 10, 0, 0, "\x1b[48;2;1;2;3m          \x1b[0m");
+  const stats = painter.flush(frame, 10, 1, renderFrameRow, renderSliceWithCount);
+
+  assertEquals(stats.changed, 0);
+  assertEquals(stats.bytes, 0);
+  assertEquals(sliceCalls, 0);
+});
+
 Deno.test("WorkbenchAnsiScreenPainter redraws safely after switching from span to full-row mode", () => {
   const chunks: Uint8Array[] = [];
   const painter = new WorkbenchAnsiScreenPainter({
