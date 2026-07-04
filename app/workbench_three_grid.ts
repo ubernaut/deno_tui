@@ -47,16 +47,33 @@ export function writeWorkbenchThreeGrid(
     : undefined;
   let lastProjectedSourceRow = -1;
   let lastProjectedRow: readonly string[] | undefined;
+  let lastProjectedFallback = false;
 
   for (let row = 0; row < targetHeight; row += 1) {
     const sourceRow = sourceRowIndexes?.[row] ?? row;
     const source = grid[sourceRow];
     const sourceWidth = source?.length ?? 0;
     const target = frame[rect.row + rowOffset + row] ??= [];
+    if (!source || sourceWidth <= 0) {
+      if (lastProjectedFallback && lastProjectedRow && lastProjectedRow.length >= targetWidth) {
+        writeProjectedGridRow(target, rect.column + columnOffset, lastProjectedRow, targetWidth);
+        continue;
+      }
+      rowBuffer.length = targetWidth;
+      for (let column = 0; column < targetWidth; column += 1) {
+        rowBuffer[column] = fallbackCell;
+      }
+      writeProjectedGridRow(target, rect.column + columnOffset, rowBuffer, targetWidth);
+      lastProjectedSourceRow = -1;
+      lastProjectedFallback = true;
+      lastProjectedRow = rowBuffer;
+      continue;
+    }
     if (sourceRow === lastProjectedSourceRow && lastProjectedRow && lastProjectedRow.length >= targetWidth) {
       writeProjectedGridRow(target, rect.column + columnOffset, lastProjectedRow, targetWidth);
       continue;
     }
+    lastProjectedFallback = false;
 
     if (shouldScale && source && sourceColumnIndexes && sourceWidth >= sourceColumns && sourceColumns > 0) {
       if (sourceColumns === targetWidth) {

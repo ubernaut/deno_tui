@@ -396,6 +396,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   duplicate last-grid lookup in the no-completed-grid deferred path.
 - Added summary-aware workbench Three pressure-probe validation and formatting paths, letting the live probe reuse one
   computed renderer summary for report output and `--check` validation.
+- Reused prepared fallback rows while projecting workbench-hosted Three grids, avoiding repeated fallback row rebuilds
+  when sparse or empty source rows are painted into larger terminal panes.
 - Split workbench styled-cell tokenization and row/slice assembly into `workbench_frame_rows.ts`, preserving the
   existing frame facade while keeping the terminal hot path independently testable and benchmarked.
 - Extracted ThreePanelFrameView graphics-image handle ownership into `ThreePanelGraphicsImageController` with direct

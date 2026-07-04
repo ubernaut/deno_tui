@@ -51,6 +51,25 @@ Deno.test("workbench three grid uses caller-provided fallback cells", () => {
   ]);
 });
 
+Deno.test("workbench three grid reuses prepared fallback rows for consecutive empty source rows", () => {
+  const frame: WorkbenchFrame = [];
+  const rowBuffer: string[] = [];
+  writeWorkbenchThreeGrid(
+    frame,
+    { column: 0, row: 0, width: 3, height: 3 },
+    [],
+    ".",
+    { rowBuffer },
+  );
+
+  assertEquals(frame, [
+    [".", ".", "."],
+    [".", ".", "."],
+    [".", ".", "."],
+  ]);
+  assertEquals(rowBuffer, [".", ".", "."]);
+});
+
 Deno.test("workbench three grid can scale lower-resolution source cells", () => {
   const frame: WorkbenchFrame = [];
   writeWorkbenchThreeGrid(
