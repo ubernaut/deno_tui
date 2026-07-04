@@ -91,6 +91,10 @@ const ansiSinkTruecolorBackgroundValues = Array.from({ length: 160 }, (_, index)
 });
 const ansiStyledSplitRow = "\x1b[38;2;242;236;255;48;2;66;37;95m".concat(" ".repeat(160), "\x1b[0m\x1b[0m");
 const plainAsciiSplitRow = "api-workbench plain ascii row ".concat(".".repeat(132));
+const plainWorkbenchFrameRow = Array.from(
+  { length: 168 },
+  (_, index) => "api-workbench-status-bar-and-menu-row"[index % 37] ?? " ",
+);
 const ansiSinkStyledRangeStats = {
   updatedObjects: 0,
   renderedObjects: 0,
@@ -113,6 +117,7 @@ const ansiSinkTruecolorBackgroundStats = {
 let ansiSinkBytes = 0;
 let ansiStyledSplitChecksum = 0;
 let plainAsciiSplitChecksum = 0;
+let plainWorkbenchRowChecksum = 0;
 const ansiSink = new AnsiCanvasSink({
   stdout: {
     writeSync(data) {
@@ -983,6 +988,14 @@ function runPlainAsciiCharacterSplitWorkload(): void {
   }
 }
 
+function runPlainWorkbenchFrameRowAssemblyWorkload(): void {
+  const row = renderFrameRow(plainWorkbenchFrameRow, plainWorkbenchFrameRow.length);
+  plainWorkbenchRowChecksum = (plainWorkbenchRowChecksum + row.length + row.charCodeAt(0)) % 1_000_000;
+  if (row.length !== plainWorkbenchFrameRow.length || !Number.isFinite(plainWorkbenchRowChecksum)) {
+    throw new Error("plain workbench frame row assembly checksum failed");
+  }
+}
+
 class BenchmarkMetricsProvider implements SystemMetricsProvider {
   step = 0;
   processStatReads = 0;
@@ -1249,6 +1262,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 500,
     maxAverageMs: 5,
     run: runWorkbenchSparseFrameWorkload,
+  },
+  {
+    name: "render/workbench-plain-frame-row-168",
+    category: "render",
+    description: "Assemble a dense plain ASCII workbench row without allocating per-cell split descriptors.",
+    tags: ["render", "workbench", "frame", "text"],
+    iterations: 2_000,
+    maxAverageMs: 1,
+    run: runPlainWorkbenchFrameRowAssemblyWorkload,
   },
   {
     name: "render/workbench-string-frame-full-row",

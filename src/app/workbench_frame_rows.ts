@@ -4,6 +4,7 @@ import { mergeSgrStyle } from "../utils/sgr_style.ts";
 const RESET = "\x1b[0m";
 const MAX_FRAME_CELL_PARTS_CACHE_SIZE = 32768;
 const frameCellPartsCache = new Map<string, FrameCellParts>();
+const plainAsciiCellPartsCache: Array<FrameCellParts | undefined> = [];
 
 /** Converts an ANSI-styled string into independently styled terminal cells. */
 export function toStyledCells(value: string): string[] {
@@ -138,6 +139,12 @@ interface FrameCellParts {
 }
 
 function splitFrameCell(cell: string): FrameCellParts {
+  if (cell.length === 1) {
+    const code = cell.charCodeAt(0);
+    if (code !== 0x1b && code < 128) {
+      return plainAsciiCellPartsCache[code] ??= plainFrameCellParts(cell);
+    }
+  }
   if (!cell.includes("\x1b[") || !cell.endsWith("\x1b[0m")) {
     return plainFrameCellParts(cell);
   }

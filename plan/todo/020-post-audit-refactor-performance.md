@@ -544,3 +544,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   samples from steady-state averages, so warm WebGPU frames are not misreported as 3-13 FPS renderer regressions.
 - Cached retained ANSI painter blank rows per terminal width so resize/shrink clears do not rebuild identical blank
   strings for every stale row; added coverage for width changes and reset behavior.
+- Cached plain ASCII frame-cell split descriptors in the workbench row assembler and added a dedicated
+  `render/workbench-plain-frame-row-168` benchmark guard for dense text rows.
