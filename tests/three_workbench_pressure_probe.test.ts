@@ -81,7 +81,17 @@ Deno.test("formatWorkbenchThreePressureProbeLines reports source changes and upd
   }, [
     sample({ index: 1, rendererMs: 0, rows: 17, columns: 53, cells: 901, sourceChangedRows: 17, gridUpdates: 1 }),
     sample({ index: 2, rendererMs: 1000, rows: 17, columns: 53, cells: 901, sourceChangedRows: 0, gridUpdates: 1 }),
-    sample({ index: 3, rendererMs: 12, rows: 17, columns: 53, cells: 901, sourceChangedRows: 16, gridUpdates: 2 }),
+    sample({
+      index: 3,
+      rendererMs: 12,
+      rows: 17,
+      columns: 53,
+      cells: 901,
+      bytes: 20,
+      sampleDurationMs: 100,
+      sourceChangedRows: 16,
+      gridUpdates: 2,
+    }),
   ]);
 
   assertEquals(lines[0], "three-workbench pressure probe");
@@ -94,7 +104,8 @@ Deno.test("formatWorkbenchThreePressureProbeLines reports source changes and upd
   assertStringIncludes(lines[2], "latest=53x17/901c");
   assertStringIncludes(lines[2], "totalBytes=12345");
   assertStringIncludes(lines[5], "03 renderer=12.00ms");
-  assertStringIncludes(lines[5], "sourceChanged=16 cap=960 updates=2 grid=53x17");
+  assertStringIncludes(lines[5], "bytes=20 rate=200B/s");
+  assertStringIncludes(lines[5], "sourceChanged=16 cap=960 interval=100.00ms updates=2 grid=53x17");
 });
 
 function sample(
@@ -103,6 +114,7 @@ function sample(
   return {
     index: overrides.index,
     maxCells: overrides.maxCells ?? 960,
+    sampleDurationMs: overrides.sampleDurationMs ?? 50,
     rendererMs: overrides.rendererMs ?? 1,
     sceneMs: overrides.sceneMs ?? 0.5,
     readbackMs: overrides.readbackMs ?? 0.1,

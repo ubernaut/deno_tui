@@ -86,7 +86,7 @@ let previousGrid: readonly (readonly string[] | undefined)[] = [];
 
 try {
   for (let index = 1; index <= frames; index += 1) {
-    await delay(intervalMs);
+    await delay(frameInterval.peek());
     scene.value = {
       mode,
       signal: {
@@ -155,6 +155,7 @@ function drawSample(index: number): WorkbenchThreePressureProbeSample {
   const sourceChangedRows = countWorkbenchThreeProbeChangedGridRows(previousGrid, grid);
   previousGrid = snapshotWorkbenchThreeProbeGridRows(grid);
   const cellsBeforePressureUpdate = maxRenderCells.peek();
+  const sampleDurationMs = frameInterval.peek();
   if (adaptive) {
     const next = resolveWorkbenchThreeTerminalPressureUpdate(terminalPressure, {
       ...API_WORKBENCH_THREE_PRESSURE_POLICY,
@@ -164,7 +165,7 @@ function drawSample(index: number): WorkbenchThreePressureProbeSample {
       changedRows: stats.changed,
       bytes: stats.bytes,
       durationMs: stats.durationMs,
-      sampleDurationMs: frameInterval.peek(),
+      sampleDurationMs,
     });
     terminalPressure.currentCells = next.currentCells;
     terminalPressure.highFrames = next.highFrames;
@@ -177,6 +178,7 @@ function drawSample(index: number): WorkbenchThreePressureProbeSample {
   return {
     index,
     maxCells: cellsBeforePressureUpdate,
+    sampleDurationMs,
     rendererMs: performance?.totalMs ?? 0,
     sceneMs: performance?.sceneMs ?? 0,
     readbackMs: performance?.readbackMs ?? 0,

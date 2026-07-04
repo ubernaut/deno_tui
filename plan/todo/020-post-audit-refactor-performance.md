@@ -197,6 +197,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   controller as the workbench and report per-frame render-cell caps.
 - Moved the workbench Three startup budget to 240 cells so the default pane opens in the lower-byte mode immediately
   instead of spending two high-pressure frames at 480 cells before adapting down.
+- Fixed the adaptive workbench Three pressure probe to sleep on and report the current frame interval per sample, making
+  byte-rate diagnostics reflect actual cadence changes after pressure updates.
 - Stabilized default Three ASCII block rendering by using ASCII-safe shared window controls and removing fog from the
   default block preset so truecolor block cells keep source color depth.
 - Extracted the workbench Three ASCII config modal geometry into a tested internal layout helper, reducing inline modal

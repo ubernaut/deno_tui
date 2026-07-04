@@ -4,6 +4,7 @@ import { workbenchThreeTerminalBytesPerSecond } from "../app/workbench_three_ter
 export interface WorkbenchThreePressureProbeSample {
   index: number;
   maxCells: number;
+  sampleDurationMs: number;
   rendererMs: number;
   sceneMs: number;
   readbackMs: number;
@@ -103,10 +104,7 @@ export function formatWorkbenchThreePressureProbeLines(
     `warmup=${formatMs(summary.warmup?.rendererMs)} renderer=${formatMs(summary.averageRendererMs)} fps=${
       formatFps(summary.averageRendererMs)
     } flush=${formatMs(summary.averageFlushMs)} bytes=${Math.round(summary.averageBytes)} rate=${
-      Math.round(workbenchThreeTerminalBytesPerSecond({
-        bytes: summary.averageBytes,
-        sampleDurationMs: options.intervalMs,
-      }))
+      Math.round(average(pressureByteRates(summary.steady)))
     }B/s changedRows=${summary.averageChangedRows.toFixed(1)} sourceRows=${
       summary.averageSourceChangedRows.toFixed(1)
     } updates=${latest?.gridUpdates ?? 0} latest=${
@@ -119,12 +117,18 @@ export function formatWorkbenchThreePressureProbeLines(
         formatMs(sample.sceneMs)
       } read=${formatMs(sample.readbackMs)} asm=${formatMs(sample.assemblyMs)} flush=${
         formatMs(sample.flushMs)
-      } bytes=${sample.bytes} changed=${sample.changedRows} sourceChanged=${sample.sourceChangedRows} cap=${
-        sample.maxCells
+      } bytes=${sample.bytes} rate=${
+        Math.round(workbenchThreeTerminalBytesPerSecond(sample))
+      }B/s changed=${sample.changedRows} sourceChanged=${sample.sourceChangedRows} cap=${sample.maxCells} interval=${
+        formatMs(sample.sampleDurationMs)
       } updates=${sample.gridUpdates} grid=${sample.columns}x${sample.rows}`,
     );
   }
   return lines;
+}
+
+function pressureByteRates(samples: readonly WorkbenchThreePressureProbeSample[]): number[] {
+  return samples.map((sample) => workbenchThreeTerminalBytesPerSecond(sample));
 }
 
 function workbenchThreeProbeGridRowsEqual(
