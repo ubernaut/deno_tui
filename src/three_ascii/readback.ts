@@ -42,13 +42,19 @@ export interface ThreeAsciiReadbackCopyPlan {
 }
 
 export interface ThreeAsciiReadbackCopySources<TBuffer> {
-  fill: TBuffer;
+  fill?: TBuffer;
   edge?: TBuffer;
   color: TBuffer;
 }
 
 export interface ThreeAsciiReadbackCopyTarget<TBuffer> {
   gpu: TBuffer;
+}
+
+export interface ThreeAsciiReadbackCopySourceSlots<TBuffer> {
+  fill?: ThreeAsciiReadbackCopyTarget<TBuffer>;
+  edge?: ThreeAsciiReadbackCopyTarget<TBuffer>;
+  color: ThreeAsciiReadbackCopyTarget<TBuffer>;
 }
 
 export interface ThreeAsciiReadbackCommandEncoder<TBuffer> {
@@ -307,6 +313,25 @@ export function executeThreeAsciiReadbackCopyPlan<TBuffer>(
       command.byteLength,
     );
   }
+}
+
+/** Writes current GPU readback source buffers into a caller-owned source map. */
+export function writeThreeAsciiReadbackCopySources<TBuffer>(
+  target: ThreeAsciiReadbackCopySources<TBuffer>,
+  sources: ThreeAsciiReadbackCopySourceSlots<TBuffer>,
+): ThreeAsciiReadbackCopySources<TBuffer> {
+  if (sources.fill) {
+    target.fill = sources.fill.gpu;
+  } else {
+    delete (target as Partial<ThreeAsciiReadbackCopySources<TBuffer>>).fill;
+  }
+  if (sources.edge) {
+    target.edge = sources.edge.gpu;
+  } else {
+    delete target.edge;
+  }
+  target.color = sources.color.gpu;
+  return target;
 }
 
 function validateByteLength(label: string, value: number): number {

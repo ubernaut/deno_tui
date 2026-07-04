@@ -5,8 +5,10 @@ import {
   createThreeAsciiReadbackViews,
   executeThreeAsciiReadbackCopyPlan,
   ThreeAsciiReadbackCopyPlanCache,
+  type ThreeAsciiReadbackCopySources,
   ThreeAsciiReadbackLayoutCache,
   ThreeAsciiReadbackViewCache,
+  writeThreeAsciiReadbackCopySources,
 } from "../src/three_ascii/readback.ts";
 
 Deno.test("three ascii readback layout packs fill edge and color buffers", () => {
@@ -289,6 +291,35 @@ Deno.test("executeThreeAsciiReadbackCopyPlan rejects missing requested source bu
     Error,
     "missing edge output buffer",
   );
+});
+
+Deno.test("writeThreeAsciiReadbackCopySources reuses source maps and clears stale optional buffers", () => {
+  const target: ThreeAsciiReadbackCopySources<string> = {
+    fill: "old-fill",
+    edge: "old-edge",
+    color: "old-color",
+  };
+
+  assertEquals(
+    writeThreeAsciiReadbackCopySources(target, {
+      fill: { gpu: "fill-buffer" },
+      edge: { gpu: "edge-buffer" },
+      color: { gpu: "color-buffer" },
+    }),
+    target,
+  );
+  assertEquals(target, {
+    fill: "fill-buffer",
+    edge: "edge-buffer",
+    color: "color-buffer",
+  });
+
+  writeThreeAsciiReadbackCopySources(target, {
+    color: { gpu: "compact-color-buffer" },
+  });
+  assertEquals(target, {
+    color: "compact-color-buffer",
+  });
 });
 
 Deno.test("three ascii readback copy plan cache reuses unchanged command arrays", () => {

@@ -52,6 +52,7 @@ import {
   ThreeAsciiReadbackLayoutCache,
   type ThreeAsciiReadbackLayoutOptions,
   ThreeAsciiReadbackViewCache,
+  writeThreeAsciiReadbackCopySources,
 } from "./readback.ts";
 import {
   assembleThreeAsciiReadbackGridWithContext,
@@ -602,13 +603,11 @@ export class ThreeAsciiRenderer {
     readbackCopyPlan: ReturnType<ThreeAsciiReadbackCopyPlanCache["resolve"]>,
     readback: ThreeAsciiGpuBufferSlot<GPUBuffer> | undefined,
   ): void {
-    if (this.fillOutput) {
-      this.readbackCopySources.fill = this.fillOutput.gpu;
-    } else {
-      delete (this.readbackCopySources as Partial<ThreeAsciiReadbackCopySources<GPUBuffer>>).fill;
-    }
-    this.readbackCopySources.edge = this.edgeOutput?.gpu;
-    this.readbackCopySources.color = this.colorOutput!.gpu;
+    writeThreeAsciiReadbackCopySources(this.readbackCopySources, {
+      fill: this.fillOutput,
+      edge: this.edgeOutput,
+      color: this.colorOutput!,
+    });
     executeThreeAsciiReadbackCopyPlan(
       commandEncoder,
       readbackCopyPlan,

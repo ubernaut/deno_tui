@@ -380,6 +380,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   through retained current-window and visualization-id buffers, with a focused benchmark guard for the projection path.
 - Extracted Three ASCII Acerola render-profile selection into a pure helper with direct tests, keeping image/ANSI,
   block/glyph, edge, and depth target decisions out of the WebGPU renderer orchestration.
+- Extracted Three ASCII readback copy source-map updates into the readback helper layer and made optional fill buffers
+  explicit in the type, preventing stale fill/edge GPU sources from carrying across compact block-mode frames.
 - Split workbench styled-cell tokenization and row/slice assembly into `workbench_frame_rows.ts`, preserving the
   existing frame facade while keeping the terminal hot path independently testable and benchmarked.
 - Extracted ThreePanelFrameView graphics-image handle ownership into `ThreePanelGraphicsImageController` with direct
