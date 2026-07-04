@@ -258,6 +258,9 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Fixed a block-mode workbench performance regression caused by cumulative SGR style prefixes in styled text splitting;
   repeated truecolor background cells now keep only the active foreground/background state instead of replaying every
   previous color change.
+- Added structured workbench frame viewport blitting so API Workbench windows copy styled cells directly instead of
+  stringifying ANSI slices and reparsing them before the final terminal flush, with unit and benchmark coverage for the
+  scrolled truecolor blit path.
 - Extracted workspace save, rename, delete, and active-workspace refresh state transitions into tested pure helpers so
   the terminal workbench renderer no longer owns direct workspace collection mutation details.
 - Extracted workspace-load close planning into a typed pure helper so renderer cleanup, selected CPU tile pruning, and

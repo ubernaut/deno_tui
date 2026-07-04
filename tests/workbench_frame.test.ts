@@ -1,5 +1,6 @@
 import { assertEquals } from "./deps.ts";
 import {
+  blitWorkbenchFrameCells,
   buttonText,
   centerCellText,
   contrastText,
@@ -196,6 +197,30 @@ Deno.test("workbench frame row preparation reuses arrays and clears retained spa
   );
   assertEquals(expanded === textRows, true);
   assertEquals(expanded, ["OLD", "new-1", "new-2"]);
+});
+
+Deno.test("workbench frame cell blit preserves styled cells through viewport offsets", () => {
+  const target: WorkbenchFrame = [[], [], []];
+  const source: WorkbenchFrame = [
+    ["skip"],
+    ["A", "\x1b[48;2;1;2;3m \x1b[0m", "\x1b[31mB\x1b[0m", "C"],
+    ["D", "E", "F", "G"],
+  ];
+
+  blitWorkbenchFrameCells(
+    target,
+    source,
+    { column: 2, row: 1, width: 2, height: 2 },
+    { columns: 1, rows: 1 },
+  );
+
+  assertEquals(target[0], []);
+  assertEquals(Object.hasOwn(target[1]!, 0), false);
+  assertEquals(Object.hasOwn(target[1]!, 1), false);
+  assertEquals(target[1]?.slice(2, 4), ["\x1b[48;2;1;2;3m \x1b[0m", "\x1b[31mB\x1b[0m"]);
+  assertEquals(Object.hasOwn(target[2]!, 0), false);
+  assertEquals(Object.hasOwn(target[2]!, 1), false);
+  assertEquals(target[2]?.slice(2, 4), ["E", "F"]);
 });
 
 Deno.test("workbench frame line signal updates skip unchanged rows and clear stale rows", () => {

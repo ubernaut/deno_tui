@@ -15,6 +15,7 @@ import { formatTerminalOutputLine } from "../src/components/terminal_output.ts";
 import { TextBoxController, type TextBoxVisualLine } from "../src/components/textbox.ts";
 import {
   appendBoundedWorkbenchLogRow,
+  blitWorkbenchFrameCells,
   buttonText,
   centerCellText as centerText,
   clampWorkbenchTileDensity,
@@ -2801,10 +2802,7 @@ function blitWindowContent(
   viewport: Rectangle,
   offset: { columns: number; rows: number },
 ) {
-  for (let row = 0; row < viewport.height; row += 1) {
-    const cells = content[offset.rows + row] ?? [];
-    write(frame, viewport.row + row, viewport.column, renderFrameSlice(cells, offset.columns, viewport.width));
-  }
+  blitWorkbenchFrameCells(frame, content, viewport, offset);
 }
 
 function renderWindowScrollbars(

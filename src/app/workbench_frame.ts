@@ -47,6 +47,20 @@ export interface WorkbenchFrameBoxLine {
   text: string;
 }
 
+/** Copies a viewport from one sparse frame into another without stringifying ANSI cells. */
+export function blitWorkbenchFrameCells(
+  target: WorkbenchFrame,
+  source: WorkbenchFrame,
+  viewport: Rectangle,
+  offset: { columns: number; rows: number },
+): void {
+  for (let row = 0; row < viewport.height; row += 1) {
+    const sourceRow = source[offset.rows + row] ?? [];
+    const targetRow = target[viewport.row + row] ??= [];
+    writeFrameCells(targetRow, viewport.column, sourceRow, offset.columns, viewport.width);
+  }
+}
+
 /** Prepares a reusable row array to a fixed length. */
 export function prepareWorkbenchRows<T>(
   rows: T[],

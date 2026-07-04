@@ -2,6 +2,7 @@ import {
   AnsiCanvasSink,
   AsyncScheduler,
   BenchmarkCase,
+  blitWorkbenchFrameCells,
   BoxObject,
   Canvas,
   CommandRegistry,
@@ -242,6 +243,8 @@ const workbenchStringFrame: string[] = [];
 const workbenchLineSignalFrame: WorkbenchFrame = [];
 const workbenchAnsiScreenFrame: WorkbenchFrame = [];
 const workbenchAnsiSpanFrame: WorkbenchFrame = [];
+const workbenchCellBlitSourceFrame: WorkbenchFrame = [];
+const workbenchCellBlitTargetFrame: WorkbenchFrame = [];
 const workbenchFrameRows = 54;
 const workbenchFrameWidth = 168;
 const workbenchSpanPrevious = Array.from({ length: workbenchFrameWidth }, (_, index) => `cell-${index % 17}`);
@@ -280,6 +283,7 @@ const workbenchAnsiSpanPainter = new WorkbenchAnsiScreenPainter({
 });
 let workbenchFrameChecksum = 0;
 let workbenchLineSignalFrameIndex = 0;
+let workbenchCellBlitWave = 0;
 const largeListItems = Array.from({ length: 50_000 }, (_, index) => `process-${index.toString().padStart(5, "0")}`);
 const largeTable = new TableController({ rowCount: 100_000, viewportHeight: 44 });
 const largeDataRows = Array.from({ length: 25_000 }, (_, index) => ({
@@ -984,6 +988,45 @@ function runWorkbenchAnsiScreenSpanFlushWorkload(): void {
   }
 }
 
+function runWorkbenchCellBlitWorkload(): void {
+  workbenchCellBlitWave = (workbenchCellBlitWave + 1) % 96;
+  const source = prepareWorkbenchFrame(workbenchCellBlitSourceFrame, workbenchFrameRows);
+  const target = prepareWorkbenchFrame(workbenchCellBlitTargetFrame, workbenchFrameRows);
+  const sourceWidth = workbenchFrameWidth + 40;
+  const viewportWidth = 96;
+  const viewportHeight = 32;
+  const viewportColumn = 36;
+  const viewportRow = 11;
+  const columnOffset = (workbenchCellBlitWave % 20) * 2;
+  const rowOffset = workbenchCellBlitWave % 8;
+
+  for (let row = 0; row < workbenchFrameRows; row += 1) {
+    const line = source[row]!;
+    for (let column = 0; column < sourceWidth; column += 1) {
+      const red = (row * 7 + column * 5 + workbenchCellBlitWave * 3) % 256;
+      const green = (40 + row * 11 + column * 2 + workbenchCellBlitWave * 7) % 256;
+      const blue = (120 + row * 3 + column * 13 + workbenchCellBlitWave) % 256;
+      line[column] = `\x1b[48;2;${red};${green};${blue}m \x1b[0m`;
+    }
+  }
+
+  blitWorkbenchFrameCells(
+    target,
+    source,
+    { column: viewportColumn, row: viewportRow, width: viewportWidth, height: viewportHeight },
+    { columns: columnOffset, rows: rowOffset },
+  );
+
+  let total = 0;
+  for (let row = viewportRow; row < viewportRow + viewportHeight; row += 1) {
+    total += renderFrameRow(target[row] ?? [], workbenchFrameWidth).length;
+  }
+  workbenchFrameChecksum = (workbenchFrameChecksum + total) % 1_000_000;
+  if (!Number.isFinite(workbenchFrameChecksum)) {
+    throw new Error("workbench cell blit checksum failed");
+  }
+}
+
 function runWorkbenchChangedSpanDetectionWorkload(): void {
   const base = workbenchChangedSpanCursor++ % workbenchFrameWidth;
   for (let index = 0; index < workbenchFrameWidth; index += 1) {
@@ -1404,6 +1447,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 500,
     maxAverageMs: 5,
     run: runWorkbenchSparseFrameWorkload,
+  },
+  {
+    name: "render/workbench-cell-blit-viewport",
+    category: "render",
+    description: "Copy a scrolled truecolor virtual window into the workbench frame without ANSI stringify/reparse.",
+    tags: ["render", "workbench", "frame", "ansi", "viewport"],
+    iterations: 250,
+    maxAverageMs: 5,
+    run: runWorkbenchCellBlitWorkload,
   },
   {
     name: "render/workbench-plain-frame-row-168",
