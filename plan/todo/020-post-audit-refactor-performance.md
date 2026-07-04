@@ -390,6 +390,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   inspection/allocation while preserving saturated-frame telemetry.
 - Allowed image-only Three ASCII render-profile selection to skip effect-state projection, avoiding unnecessary Acerola
   uniform reads on raster-only frames while preserving ANSI and mixed output behavior.
+- Added caller-owned Three ASCII frame-selection resolution and routed the renderer through a retained selection record,
+  removing a common per-frame output-selection object allocation.
 - Split workbench styled-cell tokenization and row/slice assembly into `workbench_frame_rows.ts`, preserving the
   existing frame facade while keeping the terminal hot path independently testable and benchmarked.
 - Extracted ThreePanelFrameView graphics-image handle ownership into `ThreePanelGraphicsImageController` with direct

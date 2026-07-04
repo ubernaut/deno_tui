@@ -67,10 +67,11 @@ import { withThreeAsciiMappedReadback } from "./readback_mapping.ts";
 import { resolveThreeAsciiDeferredReadbackSubmission } from "./readback_submission.ts";
 import {
   emptyThreeAsciiRenderFrame,
-  resolveThreeAsciiRenderFrameSelection,
+  resolveThreeAsciiRenderFrameSelectionInto,
   THREE_ASCII_ANSI_FRAME_OPTIONS,
   THREE_ASCII_IMAGE_FRAME_OPTIONS,
   type ThreeAsciiRenderFrameOptions,
+  type ThreeAsciiRenderFrameSelection,
 } from "./frame_options.ts";
 import { readThreeAsciiImageFrame, type ThreeAsciiImageFrame } from "./image_frame.ts";
 import {
@@ -244,6 +245,10 @@ export class ThreeAsciiRenderer {
     viewCache: this.readbackViewCache,
     assembler: this.ansiGridAssembler,
   };
+  private readonly frameSelection: ThreeAsciiRenderFrameSelection = {
+    renderAnsi: true,
+    renderImage: false,
+  };
   private outputCellCount = 0;
   private sizeDirty = true;
   private computeDirty = true;
@@ -352,7 +357,7 @@ export class ThreeAsciiRenderer {
     options: ThreeAsciiRenderFrameOptions = THREE_ASCII_ANSI_FRAME_OPTIONS,
   ): Promise<ThreeAsciiRenderFrame> {
     const frameStart = performance.now();
-    const selection = resolveThreeAsciiRenderFrameSelection(options);
+    const selection = resolveThreeAsciiRenderFrameSelectionInto(this.frameSelection, options);
     const { renderAnsi, renderImage } = selection;
 
     if (this.columns <= 0 || this.rows <= 0) {

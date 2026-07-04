@@ -28,6 +28,16 @@ export function resolveThreeAsciiRenderFrameSelection(
   };
 }
 
+/** Writes output selection into a caller-owned record for hot render paths. */
+export function resolveThreeAsciiRenderFrameSelectionInto(
+  target: ThreeAsciiRenderFrameSelection,
+  options: ThreeAsciiRenderFrameOptions = THREE_ASCII_ANSI_FRAME_OPTIONS,
+): ThreeAsciiRenderFrameSelection {
+  target.renderAnsi = options.ansi ?? true;
+  target.renderImage = options.image ?? false;
+  return target;
+}
+
 export function emptyThreeAsciiRenderFrame(selection: ThreeAsciiRenderFrameSelection): ThreeAsciiEmptyRenderFrame {
   return { grid: selection.renderAnsi ? [] : undefined };
 }
