@@ -44,6 +44,7 @@ import {
 } from "./readback.ts";
 import { assembleThreeAsciiReadbackGrid } from "./readback_assembly.ts";
 import { handleThreeAsciiDeferredReadbackFailure } from "./readback_failure.ts";
+import { readThreeAsciiImageFrame, type ThreeAsciiImageFrame } from "./image_frame.ts";
 import {
   normalizeThreeAsciiRendererOptions,
   normalizeThreeAsciiRenderSize,
@@ -84,15 +85,6 @@ export interface ThreeAsciiRendererOptions {
   effect?: AcerolaAsciiNodeOptions;
 }
 
-/** Raw image frame emitted by the Acerola three Ascii renderer. */
-export interface ThreeAsciiImageFrame {
-  data: Uint8Array;
-  encoding: "bytes";
-  format: 32;
-  pixelWidth: number;
-  pixelHeight: number;
-}
-
 /** Output selection for one three Ascii renderer pass. */
 export interface ThreeAsciiRenderFrameOptions {
   ansi?: boolean;
@@ -106,6 +98,7 @@ export interface ThreeAsciiRenderFrame {
   image?: ThreeAsciiImageFrame;
 }
 
+export type { ThreeAsciiImageFrame } from "./image_frame.ts";
 export type { ThreeAsciiRendererPerformance } from "./performance.ts";
 
 /** Stable error raised when WebGPU output buffers cannot be mapped back to CPU-readable memory. */
@@ -319,13 +312,7 @@ export class ThreeAsciiRenderer {
 
     const frame: ThreeAsciiRenderFrame = {};
     if (renderImage) {
-      frame.image = {
-        data: await this.canvas.context.readRGBA(),
-        encoding: "bytes",
-        format: 32,
-        pixelWidth: this.canvas.width,
-        pixelHeight: this.canvas.height,
-      };
+      frame.image = await readThreeAsciiImageFrame(this.canvas);
     }
 
     if (renderAnsi) {

@@ -78,6 +78,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   persistence, and side-effect orchestration for workspace save/rename/delete flows.
 - Restored the rejected clipped Three ASCII diff experiment, then fixed monitor window control visibility and block-mode
   truecolor output without regressing the Three ASCII benchmark suite.
+- Extracted Three ASCII raw image-frame construction into a small helper with focused tests so renderer frame
+  orchestration owns fewer readback details.
 - Added a standalone Three ASCII demo titlebar shell with mouse-enabled minimize, maximize, restore, and close controls
   so the default renderer launch has the same basic window affordances as the portfolio demos.
 - Extracted standalone Three ASCII demo window geometry and titlebar hit testing into a small tested helper instead of
