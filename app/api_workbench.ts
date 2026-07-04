@@ -313,10 +313,12 @@ const TERMINAL_OUTPUT_WINDOW_ID = "terminalOutput";
 const TERMINAL_OUTPUT_OPTION_ID = "terminal-output";
 const TERMINAL_SHELL_WINDOW_ID = "terminalShell";
 const TERMINAL_SHELL_OPTION_ID = "terminal-shell";
+const WORKBENCH_THREE_INITIAL_CELLS = 480;
 const WORKBENCH_THREE_LIVE_MAX_CELLS = 960;
-const WORKBENCH_THREE_PRESSURE_LEVELS = [240, 480, WORKBENCH_THREE_LIVE_MAX_CELLS] as const;
+const WORKBENCH_THREE_PRESSURE_LEVELS = [240, WORKBENCH_THREE_INITIAL_CELLS, WORKBENCH_THREE_LIVE_MAX_CELLS] as const;
 const WORKBENCH_THREE_PRESSURE_HIGH_BYTES = 80_000;
 const WORKBENCH_THREE_PRESSURE_LOW_BYTES = 35_000;
+const WORKBENCH_THREE_PRESSURE_HIGH_FRAME_THRESHOLD = 1;
 
 type BuiltInWindowId =
   | "explorer"
@@ -645,7 +647,7 @@ const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
 const windowScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const workspaceScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const dropdownOverlayRenderCommands: WorkbenchDropdownOverlayRenderCommand[] = [];
-const workbenchThreeLiveMaxCells = new Signal(WORKBENCH_THREE_LIVE_MAX_CELLS);
+const workbenchThreeLiveMaxCells = new Signal(WORKBENCH_THREE_INITIAL_CELLS);
 let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
@@ -653,7 +655,7 @@ let workspacePlacementContext: WorkspacePlacementContext | null = null;
 const drawScheduler = new FrameScheduler({ intervalMs: 1000 / 18 });
 const renderedVisualizationThreePanels = new Set<VisualizationWindowId>();
 let renderedThreeGridCount = 0;
-const terminalPressure = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_LIVE_MAX_CELLS);
+const terminalPressure = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_INITIAL_CELLS);
 type Frame = WorkbenchFrame;
 interface DropdownOverlay {
   kind: "control" | "theme" | "newWindow" | "workspace";
@@ -1074,6 +1076,7 @@ function updateThreeTerminalPressure(stats: WorkbenchAnsiScreenFlushStats): void
     levels: WORKBENCH_THREE_PRESSURE_LEVELS,
     highBytes: WORKBENCH_THREE_PRESSURE_HIGH_BYTES,
     lowBytes: WORKBENCH_THREE_PRESSURE_LOW_BYTES,
+    highFrameThreshold: WORKBENCH_THREE_PRESSURE_HIGH_FRAME_THRESHOLD,
   });
   terminalPressure.currentCells = next.currentCells;
   terminalPressure.highFrames = next.highFrames;
