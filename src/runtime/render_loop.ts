@@ -204,13 +204,14 @@ export class FrameScheduler {
     this.#scheduled = false;
     this.#callback = undefined;
     this.#handle = undefined;
-    this.#lastFlushAt = this.#timer.now();
     this.#flushed += 1;
     try {
       callback?.();
     } catch (error) {
       this.#onError?.(error);
       if (!this.#onError) throw error;
+    } finally {
+      this.#lastFlushAt = this.#timer.now();
     }
   }
 }

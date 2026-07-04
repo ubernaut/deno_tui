@@ -978,6 +978,32 @@ Deno.test("FrameScheduler coalesces invalidations behind a frame interval", () =
   assertEquals(scheduler.inspect().lastFlushAt, 16);
 });
 
+Deno.test("FrameScheduler spaces frames from callback completion", () => {
+  const timer = new TestRenderLoopTimer();
+  const scheduler = new FrameScheduler({ timer, intervalMs: 16 });
+  const runs: string[] = [];
+
+  assertEquals(
+    scheduler.schedule(() => {
+      runs.push("slow");
+      timer.advance(40);
+    }),
+    true,
+  );
+  timer.flushNext();
+
+  assertEquals(runs, ["slow"]);
+  assertEquals(scheduler.inspect().lastFlushAt, 40);
+
+  assertEquals(scheduler.schedule(() => runs.push("next")), true);
+  assertEquals(timer.lastDelay(), 16);
+  timer.advance(16);
+  timer.flushNext();
+
+  assertEquals(runs, ["slow", "next"]);
+  assertEquals(scheduler.inspect().lastFlushAt, 56);
+});
+
 Deno.test("FrameScheduler can cancel flush and report callback errors", () => {
   const timer = new TestRenderLoopTimer();
   const failure = new Error("frame failed");

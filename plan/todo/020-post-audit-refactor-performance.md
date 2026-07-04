@@ -763,3 +763,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   0.002ms average on this host.
 - Routed the browser API workbench through the same visible-window filter as the terminal adapter so web parity keeps
   scrolled-off panels out of the render loop.
+- Switched `FrameScheduler` throttling to measure frame spacing from callback completion instead of callback start,
+  preventing slow terminal flushes from immediately draining queued invalidations and compounding perceived lag.
