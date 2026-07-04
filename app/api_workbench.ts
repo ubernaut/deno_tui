@@ -627,6 +627,7 @@ const realSourceFrameBuffer: SourceFrame[] = [];
 const syntheticSourceFrameBuffer: SourceFrame[] = [];
 const cpuHexHitTileBuffer: CpuHexTileLayout[] = [];
 const cpuHexRevealTileBuffer: CpuHexTileLayout[] = [];
+const threeGridRowBuffer: string[] = [];
 const menuBarHitLayouts: WorkbenchMenuBarHitLayout[] = [];
 const headerLayout: WorkbenchHeaderLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
 const shelfBuffers = new WorkbenchShelfBufferCache<WindowId>();
@@ -1449,7 +1450,10 @@ function renderThreeGrid(frame: Frame, rect: Rectangle, grid: string[][], t: The
     return;
   }
 
-  writeWorkbenchThreeGrid(frame, rect, grid, paint(" ", { bg: t.surface }), { scale: "down" });
+  writeWorkbenchThreeGrid(frame, rect, grid, paint(" ", { bg: t.surface }), {
+    scale: "down",
+    rowBuffer: threeGridRowBuffer,
+  });
 }
 
 function renderExplorer(frame: Frame, rect: Rectangle): void {

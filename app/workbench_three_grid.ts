@@ -10,7 +10,7 @@ export function writeWorkbenchThreeGrid(
   rect: Rectangle,
   grid: readonly (readonly string[] | undefined)[],
   fallbackCell: string,
-  options: { scale?: WorkbenchThreeGridScaleMode } = {},
+  options: { scale?: WorkbenchThreeGridScaleMode; rowBuffer?: string[] } = {},
 ): void {
   if (rect.width <= 0 || rect.height <= 0) return;
   const sourceRows = grid.length;
@@ -23,7 +23,7 @@ export function writeWorkbenchThreeGrid(
   const targetWidth = capOutput ? Math.min(rect.width, sourceColumns || rect.width) : rect.width;
   const rowOffset = capOutput ? Math.max(0, Math.floor((rect.height - targetHeight) / 2)) : 0;
   const columnOffset = capOutput ? Math.max(0, Math.floor((rect.width - targetWidth) / 2)) : 0;
-  const rowBuffer: string[] = [];
+  const rowBuffer = options.rowBuffer ?? [];
 
   for (let row = 0; row < targetHeight; row += 1) {
     const sourceRow = shouldScale && sourceRows > 0

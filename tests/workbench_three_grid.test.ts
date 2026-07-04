@@ -56,6 +56,24 @@ Deno.test("workbench three grid can scale lower-resolution source cells", () => 
   ]);
 });
 
+Deno.test("workbench three grid reuses caller-owned row buffers while scaling", () => {
+  const frame: WorkbenchFrame = [];
+  const rowBuffer = ["stale", "value"];
+  writeWorkbenchThreeGrid(
+    frame,
+    { column: 0, row: 0, width: 4, height: 2 },
+    [["A", "B"]],
+    ".",
+    { scale: true, rowBuffer },
+  );
+
+  assertEquals(frame, [
+    ["A", "A", "B", "B"],
+    ["A", "A", "B", "B"],
+  ]);
+  assertEquals(rowBuffer, ["A", "A", "B", "B"]);
+});
+
 Deno.test("workbench three grid scale-down mode centers capped grids instead of scaling up", () => {
   const frame: WorkbenchFrame = [];
   writeWorkbenchThreeGrid(
