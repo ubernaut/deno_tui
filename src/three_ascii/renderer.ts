@@ -46,6 +46,7 @@ import {
 } from "./readback.ts";
 import { assembleThreeAsciiReadbackGrid } from "./readback_assembly.ts";
 import { handleThreeAsciiDeferredReadbackFailure } from "./readback_failure.ts";
+import { withThreeAsciiMappedReadback } from "./readback_mapping.ts";
 import { resolveThreeAsciiDeferredReadbackSubmission } from "./readback_submission.ts";
 import {
   emptyThreeAsciiRenderFrame,
@@ -783,32 +784,25 @@ export class ThreeAsciiRenderer {
       throw new Error("ThreeAsciiRenderer readback buffers have not been initialized.");
     }
 
-    try {
-      const readbackStart = performance.now();
-      await readback.gpu.mapAsync(GPUMapMode.READ);
-      const readbackEnd = performance.now();
-      this.lastReadbackMs = readbackEnd - readbackStart;
-    } catch (error) {
-      throw new ThreeAsciiReadbackError(error);
-    }
-
-    try {
-      const assembly = assembleThreeAsciiReadbackGrid({
-        source: readback.gpu.getMappedRange(),
-        layout,
-        viewCache: this.readbackViewCache,
-        assembler: this.ansiGridAssembler,
-        columns: this.columns,
-        rows: this.rows,
-        terminalGlyphStyle: this.terminalGlyphStyle,
-        terminalEdgeBias: this.terminalEdgeBias,
-        backgroundColor,
-      });
-      this.gridRevision += 1;
-      this.lastAssemblyMs = assembly.assemblyMs;
-      return assembly.grid;
-    } finally {
-      readback.gpu.unmap();
-    }
+    const mapped = await withThreeAsciiMappedReadback(readback.gpu, {
+      mapModeRead: GPUMapMode.READ,
+      mapError: (error) => new ThreeAsciiReadbackError(error),
+      read: (source) =>
+        assembleThreeAsciiReadbackGrid({
+          source,
+          layout,
+          viewCache: this.readbackViewCache,
+          assembler: this.ansiGridAssembler,
+          columns: this.columns,
+          rows: this.rows,
+          terminalGlyphStyle: this.terminalGlyphStyle,
+          terminalEdgeBias: this.terminalEdgeBias,
+          backgroundColor,
+        }),
+    });
+    this.gridRevision += 1;
+    this.lastReadbackMs = mapped.readbackMs;
+    this.lastAssemblyMs = mapped.value.assemblyMs;
+    return mapped.value.grid;
   }
 }
