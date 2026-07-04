@@ -261,6 +261,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Lowered the default workbench Three ASCII live tier from 240 to 120 cells and slowed that tier to 24 FPS so the
   startup pane targets roughly 24KB/s of terminal output on the pressure probe instead of the prior 40-60KB/s range,
   while preserving manual recovery to higher detail when terminal output is quiet.
+- Routed terminal workspace viewport blitting through the structured frame-cell copier so virtual workspace rows are
+  copied directly into the final frame instead of stringifying styled rows and parsing them back into cells.
 - Added structured workbench frame viewport blitting so API Workbench windows copy styled cells directly instead of
   stringifying ANSI slices and reparsing them before the final terminal flush, with unit and benchmark coverage for the
   scrolled truecolor blit path.

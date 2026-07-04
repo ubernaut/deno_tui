@@ -3013,9 +3013,7 @@ function contentRectToGraphicsRect(rect: Rectangle): Rectangle {
 }
 
 function blitWorkspace(frame: Frame, virtual: Frame, bounds: Rectangle, offset: number, width: number): void {
-  for (let row = 0; row < bounds.height; row += 1) {
-    write(frame, bounds.row + row, bounds.column, renderFrameRow(virtual[offset + row] ?? [], width));
-  }
+  blitWorkbenchFrameCells(frame, virtual, { ...bounds, width }, { columns: 0, rows: offset });
 }
 
 function renderWorkspaceScrollbar(frame: Frame, bounds: Rectangle): void {
