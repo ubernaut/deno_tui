@@ -397,3 +397,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   levels so slow SSH/tmux sessions can continue reducing payload beyond the initial 960-cell default.
 - Shifted terminal Three pressure policy toward smaller source grids at steadier live cadence: pressure now trades
   detail for smoother motion, with tested frame-interval selection for live and idle workbench Three panes.
+- Made workbench Three cadence focus-aware through a shared tested helper so background Three panes use idle timing
+  while focused or fullscreen Three panes keep interactive timing.

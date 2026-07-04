@@ -282,6 +282,7 @@ import {
   createWorkbenchThreeTerminalPressureState,
   resolveWorkbenchThreeTerminalPressureBudget,
   workbenchThreeFrameIntervalForCells,
+  workbenchThreeShouldUseLiveCadence,
 } from "../src/app/workbench_three_terminal_pressure.ts";
 import type {
   Accent,
@@ -2932,12 +2933,12 @@ function frameIntervalForWorkbenchThreeCells(cells: number, options: { live?: bo
 }
 
 function hasLiveThreeRenderedWindow(): boolean {
-  const fullscreenId = windowManager.fullscreenId.peek() as WindowId | undefined;
-  if (fullscreenId) return isThreeRenderedWindow(fullscreenId);
-  for (const entry of windowManager.orderedWindows()) {
-    if ((entry.state ?? "normal") === "normal" && isThreeRenderedWindow(entry.id as WindowId)) return true;
-  }
-  return false;
+  return workbenchThreeShouldUseLiveCadence({
+    activeId: activeWindow.peek(),
+    fullscreenId: windowManager.fullscreenId.peek(),
+    windows: windowManager.orderedWindows(),
+    isThreeWindow: (id) => isThreeRenderedWindow(id as WindowId),
+  });
 }
 
 function hideVisualizationThreePanel(id: VisualizationWindowId): void {

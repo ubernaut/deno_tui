@@ -33,6 +33,20 @@ export interface WorkbenchThreeFrameIntervalOptions {
   idleDefaultMs: number;
 }
 
+/** Minimal window state needed to decide whether a Three pane should use live cadence. */
+export interface WorkbenchThreeCadenceWindow {
+  id: string;
+  state?: "normal" | "minimized" | "fullscreen" | "closed" | string;
+}
+
+/** Inputs used to decide whether workbench Three panes should render at interactive or idle cadence. */
+export interface WorkbenchThreeLiveCadenceOptions {
+  activeId?: string;
+  fullscreenId?: string;
+  windows: readonly WorkbenchThreeCadenceWindow[];
+  isThreeWindow: (id: string) => boolean;
+}
+
 /** Creates pressure counters initialized to the preferred render-cell budget. */
 export function createWorkbenchThreeTerminalPressureState(defaultCells: number): WorkbenchThreeTerminalPressureState {
   return {
@@ -50,6 +64,18 @@ export function workbenchThreeFrameIntervalForCells(
   const intervals = options.live ? options.liveIntervals : options.idleIntervals;
   const fallback = options.live ? options.liveDefaultMs : options.idleDefaultMs;
   return intervals.get(Math.max(1, Math.floor(cells))) ?? Math.max(1, fallback);
+}
+
+/** Returns true when the focused/fullscreen visible workbench window is a Three-backed pane. */
+export function workbenchThreeShouldUseLiveCadence(options: WorkbenchThreeLiveCadenceOptions): boolean {
+  if (options.fullscreenId) return options.isThreeWindow(options.fullscreenId);
+  if (!options.activeId || !options.isThreeWindow(options.activeId)) return false;
+  for (const window of options.windows) {
+    if (window.id !== options.activeId) continue;
+    const state = window.state ?? "normal";
+    return state === "normal" || state === "fullscreen";
+  }
+  return false;
 }
 
 /** Resolves the next render-cell budget for workbench Three panes from terminal flush byte pressure. */

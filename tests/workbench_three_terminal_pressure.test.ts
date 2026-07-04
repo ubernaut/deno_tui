@@ -3,6 +3,7 @@ import {
   createWorkbenchThreeTerminalPressureState,
   resolveWorkbenchThreeTerminalPressureBudget,
   workbenchThreeFrameIntervalForCells,
+  workbenchThreeShouldUseLiveCadence,
 } from "../src/app/workbench_three_terminal_pressure.ts";
 
 Deno.test("workbench Three terminal pressure steps down across sustained heavy output", () => {
@@ -122,4 +123,25 @@ Deno.test("workbench Three frame interval policy keeps smaller live budgets smoo
   assertEquals(workbenchThreeFrameIntervalForCells(960, { ...options, live: true }), 1000 / 10);
   assertEquals(workbenchThreeFrameIntervalForCells(999, { ...options, live: true }), 1000 / 12);
   assertEquals(workbenchThreeFrameIntervalForCells(240, { ...options, live: false }), 1000 / 6);
+});
+
+Deno.test("workbench Three live cadence follows focused or fullscreen Three panes", () => {
+  const windows = [
+    { id: "explorer", state: "normal" },
+    { id: "three", state: "normal" },
+    { id: "three-lattice", state: "minimized" },
+  ];
+  const isThreeWindow = (id: string) => id.startsWith("three");
+
+  assertEquals(workbenchThreeShouldUseLiveCadence({ activeId: "three", windows, isThreeWindow }), true);
+  assertEquals(workbenchThreeShouldUseLiveCadence({ activeId: "explorer", windows, isThreeWindow }), false);
+  assertEquals(workbenchThreeShouldUseLiveCadence({ activeId: "three-lattice", windows, isThreeWindow }), false);
+  assertEquals(
+    workbenchThreeShouldUseLiveCadence({ activeId: "explorer", fullscreenId: "three", windows, isThreeWindow }),
+    true,
+  );
+  assertEquals(
+    workbenchThreeShouldUseLiveCadence({ activeId: "three", fullscreenId: "explorer", windows, isThreeWindow }),
+    false,
+  );
 });
