@@ -27,6 +27,30 @@ export interface WorkbenchThreePressureProbeSummary {
   averageSourceChangedRows: number;
 }
 
+/** Clones a Three ASCII grid row-by-row so mutable renderer grids can be compared across frames. */
+export function snapshotWorkbenchThreeProbeGridRows(
+  grid: readonly (readonly string[] | undefined)[],
+): readonly string[][] {
+  const snapshot = new Array<string[]>(grid.length);
+  for (let row = 0; row < grid.length; row += 1) {
+    snapshot[row] = [...(grid[row] ?? [])];
+  }
+  return snapshot;
+}
+
+/** Counts rows whose source cell content changed between two probe samples. */
+export function countWorkbenchThreeProbeChangedGridRows(
+  previous: readonly (readonly string[] | undefined)[],
+  next: readonly (readonly string[] | undefined)[],
+): number {
+  const rows = Math.max(previous.length, next.length);
+  let changed = 0;
+  for (let row = 0; row < rows; row += 1) {
+    if (!workbenchThreeProbeGridRowsEqual(previous[row], next[row])) changed += 1;
+  }
+  return changed;
+}
+
 /** Summarizes workbench Three pressure samples while excluding placeholder and startup renderer frames. */
 export function summarizeWorkbenchThreePressureProbe(
   samples: readonly WorkbenchThreePressureProbeSample[],
@@ -45,4 +69,18 @@ export function summarizeWorkbenchThreePressureProbe(
     averageChangedRows: average(steady.map((sample) => sample.changedRows)),
     averageSourceChangedRows: average(steady.map((sample) => sample.sourceChangedRows)),
   };
+}
+
+function workbenchThreeProbeGridRowsEqual(
+  left: readonly string[] | undefined,
+  right: readonly string[] | undefined,
+): boolean {
+  if (left === right) return true;
+  const leftLength = left?.length ?? 0;
+  const rightLength = right?.length ?? 0;
+  if (leftLength !== rightLength) return false;
+  for (let column = 0; column < leftLength; column += 1) {
+    if (left![column] !== right![column]) return false;
+  }
+  return true;
 }

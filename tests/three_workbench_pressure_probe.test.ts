@@ -1,5 +1,7 @@
 import { assertEquals } from "./deps.ts";
 import {
+  countWorkbenchThreeProbeChangedGridRows,
+  snapshotWorkbenchThreeProbeGridRows,
   summarizeWorkbenchThreePressureProbe,
   type WorkbenchThreePressureProbeSample,
 } from "../src/three_ascii/workbench_pressure_probe.ts";
@@ -37,6 +39,30 @@ Deno.test("summarizeWorkbenchThreePressureProbe reports empty steady metrics wit
   assertEquals(summary.averageBytes, 0);
   assertEquals(summary.averageChangedRows, 0);
   assertEquals(summary.averageSourceChangedRows, 0);
+});
+
+Deno.test("workbench Three probe grid snapshots preserve mutable renderer frame history", () => {
+  const grid = [
+    ["a", "b"],
+    ["c", "d"],
+  ];
+  const snapshot = snapshotWorkbenchThreeProbeGridRows(grid);
+
+  grid[0]![1] = "B";
+  grid.push(["e"]);
+
+  assertEquals(snapshot, [["a", "b"], ["c", "d"]]);
+  assertEquals(countWorkbenchThreeProbeChangedGridRows(snapshot, grid), 2);
+});
+
+Deno.test("workbench Three probe changed-row counter handles equal sparse and resized grids", () => {
+  assertEquals(
+    countWorkbenchThreeProbeChangedGridRows(
+      [["a"], undefined, ["c"]],
+      [["a"], [], ["C"], ["d"]],
+    ),
+    2,
+  );
 });
 
 function sample(

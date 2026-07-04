@@ -17,6 +17,8 @@ import {
 } from "../app/workbench_three_policy.ts";
 import { choiceArg, delay, formatFps, formatMs, numberArg } from "../src/three_ascii/probe_cli.ts";
 import {
+  countWorkbenchThreeProbeChangedGridRows,
+  snapshotWorkbenchThreeProbeGridRows,
   summarizeWorkbenchThreePressureProbe,
   type WorkbenchThreePressureProbeSample,
 } from "../src/three_ascii/workbench_pressure_probe.ts";
@@ -155,8 +157,8 @@ function drawSample(index: number): WorkbenchThreePressureProbeSample {
   );
   const stats = painter.flush(prepared, frameWidth, frameHeight, renderFrameRow, renderFrameSlice);
   const performance = panel.inspectPerformance();
-  const sourceChangedRows = countChangedGridRows(previousGrid, grid);
-  previousGrid = snapshotGridRows(grid);
+  const sourceChangedRows = countWorkbenchThreeProbeChangedGridRows(previousGrid, grid);
+  previousGrid = snapshotWorkbenchThreeProbeGridRows(grid);
   return {
     index,
     rendererMs: performance?.totalMs ?? 0,
@@ -172,35 +174,4 @@ function drawSample(index: number): WorkbenchThreePressureProbeSample {
     rows: performance?.rows ?? grid.length,
     cells: performance?.cells ?? (grid[0]?.length ?? 0) * grid.length,
   };
-}
-
-function snapshotGridRows(grid: readonly (readonly string[] | undefined)[]): readonly string[][] {
-  const snapshot = new Array<string[]>(grid.length);
-  for (let row = 0; row < grid.length; row += 1) {
-    snapshot[row] = [...(grid[row] ?? [])];
-  }
-  return snapshot;
-}
-
-function countChangedGridRows(
-  previous: readonly (readonly string[] | undefined)[],
-  next: readonly (readonly string[] | undefined)[],
-): number {
-  const rows = Math.max(previous.length, next.length);
-  let changed = 0;
-  for (let row = 0; row < rows; row += 1) {
-    if (!gridRowsEqual(previous[row], next[row])) changed += 1;
-  }
-  return changed;
-}
-
-function gridRowsEqual(left: readonly string[] | undefined, right: readonly string[] | undefined): boolean {
-  if (left === right) return true;
-  const leftLength = left?.length ?? 0;
-  const rightLength = right?.length ?? 0;
-  if (leftLength !== rightLength) return false;
-  for (let column = 0; column < leftLength; column += 1) {
-    if (left![column] !== right![column]) return false;
-  }
-  return true;
 }
