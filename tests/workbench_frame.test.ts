@@ -47,6 +47,26 @@ Deno.test("workbench frame row assembly compresses adjacent truecolor background
   );
 });
 
+Deno.test("workbench frame helpers keep repeated SGR background cells compact", () => {
+  const cells = toStyledCells(
+    "\x1b[38;2;9;8;7mX\x1b[48;2;1;2;3m \x1b[48;2;4;5;6m \x1b[48;2;7;8;9m ",
+  );
+
+  assertEquals(cells, [
+    "\x1b[38;2;9;8;7mX\x1b[0m",
+    "\x1b[38;2;9;8;7;48;2;1;2;3m \x1b[0m",
+    "\x1b[38;2;9;8;7;48;2;4;5;6m \x1b[0m",
+    "\x1b[38;2;9;8;7;48;2;7;8;9m \x1b[0m",
+  ]);
+
+  const frame: WorkbenchFrame = [[]];
+  writeFrame(frame, 4, 0, 0, cells.join(""));
+  assertEquals(
+    renderFrameRow(frame[0]!, 4),
+    "\x1b[38;2;9;8;7mX\x1b[0m\x1b[38;2;9;8;7;48;2;1;2;3m \x1b[38;2;9;8;7;48;2;4;5;6m \x1b[38;2;9;8;7;48;2;7;8;9m \x1b[0m",
+  );
+});
+
 Deno.test("workbench frame row assembly resets before foreground-only cells after backgrounds", () => {
   const frame: WorkbenchFrame = [[
     "\x1b[48;2;10;20;30m \x1b[0m",

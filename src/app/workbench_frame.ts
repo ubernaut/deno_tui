@@ -1,9 +1,9 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
+import { mergeSgrStyle } from "../utils/sgr_style.ts";
 import { stripStyles, textWidth } from "../utils/strings.ts";
 
 const RESET = "\x1b[0m";
-const BACKGROUND_SGR_PATTERN = /\x1b\[48(?:;|\d)/;
 const MAX_FRAME_CELL_PARTS_CACHE_SIZE = 32768;
 const frameCellPartsCache = new Map<string, FrameCellParts>();
 
@@ -66,7 +66,7 @@ export function toStyledCells(value: string): string[] {
     if (value.charCodeAt(index) === 0x1b) {
       const sequence = readSgrSequenceAt(value, index);
       if (sequence) {
-        style = sequence.includes("[0m") ? "" : style + sequence;
+        style = mergeSgrStyle(style, sequence);
         index += sequence.length;
         continue;
       }
@@ -103,7 +103,7 @@ export function writeFrame(frame: WorkbenchFrame, width: number, row: number, co
     if (value.charCodeAt(index) === 0x1b) {
       const sequence = readSgrSequenceAt(value, index);
       if (sequence) {
-        style = sequence.includes("[0m") ? "" : style + sequence;
+        style = mergeSgrStyle(style, sequence);
         index += sequence.length;
         continue;
       }
@@ -246,7 +246,8 @@ function renderBackgroundStyledRun(
 }
 
 function isBackgroundStyledFrameCell(cell: FrameCellParts): boolean {
-  return cell.suffix === RESET && cell.prefix.length > 0 && BACKGROUND_SGR_PATTERN.test(cell.prefix);
+  return cell.suffix === RESET && cell.prefix.length > 0 &&
+    (cell.prefix.includes("[48;") || cell.prefix.includes(";48;"));
 }
 
 interface FrameCellParts {

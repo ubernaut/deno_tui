@@ -1657,65 +1657,7 @@ var DrawObject = class {
   }
 };
 
-// src/utils/strings.ts
-var UNICODE_CHAR_REGEXP = /\ud83c[\udffb-\udfff](?=\ud83c[\udffb-\udfff])|(?:(?:\ud83c\udff4\udb40\udc67\udb40\udc62\udb40(?:\udc65|\udc73|\udc77)\udb40(?:\udc6e|\udc63|\udc6c)\udb40(?:\udc67|\udc74|\udc73)\udb40\udc7f)|[^\ud800-\udfff][\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff\u1ab0-\u1aff\u1dc0-\u1dff]?|[\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff\u1ab0-\u1aff\u1dc0-\u1dff]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff]|[\ud800-\udfff])[\ufe0e\ufe0f]?(?:[\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff\u1ab0-\u1aff\u1dc0-\u1dff]|\ud83c[\udffb-\udfff])?(?:\u200d(?:[^\ud800-\udfff]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff])[\ufe0e\ufe0f]?(?:[\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff\u1ab0-\u1aff\u1dc0-\u1dff]|\ud83c[\udffb-\udfff])?)*/g;
-var empty = [];
-var ESC_PATTERN = "\\x1b";
-var BEL_PATTERN = "\\x07";
-var STRIP_CSI_SEQUENCE_REGEXP = new RegExp(`${ESC_PATTERN}\\[[0-?]*[ -/]*[@-~]`, "g");
-var STRIP_OSC_SEQUENCE_REGEXP = new RegExp(
-  `${ESC_PATTERN}\\][^${BEL_PATTERN}]*(?:${BEL_PATTERN}|${ESC_PATTERN}\\\\)`,
-  "g"
-);
-function getMultiCodePointCharacters(text) {
-  if (!text) return empty;
-  if (text.includes("\x1B")) {
-    return getStyledCharacters(text);
-  }
-  const plainAscii = getPlainAsciiCharacters(text);
-  if (plainAscii) return plainAscii;
-  const matched = text.match(UNICODE_CHAR_REGEXP);
-  return matched ?? empty;
-}
-function getPlainAsciiCharacters(text) {
-  const cells = new Array(text.length);
-  for (let index = 0; index < text.length; index += 1) {
-    const code = text.charCodeAt(index);
-    if (code >= 128) return void 0;
-    cells[index] = text[index] ?? "";
-  }
-  return cells;
-}
-function getStyledCharacters(text) {
-  const cells = [];
-  let style2 = "";
-  let lastStyle = "";
-  let lastChar = "";
-  let lastCell = "";
-  for (let index = 0; index < text.length; ) {
-    if (text.charCodeAt(index) === 27) {
-      const sequence = readCsiSequenceAt(text, index);
-      if (sequence) {
-        if (sequence.endsWith("m")) {
-          style2 = mergeSgrStyle(style2, sequence);
-        }
-        index += sequence.length;
-        continue;
-      }
-    }
-    const char = nextTextCharacter(text, index);
-    if (style2 === lastStyle && char === lastChar) {
-      cells.push(lastCell);
-    } else {
-      lastStyle = style2;
-      lastChar = char;
-      lastCell = style2 ? `${style2}${char}\x1B[0m` : char;
-      cells.push(lastCell);
-    }
-    index += char.length;
-  }
-  return cells;
-}
+// src/utils/sgr_style.ts
 function mergeSgrStyle(currentStyle, sequence) {
   const state = {
     bold: false,
@@ -1729,6 +1671,10 @@ function mergeSgrStyle(currentStyle, sequence) {
   applySgrSequences(state, currentStyle);
   applySgrSequence(state, sequence);
   return formatSgrStyleState(state);
+}
+function isSgrReset(sequence) {
+  const params = sgrParams(sequence);
+  return params.length === 0 || params.every((value) => value === 0);
 }
 function applySgrSequences(state, style2) {
   for (let index = 0; index < style2.length; ) {
@@ -1796,10 +1742,6 @@ function sgrParams(sequence) {
   const params = body.split(";").map((part) => part === "" ? 0 : Number(part));
   return params.filter((value) => Number.isFinite(value)).map((value) => Math.max(0, Math.floor(value)));
 }
-function isSgrReset(sequence) {
-  const params = sgrParams(sequence);
-  return params.length === 0 || params.every((value) => value === 0);
-}
 function resetSgrStyleState(state) {
   state.bold = false;
   state.italic = false;
@@ -1817,6 +1759,89 @@ function formatSgrStyleState(state) {
   if (state.inverse) params.push("7");
   params.push(...state.foreground, ...state.background, ...state.extra);
   return params.length ? `\x1B[${params.join(";")}m` : "";
+}
+function readCsiSequenceAt(value, start) {
+  if (value.charCodeAt(start) !== 27 || value[start + 1] !== "[") return void 0;
+  let index = start + 2;
+  while (index < value.length) {
+    const code = value.charCodeAt(index);
+    if (code >= 48 && code <= 63) {
+      index += 1;
+      continue;
+    }
+    break;
+  }
+  while (index < value.length) {
+    const code = value.charCodeAt(index);
+    if (code >= 32 && code <= 47) {
+      index += 1;
+      continue;
+    }
+    break;
+  }
+  const finalCode = value.charCodeAt(index);
+  if (!(finalCode >= 64 && finalCode <= 126)) return void 0;
+  return value.slice(start, index + 1);
+}
+
+// src/utils/strings.ts
+var UNICODE_CHAR_REGEXP = /\ud83c[\udffb-\udfff](?=\ud83c[\udffb-\udfff])|(?:(?:\ud83c\udff4\udb40\udc67\udb40\udc62\udb40(?:\udc65|\udc73|\udc77)\udb40(?:\udc6e|\udc63|\udc6c)\udb40(?:\udc67|\udc74|\udc73)\udb40\udc7f)|[^\ud800-\udfff][\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff\u1ab0-\u1aff\u1dc0-\u1dff]?|[\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff\u1ab0-\u1aff\u1dc0-\u1dff]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff]|[\ud800-\udfff])[\ufe0e\ufe0f]?(?:[\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff\u1ab0-\u1aff\u1dc0-\u1dff]|\ud83c[\udffb-\udfff])?(?:\u200d(?:[^\ud800-\udfff]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff])[\ufe0e\ufe0f]?(?:[\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff\u1ab0-\u1aff\u1dc0-\u1dff]|\ud83c[\udffb-\udfff])?)*/g;
+var empty = [];
+var ESC_PATTERN = "\\x1b";
+var BEL_PATTERN = "\\x07";
+var STRIP_CSI_SEQUENCE_REGEXP = new RegExp(`${ESC_PATTERN}\\[[0-?]*[ -/]*[@-~]`, "g");
+var STRIP_OSC_SEQUENCE_REGEXP = new RegExp(
+  `${ESC_PATTERN}\\][^${BEL_PATTERN}]*(?:${BEL_PATTERN}|${ESC_PATTERN}\\\\)`,
+  "g"
+);
+function getMultiCodePointCharacters(text) {
+  if (!text) return empty;
+  if (text.includes("\x1B")) {
+    return getStyledCharacters(text);
+  }
+  const plainAscii = getPlainAsciiCharacters(text);
+  if (plainAscii) return plainAscii;
+  const matched = text.match(UNICODE_CHAR_REGEXP);
+  return matched ?? empty;
+}
+function getPlainAsciiCharacters(text) {
+  const cells = new Array(text.length);
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    if (code >= 128) return void 0;
+    cells[index] = text[index] ?? "";
+  }
+  return cells;
+}
+function getStyledCharacters(text) {
+  const cells = [];
+  let style2 = "";
+  let lastStyle = "";
+  let lastChar = "";
+  let lastCell = "";
+  for (let index = 0; index < text.length; ) {
+    if (text.charCodeAt(index) === 27) {
+      const sequence = readCsiSequenceAt2(text, index);
+      if (sequence) {
+        if (sequence.endsWith("m")) {
+          style2 = mergeSgrStyle(style2, sequence);
+        }
+        index += sequence.length;
+        continue;
+      }
+    }
+    const char = nextTextCharacter(text, index);
+    if (style2 === lastStyle && char === lastChar) {
+      cells.push(lastCell);
+    } else {
+      lastStyle = style2;
+      lastChar = char;
+      lastCell = style2 ? `${style2}${char}\x1B[0m` : char;
+      cells.push(lastCell);
+    }
+    index += char.length;
+  }
+  return cells;
 }
 function stripStyles(string) {
   return string.replace(STRIP_CSI_SEQUENCE_REGEXP, "").replace(STRIP_OSC_SEQUENCE_REGEXP, "");
@@ -1921,9 +1946,9 @@ function isAnsiResetOnly(value) {
   return true;
 }
 function readAnsiSequenceAt(value, start) {
-  return readCsiSequenceAt(value, start) ?? readOscSequenceAt(value, start);
+  return readCsiSequenceAt2(value, start) ?? readOscSequenceAt(value, start);
 }
-function readCsiSequenceAt(value, start) {
+function readCsiSequenceAt2(value, start) {
   if (value.charCodeAt(start) !== 27 || value[start + 1] !== "[") return void 0;
   let index = start + 2;
   while (index < value.length) {
@@ -3111,7 +3136,7 @@ function splitAnsiCellValue(value) {
   let textStart = 0;
   let prefix = "";
   while (textStart < cell.length) {
-    const sequence = readCsiSequenceAt2(cell, textStart);
+    const sequence = readCsiSequenceAt3(cell, textStart);
     if (!sequence) break;
     prefix += sequence;
     textStart += sequence.length;
@@ -3135,13 +3160,13 @@ function isAnsiSuffix(value) {
   if (!value) return true;
   let index = 0;
   while (index < value.length) {
-    const sequence = readCsiSequenceAt2(value, index);
+    const sequence = readCsiSequenceAt3(value, index);
     if (!sequence) return false;
     index += sequence.length;
   }
   return true;
 }
-function readCsiSequenceAt2(value, start) {
+function readCsiSequenceAt3(value, start) {
   if (value.charCodeAt(start) !== 27 || value[start + 1] !== "[") return void 0;
   let index = start + 2;
   while (index < value.length) {
@@ -11436,7 +11461,6 @@ function inset(rect, amount) {
 
 // src/app/workbench_frame.ts
 var RESET2 = "\x1B[0m";
-var BACKGROUND_SGR_PATTERN = /\x1b\[48(?:;|\d)/;
 var MAX_FRAME_CELL_PARTS_CACHE_SIZE = 32768;
 var frameCellPartsCache = /* @__PURE__ */ new Map();
 function prepareWorkbenchRows(rows2, count, create, reset) {
@@ -11455,7 +11479,7 @@ function toStyledCells(value) {
     if (value.charCodeAt(index) === 27) {
       const sequence = readSgrSequenceAt(value, index);
       if (sequence) {
-        style2 = sequence.includes("[0m") ? "" : style2 + sequence;
+        style2 = mergeSgrStyle(style2, sequence);
         index += sequence.length;
         continue;
       }
@@ -11538,7 +11562,7 @@ function renderBackgroundStyledRun(cellAt, startColumn, width, firstCell, first)
   return { value: `${value}${RESET2}`, nextColumn: next };
 }
 function isBackgroundStyledFrameCell(cell) {
-  return cell.suffix === RESET2 && cell.prefix.length > 0 && BACKGROUND_SGR_PATTERN.test(cell.prefix);
+  return cell.suffix === RESET2 && cell.prefix.length > 0 && (cell.prefix.includes("[48;") || cell.prefix.includes(";48;"));
 }
 function splitFrameCell(cell) {
   if (!cell.includes("\x1B[") || !cell.endsWith("\x1B[0m")) {
