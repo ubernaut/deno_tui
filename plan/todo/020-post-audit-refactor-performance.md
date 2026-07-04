@@ -218,6 +218,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted API workbench Inspector row projection into a focused helper with direct tests, keeping the main renderer
   responsible only for writing projected rows.
 - Extracted API workbench Logs row projection into a focused helper that reuses row objects across draws.
+- Extracted CPU hex-grid selection map updates and selected-tile scroll targeting into the visualization module with
+  direct tests, keeping API workbench CPU selection code focused on focus, scroll application, and logging side effects.
 - Reused workbench ANSI changed-span scratch buffers and span objects across flushes, keeping sparse terminal output
   allocation-light; focused `workbench-ansi-screen-span-flush-168x54` measured around 2.16ms after the change.
 - Tuned the terminal-hosted workbench Three ASCII startup budget to begin at 480 cells and drop to 240 after the first

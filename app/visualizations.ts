@@ -63,11 +63,18 @@ export {
   cpuHexGridColumnCount,
   cpuHexTileLayout,
   cpuHexTileLayoutInto,
+  cpuHexTileScrollTarget,
   nextCpuHexLabel,
   processMatchesCpuLabel,
+  selectedCpuHexTilesWith,
   topCpuProcessLabelForCpu,
 } from "./visualization_cpu_hex.ts";
-export type { CpuHexNavigationKey, CpuHexTileLayout } from "./visualization_cpu_hex.ts";
+export type {
+  CpuHexNavigationKey,
+  CpuHexScrollOffset,
+  CpuHexScrollTargetOptions,
+  CpuHexTileLayout,
+} from "./visualization_cpu_hex.ts";
 
 export const visualizations: VisualizationDescriptor[] = visualizationCatalog.map((entry) => ({ ...entry }));
 

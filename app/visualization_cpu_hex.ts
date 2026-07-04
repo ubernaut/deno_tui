@@ -48,6 +48,20 @@ export interface CpuHexTileLayout {
   height: number;
 }
 
+export interface CpuHexScrollOffset {
+  columns: number;
+  rows: number;
+}
+
+export interface CpuHexScrollTargetOptions {
+  label: string;
+  tiles: readonly CpuHexTileLayout[];
+  offset: CpuHexScrollOffset;
+  viewportHeight: number;
+  bodyHeaderRows?: number;
+  summaryRows?: number;
+}
+
 type CpuHexTileMode = "compact" | "labeled" | "cell";
 
 export function cpuHexGridColumnCount(
@@ -130,6 +144,47 @@ export function topCpuProcessLabelForCpu(
     count += 1;
   }
   return count > 0 ? output : "no top process in sample";
+}
+
+export function selectedCpuHexTilesWith(
+  source: Readonly<Record<string, string>>,
+  id: string,
+  label: string,
+): Record<string, string> {
+  const next: Record<string, string> = {};
+  for (const key in source) {
+    next[key] = source[key]!;
+  }
+  next[id] = label;
+  return next;
+}
+
+export function cpuHexTileScrollTarget(options: CpuHexScrollTargetOptions): CpuHexScrollOffset | undefined {
+  const tile = findCpuHexTile(options.tiles, options.label);
+  if (!tile) return undefined;
+
+  const bodyHeaderRows = options.bodyHeaderRows ?? 2;
+  const summaryRows = options.summaryRows ?? 2;
+  const tileRow = bodyHeaderRows + summaryRows + tile.row;
+  const viewportHeight = Math.max(1, Math.floor(options.viewportHeight));
+  if (tileRow < options.offset.rows) {
+    return { columns: options.offset.columns, rows: tileRow };
+  }
+  if (tileRow >= options.offset.rows + viewportHeight) {
+    return {
+      columns: options.offset.columns,
+      rows: tileRow - Math.max(0, viewportHeight - 1),
+    };
+  }
+  return undefined;
+}
+
+function findCpuHexTile(tiles: readonly CpuHexTileLayout[], label: string): CpuHexTileLayout | undefined {
+  for (let index = 0; index < tiles.length; index += 1) {
+    const tile = tiles[index]!;
+    if (tile.label === label) return tile;
+  }
+  return undefined;
 }
 
 export function nextCpuHexLabel(

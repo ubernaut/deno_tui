@@ -6,9 +6,11 @@ import {
   cpuActivityRgb,
   cpuHexTileLayout,
   cpuHexTileLayoutInto,
+  cpuHexTileScrollTarget,
   nextCpuHexLabel,
   processMatchesCpuLabel,
   renderVisualization,
+  selectedCpuHexTilesWith,
   topCpuProcessLabelForCpu,
   visualizations,
   visualizationUsesThreeRenderer,
@@ -526,6 +528,38 @@ Deno.test("cpu hex helpers navigate tiles and summarize processor samples", () =
   assertEquals(processMatchesCpuLabel(processes[2]!, "2"), false);
   assertEquals(topCpuProcessLabelForCpu("2", processes), "alpha:18%, beta:10%");
   assertEquals(topCpuProcessLabelForCpu("4", processes), "no top process in sample");
+
+  const selections = selectedCpuHexTilesWith({ cpu: "1" }, "gpu", "2");
+  assertEquals(selections, { cpu: "1", gpu: "2" });
+
+  const tiles = cpuHexTileLayout(cores, 24, 4);
+  assertEquals(
+    cpuHexTileScrollTarget({
+      label: "7",
+      tiles,
+      offset: { columns: 3, rows: 0 },
+      viewportHeight: 3,
+    }),
+    { columns: 3, rows: 3 },
+  );
+  assertEquals(
+    cpuHexTileScrollTarget({
+      label: "0",
+      tiles,
+      offset: { columns: 2, rows: 6 },
+      viewportHeight: 4,
+    }),
+    { columns: 2, rows: 4 },
+  );
+  assertEquals(
+    cpuHexTileScrollTarget({
+      label: "missing",
+      tiles,
+      offset: { columns: 0, rows: 0 },
+      viewportHeight: 4,
+    }),
+    undefined,
+  );
 });
 
 Deno.test("network monitor adapts to narrow and short panes", () => {

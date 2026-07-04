@@ -296,8 +296,10 @@ import {
   type CpuHexNavigationKey,
   type CpuHexTileLayout,
   cpuHexTileLayoutInto,
+  cpuHexTileScrollTarget,
   nextCpuHexLabel,
   renderVisualization,
+  selectedCpuHexTilesWith,
   topCpuProcessLabelForCpu,
   visualizations,
   visualizationUsesThreeRenderer,
@@ -4464,25 +4466,11 @@ function selectExplorerRow(index: number): void {
 
 function selectCpuHexTile(id: VisualizationWindowId, label: string): void {
   if (dynamicVisualizationWindows.peek()[id] !== "cpu-hex-grid") return;
-  selectedCpuHexTiles.value = selectedCpuHexTilesWith(id, label);
+  selectedCpuHexTiles.value = selectedCpuHexTilesWith(selectedCpuHexTiles.peek(), id, label);
   windowManager.focus(id);
   syncWindowSignalsFromManager();
   ensureCpuHexTileVisible(id, label);
   pushLog(`cpu ${label} selected: ${topCpuProcessLabelForCpu(label, systemMonitor.snapshot.peek().processes)}`);
-}
-
-function selectedCpuHexTilesWith(
-  id: VisualizationWindowId,
-  label: string,
-): Record<VisualizationWindowId, string> {
-  const source = selectedCpuHexTiles.peek();
-  const next: Record<VisualizationWindowId, string> = {};
-  for (const key in source) {
-    const windowId = key as VisualizationWindowId;
-    next[windowId] = source[windowId]!;
-  }
-  next[id] = label;
-  return next;
 }
 
 function ensureCpuHexTileVisible(id: VisualizationWindowId, label: string): void {
@@ -4495,25 +4483,14 @@ function ensureCpuHexTileVisible(id: VisualizationWindowId, label: string): void
     Math.max(8, scroll.contentWidth.peek()),
     Math.max(4, scroll.viewportHeight.peek()),
   );
-  let tile: (typeof tiles)[number] | undefined;
-  for (let index = 0; index < tiles.length; index += 1) {
-    const entry = tiles[index]!;
-    if (entry.label === label) {
-      tile = entry;
-      break;
-    }
-  }
-  if (!tile) return;
-
-  const bodyHeaderRows = 2;
-  const cpuHexSummaryRows = 2;
-  const tileRow = bodyHeaderRows + cpuHexSummaryRows + tile.row;
   const offset = scroll.offset.peek();
-  if (tileRow < offset.rows) {
-    scroll.scrollTo(offset.columns, tileRow);
-  } else if (tileRow >= offset.rows + scroll.viewportHeight.peek()) {
-    scroll.scrollTo(offset.columns, tileRow - Math.max(0, scroll.viewportHeight.peek() - 1));
-  }
+  const target = cpuHexTileScrollTarget({
+    label,
+    tiles,
+    offset,
+    viewportHeight: scroll.viewportHeight.peek(),
+  });
+  if (target) scroll.scrollTo(target.columns, target.rows);
 }
 
 function handleControlsKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
