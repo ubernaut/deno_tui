@@ -17,6 +17,10 @@ const samples: ThreePanelProbeSample[] = [
     rows: 0,
     cells: 480,
     updates: 2,
+    deferredPending: 2,
+    deferredUnresolved: 2,
+    deferredResolved: 0,
+    deferredSaturated: true,
     lifecycle: "initializing",
   },
   {
@@ -30,6 +34,10 @@ const samples: ThreePanelProbeSample[] = [
     rows: 12,
     cells: 480,
     updates: 3,
+    deferredPending: 1,
+    deferredUnresolved: 1,
+    deferredResolved: 0,
+    deferredSaturated: false,
     lifecycle: "idle",
   },
   {
@@ -43,6 +51,10 @@ const samples: ThreePanelProbeSample[] = [
     rows: 12,
     cells: 480,
     updates: 4,
+    deferredPending: 2,
+    deferredUnresolved: 1,
+    deferredResolved: 1,
+    deferredSaturated: false,
     lifecycle: "idle",
   },
 ];
@@ -79,6 +91,8 @@ Deno.test("formatThreePanelProbeLines includes first-grid latency and frame rows
   assertStringIncludes(lines[2], "latest=40x12/480c");
   assertStringIncludes(lines[2], "firstGrid=420.25ms");
   assertStringIncludes(lines[3], "updates=4");
+  assertStringIncludes(lines[3], "queue=2/1/1");
   assertStringIncludes(lines.at(-1)!, "03 total=14.00ms");
+  assertStringIncludes(lines[4], "queue=2/2/0 saturated");
   assertStringIncludes(lines.at(-1)!, "state=idle");
 });

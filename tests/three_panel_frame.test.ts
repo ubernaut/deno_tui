@@ -859,6 +859,42 @@ Deno.test("ThreePanelFrameView drops stale frames after a rebuild request", asyn
   }
 });
 
+Deno.test("ThreePanelFrameView keeps in-flight frames for signal-only scene updates", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal(createDefaultAsciiOptions("sharp"));
+  const enabled = new Signal(true);
+  let renderer: SlowGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    enabled,
+    frameInterval: 1000 / 30,
+    rendererFactory: (options) => renderer = new SlowGridRenderer(options.columns, options.rows, "S"),
+  });
+
+  try {
+    await waitFor(() => (renderer?.startCount ?? 0) >= 1);
+    scene.value = {
+      mode: scene.peek()!.mode,
+      signal: { ...scene.peek()!.signal, pulse: scene.peek()!.signal.pulse + 0.1 },
+    };
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assertEquals(panel.inspectLifecycle().state, "rendering");
+    renderer?.completeFrame();
+    await waitFor(() => panel.grid.peek()[0]?.[0] === "S");
+    assertEquals(renderer?.destroyed, false);
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+  }
+});
+
 Deno.test("ThreePanelFrameView hides safely while a frame is rendering", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
   const scene = new Signal<ThreeSceneState | null>(sceneState());

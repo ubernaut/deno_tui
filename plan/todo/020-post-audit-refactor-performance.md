@@ -536,3 +536,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   startup/current grid; the live probe now reports real `26x8` block grids instead of staying at `0x0` initializing.
 - Hardened the Three ASCII probe CLI helpers to accept both `--flag=value` and `--flag value`, preventing performance
   probes from silently falling back to default cell budgets during renderer investigations.
+- Fixed ThreePanelFrameView sync handling so signal-only scene updates no longer invalidate in-flight renderer frames,
+  and expanded the live panel probe with deferred queue telemetry to distinguish static grids from readback saturation.

@@ -11,6 +11,10 @@ export interface ThreePanelProbeSample {
   rows: number;
   cells: number;
   updates: number;
+  deferredPending?: number;
+  deferredUnresolved?: number;
+  deferredResolved?: number;
+  deferredSaturated?: boolean;
   lifecycle: string;
 }
 
@@ -65,14 +69,24 @@ export function formatThreePanelProbeLines(
     }`,
     `scene=${formatMs(summary.averageSceneMs)} readback=${formatMs(summary.averageReadbackMs)} assembly=${
       formatMs(summary.averageAssemblyMs)
-    } updates=${latest?.updates ?? 0}`,
+    } updates=${latest?.updates ?? 0}${formatDeferredQueueSummary(latest)}`,
   ];
   for (const sample of samples) {
     lines.push(
       `${sample.index.toString().padStart(2, "0")} total=${formatMs(sample.totalMs)} elapsed=${
         formatMs(sample.elapsedMs)
-      } grid=${sample.columns}x${sample.rows} cells=${sample.cells} state=${sample.lifecycle} updates=${sample.updates}`,
+      } grid=${sample.columns}x${sample.rows} cells=${sample.cells} state=${sample.lifecycle} updates=${sample.updates}${
+        formatDeferredQueueSummary(sample)
+      }`,
     );
   }
   return lines;
+}
+
+function formatDeferredQueueSummary(sample: ThreePanelProbeSample | undefined): string {
+  if (!sample || sample.deferredPending === undefined) return "";
+  const saturation = sample.deferredSaturated ? " saturated" : "";
+  return ` queue=${sample.deferredPending}/${sample.deferredUnresolved ?? 0}/${
+    sample.deferredResolved ?? 0
+  }${saturation}`;
 }

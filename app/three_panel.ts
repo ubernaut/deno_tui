@@ -366,6 +366,11 @@ export class ThreePanelFrameView {
     }
 
     if (this.rendering) {
+      const renderSize = this.renderSizeFor(rect, ascii);
+      const effectOptions = asciiEffectOptions(ascii);
+      if (this.rendererStateMatches(rect, ascii, effectOptions, renderSize)) {
+        return;
+      }
       this.invalidateFrame();
       this.running = false;
       this.syncPending = true;
@@ -707,6 +712,19 @@ export class ThreePanelFrameView {
       renderer.setTerminalGlyphStyle(ascii.terminalGlyphStyle);
       this.appliedTerminalGlyphStyle = ascii.terminalGlyphStyle;
     }
+  }
+
+  private rendererStateMatches(
+    rect: Pick<Rect, "width" | "height">,
+    ascii: AsciiOptions,
+    effectOptions = asciiEffectOptions(ascii),
+    renderSize = this.renderSizeFor(rect, ascii),
+  ): boolean {
+    return this.appliedColumns === renderSize.columns &&
+      this.appliedRows === renderSize.rows &&
+      threePanelAsciiEffectOptionsEqual(this.appliedEffectOptions, effectOptions) &&
+      this.appliedTerminalEdgeBias === ascii.terminalEdgeBias &&
+      this.appliedTerminalGlyphStyle === ascii.terminalGlyphStyle;
   }
 
   private renderSizeFor(

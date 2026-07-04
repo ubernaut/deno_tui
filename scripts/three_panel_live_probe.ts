@@ -98,6 +98,10 @@ function samplePanel(
     rows,
     cells: performanceInfo.cells,
     updates,
+    deferredPending: performanceInfo.deferredReadbackPending,
+    deferredUnresolved: performanceInfo.deferredReadbackUnresolved,
+    deferredResolved: performanceInfo.deferredReadbackResolved,
+    deferredSaturated: performanceInfo.deferredReadbackSaturated,
     lifecycle,
   };
 }
