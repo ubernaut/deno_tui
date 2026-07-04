@@ -26,6 +26,12 @@ import {
 import { resolveThreePanelAdaptiveRenderBudget } from "./three_panel_adaptive.ts";
 import { threePanelAsciiEffectOptionsEqual } from "./three_panel_effect.ts";
 import { fingerprintThreePanelGrid, threePanelBlankGrid } from "./three_panel_grid.ts";
+import {
+  resolveThreePanelRenderPolicy,
+  resolveThreePanelRenderSize,
+  type ThreePanelRenderPolicy,
+  type ThreePanelRenderSize,
+} from "./three_panel_policy.ts";
 import type { AsciiOptions, Rect, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 
 export type { ThreePanelInteractionState } from "./three_panel_interaction.ts";
@@ -34,24 +40,17 @@ export {
   type ThreePanelAdaptiveRenderBudgetInput,
   type ThreePanelAdaptiveRenderBudgetResult,
 } from "./three_panel_adaptive.ts";
+export {
+  resolveThreePanelRenderPolicy,
+  resolveThreePanelRenderSize,
+  type ThreePanelRenderPolicy,
+  type ThreePanelRenderPolicyInput,
+  type ThreePanelRenderSize,
+} from "./three_panel_policy.ts";
 
 export interface ThreeSceneState {
   mode: ThreeSceneMode;
   signal: ThreeSceneSignal;
-}
-
-export interface ThreePanelRenderPolicyInput {
-  ascii: Pick<AsciiOptions, "kittyGraphics" | "kittyDisableAscii">;
-  graphicsAvailable: boolean;
-  graphicsRectangle: Pick<Rect, "width" | "height">;
-  rendererSupportsImage: boolean;
-}
-
-export interface ThreePanelRenderPolicy {
-  kittyActive: boolean;
-  renderAscii: boolean;
-  renderImage: boolean;
-  frameOptions: ThreeAsciiRenderFrameOptions;
 }
 
 export interface ThreePanelLifecycleInspection {
@@ -66,28 +65,6 @@ export interface ThreePanelLifecycleInspection {
   rebuildPending: boolean;
   syncPending: boolean;
   frameGeneration: number;
-}
-
-export interface ThreePanelRenderSize {
-  columns: number;
-  rows: number;
-}
-
-export function resolveThreePanelRenderSize(
-  rect: Pick<Rect, "width" | "height">,
-  maxCells?: number,
-): ThreePanelRenderSize {
-  const columns = Math.max(1, Math.floor(rect.width));
-  const rows = Math.max(1, Math.floor(rect.height));
-  const cellLimit = Math.max(1, Math.floor(maxCells ?? columns * rows));
-  const cells = columns * rows;
-  if (cells <= cellLimit) return { columns, rows };
-
-  const scale = Math.sqrt(cellLimit / cells);
-  return {
-    columns: Math.max(1, Math.min(columns, Math.floor(columns * scale))),
-    rows: Math.max(1, Math.min(rows, Math.floor(rows * scale))),
-  };
 }
 
 export interface ThreePanelGridRenderer {
@@ -106,24 +83,6 @@ export interface ThreePanelGridRenderer {
 }
 
 export type ThreePanelRendererFactory = (options: ThreeAsciiRendererOptions) => ThreePanelGridRenderer;
-
-export function resolveThreePanelRenderPolicy(input: ThreePanelRenderPolicyInput): ThreePanelRenderPolicy {
-  const kittyRequested = input.ascii.kittyGraphics;
-  const kittyActive = Boolean(
-    kittyRequested && input.graphicsAvailable && input.rendererSupportsImage &&
-      input.graphicsRectangle.width > 0 && input.graphicsRectangle.height > 0,
-  );
-  const renderAscii = !kittyActive || !input.ascii.kittyDisableAscii;
-  return {
-    kittyActive,
-    renderAscii,
-    renderImage: kittyActive,
-    frameOptions: {
-      ansi: renderAscii,
-      image: kittyActive,
-    },
-  };
-}
 
 export class ThreePanelView {
   private object?: ThreeAsciiObject;

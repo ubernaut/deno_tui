@@ -431,3 +431,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   gating separate from the large frame lifecycle class.
 - Moved Three panel adaptive render-cell budget policy into a focused tested module, preserving the existing re-export
   while separating performance downshift/recovery tuning from the frame lifecycle implementation.
+- Moved Three panel render-size capping and Kitty/ASCII frame policy into a focused tested module, keeping graphics
+  transport decisions separate from the frame lifecycle implementation while preserving compatibility re-exports.
