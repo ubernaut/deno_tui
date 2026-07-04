@@ -44,6 +44,7 @@ import {
   visibleListRows,
   WindowManagerController,
   type WorkbenchFrame,
+  workbenchTerminalCopyRowsInto,
   wrapTextBoxLinesInto,
   writeFrame,
   writeStringFrameRow,
@@ -227,6 +228,11 @@ const terminalScreenTranscript = [
   "\x1b]8;id=docs;https://example.test/docs\x1b\\docs\x1b]8;;\x1b\\\r\n",
 ];
 const terminalScreenChunks = terminalScreenTranscript.map((chunk) => new TextEncoder().encode(chunk));
+const terminalCopyVisibleRows = Array.from(
+  { length: 96 },
+  (_, index) => `scrollback ${index.toString().padStart(3, "0")} ${"terminal copy projection ".repeat(3)}`,
+);
+const terminalCopyRowBuffer: ReturnType<typeof workbenchTerminalCopyRowsInto> = [];
 
 class BenchmarkLineSignal {
   writes = 0;
@@ -1824,6 +1830,26 @@ export const benchmarkCases: BenchmarkCase[] = [
       }
       if (screen.textRows().length !== 12) {
         throw new Error("terminal screen edit benchmark lost rows");
+      }
+    },
+  },
+  {
+    name: "runtime/terminal-copy-row-projection",
+    category: "runtime",
+    description: "Project terminal copy-mode scrollback rows with line numbers and selected-row state.",
+    tags: ["runtime", "terminal", "scrollback", "copy", "projection"],
+    iterations: 1_000,
+    maxAverageMs: 2,
+    run: () => {
+      const rows = workbenchTerminalCopyRowsInto(terminalCopyRowBuffer, {
+        visibleRows: terminalCopyVisibleRows,
+        offset: 2_048,
+        height: 72,
+        selection: { anchor: 2_074, focus: 2_083 },
+        prefixWidth: 6,
+      });
+      if (rows.length !== 72 || rows[26]?.selected !== true || rows[0]?.lineNumber !== 2_049) {
+        throw new Error("terminal copy-row projection benchmark lost row metadata");
       }
     },
   },

@@ -191,6 +191,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   background color parameters.
 - Extracted terminal shell copy-mode row projection into `workbenchTerminalCopyRowsInto`, adding stable API coverage for
   reusable line-number, selection, and visible-row metadata while reducing inline terminal-shell renderer logic.
+- Added a `runtime/terminal-copy-row-projection` benchmark guard for copy-mode scrollback projection so shared
+  terminal/web terminal row metadata stays measured.
 - Extracted the workbench line-signal diff into a shared frame helper and benchmarked the unchanged-row skip path so
   terminal output throttling remains guarded.
 - Capped workbench Three ASCII terminal blits so render-size limits are not immediately expanded back to full-pane ANSI
