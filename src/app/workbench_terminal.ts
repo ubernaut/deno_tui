@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { createProcessTerminalBackend, type TerminalBackend } from "../runtime/terminal_backend.ts";
+import { formatTerminalOutputLine, type TerminalOutputLine } from "../components/terminal_output.ts";
 import { createSigmaPtyTerminalBackend } from "../runtime/pty_backend.ts";
 import { TerminalShellController, type TerminalShellControllerOptions } from "../runtime/terminal_shell.ts";
 import {
@@ -226,6 +227,11 @@ export interface WorkbenchTerminalToolbarItemOptions {
 /** Options for projecting process-output terminal toolbar actions. */
 export interface WorkbenchTerminalOutputToolbarItemOptions {
   actions?: readonly WorkbenchTerminalOutputToolbarAction[];
+}
+
+/** Options for projecting process output rows into renderer-neutral text. */
+export interface WorkbenchTerminalOutputRowsOptions {
+  sourcePrefix?: boolean;
 }
 
 /** Projected pane frame metadata shared by terminal and browser workbench shell renderers. */
@@ -783,6 +789,19 @@ export function workbenchTerminalOutputToolbarItemsInto(
       }
     },
   );
+}
+
+/** Formats process terminal output lines into a caller-owned text row buffer. */
+export function workbenchTerminalOutputRowsInto(
+  target: string[],
+  lines: readonly TerminalOutputLine[],
+  options: WorkbenchTerminalOutputRowsOptions = {},
+): string[] {
+  target.length = lines.length;
+  for (let index = 0; index < lines.length; index += 1) {
+    target[index] = formatTerminalOutputLine(lines[index]!, options);
+  }
+  return target;
 }
 
 /** Projects a terminal workspace layout into pane frames with content rectangles and optional title rows. */

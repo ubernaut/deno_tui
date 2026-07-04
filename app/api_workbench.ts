@@ -79,6 +79,7 @@ import {
   workbenchStandardTopMenuIdForItem,
   workbenchStatusSnapshotLine,
   workbenchTabEntriesInto,
+  workbenchTerminalOutputRowsInto,
   type WorkbenchTerminalOutputToolbarAction,
   workbenchTerminalOutputToolbarItemsInto,
   workbenchTitlebarButtonRenderCommandsInto,
@@ -2690,10 +2691,6 @@ function windowScroll(id: WindowId): ScrollAreaController {
 
 function windowContentSize(id: WindowId, viewport: Rectangle): { width: number; height: number } {
   const outputLines = terminalOutputSession.output.lines.peek();
-  terminalOutputContentRows.length = outputLines.length;
-  for (let index = 0; index < outputLines.length; index += 1) {
-    terminalOutputContentRows[index] = formatTerminalOutputLine(outputLines[index]!, { sourcePrefix: true });
-  }
   return workbenchWindowContentSize({
     id,
     viewport,
@@ -2701,7 +2698,9 @@ function windowContentSize(id: WindowId, viewport: Rectangle): { width: number; 
     explorerRows: explorerTextRowsInto(explorerContentTextRows, explorer.entries(), (entry) => entry.text),
     dataColumns: columns,
     dataRowCount: rows.length,
-    terminalOutputLines: terminalOutputContentRows,
+    terminalOutputLines: workbenchTerminalOutputRowsInto(terminalOutputContentRows, outputLines, {
+      sourcePrefix: true,
+    }),
     terminalOutputWindowId: TERMINAL_OUTPUT_WINDOW_ID,
     terminalShellWindowId: TERMINAL_SHELL_WINDOW_ID,
     isVisualizationWindow: (candidate) => isVisualizationWindow(candidate as WindowId),

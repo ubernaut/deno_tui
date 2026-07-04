@@ -226,6 +226,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   testing showed collapsed visible Three cadence still needs to downshift even when other rows changed too.
 - Optimized workbench frame-row background-space detection with direct suffix checks, keeping Three block-mode span
   flushes benchmarked without adding per-cell cache overhead.
+- Extracted process-output row formatting into the shared workbench terminal helper so terminal content sizing and
+  future adapters reuse caller-owned row projection instead of local loops.
 - Added an intermediate compact Three header telemetry format so narrow workbench panes keep showing measured/target FPS
   before falling back to the bare frame-time and cell-count label.
 - Added an optional observed-FPS gate to the workbench Three pressure probe so default and narrow workbench-shaped

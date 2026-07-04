@@ -20,6 +20,7 @@ import {
   resolveWorkbenchTerminalShellInputModeToggle,
   resolveWorkbenchTerminalShellKeyAction,
   workbenchTerminalCopyRowsInto,
+  workbenchTerminalOutputRowsInto,
   type WorkbenchTerminalOutputToolbarAction,
   workbenchTerminalOutputToolbarItemsInto,
   workbenchTerminalPaneProjectionsInto,
@@ -708,6 +709,19 @@ Deno.test("workbenchTerminalOutputToolbarItemsInto supports subsets and reuse", 
   assertEquals(second[2] === raw, true);
   assertEquals(second.map((item) => item.disabled), [true, false, false]);
   assertEquals(second[2]?.active, true);
+});
+
+Deno.test("workbenchTerminalOutputRowsInto formats process output into caller-owned rows", () => {
+  const target = ["stale"];
+  const rows = workbenchTerminalOutputRowsInto(target, [
+    { source: "stdout", text: "ready" },
+    { source: "stderr", text: "warn" },
+    { source: "system", text: "done" },
+  ], { sourcePrefix: true });
+
+  assertEquals(rows, target);
+  assertEquals(rows, ["[out] ready", "[err] warn", "[sys] done"]);
+  assertEquals(workbenchTerminalOutputRowsInto(rows, [{ source: "stdout", text: "plain" }]), ["plain"]);
 });
 
 Deno.test("resolveWorkbenchTerminalOutputKeyAction maps process terminal shortcuts", () => {
