@@ -844,3 +844,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added an empty/out-of-range workbench frame row assembly fast path and benchmark guard so blank terminal rows avoid
   per-column scans. Focused frame and benchmark tests passed; the new `workbench-blank-frame-row-168` benchmark runs at
   roughly 0.001ms on this host.
+- Added reusable workbench Three pressure-probe grid snapshots and routed the live probe through them, removing
+  per-frame row-array allocation while preserving mutable renderer history comparisons. Focused probe tests, type
+  checks, the pressure-probe summary benchmark, and an 8-frame blocking live probe passed.

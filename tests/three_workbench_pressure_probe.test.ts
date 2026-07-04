@@ -4,6 +4,7 @@ import {
   formatWorkbenchThreePressureProbeLines,
   parseWorkbenchThreePressureProbeCliOptions,
   snapshotWorkbenchThreeProbeGridRows,
+  snapshotWorkbenchThreeProbeGridRowsInto,
   summarizeWorkbenchThreePressureProbe,
   validateWorkbenchThreePressureProbe,
   type WorkbenchThreePressureProbeSample,
@@ -58,6 +59,22 @@ Deno.test("workbench Three probe grid snapshots preserve mutable renderer frame 
 
   assertEquals(snapshot, [["a", "b"], ["c", "d"]]);
   assertEquals(countWorkbenchThreeProbeChangedGridRows(snapshot, grid), 2);
+});
+
+Deno.test("workbench Three probe grid snapshots can reuse caller-owned rows", () => {
+  const target = [["stale", "row"], ["keep"]];
+  const firstRow = target[0]!;
+  const secondRow = target[1]!;
+  const snapshot = snapshotWorkbenchThreeProbeGridRowsInto(target, [["a"], undefined, ["c", "d"]]);
+
+  assertEquals(snapshot, [["a"], [], ["c", "d"]]);
+  assertEquals(snapshot, target);
+  assertEquals(snapshot[0], firstRow);
+  assertEquals(snapshot[1], secondRow);
+
+  const next = snapshotWorkbenchThreeProbeGridRowsInto(target, [["x", "y"]]);
+  assertEquals(next, [["x", "y"]]);
+  assertEquals(next[0], firstRow);
 });
 
 Deno.test("workbench Three probe changed-row counter handles equal sparse and resized grids", () => {

@@ -118,9 +118,23 @@ export function parseWorkbenchThreePressureProbeCliOptions<Mode extends string>(
 export function snapshotWorkbenchThreeProbeGridRows(
   grid: readonly (readonly string[] | undefined)[],
 ): readonly string[][] {
-  const snapshot = new Array<string[]>(grid.length);
+  return snapshotWorkbenchThreeProbeGridRowsInto(new Array<string[]>(grid.length), grid);
+}
+
+/** Reuses a caller-owned snapshot buffer while preserving renderer grid history for frame-to-frame comparisons. */
+export function snapshotWorkbenchThreeProbeGridRowsInto(
+  snapshot: string[][],
+  grid: readonly (readonly string[] | undefined)[],
+): string[][] {
+  snapshot.length = grid.length;
   for (let row = 0; row < grid.length; row += 1) {
-    snapshot[row] = [...(grid[row] ?? [])];
+    const source = grid[row] ?? [];
+    const target = snapshot[row] ?? [];
+    target.length = source.length;
+    for (let column = 0; column < source.length; column += 1) {
+      target[column] = source[column]!;
+    }
+    snapshot[row] = target;
   }
   return snapshot;
 }

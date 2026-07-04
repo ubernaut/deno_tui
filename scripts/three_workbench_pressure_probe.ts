@@ -21,7 +21,7 @@ import {
   countWorkbenchThreeProbeChangedGridRows,
   formatWorkbenchThreePressureProbeLines,
   parseWorkbenchThreePressureProbeCliOptions,
-  snapshotWorkbenchThreeProbeGridRows,
+  snapshotWorkbenchThreeProbeGridRowsInto,
   validateWorkbenchThreePressureProbe,
   type WorkbenchThreePressureProbeSample,
 } from "../src/three_ascii/workbench_pressure_probe.ts";
@@ -95,7 +95,7 @@ const panel = new ThreePanelFrameView({
 });
 
 const samples: WorkbenchThreePressureProbeSample[] = [];
-let previousGrid: readonly (readonly string[] | undefined)[] = [];
+const previousGrid: string[][] = [];
 
 try {
   for (let index = 1; index <= frames; index += 1) {
@@ -178,7 +178,7 @@ function drawSample(index: number): WorkbenchThreePressureProbeSample {
   const stats = painter.flush(prepared, frameWidth, frameHeight, renderFrameRow, renderFrameSlice);
   const performance = panel.inspectPerformance();
   const sourceChangedRows = countWorkbenchThreeProbeChangedGridRows(previousGrid, grid);
-  previousGrid = snapshotWorkbenchThreeProbeGridRows(grid);
+  snapshotWorkbenchThreeProbeGridRowsInto(previousGrid, grid);
   const cellsBeforePressureUpdate = maxRenderCells.peek();
   const sampleDurationMs = frameInterval.peek();
   if (adaptive) {
