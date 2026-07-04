@@ -666,3 +666,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   readbacks, saturated queues, and stale-frame force-blocking without moving GPU submission code out of the renderer.
 - Added a vertical-only workbench Three grid projection fast path that direct-copies same-width source rows while still
   scaling rows, plus a benchmark guard for the 109x70 vertical projection workload.
+- Added a retained ANSI cursor-position cache for workbench screen flushes so repeated full-row, clear-row, and span
+  updates reuse cursor escape strings instead of rebuilding them throughout animated Three block frames.
