@@ -1,4 +1,4 @@
-import { Camera, Color, PerspectiveCamera, Scene } from "npm:three@0.183.2";
+import { Camera, type Color, PerspectiveCamera, Scene } from "npm:three@0.183.2";
 import { RenderPipeline, WebGPURenderer } from "npm:three@0.183.2/webgpu";
 import { pass } from "npm:three@0.183.2/tsl";
 
@@ -14,6 +14,11 @@ import { HeadlessCanvas } from "./headless_canvas.ts";
 import { loadAsciiLutTextures } from "./loadAsciiLuts.ts";
 import { type ThreeAsciiDeferredReadbackFrame, ThreeAsciiDeferredReadbackQueue } from "./deferred_readback.ts";
 import {
+  shouldIncludeThreeAsciiTerminalEdges,
+  type ThreeAsciiEffectState,
+  threeAsciiEffectStateFromSource,
+} from "./effect_state.ts";
+import {
   destroyThreeAsciiGpuBufferSlot,
   ensureThreeAsciiGpuBufferSlot,
   type ThreeAsciiGpuBufferSlot,
@@ -24,11 +29,7 @@ import {
   ThreeAsciiReadbackLayoutCache,
   ThreeAsciiReadbackViewCache,
 } from "./readback.ts";
-import {
-  THREE_ASCII_UNIFORM_FLOAT_COUNT,
-  type ThreeAsciiUniformEffectState,
-  writeThreeAsciiUniformValues,
-} from "./uniforms.ts";
+import { THREE_ASCII_UNIFORM_FLOAT_COUNT, writeThreeAsciiUniformValues } from "./uniforms.ts";
 import { getCompatibleWebGPUDevice } from "./webgpu_compat.ts";
 
 const TILE_SIZE = 8;
@@ -258,11 +259,6 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   colors[index] = vec4<f32>(clamp(finalColor, vec3<f32>(0.0), vec3<f32>(1.0)), 1.0);
 }
 `;
-
-interface EffectState extends ThreeAsciiUniformEffectState {
-  asciiColor: Color;
-  backgroundColor: Color;
-}
 
 type ThreeBackendRenderer = WebGPURenderer & {
   backend: {
@@ -574,7 +570,7 @@ export class ThreeAsciiRenderer {
 
   private async computeAnsiGrid(): Promise<string[][]> {
     const effectState = this.getEffectState();
-    const includeTerminalEdges = effectState.edges && this.terminalGlyphStyle !== "blocks";
+    const includeTerminalEdges = shouldIncludeThreeAsciiTerminalEdges(effectState, this.terminalGlyphStyle);
     await this.ensureComputeResources(effectState, includeTerminalEdges);
     this.writeUniforms(effectState);
 
@@ -784,7 +780,7 @@ export class ThreeAsciiRenderer {
   }
 
   private async ensureComputeResources(
-    effectState: EffectState,
+    effectState: ThreeAsciiEffectState,
     includeTerminalEdges = effectState.edges,
   ): Promise<void> {
     if (!this.device || !this.renderer || !this.asciiNode) {
@@ -886,41 +882,11 @@ export class ThreeAsciiRenderer {
     this.computeDirty = false;
   }
 
-  private getEffectState(): EffectState {
-    const asciiNode = this.asciiNode;
-
-    if (!asciiNode) {
-      return {
-        edges: true,
-        fill: true,
-        invertLuminance: false,
-        exposure: 1,
-        attenuation: 1,
-        blendWithBase: 0,
-        depthFalloff: 0,
-        depthOffset: 0,
-        edgeThreshold: 8,
-        asciiColor: colorValue(this.effectOptions.asciiColor, 0xffffff),
-        backgroundColor: colorValue(this.effectOptions.backgroundColor, 0x000000),
-      };
-    }
-
-    return {
-      edges: Boolean(asciiNode.edges.value),
-      fill: Boolean(asciiNode.fill.value),
-      invertLuminance: Boolean(asciiNode.invertLuminance.value),
-      exposure: Number(asciiNode.exposure.value),
-      attenuation: Number(asciiNode.attenuation.value),
-      blendWithBase: Number(asciiNode.blendWithBase.value),
-      depthFalloff: Number(asciiNode.depthFalloff.value),
-      depthOffset: Number(asciiNode.depthOffset.value),
-      edgeThreshold: Number(asciiNode.edgeThreshold.value),
-      asciiColor: asciiNode.asciiColor.value as Color,
-      backgroundColor: asciiNode.backgroundColor.value as Color,
-    };
+  private getEffectState(): ThreeAsciiEffectState {
+    return threeAsciiEffectStateFromSource(this.asciiNode, this.effectOptions);
   }
 
-  private writeUniforms(effectState: EffectState): void {
+  private writeUniforms(effectState: ThreeAsciiEffectState): void {
     if (!this.uniformDirty) {
       return;
     }
