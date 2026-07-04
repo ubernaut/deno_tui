@@ -637,3 +637,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Moved the default workbench Three startup budget back to the 120-cell emergency tier after the current pressure probe
   measured roughly 25-32KB/s steady terminal output at 120 cells versus roughly 45-55KB/s at 240 cells, preserving
   automatic recovery to higher tiers when terminal output stays cheap.
+- Added a shared terminal toolbar state normalizer and routed console plus browser shell toolbars through it, keeping
+  scrollback/search match state projection out of renderer-specific toolbar loops.

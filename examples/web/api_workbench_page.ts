@@ -100,6 +100,7 @@ import {
   workbenchTerminalSessionTitleFromId,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
+  workbenchTerminalToolbarStateFromSnapshot,
   type WorkbenchTitlebarButtonKind,
   workbenchTitlebarButtonRenderCommandsInto,
   workbenchWorkspaceScrollbarRenderCommandsInto,
@@ -1199,16 +1200,17 @@ function renderTerminalToolbar(
   if (rect.height <= 0 || rect.width <= 0) return;
   const scrollback = activeWebTerminalScrollback();
   const scrollbackInspection = scrollback?.inspect();
-  workbenchTerminalToolbarItemsInto(webTerminalButtonBuffers.items, {
-    activeId: workspace.activeId,
-    sessionCount: workspace.sessions.length,
-    paneCount: workspace.layout.count,
-    zoomedPaneId: workspace.layout.zoomedPaneId,
-    scrollbackTotalRows: scrollbackInspection?.totalRows,
-    scrollbackViewportRows: scrollbackInspection?.viewportRows,
-    searchQuery: scrollbackInspection?.query,
-    searchMatchCount: scrollbackInspection?.matches.length,
-  }, { actions: webTerminalActions });
+  workbenchTerminalToolbarItemsInto(
+    webTerminalButtonBuffers.items,
+    workbenchTerminalToolbarStateFromSnapshot({
+      activeId: workspace.activeId,
+      sessionCount: workspace.sessions.length,
+      paneCount: workspace.layout.count,
+      zoomedPaneId: workspace.layout.zoomedPaneId,
+      scrollback: scrollbackInspection,
+    }),
+    { actions: webTerminalActions },
+  );
   layoutWorkbenchButtonRowInto(webTerminalButtonBuffers.placements, webTerminalButtonBuffers.items, rect, rect.row);
   workbenchButtonRowRenderCommandsInto(webTerminalButtonBuffers.commands, webTerminalButtonBuffers.placements);
   for (const command of webTerminalButtonBuffers.commands) {

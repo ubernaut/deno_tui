@@ -146,6 +146,28 @@ export interface WorkbenchTerminalToolbarState {
   searchMatchCount?: number;
 }
 
+/** Scrollback-like source accepted by the shared terminal toolbar state projector. */
+export interface WorkbenchTerminalToolbarScrollbackSource {
+  totalRows?: number;
+  viewportRows?: number;
+  query?: string;
+  matches?: readonly unknown[];
+  matchCount?: number;
+}
+
+/** Input for normalizing terminal toolbar state before item projection. */
+export interface WorkbenchTerminalToolbarStateSnapshot {
+  sessionCount: number;
+  activeId?: string;
+  paneCount?: number;
+  zoomedPaneId?: string;
+  shellRunning?: boolean;
+  shellStarting?: boolean;
+  inputMode?: "raw" | "workbench";
+  copyMode?: boolean;
+  scrollback?: WorkbenchTerminalToolbarScrollbackSource;
+}
+
 /** State snapshot used to project the process-output toolbar without knowing the renderer. */
 export interface WorkbenchTerminalOutputToolbarState {
   running: boolean;
@@ -425,6 +447,27 @@ export function workbenchTerminalSessionTabSourcesInto(
     target[index] = row;
   }
   return target;
+}
+
+/** Normalizes terminal toolbar state from controller snapshots for console and browser renderers. */
+export function workbenchTerminalToolbarStateFromSnapshot(
+  snapshot: WorkbenchTerminalToolbarStateSnapshot,
+): WorkbenchTerminalToolbarState {
+  const scrollback = snapshot.scrollback;
+  return {
+    activeId: snapshot.activeId,
+    sessionCount: snapshot.sessionCount,
+    paneCount: snapshot.paneCount,
+    zoomedPaneId: snapshot.zoomedPaneId,
+    shellRunning: snapshot.shellRunning,
+    shellStarting: snapshot.shellStarting,
+    inputMode: snapshot.inputMode,
+    copyMode: snapshot.copyMode,
+    scrollbackTotalRows: scrollback?.totalRows,
+    scrollbackViewportRows: scrollback?.viewportRows,
+    searchQuery: scrollback?.query,
+    searchMatchCount: scrollback?.matchCount ?? scrollback?.matches?.length,
+  };
 }
 
 /** Builds the shared terminal scrollback search prompt body. */

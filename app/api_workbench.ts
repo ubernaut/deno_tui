@@ -174,6 +174,7 @@ import {
   workbenchTerminalSessionTitleFromId,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
+  workbenchTerminalToolbarStateFromSnapshot,
 } from "../src/app/workbench_terminal.ts";
 import { WorkbenchTerminalBufferCache } from "../src/app/workbench_terminal_cache.ts";
 import { WorkbenchTerminalSessionTabBufferCache } from "../src/app/workbench_terminal_tab_cache.ts";
@@ -2066,20 +2067,20 @@ function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: num
   const workspaceInspection = terminalShell.inspect();
   const shell = activeTerminalShell();
   const shellInspection = shell?.inspect();
-  workbenchTerminalToolbarItemsInto(terminalShellButtonBuffers.items, {
-    activeId: workspaceInspection.activeId,
-    sessionCount: workspaceInspection.sessions.length,
-    paneCount: workspaceInspection.workspace.layout.count,
-    zoomedPaneId: workspaceInspection.workspace.layout.zoomedPaneId,
-    shellRunning: shell?.running,
-    shellStarting: shell?.status.peek() === "starting",
-    inputMode: terminalShellInputMode.peek(),
-    copyMode: shell?.scrollback.mode === "copy",
-    scrollbackTotalRows: shellInspection?.scrollback.totalRows,
-    scrollbackViewportRows: shellInspection?.scrollback.viewportRows,
-    searchQuery: shellInspection?.scrollback.query,
-    searchMatchCount: shellInspection?.scrollback.matches.length,
-  });
+  workbenchTerminalToolbarItemsInto(
+    terminalShellButtonBuffers.items,
+    workbenchTerminalToolbarStateFromSnapshot({
+      activeId: workspaceInspection.activeId,
+      sessionCount: workspaceInspection.sessions.length,
+      paneCount: workspaceInspection.workspace.layout.count,
+      zoomedPaneId: workspaceInspection.workspace.layout.zoomedPaneId,
+      shellRunning: shell?.running,
+      shellStarting: shell?.status.peek() === "starting",
+      inputMode: terminalShellInputMode.peek(),
+      copyMode: shell?.scrollback.mode === "copy",
+      scrollback: shellInspection?.scrollback,
+    }),
+  );
   const nextRow = layoutWorkbenchButtonRowInto(
     terminalShellButtonBuffers.placements,
     terminalShellButtonBuffers.items,

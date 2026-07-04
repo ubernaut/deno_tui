@@ -29,6 +29,7 @@ import {
   workbenchTerminalSessionTitleFromId,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
+  workbenchTerminalToolbarStateFromSnapshot,
 } from "../src/app/workbench/mod.ts";
 
 Deno.test("resolveWorkbenchTerminalProcessInputModeToggle leaves workbench mode when process is stopped", () => {
@@ -239,6 +240,49 @@ Deno.test("workbenchTerminalSessionTabSourcesInto projects direct and shell-back
   assertEquals(target, [
     { id: "shell-2", title: "Shell Two", running: false, status: "stopped" },
   ]);
+});
+
+Deno.test("workbenchTerminalToolbarStateFromSnapshot normalizes scrollback search state", () => {
+  assertEquals(
+    workbenchTerminalToolbarStateFromSnapshot({
+      activeId: "shell-1",
+      sessionCount: 2,
+      paneCount: 3,
+      zoomedPaneId: "pane-1",
+      shellRunning: true,
+      shellStarting: false,
+      inputMode: "workbench",
+      copyMode: true,
+      scrollback: {
+        totalRows: 120,
+        viewportRows: 24,
+        query: "deno",
+        matches: [{ row: 1 }, { row: 4 }],
+      },
+    }),
+    {
+      activeId: "shell-1",
+      sessionCount: 2,
+      paneCount: 3,
+      zoomedPaneId: "pane-1",
+      shellRunning: true,
+      shellStarting: false,
+      inputMode: "workbench",
+      copyMode: true,
+      scrollbackTotalRows: 120,
+      scrollbackViewportRows: 24,
+      searchQuery: "deno",
+      searchMatchCount: 2,
+    },
+  );
+
+  assertEquals(
+    workbenchTerminalToolbarStateFromSnapshot({
+      sessionCount: 1,
+      scrollback: { matchCount: 7, matches: [] },
+    }).searchMatchCount,
+    7,
+  );
 });
 
 Deno.test("workbenchTerminalSessionTabsInto projects clipped selectable tabs", () => {
