@@ -177,6 +177,10 @@ import { workbenchDataTablePageSize, workbenchDataTableRowsInto } from "../../ap
 import { workbenchExplorerRowsInto } from "../../app/workbench_explorer.ts";
 import { workbenchInspectorRowsInto } from "../../app/workbench_inspector.ts";
 import { workbenchLogRowsFromSourcesInto } from "../../app/workbench_logs.ts";
+import {
+  type WorkbenchStyledRowRenderCommand,
+  workbenchStyledRowsRenderCommandsInto,
+} from "../../app/workbench_row_render.ts";
 import type { RowStyle } from "../../app/workbench_rows.ts";
 import { workbenchThreePreviewRowsInto } from "../../app/workbench_visualization_window.ts";
 import {
@@ -377,6 +381,7 @@ const inspectorRenderRows: RowStyle[] = [];
 const inspectorActionTextRows: string[] = [];
 const inspectorWrappedTextRows: string[] = [];
 const logRenderRows: RowStyle[] = [];
+const styledRowRenderCommands: WorkbenchStyledRowRenderCommand[] = [];
 const htmlCssLayoutBoxes: ComputedLayoutBox[] = [];
 const htmlCssLayoutRenderCommands: HtmlCssLayoutRenderCommand[] = [];
 const shelfBuffers = new WorkbenchShelfBufferCache<PanelId>();
@@ -980,18 +985,9 @@ function renderLogs(frame: string[], rect: Rectangle): void {
   const offset = logScroll.offset.peek().rows;
   const overflow = logScroll.inspectOverflow();
   const bodyWidth = Math.max(0, rect.width - 1);
-  const end = Math.min(lineCount, offset + rect.height);
   const t = theme();
   const rows = workbenchLogRowsFromSourcesInto(logRenderRows, [docs, logRows], t);
-  for (let sourceIndex = offset; sourceIndex < end; sourceIndex += 1) {
-    const row = rows[sourceIndex]!;
-    write(
-      frame,
-      rect.row + sourceIndex - offset,
-      rect.column,
-      paint(fit(row.text, bodyWidth), row.fg ?? t.text, row.bg ?? t.surface, row.bold),
-    );
-  }
+  writeStyledRows(frame, { ...rect, width: bodyWidth }, rows, offset);
   if (!overflow.rows.scrollbarVisible || rect.width < 1) return;
   const column = rect.column + rect.width - 1;
   const thumb = overflow.rows.thumb;
@@ -1009,20 +1005,8 @@ function renderExplorer(frame: string[], rect: Rectangle): void {
     theme: theme(),
     contrast: contrastText,
   });
-  const rowCount = Math.min(projected.length, rect.height);
-  for (let offset = 0; offset < rowCount; offset += 1) {
-    const row = projected[offset]!;
-    write(
-      frame,
-      rect.row + offset,
-      rect.column,
-      paint(
-        fit(row.text, rect.width),
-        row.fg ?? theme().text,
-        row.bg ?? theme().surface,
-        row.bold,
-      ),
-    );
+  writeStyledRows(frame, rect, projected);
+  for (let offset = 0; offset < Math.min(projected.length, rect.height); offset += 1) {
     hitTargets.add({ column: rect.column, row: rect.row + offset, width: rect.width, height: 1 }, {
       type: "explorerRow",
       index: visible[offset]!.index,
@@ -1044,15 +1028,7 @@ function renderInspector(frame: string[], rect: Rectangle): void {
       wrappedTextRows: inspectorWrappedTextRows,
     },
   });
-  for (let index = 0; index < Math.min(rect.height, rows.length); index += 1) {
-    const row = rows[index]!;
-    write(
-      frame,
-      rect.row + index,
-      rect.column,
-      paint(fit(row.text, rect.width), row.fg ?? t.text, row.bg ?? t.surface, row.bold),
-    );
-  }
+  writeStyledRows(frame, rect, rows);
 }
 
 function renderData(frame: string[], rect: Rectangle): void {
@@ -1078,15 +1054,7 @@ function renderData(frame: string[], rect: Rectangle): void {
     contrast: contrastText,
     buffers: { textRows: dataTableTextRows, bodyRows: dataTableBodyRows },
   });
-  for (let index = 0; index < Math.min(rect.height, rows.length); index += 1) {
-    const row = rows[index]!;
-    write(
-      frame,
-      rect.row + index,
-      rect.column,
-      paint(fit(row.text, rect.width), row.fg ?? t.text, row.bg ?? t.surface, row.bold),
-    );
-  }
+  writeStyledRows(frame, rect, rows);
   for (let index = 0; index < Math.min(view.rows.length, Math.max(0, rect.height - 1)); index += 1) {
     hitTargets.add({ column: rect.column, row: rect.row + 1 + index, width: rect.width, height: 1 }, {
       type: "dataRow",
@@ -2635,6 +2603,26 @@ function isTextControlActive(): boolean {
 }
 function write(frame: string[], row: number, column: number, value: string): void {
   writeStringFrameRow(frame, cols(), row, column, value);
+}
+
+function writeStyledRows(frame: string[], rect: Rectangle, rows: readonly RowStyle[], sourceStart = 0): void {
+  const t = theme();
+  const commands = workbenchStyledRowsRenderCommandsInto(styledRowRenderCommands, {
+    rect,
+    rows,
+    sourceStart,
+    theme: t,
+    fit,
+  });
+  for (let index = 0; index < commands.length; index += 1) {
+    const command = commands[index]!;
+    write(
+      frame,
+      command.row,
+      command.column,
+      paint(command.text, command.fg, command.bg, command.bold),
+    );
+  }
 }
 
 function fit(value: string, width: number): string {

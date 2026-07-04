@@ -318,6 +318,7 @@ import {
   workbenchQuitModalContent,
 } from "./workbench_modal_content.ts";
 import { formatWorkbenchKittyGraphicsStatus, WorkbenchKittyGraphicsController } from "./workbench_kitty_graphics.ts";
+import { type WorkbenchStyledRowRenderCommand, workbenchStyledRowsRenderCommandsInto } from "./workbench_row_render.ts";
 import { type RowStyle, type ThreeHeaderPerformance, threeHeaderRows } from "./workbench_rows.ts";
 import { writeThreeHeaderPerformance } from "./workbench_three_header.ts";
 import {
@@ -463,6 +464,7 @@ const visualizationTextRows: string[] = [];
 const visualizationRenderRows: RowStyle[] = [];
 const threeFallbackRowsBuffer: RowStyle[] = [];
 const logRenderRows: RowStyle[] = [];
+const styledRowRenderCommands: WorkbenchStyledRowRenderCommand[] = [];
 const terminalOutputContentRows: string[] = [];
 const ASCII_DEMO_PRESET_IDS = asciiDemoPresetIds();
 const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
@@ -4447,16 +4449,22 @@ function pushLog(message: string): void {
 
 function writeRows(frame: Frame, rect: Rectangle, rows: RowStyle[]): void {
   const t = theme();
-  for (let index = 0; index < Math.min(rect.height, rows.length); index += 1) {
-    const row = rows[index]!;
+  const commands = workbenchStyledRowsRenderCommandsInto(styledRowRenderCommands, {
+    rect,
+    rows,
+    theme: t,
+    fit,
+  });
+  for (let index = 0; index < commands.length; index += 1) {
+    const command = commands[index]!;
     write(
       frame,
-      rect.row + index,
-      rect.column,
-      paint(fit(row.text, rect.width), {
-        fg: row.fg ?? t.text,
-        bg: row.bg ?? t.surface,
-        bold: row.bold,
+      command.row,
+      command.column,
+      paint(command.text, {
+        fg: command.fg,
+        bg: command.bg,
+        bold: command.bold,
       }),
     );
   }

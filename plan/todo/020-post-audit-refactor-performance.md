@@ -928,3 +928,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added a caller-owned workbench Three pressure inspection path and routed the API workbench Three header through it,
   avoiding a render-loop allocation while keeping the snapshot API intact. Runtime tests, type checks, the full
   `api-workbench-frame` benchmark, and the header telemetry benchmark passed.
+- Added a renderer-neutral styled-row command projector and routed terminal/web workbench row panels through it so
+  explorer, inspector, data table, and log rows share clipping, theme fallback, and scroll-offset behavior. Focused row
+  tests, panel projection tests, terminal/web type checks, and the `api-workbench-frame` benchmark passed.
