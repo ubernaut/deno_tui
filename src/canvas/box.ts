@@ -80,7 +80,7 @@ export class BoxObject extends DrawObject<"box"> {
 
   override rerender(): void {
     const { canvas, rerenderCells, rerenderRanges, omitCells } = this;
-    const { frameBuffer, rerenderQueue } = canvas;
+    const { frameBuffer, rerenderQueue, rerenderRanges: canvasRerenderRanges } = canvas;
     const { rows, columns } = canvas.size.peek();
 
     const rectangle = this.rectangle.peek();
@@ -115,23 +115,32 @@ export class BoxObject extends DrawObject<"box"> {
       }
 
       const rowBuffer = frameBuffer[row] ??= [];
-      const rerenderQueueRow = rerenderQueue[row] ??= new Set();
 
       if (ranges?.length) {
         mergeDirtyRowSegmentsInPlace(ranges);
+        const directRanges = omitColumns?.size ? undefined : canvasRerenderRanges[row] ??= [];
+        const rerenderQueueRow = directRanges ? undefined : rerenderQueue[row] ??= new Set();
         for (const range of ranges) {
           const start = Math.max(range.startColumn, rectangle.column);
           const end = Math.min(range.endColumn, columnRange);
+          if (directRanges) {
+            for (let column = start; column < end; column += 1) {
+              rowBuffer[column] = styledFiller;
+            }
+            directRanges.push({ row, startColumn: start, endColumn: end });
+            continue;
+          }
           for (let column = start; column < end; column += 1) {
             if (omitColumns?.has(column)) continue;
             rowBuffer[column] = styledFiller;
-            rerenderQueueRow.add(column);
+            rerenderQueueRow!.add(column);
           }
         }
         ranges.length = 0;
       }
 
       if (rerenderColumns?.size) {
+        const rerenderQueueRow = rerenderQueue[row] ??= new Set();
         for (const column of rerenderColumns) {
           if (omitColumns?.has(column) || column < rectangle.column || column >= columnRange) {
             continue;

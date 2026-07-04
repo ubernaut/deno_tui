@@ -185,6 +185,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   downshift renderer detail before they overwhelm SSH/tmux links.
 - Added terminal byte-rate reporting to the workbench Three pressure probe so renderer tuning can compare output
   pressure against adaptive policy thresholds directly.
+- Routed unobstructed `BoxObject` repaint ranges into the canvas range queue instead of expanding every dirty column
+  through a per-row `Set`, keeping overlap/modal churn on the range-aware path.
 - Extracted workbench Three terminal byte-rate calculation into a shared pure helper with direct tests so pressure
   policy, probes, and future diagnostics can stay aligned.
 - Routed workbench Three pressure probe byte-rate reporting through the shared pressure helper instead of carrying
