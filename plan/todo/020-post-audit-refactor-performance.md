@@ -207,6 +207,9 @@ performance, shared terminal/web workbench projections, and oversized module red
   assigning every cell individually, covering the default terminal glyph style.
 - Added a focused `three-ascii-ansi-grid-block-runs-96x40` benchmark guard for dense same-color block rows so the
   range-fill path is measured directly instead of only through broader ANSI-grid cases.
+- Switched the terminal API workbench Three panel policy back to fresh blocking readback at the 960-cell live quality
+  tier, with sustained-pressure thresholds, after probes showed deferred readback could keep the visible grid stale at
+  20-30 Hz despite low renderer timings.
 - Stabilized default Three ASCII block rendering by using ASCII-safe shared window controls and removing fog from the
   default block preset so truecolor block cells keep source color depth.
 - Extracted the workbench Three ASCII config modal geometry into a tested internal layout helper, reducing inline modal

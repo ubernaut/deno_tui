@@ -19,14 +19,14 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
     480,
     960,
   ]);
-  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 240);
+  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 960);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 240_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 96_000);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 90_000);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 180_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerGrid, 18_000);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highFrameThreshold, 1);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowFrameThreshold, 180);
-  assertEquals(WORKBENCH_THREE_READBACK_STRATEGY, "deferred");
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highFrameThreshold, 3);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowFrameThreshold, 60);
+  assertEquals(WORKBENCH_THREE_READBACK_STRATEGY, "blocking");
 });
 
 Deno.test("API workbench Three policy keeps live panes faster than idle panes", () => {
@@ -40,20 +40,26 @@ Deno.test("API workbench Three policy keeps live panes faster than idle panes", 
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: false }), 1000 / 5);
 });
 
-Deno.test("API workbench Three policy starts in the cheaper terminal budget", () => {
-  assertEquals(apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }), 1000 / 30);
+Deno.test("API workbench Three policy starts at the live quality budget", () => {
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }), 1000 / 20);
 });
 
-Deno.test("API workbench Three policy backs off measured 480-cell block output", () => {
+Deno.test("API workbench Three policy backs off only after sustained terminal pressure", () => {
   const state = createWorkbenchThreeTerminalPressureState(480);
   const sample = {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
     renderedThreeGrids: 1,
-    bytes: 4_353,
+    bytes: 120_000,
     durationMs: 0.05,
     sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(480, { live: true }),
   };
 
+  Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
+  assertEquals(state.currentCells, 480);
+  assertEquals(state.highFrames, 1);
+  Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
+  assertEquals(state.currentCells, 480);
+  assertEquals(state.highFrames, 2);
   Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
   assertEquals(state.currentCells, 240);
   assertEquals(state.highFrames, 0);
