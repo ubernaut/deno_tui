@@ -328,6 +328,7 @@ import {
   WORKBENCH_THREE_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_INITIAL_CELLS,
   WORKBENCH_THREE_READBACK_STRATEGY,
+  WORKBENCH_THREE_RESCUE_CELLS,
 } from "./workbench_three_policy.ts";
 import { type WorkbenchThreePanelEntry, WorkbenchThreePanelRegistry } from "./workbench_three_panel_registry.ts";
 import { WorkbenchThreeViewportInteractionController } from "./workbench_three_interaction.ts";
@@ -868,6 +869,7 @@ const threePanel = new ThreePanelFrameView({
   idleFrameInterval: workbenchThreeIdleFrameInterval,
   interactive: () => isThreeWindowInteractive("three"),
   maxRenderCells: workbenchThreeLiveMaxCells,
+  idleMaxRenderCells: WORKBENCH_THREE_RESCUE_CELLS,
   readbackStrategy: WORKBENCH_THREE_READBACK_STRATEGY,
   diagnostics: workbenchDiagnostics,
   onUpdate: () => {
@@ -2850,6 +2852,7 @@ function createVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
     idleFrameInterval: workbenchThreeIdleFrameInterval,
     interactive: () => isThreeWindowInteractive(id),
     maxRenderCells: workbenchThreeLiveMaxCells,
+    idleMaxRenderCells: WORKBENCH_THREE_RESCUE_CELLS,
     readbackStrategy: WORKBENCH_THREE_READBACK_STRATEGY,
     diagnostics: workbenchDiagnostics,
     onUpdate: scheduleDraw,

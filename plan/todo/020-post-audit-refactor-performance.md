@@ -402,6 +402,9 @@ performance, shared terminal/web workbench projections, and oversized module red
   covered alongside scaled, capped, and vertical-only workbench projection paths.
 - Switched workbench Three fallback row preparation to the native array fill path, keeping sparse/fallback projection
   covered by the new focused benchmark.
+- Added a Three panel idle render-cell cap and wired the API workbench to render background Three panes at the rescue
+  budget, reducing shared WebGPU queue contention when multiple 3D widgets are open while preserving the active pane's
+  live quality budget.
 - Split workbench styled-cell tokenization and row/slice assembly into `workbench_frame_rows.ts`, preserving the
   existing frame facade while keeping the terminal hot path independently testable and benchmarked.
 - Extracted ThreePanelFrameView graphics-image handle ownership into `ThreePanelGraphicsImageController` with direct

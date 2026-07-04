@@ -417,6 +417,45 @@ Deno.test("ThreePanelFrameView exposes renderer performance telemetry", async ()
   }
 });
 
+Deno.test("ThreePanelFrameView applies lower idle render-cell caps", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 48, height: 20 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal({ ...createDefaultAsciiOptions("sharp"), renderMaxCells: 960 });
+  const interactive = new Signal(true);
+  let renderer: FakeGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    interactive,
+    frameInterval: 1,
+    idleFrameInterval: 100,
+    maxRenderCells: 960,
+    idleMaxRenderCells: 60,
+    rendererFactory: (options) => renderer = new FakeGridRenderer(options.columns, options.rows),
+  });
+
+  try {
+    await waitFor(() => (renderer?.renderCount ?? 0) > 0);
+    assert((renderer?.columns ?? 0) * (renderer?.rows ?? 0) <= 960);
+    assert((renderer?.columns ?? 0) * (renderer?.rows ?? 0) > 60);
+
+    interactive.value = false;
+    await waitFor(() => (renderer?.sizes ?? []).some(([columns, rows]) => columns * rows <= 60));
+    assert((renderer?.columns ?? 0) * (renderer?.rows ?? 0) <= 60);
+
+    interactive.value = true;
+    await waitFor(() => (renderer?.columns ?? 0) * (renderer?.rows ?? 0) > 60);
+    assert((renderer?.columns ?? 0) * (renderer?.rows ?? 0) <= 960);
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    interactive.dispose();
+  }
+});
+
 Deno.test("ThreePanelFrameView serializes shared render queue work across panes", async () => {
   const queue = new ThreePanelRenderQueue();
   const firstRectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });

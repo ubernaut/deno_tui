@@ -82,6 +82,7 @@ export interface ThreePanelLifecycleInspection {
 
 type ThreePanelLiveValue = boolean | Signal<boolean> | (() => boolean);
 type ThreePanelIntervalValue = number | Signal<number>;
+type ThreePanelRenderCellsValue = number | Signal<number>;
 
 export interface ThreePanelGridRenderer {
   setSize(columns: number, rows: number): void;
@@ -271,7 +272,8 @@ export class ThreePanelFrameView {
       frameInterval?: ThreePanelIntervalValue;
       idleFrameInterval?: ThreePanelIntervalValue;
       interactive?: ThreePanelLiveValue;
-      maxRenderCells?: number | Signal<number>;
+      maxRenderCells?: ThreePanelRenderCellsValue;
+      idleMaxRenderCells?: ThreePanelRenderCellsValue;
       readbackStrategy?: ThreeAsciiReadbackStrategy;
       renderQueue?: ThreePanelRenderQueue;
       onUpdate?: () => void;
@@ -297,6 +299,7 @@ export class ThreePanelFrameView {
       if (options.frameInterval instanceof Signal) void options.frameInterval.value;
       if (options.idleFrameInterval instanceof Signal) void options.idleFrameInterval.value;
       if (options.interactive instanceof Signal) void options.interactive.value;
+      if (options.idleMaxRenderCells instanceof Signal) void options.idleMaxRenderCells.value;
       this.scheduleSync();
     });
     this.scheduleSync();
@@ -768,9 +771,9 @@ export class ThreePanelFrameView {
   }
 
   private requestedRenderMaxCells(ascii: Pick<AsciiOptions, "renderMaxCells">): number {
-    const maxRenderCells = this.options.maxRenderCells instanceof Signal
-      ? this.options.maxRenderCells.peek()
-      : this.options.maxRenderCells;
+    const maxRenderCells = !this.isInteractive() && this.options.idleMaxRenderCells !== undefined
+      ? resolveThreePanelRenderCellsValue(this.options.idleMaxRenderCells)
+      : resolveThreePanelRenderCellsValue(this.options.maxRenderCells);
     return resolveThreePanelRequestedMaxCells({
       userMaxCells: ascii.renderMaxCells,
       pressureMaxCells: maxRenderCells,
@@ -838,6 +841,10 @@ export class ThreePanelFrameView {
 }
 
 function resolveThreePanelIntervalValue(value: ThreePanelIntervalValue): number {
+  return value instanceof Signal ? value.peek() : value;
+}
+
+function resolveThreePanelRenderCellsValue(value: ThreePanelRenderCellsValue | undefined): number | undefined {
   return value instanceof Signal ? value.peek() : value;
 }
 
