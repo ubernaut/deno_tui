@@ -180,6 +180,10 @@ import {
   type WorkbenchMobileCommandAction,
   workbenchMobileCommandStripItemsInto,
 } from "../../src/app/workbench_mobile.ts";
+import {
+  defaultWebTerminalWorkspaceSnapshot,
+  normalizeWebTerminalWorkspaceSnapshot as normalizeWebTerminalWorkspaceSnapshotSource,
+} from "./api_workbench_terminal_workspace.ts";
 import { WorkbenchModalBufferCache } from "../../src/app/workbench_modal_cache.ts";
 import { WorkbenchButtonRowBufferCache } from "../../src/app/workbench_button_row_cache.ts";
 import { WorkbenchTitlebarBufferCache } from "../../src/app/workbench_titlebar_cache.ts";
@@ -2805,15 +2809,9 @@ function persistWebWorkspaceState(): void {
 }
 
 function normalizeWebTerminalWorkspaceSnapshot(value: unknown): TerminalWorkspaceSnapshot | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  const candidate = value as Partial<TerminalWorkspaceSnapshot>;
-  if (!Array.isArray(candidate.sessions) || candidate.sessions.length === 0) return undefined;
-  try {
-    return normalizeTerminalWorkspaceSnapshot(candidate as TerminalWorkspaceSnapshot);
-  } catch (error) {
-    reportWebStorageDiagnostic("terminal-workspace-normalize", "workspace-state", error);
-    return undefined;
-  }
+  return normalizeWebTerminalWorkspaceSnapshotSource(value, {
+    onError: (error) => reportWebStorageDiagnostic("terminal-workspace-normalize", "workspace-state", error),
+  });
 }
 
 function applyWebTerminalWorkspaceSnapshot(snapshot: TerminalWorkspaceSnapshot): void {
@@ -2822,63 +2820,6 @@ function applyWebTerminalWorkspaceSnapshot(snapshot: TerminalWorkspaceSnapshot):
   webTerminalWorkspace.activeId.value = restored.activeId;
   webTerminalWorkspace.layout.value = restored.layout;
   webTerminalScreenKeys.clear();
-}
-
-function defaultWebTerminalWorkspaceSnapshot(): Pick<TerminalWorkspaceSnapshot, "activeId" | "sessions" | "layout"> {
-  return {
-    activeId: "pages-shell",
-    sessions: [
-      {
-        id: "pages-shell",
-        title: "Pages Shell",
-        template: { id: "pages-shell", title: "Pages Shell", kind: "command", command: "web-shell" },
-        backendId: "browser-mock",
-        commandLine: "web-shell",
-        status: "running",
-        running: true,
-        columns: 80,
-        rows: 12,
-        reconnectable: false,
-        restartPolicy: "never",
-        createdAt: 0,
-        updatedAt: 0,
-      },
-      {
-        id: "remote-attach",
-        title: "Remote Attach",
-        template: {
-          id: "remote-attach",
-          title: "Remote Attach",
-          kind: "attach",
-          sessionId: "ws://localhost:8787/terminal",
-          reconnectable: true,
-        },
-        backendId: "remote",
-        status: "idle",
-        running: false,
-        reconnectable: true,
-        restartPolicy: "never",
-        createdAt: 0,
-        updatedAt: 0,
-      },
-      {
-        id: "ci-task",
-        title: "CI Task",
-        template: { id: "ci-task", title: "CI Task", kind: "deno-task", command: "deno", args: ["task", "health"] },
-        backendId: "process-template",
-        commandLine: "deno task health",
-        status: "idle",
-        running: false,
-        columns: 100,
-        rows: 30,
-        reconnectable: false,
-        restartPolicy: "on-failure",
-        createdAt: 0,
-        updatedAt: 0,
-      },
-    ],
-    layout: {},
-  };
 }
 
 function persistThemeIndex(index: number): void {
