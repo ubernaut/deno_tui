@@ -45,7 +45,10 @@ import {
   ThreeAsciiReadbackLayoutCache,
   ThreeAsciiReadbackViewCache,
 } from "./readback.ts";
-import { assembleThreeAsciiReadbackGrid } from "./readback_assembly.ts";
+import {
+  assembleThreeAsciiReadbackGridWithContext,
+  type ThreeAsciiReadbackGridAssemblyContext,
+} from "./readback_assembly.ts";
 import { handleThreeAsciiDeferredReadbackFailure } from "./readback_failure.ts";
 import { withThreeAsciiMappedReadback } from "./readback_mapping.ts";
 import { resolveThreeAsciiDeferredReadbackSubmission } from "./readback_submission.ts";
@@ -167,6 +170,10 @@ export class ThreeAsciiRenderer {
   private readonly readbackLayoutCache = new ThreeAsciiReadbackLayoutCache();
   private readonly readbackCopyPlanCache = new ThreeAsciiReadbackCopyPlanCache();
   private readonly readbackViewCache = new ThreeAsciiReadbackViewCache();
+  private readonly readbackAssemblyContext: ThreeAsciiReadbackGridAssemblyContext = {
+    viewCache: this.readbackViewCache,
+    assembler: this.ansiGridAssembler,
+  };
   private outputCellCount = 0;
   private sizeDirty = true;
   private computeDirty = true;
@@ -756,11 +763,9 @@ export class ThreeAsciiRenderer {
   }
 
   private buildAnsiGridFromMappedReadback(pending: ThreeAsciiDeferredReadbackFrame<GPUBuffer>): string[][] {
-    const assembly = assembleThreeAsciiReadbackGrid({
+    const assembly = assembleThreeAsciiReadbackGridWithContext(this.readbackAssemblyContext, {
       source: pending.slot.gpu.getMappedRange(),
       layout: pending.layout,
-      viewCache: this.readbackViewCache,
-      assembler: this.ansiGridAssembler,
       columns: pending.columns,
       rows: pending.rows,
       terminalGlyphStyle: pending.terminalGlyphStyle,
@@ -785,11 +790,9 @@ export class ThreeAsciiRenderer {
       mapModeRead: GPUMapMode.READ,
       mapError: (error) => new ThreeAsciiReadbackError(error),
       read: (source) =>
-        assembleThreeAsciiReadbackGrid({
+        assembleThreeAsciiReadbackGridWithContext(this.readbackAssemblyContext, {
           source,
           layout,
-          viewCache: this.readbackViewCache,
-          assembler: this.ansiGridAssembler,
           columns: this.columns,
           rows: this.rows,
           terminalGlyphStyle: this.terminalGlyphStyle,

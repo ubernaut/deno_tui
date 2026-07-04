@@ -26,6 +26,22 @@ export interface ThreeAsciiReadbackGridAssemblyInput {
   now?: () => number;
 }
 
+export interface ThreeAsciiReadbackGridAssemblyContext {
+  viewCache: ThreeAsciiReadbackViewResolver;
+  assembler: ThreeAsciiGridAssembler;
+  now?: () => number;
+}
+
+export interface ThreeAsciiReadbackGridAssemblyFrame {
+  source: ArrayBuffer;
+  layout: ThreeAsciiReadbackLayout;
+  columns: number;
+  rows: number;
+  terminalGlyphStyle: TerminalGlyphStyle;
+  terminalEdgeBias: number;
+  backgroundColor: Color;
+}
+
 export interface ThreeAsciiReadbackGridAssemblyResult {
   grid: string[][];
   assemblyMs: number;
@@ -35,18 +51,30 @@ export interface ThreeAsciiReadbackGridAssemblyResult {
 export function assembleThreeAsciiReadbackGrid(
   input: ThreeAsciiReadbackGridAssemblyInput,
 ): ThreeAsciiReadbackGridAssemblyResult {
-  const now = input.now ?? (() => performance.now());
+  return assembleThreeAsciiReadbackGridWithContext({
+    viewCache: input.viewCache,
+    assembler: input.assembler,
+    now: input.now,
+  }, input);
+}
+
+/** Resolves packed GPU readback views using retained renderer context. */
+export function assembleThreeAsciiReadbackGridWithContext(
+  context: ThreeAsciiReadbackGridAssemblyContext,
+  frame: ThreeAsciiReadbackGridAssemblyFrame,
+): ThreeAsciiReadbackGridAssemblyResult {
+  const now = context.now ?? (() => performance.now());
   const assemblyStart = now();
-  const views = input.viewCache.resolve(input.source, input.layout);
-  const grid = input.assembler.build({
-    columns: input.columns,
-    rows: input.rows,
+  const views = context.viewCache.resolve(frame.source, frame.layout);
+  const grid = context.assembler.build({
+    columns: frame.columns,
+    rows: frame.rows,
     fillGlyphs: views.fillGlyphs,
     edgeGlyphs: views.edgeGlyphs,
     colors: views.colors,
-    terminalGlyphStyle: input.terminalGlyphStyle,
-    terminalEdgeBias: input.terminalEdgeBias,
-    backgroundColor: input.backgroundColor,
+    terminalGlyphStyle: frame.terminalGlyphStyle,
+    terminalEdgeBias: frame.terminalEdgeBias,
+    backgroundColor: frame.backgroundColor,
   });
 
   return {

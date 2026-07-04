@@ -2,7 +2,10 @@ import { Color } from "npm:three@0.183.2";
 
 import { assertEquals } from "./deps.ts";
 import type { ThreeAsciiAnsiGridInput } from "../src/three_ascii/ansi_grid.ts";
-import { assembleThreeAsciiReadbackGrid } from "../src/three_ascii/readback_assembly.ts";
+import {
+  assembleThreeAsciiReadbackGrid,
+  assembleThreeAsciiReadbackGridWithContext,
+} from "../src/three_ascii/readback_assembly.ts";
 import type { ThreeAsciiReadbackLayout, ThreeAsciiReadbackViews } from "../src/three_ascii/readback.ts";
 
 Deno.test("assembleThreeAsciiReadbackGrid resolves views and delegates assembler input", () => {
@@ -71,5 +74,59 @@ Deno.test("assembleThreeAsciiReadbackGrid resolves views and delegates assembler
   assertEquals(result, {
     grid,
     assemblyMs: 7,
+  });
+});
+
+Deno.test("assembleThreeAsciiReadbackGridWithContext reuses retained assembly dependencies", () => {
+  const source = new ArrayBuffer(64);
+  const layout: ThreeAsciiReadbackLayout = {
+    fillOffset: 0,
+    edgeOffset: 4,
+    colorOffset: 20,
+    byteLength: 36,
+    fillFloatLength: 1,
+    edgeFloatLength: 4,
+    colorFloatLength: 4,
+  };
+  const views: ThreeAsciiReadbackViews = {
+    fillGlyphs: new Float32Array([1]),
+    edgeGlyphs: new Float32Array([2, 3, 4, 5]),
+    colors: new Float32Array([0, 0, 0, 1]),
+  };
+  const backgroundColor = new Color("#000000");
+  const grid = [[" "]];
+  const calls: string[] = [];
+  const times = [100, 104.5];
+
+  const context = {
+    viewCache: {
+      resolve(actualSource: ArrayBuffer, actualLayout: ThreeAsciiReadbackLayout) {
+        calls.push(actualSource === source && actualLayout === layout ? "resolve" : "bad-resolve");
+        return views;
+      },
+    },
+    assembler: {
+      build(input: ThreeAsciiAnsiGridInput) {
+        calls.push(input.terminalGlyphStyle === "glyphs" ? "build" : "bad-build");
+        return grid;
+      },
+    },
+    now: () => times.shift() ?? 104.5,
+  };
+
+  const result = assembleThreeAsciiReadbackGridWithContext(context, {
+    source,
+    layout,
+    columns: 1,
+    rows: 1,
+    terminalGlyphStyle: "glyphs",
+    terminalEdgeBias: 0.5,
+    backgroundColor,
+  });
+
+  assertEquals(calls, ["resolve", "build"]);
+  assertEquals(result, {
+    grid,
+    assemblyMs: 4.5,
   });
 });
