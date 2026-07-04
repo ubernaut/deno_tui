@@ -30,6 +30,20 @@ export interface ThreePanelRequestedMaxCellsInput {
   pressureMaxCells?: number;
 }
 
+export interface ThreePanelRuntimeBudgetInput {
+  interactive: boolean;
+  userMaxCells: number;
+  maxRenderCells?: number;
+  idleMaxRenderCells?: number;
+  frameInterval: number;
+  idleFrameInterval?: number;
+}
+
+export interface ThreePanelRuntimeBudget {
+  requestedMaxCells: number;
+  frameInterval: number;
+}
+
 export function resolveThreePanelRenderSize(
   rect: ThreePanelRectLike,
   maxCells?: number,
@@ -57,6 +71,23 @@ export function resolveThreePanelRequestedMaxCells(input: ThreePanelRequestedMax
 
 export function resolveThreePanelFrameInterval(frameInterval: number): number {
   return Math.max(1, frameInterval);
+}
+
+/** Resolves the active render-cell cap and frame cadence for live or idle Three panels. */
+export function resolveThreePanelRuntimeBudget(input: ThreePanelRuntimeBudgetInput): ThreePanelRuntimeBudget {
+  const pressureMaxCells = !input.interactive && input.idleMaxRenderCells !== undefined
+    ? input.idleMaxRenderCells
+    : input.maxRenderCells;
+  const frameInterval = !input.interactive && input.idleFrameInterval !== undefined
+    ? input.idleFrameInterval
+    : input.frameInterval;
+  return {
+    requestedMaxCells: resolveThreePanelRequestedMaxCells({
+      userMaxCells: input.userMaxCells,
+      pressureMaxCells,
+    }),
+    frameInterval: resolveThreePanelFrameInterval(frameInterval),
+  };
 }
 
 export function resolveThreePanelRenderPolicy(input: ThreePanelRenderPolicyInput): ThreePanelRenderPolicy {

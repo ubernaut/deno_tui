@@ -5,6 +5,7 @@ import {
   resolveThreePanelRenderPolicy,
   resolveThreePanelRenderSize,
   resolveThreePanelRequestedMaxCells,
+  resolveThreePanelRuntimeBudget,
 } from "../src/app/three_panel_policy.ts";
 
 Deno.test("resolveThreePanelRenderPolicy selects ASCII-only rendering by default", () => {
@@ -93,4 +94,44 @@ Deno.test("resolveThreePanelFrameInterval floors frame cadence to a positive del
   assertEquals(resolveThreePanelFrameInterval(33.33), 33.33);
   assertEquals(resolveThreePanelFrameInterval(0), 1);
   assertEquals(resolveThreePanelFrameInterval(-10), 1);
+});
+
+Deno.test("resolveThreePanelRuntimeBudget uses live cadence and pressure caps while interactive", () => {
+  assertEquals(
+    resolveThreePanelRuntimeBudget({
+      interactive: true,
+      userMaxCells: 1_920,
+      maxRenderCells: 960,
+      idleMaxRenderCells: 60,
+      frameInterval: 50,
+      idleFrameInterval: 125,
+    }),
+    { requestedMaxCells: 960, frameInterval: 50 },
+  );
+});
+
+Deno.test("resolveThreePanelRuntimeBudget uses idle cadence and caps when not interactive", () => {
+  assertEquals(
+    resolveThreePanelRuntimeBudget({
+      interactive: false,
+      userMaxCells: 1_920,
+      maxRenderCells: 960,
+      idleMaxRenderCells: 60,
+      frameInterval: 50,
+      idleFrameInterval: 125,
+    }),
+    { requestedMaxCells: 60, frameInterval: 125 },
+  );
+});
+
+Deno.test("resolveThreePanelRuntimeBudget falls back to live values without idle overrides", () => {
+  assertEquals(
+    resolveThreePanelRuntimeBudget({
+      interactive: false,
+      userMaxCells: 240,
+      maxRenderCells: 960,
+      frameInterval: 0,
+    }),
+    { requestedMaxCells: 240, frameInterval: 1 },
+  );
 });

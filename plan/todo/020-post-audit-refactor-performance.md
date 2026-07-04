@@ -1134,3 +1134,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Moved Three panel frame-update event shaping into `src/app` and kept the app adapter re-export stable. Cadence and
   redraw callbacks now share a tested payload helper instead of duplicating grid row/column projection in the demo
   adapter.
+- Moved Three panel live/idle runtime budget selection into the shared `three_panel_policy` module, so frame cadence and
+  render-cell cap decisions are pure, tested, and reusable outside the demo adapter.
