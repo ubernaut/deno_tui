@@ -72,7 +72,6 @@ import {
   type WorkbenchHeaderLayout,
   type WorkbenchMenuBarHitLayout,
   workbenchModalActionButtonsInto,
-  type WorkbenchModalRowRenderCommand,
   workbenchModalRowRenderCommandsInto,
   type WorkbenchScrollbarRenderCommand,
   workbenchShelfEntriesInto,
@@ -160,6 +159,7 @@ import {
   workbenchButtonRowRenderCommandsInto,
   wrappedControlOptionRowCount,
 } from "../src/app/workbench_control_layout.ts";
+import { WorkbenchModalBufferCache } from "../src/app/workbench_modal_cache.ts";
 import { WorkbenchTitlebarBufferCache } from "../src/app/workbench_titlebar_cache.ts";
 import { maxTextWidth, type VisibleMenuSlice, visibleMenuSliceInto } from "../src/app/workbench_text.ts";
 import {
@@ -417,13 +417,10 @@ const controlSliderSetHit: ApiWorkbenchControlHitPlacement = {
   action: "set",
 };
 const controlStepperHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
-const modalActionButtonItems: WorkbenchButtonRowItem<number>[] = [];
-const modalActionButtonPlacements: WorkbenchButtonRowPlacement<number>[] = [];
-const modalActionButtonCommands: WorkbenchButtonRowRenderCommand<number>[] = [];
 const asciiConfigActionButtonItems: WorkbenchButtonRowItem<WorkbenchAsciiConfigModalAction>[] = [];
 const asciiConfigActionButtonPlacements: WorkbenchButtonRowPlacement<WorkbenchAsciiConfigModalAction>[] = [];
 const asciiConfigActionButtonCommands: WorkbenchButtonRowRenderCommand<WorkbenchAsciiConfigModalAction>[] = [];
-const modalRowRenderCommands: WorkbenchModalRowRenderCommand[] = [];
+const modalBuffers = new WorkbenchModalBufferCache<number>();
 const themes: ThemeSpec[] = createApiWorkbenchThemes();
 const themeLabels = themes.map((entry) => entry.label);
 const themeMenuWidth = Math.max(20, maxTextWidth(themeLabels) + 6);
@@ -2506,7 +2503,7 @@ function renderModalOverlay(frame: Frame): void {
   fillRect(frame, rect, t.panelSoft);
   drawFrame(frame, rect, inspection.title, true);
 
-  const rowCommands = workbenchModalRowRenderCommandsInto(modalRowRenderCommands, {
+  const rowCommands = workbenchModalRowRenderCommandsInto(modalBuffers.rowCommands, {
     inspection,
     inner,
     contentWidth: rect.width,
@@ -2527,15 +2524,15 @@ function renderModalOverlay(frame: Frame): void {
   }
 
   if (inspection.actions.length === 0 || actionRow === undefined) return;
-  workbenchModalActionButtonsInto(modalActionButtonItems, inspection);
+  workbenchModalActionButtonsInto(modalBuffers.actionItems, inspection);
   layoutWorkbenchButtonRowInto(
-    modalActionButtonPlacements,
-    modalActionButtonItems,
+    modalBuffers.actionPlacements,
+    modalBuffers.actionItems,
     { column: inner.column, row: actionRow, width: inner.width, height: 1 },
     actionRow,
   );
-  workbenchButtonRowRenderCommandsInto(modalActionButtonCommands, modalActionButtonPlacements);
-  for (const command of modalActionButtonCommands) {
+  workbenchButtonRowRenderCommandsInto(modalBuffers.actionCommands, modalBuffers.actionPlacements);
+  for (const command of modalBuffers.actionCommands) {
     const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
     write(
       frame,

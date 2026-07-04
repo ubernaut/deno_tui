@@ -285,6 +285,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   prompts through it, reducing duplicate key handling while adding stable API coverage.
 - Extracted retained titlebar layout/render-command buffers into a shared cache used by terminal and browser workbench
   hosts, removing duplicate mutable map helpers from both large demo adapters.
+- Extracted retained modal row/action-button buffers into a shared cache used by terminal and browser workbench hosts,
+  trimming duplicate overlay buffer plumbing while preserving renderer-local paint and hit registration.
 - Routed the standalone visualization monitor through per-slot source-frame buffers so each panel reuses its source
   array without sharing mutable context across sibling slots.
 - Added caller-owned synthetic workbench source projection and routed non-monitor workbench visualization contexts

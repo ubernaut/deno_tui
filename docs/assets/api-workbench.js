@@ -17379,6 +17379,34 @@ function workbenchMobileCommandStripItemsInto(target, options) {
   return target;
 }
 
+// src/app/workbench_modal_cache.ts
+var WorkbenchModalBufferCache = class {
+  /** Reusable row render-command buffer for modal title/body/action rows. */
+  rowCommands = [];
+  /** Reusable modal action button descriptors. */
+  actionItems = [];
+  /** Reusable modal action button placements. */
+  actionPlacements = [];
+  /** Reusable modal action button paint commands. */
+  actionCommands = [];
+  /** Clears retained buffers without replacing their array identities. */
+  clear() {
+    this.rowCommands.length = 0;
+    this.actionItems.length = 0;
+    this.actionPlacements.length = 0;
+    this.actionCommands.length = 0;
+  }
+  /** Reports retained buffer sizes for diagnostics and tests. */
+  inspect() {
+    return {
+      rowCommands: this.rowCommands.length,
+      actionItems: this.actionItems.length,
+      actionPlacements: this.actionPlacements.length,
+      actionCommands: this.actionCommands.length
+    };
+  }
+};
+
 // src/app/workbench_titlebar_cache.ts
 var WorkbenchTitlebarBufferCache = class {
   #layouts = /* @__PURE__ */ new Map();
@@ -17846,10 +17874,7 @@ var controlSliderSetHit = {
   action: "set"
 };
 var controlStepperHitPlacements = [];
-var modalActionButtonItems = [];
-var modalActionButtonPlacements = [];
-var modalActionButtonCommands = [];
-var modalRowRenderCommands = [];
+var modalBuffers = new WorkbenchModalBufferCache();
 var dropdownOverlayRenderCommands = [];
 var dropdownOverlay = null;
 var pointerDrag = null;
@@ -19310,7 +19335,7 @@ function renderModalOverlay(frame) {
   if (shadow.width > 0 && shadow.height > 0) fillRect(frame, shadow, theme().background);
   fillRect(frame, rect, theme().panelSoft);
   drawFrame(frame, rect, inspection.title, true);
-  const rowCommands = workbenchModalRowRenderCommandsInto(modalRowRenderCommands, {
+  const rowCommands = workbenchModalRowRenderCommandsInto(modalBuffers.rowCommands, {
     inspection,
     inner,
     contentWidth: rect.width
@@ -19331,15 +19356,15 @@ function renderModalOverlay(frame) {
     );
   }
   if (inspection.actions.length === 0 || actionRow === void 0) return;
-  workbenchModalActionButtonsInto(modalActionButtonItems, inspection);
+  workbenchModalActionButtonsInto(modalBuffers.actionItems, inspection);
   layoutWorkbenchButtonRowInto(
-    modalActionButtonPlacements,
-    modalActionButtonItems,
+    modalBuffers.actionPlacements,
+    modalBuffers.actionItems,
     { column: inner.column, row: actionRow, width: inner.width, height: 1 },
     actionRow
   );
-  workbenchButtonRowRenderCommandsInto(modalActionButtonCommands, modalActionButtonPlacements);
-  for (const command of modalActionButtonCommands) {
+  workbenchButtonRowRenderCommandsInto(modalBuffers.actionCommands, modalBuffers.actionPlacements);
+  for (const command of modalBuffers.actionCommands) {
     const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
     write(
       frame,
