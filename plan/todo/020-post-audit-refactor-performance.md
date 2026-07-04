@@ -385,6 +385,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added source-grid row change and panel update counters to the Three workbench pressure probe, then raised the default
   startup render budget to the 960-cell live cap because the 240-cell tier was too coarse to show regular source changes
   for the default scene even though the renderer was submitting frames.
+- Extracted workbench Three pressure-probe grid snapshot, source-row diffing, and line formatting helpers into the
+  shared probe module with direct tests so CLI profiling output stays renderer-aware and script-local code stays small.
 - Added focused benchmark guards for reusable monitor source-frame resolution and 88-core CPU hex tile layout projection
   so future source/monitor refactors keep those hot paths measured.
 - Reused repeated styled cell strings inside ANSI-aware text splitting so block-mode workbench rows avoid rebuilding the

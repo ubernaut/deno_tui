@@ -1,4 +1,4 @@
-import { average } from "./probe_cli.ts";
+import { average, formatFps, formatMs } from "./probe_cli.ts";
 
 export interface WorkbenchThreePressureProbeSample {
   index: number;
@@ -25,6 +25,19 @@ export interface WorkbenchThreePressureProbeSummary {
   averageBytes: number;
   averageChangedRows: number;
   averageSourceChangedRows: number;
+}
+
+export interface WorkbenchThreePressureProbeOptions {
+  mode: string;
+  glyphs: string;
+  readback: string;
+  frameWidth: number;
+  frameHeight: number;
+  panelWidth: number;
+  panelHeight: number;
+  maxCells: number;
+  intervalMs: number;
+  totalBytes: number;
 }
 
 /** Clones a Three ASCII grid row-by-row so mutable renderer grids can be compared across frames. */
@@ -69,6 +82,39 @@ export function summarizeWorkbenchThreePressureProbe(
     averageChangedRows: average(steady.map((sample) => sample.changedRows)),
     averageSourceChangedRows: average(steady.map((sample) => sample.sourceChangedRows)),
   };
+}
+
+export function formatWorkbenchThreePressureProbeLines(
+  options: WorkbenchThreePressureProbeOptions,
+  samples: readonly WorkbenchThreePressureProbeSample[],
+): string[] {
+  const summary = summarizeWorkbenchThreePressureProbe(samples);
+  const latest = summary.latest;
+  const lines = [
+    "three-workbench pressure probe",
+    `mode=${options.mode} glyphs=${options.glyphs} readback=${options.readback} frame=${options.frameWidth}x${options.frameHeight} panel=${options.panelWidth}x${options.panelHeight} maxCells=${options.maxCells} interval=${
+      formatMs(options.intervalMs)
+    }`,
+    `warmup=${formatMs(summary.warmup?.rendererMs)} renderer=${formatMs(summary.averageRendererMs)} fps=${
+      formatFps(summary.averageRendererMs)
+    } flush=${formatMs(summary.averageFlushMs)} bytes=${Math.round(summary.averageBytes)} changedRows=${
+      summary.averageChangedRows.toFixed(1)
+    } sourceRows=${summary.averageSourceChangedRows.toFixed(1)} updates=${latest?.gridUpdates ?? 0} latest=${
+      latest ? `${latest.columns}x${latest.rows}/${latest.cells}c` : "none"
+    } totalBytes=${options.totalBytes}`,
+  ];
+  for (const sample of samples) {
+    lines.push(
+      `${sample.index.toString().padStart(2, "0")} renderer=${formatMs(sample.rendererMs)} scene=${
+        formatMs(sample.sceneMs)
+      } read=${formatMs(sample.readbackMs)} asm=${formatMs(sample.assemblyMs)} flush=${
+        formatMs(sample.flushMs)
+      } bytes=${sample.bytes} changed=${sample.changedRows} sourceChanged=${sample.sourceChangedRows} updates=${
+        sample.gridUpdates
+      } grid=${sample.columns}x${sample.rows}`,
+    );
+  }
+  return lines;
 }
 
 function workbenchThreeProbeGridRowsEqual(

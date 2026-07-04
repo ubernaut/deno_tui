@@ -15,11 +15,11 @@ import {
   WORKBENCH_THREE_INITIAL_CELLS,
   WORKBENCH_THREE_READBACK_STRATEGY,
 } from "../app/workbench_three_policy.ts";
-import { choiceArg, delay, formatFps, formatMs, numberArg } from "../src/three_ascii/probe_cli.ts";
+import { choiceArg, delay, numberArg } from "../src/three_ascii/probe_cli.ts";
 import {
   countWorkbenchThreeProbeChangedGridRows,
+  formatWorkbenchThreePressureProbeLines,
   snapshotWorkbenchThreeProbeGridRows,
-  summarizeWorkbenchThreePressureProbe,
   type WorkbenchThreePressureProbeSample,
 } from "../src/three_ascii/workbench_pressure_probe.ts";
 import { type ThreeSceneMode, threeSceneModes } from "../app/types.ts";
@@ -102,35 +102,20 @@ try {
   maxRenderCells.dispose();
 }
 
-const summary = summarizeWorkbenchThreePressureProbe(samples);
-const latest = summary.latest;
-
-console.log("three-workbench pressure probe");
 console.log(
-  `mode=${mode} glyphs=${glyphs} readback=${readbackStrategy} frame=${frameWidth}x${frameHeight} panel=${panelWidth}x${panelHeight} maxCells=${maxCells} interval=${
-    formatMs(intervalMs)
-  }`,
+  formatWorkbenchThreePressureProbeLines({
+    mode,
+    glyphs,
+    readback: readbackStrategy,
+    frameWidth,
+    frameHeight,
+    panelWidth,
+    panelHeight,
+    maxCells,
+    intervalMs,
+    totalBytes: bytesWritten,
+  }, samples).join("\n"),
 );
-console.log(
-  `warmup=${formatMs(summary.warmup?.rendererMs)} renderer=${formatMs(summary.averageRendererMs)} fps=${
-    formatFps(summary.averageRendererMs)
-  } flush=${formatMs(summary.averageFlushMs)} bytes=${Math.round(summary.averageBytes)} changedRows=${
-    summary.averageChangedRows.toFixed(1)
-  } sourceRows=${summary.averageSourceChangedRows.toFixed(1)} updates=${latest?.gridUpdates ?? 0} latest=${
-    latest ? `${latest.columns}x${latest.rows}/${latest.cells}c` : "none"
-  } totalBytes=${bytesWritten}`,
-);
-for (const sample of samples) {
-  console.log(
-    `${sample.index.toString().padStart(2, "0")} renderer=${formatMs(sample.rendererMs)} scene=${
-      formatMs(sample.sceneMs)
-    } read=${formatMs(sample.readbackMs)} asm=${formatMs(sample.assemblyMs)} flush=${
-      formatMs(sample.flushMs)
-    } bytes=${sample.bytes} changed=${sample.changedRows} sourceChanged=${sample.sourceChangedRows} updates=${
-      sample.gridUpdates
-    } grid=${sample.columns}x${sample.rows}`,
-  );
-}
 
 function drawSample(index: number): WorkbenchThreePressureProbeSample {
   const prepared = prepareWorkbenchFrame(frame, frameHeight);

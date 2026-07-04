@@ -1,6 +1,7 @@
-import { assertEquals } from "./deps.ts";
+import { assertEquals, assertStringIncludes } from "./deps.ts";
 import {
   countWorkbenchThreeProbeChangedGridRows,
+  formatWorkbenchThreePressureProbeLines,
   snapshotWorkbenchThreeProbeGridRows,
   summarizeWorkbenchThreePressureProbe,
   type WorkbenchThreePressureProbeSample,
@@ -63,6 +64,36 @@ Deno.test("workbench Three probe changed-row counter handles equal sparse and re
     ),
     2,
   );
+});
+
+Deno.test("formatWorkbenchThreePressureProbeLines reports source changes and update counts", () => {
+  const lines = formatWorkbenchThreePressureProbeLines({
+    mode: "studio",
+    glyphs: "blocks",
+    readback: "deferred",
+    frameWidth: 168,
+    frameHeight: 54,
+    panelWidth: 96,
+    panelHeight: 32,
+    maxCells: 960,
+    intervalMs: 50,
+    totalBytes: 12345,
+  }, [
+    sample({ index: 1, rendererMs: 0, rows: 17, columns: 53, cells: 901, sourceChangedRows: 17, gridUpdates: 1 }),
+    sample({ index: 2, rendererMs: 1000, rows: 17, columns: 53, cells: 901, sourceChangedRows: 0, gridUpdates: 1 }),
+    sample({ index: 3, rendererMs: 12, rows: 17, columns: 53, cells: 901, sourceChangedRows: 16, gridUpdates: 2 }),
+  ]);
+
+  assertEquals(lines[0], "three-workbench pressure probe");
+  assertStringIncludes(lines[1], "mode=studio glyphs=blocks readback=deferred");
+  assertStringIncludes(lines[1], "frame=168x54 panel=96x32 maxCells=960 interval=50.00ms");
+  assertStringIncludes(lines[2], "renderer=12.00ms");
+  assertStringIncludes(lines[2], "sourceRows=16.0");
+  assertStringIncludes(lines[2], "updates=2");
+  assertStringIncludes(lines[2], "latest=53x17/901c");
+  assertStringIncludes(lines[2], "totalBytes=12345");
+  assertStringIncludes(lines[5], "03 renderer=12.00ms");
+  assertStringIncludes(lines[5], "sourceChanged=16 updates=2 grid=53x17");
 });
 
 function sample(
