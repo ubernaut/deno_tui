@@ -89,7 +89,6 @@ import {
   workbenchShelfRenderCommandsInto,
   workbenchStatusLine,
   workbenchTabEntriesInto,
-  type WorkbenchTerminalCopyRowProjection,
   workbenchTerminalCopyRowsInto,
   type WorkbenchTerminalPaneProjection,
   workbenchTerminalPaneProjectionsInto,
@@ -106,6 +105,7 @@ import {
   writeStringFrameRow,
 } from "../../mod.web.ts";
 import { WorkbenchShelfBufferCache } from "../../src/app/workbench_shelf_cache.ts";
+import { WorkbenchTerminalBufferCache } from "../../src/app/workbench_terminal_cache.ts";
 import { WorkbenchTerminalSessionTabBufferCache } from "../../src/app/workbench_terminal_tab_cache.ts";
 import {
   apiWorkbenchColumns,
@@ -353,8 +353,7 @@ webTerminalWorkspace.layout.subscribe(persistWebWorkspaceState);
 const webTerminalScreens = new Map<string, TerminalScreenController>();
 const webTerminalScrollbacks = new Map<string, TerminalScrollbackController>();
 const webTerminalScreenKeys = new Map<string, string>();
-const webTerminalPaneProjections: WorkbenchTerminalPaneProjection[] = [];
-const webTerminalCopyRows: WorkbenchTerminalCopyRowProjection[] = [];
+const webTerminalBuffers = new WorkbenchTerminalBufferCache();
 const hitTargets = new HitTargetStack<Hit>();
 const titlebarBuffers = new WorkbenchTitlebarBufferCache<PanelId>();
 const screenRows: string[] = [];
@@ -1268,7 +1267,7 @@ function renderWebTerminalPanes(
 ): void {
   if (rect.width <= 0 || rect.height <= 0) return;
   const projections = workbenchTerminalPaneProjectionsInto(
-    webTerminalPaneProjections,
+    webTerminalBuffers.paneProjections,
     workspace.layout,
     rect,
     {
@@ -1318,7 +1317,7 @@ function renderWebTerminalPane(
   hitTargets.add(content, { type: "terminalContent", sessionId, paneId: projection.paneId });
   const inspection = scrollback.inspect();
   if (inspection.mode === "copy") {
-    const copyRows = workbenchTerminalCopyRowsInto(webTerminalCopyRows, {
+    const copyRows = workbenchTerminalCopyRowsInto(webTerminalBuffers.copyRows, {
       visibleRows: inspection.visibleRows,
       offset: inspection.offset,
       height: content.height,

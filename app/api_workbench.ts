@@ -162,7 +162,6 @@ import { maxTextWidth, type VisibleMenuSlice, visibleMenuSliceInto } from "../sr
 import {
   nextWorkbenchTerminalSessionId,
   resolveWorkbenchShellBackend,
-  type WorkbenchTerminalCopyRowProjection,
   workbenchTerminalCopyRowsInto,
   type WorkbenchTerminalPaneProjection,
   workbenchTerminalPaneProjectionsInto,
@@ -172,6 +171,7 @@ import {
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
 } from "../src/app/workbench_terminal.ts";
+import { WorkbenchTerminalBufferCache } from "../src/app/workbench_terminal_cache.ts";
 import { WorkbenchTerminalSessionTabBufferCache } from "../src/app/workbench_terminal_tab_cache.ts";
 import { AudioRegistry } from "./audio.ts";
 import {
@@ -384,8 +384,7 @@ type WorkspaceNameMode = "save" | "rename";
 const terminalOutputButtonBuffers = new WorkbenchButtonRowBufferCache<TerminalOutputAction>();
 const terminalShellButtonBuffers = new WorkbenchButtonRowBufferCache<TerminalShellAction>();
 const terminalShellSessionTabBuffers = new WorkbenchTerminalSessionTabBufferCache();
-const terminalShellPaneProjections: WorkbenchTerminalPaneProjection[] = [];
-const terminalShellCopyRows: WorkbenchTerminalCopyRowProjection[] = [];
+const terminalShellBuffers = new WorkbenchTerminalBufferCache();
 const controlLineSegments: ApiWorkbenchControlLineSegment[] = [];
 const controlLineRenderCommands: ApiWorkbenchControlLineRenderCommand[] = [];
 const controlLineHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
@@ -1964,7 +1963,7 @@ function renderTerminalShellPanes(frame: Frame, rect: Rectangle, copyMode: boole
   if (rect.width <= 0 || rect.height <= 0) return;
   const workspace = terminalShell.inspect().workspace;
   const projections = workbenchTerminalPaneProjectionsInto(
-    terminalShellPaneProjections,
+    terminalShellBuffers.paneProjections,
     workspace.layout,
     rect,
     {
@@ -2037,7 +2036,7 @@ function renderTerminalShellPane(
 function renderTerminalShellCopyPane(frame: Frame, rect: Rectangle, shell: TerminalShellController): void {
   const t = theme();
   const inspection = shell.inspect();
-  const rows = workbenchTerminalCopyRowsInto(terminalShellCopyRows, {
+  const rows = workbenchTerminalCopyRowsInto(terminalShellBuffers.copyRows, {
     visibleRows: inspection.scrollback.visibleRows,
     offset: inspection.scrollback.offset,
     height: rect.height,

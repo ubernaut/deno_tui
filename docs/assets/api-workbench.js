@@ -15971,6 +15971,22 @@ var WorkbenchShelfBufferCache = class {
   }
 };
 
+// src/app/workbench_terminal_cache.ts
+var WorkbenchTerminalBufferCache = class {
+  paneProjections = [];
+  copyRows = [];
+  clear() {
+    this.paneProjections.length = 0;
+    this.copyRows.length = 0;
+  }
+  inspect() {
+    return {
+      paneProjections: this.paneProjections.length,
+      copyRows: this.copyRows.length
+    };
+  }
+};
+
 // src/app/workbench_terminal_tab_cache.ts
 var WorkbenchTerminalSessionTabBufferCache = class {
   sources = [];
@@ -17910,8 +17926,7 @@ webTerminalWorkspace.layout.subscribe(persistWebWorkspaceState);
 var webTerminalScreens = /* @__PURE__ */ new Map();
 var webTerminalScrollbacks = /* @__PURE__ */ new Map();
 var webTerminalScreenKeys = /* @__PURE__ */ new Map();
-var webTerminalPaneProjections = [];
-var webTerminalCopyRows = [];
+var webTerminalBuffers = new WorkbenchTerminalBufferCache();
 var hitTargets = new HitTargetStack();
 var titlebarBuffers = new WorkbenchTitlebarBufferCache();
 var screenRows = [];
@@ -18776,7 +18791,7 @@ function renderTerminalSessionTabs(frame, rect) {
 function renderWebTerminalPanes(frame, rect, workspace = webTerminalWorkspace.inspect()) {
   if (rect.width <= 0 || rect.height <= 0) return;
   const projections = workbenchTerminalPaneProjectionsInto(
-    webTerminalPaneProjections,
+    webTerminalBuffers.paneProjections,
     workspace.layout,
     rect,
     {
@@ -18822,7 +18837,7 @@ function renderWebTerminalPane(frame, projection) {
   hitTargets.add(content, { type: "terminalContent", sessionId, paneId: projection.paneId });
   const inspection = scrollback.inspect();
   if (inspection.mode === "copy") {
-    const copyRows = workbenchTerminalCopyRowsInto(webTerminalCopyRows, {
+    const copyRows = workbenchTerminalCopyRowsInto(webTerminalBuffers.copyRows, {
       visibleRows: inspection.visibleRows,
       offset: inspection.offset,
       height: content.height,
