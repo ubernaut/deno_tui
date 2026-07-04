@@ -5,6 +5,7 @@ import {
 } from "../app/workbench_three_policy.ts";
 import { ThreePanelFrameView, type ThreeSceneState } from "../app/three_panel.ts";
 import { Signal } from "../src/signals/mod.ts";
+import { average, choiceArg, delay, formatFps, formatMs, numberArg, stringArg } from "../src/three_ascii/probe_cli.ts";
 import type { ThreeAsciiRendererPerformance } from "../src/three_ascii/renderer.ts";
 import { type ThreeSceneMode, threeSceneModes, type ThreeSceneSignal } from "../app/types.ts";
 
@@ -22,13 +23,15 @@ interface ProbeSample {
   lifecycle: string;
 }
 
-const frames = numberArg("--frames", 36);
-const width = numberArg("--width", 80);
-const height = numberArg("--height", 24);
-const maxCells = numberArg("--max-cells", WORKBENCH_THREE_INITIAL_CELLS);
-const intervalMs = numberArg("--interval", apiWorkbenchThreeFrameIntervalForCells(maxCells, { live: true }));
-const mode = sceneModeArg("--mode", "studio");
-const glyphs = stringArg("--glyphs", "blocks") as ReturnType<typeof createDefaultAsciiOptions>["terminalGlyphStyle"];
+const frames = numberArg(Deno.args, "--frames", 36);
+const width = numberArg(Deno.args, "--width", 80);
+const height = numberArg(Deno.args, "--height", 24);
+const maxCells = numberArg(Deno.args, "--max-cells", WORKBENCH_THREE_INITIAL_CELLS);
+const intervalMs = numberArg(Deno.args, "--interval", apiWorkbenchThreeFrameIntervalForCells(maxCells, { live: true }));
+const mode = choiceArg(Deno.args, "--mode", "studio" as ThreeSceneMode, threeSceneModes);
+const glyphs = stringArg(Deno.args, "--glyphs", "blocks") as ReturnType<
+  typeof createDefaultAsciiOptions
+>["terminalGlyphStyle"];
 
 const rectangle = new Signal({ column: 0, row: 0, width, height }, { deepObserve: true });
 const ascii = new Signal({
@@ -148,38 +151,4 @@ function signalForFrame(index: number, total: number): ThreeSceneSignal {
     active: true,
     pressed: index % 8 < 4,
   };
-}
-
-function numberArg(name: string, fallback: number): number {
-  const prefix = `${name}=`;
-  const raw = Deno.args.find((arg) => arg.startsWith(prefix))?.slice(prefix.length);
-  const parsed = raw === undefined ? Number.NaN : Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function stringArg(name: string, fallback: string): string {
-  const prefix = `${name}=`;
-  return Deno.args.find((arg) => arg.startsWith(prefix))?.slice(prefix.length) || fallback;
-}
-
-function sceneModeArg(name: string, fallback: ThreeSceneMode): ThreeSceneMode {
-  const value = stringArg(name, fallback);
-  return (threeSceneModes as readonly string[]).includes(value) ? value as ThreeSceneMode : fallback;
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function average(values: readonly number[]): number {
-  if (values.length === 0) return 0;
-  return values.reduce((total, value) => total + value, 0) / values.length;
-}
-
-function formatMs(value: number | undefined): string {
-  return `${(value ?? 0).toFixed(2)}ms`;
-}
-
-function formatFps(frameMs: number): string {
-  return frameMs > 0 ? (1000 / frameMs).toFixed(1) : "0.0";
 }

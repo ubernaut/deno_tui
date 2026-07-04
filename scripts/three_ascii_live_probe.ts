@@ -1,6 +1,7 @@
 import { asciiEffectOptions, createDefaultAsciiOptions } from "../app/ascii_options.ts";
 import { createNeonThreeScene } from "../app/neon_three.ts";
 import { type ThreeSceneMode, threeSceneModes, type ThreeSceneSignal } from "../app/types.ts";
+import { average, choiceArg, delay, formatFps, formatMs, numberArg, stringArg } from "../src/three_ascii/probe_cli.ts";
 import { ThreeAsciiRenderer } from "../src/three_ascii/renderer.ts";
 
 interface ProbeSample {
@@ -14,15 +15,15 @@ interface ProbeSample {
   columns: number;
 }
 
-const frames = numberArg("--frames", 24);
-const columns = numberArg("--columns", 31);
-const rows = numberArg("--rows", 15);
-const intervalMs = numberArg("--interval", 55);
-const mode = sceneModeArg("--mode", "studio");
+const frames = numberArg(Deno.args, "--frames", 24);
+const columns = numberArg(Deno.args, "--columns", 31);
+const rows = numberArg(Deno.args, "--rows", 15);
+const intervalMs = numberArg(Deno.args, "--interval", 55);
+const mode = choiceArg(Deno.args, "--mode", "studio" as ThreeSceneMode, threeSceneModes);
 
 const ascii = {
   ...createDefaultAsciiOptions("sharp"),
-  terminalGlyphStyle: stringArg("--glyphs", "blocks") as ReturnType<
+  terminalGlyphStyle: stringArg(Deno.args, "--glyphs", "blocks") as ReturnType<
     typeof createDefaultAsciiOptions
   >["terminalGlyphStyle"],
 };
@@ -64,7 +65,7 @@ try {
       });
     }
     if (index < frames - 1) {
-      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+      await delay(intervalMs);
     }
   }
 } finally {
@@ -105,34 +106,4 @@ function signalForFrame(index: number, total: number): ThreeSceneSignal {
     active: true,
     pressed: false,
   };
-}
-
-function numberArg(name: string, fallback: number): number {
-  const prefix = `${name}=`;
-  const raw = Deno.args.find((arg) => arg.startsWith(prefix))?.slice(prefix.length);
-  const parsed = raw === undefined ? Number.NaN : Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function stringArg(name: string, fallback: string): string {
-  const prefix = `${name}=`;
-  return Deno.args.find((arg) => arg.startsWith(prefix))?.slice(prefix.length) || fallback;
-}
-
-function sceneModeArg(name: string, fallback: ThreeSceneMode): ThreeSceneMode {
-  const value = stringArg(name, fallback);
-  return (threeSceneModes as readonly string[]).includes(value) ? value as ThreeSceneMode : fallback;
-}
-
-function average(values: readonly number[]): number {
-  if (values.length === 0) return 0;
-  return values.reduce((total, value) => total + value, 0) / values.length;
-}
-
-function formatMs(value: number | undefined): string {
-  return `${(value ?? 0).toFixed(2)}ms`;
-}
-
-function formatFps(frameMs: number): string {
-  return frameMs > 0 ? (1000 / frameMs).toFixed(1) : "0.0";
 }
