@@ -2,7 +2,7 @@ import { Camera, type Color, PerspectiveCamera, Scene } from "npm:three@0.183.2"
 import { RenderPipeline, WebGPURenderer } from "npm:three@0.183.2/webgpu";
 import { pass } from "npm:three@0.183.2/tsl";
 
-import { AcerolaAsciiNode, type AcerolaAsciiNodeOptions } from "./AcerolaAsciiNode.ts";
+import { AcerolaAsciiNode, type AcerolaAsciiNodeOptions, type AcerolaAsciiRenderProfile } from "./AcerolaAsciiNode.ts";
 import {
   buildThreeAsciiAnsiGrid as buildThreeAsciiAnsiGridInternal,
   ThreeAsciiAnsiGridAssembler as InternalThreeAsciiAnsiGridAssembler,
@@ -379,7 +379,8 @@ export class ThreeAsciiRenderer {
       }
     }
 
-    const sceneTiming = await this.renderScene(deltaTime, onFrame) ?? { initMs: 0, updateMs: 0, renderMs: 0 };
+    const sceneTiming = await this.renderScene(deltaTime, onFrame, { renderAnsi, renderImage }) ??
+      { initMs: 0, updateMs: 0, renderMs: 0 };
     const sceneEnd = performance.now();
 
     const frame: ThreeAsciiRenderFrame = {};
@@ -414,6 +415,7 @@ export class ThreeAsciiRenderer {
   private async renderScene(
     deltaTime: number,
     onFrame?: (deltaTime: number) => void | Promise<void>,
+    options: { renderAnsi: boolean; renderImage: boolean } = { renderAnsi: true, renderImage: false },
   ): Promise<{ initMs: number; updateMs: number; renderMs: number }> {
     const initialized = this.renderer !== undefined;
     const initStart = initialized ? 0 : performance.now();
@@ -427,8 +429,21 @@ export class ThreeAsciiRenderer {
     const renderStart = performance.now();
     this.applySize();
     this.updateCameraAspect();
+    this.asciiNode!.setRenderProfile(this.resolveRenderProfile(options));
     this.renderPipeline!.render();
     return { initMs, updateMs, renderMs: performance.now() - renderStart };
+  }
+
+  private resolveRenderProfile(options: { renderAnsi: boolean; renderImage: boolean }): AcerolaAsciiRenderProfile {
+    if (options.renderImage) {
+      return { image: true, terminalEdges: true, terminalDepthColor: true };
+    }
+    const effectState = this.getEffectState();
+    return {
+      image: false,
+      terminalEdges: options.renderAnsi && shouldIncludeThreeAsciiTerminalEdges(effectState, this.terminalGlyphStyle),
+      terminalDepthColor: options.renderAnsi && effectState.depthFalloff > 0,
+    };
   }
 
   private async computeAnsiGrid(

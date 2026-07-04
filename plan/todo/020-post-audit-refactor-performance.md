@@ -269,6 +269,9 @@ performance, shared terminal/web workbench projections, and oversized module red
   byte-rate averages in one pass, with a focused benchmark guard for the report path.
 - Switched workbench Three panes back to deferred readback by default and limited live render cadence to focused or
   fullscreen Three windows, reducing blocking GPU readback and background animation pressure in the startup workbench.
+- Added a terminal render profile to the Acerola ASCII node so terminal-only frames can skip edge-analysis passes that
+  are not consumed by block/no-edge output; the default workbench pressure probe dropped from roughly 11-12ms steady
+  renderer time to roughly 6-7ms while preserving real grid updates.
 - Earlier restored the terminal workbench Three policy to blocking readback after stale-grid probes; the current policy
   now uses deferred readback again because stale-frame and startup-grid guards are covered by focused tests.
 - Extended Three panel frame-time adaptation to the internal 120/240/480 pressure tiers so slow blocking-readback

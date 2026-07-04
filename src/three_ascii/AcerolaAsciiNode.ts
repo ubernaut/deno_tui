@@ -84,6 +84,12 @@ export interface AcerolaAsciiNodeOptions {
   viewEdges?: boolean;
 }
 
+export interface AcerolaAsciiRenderProfile {
+  image: boolean;
+  terminalEdges: boolean;
+  terminalDepthColor: boolean;
+}
+
 function configureMaskRenderTarget(renderTarget: RenderTarget, name: string): void {
   renderTarget.texture.name = name;
   renderTarget.texture.type = HalfFloatType;
@@ -179,6 +185,11 @@ export class AcerolaAsciiNode extends TempNode {
   private sobelXMaterial?: NodeMaterial;
   private sobelMaterial?: NodeMaterial;
   private asciiMaterial?: NodeMaterial;
+  private renderProfile: AcerolaAsciiRenderProfile = {
+    image: true,
+    terminalEdges: true,
+    terminalDepthColor: true,
+  };
 
   constructor(
     colorNode: any,
@@ -322,6 +333,10 @@ export class AcerolaAsciiNode extends TempNode {
     }
   }
 
+  setRenderProfile(profile: AcerolaAsciiRenderProfile): void {
+    this.renderProfile = profile;
+  }
+
   setSize(width: number, height: number): void {
     const scaledWidth = Math.max(1, Math.round(width * this.resolutionScale));
     const scaledHeight = Math.max(1, Math.round(height * this.resolutionScale));
@@ -375,14 +390,26 @@ export class AcerolaAsciiNode extends TempNode {
     this.cameraNear.value = "near" in this.camera ? this.camera.near : 0.1;
     this.cameraFar.value = "far" in this.camera ? this.camera.far : 1000;
 
-    this.renderMaterial(renderer, this.luminanceTarget, this.luminanceMaterial, "Acerola ASCII [Luminance]");
+    const renderImage = this.renderProfile.image;
+    const renderEdges = renderImage || this.renderProfile.terminalEdges;
+    const renderNormals = renderEdges || this.renderProfile.terminalDepthColor;
+
+    if (renderEdges) {
+      this.renderMaterial(renderer, this.luminanceTarget, this.luminanceMaterial, "Acerola ASCII [Luminance]");
+    }
     this.renderMaterial(renderer, this.downscaleTarget, this.downscaleMaterial, "Acerola ASCII [Downscale]");
-    this.renderMaterial(renderer, this.blurTarget, this.blurMaterial, "Acerola ASCII [Horizontal Blur]");
-    this.renderMaterial(renderer, this.dogTarget, this.dogMaterial, "Acerola ASCII [DoG]");
-    this.renderMaterial(renderer, this.normalsTarget, this.normalsMaterial, "Acerola ASCII [Normals]");
-    this.renderMaterial(renderer, this.edgesTarget, this.edgesMaterial, "Acerola ASCII [Edge Detect]");
-    this.renderMaterial(renderer, this.sobelXTarget, this.sobelXMaterial, "Acerola ASCII [Horizontal Sobel]");
-    this.renderMaterial(renderer, this.sobelTarget, this.sobelMaterial, "Acerola ASCII [Vertical Sobel]");
+    if (renderEdges) {
+      this.renderMaterial(renderer, this.blurTarget, this.blurMaterial, "Acerola ASCII [Horizontal Blur]");
+      this.renderMaterial(renderer, this.dogTarget, this.dogMaterial, "Acerola ASCII [DoG]");
+    }
+    if (renderNormals) {
+      this.renderMaterial(renderer, this.normalsTarget, this.normalsMaterial, "Acerola ASCII [Normals]");
+    }
+    if (renderEdges) {
+      this.renderMaterial(renderer, this.edgesTarget, this.edgesMaterial, "Acerola ASCII [Edge Detect]");
+      this.renderMaterial(renderer, this.sobelXTarget, this.sobelXMaterial, "Acerola ASCII [Horizontal Sobel]");
+      this.renderMaterial(renderer, this.sobelTarget, this.sobelMaterial, "Acerola ASCII [Vertical Sobel]");
+    }
     this.renderMaterial(renderer, this.asciiTarget, this.asciiMaterial, "Acerola ASCII [Composite]");
 
     RendererUtils.restoreRendererState(renderer, _rendererState);

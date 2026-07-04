@@ -26,6 +26,30 @@ Deno.test("defaultThreeAsciiEffectState applies Acerola-compatible defaults and 
   assertEquals(state.backgroundColor.getHex(), 0x010203);
 });
 
+Deno.test("defaultThreeAsciiEffectState honors configured fallback effect options", () => {
+  const state = defaultThreeAsciiEffectState({
+    edges: false,
+    fill: false,
+    invertLuminance: true,
+    exposure: 1.4,
+    attenuation: 0.8,
+    blendWithBase: 0.5,
+    depthFalloff: 0.18,
+    depthOffset: 110,
+    edgeThreshold: 12,
+  });
+
+  assertEquals(state.edges, false);
+  assertEquals(state.fill, false);
+  assertEquals(state.invertLuminance, true);
+  assertEquals(state.exposure, 1.4);
+  assertEquals(state.attenuation, 0.8);
+  assertEquals(state.blendWithBase, 0.5);
+  assertEquals(state.depthFalloff, 0.18);
+  assertEquals(state.depthOffset, 110);
+  assertEquals(state.edgeThreshold, 12);
+});
+
 Deno.test("threeAsciiEffectStateFromSource projects uniform-like Acerola node state", () => {
   const asciiColor = new Color(0xff3300);
   const backgroundColor = new Color(0x001122);
