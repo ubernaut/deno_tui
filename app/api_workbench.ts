@@ -324,6 +324,11 @@ const WORKBENCH_THREE_FRAME_INTERVAL_BY_CELLS = new Map<number, number>([
   [WORKBENCH_THREE_INITIAL_CELLS, 1000 / 10],
   [WORKBENCH_THREE_LIVE_MAX_CELLS, 1000 / 14],
 ]);
+const WORKBENCH_THREE_IDLE_FRAME_INTERVAL_BY_CELLS = new Map<number, number>([
+  [240, 1000 / 4],
+  [WORKBENCH_THREE_INITIAL_CELLS, 1000 / 5],
+  [WORKBENCH_THREE_LIVE_MAX_CELLS, 1000 / 6],
+]);
 
 type BuiltInWindowId =
   | "explorer"
@@ -1065,6 +1070,7 @@ function draw(): void {
   hitTargets.clear();
   dropdownOverlay = null;
   renderedThreeGridCount = 0;
+  syncWorkbenchThreeFrameInterval();
   const frame = prepareWorkbenchFrame(screenFrame, height);
   renderHeader(frame);
   renderWorkspace(frame);
@@ -1090,7 +1096,7 @@ function updateThreeTerminalPressure(stats: WorkbenchAnsiScreenFlushStats): void
   terminalPressure.lowFrames = next.lowFrames;
   if (!next.changed) return;
   workbenchThreeLiveMaxCells.value = next.currentCells;
-  workbenchThreeFrameInterval.value = frameIntervalForWorkbenchThreeCells(next.currentCells);
+  syncWorkbenchThreeFrameInterval();
 }
 
 function scheduleDraw(): void {
@@ -2889,8 +2895,20 @@ function ensureVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
   return entry;
 }
 
-function frameIntervalForWorkbenchThreeCells(cells: number): number {
-  return WORKBENCH_THREE_FRAME_INTERVAL_BY_CELLS.get(cells) ?? 1000 / 10;
+function syncWorkbenchThreeFrameInterval(): void {
+  const next = frameIntervalForWorkbenchThreeCells(workbenchThreeLiveMaxCells.peek(), {
+    focused: isThreeRenderedWindow(activeWindow.peek()),
+  });
+  if (workbenchThreeFrameInterval.peek() !== next) {
+    workbenchThreeFrameInterval.value = next;
+  }
+}
+
+function frameIntervalForWorkbenchThreeCells(cells: number, options: { focused?: boolean } = {}): number {
+  const intervals = options.focused
+    ? WORKBENCH_THREE_FRAME_INTERVAL_BY_CELLS
+    : WORKBENCH_THREE_IDLE_FRAME_INTERVAL_BY_CELLS;
+  return intervals.get(cells) ?? (options.focused ? 1000 / 10 : 1000 / 5);
 }
 
 function hideVisualizationThreePanel(id: VisualizationWindowId): void {
