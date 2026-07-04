@@ -832,3 +832,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   byte-rate, and scoped/wide labels in the built-in Three header. Focused tests, the header/block renderer benchmarks,
   and a 12-frame default blocking pressure probe passed; the probe shows roughly 17-18ms renderer frames at the 60-cell
   startup tier with about 10KB/s terminal output on this host.
+- Changed per-window Three interactivity so only the active or fullscreen Three pane renders at foreground cadence;
+  background visible Three panes now use idle cadence while the global scheduler still stays warm when any Three pane is
+  visible. Focused policy/frame tests and the workbench Three pressure/span benchmarks passed.

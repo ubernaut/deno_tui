@@ -440,7 +440,7 @@ Deno.test("workbench Three live cadence ignores hidden Three panes", () => {
   assertEquals(workbenchThreeShouldUseLiveCadence({ activeId: "explorer", windows, isThreeWindow }), false);
 });
 
-Deno.test("workbench Three per-window interactivity follows visible targeted panes", () => {
+Deno.test("workbench Three per-window interactivity follows active or fullscreen panes", () => {
   const windows = [
     { id: "three", state: "normal" },
     { id: "three-lattice", state: "normal" },
@@ -448,7 +448,8 @@ Deno.test("workbench Three per-window interactivity follows visible targeted pan
   ];
 
   assertEquals(workbenchThreeWindowIsInteractive({ id: "three", activeId: "three", windows }), true);
-  assertEquals(workbenchThreeWindowIsInteractive({ id: "three-lattice", activeId: "three", windows }), true);
+  assertEquals(workbenchThreeWindowIsInteractive({ id: "three-lattice", activeId: "three", windows }), false);
+  assertEquals(workbenchThreeWindowIsInteractive({ id: "three-lattice", activeId: "three-lattice", windows }), true);
   assertEquals(workbenchThreeWindowIsInteractive({ id: "three-hidden", activeId: "three-hidden", windows }), false);
   assertEquals(
     workbenchThreeWindowIsInteractive({
