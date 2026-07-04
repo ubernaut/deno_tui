@@ -847,3 +847,7 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added reusable workbench Three pressure-probe grid snapshots and routed the live probe through them, removing
   per-frame row-array allocation while preserving mutable renderer history comparisons. Focused probe tests, type
   checks, the pressure-probe summary benchmark, and an 8-frame blocking live probe passed.
+- Switched the API workbench Three default back to deferred readback after isolating the apparent 3fps regression to
+  GPU contention from concurrent WebGPU probes. Sequential default block-mode probes now show the panel path around
+  6-7ms steady renderer work at the 60-cell startup tier, versus roughly 14-17ms with blocking readback; focused policy,
+  runtime, frame, renderer-option, and pressure-probe tests passed.
