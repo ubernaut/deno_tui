@@ -541,6 +541,10 @@ export class ThreeAsciiRenderer {
   }
 
   private async initInternal(): Promise<void> {
+    const lutsPromise = loadAsciiLutTextures(
+      new URL("./assets/edgesASCII.png", import.meta.url),
+      new URL("./assets/fillASCII.png", import.meta.url),
+    );
     const device = await getCompatibleWebGPUDevice();
     const renderer = new WebGPURenderer({
       alpha: false,
@@ -555,10 +559,7 @@ export class ThreeAsciiRenderer {
     await renderer.init();
 
     const scenePass = pass(this.scene, this.camera);
-    const luts = await loadAsciiLutTextures(
-      new URL("./assets/edgesASCII.png", import.meta.url),
-      new URL("./assets/fillASCII.png", import.meta.url),
-    );
+    const luts = await lutsPromise;
 
     const asciiNode = new AcerolaAsciiNode(
       scenePass.getTextureNode(),
