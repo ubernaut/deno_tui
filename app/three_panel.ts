@@ -78,6 +78,9 @@ export interface ThreePanelLifecycleInspection {
   frameGeneration: number;
 }
 
+type ThreePanelLiveValue = boolean | Signal<boolean> | (() => boolean);
+type ThreePanelIntervalValue = number | Signal<number>;
+
 export interface ThreePanelGridRenderer {
   setSize(columns: number, rows: number): void;
   setEffectOptions(options: ReturnType<typeof asciiEffectOptions>): void;
@@ -223,7 +226,9 @@ export class ThreePanelFrameView {
   private readonly syncCallback = () => this.sync();
   private readonly effect: Effect;
   private readonly syncScheduler = new SignalBatchScheduler();
-  private readonly frameInterval: number | Signal<number>;
+  private readonly frameInterval: ThreePanelIntervalValue;
+  private readonly idleFrameInterval?: ThreePanelIntervalValue;
+  private readonly interactive?: ThreePanelLiveValue;
   private readonly onUpdate?: () => void;
   private lastFrameTime = performance.now();
   private rendering = false;
@@ -260,7 +265,9 @@ export class ThreePanelFrameView {
       graphicsSurface?: GraphicsSurface | (() => GraphicsSurface | null | undefined);
       graphicsRectangle?: SignalOfObject<Rect>;
       diagnostics?: DiagnosticsCollector;
-      frameInterval?: number | Signal<number>;
+      frameInterval?: ThreePanelIntervalValue;
+      idleFrameInterval?: ThreePanelIntervalValue;
+      interactive?: ThreePanelLiveValue;
       maxRenderCells?: number | Signal<number>;
       readbackStrategy?: ThreeAsciiReadbackStrategy;
       onUpdate?: () => void;
@@ -268,6 +275,8 @@ export class ThreePanelFrameView {
     },
   ) {
     this.frameInterval = options.frameInterval ?? 1000 / 10;
+    this.idleFrameInterval = options.idleFrameInterval;
+    this.interactive = options.interactive;
     this.onUpdate = options.onUpdate;
     this.graphics = new ThreePanelGraphicsImageController({
       diagnostics: options.diagnostics,
@@ -281,6 +290,8 @@ export class ThreePanelFrameView {
       if (options.enabled instanceof Signal) void options.enabled.value;
       if (options.maxRenderCells instanceof Signal) void options.maxRenderCells.value;
       if (options.frameInterval instanceof Signal) void options.frameInterval.value;
+      if (options.idleFrameInterval instanceof Signal) void options.idleFrameInterval.value;
+      if (options.interactive instanceof Signal) void options.interactive.value;
       this.scheduleSync();
     });
     this.scheduleSync();
@@ -759,8 +770,14 @@ export class ThreePanelFrameView {
   }
 
   private currentFrameInterval(): number {
-    const frameInterval = this.frameInterval instanceof Signal ? this.frameInterval.peek() : this.frameInterval;
-    return resolveThreePanelFrameInterval(frameInterval);
+    const frameInterval = !this.isInteractive() && this.idleFrameInterval !== undefined
+      ? this.idleFrameInterval
+      : this.frameInterval;
+    return resolveThreePanelFrameInterval(resolveThreePanelIntervalValue(frameInterval));
+  }
+
+  private isInteractive(): boolean {
+    return resolveThreePanelLiveValue(this.interactive);
   }
 
   dispose(): void {
@@ -810,4 +827,15 @@ export class ThreePanelFrameView {
   private async clearGraphicsImage(): Promise<void> {
     await this.graphics.clear(this.resolveGraphicsSurface());
   }
+}
+
+function resolveThreePanelIntervalValue(value: ThreePanelIntervalValue): number {
+  return value instanceof Signal ? value.peek() : value;
+}
+
+function resolveThreePanelLiveValue(value: ThreePanelLiveValue | undefined): boolean {
+  if (value === undefined) return true;
+  if (value instanceof Signal) return value.peek();
+  if (typeof value === "function") return value();
+  return value;
 }

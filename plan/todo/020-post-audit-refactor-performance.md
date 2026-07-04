@@ -718,3 +718,9 @@ performance, shared terminal/web workbench projections, and oversized module red
   text object implementations with one tested helper for future render invalidation tuning.
 - Reused `DirtyRegion` row segment arrays during incremental and batched merges instead of cloning and replacing them,
   trimming allocation in canvas invalidation while preserving cloned public inspection output.
+- Added a 60-cell emergency tier for API workbench Three panes and exposed low render-cell values in the ASCII config
+  controls. The guarded default pressure probe now starts at `13x4` cells and steady terminal output is roughly
+  12-16KB/s on this host while still publishing real changing deferred renderer frames.
+- Added per-panel idle cadence support to `ThreePanelFrameView` and wired API workbench Three panes to focus/fullscreen
+  interactivity, so extra visible Three-rendered windows no longer all run at live cadence just because one Three pane
+  is active.

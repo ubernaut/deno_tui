@@ -299,7 +299,12 @@ import {
   shouldCountWorkbenchThreeGridPressure,
   workbenchThreeShouldUseLiveCadence,
 } from "../src/app/workbench_three_terminal_pressure.ts";
-import { WORKBENCH_THREE_DRAW_INTERVAL_MS, WORKBENCH_THREE_READBACK_STRATEGY } from "./workbench_three_policy.ts";
+import {
+  apiWorkbenchThreeFrameIntervalForCells,
+  WORKBENCH_THREE_DRAW_INTERVAL_MS,
+  WORKBENCH_THREE_INITIAL_CELLS,
+  WORKBENCH_THREE_READBACK_STRATEGY,
+} from "./workbench_three_policy.ts";
 import { type WorkbenchThreePanelEntry, WorkbenchThreePanelRegistry } from "./workbench_three_panel_registry.ts";
 import { WorkbenchThreeViewportInteractionController } from "./workbench_three_interaction.ts";
 import { ApiWorkbenchThreeRuntimeController } from "./workbench_three_runtime.ts";
@@ -621,6 +626,9 @@ let windowRenderContext: WindowRenderContext | null = null;
 let workspacePlacementContext: WorkspacePlacementContext | null = null;
 const drawScheduler = new FrameScheduler({ intervalMs: WORKBENCH_THREE_DRAW_INTERVAL_MS });
 const renderedVisualizationThreePanels = new Set<VisualizationWindowId>();
+const workbenchThreeIdleFrameInterval = apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, {
+  live: false,
+});
 type Frame = WorkbenchFrame;
 interface DropdownOverlay {
   kind: "control" | "theme" | "newWindow" | "workspace";
@@ -813,6 +821,8 @@ const threePanel = new ThreePanelFrameView({
   enabled: threeAsciiAvailable,
   graphicsSurface: () => kittyGraphics.surfaceFor(ascii.peek()),
   frameInterval: workbenchThreeFrameInterval,
+  idleFrameInterval: workbenchThreeIdleFrameInterval,
+  interactive: () => isThreeWindowInteractive("three"),
   maxRenderCells: workbenchThreeLiveMaxCells,
   readbackStrategy: WORKBENCH_THREE_READBACK_STRATEGY,
   diagnostics: workbenchDiagnostics,
@@ -2813,6 +2823,8 @@ function createVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
     enabled: threeAsciiAvailable,
     graphicsSurface: () => kittyGraphics.surfaceFor(asciiForWindow(id).peek()),
     frameInterval: workbenchThreeFrameInterval,
+    idleFrameInterval: workbenchThreeIdleFrameInterval,
+    interactive: () => isThreeWindowInteractive(id),
     maxRenderCells: workbenchThreeLiveMaxCells,
     readbackStrategy: WORKBENCH_THREE_READBACK_STRATEGY,
     diagnostics: workbenchDiagnostics,
@@ -2831,6 +2843,15 @@ function hasLiveThreeRenderedWindow(): boolean {
     fullscreenId: windowManager.fullscreenId.peek(),
     windows: windowManager.orderedWindows(),
     isThreeWindow: (id) => isThreeRenderedWindow(id as WindowId),
+  });
+}
+
+function isThreeWindowInteractive(id: WindowId): boolean {
+  return workbenchThreeShouldUseLiveCadence({
+    activeId: activeWindow.peek() === id ? id : undefined,
+    fullscreenId: windowManager.fullscreenId.peek(),
+    windows: windowManager.orderedWindows(),
+    isThreeWindow: (candidate) => candidate === id,
   });
 }
 
