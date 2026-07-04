@@ -189,6 +189,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   policy, probes, and future diagnostics can stay aligned.
 - Routed workbench Three pressure probe byte-rate reporting through the shared pressure helper instead of carrying
   duplicate probe-local math.
+- Added sustained byte-rate context to workbench Three pressure change logs so adaptive downshifts show the same signal
+  used by the policy.
 - Stabilized default Three ASCII block rendering by using ASCII-safe shared window controls and removing fog from the
   default block preset so truecolor block cells keep source color depth.
 - Extracted the workbench Three ASCII config modal geometry into a tested internal layout helper, reducing inline modal

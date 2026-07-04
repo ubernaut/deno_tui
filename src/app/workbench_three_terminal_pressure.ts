@@ -47,6 +47,7 @@ export interface WorkbenchThreeTerminalPressureUpdateLogOptions {
   currentCells: number;
   bytes: number;
   durationMs: number;
+  sampleDurationMs?: number;
   renderedThreeGrids: number;
 }
 
@@ -165,9 +166,11 @@ export function resolveWorkbenchThreeTerminalPressureUpdate(
 export function formatWorkbenchThreeTerminalPressureUpdateLog(
   options: WorkbenchThreeTerminalPressureUpdateLogOptions,
 ): string {
+  const byteRate = workbenchThreeTerminalBytesPerSecond(options);
+  const rateText = byteRate > 0 ? ` rate ${Math.round(byteRate)}B/s` : "";
   return `three pressure ${options.direction} ${options.currentCells} cells; ${options.bytes} bytes/${
     options.durationMs.toFixed(1)
-  }ms across ${options.renderedThreeGrids} grid(s)`;
+  }ms${rateText} across ${options.renderedThreeGrids} grid(s)`;
 }
 
 /** Resolves the next render-cell budget for workbench Three panes from terminal flush byte pressure. */

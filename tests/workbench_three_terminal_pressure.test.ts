@@ -281,6 +281,20 @@ Deno.test("workbench Three terminal pressure update log matches workbench presen
   );
 });
 
+Deno.test("workbench Three terminal pressure update log reports sustained byte rate when sampled", () => {
+  assertEquals(
+    formatWorkbenchThreeTerminalPressureUpdateLog({
+      direction: "down",
+      currentCells: 240,
+      bytes: 6_000,
+      durationMs: 1.2,
+      sampleDurationMs: 50,
+      renderedThreeGrids: 1,
+    }),
+    "three pressure down 240 cells; 6000 bytes/1.2ms rate 120000B/s across 1 grid(s)",
+  );
+});
+
 Deno.test("workbench Three frame interval policy keeps smaller live budgets smoother", () => {
   const liveIntervals = new Map([
     [120, 1000 / 18],

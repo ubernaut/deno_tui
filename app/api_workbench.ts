@@ -1064,6 +1064,7 @@ function updateThreeTerminalPressure(stats: WorkbenchAnsiScreenFlushStats): void
     currentCells: next.currentCells,
     bytes: stats.bytes,
     durationMs: stats.durationMs,
+    sampleDurationMs: workbenchThreeFrameInterval.peek(),
     renderedThreeGrids: renderedThreeGridCount,
   }));
 }
