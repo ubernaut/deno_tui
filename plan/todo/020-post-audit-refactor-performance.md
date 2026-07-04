@@ -1094,3 +1094,7 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Switched the default API Workbench Three readback path back to blocking after live panel probes reproduced the
   reported deferred block-mode regression at roughly 3-4fps, while blocking held the same 960-cell block grid around
   18ms average renderer time after warmup. Deferred remains available as an explicit ASCII renderer option.
+- Cached the Three ASCII Acerola render-output profile in the renderer and added a caller-owned profile resolver so
+  steady block-mode frames avoid per-frame profile object allocation and redundant `setRenderProfile` calls. Focused
+  renderer/profile tests, the new `three-ascii-render-profile-1k` benchmark, the uniform cache benchmark, and the
+  workbench startup probe passed.

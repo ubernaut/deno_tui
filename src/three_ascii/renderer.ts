@@ -2,7 +2,7 @@ import { Camera, type Color, PerspectiveCamera, Scene } from "npm:three@0.183.2"
 import { RenderPipeline, WebGPURenderer } from "npm:three@0.183.2/webgpu";
 import { pass } from "npm:three@0.183.2/tsl";
 
-import { AcerolaAsciiNode, type AcerolaAsciiNodeOptions } from "./AcerolaAsciiNode.ts";
+import { AcerolaAsciiNode, type AcerolaAsciiNodeOptions, type AcerolaAsciiRenderProfile } from "./AcerolaAsciiNode.ts";
 import {
   buildThreeAsciiAnsiGrid as buildThreeAsciiAnsiGridInternal,
   ThreeAsciiAnsiGridAssembler as InternalThreeAsciiAnsiGridAssembler,
@@ -80,7 +80,7 @@ import {
   normalizeThreeAsciiTerminalEdgeBias,
   type ThreeAsciiReadbackStrategy,
 } from "./renderer_options.ts";
-import { resolveThreeAsciiRenderProfile } from "./render_profile.ts";
+import { resolveThreeAsciiRenderProfileInto } from "./render_profile.ts";
 import {
   THREE_ASCII_COLOR_SHADER,
   THREE_ASCII_EDGE_SHADER,
@@ -249,6 +249,17 @@ export class ThreeAsciiRenderer {
     renderAnsi: true,
     renderImage: false,
   };
+  private readonly renderProfileScratch: AcerolaAsciiRenderProfile = {
+    image: false,
+    terminalEdges: false,
+    terminalDepthColor: false,
+  };
+  private readonly activeRenderProfile: AcerolaAsciiRenderProfile = {
+    image: false,
+    terminalEdges: false,
+    terminalDepthColor: false,
+  };
+  private renderProfileApplied = false;
   private outputCellCount = 0;
   private sizeDirty = true;
   private computeDirty = true;
@@ -467,15 +478,37 @@ export class ThreeAsciiRenderer {
     const renderStart = performance.now();
     this.applySize();
     this.updateCameraAspect();
-    this.asciiNode!.setRenderProfile(
-      resolveThreeAsciiRenderProfile({
+    this.applyRenderProfile(selection, effectState);
+    this.renderPipeline!.render();
+    return { initMs, updateMs, renderMs: performance.now() - renderStart };
+  }
+
+  private applyRenderProfile(
+    selection: { renderAnsi: boolean; renderImage: boolean },
+    effectState?: ThreeAsciiEffectState,
+  ): void {
+    const next = resolveThreeAsciiRenderProfileInto(
+      {
         selection,
         effectState,
         terminalGlyphStyle: this.terminalGlyphStyle,
-      }),
+      },
+      this.renderProfileScratch,
     );
-    this.renderPipeline!.render();
-    return { initMs, updateMs, renderMs: performance.now() - renderStart };
+    if (
+      this.renderProfileApplied &&
+      this.activeRenderProfile.image === next.image &&
+      this.activeRenderProfile.terminalEdges === next.terminalEdges &&
+      this.activeRenderProfile.terminalDepthColor === next.terminalDepthColor
+    ) {
+      return;
+    }
+
+    this.activeRenderProfile.image = next.image;
+    this.activeRenderProfile.terminalEdges = next.terminalEdges;
+    this.activeRenderProfile.terminalDepthColor = next.terminalDepthColor;
+    this.renderProfileApplied = true;
+    this.asciiNode!.setRenderProfile(this.activeRenderProfile);
   }
 
   private async computeAnsiGrid(

@@ -16,18 +16,35 @@ export interface ThreeAsciiRenderProfileInput {
 export function resolveThreeAsciiRenderProfile(
   input: ThreeAsciiRenderProfileInput,
 ): AcerolaAsciiRenderProfile {
+  return resolveThreeAsciiRenderProfileInto(input, {
+    image: false,
+    terminalEdges: false,
+    terminalDepthColor: false,
+  });
+}
+
+/** Resolve the Acerola render profile into a caller-owned object. */
+export function resolveThreeAsciiRenderProfileInto(
+  input: ThreeAsciiRenderProfileInput,
+  target: AcerolaAsciiRenderProfile,
+): AcerolaAsciiRenderProfile {
   if (input.selection.renderImage) {
-    return { image: true, terminalEdges: true, terminalDepthColor: true };
+    target.image = true;
+    target.terminalEdges = true;
+    target.terminalDepthColor = true;
+    return target;
   }
 
   if (!input.effectState) {
-    return { image: false, terminalEdges: false, terminalDepthColor: false };
+    target.image = false;
+    target.terminalEdges = false;
+    target.terminalDepthColor = false;
+    return target;
   }
 
   const computeMode = resolveThreeAsciiComputeMode(input.effectState, input.terminalGlyphStyle);
-  return {
-    image: false,
-    terminalEdges: input.selection.renderAnsi && computeMode.includeEdges,
-    terminalDepthColor: input.selection.renderAnsi && computeMode.includeDepthColor,
-  };
+  target.image = false;
+  target.terminalEdges = input.selection.renderAnsi && computeMode.includeEdges;
+  target.terminalDepthColor = input.selection.renderAnsi && computeMode.includeDepthColor;
+  return target;
 }

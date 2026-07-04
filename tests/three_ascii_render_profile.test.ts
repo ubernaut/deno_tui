@@ -1,5 +1,8 @@
 import { assertEquals } from "./deps.ts";
-import { resolveThreeAsciiRenderProfile } from "../src/three_ascii/render_profile.ts";
+import {
+  resolveThreeAsciiRenderProfile,
+  resolveThreeAsciiRenderProfileInto,
+} from "../src/three_ascii/render_profile.ts";
 
 Deno.test("resolveThreeAsciiRenderProfile enables full Acerola targets for image output", () => {
   assertEquals(
@@ -59,4 +62,30 @@ Deno.test("resolveThreeAsciiRenderProfile suppresses terminal targets when ANSI 
     }),
     { image: false, terminalEdges: false, terminalDepthColor: false },
   );
+});
+
+Deno.test("resolveThreeAsciiRenderProfileInto reuses caller-owned profile objects", () => {
+  const target = { image: true, terminalEdges: true, terminalDepthColor: true };
+  const resolved = resolveThreeAsciiRenderProfileInto(
+    {
+      selection: { renderAnsi: true, renderImage: false },
+      effectState: { edges: true, depthFalloff: 0 },
+      terminalGlyphStyle: "blocks",
+    },
+    target,
+  );
+
+  assertEquals(resolved, target);
+  assertEquals(target, { image: false, terminalEdges: false, terminalDepthColor: false });
+
+  resolveThreeAsciiRenderProfileInto(
+    {
+      selection: { renderAnsi: true, renderImage: false },
+      effectState: { edges: true, depthFalloff: 0.2 },
+      terminalGlyphStyle: "glyphs",
+    },
+    target,
+  );
+
+  assertEquals(target, { image: false, terminalEdges: true, terminalDepthColor: true });
 });

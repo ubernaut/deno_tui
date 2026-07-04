@@ -15,6 +15,7 @@ import { compactMappedRgbaRows } from "../src/three_ascii/headless_canvas.ts";
 import { defaultThreeAsciiProbeOptions, threeAsciiProbeReport } from "../src/three_ascii/probe.ts";
 import type { ThreeAsciiRendererPerformance } from "../src/three_ascii/performance.ts";
 import { createThreeAsciiReadbackLayout, ThreeAsciiReadbackViewCache } from "../src/three_ascii/readback.ts";
+import { resolveThreeAsciiRenderProfileInto } from "../src/three_ascii/render_profile.ts";
 import { createThreeAsciiGridDiffState, queueChangedThreeAsciiGridCells } from "../src/canvas/three_ascii_diff.ts";
 import {
   summarizeWorkbenchThreePressureProbe,
@@ -97,6 +98,29 @@ const threeAsciiUniformEffectState = {
   asciiColor: { r: 1, g: 1, b: 1 },
   backgroundColor: { r: 0, g: 0, b: 0 },
 };
+const threeAsciiRenderProfileTarget = {
+  image: false,
+  terminalEdges: false,
+  terminalDepthColor: false,
+};
+const threeAsciiRenderProfileInputs = [
+  {
+    selection: { renderAnsi: true, renderImage: false },
+    effectState: { edges: true, depthFalloff: 0 },
+    terminalGlyphStyle: "blocks",
+  },
+  {
+    selection: { renderAnsi: true, renderImage: false },
+    effectState: { edges: true, depthFalloff: 0.35 },
+    terminalGlyphStyle: "glyphs",
+  },
+  {
+    selection: { renderAnsi: false, renderImage: true },
+    terminalGlyphStyle: "mixed",
+  },
+] as const;
+let threeAsciiRenderProfileCursor = 0;
+let threeAsciiRenderProfileChecksum = 0;
 let threeAsciiReadbackCursor = 0;
 let threeAsciiReadbackChecksum = 0;
 
@@ -350,6 +374,21 @@ function runThreeAsciiUniformCleanWorkload(): void {
   }
   if (threeAsciiUniformWrites !== before) {
     throw new Error("clean Three ASCII uniforms were uploaded again");
+  }
+}
+
+function runThreeAsciiRenderProfileWorkload(): void {
+  threeAsciiRenderProfileChecksum = 0;
+  for (let index = 0; index < 1_000; index += 1) {
+    const input =
+      threeAsciiRenderProfileInputs[threeAsciiRenderProfileCursor++ % threeAsciiRenderProfileInputs.length]!;
+    const profile = resolveThreeAsciiRenderProfileInto(input, threeAsciiRenderProfileTarget);
+    threeAsciiRenderProfileChecksum += profile.image ? 4 : 0;
+    threeAsciiRenderProfileChecksum += profile.terminalEdges ? 2 : 0;
+    threeAsciiRenderProfileChecksum += profile.terminalDepthColor ? 1 : 0;
+  }
+  if (threeAsciiRenderProfileChecksum <= 0) {
+    throw new Error("render profile workload did not resolve active profiles");
   }
 }
 
@@ -739,6 +778,15 @@ export const threeAsciiBenchmarkCases: BenchmarkCase[] = [
     iterations: 500,
     maxAverageMs: 2,
     run: runThreeAsciiUniformCleanWorkload,
+  },
+  {
+    name: "render/three-ascii-render-profile-1k",
+    category: "render",
+    description: "Resolve reusable Three ASCII render target profiles without per-frame object allocation.",
+    tags: ["render", "three", "ascii", "profile", "cache"],
+    iterations: 500,
+    maxAverageMs: 2,
+    run: runThreeAsciiRenderProfileWorkload,
   },
   {
     name: "render/three-ascii-probe-report-180",
