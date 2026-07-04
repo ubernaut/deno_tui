@@ -13,6 +13,7 @@ import {
   resolveWorkbenchScreenDropdownKey,
   workbenchStandardTopMenuIdForItem,
   WorkbenchTopMenuController,
+  workbenchTopMenuDropdownOverlayInto,
 } from "../src/app/workbench_menu.ts";
 
 Deno.test("workbench menu helpers identify activation and close keys", () => {
@@ -186,6 +187,52 @@ Deno.test("layoutWorkbenchTopMenuItemRect falls back to menu start when item is 
     }),
     { column: 4, row: 1, width: 24, height: 8 },
   );
+});
+
+Deno.test("workbenchTopMenuDropdownOverlayInto projects anchored visible menu slices", () => {
+  const visible = { items: ["stale"], indexes: [99] };
+  const overlay = workbenchTopMenuDropdownOverlayInto(visible, {
+    menuStart: 10,
+    menuId: "newWindow",
+    itemId: "new",
+    menuItems: [
+      { id: "file", label: "File" },
+      { id: "new", label: "New" },
+      { id: "workspace", label: "Workspace" },
+    ],
+    menuActiveIndex: 1,
+    labels: ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"],
+    selectedIndex: 3,
+    preferredWidth: 12,
+    maxWidth: 80,
+    maxVisibleItems: 3,
+    measureText: (value) => value.length,
+  });
+
+  assertEquals(overlay, {
+    kind: "newWindow",
+    coordinate: "screen",
+    rect: { column: 15, row: 1, width: 13, height: 5 },
+    items: ["Gamma", "Delta", "Epsilon"],
+    itemIndexes: [2, 3, 4],
+    selectedIndex: 1,
+  });
+  assertEquals(overlay.items === visible.items, true);
+  assertEquals(overlay.itemIndexes === visible.indexes, true);
+
+  const next = workbenchTopMenuDropdownOverlayInto(visible, {
+    menuStart: 0,
+    menuId: "theme",
+    itemId: "theme",
+    menuItems: [{ id: "theme", label: "Theme" }],
+    labels: ["Unit-01"],
+    selectedIndex: 0,
+    preferredWidth: 20,
+    maxWidth: 30,
+  });
+  assertEquals(next.items, ["Unit-01"]);
+  assertEquals(next.itemIndexes, [0]);
+  assertEquals(next.selectedIndex, 0);
 });
 
 Deno.test("layoutWorkbenchMenuBarHits returns visible menu item rectangles", () => {

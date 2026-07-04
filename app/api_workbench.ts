@@ -38,7 +38,6 @@ import {
   layoutWorkbenchShelfInto,
   layoutWorkbenchTabsInto,
   layoutWorkbenchTitlebarInto,
-  layoutWorkbenchTopMenuItemRect,
   loadWorkbenchWorkspaceStorage,
   normalizeWorkbenchWorkspaceName,
   persistWorkbenchWorkspaceStorage,
@@ -83,6 +82,7 @@ import {
   workbenchTerminalOutputToolbarItemsInto,
   type WorkbenchTitlebarButtonKind,
   workbenchTitlebarButtonRenderCommandsInto,
+  workbenchTopMenuDropdownOverlayInto,
   workbenchVisibleWindowRectsInto,
   workbenchVisualizationIdFromWindowId,
   workbenchVisualizationWindowId,
@@ -169,7 +169,7 @@ import {
 import { WorkbenchButtonRowBufferCache } from "../src/app/workbench_button_row_cache.ts";
 import { WorkbenchModalBufferCache } from "../src/app/workbench_modal_cache.ts";
 import { WorkbenchTitlebarBufferCache } from "../src/app/workbench_titlebar_cache.ts";
-import { maxTextWidth, type VisibleMenuSlice, visibleMenuSliceInto } from "../src/app/workbench_text.ts";
+import { maxTextWidth, type VisibleMenuSlice } from "../src/app/workbench_text.ts";
 import {
   nextWorkbenchTerminalSessionId,
   resolveWorkbenchShellBackend,
@@ -612,6 +612,7 @@ const screenFrame: Frame = [];
 const workspaceVirtualFrame: Frame = [];
 const windowContentFrames = new Map<WindowId, Frame>();
 const titlebarBuffers = new WorkbenchTitlebarBufferCache<WindowId>();
+const themeMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
 const newWindowMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
 const newWindowMenuLabels: string[] = [];
 const workspaceMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
@@ -1083,65 +1084,50 @@ function renderHeader(frame: Frame): void {
   }
   const menuStart = header.menu.column;
   if (themeMenuOpen.peek()) {
-    const themeRect = menuItemRect(
+    dropdownOverlay = workbenchTopMenuDropdownOverlayInto(themeMenuSlice, {
       menuStart,
-      "theme",
-      themeMenuWidth,
-      themes.length + 2,
-    );
-    dropdownOverlay = {
-      kind: "theme",
-      coordinate: "screen",
-      rect: themeRect,
-      items: themeLabels,
+      menuId: "theme",
+      itemId: "theme",
+      menuItems: menu.items.peek(),
+      menuActiveIndex: menu.activeIndex.peek(),
+      labels: themeLabels,
       selectedIndex: themeIndex.peek(),
-    };
+      preferredWidth: themeMenuWidth,
+      maxWidth: currentWidth(),
+      measureText: textWidth,
+    });
   }
   if (newWindowMenuOpen.peek()) {
     const labels = workbenchWindowOptionMenuLabelsInto(newWindowMenuLabels, newWindowOptions, windowManager.ids());
-    const visible = visibleMenuSliceInto(
-      newWindowMenuSlice,
-      labels,
-      newWindowMenuIndex.peek(),
-      Math.max(6, currentHeight() - 5),
-    );
-    const menuRect = menuItemRect(
+    dropdownOverlay = workbenchTopMenuDropdownOverlayInto(newWindowMenuSlice, {
       menuStart,
-      "new",
-      Math.max(28, maxTextWidth(labels) + 6),
-      visible.items.length + 2,
-    );
-    dropdownOverlay = {
-      kind: "newWindow",
-      coordinate: "screen",
-      rect: menuRect,
-      items: visible.items,
-      itemIndexes: visible.indexes,
-      selectedIndex: visible.indexes.indexOf(newWindowMenuIndex.peek()),
-    };
+      menuId: "newWindow",
+      itemId: "new",
+      menuItems: menu.items.peek(),
+      menuActiveIndex: menu.activeIndex.peek(),
+      labels,
+      selectedIndex: newWindowMenuIndex.peek(),
+      preferredWidth: 28,
+      maxWidth: currentWidth(),
+      maxVisibleItems: Math.max(6, currentHeight() - 5),
+      measureText: textWidth,
+    });
   }
   if (workspaceMenuOpen.peek()) {
     const labels = workspaceMenuLabels();
-    const visible = visibleMenuSliceInto(
-      workspaceMenuSlice,
-      labels,
-      workspaceMenuIndex.peek(),
-      Math.max(6, currentHeight() - 5),
-    );
-    const menuRect = menuItemRect(
+    dropdownOverlay = workbenchTopMenuDropdownOverlayInto(workspaceMenuSlice, {
       menuStart,
-      "workspace",
-      Math.max(30, maxTextWidth(labels) + 6),
-      visible.items.length + 2,
-    );
-    dropdownOverlay = {
-      kind: "workspace",
-      coordinate: "screen",
-      rect: menuRect,
-      items: visible.items,
-      itemIndexes: visible.indexes,
-      selectedIndex: visible.indexes.indexOf(workspaceMenuIndex.peek()),
-    };
+      menuId: "workspace",
+      itemId: "workspace",
+      menuItems: menu.items.peek(),
+      menuActiveIndex: menu.activeIndex.peek(),
+      labels,
+      selectedIndex: workspaceMenuIndex.peek(),
+      preferredWidth: 30,
+      maxWidth: currentWidth(),
+      maxVisibleItems: Math.max(6, currentHeight() - 5),
+      measureText: textWidth,
+    });
   }
   const help = workbenchHeaderHelp({ width });
   const helpWidth = textWidth(help);
@@ -1172,19 +1158,6 @@ function renderMenuHits(column: number, row: number, width: number): void {
   for (const hit of hits) {
     addHit(hit.rect, { type: "menu", index: hit.index });
   }
-}
-
-function menuItemRect(menuStart: number, itemId: string, preferredWidth: number, preferredHeight: number): Rectangle {
-  return layoutWorkbenchTopMenuItemRect({
-    menuStart,
-    itemId,
-    items: menu.items.peek(),
-    activeIndex: menu.activeIndex.peek(),
-    preferredWidth,
-    preferredHeight,
-    maxWidth: currentWidth(),
-    measureText: textWidth,
-  });
 }
 
 function renderWorkspace(frame: Frame): void {

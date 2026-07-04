@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
+import { visibleMenuSliceInto } from "./workbench_text.ts";
 
 /** Minimal key event shape for workbench dropdown/menu navigation helpers. */
 export interface WorkbenchMenuKey {
@@ -30,6 +31,37 @@ export interface WorkbenchTopMenuItemRectOptions {
   row?: number;
   minAnchoredWidth?: number;
   measureText?: (value: string) => number;
+}
+
+/** Caller-owned visible dropdown menu label/index storage. */
+export interface WorkbenchTopMenuVisibleSlice {
+  items: string[];
+  indexes: number[];
+}
+
+/** Options for projecting a standard top-menu dropdown overlay. */
+export interface WorkbenchTopMenuDropdownOverlayOptions {
+  menuStart: number;
+  menuId: WorkbenchStandardTopMenuId;
+  itemId: string;
+  menuItems: readonly WorkbenchMenuBarItemShape[];
+  menuActiveIndex?: number;
+  labels: readonly string[];
+  selectedIndex?: number;
+  preferredWidth: number;
+  maxWidth: number;
+  maxVisibleItems?: number;
+  measureText?: (value: string) => number;
+}
+
+/** Renderer-neutral dropdown overlay projected from a standard top menu item. */
+export interface WorkbenchTopMenuDropdownOverlay {
+  kind: WorkbenchStandardTopMenuId;
+  coordinate: "screen";
+  rect: Rectangle;
+  items: string[];
+  itemIndexes?: number[];
+  selectedIndex: number;
 }
 
 /** Hit rectangle produced for a visible top-menu item. */
@@ -322,6 +354,38 @@ export function layoutWorkbenchTopMenuItemRect(options: WorkbenchTopMenuItemRect
   };
 }
 
+/** Projects a standard top-menu dropdown overlay while reusing caller-owned visible slice arrays. */
+export function workbenchTopMenuDropdownOverlayInto(
+  visible: WorkbenchTopMenuVisibleSlice,
+  options: WorkbenchTopMenuDropdownOverlayOptions,
+): WorkbenchTopMenuDropdownOverlay {
+  const measureText = options.measureText ?? ((value) => value.length);
+  const maxVisibleItems = Math.max(0, Math.floor(options.maxVisibleItems ?? options.labels.length));
+
+  const selectedIndex = clampMenuSelection(options.selectedIndex ?? 0, options.labels.length);
+  visibleMenuSliceInto(visible, options.labels, selectedIndex, maxVisibleItems);
+
+  const rect = layoutWorkbenchTopMenuItemRect({
+    menuStart: options.menuStart,
+    itemId: options.itemId,
+    items: options.menuItems,
+    activeIndex: options.menuActiveIndex,
+    preferredWidth: Math.max(options.preferredWidth, maxMeasuredTextWidth(options.labels, measureText) + 6),
+    preferredHeight: visible.items.length + 2,
+    maxWidth: options.maxWidth,
+    measureText,
+  });
+
+  return {
+    kind: options.menuId,
+    coordinate: "screen",
+    rect,
+    items: visible.items,
+    itemIndexes: visible.indexes,
+    selectedIndex: visible.indexes.indexOf(selectedIndex),
+  };
+}
+
 /** Lays out visible top-menu item hit rectangles within an available row width. */
 export function layoutWorkbenchMenuBarHits(options: WorkbenchMenuBarHitLayoutOptions): WorkbenchMenuBarHitLayout[] {
   return layoutWorkbenchMenuBarHitsInto([], options);
@@ -387,4 +451,15 @@ export function layoutWorkbenchHeaderInto(
     target.close = undefined;
   }
   return target;
+}
+
+function clampMenuSelection(index: number, count: number): number {
+  if (count <= 0) return 0;
+  return Math.max(0, Math.min(count - 1, Math.floor(index)));
+}
+
+function maxMeasuredTextWidth(values: readonly string[], measureText: (value: string) => number): number {
+  let width = 0;
+  for (const value of values) width = Math.max(width, measureText(value));
+  return width;
 }

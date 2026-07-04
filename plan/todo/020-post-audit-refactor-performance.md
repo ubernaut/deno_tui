@@ -818,3 +818,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   forced synchronization at high cell counts, the API workbench now defaults its Three panes to blocking readback; the
   default 60-cell block probe runs around 58fps renderer-side and a saved 960-cell block probe stays around 55fps on
   this host instead of the deferred 3-5fps path.
+- Extracted standard top-menu dropdown overlay projection into the shared menu helper so theme, new-window, and
+  workspace dropdowns reuse tested anchoring, visible-slice, width, and selected-index remapping instead of carrying
+  that renderer math inline in the terminal workbench.
