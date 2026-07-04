@@ -149,6 +149,8 @@ export function textWidth(text: string, start = 0): number {
   if (!text) return 0;
   const asciiWidth = plainAsciiWidth(text, start);
   if (asciiWidth !== undefined) return asciiWidth;
+  const narrowAnsiWidth = narrowAnsiTextWidth(text, start);
+  if (narrowAnsiWidth !== undefined) return narrowAnsiWidth;
 
   let width = 0;
   for (let index = Math.max(0, Math.floor(start)); index < text.length;) {
@@ -173,6 +175,8 @@ export function textWidth(text: string, start = 0): number {
 export function cropToWidth(text: string, width: number): string {
   const asciiCropped = cropPlainAsciiToWidth(text, width);
   if (asciiCropped !== undefined) return asciiCropped;
+  const narrowAnsiCropped = cropNarrowAnsiToWidth(text, width);
+  if (narrowAnsiCropped !== undefined) return narrowAnsiCropped;
 
   let cropped = "";
   let croppedWidth = 0;
@@ -236,6 +240,65 @@ function cropPlainAsciiToWidth(text: string, width: number): string | undefined 
     if (code === 0x1b || code >= 0x80) return undefined;
   }
   return text.length <= safeWidth ? text : text.slice(0, limit);
+}
+
+function narrowAnsiTextWidth(text: string, start = 0): number | undefined {
+  let width = 0;
+  for (let index = Math.max(0, Math.floor(start)); index < text.length;) {
+    const code = text.charCodeAt(index);
+    if (code === 0x0a) return width;
+    if (code === 0x1b) {
+      const sequence = readAnsiSequenceAt(text, index);
+      if (!sequence) return undefined;
+      index += sequence.length;
+      continue;
+    }
+    if (isFastNarrowCodePoint(code)) {
+      width += 1;
+      index += 1;
+      continue;
+    }
+    return undefined;
+  }
+  return width;
+}
+
+function cropNarrowAnsiToWidth(text: string, width: number): string | undefined {
+  const safeWidth = Math.max(0, Math.floor(width));
+  let cropped = "";
+  let croppedWidth = 0;
+  let prefix = "";
+
+  for (let index = 0; index < text.length;) {
+    const code = text.charCodeAt(index);
+    if (code === 0x1b) {
+      const sequence = readAnsiSequenceAt(text, index);
+      if (!sequence) return undefined;
+      prefix += sequence;
+      index += sequence.length;
+      continue;
+    }
+    if (code === 0x0a) break;
+    if (!isFastNarrowCodePoint(code)) return undefined;
+
+    if (croppedWidth + 1 > safeWidth) {
+      if (prefix && isAnsiResetOnly(prefix)) cropped += prefix;
+      prefix = "";
+      break;
+    }
+
+    cropped += prefix + (text[index] ?? "");
+    prefix = "";
+    croppedWidth += 1;
+    index += 1;
+  }
+
+  if (prefix) cropped += prefix;
+  return cropped;
+}
+
+function isFastNarrowCodePoint(code: number): boolean {
+  return (code >= 0x20 && code < 0x7f) || code === 0x2588 || code === 0x2587;
 }
 
 function nextTextCharacter(text: string, index: number): string {
