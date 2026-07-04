@@ -199,6 +199,14 @@ export function validateWorkbenchThreePressureProbe(
   options: WorkbenchThreePressureProbeValidationOptions,
 ): WorkbenchThreePressureProbeValidationResult {
   const summary = summarizeWorkbenchThreePressureProbe(samples);
+  return validateWorkbenchThreePressureProbeSummary(summary, options);
+}
+
+/** Validates an already-computed workbench Three pressure summary. */
+export function validateWorkbenchThreePressureProbeSummary(
+  summary: WorkbenchThreePressureProbeSummary,
+  options: WorkbenchThreePressureProbeValidationOptions,
+): WorkbenchThreePressureProbeValidationResult {
   const latest = summary.latest;
   const errors: string[] = [];
   if (!summary.warmup) {
@@ -225,6 +233,15 @@ export function formatWorkbenchThreePressureProbeLines(
   samples: readonly WorkbenchThreePressureProbeSample[],
 ): string[] {
   const summary = summarizeWorkbenchThreePressureProbe(samples);
+  return formatWorkbenchThreePressureProbeSummaryLines(options, samples, summary);
+}
+
+/** Formats workbench Three pressure report lines from an already-computed summary. */
+export function formatWorkbenchThreePressureProbeSummaryLines(
+  options: WorkbenchThreePressureProbeOptions,
+  samples: readonly WorkbenchThreePressureProbeSample[],
+  summary: WorkbenchThreePressureProbeSummary,
+): string[] {
   const latest = summary.latest;
   const lines = [
     "three-workbench pressure probe",

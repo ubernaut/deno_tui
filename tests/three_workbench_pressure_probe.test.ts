@@ -2,11 +2,13 @@ import { assertEquals, assertStringIncludes } from "./deps.ts";
 import {
   countWorkbenchThreeProbeChangedGridRows,
   formatWorkbenchThreePressureProbeLines,
+  formatWorkbenchThreePressureProbeSummaryLines,
   parseWorkbenchThreePressureProbeCliOptions,
   snapshotWorkbenchThreeProbeGridRows,
   snapshotWorkbenchThreeProbeGridRowsInto,
   summarizeWorkbenchThreePressureProbe,
   validateWorkbenchThreePressureProbe,
+  validateWorkbenchThreePressureProbeSummary,
   type WorkbenchThreePressureProbeSample,
 } from "../src/three_ascii/workbench_pressure_probe.ts";
 
@@ -88,18 +90,24 @@ Deno.test("workbench Three probe changed-row counter handles equal sparse and re
 });
 
 Deno.test("validateWorkbenchThreePressureProbe accepts real changing renderer frames", () => {
-  const result = validateWorkbenchThreePressureProbe([
+  const samples = [
     sample({ index: 1, rendererMs: 0, rows: 8, columns: 26, cells: 208, gridUpdates: 1 }),
     sample({ index: 2, rendererMs: 5, rows: 8, columns: 26, cells: 208, gridUpdates: 2 }),
     sample({ index: 3, rendererMs: 4, rows: 8, columns: 26, cells: 208, sourceChangedRows: 5, gridUpdates: 3 }),
     sample({ index: 4, rendererMs: 4, rows: 8, columns: 26, cells: 208, sourceChangedRows: 3, gridUpdates: 4 }),
-  ], {
+  ];
+  const options = {
     minSteadyFrames: 2,
     minGridUpdates: 3,
     minAverageSourceChangedRows: 1,
-  });
+  };
+  const result = validateWorkbenchThreePressureProbe(samples, options);
 
   assertEquals(result, { ok: true, errors: [] });
+  assertEquals(
+    validateWorkbenchThreePressureProbeSummary(summarizeWorkbenchThreePressureProbe(samples), options),
+    result,
+  );
 });
 
 Deno.test("validateWorkbenchThreePressureProbe rejects cached grids without renderer telemetry", () => {
@@ -121,7 +129,7 @@ Deno.test("validateWorkbenchThreePressureProbe rejects cached grids without rend
 });
 
 Deno.test("formatWorkbenchThreePressureProbeLines reports source changes and update counts", () => {
-  const lines = formatWorkbenchThreePressureProbeLines({
+  const options = {
     mode: "studio",
     glyphs: "blocks",
     readback: "deferred",
@@ -132,7 +140,8 @@ Deno.test("formatWorkbenchThreePressureProbeLines reports source changes and upd
     maxCells: 960,
     intervalMs: 50,
     totalBytes: 12345,
-  }, [
+  };
+  const samples = [
     sample({ index: 1, rendererMs: 0, rows: 17, columns: 53, cells: 901, sourceChangedRows: 17, gridUpdates: 1 }),
     sample({ index: 2, rendererMs: 1000, rows: 17, columns: 53, cells: 901, sourceChangedRows: 0, gridUpdates: 1 }),
     sample({
@@ -148,7 +157,12 @@ Deno.test("formatWorkbenchThreePressureProbeLines reports source changes and upd
       sourceChangedRows: 16,
       gridUpdates: 2,
     }),
-  ]);
+  ];
+  const lines = formatWorkbenchThreePressureProbeLines(options, samples);
+  assertEquals(
+    formatWorkbenchThreePressureProbeSummaryLines(options, samples, summarizeWorkbenchThreePressureProbe(samples)),
+    lines,
+  );
 
   assertEquals(lines[0], "three-workbench pressure probe");
   assertStringIncludes(lines[1], "mode=studio glyphs=blocks readback=deferred");

@@ -19,10 +19,11 @@ import {
 import { delay } from "../src/three_ascii/probe_cli.ts";
 import {
   countWorkbenchThreeProbeChangedGridRows,
-  formatWorkbenchThreePressureProbeLines,
+  formatWorkbenchThreePressureProbeSummaryLines,
   parseWorkbenchThreePressureProbeCliOptions,
   snapshotWorkbenchThreeProbeGridRowsInto,
-  validateWorkbenchThreePressureProbe,
+  summarizeWorkbenchThreePressureProbe,
+  validateWorkbenchThreePressureProbeSummary,
   type WorkbenchThreePressureProbeSample,
 } from "../src/three_ascii/workbench_pressure_probe.ts";
 import { type ThreeSceneMode, threeSceneModes } from "../app/types.ts";
@@ -124,24 +125,29 @@ try {
   frameInterval.dispose();
 }
 
+const summary = summarizeWorkbenchThreePressureProbe(samples);
 console.log(
-  formatWorkbenchThreePressureProbeLines({
-    mode,
-    glyphs,
-    readback: readbackStrategy,
-    frameWidth,
-    frameHeight,
-    panelWidth,
-    panelHeight,
-    maxCells,
-    adaptive,
-    intervalMs: frameInterval.peek(),
-    totalBytes: bytesWritten,
-  }, samples).join("\n"),
+  formatWorkbenchThreePressureProbeSummaryLines(
+    {
+      mode,
+      glyphs,
+      readback: readbackStrategy,
+      frameWidth,
+      frameHeight,
+      panelWidth,
+      panelHeight,
+      maxCells,
+      adaptive,
+      intervalMs: frameInterval.peek(),
+      totalBytes: bytesWritten,
+    },
+    samples,
+    summary,
+  ).join("\n"),
 );
 
 if (check) {
-  const validation = validateWorkbenchThreePressureProbe(samples, {
+  const validation = validateWorkbenchThreePressureProbeSummary(summary, {
     minSteadyFrames,
     minGridUpdates,
     minAverageSourceChangedRows,
