@@ -29,6 +29,7 @@ import {
   workbenchTerminalSessionTabsInto,
   workbenchTerminalSessionTabSourcesInto,
   workbenchTerminalSessionTitleFromId,
+  workbenchTerminalShellHeaderRowsInto,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
   workbenchTerminalToolbarStateFromSnapshot,
@@ -96,6 +97,57 @@ Deno.test("workbenchTerminalSearchModalBody projects active match state", () => 
       "Matches 3 hit 2/3",
       "Enter searches, Escape cancels, N/Shift+N move between matches in copy mode.",
     ],
+  );
+});
+
+Deno.test("workbenchTerminalShellHeaderRowsInto projects reusable status and hint rows", () => {
+  const target = [{ kind: "hint" as const, text: "stale" }];
+  const rows = workbenchTerminalShellHeaderRowsInto(target, {
+    status: {
+      mode: "RAW SHELL",
+      status: "running",
+      pty: true,
+      backendLabel: "sigma-pty",
+      commandLine: "/bin/bash",
+      scrollbackOffset: 4,
+      scrollbackViewportRows: 10,
+      scrollbackTotalRows: 100,
+    },
+    hint: { inputMode: "raw", copyMode: false },
+  });
+
+  assertEquals(rows === target, true);
+  assertEquals(rows, [
+    {
+      kind: "status",
+      text: "RAW SHELL RUNNING PTY sigma-pty · /bin/bash · rows 5-14/100",
+    },
+    {
+      kind: "hint",
+      text: "raw shell input: keys go to shell  Ctrl+C interrupts shell  Esc returns to Workbench",
+    },
+  ]);
+
+  const first = rows[0];
+  workbenchTerminalShellHeaderRowsInto(rows, {
+    status: {
+      mode: "COPY MODE",
+      status: "running",
+      pty: false,
+      backendLabel: "process",
+      commandLine: "bash",
+      scrollbackOffset: 0,
+      scrollbackViewportRows: 3,
+      scrollbackTotalRows: 3,
+    },
+    hint: { inputMode: "workbench", copyMode: true },
+  });
+
+  assertEquals(rows[0] === first, true);
+  assertEquals(rows[0]?.text, "COPY MODE RUNNING PROCESS FALLBACK process · bash · rows 1-3/3");
+  assertEquals(
+    rows[1]?.text,
+    "copy mode: PageUp/PageDown scroll  Space select  Shift+Up/Down extend  C copy  Esc live input",
   );
 });
 

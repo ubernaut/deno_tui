@@ -3,6 +3,12 @@ import { createProcessTerminalBackend, type TerminalBackend } from "../runtime/t
 import { createSigmaPtyTerminalBackend } from "../runtime/pty_backend.ts";
 import { TerminalShellController, type TerminalShellControllerOptions } from "../runtime/terminal_shell.ts";
 import {
+  formatTerminalShellHint,
+  formatTerminalShellStatusLine,
+  type TerminalShellHintOptions,
+  type TerminalShellStatusLineOptions,
+} from "../runtime/terminal_status.ts";
+import {
   type TerminalWorkspaceLayoutState,
   type TerminalWorkspacePaneRect,
   type TerminalWorkspacePaneRectOptions,
@@ -235,6 +241,18 @@ export interface WorkbenchTerminalPaneProjection {
   title: string;
 }
 
+/** Renderer-neutral shell header row projected before the live pane content. */
+export interface WorkbenchTerminalShellHeaderRow {
+  kind: "status" | "hint";
+  text: string;
+}
+
+/** Options for projecting the shell status and hint rows. */
+export interface WorkbenchTerminalShellHeaderRowsOptions {
+  status: TerminalShellStatusLineOptions;
+  hint: TerminalShellHintOptions;
+}
+
 /** Options for projecting terminal workspace panes into render-ready frame metadata. */
 export interface WorkbenchTerminalPaneProjectionOptions extends TerminalWorkspacePaneRectOptions {
   fallbackSessionId?: string;
@@ -254,6 +272,30 @@ export interface WorkbenchTerminalCopyRowsOptions {
   height: number;
   selection?: WorkbenchTerminalCopySelection;
   prefixWidth?: number;
+}
+
+/** Projects the terminal shell status and hint rows into caller-owned storage. */
+export function workbenchTerminalShellHeaderRowsInto(
+  target: WorkbenchTerminalShellHeaderRow[],
+  options: WorkbenchTerminalShellHeaderRowsOptions,
+): WorkbenchTerminalShellHeaderRow[] {
+  target.length = 2;
+  target[0] = writeWorkbenchTerminalShellHeaderRow(target[0], "status", formatTerminalShellStatusLine(options.status));
+  target[1] = writeWorkbenchTerminalShellHeaderRow(target[1], "hint", formatTerminalShellHint(options.hint));
+  return target;
+}
+
+function writeWorkbenchTerminalShellHeaderRow(
+  target: WorkbenchTerminalShellHeaderRow | undefined,
+  kind: WorkbenchTerminalShellHeaderRow["kind"],
+  text: string,
+): WorkbenchTerminalShellHeaderRow {
+  if (target) {
+    target.kind = kind;
+    target.text = text;
+    return target;
+  }
+  return { kind, text };
 }
 
 /** Minimal terminal scrollback search state needed to project a search modal body. */

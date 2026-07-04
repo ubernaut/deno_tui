@@ -143,8 +143,6 @@ import { TerminalShellWorkspaceController } from "../src/runtime/terminal_shell_
 import {
   formatTerminalOutputHint,
   formatTerminalOutputWindowTitle,
-  formatTerminalShellHint,
-  formatTerminalShellStatusLine,
   formatTerminalShellWindowTitle,
   summarizeTerminalStatus,
   terminalInputModeDisplayLabel,
@@ -182,6 +180,8 @@ import {
   workbenchTerminalSessionTabsInto,
   workbenchTerminalSessionTabSourcesInto,
   workbenchTerminalSessionTitleFromId,
+  type WorkbenchTerminalShellHeaderRow,
+  workbenchTerminalShellHeaderRowsInto,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
   workbenchTerminalToolbarStateFromSnapshot,
@@ -419,6 +419,7 @@ const terminalOutputButtonBuffers = new WorkbenchButtonRowBufferCache<TerminalOu
 const terminalShellButtonBuffers = new WorkbenchButtonRowBufferCache<TerminalShellAction>();
 const terminalShellSessionTabBuffers = new WorkbenchTerminalSessionTabBufferCache();
 const terminalShellBuffers = new WorkbenchTerminalBufferCache();
+const terminalShellHeaderRows: WorkbenchTerminalShellHeaderRow[] = [];
 const controlLineSegments: ApiWorkbenchControlLineSegment[] = [];
 const controlLineRenderCommands: ApiWorkbenchControlLineRenderCommand[] = [];
 const controlLineHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
@@ -1915,38 +1916,38 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
   const copyMode = inspection.scrollback.mode === "copy";
   const statusTone = terminalStatusToneColor(inspection.status, t);
   const mode = copyMode ? "COPY MODE" : terminalShellInputModeLabel();
-  const status = formatTerminalShellStatusLine({
-    mode,
-    status: inspection.status,
-    pty: inspection.pty,
-    backendLabel: inspection.backendLabel,
-    commandLine: inspection.commandLine,
-    scrollbackOffset: inspection.scrollback.offset,
-    scrollbackViewportRows: inspection.scrollback.viewportRows,
-    scrollbackTotalRows: inspection.scrollback.totalRows,
+  const headerRows = workbenchTerminalShellHeaderRowsInto(terminalShellHeaderRows, {
+    status: {
+      mode,
+      status: inspection.status,
+      pty: inspection.pty,
+      backendLabel: inspection.backendLabel,
+      commandLine: inspection.commandLine,
+      scrollbackOffset: inspection.scrollback.offset,
+      scrollbackViewportRows: inspection.scrollback.viewportRows,
+      scrollbackTotalRows: inspection.scrollback.totalRows,
+    },
+    hint: { copyMode, inputMode: terminalShellInputMode.peek() },
   });
-  write(
-    frame,
-    row,
-    rect.column,
-    paint(fit(status, rect.width), {
-      fg: contrastText(statusTone, t.background, t.text),
-      bg: statusTone,
-      bold: true,
-    }),
-  );
-  row += 1;
-
-  write(
-    frame,
-    row,
-    rect.column,
-    paint(
-      fit(formatTerminalShellHint({ copyMode, inputMode: terminalShellInputMode.peek() }), rect.width),
-      { fg: t.soft, bg: t.panelSoft },
-    ),
-  );
-  row += 1;
+  for (const header of headerRows) {
+    const statusRow = header.kind === "status";
+    write(
+      frame,
+      row,
+      rect.column,
+      paint(
+        fit(header.text, rect.width),
+        statusRow
+          ? {
+            fg: contrastText(statusTone, t.background, t.text),
+            bg: statusTone,
+            bold: true,
+          }
+          : { fg: t.soft, bg: t.panelSoft },
+      ),
+    );
+    row += 1;
+  }
 
   const bodyRect = {
     column: rect.column,
