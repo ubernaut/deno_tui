@@ -8,6 +8,7 @@ import {
   workbenchVisualizationIdFromWindowId,
   workbenchVisualizationWindowId,
   workbenchVisualizationWindowRegistrationPlan,
+  workbenchVisualizationWindowTogglePlan,
   workbenchWindowOptionMenuLabel,
   workbenchWindowOptionMenuLabelsInto,
   workbenchWindowOptionMinimums,
@@ -145,6 +146,29 @@ Deno.test("workbench window registry plans visualization window creation and res
       action: "restore",
     },
   );
+});
+
+Deno.test("workbench window registry plans visualization window toggles", () => {
+  const option = {
+    id: "cpu-hex-grid",
+    label: "CPU Hex Grid",
+    group: "Monitor" as const,
+    description: "cores",
+  };
+
+  assertEquals(workbenchVisualizationWindowTogglePlan({ option: undefined, loadedWindowIds: [] }), {
+    action: "none",
+  });
+  assertEquals(workbenchVisualizationWindowTogglePlan({ option, loadedWindowIds: ["explorer"] }), {
+    action: "add",
+    id: "viz:cpu-hex-grid",
+    option,
+  });
+  assertEquals(workbenchVisualizationWindowTogglePlan({ option, loadedWindowIds: ["viz:cpu-hex-grid"] }), {
+    action: "close",
+    id: "viz:cpu-hex-grid",
+    option,
+  });
 });
 
 Deno.test("workbench window registry plans built-in window toggles", () => {

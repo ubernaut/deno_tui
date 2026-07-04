@@ -57,6 +57,18 @@ export interface WorkbenchVisualizationWindowRegistrationOptions {
   currentWindowCount: number;
 }
 
+/** Inputs for deciding how a dynamic visualization workbench window should toggle. */
+export interface WorkbenchVisualizationWindowToggleOptions {
+  option: WorkbenchWindowOption | undefined;
+  loadedWindowIds: Iterable<string>;
+}
+
+/** Side-effect-free dynamic visualization window toggle decision. */
+export type WorkbenchVisualizationWindowTogglePlan =
+  | { action: "none" }
+  | { action: "close"; id: `viz:${string}`; option: WorkbenchWindowOption }
+  | { action: "add"; id: `viz:${string}`; option: WorkbenchWindowOption };
+
 /** Inputs for deciding how a built-in workbench window should toggle. */
 export interface WorkbenchBuiltInWindowToggleOptions<TWindowId extends string = string> {
   id: TWindowId;
@@ -190,6 +202,16 @@ export function workbenchVisualizationWindowRegistrationPlan(
       order: Math.max(0, Math.floor(options.currentWindowCount)),
     },
   };
+}
+
+/** Decides whether toggling a visualization option closes the active window or adds/restores it. */
+export function workbenchVisualizationWindowTogglePlan(
+  options: WorkbenchVisualizationWindowToggleOptions,
+): WorkbenchVisualizationWindowTogglePlan {
+  if (!options.option) return { action: "none" };
+  const id = workbenchVisualizationWindowId(options.option.id);
+  const ids = options.loadedWindowIds instanceof Set ? options.loadedWindowIds : new Set(options.loadedWindowIds);
+  return ids.has(id) ? { action: "close", id, option: options.option } : { action: "add", id, option: options.option };
 }
 
 /** Decides whether toggling a built-in workbench window closes or restores it. */

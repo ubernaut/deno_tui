@@ -82,6 +82,7 @@ import {
   workbenchVisualizationIdFromWindowId,
   workbenchVisualizationWindowId,
   workbenchVisualizationWindowRegistrationPlan,
+  workbenchVisualizationWindowTogglePlan,
   type WorkbenchWindowOption,
   workbenchWindowOptionMenuLabelsInto,
   workbenchWindowOptionTogglePlan,
@@ -4207,14 +4208,17 @@ function toggleVisualizationWindow(
   option: NewWindowOption | undefined,
   options: { keepMenuOpen?: boolean; ascii?: AsciiOptions } = {},
 ): void {
-  if (!option) return;
-  if (isVisualizationLoaded(option.id)) {
-    closeWindow(workbenchVisualizationWindowId(option.id) as VisualizationWindowId);
+  const plan = workbenchVisualizationWindowTogglePlan({
+    option,
+    loadedWindowIds: windowManager.ids(),
+  });
+  if (plan.action === "close") {
+    closeWindow(plan.id as VisualizationWindowId);
     if (!options.keepMenuOpen) closeTopMenus();
     else topMenus.focus();
     return;
   }
-  addVisualizationWindow(option, options);
+  if (plan.action === "add") addVisualizationWindow(plan.option, options);
 }
 
 function addVisualizationWindow(
@@ -4241,11 +4245,6 @@ function addVisualizationWindow(
   focus(id);
   if (options.keepMenuOpen) topMenus.focus();
   pushLog(`add window ${option.label}`);
-}
-
-function isVisualizationLoaded(visualizationId: string): boolean {
-  const id = workbenchVisualizationWindowId(visualizationId);
-  return windowManager.ids().includes(id);
 }
 
 function applyControlHit(
