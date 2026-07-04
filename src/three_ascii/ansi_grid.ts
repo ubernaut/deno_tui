@@ -403,7 +403,7 @@ export class ThreeAsciiAnsiGridAssembler {
         const index = rowOffset + column;
         const colorOffset = index * 4;
         if ((colors[colorOffset + 3] ?? 0) < 0.5) {
-          outputRow[column] = this.background.blankAnsi;
+          column = fillAlphaBlockBlankRun(outputRow, colors, rowOffset, column, columns, this.background.blankAnsi);
           continue;
         }
 
@@ -411,7 +411,17 @@ export class ThreeAsciiAnsiGridAssembler {
         const rawGreen = colors[colorOffset + 1] ?? 0;
         const rawBlue = colors[colorOffset + 2] ?? 0;
         if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue) {
-          outputRow[column] = lastCell;
+          column = fillAlphaBlockColorRun(
+            outputRow,
+            colors,
+            rowOffset,
+            column,
+            columns,
+            rawRed,
+            rawGreen,
+            rawBlue,
+            lastCell,
+          );
           continue;
         }
 
@@ -440,7 +450,17 @@ export class ThreeAsciiAnsiGridAssembler {
         lastRawGreen = rawGreen;
         lastRawBlue = rawBlue;
 
-        outputRow[column] = cell;
+        column = fillAlphaBlockColorRun(
+          outputRow,
+          colors,
+          rowOffset,
+          column,
+          columns,
+          rawRed,
+          rawGreen,
+          rawBlue,
+          cell,
+        );
       }
     }
 
@@ -779,6 +799,52 @@ function fillDenseBlockColorRun(
       (colors[colorOffset] as number) !== rawRed ||
       (colors[colorOffset + 1] as number) !== rawGreen ||
       (colors[colorOffset + 2] as number) !== rawBlue
+    ) {
+      break;
+    }
+    column += 1;
+  }
+  outputRow.fill(cell, runStart, column);
+  return column - 1;
+}
+
+function fillAlphaBlockBlankRun(
+  outputRow: string[],
+  colors: ArrayLike<number>,
+  rowOffset: number,
+  column: number,
+  columns: number,
+  blankAnsi: string,
+): number {
+  const blankStart = column;
+  column += 1;
+  while (column < columns && (colors[(rowOffset + column) * 4 + 3] ?? 0) < 0.5) {
+    column += 1;
+  }
+  outputRow.fill(blankAnsi, blankStart, column);
+  return column - 1;
+}
+
+function fillAlphaBlockColorRun(
+  outputRow: string[],
+  colors: ArrayLike<number>,
+  rowOffset: number,
+  column: number,
+  columns: number,
+  rawRed: number,
+  rawGreen: number,
+  rawBlue: number,
+  cell: string,
+): number {
+  const runStart = column;
+  column += 1;
+  while (column < columns) {
+    const colorOffset = (rowOffset + column) * 4;
+    if ((colors[colorOffset + 3] ?? 0) < 0.5) break;
+    if (
+      (colors[colorOffset] ?? 0) !== rawRed ||
+      (colors[colorOffset + 1] ?? 0) !== rawGreen ||
+      (colors[colorOffset + 2] ?? 0) !== rawBlue
     ) {
       break;
     }

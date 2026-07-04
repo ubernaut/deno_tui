@@ -779,3 +779,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Removed the now-redundant fill compute pass and fill storage buffer from compact block-mode terminal frames. Block
   mode dispatches color-only compute while glyph/mixed modes still run fill/edge/color as needed; focused compute policy
   tests, the 90-frame workbench probe, and the `three-ascii` plus `workbench-three` benchmark selectors passed.
+- Added blank-run and same-color-run filling to compact alpha-mask block assembly so color-only block frames get the
+  same row-fill treatment as the fill-buffer block path. Focused glyph tests and the `three-ascii-ansi-grid` benchmark
+  selector passed after the change.

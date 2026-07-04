@@ -487,7 +487,7 @@ Deno.test("three ascii ANSI grid assembler keeps glyph style cache keys distinct
 
 Deno.test("three ascii ANSI grid assembler can use color alpha for block visibility", () => {
   const grid = buildThreeAsciiAnsiGrid({
-    columns: 3,
+    columns: 6,
     rows: 1,
     fillGlyphs: new Float32Array(0),
     colors: new Float32Array([
@@ -495,10 +495,22 @@ Deno.test("three ascii ANSI grid assembler can use color alpha for block visibil
       0,
       0,
       1,
+      1,
+      0,
+      0,
+      1,
       0,
       1,
       0,
       0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
       0,
       0,
       1,
@@ -510,8 +522,11 @@ Deno.test("three ascii ANSI grid assembler can use color alpha for block visibil
   });
 
   assertEquals(grid[0][0], "\x1b[48;2;255;0;0m \x1b[0m");
-  assertEquals(grid[0][1], "\x1b[48;2;0;0;0m \x1b[0m");
-  assertEquals(grid[0][2], "\x1b[48;2;0;0;255m \x1b[0m");
+  assertEquals(grid[0][1], "\x1b[48;2;255;0;0m \x1b[0m");
+  assertEquals(grid[0][2], "\x1b[48;2;0;0;0m \x1b[0m");
+  assertEquals(grid[0][3], "\x1b[48;2;0;0;0m \x1b[0m");
+  assertEquals(grid[0][4], "\x1b[48;2;0;0;255m \x1b[0m");
+  assertEquals(grid[0][5], "\x1b[48;2;0;0;255m \x1b[0m");
 });
 
 Deno.test("three ascii fallback detail hides raw GPU validation text", () => {
