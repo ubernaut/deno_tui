@@ -81,6 +81,7 @@ import {
   THREE_ASCII_COLOR_SHADER,
   THREE_ASCII_EDGE_SHADER,
   THREE_ASCII_FILL_SHADER,
+  THREE_ASCII_FLAT_COLOR_SHADER,
   THREE_ASCII_TERMINAL_EDGE_THRESHOLD_SCALE,
   THREE_ASCII_TILE_SIZE,
   THREE_ASCII_WORKGROUP_SIZE,
@@ -171,6 +172,8 @@ export class ThreeAsciiRenderer {
   private fillPipeline?: GPUComputePipeline;
   private edgePipeline?: GPUComputePipeline;
   private colorPipeline?: GPUComputePipeline;
+  private colorDepthPipeline?: GPUComputePipeline;
+  private colorFlatPipeline?: GPUComputePipeline;
   private fillBindGroup?: GPUBindGroup;
   private edgeBindGroup?: GPUBindGroup;
   private colorBindGroup?: GPUBindGroup;
@@ -211,9 +214,11 @@ export class ThreeAsciiRenderer {
     columns: 0,
     rows: 0,
     includeEdges: false,
+    includeDepthColor: false,
     currentCellCount: 0,
     hasEdgeOutput: false,
     hasEdgeBindGroup: false,
+    hasDepthColorBindGroup: false,
   };
   private readonly readbackAssemblyContext: ThreeAsciiReadbackGridAssemblyContext = {
     viewCache: this.readbackViewCache,
@@ -229,6 +234,7 @@ export class ThreeAsciiRenderer {
   private gridRevision = 0;
   private readonly deferredReadbackMaxStaleFrames: number;
   private deferredReadbackStaleFrames = 0;
+  private colorUsesDepthTexture = false;
 
   constructor(options: ThreeAsciiRendererOptions) {
     const normalized = normalizeThreeAsciiRendererOptions(options);
@@ -452,7 +458,8 @@ export class ThreeAsciiRenderer {
   ): Promise<string[][]> {
     const effectState = this.getEffectState();
     const includeTerminalEdges = shouldIncludeThreeAsciiTerminalEdges(effectState, this.terminalGlyphStyle);
-    await this.ensureComputeResources(effectState, includeTerminalEdges);
+    const includeTerminalDepthColor = effectState.depthFalloff > 0;
+    await this.ensureComputeResources(effectState, includeTerminalEdges, includeTerminalDepthColor);
     this.writeUniforms(effectState);
 
     const commandEncoder = this.device!.createCommandEncoder({
@@ -710,6 +717,7 @@ export class ThreeAsciiRenderer {
   private async ensureComputeResources(
     effectState: ThreeAsciiEffectState,
     includeTerminalEdges = effectState.edges,
+    includeTerminalDepthColor = effectState.depthFalloff > 0,
   ): Promise<void> {
     if (!this.device || !this.renderer || !this.asciiNode) {
       throw new Error("ThreeAsciiRenderer has not been initialized.");
@@ -721,12 +729,21 @@ export class ThreeAsciiRenderer {
         label: "deno_tui.three_ascii.fill",
         code: THREE_ASCII_FILL_SHADER,
       });
-      this.colorPipeline = createThreeAsciiComputePipeline({
+      this.colorFlatPipeline = createThreeAsciiComputePipeline({
         device: this.device,
-        label: "deno_tui.three_ascii.color",
+        label: "deno_tui.three_ascii.color.flat",
+        code: THREE_ASCII_FLAT_COLOR_SHADER,
+      });
+    }
+
+    if (includeTerminalDepthColor && !this.colorDepthPipeline) {
+      this.colorDepthPipeline = createThreeAsciiComputePipeline({
+        device: this.device,
+        label: "deno_tui.three_ascii.color.depth",
         code: THREE_ASCII_COLOR_SHADER,
       });
     }
+    this.colorPipeline = includeTerminalDepthColor ? this.colorDepthPipeline! : this.colorFlatPipeline!;
 
     if (includeTerminalEdges && !this.edgePipeline) {
       this.edgePipeline = createThreeAsciiComputePipeline({
@@ -748,9 +765,11 @@ export class ThreeAsciiRenderer {
     this.computeResourcePlanInput.columns = this.columns;
     this.computeResourcePlanInput.rows = this.rows;
     this.computeResourcePlanInput.includeEdges = includeTerminalEdges;
+    this.computeResourcePlanInput.includeDepthColor = includeTerminalDepthColor;
     this.computeResourcePlanInput.currentCellCount = this.outputCellCount;
     this.computeResourcePlanInput.hasEdgeOutput = this.edgeOutput !== undefined;
     this.computeResourcePlanInput.hasEdgeBindGroup = this.edgeBindGroup !== undefined;
+    this.computeResourcePlanInput.hasDepthColorBindGroup = this.colorUsesDepthTexture;
     const resourcePlan = createThreeAsciiComputeResourcePlan(this.computeResourcePlanInput);
     if (resourcePlan.resizeOutputs) {
       this.fillOutput = this.ensureStorageBufferSlot(
@@ -788,6 +807,7 @@ export class ThreeAsciiRenderer {
     if (!this.computeDirty) {
       return;
     }
+    this.colorUsesDepthTexture = includeTerminalDepthColor;
 
     const bindGroups = createThreeAsciiComputeBindGroups({
       device: this.device,
@@ -800,8 +820,9 @@ export class ThreeAsciiRenderer {
       colorOutput: this.colorOutput!.gpu,
       downscaleTexture: this.getGpuTexture(this.asciiNode.downscaleTarget.texture),
       sobelTexture: includeTerminalEdges ? this.getGpuTexture(this.asciiNode.sobelTarget.texture) : undefined,
-      normalsTexture: this.getGpuTexture(this.asciiNode.normalsTarget.texture),
+      normalsTexture: includeTerminalDepthColor ? this.getGpuTexture(this.asciiNode.normalsTarget.texture) : undefined,
       includeEdges: includeTerminalEdges,
+      colorUsesDepthTexture: includeTerminalDepthColor,
     });
     this.fillBindGroup = bindGroups.fillBindGroup;
     this.edgeBindGroup = bindGroups.edgeBindGroup;

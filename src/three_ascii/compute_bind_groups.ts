@@ -13,8 +13,9 @@ export interface ThreeAsciiComputeBindGroupInput {
   colorOutput: GPUBuffer;
   downscaleTexture: ThreeAsciiComputeTextureLike;
   sobelTexture?: ThreeAsciiComputeTextureLike;
-  normalsTexture: ThreeAsciiComputeTextureLike;
+  normalsTexture?: ThreeAsciiComputeTextureLike;
   includeEdges: boolean;
+  colorUsesDepthTexture: boolean;
 }
 
 export interface ThreeAsciiComputeBindGroups {
@@ -38,7 +39,32 @@ export function createThreeAsciiComputeBindGroups(
   });
 
   const edgeBindGroup = input.includeEdges ? createThreeAsciiEdgeBindGroup(input) : undefined;
-  const colorBindGroup = input.device.createBindGroup({
+  const colorBindGroup = createThreeAsciiColorBindGroup(input, downscaleView);
+
+  return { fillBindGroup, edgeBindGroup, colorBindGroup };
+}
+
+function createThreeAsciiColorBindGroup(
+  input: ThreeAsciiComputeBindGroupInput,
+  downscaleView: GPUTextureView,
+): GPUBindGroup {
+  if (!input.colorUsesDepthTexture) {
+    return input.device.createBindGroup({
+      label: "deno_tui.three_ascii.color.bindings",
+      layout: input.colorPipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: input.paramsBuffer } },
+        { binding: 1, resource: downscaleView },
+        { binding: 2, resource: { buffer: input.colorOutput } },
+      ],
+    });
+  }
+
+  if (!input.normalsTexture) {
+    throw new Error("ThreeAsciiRenderer depth color resources have not been initialized.");
+  }
+
+  return input.device.createBindGroup({
     label: "deno_tui.three_ascii.color.bindings",
     layout: input.colorPipeline.getBindGroupLayout(0),
     entries: [
@@ -48,8 +74,6 @@ export function createThreeAsciiComputeBindGroups(
       { binding: 3, resource: { buffer: input.colorOutput } },
     ],
   });
-
-  return { fillBindGroup, edgeBindGroup, colorBindGroup };
 }
 
 function createThreeAsciiEdgeBindGroup(input: ThreeAsciiComputeBindGroupInput): GPUBindGroup {

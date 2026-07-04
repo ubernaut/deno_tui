@@ -225,3 +225,34 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   colors[index] = vec4<f32>(clamp(finalColor, vec3<f32>(0.0), vec3<f32>(1.0)), 1.0);
 }
 `;
+
+export const THREE_ASCII_FLAT_COLOR_SHADER = /* wgsl */ `
+struct Params {
+  dims: vec4<f32>,
+  flags: vec4<f32>,
+  effect0: vec4<f32>,
+  effect1: vec4<f32>,
+  asciiColor: vec4<f32>,
+  backgroundColor: vec4<f32>,
+};
+
+@group(0) @binding(0) var<uniform> params: Params;
+@group(0) @binding(1) var downscaleTex: texture_2d<f32>;
+@group(0) @binding(2) var<storage, read_write> colors: array<vec4<f32>>;
+
+@compute @workgroup_size(${THREE_ASCII_WORKGROUP_SIZE}, ${THREE_ASCII_WORKGROUP_SIZE}, 1)
+fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+  let columns = u32(params.dims.x);
+  let rows = u32(params.dims.y);
+
+  if (id.x >= columns || id.y >= rows) {
+    return;
+  }
+
+  let index = id.y * columns + id.x;
+  let downscale = textureLoad(downscaleTex, vec2<i32>(i32(id.x), i32(id.y)), 0);
+  let baseAsciiColor = mix(params.asciiColor.rgb, downscale.rgb, params.effect0.z);
+
+  colors[index] = vec4<f32>(clamp(baseAsciiColor, vec3<f32>(0.0), vec3<f32>(1.0)), 1.0);
+}
+`;

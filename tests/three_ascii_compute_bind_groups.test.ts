@@ -11,8 +11,8 @@ Deno.test("createThreeAsciiComputeBindGroups creates fill and color bindings wit
     fillOutput: fakeBuffer("fill"),
     colorOutput: fakeBuffer("color"),
     downscaleTexture: fakeTexture("downscale"),
-    normalsTexture: fakeTexture("normals"),
     includeEdges: false,
+    colorUsesDepthTexture: false,
   });
 
   assertEquals(groups.fillBindGroup, "deno_tui.three_ascii.fill.bindings" as unknown as GPUBindGroup);
@@ -23,7 +23,7 @@ Deno.test("createThreeAsciiComputeBindGroups creates fill and color bindings wit
     "deno_tui.three_ascii.color.bindings",
   ]);
   assertEquals(device.created[0]?.entries.map((entry) => entry.binding), [0, 1, 2]);
-  assertEquals(device.created[1]?.entries.map((entry) => entry.binding), [0, 1, 2, 3]);
+  assertEquals(device.created[1]?.entries.map((entry) => entry.binding), [0, 1, 2]);
 });
 
 Deno.test("createThreeAsciiComputeBindGroups creates edge bindings when requested", () => {
@@ -39,8 +39,8 @@ Deno.test("createThreeAsciiComputeBindGroups creates edge bindings when requeste
     colorOutput: fakeBuffer("color"),
     downscaleTexture: fakeTexture("downscale"),
     sobelTexture: fakeTexture("sobel"),
-    normalsTexture: fakeTexture("normals"),
     includeEdges: true,
+    colorUsesDepthTexture: false,
   });
 
   assertEquals(groups.edgeBindGroup, "deno_tui.three_ascii.edge.bindings" as unknown as GPUBindGroup);
@@ -62,11 +62,48 @@ Deno.test("createThreeAsciiComputeBindGroups rejects incomplete edge resources",
         fillOutput: fakeBuffer("fill"),
         colorOutput: fakeBuffer("color"),
         downscaleTexture: fakeTexture("downscale"),
-        normalsTexture: fakeTexture("normals"),
         includeEdges: true,
+        colorUsesDepthTexture: false,
       }),
     Error,
     "edge compute resources",
+  );
+});
+
+Deno.test("createThreeAsciiComputeBindGroups binds normals only for depth color", () => {
+  const device = new FakeBindGroupDevice();
+  createThreeAsciiComputeBindGroups({
+    device,
+    paramsBuffer: fakeBuffer("params"),
+    fillPipeline: fakePipeline("fill-layout"),
+    colorPipeline: fakePipeline("color-layout"),
+    fillOutput: fakeBuffer("fill"),
+    colorOutput: fakeBuffer("color"),
+    downscaleTexture: fakeTexture("downscale"),
+    normalsTexture: fakeTexture("normals"),
+    includeEdges: false,
+    colorUsesDepthTexture: true,
+  });
+
+  assertEquals(device.created[1]?.entries.map((entry) => entry.binding), [0, 1, 2, 3]);
+});
+
+Deno.test("createThreeAsciiComputeBindGroups rejects missing depth color resources", () => {
+  assertThrows(
+    () =>
+      createThreeAsciiComputeBindGroups({
+        device: new FakeBindGroupDevice(),
+        paramsBuffer: fakeBuffer("params"),
+        fillPipeline: fakePipeline("fill-layout"),
+        colorPipeline: fakePipeline("color-layout"),
+        fillOutput: fakeBuffer("fill"),
+        colorOutput: fakeBuffer("color"),
+        downscaleTexture: fakeTexture("downscale"),
+        includeEdges: false,
+        colorUsesDepthTexture: true,
+      }),
+    Error,
+    "depth color resources",
   );
 });
 

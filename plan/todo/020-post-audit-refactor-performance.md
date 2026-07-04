@@ -724,3 +724,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added per-panel idle cadence support to `ThreePanelFrameView` and wired API workbench Three panes to focus/fullscreen
   interactivity, so extra visible Three-rendered windows no longer all run at live cadence just because one Three pane
   is active.
+- Added a flat Three ASCII color compute shader and bind-group path for terminal frames without depth tinting, avoiding
+  an unused normals texture binding/sample in default block rendering while preserving the depth-aware path for configs
+  with fog/depth falloff. Focused shader/resource tests and 60/960-cell guarded workbench probes passed.

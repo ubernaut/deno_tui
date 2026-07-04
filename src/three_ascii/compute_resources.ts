@@ -2,9 +2,11 @@ export interface ThreeAsciiComputeResourcePlanInput {
   columns: number;
   rows: number;
   includeEdges: boolean;
+  includeDepthColor: boolean;
   currentCellCount: number;
   hasEdgeOutput: boolean;
   hasEdgeBindGroup: boolean;
+  hasDepthColorBindGroup: boolean;
 }
 
 export interface ThreeAsciiComputeResourcePlan {
@@ -39,6 +41,7 @@ export function createThreeAsciiComputeResourcePlan(
   const ensureEdgeOutput = input.includeEdges;
   const releaseEdgeOutput = !input.includeEdges && input.hasEdgeOutput;
   const edgeSetupDirty = input.includeEdges && (!input.hasEdgeOutput || !input.hasEdgeBindGroup);
+  const colorSetupDirty = input.includeDepthColor !== input.hasDepthColorBindGroup;
   return {
     cellCount,
     fillByteLength: cellCount * Float32Array.BYTES_PER_ELEMENT,
@@ -47,7 +50,7 @@ export function createThreeAsciiComputeResourcePlan(
     resizeOutputs,
     ensureEdgeOutput,
     releaseEdgeOutput,
-    dirty: resizeOutputs || edgeSetupDirty || releaseEdgeOutput,
+    dirty: resizeOutputs || edgeSetupDirty || releaseEdgeOutput || colorSetupDirty,
   };
 }
 
