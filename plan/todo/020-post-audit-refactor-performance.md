@@ -180,6 +180,17 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added an opt-in `deno task benchmark -- --repeat N` mode that reruns selected benchmark cases and reports the best
   average per case, making noisy renderer micro-benchmark checks less dependent on a single local sample while
   preserving the default report format.
+- Fixed a block-mode workbench performance regression caused by cumulative SGR style prefixes in styled text splitting;
+  repeated truecolor background cells now keep only the active foreground/background state instead of replaying every
+  previous color change.
+- Added compact live Three ASCII renderer telemetry to the workbench Three pane header so renderer frame, scene,
+  readback, assembly, and cell counts are visible during manual profiling.
+- Moved SGR state merging into a shared internal utility and routed workbench frame writes through it, so both
+  TextObject-style splitting and immediate workbench frame assembly avoid cumulative ANSI growth.
+- Extended workbench frame background-run detection to compact cells whose SGR prefix includes both foreground and
+  background color parameters.
+- Extracted terminal shell copy-mode row projection into `workbenchTerminalCopyRowsInto`, adding stable API coverage for
+  reusable line-number, selection, and visible-row metadata while reducing inline terminal-shell renderer logic.
 - Extracted the workbench line-signal diff into a shared frame helper and benchmarked the unchanged-row skip path so
   terminal output throttling remains guarded.
 - Capped workbench Three ASCII terminal blits so render-size limits are not immediately expanded back to full-pane ANSI

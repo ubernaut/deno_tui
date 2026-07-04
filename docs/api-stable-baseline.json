@@ -4575,6 +4575,34 @@
     },
     {
       "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchTerminalCopyRowProjection",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "workbenchTerminalCopyRowsInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchTerminalCopyRowsOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchTerminalCopySelection",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
       "name": "WorkbenchTerminalOutputToolbarAction",
       "kind": "type",
       "typeOnly": true,

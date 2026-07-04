@@ -15,6 +15,7 @@ import {
   createWorkbenchShellSession,
   nextWorkbenchTerminalSessionId,
   resolveWorkbenchShellBackend,
+  workbenchTerminalCopyRowsInto,
   type WorkbenchTerminalOutputToolbarAction,
   workbenchTerminalOutputToolbarItemsInto,
   workbenchTerminalPaneProjectionsInto,
@@ -269,6 +270,50 @@ Deno.test("workbenchTerminalPaneProjectionsInto supports fallback panes and call
   assertEquals(target[0] === first, true);
   assertEquals(target[0]?.sessionId, "shell-b");
   assertEquals(target[0]?.contentRect, { column: 1, row: 2, width: 10, height: 2 });
+});
+
+Deno.test("workbenchTerminalCopyRowsInto projects line numbers selection and reuse", () => {
+  const target = [{ screenRow: 99, rowIndex: 99, lineNumber: 100, prefix: "stale", text: "old", selected: false }];
+  const rows = workbenchTerminalCopyRowsInto(target, {
+    visibleRows: ["alpha", "beta"],
+    offset: 8,
+    height: 3,
+    selection: { anchor: 9, focus: 10 },
+    prefixWidth: 5,
+  });
+
+  assertEquals(rows === target, true);
+  assertEquals(rows[0], {
+    screenRow: 0,
+    rowIndex: 8,
+    lineNumber: 9,
+    prefix: "   9 ",
+    text: "alpha",
+    selected: false,
+  });
+  assertEquals(rows[1], {
+    screenRow: 1,
+    rowIndex: 9,
+    lineNumber: 10,
+    prefix: "  10 ",
+    text: "beta",
+    selected: true,
+  });
+  assertEquals(rows[2], {
+    screenRow: 2,
+    rowIndex: 10,
+    lineNumber: 11,
+    prefix: "  11 ",
+    text: "",
+    selected: true,
+  });
+
+  const first = rows[0];
+  workbenchTerminalCopyRowsInto(rows, { visibleRows: ["next"], offset: 0, height: 1 });
+  assertEquals(rows.length, 1);
+  assertEquals(rows[0] === first, true);
+  assertEquals(rows[0]?.text, "next");
+  assertEquals(rows[0]?.selected, false);
 });
 
 Deno.test("workbenchTerminalToolbarItemsInto projects console shell button state", () => {

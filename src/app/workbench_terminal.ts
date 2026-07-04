@@ -170,6 +170,31 @@ export interface WorkbenchTerminalPaneProjectionOptions extends TerminalWorkspac
   titleForSession?: (sessionId: string) => string | undefined;
 }
 
+/** Scrollback selection range used to project terminal copy-mode rows. */
+export interface WorkbenchTerminalCopySelection {
+  anchor: number;
+  focus: number;
+}
+
+/** Options for projecting terminal copy-mode rows into renderer-neutral metadata. */
+export interface WorkbenchTerminalCopyRowsOptions {
+  visibleRows: readonly string[];
+  offset: number;
+  height: number;
+  selection?: WorkbenchTerminalCopySelection;
+  prefixWidth?: number;
+}
+
+/** Projected terminal copy-mode row metadata shared by console and browser renderers. */
+export interface WorkbenchTerminalCopyRowProjection {
+  screenRow: number;
+  rowIndex: number;
+  lineNumber: number;
+  prefix: string;
+  text: string;
+  selected: boolean;
+}
+
 /** Default Workbench terminal toolbar action ordering for full console shell panes. */
 export const WORKBENCH_TERMINAL_TOOLBAR_ACTIONS: readonly WorkbenchTerminalToolbarAction[] = [
   "new",
@@ -459,6 +484,40 @@ export function workbenchTerminalPaneProjectionsInto(
     }
   }
   target.length = written;
+  return target;
+}
+
+/** Projects copy-mode terminal rows with line-number prefixes and selected-row state. */
+export function workbenchTerminalCopyRowsInto(
+  target: WorkbenchTerminalCopyRowProjection[],
+  options: WorkbenchTerminalCopyRowsOptions,
+): WorkbenchTerminalCopyRowProjection[] {
+  const height = Math.max(0, Math.floor(options.height));
+  const offset = Math.max(0, Math.floor(options.offset));
+  const prefixWidth = Math.max(1, Math.floor(options.prefixWidth ?? 5));
+  const selectionStart = options.selection ? Math.min(options.selection.anchor, options.selection.focus) : -1;
+  const selectionEnd = options.selection ? Math.max(options.selection.anchor, options.selection.focus) : -1;
+  target.length = height;
+  for (let screenRow = 0; screenRow < height; screenRow += 1) {
+    const rowIndex = offset + screenRow;
+    const lineNumber = rowIndex + 1;
+    const selected = rowIndex >= selectionStart && rowIndex <= selectionEnd;
+    const current = target[screenRow] ?? {
+      screenRow,
+      rowIndex,
+      lineNumber,
+      prefix: "",
+      text: "",
+      selected,
+    };
+    current.screenRow = screenRow;
+    current.rowIndex = rowIndex;
+    current.lineNumber = lineNumber;
+    current.prefix = `${lineNumber.toString().padStart(Math.max(1, prefixWidth - 1), " ")} `;
+    current.text = options.visibleRows[screenRow] ?? "";
+    current.selected = selected;
+    target[screenRow] = current;
+  }
   return target;
 }
 

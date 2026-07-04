@@ -166,6 +166,8 @@ import { maxTextWidth, type VisibleMenuSlice, visibleMenuSliceInto } from "../sr
 import {
   nextWorkbenchTerminalSessionId,
   resolveWorkbenchShellBackend,
+  type WorkbenchTerminalCopyRowProjection,
+  workbenchTerminalCopyRowsInto,
   type WorkbenchTerminalPaneProjection,
   workbenchTerminalPaneProjectionsInto,
   type WorkbenchTerminalSessionTab,
@@ -395,6 +397,7 @@ const terminalShellSessionTabSources: WorkbenchTerminalSessionTab[] = [];
 const terminalShellSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
 const terminalShellSessionTabCommands: WorkbenchTerminalSessionTabRenderCommand[] = [];
 const terminalShellPaneProjections: WorkbenchTerminalPaneProjection[] = [];
+const terminalShellCopyRows: WorkbenchTerminalCopyRowProjection[] = [];
 const controlLineSegments: ApiWorkbenchControlLineSegment[] = [];
 const controlLineRenderCommands: ApiWorkbenchControlLineRenderCommand[] = [];
 const controlLineHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
@@ -2058,39 +2061,37 @@ function renderTerminalShellPane(
 function renderTerminalShellCopyPane(frame: Frame, rect: Rectangle, shell: TerminalShellController): void {
   const t = theme();
   const inspection = shell.inspect();
-  const rows = inspection.scrollback.visibleRows;
-  const selection = inspection.scrollback.selection;
-  const selectionStart = selection ? Math.min(selection.anchor, selection.focus) : -1;
-  const selectionEnd = selection ? Math.max(selection.anchor, selection.focus) : -1;
-  for (let screenRow = 0; screenRow < rect.height; screenRow += 1) {
-    const text = rows[screenRow] ?? "";
-    const lineNumber = inspection.scrollback.offset + screenRow + 1;
-    const rowIndex = lineNumber - 1;
-    const selected = rowIndex >= selectionStart && rowIndex <= selectionEnd;
-    const prefix = `${lineNumber.toString().padStart(4, " ")} `;
-    addHit({ column: rect.column, row: rect.row + screenRow, width: rect.width, height: 1 }, {
+  const rows = workbenchTerminalCopyRowsInto(terminalShellCopyRows, {
+    visibleRows: inspection.scrollback.visibleRows,
+    offset: inspection.scrollback.offset,
+    height: rect.height,
+    selection: inspection.scrollback.selection,
+    prefixWidth: 5,
+  });
+  for (const row of rows) {
+    addHit({ column: rect.column, row: rect.row + row.screenRow, width: rect.width, height: 1 }, {
       type: "terminalShellCopyRow",
-      index: rowIndex,
+      index: row.rowIndex,
     });
     write(
       frame,
-      rect.row + screenRow,
+      rect.row + row.screenRow,
       rect.column,
-      paint(fit(prefix, Math.min(5, rect.width)), {
-        fg: selected ? t.background : t.soft,
-        bg: selected ? t.warn : t.panelSoft,
-        bold: selected,
+      paint(fit(row.prefix, Math.min(5, rect.width)), {
+        fg: row.selected ? t.background : t.soft,
+        bg: row.selected ? t.warn : t.panelSoft,
+        bold: row.selected,
       }),
     );
     if (rect.width > 5) {
       write(
         frame,
-        rect.row + screenRow,
+        rect.row + row.screenRow,
         rect.column + 5,
-        paint(fit(text, rect.width - 5), {
-          fg: selected ? t.background : t.text,
-          bg: selected ? t.warn : t.surface,
-          bold: selected,
+        paint(fit(row.text, rect.width - 5), {
+          fg: row.selected ? t.background : t.text,
+          bg: row.selected ? t.warn : t.surface,
+          bold: row.selected,
         }),
       );
     }
