@@ -9,6 +9,7 @@ import {
   deleteWorkspaceModalContent,
   normalizeWorkspaceName,
   renameWorkspaceModalContent,
+  resolveWorkspaceMenuCommand,
   saveWorkspaceModalContent,
   workspaceDeletedModalContent,
   type WorkspaceMenuEntry,
@@ -48,6 +49,30 @@ Deno.test("buildWorkspaceMenuEntries expands each workspace into open rename and
     { label: "[~] Rename Beta", action: "rename", workspaceName: "Beta" },
     { label: "[x] Delete Beta", action: "delete", workspaceName: "Beta" },
   ]);
+});
+
+Deno.test("resolveWorkspaceMenuCommand maps entries to host commands", () => {
+  const workspace = { name: "Alpha", visualizationIds: ["cpu"], savedAt: 10 };
+  const find = (name: string | undefined) => name === "Alpha" ? workspace : undefined;
+
+  assertEquals(resolveWorkspaceMenuCommand(undefined, find), { action: "none" });
+  assertEquals(resolveWorkspaceMenuCommand({ label: "empty", action: "empty" }, find), { action: "none" });
+  assertEquals(resolveWorkspaceMenuCommand({ label: "save", action: "save" }, find), { action: "save" });
+  assertEquals(resolveWorkspaceMenuCommand({ label: "open", action: "open", workspaceName: "Alpha" }, find), {
+    action: "open",
+    workspace,
+  });
+  assertEquals(resolveWorkspaceMenuCommand({ label: "rename", action: "rename", workspaceName: "Alpha" }, find), {
+    action: "rename",
+    workspace,
+  });
+  assertEquals(resolveWorkspaceMenuCommand({ label: "delete", action: "delete", workspaceName: "Alpha" }, find), {
+    action: "delete",
+    workspace,
+  });
+  assertEquals(resolveWorkspaceMenuCommand({ label: "missing", action: "open", workspaceName: "Beta" }, find), {
+    action: "none",
+  });
 });
 
 Deno.test("buildWorkspaceMenuEntriesInto reuses and trims caller-owned entries", () => {

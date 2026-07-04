@@ -16,6 +16,12 @@ export interface WorkspaceMenuEntry {
   workspaceName?: string;
 }
 
+/** Resolved workspace menu command for a host renderer to execute. */
+export type WorkspaceMenuCommand<TWorkspace extends Pick<WorkbenchWorkspace, "name"> = WorkbenchWorkspace> =
+  | { action: "none" }
+  | { action: "save" }
+  | { action: "open" | "rename" | "delete"; workspace: TWorkspace };
+
 /** Mode for a workspace name-editing modal. */
 export type WorkspaceNameModalMode = "save" | "rename";
 
@@ -176,6 +182,18 @@ export function workspaceMenuLabelsInto(
     target[index] = entries[index]!.label;
   }
   return target;
+}
+
+/** Resolves a selected workspace menu entry into a side-effect-free command. */
+export function resolveWorkspaceMenuCommand<TWorkspace extends Pick<WorkbenchWorkspace, "name">>(
+  entry: WorkspaceMenuEntry | undefined,
+  findWorkspace: (name: string | undefined) => TWorkspace | undefined,
+): WorkspaceMenuCommand<TWorkspace> {
+  if (!entry || entry.action === "empty") return { action: "none" };
+  if (entry.action === "save") return { action: "save" };
+  const workspace = findWorkspace(entry.workspaceName);
+  if (!workspace) return { action: "none" };
+  return { action: entry.action, workspace };
 }
 
 /** Builds a deterministic fallback workspace name from the saved workspace count. */

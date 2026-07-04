@@ -283,6 +283,7 @@ import {
   deleteWorkspaceModalContent,
   normalizeWorkspaceName as normalizeWorkspaceNameFromCount,
   renameWorkspaceModalContent,
+  resolveWorkspaceMenuCommand,
   saveWorkspaceModalContent,
   workspaceDeletedModalContent,
   type WorkspaceMenuEntry,
@@ -3296,15 +3297,19 @@ function clearWorkspaceModalState(): void {
 }
 
 function applyWorkspaceMenuItem(index: number): void {
-  const entry = workspaceMenuEntries()[index];
-  if (!entry) return;
-  if (entry.action === "save") return openSaveWorkspaceModal();
-  if (entry.action === "empty") return;
-  const workspace = workspaceByName(entry.workspaceName);
-  if (!workspace) return;
-  if (entry.action === "open") return loadWorkspace(workspace);
-  if (entry.action === "rename") return openRenameWorkspaceModal(workspace);
-  if (entry.action === "delete") return openDeleteWorkspaceModal(workspace);
+  const command = resolveWorkspaceMenuCommand(workspaceMenuEntries()[index], workspaceByName);
+  switch (command.action) {
+    case "save":
+      return openSaveWorkspaceModal();
+    case "open":
+      return loadWorkspace(command.workspace);
+    case "rename":
+      return openRenameWorkspaceModal(command.workspace);
+    case "delete":
+      return openDeleteWorkspaceModal(command.workspace);
+    case "none":
+      return;
+  }
 }
 
 function loadWorkspace(workspace: SavedWorkspace): void {
