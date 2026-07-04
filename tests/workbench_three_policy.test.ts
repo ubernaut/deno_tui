@@ -24,7 +24,7 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
     480,
     960,
   ]);
-  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 120);
+  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 480);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 240_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 160_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 180_000);
@@ -51,11 +51,11 @@ Deno.test("API workbench Three policy keeps live panes faster than idle panes", 
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: false }), 1000 / 5);
 });
 
-Deno.test("API workbench Three policy starts at the normal live tier but keeps rescue available", () => {
-  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 120);
+Deno.test("API workbench Three policy starts at a visible live tier but keeps rescue available", () => {
+  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 480);
   assertEquals(
     apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
-    WORKBENCH_THREE_DRAW_INTERVAL_MS,
+    1000 / 24,
   );
   assertEquals(
     apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_RESCUE_CELLS, { live: true }),
@@ -65,7 +65,7 @@ Deno.test("API workbench Three policy starts at the normal live tier but keeps r
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(960, { live: true }), 1000 / 20);
 });
 
-Deno.test("API workbench Three policy recovers startup tier after sustained quiet output", () => {
+Deno.test("API workbench Three policy recovers one tier after sustained quiet output", () => {
   const state = createWorkbenchThreeTerminalPressureState(60);
   const sample = {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
@@ -107,7 +107,7 @@ Deno.test("API workbench Three policy keeps ordinary block frames at the startup
   const sample = {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
     renderedThreeGrids: 1,
-    bytes: 1_600,
+    bytes: 3_400,
     durationMs: 0.05,
     sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
   };

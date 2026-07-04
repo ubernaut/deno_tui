@@ -931,3 +931,7 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added a renderer-neutral styled-row command projector and routed terminal/web workbench row panels through it so
   explorer, inspector, data table, and log rows share clipping, theme fallback, and scroll-offset behavior. Focused row
   tests, panel projection tests, terminal/web type checks, and the `api-workbench-frame` benchmark passed.
+- Raised the default API workbench Three startup budget from 120 to 480 cells after probes showed 120-cell block grids
+  rendered quickly but often produced visually identical frames. The new default publishes visibly changing `37x12` to
+  `40x12` block grids around 56-57fps renderer-side on this host while retaining the 30/60/120/240 pressure backoff
+  tiers for slow terminals.
