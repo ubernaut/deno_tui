@@ -17,6 +17,7 @@ import {
   type WorkbenchFrame,
   workbenchFrameBoxLinesInto,
   writeFrame,
+  writeFrameCells,
   writeStringFrameRow,
 } from "../src/app/workbench_frame.ts";
 
@@ -85,6 +86,14 @@ Deno.test("workbench frame writes clip negative columns without sparse negative 
 
   assertEquals(renderFrameRow(frame[0]!, 3), "\x1b[32mCDE\x1b[0m");
   assertEquals(Object.hasOwn(frame[0]!, "-1"), false);
+});
+
+Deno.test("workbench frame span writes clip negative columns without sparse negative keys", () => {
+  const row: string[] = [];
+  writeFrameCells(row, -2, ["A", "B", "C", "D"], 0, 4);
+
+  assertEquals(row.slice(0, 2), ["C", "D"]);
+  assertEquals(Object.hasOwn(row, "-1"), false);
 });
 
 Deno.test("workbench frame writes ANSI strings into string-backed rows", () => {

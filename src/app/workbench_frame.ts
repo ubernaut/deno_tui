@@ -113,6 +113,7 @@ export function writeFrame(frame: WorkbenchFrame, width: number, row: number, co
   const cells = frame[row] ??= [];
   let style = "";
   let targetColumn = column;
+  let wrote = false;
   for (let index = 0; index < value.length && targetColumn < width;) {
     if (value.charCodeAt(index) === 0x1b) {
       const sequence = readSgrSequenceAt(value, index);
@@ -125,16 +126,46 @@ export function writeFrame(frame: WorkbenchFrame, width: number, row: number, co
 
     const char = value[index]!;
     if (targetColumn >= 0) {
-      writeFrameCell(cells, targetColumn, style ? `${style}${char}\x1b[0m` : char);
+      cells[targetColumn] = style ? `${style}${char}\x1b[0m` : char;
+      wrote = true;
     }
     targetColumn += 1;
     index += char.length;
+  }
+  if (wrote) {
+    updateFrameRowMetadata(cells);
   }
 }
 
 /** Writes one already-styled cell into a workbench frame row and updates row-change metadata. */
 export function writeFrameCell(cells: string[], column: number, value: string): void {
   cells[column] = value;
+  updateFrameRowMetadata(cells);
+}
+
+/** Writes a contiguous set of already-styled cells into a frame row and marks the row dirty once. */
+export function writeFrameCells(
+  cells: string[],
+  column: number,
+  values: readonly string[],
+  start = 0,
+  count = values.length - start,
+): void {
+  let targetColumn = Math.floor(column);
+  let sourceStart = Math.max(0, Math.floor(start));
+  const sourceCount = Math.max(0, Math.floor(count));
+  if (sourceCount <= 0 || sourceStart >= values.length) return;
+  const end = Math.min(values.length, sourceStart + sourceCount);
+  if (targetColumn < 0) {
+    sourceStart += -targetColumn;
+    targetColumn = 0;
+  }
+  if (sourceStart >= end) return;
+  let writeColumn = targetColumn;
+  for (let index = sourceStart; index < end; index += 1) {
+    cells[writeColumn] = values[index]!;
+    writeColumn += 1;
+  }
   updateFrameRowMetadata(cells);
 }
 

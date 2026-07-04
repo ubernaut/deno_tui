@@ -1,6 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../src/types.ts";
-import { type WorkbenchFrame, writeFrameCell } from "../src/app/workbench_frame.ts";
+import { type WorkbenchFrame, writeFrameCells } from "../src/app/workbench_frame.ts";
 
 export type WorkbenchThreeGridScaleMode = boolean | "down";
 
@@ -23,6 +23,7 @@ export function writeWorkbenchThreeGrid(
   const targetWidth = capOutput ? Math.min(rect.width, sourceColumns || rect.width) : rect.width;
   const rowOffset = capOutput ? Math.max(0, Math.floor((rect.height - targetHeight) / 2)) : 0;
   const columnOffset = capOutput ? Math.max(0, Math.floor((rect.width - targetWidth) / 2)) : 0;
+  const rowBuffer: string[] = [];
 
   for (let row = 0; row < targetHeight; row += 1) {
     const sourceRow = shouldScale && sourceRows > 0
@@ -31,12 +32,20 @@ export function writeWorkbenchThreeGrid(
     const source = grid[sourceRow];
     const sourceWidth = source?.length ?? 0;
     const target = frame[rect.row + rowOffset + row] ??= [];
+
+    if (!shouldScale && source && sourceWidth >= targetWidth) {
+      writeFrameCells(target, rect.column + columnOffset, source, 0, targetWidth);
+      continue;
+    }
+
+    rowBuffer.length = targetWidth;
     for (let column = 0; column < targetWidth; column += 1) {
       const sourceColumn = shouldScale && sourceWidth > 0
         ? Math.min(sourceWidth - 1, Math.floor((column * sourceWidth) / targetWidth))
         : column;
-      writeFrameCell(target, rect.column + columnOffset + column, source?.[sourceColumn] ?? fallbackCell);
+      rowBuffer[column] = source?.[sourceColumn] ?? fallbackCell;
     }
+    writeFrameCells(target, rect.column + columnOffset, rowBuffer, 0, targetWidth);
   }
 }
 

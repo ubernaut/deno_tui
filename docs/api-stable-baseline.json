@@ -3791,6 +3791,13 @@
     },
     {
       "module": "src/app/workbench_frame.ts",
+      "name": "writeFrameCells",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_frame.ts",
       "name": "writeStringFrameRow",
       "kind": "function",
       "typeOnly": false,
