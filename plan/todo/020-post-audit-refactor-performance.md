@@ -312,3 +312,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   backpressure, stale-frame invalidation, mapped-frame consumption, mapped errors, and cleanup.
 - Reduced terminal flush pressure for animated workbench rows by changing overwrite-mode `TextObject` updates to queue
   only changed row spans instead of repainting the full terminal row on every value change.
+- Added content fingerprinting to workbench-hosted Three panels so deferred readbacks that repeat an unchanged ASCII
+  grid do not force redundant workbench redraws while still supporting mutable renderer-owned grids when their cells
+  change.

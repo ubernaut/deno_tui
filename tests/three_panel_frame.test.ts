@@ -189,7 +189,7 @@ Deno.test("ThreePanelFrameView stays inert while disabled", async () => {
   await new Promise((resolve) => setTimeout(resolve, 0));
 
   assertEquals(panel.grid.peek(), []);
-  assertEquals(updates, 2);
+  assertEquals(updates, 1);
 
   panel.dispose();
   assertEquals(panel.inspectLifecycle().state, "disposed");
@@ -376,6 +376,40 @@ Deno.test("ThreePanelFrameView updates when renderer reuses a mutable grid refer
     assert(updates >= 3);
     assertEquals(panel.grid.peek(), renderer.grid);
     assertEquals(panel.grid.peek()[0]?.[0], String(renderer.renderCount % 10));
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+  }
+});
+
+Deno.test("ThreePanelFrameView skips redraws for unchanged repeated grid content", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 4, height: 2 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal(createDefaultAsciiOptions("sharp"));
+  const enabled = new Signal(true);
+  let updates = 0;
+  let renderer: FakeGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    enabled,
+    frameInterval: 1,
+    onUpdate: () => {
+      updates += 1;
+    },
+    rendererFactory: (options) => renderer = new FakeGridRenderer(options.columns, options.rows),
+  });
+
+  try {
+    await waitFor(() => (renderer?.renderCount ?? 0) >= 5);
+
+    assert(renderer);
+    assert(renderer.renderCount >= 5);
+    assertEquals(updates, 2);
   } finally {
     panel.dispose();
     rectangle.dispose();

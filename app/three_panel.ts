@@ -346,6 +346,7 @@ export class ThreePanelFrameView {
   private adaptiveRequestedMaxCells = 0;
   private adaptiveSlowFrames = 0;
   private adaptiveFastFrames = 0;
+  private gridFingerprint = "";
 
   constructor(
     private readonly options: {
@@ -672,6 +673,9 @@ export class ThreePanelFrameView {
   private setGrid(grid: string[][], forceUpdate = false): void {
     if (this.disposed) return;
     if (!forceUpdate && this.grid.peek() === grid) return;
+    const fingerprint = fingerprintGrid(grid);
+    if (this.gridFingerprint === fingerprint) return;
+    this.gridFingerprint = fingerprint;
     this.grid.jink(grid);
     this.onUpdate?.();
   }
@@ -949,6 +953,28 @@ function blankGrid(width: number, height: number): string[][] {
     grid[row] = gridRow;
   }
   return grid;
+}
+
+function fingerprintGrid(grid: readonly (readonly string[] | undefined)[]): string {
+  let hash = 2166136261;
+  const mix = (value: number) => {
+    hash ^= value;
+    hash = Math.imul(hash, 16777619) >>> 0;
+  };
+
+  mix(grid.length);
+  for (const row of grid) {
+    const columns = row?.length ?? 0;
+    mix(columns);
+    if (!row) continue;
+    for (const cell of row) {
+      mix(cell.length);
+      for (let index = 0; index < cell.length; index += 1) {
+        mix(cell.charCodeAt(index));
+      }
+    }
+  }
+  return `${grid.length}:${hash.toString(36)}`;
 }
 
 function threeAsciiEffectOptionsEqual(
