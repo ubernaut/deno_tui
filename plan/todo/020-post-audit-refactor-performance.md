@@ -227,6 +227,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   block frames can remain at 1920/3840 cells while slow terminal writes still downshift through duration pressure.
 - Specialized array-backed workbench row/slice assembly so Three block pane flushes avoid per-cell callback dispatch
   while preserving styled-run compaction and clipping behavior.
+- Split workbench styled-cell tokenization and row/slice assembly into `workbench_frame_rows.ts`, preserving the
+  existing frame facade while keeping the terminal hot path independently testable and benchmarked.
 - Changed workbench Three cadence so any visible normal/fullscreen Three-backed pane uses the live interval instead of
   being throttled to idle just because focus is elsewhere.
 - Tightened API workbench Three terminal-pressure adaptation to step down on the first heavy terminal flush, improving
