@@ -144,6 +144,22 @@ Deno.test("workbench three grid source column hints avoid scanning wider hidden 
   assertEquals(frame[3], undefined);
 });
 
+Deno.test("workbench three grid scales ragged rows by each row width without source hints", () => {
+  const frame: WorkbenchFrame = [];
+  writeWorkbenchThreeGrid(
+    frame,
+    { column: 0, row: 0, width: 4, height: 2 },
+    [["A", "B"], ["C", "D", "E", "F"]],
+    ".",
+    { scale: true },
+  );
+
+  assertEquals(frame, [
+    ["A", "A", "B", "B"],
+    ["C", "D", "E", "F"],
+  ]);
+});
+
 Deno.test("workbench three grid scale-down mode centers capped grids instead of scaling up", () => {
   const frame: WorkbenchFrame = [];
   writeWorkbenchThreeGrid(

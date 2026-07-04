@@ -37,7 +37,7 @@ export function writeWorkbenchThreeGrid(
   const sourceRowIndexes = shouldScale && sourceRows > 0
     ? scaledIndexesInto(options.sourceRowIndexes ?? [], targetHeight, sourceRows)
     : undefined;
-  const sourceColumnIndexes = shouldScale && sourceColumns > 0
+  const sourceColumnIndexes = shouldScale && options.sourceColumns !== undefined && sourceColumns > 0
     ? scaledIndexesInto(options.sourceColumnIndexes ?? [], targetWidth, sourceColumns)
     : undefined;
 
