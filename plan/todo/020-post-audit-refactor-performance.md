@@ -221,8 +221,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Tightened workbench Three pressure scoping so slow full-workbench redraws and collapsed global cadence no longer
   downshift the renderer unless the changed rows are attributable to visible Three panes; default probes continue to
   hold 960 block cells at the 20 FPS full-resolution cadence.
-- Added an intermediate compact Three header telemetry format so narrow workbench panes keep showing measured/target
-  FPS before falling back to the bare frame-time and cell-count label.
+- Added an intermediate compact Three header telemetry format so narrow workbench panes keep showing measured/target FPS
+  before falling back to the bare frame-time and cell-count label.
 - Added an optional observed-FPS gate to the workbench Three pressure probe so default and narrow workbench-shaped
   renderer runs can fail fast on the reported low-FPS regression instead of relying on manual ANSI inspection.
 - Made high-pressure workbench Three samples downshift immediately, so manually raised 480/960-cell caps do not spend a
@@ -1089,3 +1089,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   probes showed deferred readback reproducing the reported ~3fps path on this host.
 - Extracted workbench Three panel defaulting into `src/app`, keeping demo-local panel construction thin while making
   idle-cell and readback policy defaults reusable through the shared facade.
+- Added named default and narrow API Workbench Three startup probes so block-mode renderer regressions can be checked
+  with average renderer-time gates from the same task surface users run locally.
+- Switched the default API Workbench Three readback path back to blocking after live panel probes reproduced the
+  reported deferred block-mode regression at roughly 3-4fps, while blocking held the same 960-cell block grid around
+  18ms average renderer time after warmup. Deferred remains available as an explicit ASCII renderer option.

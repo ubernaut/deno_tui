@@ -2709,6 +2709,8 @@ Direct Deno tasks are also available:
 ```sh
 deno task showcase
 deno task api-workbench
+deno task three-workbench:startup-probe
+deno task three-workbench:narrow-probe
 deno task neon-exodus
 deno task app-shell
 deno task command-search
@@ -2753,6 +2755,11 @@ deno task runtime-workloads
 deno task action-middleware
 deno task cached-pipeline
 ```
+
+Use the Three workbench probes when tuning the default API Workbench renderer. The startup probe exercises the
+workbench-sized block-mode Three panel with the default blocking readback path and fails if average renderer time drifts
+above the guard. The narrow probe mirrors an 80x24 terminal where the pane collapses to a small 37x5 region, which is
+useful for separating renderer cost from terminal/layout constraints.
 
 ```sh
 deno run --watch --allow-hrtime examples/demo.ts

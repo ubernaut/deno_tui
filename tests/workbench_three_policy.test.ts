@@ -37,7 +37,7 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.minObservedFpsFrames, WORKBENCH_THREE_PRESSURE_MIN_FPS_FRAMES);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highFrameThreshold, 3);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowFrameThreshold, 30);
-  assertEquals(WORKBENCH_THREE_READBACK_STRATEGY, "deferred");
+  assertEquals(WORKBENCH_THREE_READBACK_STRATEGY, "blocking");
 });
 
 Deno.test("API workbench Three policy keeps live panes faster than idle panes", () => {
