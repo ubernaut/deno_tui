@@ -48,7 +48,8 @@ Deno.test("threeHeaderPerformanceText prefers measured fps in compact mode and f
   };
 
   assertEquals(threeHeaderPerformanceText(input, 64), "17ms 1920c live 10fps sat6/6 wide tier 30c h1/l0");
-  assertEquals(threeHeaderPerformanceText(input, 30), "17ms 1920c");
+  assertEquals(threeHeaderPerformanceText(input, 32), "17ms 1920c live 10fps");
+  assertEquals(threeHeaderPerformanceText(input, 20), "17ms 1920c");
 });
 
 Deno.test("writeThreeHeaderPerformance reuses caller-owned snapshots", () => {

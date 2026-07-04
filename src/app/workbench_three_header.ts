@@ -110,7 +110,10 @@ export function threeHeaderPerformanceText(performance: ThreeHeaderPerformance, 
   if (width >= detailed.length) return detailed;
 
   const compact = `${total} ${cells}${measured || target}${queue ? ` ${queue}` : ""}${pressure ? ` ${pressure}` : ""}`;
-  return width >= compact.length ? compact : `${total} ${cells}`;
+  if (width >= compact.length) return compact;
+
+  const essential = `${total} ${cells}${measured || target}`;
+  return width >= essential.length ? essential : `${total} ${cells}`;
 }
 
 function threeHeaderQueuePressureText(performance: ThreeHeaderPerformance): string {

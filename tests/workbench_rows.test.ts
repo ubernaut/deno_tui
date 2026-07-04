@@ -71,7 +71,7 @@ Deno.test("threeHeaderRows includes compact renderer telemetry when it fits", ()
       pressureLowFrames: 0,
       pressureScoped: false,
     })[1]?.text,
-    "17ms 1920c",
+    "17ms 1920c live 10fps",
   );
 });
 
