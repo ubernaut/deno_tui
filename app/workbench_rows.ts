@@ -27,14 +27,29 @@ export interface DataFooterRowsOptions {
   fit: (text: string, width: number) => string;
 }
 
+export interface ThreeHeaderPerformance {
+  totalMs: number;
+  sceneMs: number;
+  readbackMs: number;
+  assemblyMs: number;
+  cells: number;
+}
+
 /** Builds responsive title/detail rows for the built-in Three ASCII workbench window. */
-export function threeHeaderRows(mode: string, width: number, theme: WorkbenchRowTheme): RowStyle[] {
+export function threeHeaderRows(
+  mode: string,
+  width: number,
+  theme: WorkbenchRowTheme,
+  performance?: ThreeHeaderPerformance,
+): RowStyle[] {
   const title = compactSpaces(`ACEROLA THREE.JS ASCII · ${mode} · STUDIO GEOMETRY`);
   const compactTitle = compactSpaces(`THREE ASCII · ${mode}`);
   const geometry = "torus knot · sphere · block · floor plane";
   const compactGeometry = "torus · sphere · block · floor";
+  const perf = performance ? formatThreeHeaderPerformance(performance, width) : "";
   const titleText = width >= textWidth(` ${title} `) ? ` ${title} ` : ` ${compactTitle} `;
-  const detailText = width >= textWidth(geometry) ? geometry : compactGeometry;
+  const detailBase = width >= textWidth(geometry) ? geometry : compactGeometry;
+  const detailText = perf && width >= textWidth(`${detailBase} · ${perf}`) ? `${detailBase} · ${perf}` : detailBase;
   return [
     {
       text: titleText,
@@ -45,6 +60,16 @@ export function threeHeaderRows(mode: string, width: number, theme: WorkbenchRow
     { text: detailText, fg: theme.soft, bg: theme.surface },
     { text: "", bg: theme.surface },
   ];
+}
+
+function formatThreeHeaderPerformance(performance: ThreeHeaderPerformance, width: number): string {
+  const total = `${Math.round(performance.totalMs)}ms`;
+  const cells = `${performance.cells}c`;
+  const detailed = `frame ${total} scene ${Math.round(performance.sceneMs)} read ${
+    Math.round(performance.readbackMs)
+  } asm ${Math.round(performance.assemblyMs)} ${cells}`;
+  if (width >= textWidth(detailed)) return detailed;
+  return `${total} ${cells}`;
 }
 
 /** Builds responsive footer rows for the API Workbench data table. */

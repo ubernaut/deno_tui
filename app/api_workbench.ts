@@ -1439,7 +1439,7 @@ function renderThree(frame: Frame, rect: Rectangle): void {
   const t = theme();
   const mode = threeRendererModeLabel(ascii.peek()).toUpperCase();
   if (threeAsciiAvailable.peek()) {
-    writeRows(frame, rect, threeHeaderRows(mode, rect.width, t));
+    writeRows(frame, rect, threeHeaderRows(mode, rect.width, t, threePanel.inspectPerformance()));
     const sceneRect = {
       column: rect.column,
       row: rect.row + 3,

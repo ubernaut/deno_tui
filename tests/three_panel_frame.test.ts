@@ -24,7 +24,7 @@ import { emptyStyle } from "../src/theme.ts";
 import { View } from "../src/view.ts";
 import type { Camera, Scene } from "npm:three@0.183.2";
 import type { TerminalGlyphStyle } from "../src/three_ascii/glyphs.ts";
-import type { ThreeAsciiRenderFrameOptions } from "../src/three_ascii/renderer.ts";
+import type { ThreeAsciiRendererPerformance, ThreeAsciiRenderFrameOptions } from "../src/three_ascii/renderer.ts";
 
 Deno.test("resolveThreePanelRenderPolicy selects ASCII and Kitty frame modes", () => {
   const ascii = createDefaultAsciiOptions("sharp");
@@ -302,6 +302,34 @@ Deno.test("ThreePanelFrameView shows startup grid while first frame initializes"
     assertEquals(panel.grid.peek().flat().join("").includes("ASCII RENDERER STARTING"), true);
     renderer?.completeFrame();
     await waitFor(() => panel.grid.peek().flat().join("").includes("ASCII RENDERER STARTING") === false);
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+  }
+});
+
+Deno.test("ThreePanelFrameView exposes renderer performance telemetry", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 16, height: 8 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal(createDefaultAsciiOptions("sharp"));
+  const enabled = new Signal(true);
+  let renderer: FakeGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    enabled,
+    frameInterval: 1,
+    rendererFactory: (options) => renderer = new FakeGridRenderer(options.columns, options.rows),
+  });
+
+  try {
+    await waitFor(() => (renderer?.renderCount ?? 0) > 0);
+    assertEquals(panel.inspectPerformance()?.cells, 16 * 8);
+    assertEquals(panel.inspectPerformance()?.terminalGlyphStyle, "blocks");
   } finally {
     panel.dispose();
     rectangle.dispose();
@@ -1123,9 +1151,11 @@ class FakeGridRenderer implements ThreePanelGridRenderer, ThreeAsciiGridRenderer
   sizes: Array<[number, number]> = [];
   private terminalEdgeBias = 1;
   private terminalGlyphStyle: TerminalGlyphStyle = "blocks";
+  private performance: ThreeAsciiRendererPerformance;
 
   constructor(public columns: number, public rows: number, private readonly glyph = "█") {
     this.sizes.push([columns, rows]);
+    this.performance = this.createPerformance();
   }
 
   setSize(columns: number, rows: number): void {
@@ -1133,6 +1163,7 @@ class FakeGridRenderer implements ThreePanelGridRenderer, ThreeAsciiGridRenderer
     this.columns = columns;
     this.rows = rows;
     this.sizes.push([columns, rows]);
+    this.performance = this.createPerformance();
   }
 
   setEffectOptions(): void {
@@ -1155,6 +1186,7 @@ class FakeGridRenderer implements ThreePanelGridRenderer, ThreeAsciiGridRenderer
   setTerminalGlyphStyle(value: TerminalGlyphStyle): void {
     this.setTerminalGlyphStyleCalls += 1;
     this.terminalGlyphStyle = value;
+    this.performance = this.createPerformance();
   }
 
   async renderToAnsiGrid(
@@ -1163,6 +1195,7 @@ class FakeGridRenderer implements ThreePanelGridRenderer, ThreeAsciiGridRenderer
   ): Promise<string[][]> {
     await onFrame?.(0.016);
     this.renderCount += 1;
+    this.performance = this.createPerformance();
     return Array.from(
       { length: this.rows },
       (_, row) => Array.from({ length: this.columns }, (_, column) => (row + column) % 2 === 0 ? this.glyph : " "),
@@ -1196,6 +1229,24 @@ class FakeGridRenderer implements ThreePanelGridRenderer, ThreeAsciiGridRenderer
   }
 
   destroy(): void {}
+
+  inspectPerformance(): ThreeAsciiRendererPerformance {
+    return { ...this.performance };
+  }
+
+  private createPerformance(): ThreeAsciiRendererPerformance {
+    return {
+      columns: this.columns,
+      rows: this.rows,
+      cells: this.columns * this.rows,
+      terminalGlyphStyle: this.terminalGlyphStyle,
+      totalMs: 16,
+      sceneMs: 10,
+      ansiMs: 6,
+      readbackMs: 4,
+      assemblyMs: 2,
+    };
+  }
 }
 
 class ReusedGridRenderer extends FakeGridRenderer {
@@ -1234,7 +1285,7 @@ class TelemetryGridRenderer extends FakeGridRenderer {
     super(columns, rows);
   }
 
-  inspectPerformance() {
+  override inspectPerformance(): ThreeAsciiRendererPerformance {
     return {
       columns: this.columns,
       rows: this.rows,

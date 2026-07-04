@@ -395,6 +395,10 @@ export class ThreePanelFrameView {
     };
   }
 
+  inspectPerformance(): ThreeAsciiRendererPerformance | undefined {
+    return this.renderer?.inspectPerformance?.();
+  }
+
   private sync(): void {
     if (this.disposed) return;
 

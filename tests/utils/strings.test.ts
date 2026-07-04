@@ -90,4 +90,16 @@ Deno.test("utils/strings.ts", async (t) => {
     assertEquals(cells[0], "\x1b[38;2;1;2;3;48;2;4;5;6mA\x1b[0m");
     assertEquals(cells[5], "\x1b[38;2;1;2;3;48;2;4;5;6m \x1b[0m");
   });
+
+  await t.step("getMultiCodePointCharacters() keeps repeated SGR background cells compact", () => {
+    const cells = getMultiCodePointCharacters(
+      "\x1b[38;2;9;8;7mX\x1b[48;2;1;2;3m \x1b[48;2;4;5;6m \x1b[48;2;7;8;9m ",
+    );
+
+    assertEquals(cells.length, 4);
+    assertEquals(stripStyles(cells.join("")), "X   ");
+    assertEquals(cells[1], "\x1b[38;2;9;8;7;48;2;1;2;3m \x1b[0m");
+    assertEquals(cells[2], "\x1b[38;2;9;8;7;48;2;4;5;6m \x1b[0m");
+    assertEquals(cells[3], "\x1b[38;2;9;8;7;48;2;7;8;9m \x1b[0m");
+  });
 });

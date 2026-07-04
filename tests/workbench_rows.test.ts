@@ -21,6 +21,30 @@ Deno.test("threeHeaderRows adapts title and geometry labels to width", () => {
   assertEquals(threeHeaderRows("studio", 16, theme)[1]?.text, "torus · sphere · block · floor");
 });
 
+Deno.test("threeHeaderRows includes compact renderer telemetry when it fits", () => {
+  const rows = threeHeaderRows("BLOCKS", 96, theme, {
+    totalMs: 17.4,
+    sceneMs: 12.2,
+    readbackMs: 4.1,
+    assemblyMs: 1.3,
+    cells: 1920,
+  });
+  assertEquals(
+    rows[1]?.text,
+    "torus knot · sphere · block · floor plane · frame 17ms scene 12 read 4 asm 1 1920c",
+  );
+  assertEquals(
+    threeHeaderRows("BLOCKS", 18, theme, {
+      totalMs: 17.4,
+      sceneMs: 12.2,
+      readbackMs: 4.1,
+      assemblyMs: 1.3,
+      cells: 1920,
+    })[1]?.text,
+    "torus · sphere · block · floor",
+  );
+});
+
 Deno.test("dataFooterRows returns styled footer rows and wraps narrow widths", () => {
   assertEquals(dataFooterRows({ page: 1, pageCount: 3, selectedKey: "cpu", width: 80, theme, fit: crop }), [
     {
