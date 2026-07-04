@@ -73,13 +73,6 @@ export class ThreeAsciiAnsiGridAssembler {
     }
     this.prepareFrameCaches(cellCount, terminalGlyphMode);
     this.pruneCaches();
-    let lastForegroundKey = -1;
-    let lastGlyphKey = -1;
-    let lastCell = "";
-    let lastRawRed = Number.NaN;
-    let lastRawGreen = Number.NaN;
-    let lastRawBlue = Number.NaN;
-    let lastFillGlyphIndex = -1;
     const grid = this.reuseGrid ? this.prepareReusableGrid(rows, columns) : createStringGrid(rows, columns);
 
     if (!hasEdges) {
@@ -93,41 +86,20 @@ export class ThreeAsciiAnsiGridAssembler {
       }
       const terminalFillGlyphKeys = terminalFillGlyphKeysForMode(terminalGlyphMode);
       if (denseFill && denseColors) {
-        return this.buildDenseFillOnlyGrid(
-          grid,
-          columns,
-          rows,
-          fillGlyphs,
-          colors,
-          terminalFillGlyphKeys,
-          lastForegroundKey,
-          lastGlyphKey,
-          lastCell,
-          lastRawRed,
-          lastRawGreen,
-          lastRawBlue,
-          lastFillGlyphIndex,
-        );
+        return this.buildDenseFillOnlyGrid(grid, columns, rows, fillGlyphs, colors, terminalFillGlyphKeys);
       }
-      return this.buildFillOnlyGrid(
-        grid,
-        columns,
-        rows,
-        fillGlyphs,
-        colors,
-        terminalFillGlyphKeys,
-        lastForegroundKey,
-        lastGlyphKey,
-        lastCell,
-        lastRawRed,
-        lastRawGreen,
-        lastRawBlue,
-        lastFillGlyphIndex,
-      );
+      return this.buildFillOnlyGrid(grid, columns, rows, fillGlyphs, colors, terminalFillGlyphKeys);
     }
 
     const terminalFillGlyphKeys = terminalFillGlyphKeysForMode(terminalGlyphMode);
     const terminalEdgeBias = Math.max(0.5, input.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
+    let lastForegroundKey = -1;
+    let lastGlyphKey = -1;
+    let lastCell = "";
+    let lastRawRed = Number.NaN;
+    let lastRawGreen = Number.NaN;
+    let lastRawBlue = Number.NaN;
+    let lastFillGlyphIndex = -1;
 
     for (let row = 0; row < rows; row += 1) {
       const outputRow = grid[row];
@@ -474,14 +446,15 @@ export class ThreeAsciiAnsiGridAssembler {
     fillGlyphs: ArrayLike<number>,
     colors: ArrayLike<number>,
     terminalFillGlyphKeys: readonly number[],
-    lastForegroundKey: number,
-    lastGlyphKey: number,
-    lastCell: string,
-    lastRawRed: number,
-    lastRawGreen: number,
-    lastRawBlue: number,
-    lastFillGlyphIndex: number,
   ): string[][] {
+    let lastForegroundKey = -1;
+    let lastGlyphKey = -1;
+    let lastCell = "";
+    let lastRawRed = Number.NaN;
+    let lastRawGreen = Number.NaN;
+    let lastRawBlue = Number.NaN;
+    let lastFillGlyphIndex = -1;
+
     for (let row = 0; row < rows; row += 1) {
       const outputRow = grid[row];
       const rowOffset = row * columns;
@@ -557,14 +530,15 @@ export class ThreeAsciiAnsiGridAssembler {
     fillGlyphs: ArrayLike<number>,
     colors: ArrayLike<number>,
     terminalFillGlyphKeys: readonly number[],
-    lastForegroundKey: number,
-    lastGlyphKey: number,
-    lastCell: string,
-    lastRawRed: number,
-    lastRawGreen: number,
-    lastRawBlue: number,
-    lastFillGlyphIndex: number,
   ): string[][] {
+    let lastForegroundKey = -1;
+    let lastGlyphKey = -1;
+    let lastCell = "";
+    let lastRawRed = Number.NaN;
+    let lastRawGreen = Number.NaN;
+    let lastRawBlue = Number.NaN;
+    let lastFillGlyphIndex = -1;
+
     for (let row = 0; row < rows; row += 1) {
       const outputRow = grid[row];
       const rowOffset = row * columns;

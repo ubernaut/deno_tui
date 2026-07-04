@@ -218,6 +218,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   instead of spending two high-pressure frames at 480 cells before adapting down.
 - Fixed the adaptive workbench Three pressure probe to sleep on and report the current frame interval per sample, making
   byte-rate diagnostics reflect actual cadence changes after pressure updates.
+- Simplified Three ASCII fill-only ANSI assembly locals so no-edge block/glyph paths avoid dead caller-plumbed state,
+  with focused glyph/readback tests and `three-ascii-ansi-grid` benchmarks guarding output and throughput.
 - Tightened workbench Three pressure scoping so slow full-workbench redraws and collapsed global cadence no longer
   downshift the renderer unless the changed rows are attributable to visible Three panes; default probes continue to
   hold 960 block cells at the 20 FPS full-resolution cadence.
