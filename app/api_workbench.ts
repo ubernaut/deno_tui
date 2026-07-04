@@ -80,6 +80,7 @@ import {
   workbenchTerminalOutputToolbarItemsInto,
   type WorkbenchTitlebarButtonKind,
   workbenchTitlebarButtonRenderCommandsInto,
+  workbenchVisibleWindowRectsInto,
   workbenchVisualizationIdFromWindowId,
   workbenchVisualizationWindowId,
   type WorkbenchWindowOption,
@@ -622,6 +623,7 @@ const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
 const windowScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const workspaceScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const dropdownOverlayRenderCommands: WorkbenchDropdownOverlayRenderCommand[] = [];
+const visibleWindowRects = new Map<WindowId, Rectangle>();
 const workbenchThreeRuntime = new ApiWorkbenchThreeRuntimeController({
   hasLiveThreeWindow: hasLiveThreeRenderedWindow,
   onPressureChange: pushLog,
@@ -1216,8 +1218,11 @@ function renderWorkspace(frame: Frame): void {
   }
 
   let renderedThree = false;
+  const visibleRects = workbenchVisibleWindowRectsInto(visibleWindowRects, layout.rects, {
+    viewport: { column: layout.bounds.column, row: offset, width: layout.bounds.width, height: bounds.height },
+  });
   withWorkspacePlacement(bounds, offset, () => {
-    for (const [id, rect] of layout.rects) {
+    for (const [id, rect] of visibleRects) {
       renderWindow(virtual, id, rect);
       if (id === "three") {
         renderedThree = true;

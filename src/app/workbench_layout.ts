@@ -114,6 +114,11 @@ export interface WorkbenchWindowLayout<Id extends string = string> {
   rects: Map<Id, Rectangle>;
 }
 
+/** Options for filtering virtual workspace window rectangles to the visible viewport. */
+export interface WorkbenchVisibleWindowRectsOptions {
+  viewport: Rectangle;
+}
+
 /** Coordinates workspace scroll sizing and active-window reveal behavior. */
 export class WorkbenchWorkspaceViewportController<Id extends string = string> {
   readonly scroll: WorkbenchWorkspaceScrollAdapter;
@@ -232,6 +237,19 @@ export function workbenchAdaptiveWindowLayout<Id extends string>(
     tileOptions: workbenchAdaptiveTileOptions(options),
   });
   return workbenchWindowLayout<Id>(bounds, layout);
+}
+
+/** Filters virtual workspace rectangles to those intersecting the visible workspace viewport. */
+export function workbenchVisibleWindowRectsInto<Id extends string>(
+  target: Map<Id, Rectangle>,
+  rects: ReadonlyMap<Id, Rectangle>,
+  options: WorkbenchVisibleWindowRectsOptions,
+): Map<Id, Rectangle> {
+  target.clear();
+  for (const [id, rect] of rects) {
+    if (rectanglesIntersect(rect, options.viewport)) target.set(id, rect);
+  }
+  return target;
 }
 
 /** Locates the workspace vertical scrollbar hit rectangle, or undefined when it should be hidden. */
@@ -373,4 +391,9 @@ function scrollbarRenderCommand<TCell extends WorkbenchScrollbarCell>(
   command.rect.width = rect.width;
   command.rect.height = rect.height;
   return command;
+}
+
+function rectanglesIntersect(left: Rectangle, right: Rectangle): boolean {
+  return left.column < right.column + right.width && left.column + left.width > right.column &&
+    left.row < right.row + right.height && left.row + left.height > right.row;
 }

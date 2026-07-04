@@ -7,6 +7,7 @@ import {
   workbenchHorizontalScrollbarCellsInto,
   workbenchVerticalScrollbarCellsInto,
   workbenchVerticalScrollbarRect,
+  workbenchVisibleWindowRectsInto,
   workbenchWindowLayout,
   workbenchWindowScrollbarRects,
   workbenchWindowScrollbarRenderCommandsInto,
@@ -89,6 +90,24 @@ Deno.test("workbenchAdaptiveWindowLayout runs managers with shared tile defaults
   }]);
   assertEquals(layout.contentHeight, 42);
   assertEquals(layout.rects.get("a"), { column: 2, row: 3, width: 40, height: 12 });
+});
+
+Deno.test("workbenchVisibleWindowRectsInto filters virtual rects to viewport", () => {
+  const source = new Map([
+    ["above", { column: 0, row: 0, width: 20, height: 4 }],
+    ["visible", { column: 0, row: 5, width: 20, height: 4 }],
+    ["below", { column: 0, row: 20, width: 20, height: 4 }],
+    ["right", { column: 90, row: 8, width: 10, height: 4 }],
+  ]);
+  const target = new Map<string, { column: number; row: number; width: number; height: number }>();
+
+  const result = workbenchVisibleWindowRectsInto(target, source, {
+    viewport: { column: 0, row: 4, width: 80, height: 10 },
+  });
+
+  assertStrictEquals(result, target);
+  assertEquals([...result.keys()], ["visible"]);
+  assertEquals(result.get("visible"), { column: 0, row: 5, width: 20, height: 4 });
 });
 
 Deno.test("workbenchVerticalScrollbarRect locates the right-edge workspace hit region", () => {

@@ -757,3 +757,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   still publishes changing frames at roughly 4.6KB/s.
 - Extracted dynamic visualization Three-scene gating into the shared workbench Three scene helper so modal blocking,
   renderer availability, and minimum live-render dimensions are tested outside the main workbench renderer.
+- Added a shared visible-window-rectangle filter and routed the terminal workbench through it so scrolled-off workspace
+  windows, including Three panes, are not rendered or kept live while outside the visible workspace viewport.
