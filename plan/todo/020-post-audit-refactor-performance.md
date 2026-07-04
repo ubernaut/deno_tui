@@ -230,6 +230,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   the slow-recovery high-quality cap.
 - Extracted the workbench Three block flush benchmark fixture into a focused helper module so the benchmark catalog no
   longer owns its painter, frame, and animated truecolor fixture state inline.
+- Extracted Three ASCII renderer performance record projection into a focused helper with direct tests, keeping
+  saturated deferred-readback telemetry out of the WebGPU orchestration path.
 - Extracted CPU hex-grid selection map updates and selected-tile scroll targeting into the visualization module with
   direct tests, keeping API workbench CPU selection code focused on focus, scroll application, and logging side effects.
 - Reused workbench ANSI changed-span scratch buffers and span objects across flushes, keeping sparse terminal output

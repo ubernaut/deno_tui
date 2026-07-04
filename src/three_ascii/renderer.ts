@@ -28,6 +28,11 @@ import {
   type ThreeAsciiGpuBufferSlot,
 } from "./gpu_buffers.ts";
 import {
+  createThreeAsciiRendererPerformance,
+  createThreeAsciiRendererSaturatedPerformance,
+  type ThreeAsciiRendererPerformance,
+} from "./performance.ts";
+import {
   ThreeAsciiReadbackCopyPlanCache,
   type ThreeAsciiReadbackLayout,
   ThreeAsciiReadbackLayoutCache,
@@ -310,23 +315,7 @@ export interface ThreeAsciiRenderFrame {
   image?: ThreeAsciiImageFrame;
 }
 
-/** Last-frame timing breakdown for terminal Three ASCII rendering. */
-export interface ThreeAsciiRendererPerformance {
-  columns: number;
-  rows: number;
-  cells: number;
-  terminalGlyphStyle: TerminalGlyphStyle;
-  totalMs: number;
-  sceneMs: number;
-  ansiMs: number;
-  readbackMs: number;
-  assemblyMs: number;
-  deferredReadbackSlots?: number;
-  deferredReadbackPending?: number;
-  deferredReadbackUnresolved?: number;
-  deferredReadbackResolved?: number;
-  deferredReadbackSaturated?: boolean;
-}
+export type { ThreeAsciiRendererPerformance } from "./performance.ts";
 
 /** Stable error raised when WebGPU output buffers cannot be mapped back to CPU-readable memory. */
 export class ThreeAsciiReadbackError extends Error {
@@ -507,22 +496,15 @@ export class ThreeAsciiRenderer {
         const frameEnd = performance.now();
         const previous = this.lastPerformance;
         const queue = this.deferredReadbacks.inspect();
-        this.lastPerformance = {
+        this.lastPerformance = createThreeAsciiRendererSaturatedPerformance({
           columns: this.columns,
           rows: this.rows,
-          cells: this.columns * this.rows,
           terminalGlyphStyle: this.terminalGlyphStyle,
-          totalMs: previous?.totalMs ?? frameEnd - frameStart,
-          sceneMs: 0,
-          ansiMs: 0,
+          frameMs: frameEnd - frameStart,
+          previousFrameMs: previous?.totalMs,
           readbackMs: this.lastReadbackMs,
-          assemblyMs: 0,
-          deferredReadbackSlots: queue.slotCount,
-          deferredReadbackPending: queue.pending,
-          deferredReadbackUnresolved: queue.unresolved,
-          deferredReadbackResolved: queue.resolved,
-          deferredReadbackSaturated: true,
-        };
+          queue,
+        });
         return { grid: this.deferredReadbacks.lastCompletedGrid(), gridRevision: this.gridRevision };
       }
     }
@@ -547,22 +529,17 @@ export class ThreeAsciiRenderer {
     }
     const frameEnd = performance.now();
     const queue = this.readbackStrategy === "deferred" ? this.deferredReadbacks.inspect() : undefined;
-    this.lastPerformance = {
+    this.lastPerformance = createThreeAsciiRendererPerformance({
       columns: this.columns,
       rows: this.rows,
-      cells: this.columns * this.rows,
       terminalGlyphStyle: this.terminalGlyphStyle,
-      totalMs: frameEnd - frameStart,
+      frameMs: frameEnd - frameStart,
       sceneMs: sceneEnd - frameStart,
       ansiMs: renderAnsi ? frameEnd - sceneEnd : 0,
       readbackMs: renderAnsi ? this.lastReadbackMs : 0,
       assemblyMs: renderAnsi ? this.lastAssemblyMs : 0,
-      deferredReadbackSlots: queue?.slotCount,
-      deferredReadbackPending: queue?.pending,
-      deferredReadbackUnresolved: queue?.unresolved,
-      deferredReadbackResolved: queue?.resolved,
-      deferredReadbackSaturated: queue?.saturated,
-    };
+      queue,
+    });
 
     return frame;
   }
