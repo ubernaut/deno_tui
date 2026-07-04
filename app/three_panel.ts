@@ -2,11 +2,10 @@ import { type Canvas } from "../src/canvas/canvas.ts";
 import { buildFallbackGrid, formatThreeAsciiFallbackDetail, ThreeAsciiObject } from "../src/canvas/three_ascii.ts";
 import { Effect, Signal, SignalBatchScheduler, type SignalOfObject } from "../src/signals/mod.ts";
 import { emptyStyle } from "../src/theme.ts";
-import type { GraphicsHandle, GraphicsSurface, GraphicsSurfaceInspection } from "../src/runtime/graphics_surface.ts";
+import type { GraphicsSurface, GraphicsSurfaceInspection } from "../src/runtime/graphics_surface.ts";
 import type { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import { nextFrameDelay } from "../src/runtime/frame_timing.ts";
 import {
-  type ThreeAsciiImageFrame,
   ThreeAsciiRenderer,
   type ThreeAsciiRendererOptions,
   type ThreeAsciiRendererPerformance,
@@ -15,6 +14,7 @@ import {
 } from "../src/three_ascii/renderer.ts";
 import { asciiEffectOptions } from "./ascii_options.ts";
 import { createNeonThreeScene, type NeonThreeSceneBundle } from "./neon_three.ts";
+import { ThreePanelGraphicsImageController } from "./three_panel_graphics.ts";
 import { ThreePanelInteractionController, type ThreePanelInteractionState } from "./three_panel_interaction.ts";
 import { resolveThreePanelLifecycleState, type ThreePanelLifecycleState } from "./three_panel_lifecycle.ts";
 import {
@@ -225,7 +225,7 @@ export class ThreePanelFrameView {
   private frameGeneration = 0;
   private frameTimer?: ReturnType<typeof setTimeout>;
   private readonly interaction = new ThreePanelInteractionController();
-  private graphicsHandle?: GraphicsHandle;
+  private readonly graphics: ThreePanelGraphicsImageController;
   private lastGraphicsUnavailableKey?: string;
   private appliedColumns = 0;
   private appliedRows = 0;
@@ -260,6 +260,11 @@ export class ThreePanelFrameView {
   ) {
     this.frameInterval = options.frameInterval ?? 1000 / 10;
     this.onUpdate = options.onUpdate;
+    this.graphics = new ThreePanelGraphicsImageController({
+      diagnostics: options.diagnostics,
+      currentGeneration: () => this.frameGeneration,
+      disposed: () => this.disposed,
+    });
     this.effect = new Effect(() => {
       void options.rectangle.value;
       void options.scene.value;
@@ -284,7 +289,7 @@ export class ThreePanelFrameView {
       failed: this.failed,
       disposed: this.disposed,
       hasRenderer: this.renderer !== undefined,
-      hasGraphicsHandle: this.graphicsHandle !== undefined,
+      hasGraphicsHandle: this.graphics.hasHandle,
       destroyPending: this.destroyPending,
       rebuildPending: this.rebuildPending,
       syncPending: this.syncPending,
@@ -445,7 +450,7 @@ export class ThreePanelFrameView {
       }
 
       if (policy.renderImage && frame.image && graphicsSurface) {
-        await this.putGraphicsImage(graphicsSurface, frame.image, graphicsRectangle, frameGeneration);
+        await this.graphics.put(graphicsSurface, frame.image, graphicsRectangle, frameGeneration);
       } else {
         await this.clearGraphicsImage();
       }
@@ -770,66 +775,7 @@ export class ThreePanelFrameView {
     );
   }
 
-  private async putGraphicsImage(
-    surface: GraphicsSurface,
-    image: ThreeAsciiImageFrame,
-    rect: Rect,
-    frameGeneration: number,
-  ): Promise<void> {
-    if (this.disposed || rect.width <= 0 || rect.height <= 0) return;
-    if (this.graphicsHandle) {
-      await this.deleteGraphicsImage(surface, this.graphicsHandle, "replace");
-      this.graphicsHandle = undefined;
-    }
-    const handle = await surface.putImage({
-      data: image.data,
-      encoding: image.encoding,
-      format: image.format,
-      pixelWidth: image.pixelWidth,
-      pixelHeight: image.pixelHeight,
-    }, {
-      column: rect.column,
-      row: rect.row,
-      width: rect.width,
-      height: rect.height,
-      zIndex: 1,
-    });
-    if (this.disposed || this.frameGeneration !== frameGeneration) {
-      await this.deleteGraphicsImage(surface, handle, "stale-frame");
-      return;
-    }
-    this.graphicsHandle = handle;
-  }
-
   private async clearGraphicsImage(): Promise<void> {
-    const handle = this.graphicsHandle;
-    if (!handle) return;
-    this.graphicsHandle = undefined;
-    const surface = this.resolveGraphicsSurface();
-    if (!surface) return;
-    await this.deleteGraphicsImage(surface, handle, "clear");
-  }
-
-  private async deleteGraphicsImage(
-    surface: GraphicsSurface,
-    handle: GraphicsHandle,
-    reason: "replace" | "stale-frame" | "clear",
-  ): Promise<void> {
-    try {
-      await surface.deleteImage(handle, "image");
-    } catch (error) {
-      this.options.diagnostics?.report({
-        source: "three-panel",
-        code: "graphics-delete-failed",
-        severity: "debug",
-        message: "Three panel graphics image cleanup failed",
-        detail: error instanceof Error ? error.message : String(error),
-        context: {
-          reason,
-          handleId: handle.id,
-          surface: surface.kind,
-        },
-      });
-    }
+    await this.graphics.clear(this.resolveGraphicsSurface());
   }
 }

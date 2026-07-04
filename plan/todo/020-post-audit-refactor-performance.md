@@ -229,6 +229,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   while preserving styled-run compaction and clipping behavior.
 - Split workbench styled-cell tokenization and row/slice assembly into `workbench_frame_rows.ts`, preserving the
   existing frame facade while keeping the terminal hot path independently testable and benchmarked.
+- Extracted ThreePanelFrameView graphics-image handle ownership into `ThreePanelGraphicsImageController` with direct
+  tests for replace, stale-frame cleanup, clear, and diagnostics while preserving Kitty/image frame behavior.
 - Changed workbench Three cadence so any visible normal/fullscreen Three-backed pane uses the live interval instead of
   being throttled to idle just because focus is elsewhere.
 - Tightened API workbench Three terminal-pressure adaptation to step down on the first heavy terminal flush, improving
