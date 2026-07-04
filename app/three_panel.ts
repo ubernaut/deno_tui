@@ -32,7 +32,7 @@ import {
   ThreePanelAdaptiveRenderBudgetController,
 } from "../src/app/three_panel_adaptive.ts";
 import { threePanelAsciiEffectOptionsEqual, threePanelRendererStateMatches } from "../src/app/three_panel_effect.ts";
-import { fingerprintThreePanelGrid, threePanelBlankGrid } from "../src/app/three_panel_grid.ts";
+import { threePanelBlankGrid, ThreePanelGridPublicationCache } from "../src/app/three_panel_grid.ts";
 import {
   resolveThreePanelFrameInterval,
   resolveThreePanelRenderPolicy,
@@ -260,8 +260,7 @@ export class ThreePanelFrameView {
   private blankGridRows = -1;
   private lastSlowFrameReportTime = 0;
   private readonly adaptiveBudget = new ThreePanelAdaptiveRenderBudgetController();
-  private gridFingerprint = "";
-  private gridRevision?: number;
+  private readonly gridPublication = new ThreePanelGridPublicationCache();
 
   constructor(
     private readonly options: {
@@ -610,24 +609,7 @@ export class ThreePanelFrameView {
 
   private setGrid(grid: string[][], forceUpdate = false, revision?: number): void {
     if (this.disposed) return;
-    if (revision !== undefined) {
-      if (this.gridRevision === revision) return;
-      const fingerprint = fingerprintThreePanelGrid(grid);
-      if (this.gridFingerprint === fingerprint) {
-        this.gridRevision = revision;
-        return;
-      }
-      this.gridRevision = revision;
-      this.gridFingerprint = fingerprint;
-      this.grid.jink(grid);
-      this.onUpdate?.();
-      return;
-    }
-    this.gridRevision = undefined;
-    const fingerprint = fingerprintThreePanelGrid(grid);
-    if (!forceUpdate && this.grid.peek() === grid) return;
-    if (this.gridFingerprint === fingerprint) return;
-    this.gridFingerprint = fingerprint;
+    if (!this.gridPublication.shouldPublish({ grid, currentGrid: this.grid.peek(), forceUpdate, revision })) return;
     this.grid.jink(grid);
     this.onUpdate?.();
   }
