@@ -1,5 +1,5 @@
 import { ThreePanelFrameView } from "./three_panel.ts";
-import { WORKBENCH_THREE_READBACK_STRATEGY, WORKBENCH_THREE_RESCUE_CELLS } from "../src/app/workbench_three_policy.ts";
+import { applyWorkbenchThreePanelFrameDefaults } from "../src/app/workbench_three_panel_defaults.ts";
 
 export type WorkbenchThreePanelFrameViewOptions = ConstructorParameters<typeof ThreePanelFrameView>[0];
 
@@ -7,9 +7,5 @@ export type WorkbenchThreePanelFrameViewOptions = ConstructorParameters<typeof T
 export function createWorkbenchThreePanelFrameView(
   options: WorkbenchThreePanelFrameViewOptions,
 ): ThreePanelFrameView {
-  return new ThreePanelFrameView({
-    ...options,
-    idleMaxRenderCells: options.idleMaxRenderCells ?? WORKBENCH_THREE_RESCUE_CELLS,
-    readbackStrategy: options.readbackStrategy ?? WORKBENCH_THREE_READBACK_STRATEGY,
-  });
+  return new ThreePanelFrameView(applyWorkbenchThreePanelFrameDefaults(options));
 }

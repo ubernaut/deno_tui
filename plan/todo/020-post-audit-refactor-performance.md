@@ -1059,3 +1059,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   API Workbench-specific scene modes out of shared lifecycle helpers.
 - Aligned `ThreePanelFrameView`'s implicit readback strategy with the renderer/workbench blocking default after live
   probes showed deferred readback reproducing the reported ~3fps path on this host.
+- Extracted workbench Three panel defaulting into `src/app`, keeping demo-local panel construction thin while making
+  idle-cell and readback policy defaults reusable through the shared facade.

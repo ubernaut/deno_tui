@@ -40,6 +40,7 @@ export * from "../workbench_three_cadence.ts";
 export * from "../workbench_three_geometry.ts";
 export * from "../workbench_three_grid.ts";
 export * from "../workbench_three_interaction.ts";
+export * from "../workbench_three_panel_defaults.ts";
 export * from "../workbench_three_panel_registry.ts";
 export * from "../workbench_three_policy.ts";
 export * from "../workbench_three_runtime.ts";

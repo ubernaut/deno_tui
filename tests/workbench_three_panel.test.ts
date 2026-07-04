@@ -3,6 +3,7 @@ import { Signal } from "../src/signals/mod.ts";
 import { createDefaultAsciiOptions } from "../app/ascii_options.ts";
 import { createWorkbenchThreePanelFrameView } from "../app/workbench_three_panel.ts";
 import type { ThreePanelGridRenderer, ThreeSceneState } from "../app/three_panel.ts";
+import { applyWorkbenchThreePanelFrameDefaults } from "../src/app/workbench/mod.ts";
 import type { TerminalGlyphStyle } from "../src/three_ascii/glyphs.ts";
 import type {
   ThreeAsciiRendererOptions,
@@ -44,6 +45,17 @@ Deno.test("createWorkbenchThreePanelFrameView applies shared workbench Three def
     ascii.dispose();
     interactive.dispose();
   }
+});
+
+Deno.test("applyWorkbenchThreePanelFrameDefaults preserves explicit overrides", () => {
+  assertEquals(applyWorkbenchThreePanelFrameDefaults({}), {
+    idleMaxRenderCells: WORKBENCH_THREE_RESCUE_CELLS,
+    readbackStrategy: WORKBENCH_THREE_READBACK_STRATEGY,
+  });
+  assertEquals(applyWorkbenchThreePanelFrameDefaults({ idleMaxRenderCells: 480, readbackStrategy: "deferred" }), {
+    idleMaxRenderCells: 480,
+    readbackStrategy: "deferred",
+  });
 });
 
 function sceneState(): ThreeSceneState {
