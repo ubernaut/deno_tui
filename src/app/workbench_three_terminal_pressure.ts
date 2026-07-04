@@ -138,14 +138,14 @@ export function workbenchThreeShouldUseLiveCadence(options: WorkbenchThreeLiveCa
   return false;
 }
 
-/** Returns true when a specific Three pane should render at foreground/live cadence. */
+/** Returns true when a specific visible Three pane should render at foreground/live cadence. */
 export function workbenchThreeWindowIsInteractive(options: WorkbenchThreeWindowInteractivityOptions): boolean {
   if (options.blocked) return false;
   if (options.fullscreenId) return options.fullscreenId === options.id;
   for (const window of options.windows) {
     if (window.id !== options.id) continue;
     const state = window.state ?? "normal";
-    return (state === "normal" || state === "fullscreen") && options.activeId === options.id;
+    return state === "normal" || state === "fullscreen";
   }
   return false;
 }

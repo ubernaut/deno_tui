@@ -373,6 +373,9 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted terminal shell status/hint row projection into the shared workbench terminal helper with caller-owned row
   reuse, trimming another presentation slice from `api_workbench.ts` while keeping terminal and future browser shell
   adapters aligned.
+- Fixed the default workbench Three ASCII startup cadence regression by treating visible Three panes as live-rendered
+  instead of only focused panes, and retuned terminal-pressure thresholds so normal truecolor block frames do not
+  immediately collapse to rescue budgets while sustained heavy output still backs off.
 - Split workbench styled-cell tokenization and row/slice assembly into `workbench_frame_rows.ts`, preserving the
   existing frame facade while keeping the terminal hot path independently testable and benchmarked.
 - Extracted ThreePanelFrameView graphics-image handle ownership into `ThreePanelGraphicsImageController` with direct
