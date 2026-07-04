@@ -18,7 +18,7 @@ import {
   ThreeAsciiDeferredReadbackQueue,
 } from "./deferred_readback.ts";
 import { createThreeAsciiComputeDispatchPlan } from "./compute_plan.ts";
-import { createThreeAsciiComputeResourcePlan } from "./compute_resources.ts";
+import { applyThreeAsciiComputeResourcePlanState, createThreeAsciiComputeResourcePlan } from "./compute_resources.ts";
 import {
   shouldIncludeThreeAsciiTerminalEdges,
   type ThreeAsciiEffectState,
@@ -639,8 +639,6 @@ export class ThreeAsciiRenderer {
         resourcePlan.colorByteLength,
         "color",
       );
-      this.outputCellCount = resourcePlan.cellCount;
-      this.computeDirty = true;
     }
 
     if (resourcePlan.ensureEdgeOutput) {
@@ -649,13 +647,18 @@ export class ThreeAsciiRenderer {
         resourcePlan.edgeByteLength,
         "edge",
       );
-      if (resourcePlan.dirty) {
-        this.computeDirty = true;
-      }
     } else if (resourcePlan.releaseEdgeOutput) {
       this.edgeOutput = destroyThreeAsciiGpuBufferSlot(this.edgeOutput);
+    }
+
+    const resourceState = applyThreeAsciiComputeResourcePlanState({
+      currentCellCount: this.outputCellCount,
+      computeDirty: this.computeDirty,
+    }, resourcePlan);
+    this.outputCellCount = resourceState.outputCellCount;
+    this.computeDirty = resourceState.computeDirty;
+    if (resourceState.clearEdgeBindGroup) {
       this.edgeBindGroup = undefined;
-      this.computeDirty = true;
     }
 
     if (!this.computeDirty) {

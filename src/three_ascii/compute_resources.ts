@@ -18,6 +18,17 @@ export interface ThreeAsciiComputeResourcePlan {
   dirty: boolean;
 }
 
+export interface ThreeAsciiComputeResourceStateInput {
+  currentCellCount: number;
+  computeDirty: boolean;
+}
+
+export interface ThreeAsciiComputeResourceStateResult {
+  outputCellCount: number;
+  computeDirty: boolean;
+  clearEdgeBindGroup: boolean;
+}
+
 export function createThreeAsciiComputeResourcePlan(
   input: ThreeAsciiComputeResourcePlanInput,
 ): ThreeAsciiComputeResourcePlan {
@@ -37,5 +48,16 @@ export function createThreeAsciiComputeResourcePlan(
     ensureEdgeOutput,
     releaseEdgeOutput,
     dirty: resizeOutputs || edgeSetupDirty || releaseEdgeOutput,
+  };
+}
+
+export function applyThreeAsciiComputeResourcePlanState(
+  state: ThreeAsciiComputeResourceStateInput,
+  plan: ThreeAsciiComputeResourcePlan,
+): ThreeAsciiComputeResourceStateResult {
+  return {
+    outputCellCount: plan.resizeOutputs ? plan.cellCount : Math.max(0, Math.floor(state.currentCellCount)),
+    computeDirty: state.computeDirty || plan.dirty,
+    clearEdgeBindGroup: plan.releaseEdgeOutput,
   };
 }
