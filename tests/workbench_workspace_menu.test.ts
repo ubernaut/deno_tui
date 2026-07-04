@@ -7,10 +7,13 @@ import {
   currentWorkspaceWindows,
   defaultWorkspaceName,
   deleteWorkspaceModalContent,
+  deleteWorkspaceState,
   normalizeWorkspaceName,
   renameWorkspaceModalContent,
+  renameWorkspaceState,
   resolveWorkspaceMenuCommand,
   saveWorkspaceModalContent,
+  saveWorkspaceState,
   workspaceDeletedModalContent,
   type WorkspaceMenuEntry,
   workspaceMenuLabels,
@@ -147,6 +150,88 @@ Deno.test("currentWorkspaceWindows projects active visualization windows only", 
     { visualizationId: "gpu-monitor", ascii: { style: "glyphs" } },
   ]);
   assertEquals(windows[0]?.ascii === asciiByWindow["viz:cpu"], false);
+});
+
+Deno.test("workspace state transitions save rename and delete workspaces", () => {
+  const existing: WorkbenchWorkspace<{ style: string }>[] = [
+    { name: "Alpha", visualizationIds: ["cpu"], savedAt: 10 },
+    { name: "Beta", visualizationIds: ["gpu"], savedAt: 20 },
+  ];
+
+  const saved = saveWorkspaceState({
+    workspaces: existing,
+    draftName: "  Ops   Desk ",
+    windows: [
+      { visualizationId: "cpu", ascii: { style: "blocks" } },
+      { visualizationId: "network" },
+    ],
+    now: 100,
+  });
+  assertEquals(saved.name, "Ops Desk");
+  assertEquals(saved.visualizationIds, ["cpu", "network"]);
+  assertEquals(saved.workspace, {
+    name: "Ops Desk",
+    visualizationIds: ["cpu", "network"],
+    windows: [
+      { visualizationId: "cpu", ascii: { style: "blocks" } },
+      { visualizationId: "network" },
+    ],
+    savedAt: 100,
+  });
+  assertEquals(saved.workspaces.map((workspace) => workspace.name), ["Ops Desk", "Alpha", "Beta"]);
+
+  const renamed = renameWorkspaceState({
+    workspaces: saved.workspaces,
+    targetName: "ops desk",
+    draftName: "Night Ops",
+    activeWorkspaceName: "Ops Desk",
+    now: 120,
+  });
+  assertEquals(renamed, {
+    status: "renamed",
+    previousName: "Ops Desk",
+    name: "Night Ops",
+    visualizationCount: 2,
+    activeWorkspaceName: "Night Ops",
+    workspaces: [
+      {
+        name: "Night Ops",
+        visualizationIds: ["cpu", "network"],
+        windows: [
+          { visualizationId: "cpu", ascii: { style: "blocks" } },
+          { visualizationId: "network" },
+        ],
+        savedAt: 120,
+      },
+      { name: "Alpha", visualizationIds: ["cpu"], savedAt: 10 },
+      { name: "Beta", visualizationIds: ["gpu"], savedAt: 20 },
+    ],
+  });
+
+  if (renamed.status !== "renamed") throw new Error("expected renamed state");
+  const deleted = deleteWorkspaceState({
+    workspaces: renamed.workspaces,
+    targetName: "night ops",
+    activeWorkspaceName: "Night Ops",
+  });
+  assertEquals(deleted, {
+    status: "deleted",
+    name: "Night Ops",
+    activeWorkspaceName: null,
+    workspaces: [
+      { name: "Alpha", visualizationIds: ["cpu"], savedAt: 10 },
+      { name: "Beta", visualizationIds: ["gpu"], savedAt: 20 },
+    ],
+  });
+
+  assertEquals(renameWorkspaceState({ workspaces: existing, targetName: "missing", draftName: "Nope" }), {
+    status: "missing",
+    targetName: "missing",
+  });
+  assertEquals(deleteWorkspaceState({ workspaces: existing, targetName: "missing" }), {
+    status: "missing",
+    targetName: "missing",
+  });
 });
 
 Deno.test("workspaceNameModalBody describes save and rename prompts", () => {

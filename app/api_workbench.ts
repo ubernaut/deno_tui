@@ -20,7 +20,6 @@ import {
   clampWorkbenchTileDensity,
   contrastText,
   createWorkbenchWorkspaceStore,
-  deleteWorkbenchWorkspace,
   dispatchWorkbenchTextPromptInput,
   fillFrameRect,
   fillFrameRow,
@@ -47,12 +46,10 @@ import {
   projectWorkbenchButton,
   projectWorkbenchButtonCommand,
   projectWorkbenchStandardTopMenuState,
-  renameWorkbenchWorkspace,
   renderFrameRow,
   renderFrameSlice,
   subscribeWorkbenchDiagnosticLog,
   translateHitTargets,
-  upsertWorkbenchWorkspace,
   workbenchAdaptiveWindowLayout,
   type WorkbenchAnsiScreenFlushStats,
   WorkbenchAnsiScreenPainter,
@@ -281,10 +278,12 @@ import {
   currentWorkspaceWindows as currentWorkspaceWindowsFromIds,
   defaultWorkspaceName as defaultWorkspaceNameFromCount,
   deleteWorkspaceModalContent,
-  normalizeWorkspaceName as normalizeWorkspaceNameFromCount,
+  deleteWorkspaceState,
   renameWorkspaceModalContent,
+  renameWorkspaceState,
   resolveWorkspaceMenuCommand,
   saveWorkspaceModalContent,
+  saveWorkspaceState,
   workspaceDeletedModalContent,
   type WorkspaceMenuEntry,
   workspaceMenuLabelsInto,
@@ -3240,55 +3239,57 @@ function handleWorkspaceNameKey(event: { key: string; ctrl?: boolean; meta?: boo
 }
 
 async function saveCurrentWorkspace(): Promise<void> {
-  const name = normalizeWorkspaceName(workspaceNameDraft.peek());
-  const windows = currentWorkspaceWindows();
-  const visualizationIds = workspaceVisualizationIdsFromWindows(windows);
-  const next: SavedWorkspace = { name, visualizationIds, windows, savedAt: Date.now() };
-  savedWorkspaces.value = upsertWorkbenchWorkspace(savedWorkspaces.peek(), next);
+  const result = saveWorkspaceState({
+    workspaces: savedWorkspaces.peek(),
+    draftName: workspaceNameDraft.peek(),
+    windows: currentWorkspaceWindows(),
+  });
+  savedWorkspaces.value = result.workspaces;
   await persistSavedWorkspaces();
-  activeWorkspaceName.value = name;
+  activeWorkspaceName.value = result.name;
   clearWorkspaceModalState();
-  modal.open(workspaceSavedModalContent(name, visualizationIds.length));
-  pushLog(`workspace saved ${name}`);
+  modal.open(workspaceSavedModalContent(result.name, result.visualizationIds.length));
+  pushLog(`workspace saved ${result.name}`);
 }
 
 async function renameWorkspace(): Promise<void> {
-  const originalName = workspaceTargetName.peek();
-  const workspace = workspaceByName(originalName);
-  if (!workspace) {
+  const result = renameWorkspaceState({
+    workspaces: savedWorkspaces.peek(),
+    targetName: workspaceTargetName.peek(),
+    draftName: workspaceNameDraft.peek(),
+    activeWorkspaceName: activeWorkspaceName.peek(),
+  });
+  if (result.status === "missing") {
     clearWorkspaceModalState();
-    modal.open(workspaceMissingModalContent(originalName));
+    modal.open(workspaceMissingModalContent(result.targetName));
     return;
   }
 
-  const name = normalizeWorkspaceName(workspaceNameDraft.peek());
-  savedWorkspaces.value = renameWorkbenchWorkspace(savedWorkspaces.peek(), workspace.name, name);
-  const renamed = workspaceByName(name) ?? workspace;
+  savedWorkspaces.value = result.workspaces;
   await persistSavedWorkspaces();
-  if (activeWorkspaceName.peek()?.toLowerCase() === workspace.name.toLowerCase()) {
-    activeWorkspaceName.value = name;
-  }
+  activeWorkspaceName.value = result.activeWorkspaceName ?? null;
   clearWorkspaceModalState();
-  modal.open(workspaceRenamedModalContent(workspace.name, name, renamed.visualizationIds.length));
-  pushLog(`workspace renamed ${workspace.name} -> ${name}`);
+  modal.open(workspaceRenamedModalContent(result.previousName, result.name, result.visualizationCount));
+  pushLog(`workspace renamed ${result.previousName} -> ${result.name}`);
 }
 
 async function deleteWorkspace(): Promise<void> {
-  const name = workspaceTargetName.peek();
-  const workspace = workspaceByName(name);
-  if (!workspace) {
+  const result = deleteWorkspaceState({
+    workspaces: savedWorkspaces.peek(),
+    targetName: workspaceTargetName.peek(),
+    activeWorkspaceName: activeWorkspaceName.peek(),
+  });
+  if (result.status === "missing") {
     clearWorkspaceModalState();
     modal.close();
     return;
   }
-  savedWorkspaces.value = deleteWorkbenchWorkspace(savedWorkspaces.peek(), workspace.name);
+  savedWorkspaces.value = result.workspaces;
   await persistSavedWorkspaces();
-  if (activeWorkspaceName.peek()?.toLowerCase() === workspace.name.toLowerCase()) {
-    activeWorkspaceName.value = null;
-  }
+  activeWorkspaceName.value = result.activeWorkspaceName ?? null;
   clearWorkspaceModalState();
-  modal.open(workspaceDeletedModalContent(workspace.name));
-  pushLog(`workspace deleted ${workspace.name}`);
+  modal.open(workspaceDeletedModalContent(result.name));
+  pushLog(`workspace deleted ${result.name}`);
 }
 
 function clearWorkspaceModalState(): void {
@@ -3376,10 +3377,6 @@ function defaultWorkspaceName(): string {
   return defaultWorkspaceNameFromCount(savedWorkspaces.peek().length);
 }
 
-function normalizeWorkspaceName(name: string): string {
-  return normalizeWorkspaceNameFromCount(name, savedWorkspaces.peek().length);
-}
-
 function workspaceByName(name: string | null | undefined): SavedWorkspace | undefined {
   return findWorkbenchWorkspace(savedWorkspaces.peek(), name);
 }
@@ -3396,14 +3393,11 @@ async function persistActiveWorkspaceState(): Promise<void> {
   const name = activeWorkspaceName.peek();
   const workspace = workspaceByName(name);
   if (!workspace) return;
-  const windows = currentWorkspaceWindows();
-  const next: SavedWorkspace = {
-    ...workspace,
-    visualizationIds: workspaceVisualizationIdsFromWindows(windows),
-    windows,
-    savedAt: Date.now(),
-  };
-  savedWorkspaces.value = upsertWorkbenchWorkspace(savedWorkspaces.peek(), next);
+  savedWorkspaces.value = saveWorkspaceState({
+    workspaces: savedWorkspaces.peek(),
+    draftName: workspace.name,
+    windows: currentWorkspaceWindows(),
+  }).workspaces;
   await persistSavedWorkspaces();
 }
 

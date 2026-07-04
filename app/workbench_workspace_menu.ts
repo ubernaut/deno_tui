@@ -1,6 +1,10 @@
 // Copyright 2023 Im-Beast. MIT license.
 import {
+  deleteWorkbenchWorkspace,
+  findWorkbenchWorkspace,
   normalizeWorkbenchWorkspaceName,
+  renameWorkbenchWorkspace,
+  upsertWorkbenchWorkspace,
   type WorkbenchWorkspace,
   type WorkbenchWorkspaceWindow,
 } from "../src/app/mod.ts";
@@ -43,6 +47,60 @@ export interface CurrentWorkspaceWindowsOptions<TWindowId extends string, TAscii
   visualizationIdForWindow: (id: TWindowId) => string | undefined;
   asciiForWindow: (id: TWindowId) => TAscii;
 }
+
+/** Inputs for saving the current loaded windows as a workspace. */
+export interface SaveWorkspaceStateOptions<TAscii = unknown> {
+  workspaces: readonly WorkbenchWorkspace<TAscii>[];
+  draftName: string;
+  windows: readonly WorkbenchWorkspaceWindow<TAscii>[];
+  now?: number;
+}
+
+/** Result of saving the current loaded windows as a workspace. */
+export interface SaveWorkspaceStateResult<TAscii = unknown> {
+  name: string;
+  visualizationIds: string[];
+  workspace: WorkbenchWorkspace<TAscii>;
+  workspaces: WorkbenchWorkspace<TAscii>[];
+}
+
+/** Inputs for renaming a saved workspace. */
+export interface RenameWorkspaceStateOptions<TAscii = unknown> {
+  workspaces: readonly WorkbenchWorkspace<TAscii>[];
+  targetName: string | null | undefined;
+  draftName: string;
+  activeWorkspaceName?: string | null;
+  now?: number;
+}
+
+/** Result of renaming a saved workspace. */
+export type RenameWorkspaceStateResult<TAscii = unknown> =
+  | {
+    status: "renamed";
+    previousName: string;
+    name: string;
+    visualizationCount: number;
+    workspaces: WorkbenchWorkspace<TAscii>[];
+    activeWorkspaceName: string | null | undefined;
+  }
+  | { status: "missing"; targetName: string | null | undefined };
+
+/** Inputs for deleting a saved workspace. */
+export interface DeleteWorkspaceStateOptions<TAscii = unknown> {
+  workspaces: readonly WorkbenchWorkspace<TAscii>[];
+  targetName: string | null | undefined;
+  activeWorkspaceName?: string | null;
+}
+
+/** Result of deleting a saved workspace. */
+export type DeleteWorkspaceStateResult<TAscii = unknown> =
+  | {
+    status: "deleted";
+    name: string;
+    workspaces: WorkbenchWorkspace<TAscii>[];
+    activeWorkspaceName: string | null | undefined;
+  }
+  | { status: "missing"; targetName: string | null | undefined };
 
 /** Builds the save-workspace prompt content for the workbench modal controller. */
 export function saveWorkspaceModalContent(body: string[]): ModalContent {
@@ -230,6 +288,68 @@ export function currentWorkspaceWindows<TWindowId extends string, TAscii = unkno
   return windows;
 }
 
+/** Applies the save-workspace state transition without renderer side effects. */
+export function saveWorkspaceState<TAscii = unknown>(
+  options: SaveWorkspaceStateOptions<TAscii>,
+): SaveWorkspaceStateResult<TAscii> {
+  const name = normalizeWorkspaceName(options.draftName, options.workspaces.length);
+  const windows = copyWorkspaceWindows(options.windows);
+  const visualizationIds = currentWorkspaceVisualizationIds(windows);
+  const workspace: WorkbenchWorkspace<TAscii> = {
+    name,
+    visualizationIds,
+    windows,
+    savedAt: options.now ?? Date.now(),
+  };
+  return {
+    name,
+    visualizationIds,
+    workspace,
+    workspaces: upsertWorkbenchWorkspace(options.workspaces, workspace),
+  };
+}
+
+/** Applies the rename-workspace state transition without renderer side effects. */
+export function renameWorkspaceState<TAscii = unknown>(
+  options: RenameWorkspaceStateOptions<TAscii>,
+): RenameWorkspaceStateResult<TAscii> {
+  const workspace = findWorkbenchWorkspace(options.workspaces, options.targetName);
+  if (!workspace) return { status: "missing", targetName: options.targetName };
+
+  const name = normalizeWorkspaceName(options.draftName, options.workspaces.length);
+  const workspaces = renameWorkbenchWorkspace(options.workspaces, workspace.name, name, options.now ?? Date.now());
+  const renamed = findWorkbenchWorkspace(workspaces, name) ?? workspace;
+  const activeWorkspaceName = options.activeWorkspaceName?.toLowerCase() === workspace.name.toLowerCase()
+    ? name
+    : options.activeWorkspaceName;
+  return {
+    status: "renamed",
+    previousName: workspace.name,
+    name,
+    visualizationCount: renamed.visualizationIds.length,
+    workspaces,
+    activeWorkspaceName,
+  };
+}
+
+/** Applies the delete-workspace state transition without renderer side effects. */
+export function deleteWorkspaceState<TAscii = unknown>(
+  options: DeleteWorkspaceStateOptions<TAscii>,
+): DeleteWorkspaceStateResult<TAscii> {
+  const workspace = findWorkbenchWorkspace(options.workspaces, options.targetName);
+  if (!workspace) return { status: "missing", targetName: options.targetName };
+
+  const activeWorkspaceName = options.activeWorkspaceName?.toLowerCase() === workspace.name.toLowerCase()
+    ? null
+    : options.activeWorkspaceName;
+  return {
+    status: "deleted",
+    name: workspace.name,
+    workspaces: deleteWorkbenchWorkspace(options.workspaces, workspace.name),
+    activeWorkspaceName,
+  };
+}
+
 /** Builds the modal body for save/rename workspace prompts. */
 export function workspaceNameModalBody(options: WorkspaceNameModalBodyOptions): string[] {
   const cursor = options.cursor ?? "";
@@ -250,6 +370,14 @@ export function workspaceNameModalBody(options: WorkspaceNameModalBodyOptions): 
     `Windows: ${loaded.length === 0 ? "none" : loaded.join(", ")}`,
     `Storage: ${options.storageLabel}`,
   ];
+}
+
+function copyWorkspaceWindows<TAscii>(
+  windows: readonly WorkbenchWorkspaceWindow<TAscii>[],
+): WorkbenchWorkspaceWindow<TAscii>[] {
+  const copy = new Array<WorkbenchWorkspaceWindow<TAscii>>(windows.length);
+  for (let index = 0; index < windows.length; index++) copy[index] = { ...windows[index]! };
+  return copy;
 }
 
 function workspaceMenuEntry(
