@@ -5,23 +5,10 @@ import {
 } from "../app/workbench_three_policy.ts";
 import { ThreePanelFrameView, type ThreeSceneState } from "../app/three_panel.ts";
 import { Signal } from "../src/signals/mod.ts";
-import { average, choiceArg, delay, formatFps, formatMs, numberArg, stringArg } from "../src/three_ascii/probe_cli.ts";
+import { formatThreePanelProbeLines, type ThreePanelProbeSample } from "../src/three_ascii/panel_probe.ts";
+import { choiceArg, delay, numberArg, stringArg } from "../src/three_ascii/probe_cli.ts";
 import type { ThreeAsciiRendererPerformance } from "../src/three_ascii/renderer.ts";
 import { type ThreeSceneMode, threeSceneModes, type ThreeSceneSignal } from "../app/types.ts";
-
-interface ProbeSample {
-  index: number;
-  elapsedMs: number;
-  totalMs: number;
-  sceneMs: number;
-  readbackMs: number;
-  assemblyMs: number;
-  columns: number;
-  rows: number;
-  cells: number;
-  updates: number;
-  lifecycle: string;
-}
 
 const frames = numberArg(Deno.args, "--frames", 36);
 const width = numberArg(Deno.args, "--width", 80);
@@ -58,7 +45,7 @@ const panel = new ThreePanelFrameView({
   },
 });
 
-const samples: ProbeSample[] = [];
+const samples: ThreePanelProbeSample[] = [];
 const probeStart = performance.now();
 let firstGridElapsedMs: number | undefined;
 
@@ -85,41 +72,17 @@ try {
   scene.dispose();
 }
 
-const first = samples[0];
-const steady = samples.slice(1).filter((sample) => sample.rows > 0 && sample.columns > 0);
-const averageTotalMs = average(steady.map((sample) => sample.totalMs));
-const averageSceneMs = average(steady.map((sample) => sample.sceneMs));
-const averageReadbackMs = average(steady.map((sample) => sample.readbackMs));
-const averageAssemblyMs = average(steady.map((sample) => sample.assemblyMs));
-const latest = samples.at(-1);
-
-console.log("three-panel live probe");
 console.log(
-  `mode=${mode} glyphs=${glyphs} rect=${width}x${height} maxCells=${maxCells} interval=${formatMs(intervalMs)}`,
+  formatThreePanelProbeLines({ mode, glyphs, width, height, maxCells, intervalMs }, samples, firstGridElapsedMs).join(
+    "\n",
+  ),
 );
-console.log(
-  `warmup=${formatMs(first?.totalMs)} steady=${formatMs(averageTotalMs)} fps=${formatFps(averageTotalMs)} latest=${
-    latest ? `${latest.columns}x${latest.rows}/${latest.cells}c` : "none"
-  } firstGrid=${formatMs(firstGridElapsedMs)}`,
-);
-console.log(
-  `scene=${formatMs(averageSceneMs)} readback=${formatMs(averageReadbackMs)} assembly=${
-    formatMs(averageAssemblyMs)
-  } updates=${latest?.updates ?? updates}`,
-);
-for (const sample of samples) {
-  console.log(
-    `${sample.index.toString().padStart(2, "0")} total=${formatMs(sample.totalMs)} elapsed=${
-      formatMs(sample.elapsedMs)
-    } grid=${sample.columns}x${sample.rows} cells=${sample.cells} state=${sample.lifecycle} updates=${sample.updates}`,
-  );
-}
 
 function samplePanel(
   index: number,
   elapsedMs: number,
   performanceInfo: ThreeAsciiRendererPerformance,
-): ProbeSample {
+): ThreePanelProbeSample {
   const grid = panel.grid.peek();
   const lifecycle = panel.inspectLifecycle().state;
   const rows = grid.length;
