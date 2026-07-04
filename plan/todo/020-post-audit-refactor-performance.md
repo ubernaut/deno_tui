@@ -400,6 +400,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   when sparse or empty source rows are painted into larger terminal panes.
 - Added a focused `workbench-sparse-three-grid-220x70` benchmark so sparse/fallback Three grid projection remains
   covered alongside scaled, capped, and vertical-only workbench projection paths.
+- Switched workbench Three fallback row preparation to the native array fill path, keeping sparse/fallback projection
+  covered by the new focused benchmark.
 - Split workbench styled-cell tokenization and row/slice assembly into `workbench_frame_rows.ts`, preserving the
   existing frame facade while keeping the terminal hot path independently testable and benchmarked.
 - Extracted ThreePanelFrameView graphics-image handle ownership into `ThreePanelGraphicsImageController` with direct

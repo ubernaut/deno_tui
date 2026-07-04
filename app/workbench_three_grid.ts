@@ -60,9 +60,7 @@ export function writeWorkbenchThreeGrid(
         continue;
       }
       rowBuffer.length = targetWidth;
-      for (let column = 0; column < targetWidth; column += 1) {
-        rowBuffer[column] = fallbackCell;
-      }
+      rowBuffer.fill(fallbackCell, 0, targetWidth);
       writeProjectedGridRow(target, rect.column + columnOffset, rowBuffer, targetWidth);
       lastProjectedSourceRow = -1;
       lastProjectedFallback = true;
