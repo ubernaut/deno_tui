@@ -218,6 +218,9 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted dynamic workbench Three visualization panel lifecycle into `WorkbenchThreePanelRegistry`, covering lazy
   creation, hide/hideExcept, disposal, and clear behavior without constructing real WebGPU renderers in tests.
 - Extracted workbench Three viewport mouse drag and wheel routing into `WorkbenchThreeViewportInteractionController`,
+- Retuned the default API workbench Three block renderer startup path to 480 cells with blocking readback retained after
+  live probes showed deferred readback regressing visible publication; dynamic Three visualization panes now feed the
+  shared cadence meter so terminal-pressure adaptation sees all live Three windows instead of only the built-in pane.
   keeping model rotation/zoom focus behavior tested without starting a TUI session or renderer.
 - Moved API workbench Three rendered-grid pressure sampling into `ApiWorkbenchThreeRuntimeController`, keeping per-draw
   reset/record/update bookkeeping tested outside the main renderer.

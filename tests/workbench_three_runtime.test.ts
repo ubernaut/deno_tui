@@ -105,10 +105,10 @@ Deno.test("ApiWorkbenchThreeRuntimeController backs off when observed cadence is
     controller.updatePressure(stats, sample, { observedFps: 3, targetFps: 24 });
   }
 
-  assertEquals(controller.liveMaxCells.peek(), 60);
+  assertEquals(controller.liveMaxCells.peek(), 240);
   assertEquals(controller.inspectPressure().highFrames, 0);
   assertEquals(logs.length, 1);
-  assertStringIncludes(logs[0]!, "three pressure down 60 cells");
+  assertStringIncludes(logs[0]!, "three pressure down 240 cells");
 
   controller.dispose();
 });

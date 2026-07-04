@@ -2864,7 +2864,10 @@ function createVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
     interactive: () => isThreeWindowInteractive(id),
     maxRenderCells: workbenchThreeLiveMaxCells,
     diagnostics: workbenchDiagnostics,
-    onUpdate: scheduleDraw,
+    onUpdate: () => {
+      threeCadence.record();
+      scheduleDraw();
+    },
   });
   return { rectangle, graphicsRectangle, scene, panel };
 }
