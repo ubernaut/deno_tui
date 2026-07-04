@@ -49,6 +49,7 @@ import {
   workbenchTerminalCopyRowsInto,
   wrapTextBoxLinesInto,
   writeFrame,
+  writeFrameCells,
   writeStringFrameRow,
 } from "../mod.ts";
 import { writeWorkbenchThreeGrid } from "../app/workbench_three_grid.ts";
@@ -255,6 +256,7 @@ const workbenchSparseFrame: WorkbenchFrame = [];
 const workbenchStringFrame: string[] = [];
 const workbenchLineSignalFrame: WorkbenchFrame = [];
 const workbenchAnsiScreenFrame: WorkbenchFrame = [];
+const workbenchAnsiSpanFrame: WorkbenchFrame = [];
 const workbenchScaledThreeFrame: WorkbenchFrame = [];
 const workbenchFrameRows = 54;
 const workbenchFrameWidth = 168;
@@ -266,6 +268,13 @@ let workbenchAnsiScreenBytes = 0;
 const workbenchAnsiScreenPainter = new WorkbenchAnsiScreenPainter({
   writeSync(data) {
     workbenchAnsiScreenBytes += data.byteLength;
+    return data.byteLength;
+  },
+});
+let workbenchAnsiSpanBytes = 0;
+const workbenchAnsiSpanPainter = new WorkbenchAnsiScreenPainter({
+  writeSync(data) {
+    workbenchAnsiSpanBytes += data.byteLength;
     return data.byteLength;
   },
 });
@@ -1110,6 +1119,63 @@ function runWorkbenchAnsiScreenFlushWorkload(): void {
   }
 }
 
+function runWorkbenchAnsiScreenSpanFlushWorkload(): void {
+  workbenchLineSignalFrameIndex = 1 - workbenchLineSignalFrameIndex;
+  const frame = prepareWorkbenchFrame(workbenchAnsiSpanFrame, workbenchFrameRows);
+  for (let row = 0; row < workbenchFrameRows; row += 1) {
+    writeFrame(
+      frame,
+      workbenchFrameWidth,
+      row,
+      0,
+      `\x1b[38;2;210;220;235;48;2;8;6;18m${"WORKBENCH ".repeat(17)}\x1b[0m`,
+    );
+  }
+
+  const panelColumn = 96;
+  const panelWidth = 58;
+  const panelRow = 9;
+  const panelRows = 29;
+  const panelCells = new Array<string>(panelWidth);
+  for (let row = 0; row < panelRows; row += 1) {
+    const outputRow = panelRow + row;
+    for (let column = 0; column < panelWidth; column += 1) {
+      const red = (40 + row * 4 + workbenchLineSignalFrameIndex * 30) % 256;
+      const green = (120 + column * 3 + workbenchLineSignalFrameIndex * 45) % 256;
+      const blue = (220 + row + column * 2) % 256;
+      panelCells[column] = `\x1b[48;2;${red};${green};${blue}m \x1b[0m`;
+    }
+    writeFrameCells(frame[outputRow]!, panelColumn, panelCells);
+  }
+
+  const first = workbenchAnsiSpanPainter.flush(
+    frame,
+    workbenchFrameWidth,
+    workbenchFrameRows,
+    renderFrameRow,
+    renderFrameSlice,
+  );
+  const second = workbenchAnsiSpanPainter.flush(
+    frame,
+    workbenchFrameWidth,
+    workbenchFrameRows,
+    renderFrameRow,
+    renderFrameSlice,
+  );
+  workbenchFrameChecksum = (workbenchFrameChecksum + first.changed + first.bytes + second.changed + second.bytes) %
+    1_000_000;
+  if (
+    (first.changed !== panelRows && first.changed !== workbenchFrameRows) ||
+    first.bytes <= 0 ||
+    (first.changed === panelRows && first.bytes >= workbenchFrameRows * workbenchFrameWidth * 12) ||
+    second.changed !== 0 ||
+    second.bytes !== 0 ||
+    !Number.isFinite(workbenchFrameChecksum + workbenchAnsiSpanBytes)
+  ) {
+    throw new Error("workbench ANSI screen span flush workload failed");
+  }
+}
+
 function runWorkbenchScaledThreeGridWorkload(): void {
   const frame = prepareWorkbenchFrame(workbenchScaledThreeFrame, workbenchScaledThreeTargetRows);
   writeWorkbenchThreeGrid(
@@ -1475,6 +1541,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 250,
     maxAverageMs: 6,
     run: runWorkbenchAnsiScreenFlushWorkload,
+  },
+  {
+    name: "render/workbench-ansi-screen-span-flush-168x54",
+    category: "render",
+    description: "Flush animated workbench window spans without rewriting unchanged full terminal rows.",
+    tags: ["render", "workbench", "frame", "ansi", "terminal", "span"],
+    iterations: 250,
+    maxAverageMs: 6,
+    run: runWorkbenchAnsiScreenSpanFlushWorkload,
   },
   {
     name: "render/textobject-full-row-canvas-220x70",

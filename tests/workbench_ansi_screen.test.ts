@@ -1,6 +1,6 @@
 import { assertEquals, assertStringIncludes } from "./deps.ts";
 import { WorkbenchAnsiScreenPainter } from "../src/app/workbench_ansi_screen.ts";
-import { type WorkbenchFrame, writeFrame } from "../src/app/workbench_frame.ts";
+import { renderFrameRow, renderFrameSlice, type WorkbenchFrame, writeFrame } from "../src/app/workbench_frame.ts";
 
 Deno.test("WorkbenchAnsiScreenPainter writes only changed ANSI rows", () => {
   const chunks: Uint8Array[] = [];
@@ -85,4 +85,24 @@ Deno.test("WorkbenchAnsiScreenPainter reuses rendered rows when frame cells are 
   writeFrame(frame, 3, 0, 1, "C");
   painter.flush(frame, 3, 1, renderRow);
   assertEquals(renderCalls, 2);
+});
+
+Deno.test("WorkbenchAnsiScreenPainter can flush only changed row spans", () => {
+  const chunks: Uint8Array[] = [];
+  const painter = new WorkbenchAnsiScreenPainter({
+    writeSync(data) {
+      chunks.push(data);
+      return data.byteLength;
+    },
+  });
+  const frame: WorkbenchFrame = [[]];
+  writeFrame(frame, 12, 0, 0, "hello world!");
+
+  painter.flush(frame, 12, 1, renderFrameRow, renderFrameSlice);
+  chunks.length = 0;
+
+  writeFrame(frame, 12, 0, 6, "W");
+  const stats = painter.flush(frame, 12, 1, renderFrameRow, renderFrameSlice);
+  assertEquals(stats.changed, 1);
+  assertEquals(new TextDecoder().decode(chunks[0]), "\x1b[1;7HW");
 });

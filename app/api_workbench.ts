@@ -1046,7 +1046,7 @@ function draw(): void {
   renderStatus(frame);
   renderActiveDropdownOverlay(frame);
   renderModalOverlay(frame);
-  screenPainter.flush(frame, width, height, renderFrameRow);
+  screenPainter.flush(frame, width, height, renderFrameRow, renderFrameSlice);
 }
 
 function scheduleDraw(): void {
