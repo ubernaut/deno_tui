@@ -10,7 +10,11 @@ import {
   summarizeBenchmarkResults,
   summarizeBestBenchmarkSummaries,
 } from "../src/perf/mod.ts";
-import { parseBenchmarkCliOptions, selectBenchmarkCases } from "../scripts/benchmark_cli.ts";
+import {
+  formatEmptyBenchmarkSelectionError,
+  parseBenchmarkCliOptions,
+  selectBenchmarkCases,
+} from "../scripts/benchmark_cli.ts";
 import { benchmarkCases } from "../scripts/benchmark_cases.ts";
 
 Deno.test("BenchmarkRunner reports average timings with warmup", async () => {
@@ -299,4 +303,12 @@ Deno.test("benchmark CLI repeat count is opt-in and bounded", () => {
   assertEquals(parseBenchmarkCliOptions(["--repeat=0"]).repeat, 1);
   assertEquals(parseBenchmarkCliOptions(["--repeat=100"]).repeat, 25);
   assertEquals(parseBenchmarkCliOptions(["--repeat=nope"]).repeat, 1);
+});
+
+Deno.test("benchmark CLI formats empty selector errors", () => {
+  assertEquals(
+    formatEmptyBenchmarkSelectionError({ search: "three-ascii-deferred", category: "render" }),
+    'No benchmark cases matched query="three-ascii-deferred", category="render". Use --list with the same selector to inspect the catalog.',
+  );
+  assertEquals(formatEmptyBenchmarkSelectionError(), "No benchmark cases are available.");
 });

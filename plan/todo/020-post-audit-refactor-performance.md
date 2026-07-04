@@ -673,3 +673,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Fixed deferred Three ASCII readback publication by advancing the deferred queue generation whenever a completed
   readback becomes the visible cached grid; the workbench pressure probe now publishes live deferred updates at the
   120/240-cell tiers instead of reusing a stale revision.
+- Hardened the benchmark CLI so targeted runs with no matching cases fail with a selector diagnostic instead of
+  returning a green zero-case summary, making renderer performance checks harder to misuse.

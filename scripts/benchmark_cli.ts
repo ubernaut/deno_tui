@@ -76,6 +76,18 @@ export function selectBenchmarkCases(
   return cases.filter((benchmark) => matchedNames.has(benchmark.name));
 }
 
+/** Formats a benchmark selector miss so targeted performance runs cannot pass without running cases. */
+export function formatEmptyBenchmarkSelectionError(query: BenchmarkCatalogQuery = {}): string {
+  const selectors: string[] = [];
+  if (query.search) selectors.push(`query=${JSON.stringify(query.search)}`);
+  if (query.category) selectors.push(`category=${JSON.stringify(query.category)}`);
+  if (query.tag) selectors.push(`tag=${JSON.stringify(query.tag)}`);
+  if (query.thresholded !== undefined) selectors.push(`thresholded=${query.thresholded}`);
+  return selectors.length === 0
+    ? "No benchmark cases are available."
+    : `No benchmark cases matched ${selectors.join(", ")}. Use --list with the same selector to inspect the catalog.`;
+}
+
 function parseRepeatCount(value: string): number {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return 1;
