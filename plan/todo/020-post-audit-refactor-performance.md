@@ -526,3 +526,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   frames continue to use nonblocking deferred readback slots.
 - Retuned the API workbench default Three ASCII startup budget from 480 to 240 cells after the pressure probe showed
   roughly half the terminal payload at the same live cadence, while preserving 480/960 as recovery/detail levels.
+- Extracted standard workbench top-menu item-id mapping and signal-state projection into the shared menu helper so the
+  API workbench no longer owns that renderer-neutral disclosure bookkeeping inline.

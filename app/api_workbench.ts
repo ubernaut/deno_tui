@@ -46,6 +46,7 @@ import {
   prepareWorkbenchFrame,
   projectWorkbenchButton,
   projectWorkbenchButtonCommand,
+  projectWorkbenchStandardTopMenuState,
   renameWorkbenchWorkspace,
   renderFrameRow,
   renderFrameSlice,
@@ -72,6 +73,7 @@ import {
   type WorkbenchScrollbarRenderCommand,
   workbenchShelfEntriesInto,
   workbenchShelfRenderCommandsInto,
+  workbenchStandardTopMenuIdForItem,
   workbenchStatusLine,
   workbenchTabEntriesInto,
   type WorkbenchTerminalOutputToolbarAction,
@@ -4100,13 +4102,18 @@ function focusMenu(): void {
 }
 
 function openActiveTopMenu(): void {
-  const item = menu.active();
-  if (item?.id === "theme") openThemeMenu();
-  else if (item?.id === "new") openNewWindowMenu();
-  else if (item?.id === "workspace") openWorkspaceMenu();
-  else {
-    topMenus.close(false);
+  switch (workbenchStandardTopMenuIdForItem(menu.active()?.id)) {
+    case "theme":
+      openThemeMenu();
+      return;
+    case "newWindow":
+      openNewWindowMenu();
+      return;
+    case "workspace":
+      openWorkspaceMenu();
+      return;
   }
+  topMenus.close(false);
 }
 
 function openThemeMenu(): void {
@@ -4137,10 +4144,11 @@ function closeTopMenus(clearFocus = true): void {
 }
 
 function syncTopMenuState(state: { openId: "theme" | "newWindow" | "workspace" | null; focused: boolean }): void {
-  themeMenuOpen.value = state.openId === "theme";
-  newWindowMenuOpen.value = state.openId === "newWindow";
-  workspaceMenuOpen.value = state.openId === "workspace";
-  menuFocused.value = state.focused;
+  const projected = projectWorkbenchStandardTopMenuState(state);
+  themeMenuOpen.value = projected.themeMenuOpen;
+  newWindowMenuOpen.value = projected.newWindowMenuOpen;
+  workspaceMenuOpen.value = projected.workspaceMenuOpen;
+  menuFocused.value = projected.menuFocused;
 }
 
 function focusWindowByNumber(key: string): boolean {

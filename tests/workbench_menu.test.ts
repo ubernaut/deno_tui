@@ -8,6 +8,8 @@ import {
   layoutWorkbenchMenuBarHitsInto,
   layoutWorkbenchTopMenuItemRect,
   moveWorkbenchMenuIndex,
+  projectWorkbenchStandardTopMenuState,
+  workbenchStandardTopMenuIdForItem,
   WorkbenchTopMenuController,
 } from "../src/app/workbench_menu.ts";
 
@@ -18,6 +20,27 @@ Deno.test("workbench menu helpers identify activation and close keys", () => {
   assertEquals(isWorkbenchMenuCloseKey("escape"), true);
   assertEquals(isWorkbenchMenuCloseKey("tab"), true);
   assertEquals(isWorkbenchMenuCloseKey("return"), false);
+});
+
+Deno.test("workbench standard top menu helpers map item ids and signal state", () => {
+  assertEquals(workbenchStandardTopMenuIdForItem("theme"), "theme");
+  assertEquals(workbenchStandardTopMenuIdForItem("new"), "newWindow");
+  assertEquals(workbenchStandardTopMenuIdForItem("workspace"), "workspace");
+  assertEquals(workbenchStandardTopMenuIdForItem("file"), null);
+  assertEquals(workbenchStandardTopMenuIdForItem(undefined), null);
+
+  assertEquals(projectWorkbenchStandardTopMenuState({ openId: "newWindow", focused: true }), {
+    themeMenuOpen: false,
+    newWindowMenuOpen: true,
+    workspaceMenuOpen: false,
+    menuFocused: true,
+  });
+  assertEquals(projectWorkbenchStandardTopMenuState({ openId: null, focused: false }), {
+    themeMenuOpen: false,
+    newWindowMenuOpen: false,
+    workspaceMenuOpen: false,
+    menuFocused: false,
+  });
 });
 
 Deno.test("workbench menu index movement wraps and clamps common dropdown keys", () => {

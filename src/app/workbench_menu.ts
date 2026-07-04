@@ -71,6 +71,17 @@ export interface WorkbenchTopMenuInspection<MenuId extends string = string> {
   focused: boolean;
 }
 
+/** Built-in top-menu dropdown ids used by the API/workbench demos. */
+export type WorkbenchStandardTopMenuId = "theme" | "newWindow" | "workspace";
+
+/** Renderer adapter signal state projected from standard top-menu disclosure state. */
+export interface WorkbenchStandardTopMenuSignalState {
+  themeMenuOpen: boolean;
+  newWindowMenuOpen: boolean;
+  workspaceMenuOpen: boolean;
+  menuFocused: boolean;
+}
+
 /** Options for configuring a renderer-neutral top menu disclosure controller. */
 export interface WorkbenchTopMenuControllerOptions<MenuId extends string> {
   onChange?: (inspection: WorkbenchTopMenuInspection<MenuId>) => void;
@@ -130,6 +141,34 @@ export function isWorkbenchMenuActivationKey(key: string): boolean {
 /** Return whether a key should close the active dropdown/menu. */
 export function isWorkbenchMenuCloseKey(key: string): boolean {
   return key === "escape" || key === "tab";
+}
+
+/** Maps a top menu-bar item id to the standard dropdown id it opens. */
+export function workbenchStandardTopMenuIdForItem(
+  itemId: string | null | undefined,
+): WorkbenchStandardTopMenuId | null {
+  switch (itemId) {
+    case "theme":
+      return "theme";
+    case "new":
+      return "newWindow";
+    case "workspace":
+      return "workspace";
+    default:
+      return null;
+  }
+}
+
+/** Projects standard top-menu disclosure state into renderer adapter booleans. */
+export function projectWorkbenchStandardTopMenuState(
+  state: WorkbenchTopMenuInspection<WorkbenchStandardTopMenuId>,
+): WorkbenchStandardTopMenuSignalState {
+  return {
+    themeMenuOpen: state.openId === "theme",
+    newWindowMenuOpen: state.openId === "newWindow",
+    workspaceMenuOpen: state.openId === "workspace",
+    menuFocused: state.focused,
+  };
 }
 
 /** Move a selected dropdown/menu index according to common workbench key bindings. */
