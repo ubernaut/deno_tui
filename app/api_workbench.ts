@@ -11,7 +11,6 @@ import { RadioGroupController } from "../src/components/radio_group.ts";
 import { ScrollAreaController } from "../src/components/scroll_area.ts";
 import { SliderController } from "../src/components/slider.ts";
 import { StepperController } from "../src/components/stepper.ts";
-import { formatTerminalOutputLine } from "../src/components/terminal_output.ts";
 import { TextBoxController, type TextBoxVisualLine } from "../src/components/textbox.ts";
 import {
   appendBoundedWorkbenchLogRow,
@@ -1833,6 +1832,7 @@ function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
 
   const outputHeight = Math.max(0, rect.row + rect.height - row);
   const lines = terminalOutputSession.output.visible(outputHeight);
+  const textRows = workbenchTerminalOutputRowsInto(terminalOutputContentRows, lines, { sourcePrefix: true });
   if (lines.length === 0) {
     write(
       frame,
@@ -1853,7 +1853,7 @@ function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
       frame,
       row + index,
       rect.column,
-      paint(fit(formatTerminalOutputLine(line, { sourcePrefix: true }), rect.width), style),
+      paint(fit(textRows[index] ?? "", rect.width), style),
     );
   }
 }
