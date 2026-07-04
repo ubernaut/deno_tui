@@ -761,3 +761,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   windows, including Three panes, are not rendered or kept live while outside the visible workspace viewport.
 - Added a `render/workbench-visible-window-rects-60` benchmark guard for the visible-window filter; it runs around
   0.002ms average on this host.
+- Routed the browser API workbench through the same visible-window filter as the terminal adapter so web parity keeps
+  scrolled-off panels out of the render loop.

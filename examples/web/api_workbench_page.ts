@@ -103,6 +103,7 @@ import {
   workbenchTerminalToolbarStateFromSnapshot,
   type WorkbenchTitlebarButtonKind,
   workbenchTitlebarButtonRenderCommandsInto,
+  workbenchVisibleWindowRectsInto,
   workbenchWorkspaceScrollbarRenderCommandsInto,
   WorkbenchWorkspaceViewportController,
   wrappedControlOptionRowCount,
@@ -383,6 +384,7 @@ const menuBarHitLayouts: WorkbenchMenuBarHitLayout[] = [];
 const headerLayout: WorkbenchHeaderLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
 const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
 const workspaceScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
+const visiblePanelRects = new Map<PanelId, Rectangle>();
 const webTerminalActions: readonly WebTerminalAction[] = [
   "new",
   "previous",
@@ -777,7 +779,10 @@ function draw(): void {
       );
       hitTargets.add({ ...layout.bounds, row: 0 }, { type: "restore" });
     } else {
-      for (const [id, rect] of layout.rects) {
+      const visibleRects = workbenchVisibleWindowRectsInto(visiblePanelRects, layout.rects, {
+        viewport: { column: layout.bounds.column, row: offset, width: layout.bounds.width, height: body.height },
+      });
+      for (const [id, rect] of visibleRects) {
         renderPanel(virtual, id, rect);
       }
     }
