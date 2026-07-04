@@ -75,6 +75,7 @@ export function assembleThreeAsciiReadbackGridWithContext(
     terminalGlyphStyle: frame.terminalGlyphStyle,
     terminalEdgeBias: frame.terminalEdgeBias,
     backgroundColor: frame.backgroundColor,
+    blockVisibilityFromColorAlpha: frame.layout.fillFloatLength === 0 && frame.terminalGlyphStyle === "blocks",
   });
 
   return {

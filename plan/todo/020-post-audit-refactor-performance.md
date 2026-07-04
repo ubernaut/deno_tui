@@ -769,3 +769,7 @@ performance, shared terminal/web workbench projections, and oversized module red
   the 30-cell fallback available under terminal pressure. Normal animated block output now stays at `13x4/52c` and
   20fps cadence instead of starting at `9x3/27c`; recovery into 120 cells requires quieter output below 10KB/s to avoid
   periodic expensive up/down oscillation.
+- Added a compact block-mode Three ASCII readback path: color compute shaders now carry block visibility in alpha,
+  block assembly can use that alpha mask, and block terminal frames omit the fill payload from GPU readback while glyph
+  and mixed modes keep full fill/edge/color data. The workbench pressure probe stays stable at `13x4/52c`; recovery now
+  requires output below 7KB/s so the lower-byte block path does not oscillate into 120-cell frames.

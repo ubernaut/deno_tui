@@ -485,6 +485,35 @@ Deno.test("three ascii ANSI grid assembler keeps glyph style cache keys distinct
   assertEquals(blocks !== glyphs, true);
 });
 
+Deno.test("three ascii ANSI grid assembler can use color alpha for block visibility", () => {
+  const grid = buildThreeAsciiAnsiGrid({
+    columns: 3,
+    rows: 1,
+    fillGlyphs: new Float32Array(0),
+    colors: new Float32Array([
+      1,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+    ]),
+    terminalGlyphStyle: "blocks",
+    backgroundColor: 0x000000,
+    blockVisibilityFromColorAlpha: true,
+  });
+
+  assertEquals(grid[0][0], "\x1b[48;2;255;0;0m \x1b[0m");
+  assertEquals(grid[0][1], "\x1b[48;2;0;0;0m \x1b[0m");
+  assertEquals(grid[0][2], "\x1b[48;2;0;0;255m \x1b[0m");
+});
+
 Deno.test("three ascii fallback detail hides raw GPU validation text", () => {
   assertEquals(
     formatThreeAsciiFallbackDetail(new Error("Buffer with '' label is invalid.")),

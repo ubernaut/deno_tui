@@ -476,6 +476,7 @@ export class ThreeAsciiRenderer {
     this.readbackLayoutOptions.fillByteLength = this.fillOutput!.byteLength;
     this.readbackLayoutOptions.edgeByteLength = this.edgeOutput?.byteLength ?? 0;
     this.readbackLayoutOptions.colorByteLength = this.colorOutput!.byteLength;
+    this.readbackLayoutOptions.includeFill = computeMode.includeFillReadback;
     this.readbackLayoutOptions.includeEdges = computeMode.includeEdges;
     const readbackLayout = this.readbackLayoutCache.resolve(this.readbackLayoutOptions);
     this.readbackCopyFillSource.byteLength = this.fillOutput!.byteLength;
@@ -485,6 +486,7 @@ export class ThreeAsciiRenderer {
       fill: this.readbackCopyFillSource,
       edge: this.edgeOutput ? this.readbackCopyEdgeSource : undefined,
       color: this.readbackCopyColorSource,
+      includeFill: computeMode.includeFillReadback,
       includeEdges: computeMode.includeEdges,
       layout: readbackLayout,
     });

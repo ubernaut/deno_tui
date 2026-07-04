@@ -211,6 +211,10 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 
   let index = id.y * columns + id.x;
   let downscale = textureLoad(downscaleTex, vec2<i32>(i32(id.x), i32(id.y)), 0);
+  let exposure = params.effect0.x;
+  let attenuation = params.effect0.y;
+  let luminanceValue = clamp(pow(max(downscale.a, 0.0) * exposure, attenuation), 0.0, 1.0);
+  let visibility = select(0.0, 1.0, params.flags.y > 0.5 && luminanceValue > ${MIN_VISIBLE_LUMINANCE});
   let center = vec2<i32>(i32(id.x) * ${THREE_ASCII_TILE_SIZE} + ${
   THREE_ASCII_TILE_SIZE / 2
 }, i32(id.y) * ${THREE_ASCII_TILE_SIZE} + ${THREE_ASCII_TILE_SIZE / 2});
@@ -222,7 +226,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   let fogFactor = exp2(-(fogValue * fogValue));
   let finalColor = mix(params.backgroundColor.rgb, baseAsciiColor, fogFactor);
 
-  colors[index] = vec4<f32>(clamp(finalColor, vec3<f32>(0.0), vec3<f32>(1.0)), 1.0);
+  colors[index] = vec4<f32>(clamp(finalColor, vec3<f32>(0.0), vec3<f32>(1.0)), visibility);
 }
 `;
 
@@ -251,8 +255,12 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 
   let index = id.y * columns + id.x;
   let downscale = textureLoad(downscaleTex, vec2<i32>(i32(id.x), i32(id.y)), 0);
+  let exposure = params.effect0.x;
+  let attenuation = params.effect0.y;
+  let luminanceValue = clamp(pow(max(downscale.a, 0.0) * exposure, attenuation), 0.0, 1.0);
+  let visibility = select(0.0, 1.0, params.flags.y > 0.5 && luminanceValue > ${MIN_VISIBLE_LUMINANCE});
   let baseAsciiColor = mix(params.asciiColor.rgb, downscale.rgb, params.effect0.z);
 
-  colors[index] = vec4<f32>(clamp(baseAsciiColor, vec3<f32>(0.0), vec3<f32>(1.0)), 1.0);
+  colors[index] = vec4<f32>(clamp(baseAsciiColor, vec3<f32>(0.0), vec3<f32>(1.0)), visibility);
 }
 `;

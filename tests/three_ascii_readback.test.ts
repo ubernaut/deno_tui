@@ -39,6 +39,23 @@ Deno.test("three ascii readback layout omits edge payload when edges are disable
   assertEquals(layout.byteLength, 40);
 });
 
+Deno.test("three ascii readback layout can omit fill payload for block visibility alpha", () => {
+  const layout = createThreeAsciiReadbackLayout({
+    fillByteLength: 8,
+    edgeByteLength: 16,
+    colorByteLength: 32,
+    includeFill: false,
+    includeEdges: false,
+  });
+
+  assertEquals(layout.includeFill, false);
+  assertEquals(layout.fillOffset, 0);
+  assertEquals(layout.fillFloatLength, 0);
+  assertEquals(layout.edgeOffset, undefined);
+  assertEquals(layout.colorOffset, 0);
+  assertEquals(layout.byteLength, 32);
+});
+
 Deno.test("three ascii readback views point at packed source ranges", () => {
   const layout = createThreeAsciiReadbackLayout({
     fillByteLength: 8,
@@ -100,6 +117,28 @@ Deno.test("three ascii readback copy plan omits edge copy when edge output is un
   assertEquals(plan.commands, [
     { label: "fill", byteLength: 8, targetOffset: 0 },
     { label: "color", byteLength: 32, targetOffset: 8 },
+  ]);
+});
+
+Deno.test("three ascii readback copy plan can omit fill copy for compact block frames", () => {
+  const layout = createThreeAsciiReadbackLayout({
+    fillByteLength: 8,
+    edgeByteLength: 16,
+    colorByteLength: 32,
+    includeFill: false,
+    includeEdges: false,
+  });
+
+  const plan = createThreeAsciiReadbackCopyPlan({
+    fill: { label: "fill", byteLength: 8 },
+    color: { label: "color", byteLength: 32 },
+    includeFill: false,
+    includeEdges: false,
+    layout,
+  });
+
+  assertEquals(plan.commands, [
+    { label: "color", byteLength: 32, targetOffset: 0 },
   ]);
 });
 

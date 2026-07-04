@@ -28,7 +28,7 @@ Deno.test("ApiWorkbenchThreeRuntimeController recovers startup cells under quiet
   const controller = new ApiWorkbenchThreeRuntimeController({
     hasLiveThreeWindow: () => true,
   });
-  const stats = { changed: 5, bytes: 450, durationMs: 0.05 };
+  const stats = { changed: 5, bytes: 300, durationMs: 0.05 };
   const sample = { renderedThreeGrids: 1, renderedThreeRows: 4 };
 
   for (let index = 0; index < 45; index += 1) {

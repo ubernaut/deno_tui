@@ -5,6 +5,7 @@ import type { TerminalGlyphStyle } from "./glyphs.ts";
 export interface ThreeAsciiComputeMode {
   includeEdges: boolean;
   includeDepthColor: boolean;
+  includeFillReadback: boolean;
 }
 
 /** Resolve compute pass switches without touching WebGPU resources. */
@@ -15,5 +16,6 @@ export function resolveThreeAsciiComputeMode(
   return {
     includeEdges: shouldIncludeThreeAsciiTerminalEdges(effectState, terminalGlyphStyle),
     includeDepthColor: effectState.depthFalloff > 0,
+    includeFillReadback: terminalGlyphStyle !== "blocks",
   };
 }

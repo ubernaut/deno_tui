@@ -6,6 +6,7 @@ export interface ThreeAsciiReadbackLayoutOptions {
   fillByteLength: number;
   edgeByteLength: number;
   colorByteLength: number;
+  includeFill?: boolean;
   includeEdges: boolean;
 }
 
@@ -14,6 +15,7 @@ export interface ThreeAsciiReadbackLayout {
   edgeOffset?: number;
   colorOffset: number;
   byteLength: number;
+  includeFill: boolean;
   fillFloatLength: number;
   edgeFloatLength: number;
   colorFloatLength: number;
@@ -66,15 +68,18 @@ export class ThreeAsciiReadbackCopyPlanCache {
   private fillByteLength = -1;
   private edgeByteLength = -1;
   private colorByteLength = -1;
+  private includeFill = true;
   private includeEdges = false;
 
   resolve(options: {
     fill: ThreeAsciiReadbackCopySource;
     edge?: ThreeAsciiReadbackCopySource;
     color: ThreeAsciiReadbackCopySource;
+    includeFill?: boolean;
     includeEdges: boolean;
     layout: ThreeAsciiReadbackLayout;
   }): ThreeAsciiReadbackCopyPlan {
+    const includeFill = options.includeFill ?? true;
     const edgeByteLength = options.includeEdges ? options.edge?.byteLength ?? -1 : 0;
     if (
       this.cached &&
@@ -82,6 +87,7 @@ export class ThreeAsciiReadbackCopyPlanCache {
       this.fillByteLength === options.fill.byteLength &&
       this.edgeByteLength === edgeByteLength &&
       this.colorByteLength === options.color.byteLength &&
+      this.includeFill === includeFill &&
       this.includeEdges === options.includeEdges
     ) {
       return this.cached;
@@ -92,6 +98,7 @@ export class ThreeAsciiReadbackCopyPlanCache {
     this.fillByteLength = options.fill.byteLength;
     this.edgeByteLength = edgeByteLength;
     this.colorByteLength = options.color.byteLength;
+    this.includeFill = includeFill;
     this.includeEdges = options.includeEdges;
     return this.cached;
   }
@@ -102,6 +109,7 @@ export class ThreeAsciiReadbackCopyPlanCache {
     this.fillByteLength = -1;
     this.edgeByteLength = -1;
     this.colorByteLength = -1;
+    this.includeFill = true;
     this.includeEdges = false;
   }
 }
@@ -112,24 +120,28 @@ export class ThreeAsciiReadbackLayoutCache {
   private fillByteLength = -1;
   private edgeByteLength = -1;
   private colorByteLength = -1;
+  private includeFill = true;
   private includeEdges = false;
 
   resolve(options: ThreeAsciiReadbackLayoutOptions): ThreeAsciiReadbackLayout {
+    const includeFill = options.includeFill ?? true;
     const edgeByteLength = options.includeEdges ? options.edgeByteLength : 0;
     if (
       this.cached &&
       this.fillByteLength === options.fillByteLength &&
       this.edgeByteLength === edgeByteLength &&
       this.colorByteLength === options.colorByteLength &&
+      this.includeFill === includeFill &&
       this.includeEdges === options.includeEdges
     ) {
       return this.cached;
     }
 
-    this.cached = createThreeAsciiReadbackLayout({ ...options, edgeByteLength });
+    this.cached = createThreeAsciiReadbackLayout({ ...options, includeFill, edgeByteLength });
     this.fillByteLength = options.fillByteLength;
     this.edgeByteLength = edgeByteLength;
     this.colorByteLength = options.colorByteLength;
+    this.includeFill = includeFill;
     this.includeEdges = options.includeEdges;
     return this.cached;
   }
@@ -139,6 +151,7 @@ export class ThreeAsciiReadbackLayoutCache {
     this.fillByteLength = -1;
     this.edgeByteLength = -1;
     this.colorByteLength = -1;
+    this.includeFill = true;
     this.includeEdges = false;
   }
 }
@@ -197,7 +210,8 @@ export class ThreeAsciiReadbackViewCache {
 }
 
 export function createThreeAsciiReadbackLayout(options: ThreeAsciiReadbackLayoutOptions): ThreeAsciiReadbackLayout {
-  const fillByteLength = validateByteLength("fill", options.fillByteLength);
+  const includeFill = options.includeFill ?? true;
+  const fillByteLength = includeFill ? validateByteLength("fill", options.fillByteLength) : 0;
   const edgeByteLength = validateByteLength("edge", options.edgeByteLength);
   const colorByteLength = validateByteLength("color", options.colorByteLength);
   const fillOffset = 0;
@@ -209,6 +223,7 @@ export function createThreeAsciiReadbackLayout(options: ThreeAsciiReadbackLayout
     edgeOffset,
     colorOffset,
     byteLength: colorOffset + colorByteLength,
+    includeFill,
     fillFloatLength: fillByteLength / FLOAT_BYTE_LENGTH,
     edgeFloatLength: edgeByteLength / FLOAT_BYTE_LENGTH,
     colorFloatLength: colorByteLength / FLOAT_BYTE_LENGTH,
@@ -232,16 +247,19 @@ export function createThreeAsciiReadbackCopyPlan(options: {
   fill: ThreeAsciiReadbackCopySource;
   edge?: ThreeAsciiReadbackCopySource;
   color: ThreeAsciiReadbackCopySource;
+  includeFill?: boolean;
   includeEdges: boolean;
   layout: ThreeAsciiReadbackLayout;
 }): ThreeAsciiReadbackCopyPlan {
-  const commands: ThreeAsciiReadbackCopyCommand[] = [
-    {
+  const includeFill = options.includeFill ?? true;
+  const commands: ThreeAsciiReadbackCopyCommand[] = [];
+  if (includeFill) {
+    commands.push({
       label: "fill",
       byteLength: options.fill.byteLength,
       targetOffset: options.layout.fillOffset,
-    },
-  ];
+    });
+  }
 
   if (options.includeEdges) {
     if (!options.edge || options.layout.edgeOffset === undefined) {
