@@ -321,7 +321,10 @@ import {
   workbenchQuitModalContent,
 } from "./workbench_modal_content.ts";
 import { formatWorkbenchKittyGraphicsStatus, WorkbenchKittyGraphicsController } from "./workbench_kitty_graphics.ts";
-import { type WorkbenchFrameRenderCommand, workbenchFrameRenderCommandsInto } from "./workbench_frame_render.ts";
+import {
+  type WorkbenchFrameRenderCommand,
+  workbenchFrameRenderCommandsInto,
+} from "../src/app/workbench_frame_render.ts";
 import { type WorkbenchStyledRowRenderCommand, workbenchStyledRowsRenderCommandsInto } from "./workbench_row_render.ts";
 import { type RowStyle, type ThreeHeaderPerformance, threeHeaderRows } from "./workbench_rows.ts";
 import { writeThreeHeaderPerformance } from "./workbench_three_header.ts";

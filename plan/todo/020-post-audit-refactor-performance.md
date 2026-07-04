@@ -1016,3 +1016,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Moved the renderer-neutral workspace menu/state planner from the demo `app/` tree into `src/app` and exported it
   through the workbench facade, reducing demo-owned workspace orchestration while preserving the existing save/open/
   rename/delete tests.
+- Moved the renderer-neutral workbench frame render-command projector into `src/app` and exported it through the
+  workbench facade, so terminal, browser, and benchmark frame chrome all share the same tested module path.

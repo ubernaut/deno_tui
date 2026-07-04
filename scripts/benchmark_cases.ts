@@ -56,7 +56,10 @@ import { AudioRegistry } from "../app/audio.ts";
 import { createHtmlCssLayoutDemo } from "../app/html_css_layout_demo.ts";
 import { resolveSourceFramesInto } from "../app/sources.ts";
 import { type ThreeHeaderPerformance, threeHeaderRows, type WorkbenchRowTheme } from "../app/workbench_rows.ts";
-import { type WorkbenchFrameRenderCommand, workbenchFrameRenderCommandsInto } from "../app/workbench_frame_render.ts";
+import {
+  type WorkbenchFrameRenderCommand,
+  workbenchFrameRenderCommandsInto,
+} from "../src/app/workbench_frame_render.ts";
 import {
   currentWorkspaceVisualizationIdsInto,
   currentWorkspaceWindowsInto,

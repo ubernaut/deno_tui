@@ -159,10 +159,7 @@ import {
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
 } from "../../app/api_workbench_controls.ts";
-import {
-  expandedApiWorkbenchTouchHitRect,
-  isApiWorkbenchTouchOptimizedLayout,
-} from "../../app/api_workbench_hit.ts";
+import { expandedApiWorkbenchTouchHitRect, isApiWorkbenchTouchOptimizedLayout } from "../../app/api_workbench_hit.ts";
 import {
   type HtmlCssLayoutRenderCommand,
   htmlCssLayoutRenderCommandsInto,
@@ -183,7 +180,7 @@ import { workbenchLogRowsFromSourcesInto } from "../../app/workbench_logs.ts";
 import {
   type WorkbenchFrameRenderCommand,
   workbenchFrameRenderCommandsInto,
-} from "../../app/workbench_frame_render.ts";
+} from "../../src/app/workbench_frame_render.ts";
 import {
   type WorkbenchStyledRowRenderCommand,
   workbenchStyledRowsRenderCommandsInto,
@@ -2726,8 +2723,7 @@ function findHit(x: number, y: number): HitTarget<Hit> | undefined {
     expandedApiWorkbenchTouchHitRect({
       rect,
       bounds: { column: 0, row: 0, width: cols(), height: rowsCount() },
-    })
-  );
+    }));
 }
 
 function isTouchOptimizedLayout(): boolean {

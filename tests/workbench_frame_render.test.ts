@@ -1,5 +1,8 @@
 import { assertEquals, assertStrictEquals } from "./deps.ts";
-import { type WorkbenchFrameRenderCommand, workbenchFrameRenderCommandsInto } from "../app/workbench_frame_render.ts";
+import {
+  type WorkbenchFrameRenderCommand,
+  workbenchFrameRenderCommandsInto,
+} from "../src/app/workbench_frame_render.ts";
 import type { WorkbenchFrameBoxLine } from "../src/app/workbench_frame.ts";
 
 const theme = {
