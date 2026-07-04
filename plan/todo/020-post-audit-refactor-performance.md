@@ -662,3 +662,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted Three panel effective render-budget and frame-interval normalization into the renderer policy module with
   direct tests, leaving `ThreePanelFrameView` to read signals while pressure-cap clamping remains reusable and
   independently covered.
+- Extracted the Three ASCII renderer's pre-scene deferred-readback decision into a focused helper, covering unavailable
+  readbacks, saturated queues, and stale-frame force-blocking without moving GPU submission code out of the renderer.
