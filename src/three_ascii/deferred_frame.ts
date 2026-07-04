@@ -10,6 +10,7 @@ export interface ThreeAsciiDeferredPreSceneFrameInput {
   staleFrames: number;
   maxStaleFrames: number;
   hasCachedGrid: boolean;
+  pendingReadbacks?: number;
   saturated: boolean;
 }
 
@@ -46,6 +47,6 @@ export function resolveThreeAsciiDeferredPreSceneFrame(
   return {
     kind: "continue",
     staleFrames: staleness.staleFrames,
-    forceBlockingReadback: staleness.forceBlockingReadback,
+    forceBlockingReadback: staleness.forceBlockingReadback && (input.pendingReadbacks ?? 0) <= 0,
   };
 }

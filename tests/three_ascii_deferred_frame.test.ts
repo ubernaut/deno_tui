@@ -81,6 +81,20 @@ Deno.test("resolveThreeAsciiDeferredPreSceneFrame forces blocking after stale ca
       renderAnsi: true,
       renderImage: false,
       readbackStrategy: "deferred",
+      completed: {},
+      staleFrames: 1,
+      maxStaleFrames: 2,
+      hasCachedGrid: true,
+      pendingReadbacks: 1,
+      saturated: false,
+    }),
+    { kind: "continue", staleFrames: 2, forceBlockingReadback: false },
+  );
+  assertEquals(
+    resolveThreeAsciiDeferredPreSceneFrame({
+      renderAnsi: true,
+      renderImage: false,
+      readbackStrategy: "deferred",
       completed: { grid: [["fresh"]] },
       staleFrames: 2,
       maxStaleFrames: 2,

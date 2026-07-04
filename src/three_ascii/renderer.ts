@@ -344,6 +344,7 @@ export class ThreeAsciiRenderer {
     let forceBlockingDeferredReadback = false;
     if (renderAnsi && !renderImage && this.readbackStrategy === "deferred") {
       deferredAnsiGrid = this.consumeDeferredAnsiGrid();
+      const deferredQueue = deferredAnsiGrid.readbackUnavailable ? undefined : this.deferredReadbacks.inspect();
       const deferredFrame = resolveThreeAsciiDeferredPreSceneFrame({
         renderAnsi,
         renderImage,
@@ -352,7 +353,8 @@ export class ThreeAsciiRenderer {
         staleFrames: this.deferredReadbackStaleFrames,
         maxStaleFrames: this.deferredReadbackMaxStaleFrames,
         hasCachedGrid: this.deferredReadbacks.lastCompletedGrid().length > 0,
-        saturated: deferredAnsiGrid.readbackUnavailable ? false : this.deferredReadbacks.isSaturated(),
+        pendingReadbacks: deferredQueue?.pending,
+        saturated: deferredQueue?.saturated ?? false,
       });
       this.deferredReadbackStaleFrames = deferredFrame.staleFrames;
       forceBlockingDeferredReadback = deferredFrame.forceBlockingReadback;

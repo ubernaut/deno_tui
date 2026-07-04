@@ -394,7 +394,7 @@ Deno.test("workbench Three frame interval policy keeps smaller live budgets smoo
   assertEquals(workbenchThreeFrameIntervalForCells(240, { ...options, live: false }), 1000 / 6);
 });
 
-Deno.test("workbench Three live cadence follows focused or fullscreen Three panes", () => {
+Deno.test("workbench Three live cadence follows visible or fullscreen Three panes", () => {
   const windows = [
     { id: "explorer", state: "normal" },
     { id: "three", state: "normal" },
@@ -403,8 +403,8 @@ Deno.test("workbench Three live cadence follows focused or fullscreen Three pane
   const isThreeWindow = (id: string) => id.startsWith("three");
 
   assertEquals(workbenchThreeShouldUseLiveCadence({ activeId: "three", windows, isThreeWindow }), true);
-  assertEquals(workbenchThreeShouldUseLiveCadence({ activeId: "explorer", windows, isThreeWindow }), false);
-  assertEquals(workbenchThreeShouldUseLiveCadence({ activeId: "three-lattice", windows, isThreeWindow }), false);
+  assertEquals(workbenchThreeShouldUseLiveCadence({ activeId: "explorer", windows, isThreeWindow }), true);
+  assertEquals(workbenchThreeShouldUseLiveCadence({ activeId: "three-lattice", windows, isThreeWindow }), true);
   assertEquals(
     workbenchThreeShouldUseLiveCadence({ activeId: "explorer", fullscreenId: "three", windows, isThreeWindow }),
     true,
@@ -440,7 +440,7 @@ Deno.test("workbench Three live cadence ignores hidden Three panes", () => {
   assertEquals(workbenchThreeShouldUseLiveCadence({ activeId: "explorer", windows, isThreeWindow }), false);
 });
 
-Deno.test("workbench Three per-window interactivity follows only the targeted pane", () => {
+Deno.test("workbench Three per-window interactivity follows visible targeted panes", () => {
   const windows = [
     { id: "three", state: "normal" },
     { id: "three-lattice", state: "normal" },
@@ -448,7 +448,7 @@ Deno.test("workbench Three per-window interactivity follows only the targeted pa
   ];
 
   assertEquals(workbenchThreeWindowIsInteractive({ id: "three", activeId: "three", windows }), true);
-  assertEquals(workbenchThreeWindowIsInteractive({ id: "three-lattice", activeId: "three", windows }), false);
+  assertEquals(workbenchThreeWindowIsInteractive({ id: "three-lattice", activeId: "three", windows }), true);
   assertEquals(workbenchThreeWindowIsInteractive({ id: "three-hidden", activeId: "three-hidden", windows }), false);
   assertEquals(
     workbenchThreeWindowIsInteractive({

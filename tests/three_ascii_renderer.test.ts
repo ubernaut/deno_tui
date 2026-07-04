@@ -296,7 +296,7 @@ Deno.test("ThreeAsciiRenderer skips scene submission when deferred readbacks are
   assertEquals(renderer.inspectPerformance()?.deferredReadbackUnresolved, 6);
 });
 
-Deno.test("ThreeAsciiRenderer forces a blocking deferred readback after stale cached frames", async () => {
+Deno.test("ThreeAsciiRenderer avoids blocking stale fallback while deferred readbacks are pending", async () => {
   const renderer = new ThreeAsciiRenderer({
     scene: new Scene(),
     camera: new PerspectiveCamera(),
@@ -335,6 +335,63 @@ Deno.test("ThreeAsciiRenderer forces a blocking deferred readback after stale ca
       slotCount: 6,
       pending: 1,
       unresolved: 1,
+      resolved: 0,
+      saturated: false,
+      generation: 0,
+    }),
+    lastCompletedGrid: () => cachedGrid,
+  };
+  internals.renderScene = () => Promise.resolve();
+  internals.computeAnsiGrid = (_effectState, _completed, forceBlockingDeferredReadback = false) => {
+    forcedFlags.push(forceBlockingDeferredReadback);
+    return Promise.resolve(forceBlockingDeferredReadback ? [["fresh"]] : cachedGrid);
+  };
+
+  const first = await renderer.renderFrame(0, undefined, { ansi: true });
+  const second = await renderer.renderFrame(0, undefined, { ansi: true });
+
+  assertEquals(first.grid, cachedGrid);
+  assertEquals(second.grid, cachedGrid);
+  assertEquals(forcedFlags, [false, false]);
+});
+
+Deno.test("ThreeAsciiRenderer forces a blocking deferred readback after stale cached frames with no pending readback", async () => {
+  const renderer = new ThreeAsciiRenderer({
+    scene: new Scene(),
+    camera: new PerspectiveCamera(),
+    columns: 1,
+    rows: 1,
+    readbackStrategy: "deferred",
+    deferredReadbackMaxStaleFrames: 2,
+  });
+  const cachedGrid = [["cached"]];
+  const forcedFlags: boolean[] = [];
+  const internals = renderer as unknown as {
+    deferredReadbacks: {
+      consumeCompleted: () => { grid?: string[][]; readbackMs?: number };
+      inspect: () => {
+        slotCount: number;
+        pending: number;
+        unresolved: number;
+        resolved: number;
+        saturated: boolean;
+        generation: number;
+      };
+      lastCompletedGrid: () => string[][];
+    };
+    renderScene: () => Promise<void>;
+    computeAnsiGrid: (
+      effectState: unknown,
+      completed?: { grid?: string[][]; readbackMs?: number },
+      forceBlockingDeferredReadback?: boolean,
+    ) => Promise<string[][]>;
+  };
+  internals.deferredReadbacks = {
+    consumeCompleted: () => ({}),
+    inspect: () => ({
+      slotCount: 6,
+      pending: 0,
+      unresolved: 0,
       resolved: 0,
       saturated: false,
       generation: 0,

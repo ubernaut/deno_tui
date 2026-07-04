@@ -126,28 +126,28 @@ export function workbenchThreeFrameIntervalForCells(
   return intervals.get(Math.max(1, Math.floor(cells))) ?? Math.max(1, fallback);
 }
 
-/** Returns true when the focused or fullscreen workbench window should keep Three rendering interactive. */
+/** Returns true when a visible Three workbench window should keep Three rendering interactive. */
 export function workbenchThreeShouldUseLiveCadence(options: WorkbenchThreeLiveCadenceOptions): boolean {
   if (options.blocked) return false;
   if (options.fullscreenId) return options.isThreeWindow(options.fullscreenId);
-  if (!options.activeId || !options.isThreeWindow(options.activeId)) return false;
   for (const window of options.windows) {
-    if (window.id !== options.activeId) continue;
+    if (!options.isThreeWindow(window.id)) continue;
     const state = window.state ?? "normal";
-    return state === "normal" || state === "fullscreen";
+    if (state === "normal" || state === "fullscreen") return true;
   }
   return false;
 }
 
-/** Returns true when a specific Three pane is the focused or fullscreen interactive target. */
+/** Returns true when a specific Three pane is visible enough to keep rendering interactively. */
 export function workbenchThreeWindowIsInteractive(options: WorkbenchThreeWindowInteractivityOptions): boolean {
-  return workbenchThreeShouldUseLiveCadence({
-    activeId: options.activeId === options.id ? options.id : undefined,
-    fullscreenId: options.fullscreenId,
-    windows: options.windows,
-    blocked: options.blocked,
-    isThreeWindow: (candidate) => candidate === options.id,
-  });
+  if (options.blocked) return false;
+  if (options.fullscreenId) return options.fullscreenId === options.id;
+  for (const window of options.windows) {
+    if (window.id !== options.id) continue;
+    const state = window.state ?? "normal";
+    return state === "normal" || state === "fullscreen";
+  }
+  return false;
 }
 
 /** Returns true when a Three pane should count toward terminal-output pressure adaptation. */
