@@ -13,7 +13,8 @@ import {
   terminalGlyphModeForStyle,
 } from "./ansi_glyph_keys.ts";
 import { ThreeAsciiAnsiBackgroundState } from "./ansi_background.ts";
-import { createLinearByteCache, rgbToAnsiBackground, rgbToAnsiForeground } from "./colors.ts";
+import { ThreeAsciiAnsiColorKeyCache } from "./ansi_color_cache.ts";
+import { rgbToAnsiBackground, rgbToAnsiForeground } from "./colors.ts";
 import type { TerminalGlyphStyle } from "./glyphs.ts";
 
 const DEFAULT_TERMINAL_EDGE_BIAS = 1;
@@ -38,16 +39,12 @@ export interface ThreeAsciiAnsiGridInput {
 
 /** Reusable ANSI grid assembler that keeps color and cell string caches warm across frames. */
 export class ThreeAsciiAnsiGridAssembler {
-  private readonly toByte = createLinearByteCache();
   private readonly foregroundAnsiCache = new Map<number, string>();
   private readonly cellCache = new Map<number, string>();
   private readonly background = new ThreeAsciiAnsiBackgroundState();
+  private readonly colorKeyCache = new ThreeAsciiAnsiColorKeyCache();
   private readonly reuseGrid: boolean;
   private reusableGrid: string[][] = [];
-  private cachedColorRawRed = new Float64Array(0);
-  private cachedColorRawGreen = new Float64Array(0);
-  private cachedColorRawBlue = new Float64Array(0);
-  private cachedColorByteKeys = new Uint32Array(0);
   private cachedCellForegroundKeys = new Int32Array(0);
   private cachedCellGlyphKeys = new Int32Array(0);
   private cachedCellStrings: string[] = [];
@@ -216,16 +213,12 @@ export class ThreeAsciiAnsiGridAssembler {
     this.cellCache.clear();
     this.reusableGrid = [];
     this.background.clear();
-    this.cachedColorRawRed = new Float64Array(0);
-    this.cachedColorRawGreen = new Float64Array(0);
-    this.cachedColorRawBlue = new Float64Array(0);
-    this.cachedColorByteKeys = new Uint32Array(0);
+    this.colorKeyCache.clear();
     this.cachedCellForegroundKeys = new Int32Array(0);
     this.cachedCellGlyphKeys = new Int32Array(0);
     this.cachedCellStrings = [];
     this.cachedCellBackgroundKey = -1;
     this.cachedCellGlyphMode = -1;
-    this.toByte.clear();
   }
 
   private buildBlockGrid(
@@ -575,7 +568,7 @@ export class ThreeAsciiAnsiGridAssembler {
   }
 
   private pruneCaches(): void {
-    this.toByte.prune();
+    this.colorKeyCache.prune();
     if (this.foregroundAnsiCache.size > MAX_FOREGROUND_ANSI_CACHE_SIZE) {
       this.foregroundAnsiCache.clear();
       this.cellCache.clear();
@@ -597,12 +590,7 @@ export class ThreeAsciiAnsiGridAssembler {
   }
 
   private prepareFrameCaches(cellCount: number, terminalGlyphMode: TerminalGlyphMode): void {
-    if (this.cachedColorByteKeys.length !== cellCount) {
-      this.cachedColorRawRed = createNaNFloat64Array(cellCount);
-      this.cachedColorRawGreen = createNaNFloat64Array(cellCount);
-      this.cachedColorRawBlue = createNaNFloat64Array(cellCount);
-      this.cachedColorByteKeys = new Uint32Array(cellCount);
-    }
+    this.colorKeyCache.prepare(cellCount);
 
     if (
       this.cachedCellForegroundKeys.length === cellCount &&
@@ -638,23 +626,7 @@ export class ThreeAsciiAnsiGridAssembler {
   }
 
   private byteColorKeyForIndex(index: number, rawRed: number, rawGreen: number, rawBlue: number): number {
-    if (
-      this.cachedColorRawRed[index] === rawRed &&
-      this.cachedColorRawGreen[index] === rawGreen &&
-      this.cachedColorRawBlue[index] === rawBlue
-    ) {
-      return this.cachedColorByteKeys[index]!;
-    }
-
-    const foregroundRed = this.toByte(rawRed);
-    const foregroundGreen = this.toByte(rawGreen);
-    const foregroundBlue = this.toByte(rawBlue);
-    const key = (foregroundRed << 16) | (foregroundGreen << 8) | foregroundBlue;
-    this.cachedColorRawRed[index] = rawRed;
-    this.cachedColorRawGreen[index] = rawGreen;
-    this.cachedColorRawBlue[index] = rawBlue;
-    this.cachedColorByteKeys[index] = key;
-    return key;
+    return this.colorKeyCache.keyForIndex(index, rawRed, rawGreen, rawBlue);
   }
 }
 
@@ -671,12 +643,6 @@ function createStringGrid(rows: number, columns: number): string[][] {
     grid[row] = new Array<string>(columns);
   }
   return grid;
-}
-
-function createNaNFloat64Array(length: number): Float64Array<ArrayBuffer> {
-  const values = new Float64Array(length);
-  values.fill(Number.NaN);
-  return values;
 }
 
 function fillSparseBlockBlankRun(
