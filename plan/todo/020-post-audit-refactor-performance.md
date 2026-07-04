@@ -675,3 +675,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   120/240-cell tiers instead of reusing a stale revision.
 - Hardened the benchmark CLI so targeted runs with no matching cases fail with a selector diagnostic instead of
   returning a green zero-case summary, making renderer performance checks harder to misuse.
+- Added a direct Three ASCII grid-diff benchmark for `queueChangedThreeAsciiGridCells`, separating pure diff-helper
+  cost from `ThreeAsciiObject` lifecycle overhead before further canvas update tuning.

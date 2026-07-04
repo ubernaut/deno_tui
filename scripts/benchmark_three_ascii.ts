@@ -13,6 +13,7 @@ import {
 } from "../mod.ts";
 import { compactMappedRgbaRows } from "../src/three_ascii/headless_canvas.ts";
 import { createThreeAsciiReadbackLayout, ThreeAsciiReadbackViewCache } from "../src/three_ascii/readback.ts";
+import { createThreeAsciiGridDiffState, queueChangedThreeAsciiGridCells } from "../src/canvas/three_ascii_diff.ts";
 
 const threeAsciiColumns = 96;
 const threeAsciiRows = 40;
@@ -201,6 +202,10 @@ const threeAsciiDiffObject = new ThreeAsciiObject({
   rendererFactory: () => createNoopThreeAsciiRenderer(),
 });
 const threeAsciiDiffQueueTarget = threeAsciiDiffObject as unknown as ThreeAsciiDiffQueueTarget;
+const threeAsciiDirectDiffState = createThreeAsciiGridDiffState();
+const threeAsciiDirectDiffCells: Array<Set<number> | undefined> = [];
+const threeAsciiDirectDiffRanges: Array<Array<{ row: number; startColumn: number; endColumn: number }> | undefined> =
+  [];
 
 function assertThreeAsciiGridDimensions(grid: string[][], errorMessage: string): void {
   if (grid.length !== threeAsciiRows || grid[0]?.length !== threeAsciiColumns) {
@@ -273,6 +278,31 @@ function runThreeAsciiDiffQueueWorkload(): void {
   }
 }
 
+function runThreeAsciiDirectDiffQueueWorkload(): void {
+  queueChangedThreeAsciiGridCells(
+    threeAsciiDiffGridA,
+    threeAsciiDiffRectangle,
+    { columns: threeAsciiDiffRectangle.width, rows: threeAsciiDiffRectangle.height },
+    threeAsciiDirectDiffCells,
+    threeAsciiDirectDiffState,
+    undefined,
+    threeAsciiDirectDiffRanges,
+  );
+  clearThreeAsciiDirectDiffQueue();
+  for (let step = 0; step < 64; step += 1) {
+    queueChangedThreeAsciiGridCells(
+      step % 2 === 0 ? threeAsciiDiffGridB : threeAsciiDiffGridA,
+      threeAsciiDiffRectangle,
+      { columns: threeAsciiDiffRectangle.width, rows: threeAsciiDiffRectangle.height },
+      threeAsciiDirectDiffCells,
+      threeAsciiDirectDiffState,
+      undefined,
+      threeAsciiDirectDiffRanges,
+    );
+    clearThreeAsciiDirectDiffQueue();
+  }
+}
+
 function createThreeAsciiDiffGrid(columns: number, rows: number, phase: number): string[][] {
   const grid = new Array<string[]>(rows);
   for (let row = 0; row < rows; row += 1) {
@@ -292,6 +322,16 @@ function clearThreeAsciiDiffQueue(): void {
   }
   for (let row = 0; row < threeAsciiDiffObject.rerenderRanges.length; row += 1) {
     const ranges = threeAsciiDiffObject.rerenderRanges[row];
+    if (ranges) ranges.length = 0;
+  }
+}
+
+function clearThreeAsciiDirectDiffQueue(): void {
+  for (let row = 0; row < threeAsciiDirectDiffCells.length; row += 1) {
+    threeAsciiDirectDiffCells[row]?.clear();
+  }
+  for (let row = 0; row < threeAsciiDirectDiffRanges.length; row += 1) {
+    const ranges = threeAsciiDirectDiffRanges[row];
     if (ranges) ranges.length = 0;
   }
 }
@@ -552,6 +592,15 @@ export const threeAsciiBenchmarkCases: BenchmarkCase[] = [
     iterations: 500,
     maxAverageMs: 2,
     run: runThreeAsciiUniformCleanWorkload,
+  },
+  {
+    name: "render/three-ascii-direct-frame-diff-96x40",
+    category: "render",
+    description: "Diff recurring 96x40 Three ASCII terminal grids through the pure diff helper.",
+    tags: ["render", "three", "ascii", "canvas", "diff"],
+    iterations: 200,
+    maxAverageMs: 8,
+    run: runThreeAsciiDirectDiffQueueWorkload,
   },
   {
     name: "render/three-ascii-frame-diff-96x40",
