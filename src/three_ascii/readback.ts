@@ -57,6 +57,12 @@ export interface ThreeAsciiReadbackCopySourceSlots<TBuffer> {
   color: ThreeAsciiReadbackCopyTarget<TBuffer>;
 }
 
+export interface ThreeAsciiReadbackByteLengths {
+  fillByteLength: number;
+  edgeByteLength: number;
+  colorByteLength: number;
+}
+
 export interface ThreeAsciiReadbackCommandEncoder<TBuffer> {
   copyBufferToBuffer(
     source: TBuffer,
@@ -313,6 +319,39 @@ export function executeThreeAsciiReadbackCopyPlan<TBuffer>(
       command.byteLength,
     );
   }
+}
+
+/** Writes current output byte lengths into caller-owned layout options. */
+export function writeThreeAsciiReadbackLayoutOptions(
+  target: ThreeAsciiReadbackLayoutOptions,
+  byteLengths: ThreeAsciiReadbackByteLengths,
+  modes: { includeFill?: boolean; includeEdges: boolean },
+): ThreeAsciiReadbackLayoutOptions {
+  target.fillByteLength = byteLengths.fillByteLength;
+  target.edgeByteLength = byteLengths.edgeByteLength;
+  target.colorByteLength = byteLengths.colorByteLength;
+  target.includeFill = modes.includeFill;
+  target.includeEdges = modes.includeEdges;
+  return target;
+}
+
+/** Writes current output byte lengths into caller-owned copy source descriptors. */
+export function writeThreeAsciiReadbackCopySourceDescriptors(
+  targets: {
+    fill: ThreeAsciiReadbackCopySource;
+    edge: ThreeAsciiReadbackCopySource;
+    color: ThreeAsciiReadbackCopySource;
+  },
+  byteLengths: ThreeAsciiReadbackByteLengths,
+): {
+  fill: ThreeAsciiReadbackCopySource;
+  edge: ThreeAsciiReadbackCopySource;
+  color: ThreeAsciiReadbackCopySource;
+} {
+  targets.fill.byteLength = byteLengths.fillByteLength;
+  targets.edge.byteLength = byteLengths.edgeByteLength;
+  targets.color.byteLength = byteLengths.colorByteLength;
+  return targets;
 }
 
 /** Writes current GPU readback source buffers into a caller-owned source map. */

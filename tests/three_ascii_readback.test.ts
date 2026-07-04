@@ -5,10 +5,14 @@ import {
   createThreeAsciiReadbackViews,
   executeThreeAsciiReadbackCopyPlan,
   ThreeAsciiReadbackCopyPlanCache,
+  type ThreeAsciiReadbackCopySource,
   type ThreeAsciiReadbackCopySources,
   ThreeAsciiReadbackLayoutCache,
+  type ThreeAsciiReadbackLayoutOptions,
   ThreeAsciiReadbackViewCache,
+  writeThreeAsciiReadbackCopySourceDescriptors,
   writeThreeAsciiReadbackCopySources,
+  writeThreeAsciiReadbackLayoutOptions,
 } from "../src/three_ascii/readback.ts";
 
 Deno.test("three ascii readback layout packs fill edge and color buffers", () => {
@@ -320,6 +324,58 @@ Deno.test("writeThreeAsciiReadbackCopySources reuses source maps and clears stal
   assertEquals(target, {
     color: "compact-color-buffer",
   });
+});
+
+Deno.test("writeThreeAsciiReadbackLayoutOptions reuses layout option records", () => {
+  const target: ThreeAsciiReadbackLayoutOptions = {
+    fillByteLength: 99,
+    edgeByteLength: 88,
+    colorByteLength: 77,
+    includeFill: true,
+    includeEdges: true,
+  };
+
+  assertEquals(
+    writeThreeAsciiReadbackLayoutOptions(
+      target,
+      {
+        fillByteLength: 8,
+        edgeByteLength: 16,
+        colorByteLength: 32,
+      },
+      {
+        includeFill: false,
+        includeEdges: false,
+      },
+    ),
+    target,
+  );
+  assertEquals(target, {
+    fillByteLength: 8,
+    edgeByteLength: 16,
+    colorByteLength: 32,
+    includeFill: false,
+    includeEdges: false,
+  });
+});
+
+Deno.test("writeThreeAsciiReadbackCopySourceDescriptors reuses descriptor records", () => {
+  const fill: ThreeAsciiReadbackCopySource = { label: "fill", byteLength: 99 };
+  const edge: ThreeAsciiReadbackCopySource = { label: "edge", byteLength: 88 };
+  const color: ThreeAsciiReadbackCopySource = { label: "color", byteLength: 77 };
+  const target = { fill, edge, color };
+
+  assertEquals(
+    writeThreeAsciiReadbackCopySourceDescriptors(target, {
+      fillByteLength: 8,
+      edgeByteLength: 16,
+      colorByteLength: 32,
+    }),
+    target,
+  );
+  assertEquals(fill, { label: "fill", byteLength: 8 });
+  assertEquals(edge, { label: "edge", byteLength: 16 });
+  assertEquals(color, { label: "color", byteLength: 32 });
 });
 
 Deno.test("three ascii readback copy plan cache reuses unchanged command arrays", () => {

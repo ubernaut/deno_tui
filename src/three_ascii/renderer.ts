@@ -52,7 +52,9 @@ import {
   ThreeAsciiReadbackLayoutCache,
   type ThreeAsciiReadbackLayoutOptions,
   ThreeAsciiReadbackViewCache,
+  writeThreeAsciiReadbackCopySourceDescriptors,
   writeThreeAsciiReadbackCopySources,
+  writeThreeAsciiReadbackLayoutOptions,
 } from "./readback.ts";
 import {
   assembleThreeAsciiReadbackGridWithContext,
@@ -189,6 +191,11 @@ export class ThreeAsciiRenderer {
   private readonly readbackCopyFillSource: ThreeAsciiReadbackCopySource = { label: "fill", byteLength: 0 };
   private readonly readbackCopyEdgeSource: ThreeAsciiReadbackCopySource = { label: "edge", byteLength: 0 };
   private readonly readbackCopyColorSource: ThreeAsciiReadbackCopySource = { label: "color", byteLength: 0 };
+  private readonly readbackCopySourceDescriptors = {
+    fill: this.readbackCopyFillSource,
+    edge: this.readbackCopyEdgeSource,
+    color: this.readbackCopyColorSource,
+  };
   private readonly readbackCopySources: ThreeAsciiReadbackCopySources<GPUBuffer> = {} as ThreeAsciiReadbackCopySources<
     GPUBuffer
   >;
@@ -198,6 +205,11 @@ export class ThreeAsciiRenderer {
     colorByteLength: 0,
     includeFill: true,
     includeEdges: false,
+  };
+  private readonly readbackByteLengths = {
+    fillByteLength: 0,
+    edgeByteLength: 0,
+    colorByteLength: 0,
   };
   private readonly dispatchPlanCache = new ThreeAsciiComputeDispatchPlanCache();
   private readonly dispatchPlanOptions: ThreeAsciiComputeDispatchPlanInput = {
@@ -481,15 +493,15 @@ export class ThreeAsciiRenderer {
     const dispatchPlan = this.dispatchPlanCache.resolve(this.dispatchPlanOptions);
     encodeThreeAsciiComputeDispatchCommands(commandEncoder, dispatchPlan, this.dispatchResources);
 
-    this.readbackLayoutOptions.fillByteLength = this.fillOutput?.byteLength ?? 0;
-    this.readbackLayoutOptions.edgeByteLength = this.edgeOutput?.byteLength ?? 0;
-    this.readbackLayoutOptions.colorByteLength = this.colorOutput!.byteLength;
-    this.readbackLayoutOptions.includeFill = computeMode.includeFillReadback;
-    this.readbackLayoutOptions.includeEdges = computeMode.includeEdges;
+    this.readbackByteLengths.fillByteLength = this.fillOutput?.byteLength ?? 0;
+    this.readbackByteLengths.edgeByteLength = this.edgeOutput?.byteLength ?? 0;
+    this.readbackByteLengths.colorByteLength = this.colorOutput!.byteLength;
+    writeThreeAsciiReadbackLayoutOptions(this.readbackLayoutOptions, this.readbackByteLengths, {
+      includeFill: computeMode.includeFillReadback,
+      includeEdges: computeMode.includeEdges,
+    });
     const readbackLayout = this.readbackLayoutCache.resolve(this.readbackLayoutOptions);
-    this.readbackCopyFillSource.byteLength = this.fillOutput?.byteLength ?? 0;
-    this.readbackCopyEdgeSource.byteLength = this.edgeOutput?.byteLength ?? 0;
-    this.readbackCopyColorSource.byteLength = this.colorOutput!.byteLength;
+    writeThreeAsciiReadbackCopySourceDescriptors(this.readbackCopySourceDescriptors, this.readbackByteLengths);
     const readbackCopyPlan = this.readbackCopyPlanCache.resolve({
       fill: this.readbackCopyFillSource,
       edge: this.edgeOutput ? this.readbackCopyEdgeSource : undefined,

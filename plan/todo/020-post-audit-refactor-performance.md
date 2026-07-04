@@ -382,6 +382,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   block/glyph, edge, and depth target decisions out of the WebGPU renderer orchestration.
 - Extracted Three ASCII readback copy source-map updates into the readback helper layer and made optional fill buffers
   explicit in the type, preventing stale fill/edge GPU sources from carrying across compact block-mode frames.
+- Extracted Three ASCII readback layout-option and copy-descriptor updates into caller-owned readback helpers, keeping
+  renderer readback planning allocation-light while preserving benchmarked copy and ANSI-grid throughput.
 - Split workbench styled-cell tokenization and row/slice assembly into `workbench_frame_rows.ts`, preserving the
   existing frame facade while keeping the terminal hot path independently testable and benchmarked.
 - Extracted ThreePanelFrameView graphics-image handle ownership into `ThreePanelGraphicsImageController` with direct
