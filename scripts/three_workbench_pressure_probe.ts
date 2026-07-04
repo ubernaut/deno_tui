@@ -56,6 +56,7 @@ const {
   minSteadyFrames,
   minGridUpdates,
   minAverageSourceChangedRows,
+  minAverageObservedFps,
   intervalMs,
 } = options;
 
@@ -154,6 +155,7 @@ if (check) {
     minSteadyFrames,
     minGridUpdates,
     minAverageSourceChangedRows,
+    minAverageObservedFps,
   });
   if (!validation.ok) {
     console.error(`three-workbench pressure probe check failed: ${validation.errors.join("; ")}`);

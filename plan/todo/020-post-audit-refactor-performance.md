@@ -223,6 +223,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   hold 960 block cells at the 20 FPS full-resolution cadence.
 - Added an intermediate compact Three header telemetry format so narrow workbench panes keep showing measured/target
   FPS before falling back to the bare frame-time and cell-count label.
+- Added an optional observed-FPS gate to the workbench Three pressure probe so default and narrow workbench-shaped
+  renderer runs can fail fast on the reported low-FPS regression instead of relying on manual ANSI inspection.
 - Made high-pressure workbench Three samples downshift immediately, so manually raised 480/960-cell caps do not spend a
   second expensive terminal frame before backing off on slow sessions.
 - Retuned workbench Three terminal-pressure thresholds so the default block-mode pane can recover from 240 to 480 cells

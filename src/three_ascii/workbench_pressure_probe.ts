@@ -43,6 +43,7 @@ export interface WorkbenchThreePressureProbeValidationOptions {
   minSteadyFrames: number;
   minGridUpdates: number;
   minAverageSourceChangedRows: number;
+  minAverageObservedFps?: number;
 }
 
 export interface WorkbenchThreePressureProbeValidationResult {
@@ -89,6 +90,7 @@ export interface WorkbenchThreePressureProbeCliOptions<Mode extends string> {
   minSteadyFrames: number;
   minGridUpdates: number;
   minAverageSourceChangedRows: number;
+  minAverageObservedFps: number;
   intervalMs: number;
 }
 
@@ -113,6 +115,7 @@ export function parseWorkbenchThreePressureProbeCliOptions<Mode extends string>(
     minSteadyFrames: numberArg(args, "--min-steady-frames", 3),
     minGridUpdates: numberArg(args, "--min-grid-updates", 2),
     minAverageSourceChangedRows: numberArg(args, "--min-source-rows", 1),
+    minAverageObservedFps: numberArg(args, "--min-observed-fps", 0),
     intervalMs: numberArg(args, "--interval", defaults.frameIntervalForCells(maxCells)),
   };
 }
@@ -234,6 +237,10 @@ export function validateWorkbenchThreePressureProbeSummary(
         summary.averageSourceChangedRows.toFixed(1)
       } < ${options.minAverageSourceChangedRows}`,
     );
+  }
+  const minAverageObservedFps = Math.max(0, options.minAverageObservedFps ?? 0);
+  if (minAverageObservedFps > 0 && summary.averageObservedFps < minAverageObservedFps) {
+    errors.push(`average observed FPS ${summary.averageObservedFps.toFixed(1)} < ${minAverageObservedFps}`);
   }
   return { ok: errors.length === 0, errors };
 }
