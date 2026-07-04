@@ -234,6 +234,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   counts.
 - Added a source-column-index fast path for workbench Three grid projection so scaled rectangular Three panes avoid the
   generic per-cell fallback branch while copying into frame rows.
+- Reused consecutive projected Three grid rows when scaling maps multiple target rows to the same source row, trimming
+  repeated row reconstruction in enlarged low-resolution workbench Three panes.
 - Moved restore-next-minimized-window behavior into `WindowManagerController`, replacing renderer-local inspection scans
   with a tested shared window-manager method.
 - Extracted API workbench Explorer row projection into a focused helper with direct tests for selection, icons, and
