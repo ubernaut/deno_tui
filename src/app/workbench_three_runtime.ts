@@ -171,6 +171,10 @@ export class ApiWorkbenchThreeRuntimeController {
     return { ...this.#pressureSample };
   }
 
+  inspectPressureSampleInto(target: ApiWorkbenchThreePressureSample): ApiWorkbenchThreePressureSample {
+    return writePressureSample(target, this.#pressureSample);
+  }
+
   updatePressure(
     stats: ApiWorkbenchThreeFlushStats,
     sample: ApiWorkbenchThreePressureSample = this.#pressureSample,
@@ -220,6 +224,10 @@ export class ApiWorkbenchThreeRuntimeController {
 
   inspectPressure(): WorkbenchThreeTerminalPressureState {
     return { ...this.#pressure };
+  }
+
+  inspectPressureInto(target: WorkbenchThreeTerminalPressureState): WorkbenchThreeTerminalPressureState {
+    return writePressureState(target, this.#pressure);
   }
 
   inspectPressureDetails(): ApiWorkbenchThreePressureInspection {
@@ -272,14 +280,31 @@ function writePressureInspection(
   target: ApiWorkbenchThreePressureInspection,
   source: ApiWorkbenchThreePressureInspection,
 ): ApiWorkbenchThreePressureInspection {
-  target.currentCells = source.currentCells;
-  target.highFrames = source.highFrames;
-  target.lowFrames = source.lowFrames;
+  writePressureState(target, source);
   target.lastBytes = source.lastBytes;
   target.lastByteRate = source.lastByteRate;
   target.lastChangedRows = source.lastChangedRows;
   target.lastRenderedGrids = source.lastRenderedGrids;
   target.lastRenderedRows = source.lastRenderedRows;
   target.lastScoped = source.lastScoped;
+  return target;
+}
+
+function writePressureState<T extends WorkbenchThreeTerminalPressureState>(
+  target: T,
+  source: WorkbenchThreeTerminalPressureState,
+): T {
+  target.currentCells = source.currentCells;
+  target.highFrames = source.highFrames;
+  target.lowFrames = source.lowFrames;
+  return target;
+}
+
+function writePressureSample(
+  target: ApiWorkbenchThreePressureSample,
+  source: ApiWorkbenchThreePressureSample,
+): ApiWorkbenchThreePressureSample {
+  target.renderedThreeGrids = source.renderedThreeGrids;
+  target.renderedThreeRows = source.renderedThreeRows;
   return target;
 }

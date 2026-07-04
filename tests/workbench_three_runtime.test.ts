@@ -81,6 +81,21 @@ Deno.test("ApiWorkbenchThreeRuntimeController records and resets rendered grid p
   controller.dispose();
 });
 
+Deno.test("ApiWorkbenchThreeRuntimeController can reuse pressure sample targets", () => {
+  const controller = new ApiWorkbenchThreeRuntimeController({
+    hasLiveThreeWindow: () => true,
+  });
+  const target = { renderedThreeGrids: -1, renderedThreeRows: -1 };
+
+  controller.recordRenderedGridForPressure(12);
+  const result = controller.inspectPressureSampleInto(target);
+
+  assertStrictEquals(result, target);
+  assertEquals(target, { renderedThreeGrids: 1, renderedThreeRows: 12 });
+
+  controller.dispose();
+});
+
 Deno.test("ApiWorkbenchThreeRuntimeController resets pressure counters without changing cell budget", () => {
   const controller = new ApiWorkbenchThreeRuntimeController({
     hasLiveThreeWindow: () => true,
@@ -101,6 +116,24 @@ Deno.test("ApiWorkbenchThreeRuntimeController resets pressure counters without c
   assertEquals(controller.inspectPressure().lowFrames, 0);
   assertEquals(controller.inspectPressureDetails().highFrames, 0);
   assertEquals(controller.inspectPressureDetails().lowFrames, 0);
+
+  controller.dispose();
+});
+
+Deno.test("ApiWorkbenchThreeRuntimeController can reuse pressure state targets", () => {
+  const controller = new ApiWorkbenchThreeRuntimeController({
+    hasLiveThreeWindow: () => true,
+  });
+  const target = { currentCells: -1, highFrames: -1, lowFrames: -1 };
+
+  controller.updatePressure(
+    { changed: 12, bytes: 120_000, durationMs: 0.1 },
+    { renderedThreeGrids: 1, renderedThreeRows: 12 },
+  );
+  const result = controller.inspectPressureInto(target);
+
+  assertStrictEquals(result, target);
+  assertEquals(target, { currentCells: WORKBENCH_THREE_INITIAL_CELLS, highFrames: 1, lowFrames: 0 });
 
   controller.dispose();
 });
