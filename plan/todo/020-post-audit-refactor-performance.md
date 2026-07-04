@@ -1121,3 +1121,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   holding roughly 20fps at the 960-cell default, while the adaptive policy could still downshift during startup cadence
   ramp. Healthy 960-cell block output now survives warmup; slow terminal flush duration, sustained heavier byte output,
   or collapsed cadence after the startup window still back off.
+- Added a post-overlay pressure cooldown for the API Workbench Three pane. Modal/dropdown/config frames reset cadence and
+  pressure counters while they are active and for a short window after closing, preventing quit/config/menu overlays from
+  poisoning measured FPS and shrinking a healthy renderer after the overlay disappears.

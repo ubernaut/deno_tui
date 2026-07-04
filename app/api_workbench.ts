@@ -355,7 +355,6 @@ import { WorkbenchThreeViewportInteractionController } from "../src/app/workbenc
 import {
   type ApiWorkbenchThreePressureInspection,
   ApiWorkbenchThreeRuntimeController,
-  shouldUpdateApiWorkbenchThreePressure,
 } from "../src/app/workbench_three_runtime.ts";
 import type {
   Accent,
@@ -689,6 +688,9 @@ const workbenchThreeHeaderPerformance: ThreeHeaderPerformance = {
   assemblyMs: 0,
   cells: 0,
 };
+const WORKBENCH_THREE_OVERLAY_PRESSURE_COOLDOWN_FRAMES = 6;
+let workbenchThreeOverlayWasOpen = false;
+let workbenchThreeOverlayPressureCooldown = 0;
 let dropdownOverlay: DropdownOverlay | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
 let workspacePlacementContext: WorkspacePlacementContext | null = null;
@@ -1106,13 +1108,24 @@ function draw(): void {
 }
 
 function updateThreeTerminalPressure(stats: WorkbenchAnsiScreenFlushStats): void {
-  if (
-    !shouldUpdateApiWorkbenchThreePressure({
-      modalOpen: modal.openState.peek(),
-      dropdownOpen: screenDropdownOpen(),
-      configOpen: threeConfigOpen.peek(),
-    })
-  ) return;
+  const overlayOpen = modal.openState.peek() || screenDropdownOpen() || threeConfigOpen.peek();
+  if (overlayOpen) {
+    workbenchThreeOverlayWasOpen = true;
+    workbenchThreeOverlayPressureCooldown = WORKBENCH_THREE_OVERLAY_PRESSURE_COOLDOWN_FRAMES;
+    threeCadence.reset();
+    workbenchThreeRuntime.resetPressureCounters();
+    return;
+  }
+  if (workbenchThreeOverlayWasOpen) {
+    workbenchThreeOverlayWasOpen = false;
+    workbenchThreeOverlayPressureCooldown = WORKBENCH_THREE_OVERLAY_PRESSURE_COOLDOWN_FRAMES;
+    threeCadence.reset();
+    workbenchThreeRuntime.resetPressureCounters();
+  }
+  if (workbenchThreeOverlayPressureCooldown > 0) {
+    workbenchThreeOverlayPressureCooldown -= 1;
+    return;
+  }
   workbenchThreeRuntime.updatePressureFromCadence(stats, threeCadence.inspect());
 }
 

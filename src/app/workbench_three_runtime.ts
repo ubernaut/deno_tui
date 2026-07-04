@@ -160,6 +160,13 @@ export class ApiWorkbenchThreeRuntimeController {
     this.#pressureSample.renderedThreeRows += Math.max(0, Math.floor(rows));
   }
 
+  resetPressureCounters(): void {
+    this.#pressure.highFrames = 0;
+    this.#pressure.lowFrames = 0;
+    this.#lastPressureInspection.highFrames = 0;
+    this.#lastPressureInspection.lowFrames = 0;
+  }
+
   inspectPressureSample(): ApiWorkbenchThreePressureSample {
     return { ...this.#pressureSample };
   }
