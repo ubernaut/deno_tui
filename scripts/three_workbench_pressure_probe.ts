@@ -100,7 +100,6 @@ const previousGrid: string[][] = [];
 
 try {
   for (let index = 1; index <= frames; index += 1) {
-    await delay(frameInterval.peek());
     scene.value = {
       mode,
       signal: {
@@ -114,6 +113,7 @@ try {
         pressed: index % 8 === 0,
       },
     };
+    await delay(frameInterval.peek());
     samples.push(drawSample(index));
   }
 } finally {

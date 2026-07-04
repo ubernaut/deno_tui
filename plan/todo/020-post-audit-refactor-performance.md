@@ -460,6 +460,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   module with direct tests, reducing the renderer orchestration file by more than 200 inline shader lines.
 - Reused the canvas row spatial index across intersection-dirty renders and retained row buckets between rebuilds,
   reducing the focused `canvas-overlap-modal-churn` benchmark from roughly 17ms to 14.5ms on this host.
+- Fixed the workbench Three pressure probe sampling order so it mutates scene state before waiting for the next frame;
+  the probe now validates real renderer frames instead of sampling stale fallback grids with zero performance telemetry.
 - Extracted CPU hex-grid selection map updates and selected-tile scroll targeting into the visualization module with
   direct tests, keeping API workbench CPU selection code focused on focus, scroll application, and logging side effects.
 - Reused workbench ANSI changed-span scratch buffers and span objects across flushes, keeping sparse terminal output
