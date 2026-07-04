@@ -199,6 +199,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   rescue-tier recovery path so low observed cadence cannot accumulate quiet-output recovery frames at the floor.
 - Moved workbench Three cadence-to-pressure telemetry projection into `ApiWorkbenchThreeRuntimeController`, keeping the
   terminal workbench render loop focused on frame composition and side effects.
+- Added a reusable `WorkbenchThreeGridProjectionCache` so workbench Three grid row and scale-index scratch buffers live
+  with the projection helper instead of the oversized terminal workbench renderer.
 - Added sustained byte-rate context to workbench Three pressure change logs so adaptive downshifts show the same signal
   used by the policy.
 - Lowered the workbench Three sustained terminal byte-rate pressure threshold to make the default block renderer back

@@ -275,7 +275,7 @@ import { explorerTextRowsInto, workbenchWindowContentSize } from "../src/app/wor
 import { workbenchExplorerRowsInto } from "./workbench_explorer.ts";
 import { workbenchInspectorRowsInto } from "./workbench_inspector.ts";
 import { workbenchLogRowsFromSourcesInto } from "./workbench_logs.ts";
-import { writeWorkbenchThreeGrid } from "../src/app/workbench_three_grid.ts";
+import { WorkbenchThreeGridProjectionCache, writeWorkbenchThreeGrid } from "../src/app/workbench_three_grid.ts";
 import { setWorkbenchThreeRect, workbenchThreeContentGraphicsRect } from "../src/app/workbench_three_geometry.ts";
 import { WorkbenchThreeCadenceMeter } from "../src/app/workbench_three_cadence.ts";
 import {
@@ -653,9 +653,7 @@ const realSourceFrameBuffer: SourceFrame[] = [];
 const syntheticSourceFrameBuffer: SourceFrame[] = [];
 const cpuHexHitTileBuffer: CpuHexTileLayout[] = [];
 const cpuHexRevealTileBuffer: CpuHexTileLayout[] = [];
-const threeGridRowBuffer: string[] = [];
-const threeGridSourceRowIndexes: number[] = [];
-const threeGridSourceColumnIndexes: number[] = [];
+const threeGridProjectionCache = new WorkbenchThreeGridProjectionCache();
 const menuBarHitLayouts: WorkbenchMenuBarHitLayout[] = [];
 const headerLayout: WorkbenchHeaderLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
 const shelfBuffers = new WorkbenchShelfBufferCache<WindowId>();
@@ -1503,13 +1501,13 @@ function renderThreeGrid(
     return;
   }
 
-  const projection = writeWorkbenchThreeGrid(frame, rect, grid, paint(" ", { bg: t.surface }), {
-    scale: "down",
-    rowBuffer: threeGridRowBuffer,
-    sourceColumns: grid[0]?.length ?? 0,
-    sourceRowIndexes: threeGridSourceRowIndexes,
-    sourceColumnIndexes: threeGridSourceColumnIndexes,
-  });
+  const projection = writeWorkbenchThreeGrid(
+    frame,
+    rect,
+    grid,
+    paint(" ", { bg: t.surface }),
+    threeGridProjectionCache.options(grid, "down"),
+  );
   if ((options.countForPressure ?? true) && projection) {
     workbenchThreeRuntime.recordRenderedGridForPressure(projection.targetHeight);
   }

@@ -1,5 +1,9 @@
-import { assertEquals } from "./deps.ts";
-import { resolveWorkbenchThreeGridProjection, writeWorkbenchThreeGrid } from "../src/app/workbench_three_grid.ts";
+import { assertEquals, assertStrictEquals } from "./deps.ts";
+import {
+  resolveWorkbenchThreeGridProjection,
+  WorkbenchThreeGridProjectionCache,
+  writeWorkbenchThreeGrid,
+} from "../src/app/workbench_three_grid.ts";
 import type { WorkbenchFrame } from "../src/app/workbench_frame.ts";
 
 Deno.test("workbench three grid writes ANSI cells into a frame rectangle", () => {
@@ -178,6 +182,66 @@ Deno.test("workbench three grid refreshes retained scale indexes after dimension
   ]);
   assertEquals(sourceRowIndexes, [0, 1, 2]);
   assertEquals(sourceColumnIndexes, [0, 1, 2]);
+});
+
+Deno.test("workbench three grid projection cache owns reusable write buffers", () => {
+  const cache = new WorkbenchThreeGridProjectionCache();
+  const frame: WorkbenchFrame = [];
+  const grid = [["A", "B"], ["C", "D"]];
+  const options = cache.options(grid, true);
+
+  writeWorkbenchThreeGrid(frame, { column: 0, row: 0, width: 4, height: 4 }, grid, ".", options);
+
+  assertEquals(frame, [
+    ["A", "A", "B", "B"],
+    ["A", "A", "B", "B"],
+    ["C", "C", "D", "D"],
+    ["C", "C", "D", "D"],
+  ]);
+  assertEquals(cache.rowBuffer, ["C", "C", "D", "D"]);
+  assertEquals(cache.sourceRowIndexes, [0, 0, 1, 1]);
+  assertEquals(cache.sourceColumnIndexes, [0, 0, 1, 1]);
+  assertStrictEquals(options.rowBuffer, cache.rowBuffer);
+  assertStrictEquals(options.sourceRowIndexes, cache.sourceRowIndexes);
+  assertStrictEquals(options.sourceColumnIndexes, cache.sourceColumnIndexes);
+  assertStrictEquals(cache.options(grid, true), options);
+});
+
+Deno.test("workbench three grid projection cache refreshes and clears retained buffers", () => {
+  const cache = new WorkbenchThreeGridProjectionCache();
+  const first: WorkbenchFrame = [];
+  const firstGrid = [["A", "B"], ["C", "D"]];
+  writeWorkbenchThreeGrid(
+    first,
+    { column: 0, row: 0, width: 4, height: 4 },
+    firstGrid,
+    ".",
+    cache.options(firstGrid, true),
+  );
+  assertEquals(cache.sourceRowIndexes, [0, 0, 1, 1]);
+  assertEquals(cache.sourceColumnIndexes, [0, 0, 1, 1]);
+
+  const second: WorkbenchFrame = [];
+  const nextGrid = [["E", "F", "G"], ["H", "I", "J"], ["K", "L", "M"]];
+  writeWorkbenchThreeGrid(
+    second,
+    { column: 0, row: 0, width: 3, height: 3 },
+    nextGrid,
+    ".",
+    cache.options(nextGrid, true),
+  );
+  assertEquals(second, [
+    ["E", "F", "G"],
+    ["H", "I", "J"],
+    ["K", "L", "M"],
+  ]);
+  assertEquals(cache.sourceRowIndexes, [0, 1, 2]);
+  assertEquals(cache.sourceColumnIndexes, [0, 1, 2]);
+
+  cache.clear();
+  assertEquals(cache.rowBuffer, []);
+  assertEquals(cache.sourceRowIndexes, []);
+  assertEquals(cache.sourceColumnIndexes, []);
 });
 
 Deno.test("workbench three grid direct-copies scaled rows when source-column hints match target width", () => {

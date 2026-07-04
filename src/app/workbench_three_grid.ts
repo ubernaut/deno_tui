@@ -17,19 +17,48 @@ export interface WorkbenchThreeGridProjection {
   capped: boolean;
 }
 
+/** Retained scratch buffers for repeated Three ASCII grid projection. */
+export class WorkbenchThreeGridProjectionCache {
+  readonly rowBuffer: string[] = [];
+  readonly sourceRowIndexes: number[] = [];
+  readonly sourceColumnIndexes: number[] = [];
+  readonly #options: WorkbenchThreeGridWriteOptions = {
+    rowBuffer: this.rowBuffer,
+    sourceRowIndexes: this.sourceRowIndexes,
+    sourceColumnIndexes: this.sourceColumnIndexes,
+  };
+
+  options(
+    grid: readonly (readonly string[] | undefined)[],
+    scale: WorkbenchThreeGridScaleMode = "down",
+  ): WorkbenchThreeGridWriteOptions {
+    this.#options.scale = scale;
+    this.#options.sourceColumns = grid[0]?.length ?? 0;
+    return this.#options;
+  }
+
+  clear(): void {
+    this.rowBuffer.length = 0;
+    this.sourceRowIndexes.length = 0;
+    this.sourceColumnIndexes.length = 0;
+  }
+}
+
+export interface WorkbenchThreeGridWriteOptions {
+  scale?: WorkbenchThreeGridScaleMode;
+  rowBuffer?: string[];
+  sourceColumns?: number;
+  sourceRowIndexes?: number[];
+  sourceColumnIndexes?: number[];
+}
+
 /** Copies a Three ASCII ANSI grid into a workbench frame rectangle. */
 export function writeWorkbenchThreeGrid(
   frame: WorkbenchFrame,
   rect: Rectangle,
   grid: readonly (readonly string[] | undefined)[],
   fallbackCell: string,
-  options: {
-    scale?: WorkbenchThreeGridScaleMode;
-    rowBuffer?: string[];
-    sourceColumns?: number;
-    sourceRowIndexes?: number[];
-    sourceColumnIndexes?: number[];
-  } = {},
+  options: WorkbenchThreeGridWriteOptions = {},
 ): WorkbenchThreeGridProjection | undefined {
   const projection = resolveWorkbenchThreeGridProjection(rect, grid, {
     scale: options.scale,
