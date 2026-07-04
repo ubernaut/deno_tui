@@ -227,6 +227,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Kept blocking readback for the default API workbench Three block renderer after live probes showed deferred readback
   regressing visible publication; dynamic Three visualization panes now feed the shared cadence meter so
   terminal-pressure adaptation sees all live Three windows instead of only the built-in pane.
+- Moved workbench Three grid projection and viewport interaction routing into shared `src/app` modules and exported them
+  through the workbench facade, keeping terminal probes, benchmarks, and tests off demo-local helper paths.
 - Extracted API workbench touch-hit expansion and compact/coarse layout detection into shared hit helpers, so terminal
   and browser workbench adapters use the same enlarged pointer targets on mobile-sized layouts.
 - Routed the browser API workbench background canvas through the shared `parseHexColor` helper instead of carrying a

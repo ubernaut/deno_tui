@@ -29,6 +29,8 @@ export * from "../workbench_titlebar.ts";
 export * from "../workbench_text.ts";
 export * from "../workbench_three_cadence.ts";
 export * from "../workbench_three_geometry.ts";
+export * from "../workbench_three_grid.ts";
+export * from "../workbench_three_interaction.ts";
 export * from "../workbench_three_policy.ts";
 export * from "../workbench_three_terminal_pressure.ts";
 export * from "../workbench_three_header.ts";

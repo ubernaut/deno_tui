@@ -8,7 +8,7 @@ import {
   writeFrame,
 } from "../mod.ts";
 import { ThreePanelFrameView, type ThreeSceneState } from "../app/three_panel.ts";
-import { writeWorkbenchThreeGrid } from "../app/workbench_three_grid.ts";
+import { writeWorkbenchThreeGrid } from "../src/app/workbench_three_grid.ts";
 import { createDefaultWorkbenchAsciiOptions } from "../src/app/workbench_ascii.ts";
 import {
   API_WORKBENCH_THREE_PRESSURE_POLICY,

@@ -1,5 +1,5 @@
 import { assertEquals } from "./deps.ts";
-import { WorkbenchThreeViewportInteractionController } from "../app/workbench_three_interaction.ts";
+import { WorkbenchThreeViewportInteractionController } from "../src/app/workbench_three_interaction.ts";
 
 Deno.test("WorkbenchThreeViewportInteractionController starts and continues viewport drags", () => {
   const harness = createHarness();

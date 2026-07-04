@@ -1,5 +1,5 @@
 import { prepareWorkbenchFrame, renderFrameRow, type WorkbenchFrame } from "../mod.ts";
-import { writeWorkbenchThreeGrid } from "../app/workbench_three_grid.ts";
+import { writeWorkbenchThreeGrid } from "../src/app/workbench_three_grid.ts";
 
 export interface WorkbenchThreeGridBenchmark {
   runScaled(): void;

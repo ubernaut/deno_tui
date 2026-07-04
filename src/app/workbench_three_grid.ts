@@ -1,6 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
-import type { Rectangle } from "../src/types.ts";
-import { type WorkbenchFrame, writeFrameCells, writeFrameCellsUnchecked } from "../src/app/workbench_frame.ts";
+import type { Rectangle } from "../types.ts";
+import { type WorkbenchFrame, writeFrameCells, writeFrameCellsUnchecked } from "./workbench_frame.ts";
 
 export type WorkbenchThreeGridScaleMode = boolean | "down";
 

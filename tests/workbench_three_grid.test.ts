@@ -1,5 +1,5 @@
 import { assertEquals } from "./deps.ts";
-import { resolveWorkbenchThreeGridProjection, writeWorkbenchThreeGrid } from "../app/workbench_three_grid.ts";
+import { resolveWorkbenchThreeGridProjection, writeWorkbenchThreeGrid } from "../src/app/workbench_three_grid.ts";
 import type { WorkbenchFrame } from "../src/app/workbench_frame.ts";
 
 Deno.test("workbench three grid writes ANSI cells into a frame rectangle", () => {

@@ -275,7 +275,7 @@ import { explorerTextRowsInto, workbenchWindowContentSize } from "../src/app/wor
 import { workbenchExplorerRowsInto } from "./workbench_explorer.ts";
 import { workbenchInspectorRowsInto } from "./workbench_inspector.ts";
 import { workbenchLogRowsFromSourcesInto } from "./workbench_logs.ts";
-import { writeWorkbenchThreeGrid } from "./workbench_three_grid.ts";
+import { writeWorkbenchThreeGrid } from "../src/app/workbench_three_grid.ts";
 import { setWorkbenchThreeRect, workbenchThreeContentGraphicsRect } from "../src/app/workbench_three_geometry.ts";
 import { WorkbenchThreeCadenceMeter } from "../src/app/workbench_three_cadence.ts";
 import {
@@ -342,7 +342,7 @@ import {
   WORKBENCH_THREE_INITIAL_CELLS,
 } from "../src/app/workbench_three_policy.ts";
 import { type WorkbenchThreePanelEntry, WorkbenchThreePanelRegistry } from "./workbench_three_panel_registry.ts";
-import { WorkbenchThreeViewportInteractionController } from "./workbench_three_interaction.ts";
+import { WorkbenchThreeViewportInteractionController } from "../src/app/workbench_three_interaction.ts";
 import {
   type ApiWorkbenchThreePressureInspection,
   ApiWorkbenchThreeRuntimeController,
