@@ -187,10 +187,7 @@ export class ThreeAsciiAnsiGridAssembler {
           continue;
         }
 
-        const foregroundRed = (foregroundKey >> 16) & 0xff;
-        const foregroundGreen = (foregroundKey >> 8) & 0xff;
-        const foregroundBlue = foregroundKey & 0xff;
-        const cell = this.cellFor(foregroundKey, foregroundRed, foregroundGreen, foregroundBlue, glyphKey);
+        const cell = this.cellFor(foregroundKey, glyphKey);
         this.setCachedCellForIndex(index, foregroundKey, glyphKey, cell);
 
         lastForegroundKey = foregroundKey;
@@ -279,10 +276,7 @@ export class ThreeAsciiAnsiGridAssembler {
           continue;
         }
 
-        const foregroundRed = (foregroundKey >> 16) & 0xff;
-        const foregroundGreen = (foregroundKey >> 8) & 0xff;
-        const foregroundBlue = foregroundKey & 0xff;
-        const cell = this.blockCellFor(foregroundKey, foregroundRed, foregroundGreen, foregroundBlue);
+        const cell = this.blockCellFor(foregroundKey);
         this.setCachedCellForIndex(index, foregroundKey, SOLID_BLOCK_GLYPH_KEY, cell);
         lastForegroundKey = foregroundKey;
         lastCell = cell;
@@ -348,10 +342,7 @@ export class ThreeAsciiAnsiGridAssembler {
           continue;
         }
 
-        const foregroundRed = (foregroundKey >> 16) & 0xff;
-        const foregroundGreen = (foregroundKey >> 8) & 0xff;
-        const foregroundBlue = foregroundKey & 0xff;
-        const cell = this.blockCellFor(foregroundKey, foregroundRed, foregroundGreen, foregroundBlue);
+        const cell = this.blockCellFor(foregroundKey);
         this.setCachedCellForIndex(index, foregroundKey, SOLID_BLOCK_GLYPH_KEY, cell);
         lastForegroundKey = foregroundKey;
         lastCell = cell;
@@ -432,10 +423,7 @@ export class ThreeAsciiAnsiGridAssembler {
           continue;
         }
 
-        const foregroundRed = (foregroundKey >> 16) & 0xff;
-        const foregroundGreen = (foregroundKey >> 8) & 0xff;
-        const foregroundBlue = foregroundKey & 0xff;
-        const cell = this.cellFor(foregroundKey, foregroundRed, foregroundGreen, foregroundBlue, glyphKey);
+        const cell = this.cellFor(foregroundKey, glyphKey);
         this.setCachedCellForIndex(index, foregroundKey, glyphKey, cell);
         lastForegroundKey = foregroundKey;
         lastGlyphKey = glyphKey;
@@ -511,10 +499,7 @@ export class ThreeAsciiAnsiGridAssembler {
           continue;
         }
 
-        const foregroundRed = (foregroundKey >> 16) & 0xff;
-        const foregroundGreen = (foregroundKey >> 8) & 0xff;
-        const foregroundBlue = foregroundKey & 0xff;
-        const cell = this.cellFor(foregroundKey, foregroundRed, foregroundGreen, foregroundBlue, glyphKey);
+        const cell = this.cellFor(foregroundKey, glyphKey);
         this.setCachedCellForIndex(index, foregroundKey, glyphKey, cell);
         lastForegroundKey = foregroundKey;
         lastGlyphKey = glyphKey;
@@ -533,9 +518,6 @@ export class ThreeAsciiAnsiGridAssembler {
 
   private cellFor(
     foregroundKey: number,
-    foregroundRed: number,
-    foregroundGreen: number,
-    foregroundBlue: number,
     glyphKey: number,
   ): string {
     const cellKey = foregroundKey * CELL_GLYPH_KEY_STRIDE + glyphKey;
@@ -543,11 +525,14 @@ export class ThreeAsciiAnsiGridAssembler {
     if (cell !== undefined) return cell;
 
     if (isSolidBlockFillGlyphKey(glyphKey)) {
-      return this.blockCellFor(foregroundKey, foregroundRed, foregroundGreen, foregroundBlue);
+      return this.blockCellFor(foregroundKey);
     }
 
     let foregroundAnsi = this.foregroundAnsiCache.get(foregroundKey);
     if (foregroundAnsi === undefined) {
+      const foregroundRed = (foregroundKey >> 16) & 0xff;
+      const foregroundGreen = (foregroundKey >> 8) & 0xff;
+      const foregroundBlue = foregroundKey & 0xff;
       foregroundAnsi = rgbToAnsiForeground(foregroundRed, foregroundGreen, foregroundBlue);
       this.foregroundAnsiCache.set(foregroundKey, foregroundAnsi);
     }
@@ -558,10 +543,13 @@ export class ThreeAsciiAnsiGridAssembler {
     return cell;
   }
 
-  private blockCellFor(foregroundKey: number, foregroundRed: number, foregroundGreen: number, foregroundBlue: number) {
+  private blockCellFor(foregroundKey: number) {
     const cellKey = foregroundKey * CELL_GLYPH_KEY_STRIDE + SOLID_BLOCK_GLYPH_KEY;
     let cell = this.cellCache.get(cellKey);
     if (cell !== undefined) return cell;
+    const foregroundRed = (foregroundKey >> 16) & 0xff;
+    const foregroundGreen = (foregroundKey >> 8) & 0xff;
+    const foregroundBlue = foregroundKey & 0xff;
     cell = `${rgbToAnsiBackground(foregroundRed, foregroundGreen, foregroundBlue)} ${RESET}`;
     this.cellCache.set(cellKey, cell);
     return cell;
