@@ -1043,6 +1043,11 @@ function updateThreeTerminalPressure(stats: WorkbenchAnsiScreenFlushStats): void
   if (!next.changed) return;
   workbenchThreeLiveMaxCells.value = next.currentCells;
   syncWorkbenchThreeFrameInterval();
+  pushLog(
+    `three pressure ${next.direction} ${next.currentCells} cells; ${stats.bytes} bytes/${
+      stats.durationMs.toFixed(1)
+    }ms across ${renderedThreeGridCount} grid(s)`,
+  );
 }
 
 function scheduleDraw(): void {

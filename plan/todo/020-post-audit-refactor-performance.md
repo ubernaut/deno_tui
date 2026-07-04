@@ -218,6 +218,14 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted API workbench Inspector row projection into a focused helper with direct tests, keeping the main renderer
   responsible only for writing projected rows.
 - Extracted API workbench Logs row projection into a focused helper that reuses row objects across draws.
+- Changed workbench Three cadence so any visible normal/fullscreen Three-backed pane uses the live interval instead of
+  being throttled to idle just because focus is elsewhere.
+- Tightened API workbench Three terminal-pressure adaptation to step down on the first heavy terminal flush, improving
+  responsiveness over slow SSH/tmux truecolor block-output paths.
+- Added a dedicated `workbench-three-block-span-flush` benchmark that exercises animated truecolor block grids through
+  the retained workbench terminal painter.
+- Added a compact workbench log diagnostic when Three terminal pressure changes the render-cell budget so manual
+  profiling can distinguish renderer slowdown from terminal-output throttling.
 - Extracted CPU hex-grid selection map updates and selected-tile scroll targeting into the visualization module with
   direct tests, keeping API workbench CPU selection code focused on focus, scroll application, and logging side effects.
 - Reused workbench ANSI changed-span scratch buffers and span objects across flushes, keeping sparse terminal output
@@ -419,12 +427,13 @@ performance, shared terminal/web workbench projections, and oversized module red
   performance measurements can be evolved independently from the script entrypoint.
 - Moved the workbench Three grid benchmark fixture out of the main benchmark catalog, keeping the scaled/capped terminal
   grid guards reusable while continuing to track the 220x70 performance envelopes.
-- Split the Three ASCII benchmark family out of the main benchmark catalog, so readback, image compaction, uniform-clean,
-  ANSI grid assembly, and frame-diff guards live with their synthetic buffers instead of inflating the shared registry.
+- Split the Three ASCII benchmark family out of the main benchmark catalog, so readback, image compaction,
+  uniform-clean, ANSI grid assembly, and frame-diff guards live with their synthetic buffers instead of inflating the
+  shared registry.
 - Moved API-workbench-specific Three render-cell budgets, pressure thresholds, and live/idle cadence mapping into a
   tested policy module so tuning the default Three pane no longer requires editing the large interactive app file.
-- Extracted the API workbench built-in window ids, launcher option catalog, visualization option ids, and lookup map into
-  a tested window catalog module, reducing static menu setup in the large interactive workbench file.
+- Extracted the API workbench built-in window ids, launcher option catalog, visualization option ids, and lookup map
+  into a tested window catalog module, reducing static menu setup in the large interactive workbench file.
 - Added a shared tested terminal search modal body projector so console and future web workbench shells can reuse the
   same copy-mode search prompt text without embedding it in the large API workbench renderer.
 - Extracted the Three panel ASCII effect option comparator into a focused tested helper, keeping renderer state update
