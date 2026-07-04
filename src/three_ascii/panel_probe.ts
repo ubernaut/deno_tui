@@ -21,6 +21,7 @@ export interface ThreePanelProbeSample {
 export interface ThreePanelProbeOptions {
   mode: string;
   glyphs: string;
+  readback?: string;
   width: number;
   height: number;
   maxCells: number;
@@ -57,9 +58,10 @@ export function formatThreePanelProbeLines(
 ): string[] {
   const summary = summarizeThreePanelProbe(samples);
   const latest = summary.latest;
+  const readback = options.readback ? ` readback=${options.readback}` : "";
   const lines = [
     "three-panel live probe",
-    `mode=${options.mode} glyphs=${options.glyphs} rect=${options.width}x${options.height} maxCells=${options.maxCells} interval=${
+    `mode=${options.mode} glyphs=${options.glyphs}${readback} rect=${options.width}x${options.height} maxCells=${options.maxCells} interval=${
       formatMs(options.intervalMs)
     }`,
     `warmup=${formatMs(summary.first?.totalMs)} steady=${formatMs(summary.averageTotalMs)} fps=${

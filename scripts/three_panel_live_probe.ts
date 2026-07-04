@@ -8,6 +8,7 @@ import { Signal } from "../src/signals/mod.ts";
 import { formatThreePanelProbeLines, type ThreePanelProbeSample } from "../src/three_ascii/panel_probe.ts";
 import { choiceArg, delay, numberArg, stringArg } from "../src/three_ascii/probe_cli.ts";
 import type { ThreeAsciiRendererPerformance } from "../src/three_ascii/renderer.ts";
+import type { ThreeAsciiReadbackStrategy } from "../src/three_ascii/renderer_options.ts";
 import { type ThreeSceneMode, threeSceneModes, type ThreeSceneSignal } from "../app/types.ts";
 
 const frames = numberArg(Deno.args, "--frames", 36);
@@ -19,6 +20,15 @@ const mode = choiceArg(Deno.args, "--mode", "studio" as ThreeSceneMode, threeSce
 const glyphs = stringArg(Deno.args, "--glyphs", "blocks") as ReturnType<
   typeof createDefaultAsciiOptions
 >["terminalGlyphStyle"];
+const readbackStrategy = choiceArg(
+  Deno.args,
+  "--readback",
+  "deferred" as ThreeAsciiReadbackStrategy,
+  [
+    "blocking",
+    "deferred",
+  ] as const,
+);
 
 const rectangle = new Signal({ column: 0, row: 0, width, height }, { deepObserve: true });
 const ascii = new Signal({
@@ -40,6 +50,7 @@ const panel = new ThreePanelFrameView({
   ascii,
   frameInterval,
   maxRenderCells,
+  readbackStrategy,
   onUpdate: () => {
     updates += 1;
   },
@@ -73,9 +84,12 @@ try {
 }
 
 console.log(
-  formatThreePanelProbeLines({ mode, glyphs, width, height, maxCells, intervalMs }, samples, firstGridElapsedMs).join(
-    "\n",
-  ),
+  formatThreePanelProbeLines(
+    { mode, glyphs, readback: readbackStrategy, width, height, maxCells, intervalMs },
+    samples,
+    firstGridElapsedMs,
+  )
+    .join("\n"),
 );
 
 function samplePanel(

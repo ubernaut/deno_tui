@@ -210,6 +210,9 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Switched the terminal API workbench Three panel policy back to fresh blocking readback at the 960-cell live quality
   tier, with sustained-pressure thresholds, after probes showed deferred readback could keep the visible grid stale at
   20-30 Hz despite low renderer timings.
+- Fixed the Three panel live probe to honor and report `--readback=blocking|deferred`, making the blocking/deferred
+  tradeoff measurable directly; serial probes show blocking updates every frame at the 960-cell tier while deferred
+  remains lower CPU/GPU wait but can delay visible grid publication.
 - Stabilized default Three ASCII block rendering by using ASCII-safe shared window controls and removing fog from the
   default block preset so truecolor block cells keep source color depth.
 - Extracted the workbench Three ASCII config modal geometry into a tested internal layout helper, reducing inline modal

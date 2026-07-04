@@ -76,6 +76,7 @@ Deno.test("formatThreePanelProbeLines includes first-grid latency and frame rows
     {
       mode: "studio",
       glyphs: "blocks",
+      readback: "blocking",
       width: 80,
       height: 24,
       maxCells: 480,
@@ -86,6 +87,7 @@ Deno.test("formatThreePanelProbeLines includes first-grid latency and frame rows
   );
 
   assertEquals(lines[0], "three-panel live probe");
+  assertStringIncludes(lines[1], "readback=blocking");
   assertStringIncludes(lines[1], "rect=80x24");
   assertStringIncludes(lines[2], "steady=12.00ms");
   assertStringIncludes(lines[2], "latest=40x12/480c");
