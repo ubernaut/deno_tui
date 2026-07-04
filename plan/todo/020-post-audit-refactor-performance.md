@@ -281,6 +281,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   shows live block grids updating every sampled frame at 960/3840 cell caps instead of visibly stalling for many frames.
 - Extracted top-menu dropdown keyboard action resolution into the shared workbench menu helper so the terminal workbench
   only applies renderer-specific side effects for quit/help/focus/menu item actions.
+- Extracted focused top-menu keyboard action resolution into the same shared menu helper, leaving the terminal workbench
+  to dispatch menu movement, active-item selection, close, and focus handoff side effects.
 - Retuned the default workbench Three ASCII pressure policy for slow terminal links: the default pane now starts at the
   120-cell emergency tier, 240-cell animated output downshifts on sustained byte rates above roughly 35KB/s, and low
   byte-rate recovery remains conservative so SSH/tmux sessions do not immediately climb back into expensive output.

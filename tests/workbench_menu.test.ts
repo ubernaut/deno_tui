@@ -9,6 +9,7 @@ import {
   layoutWorkbenchTopMenuItemRect,
   moveWorkbenchMenuIndex,
   projectWorkbenchStandardTopMenuState,
+  resolveWorkbenchMenuFocusKey,
   resolveWorkbenchScreenDropdownKey,
   workbenchStandardTopMenuIdForItem,
   WorkbenchTopMenuController,
@@ -58,6 +59,18 @@ Deno.test("workbench menu page movement uses configurable page size", () => {
   assertEquals(moveWorkbenchMenuIndex(3, 10, { key: "pagedown" }), 9);
   assertEquals(moveWorkbenchMenuIndex(3, 10, { key: "pagedown" }, { pageSize: 2 }), 5);
   assertEquals(moveWorkbenchMenuIndex(3, 0, { key: "down" }), 0);
+});
+
+Deno.test("workbench menu focus key resolver separates menu focus commands", () => {
+  assertEquals(resolveWorkbenchMenuFocusKey({ key: "escape" }), { kind: "close" });
+  assertEquals(resolveWorkbenchMenuFocusKey({ key: "tab" }), { kind: "focusWindow", delta: 1 });
+  assertEquals(resolveWorkbenchMenuFocusKey({ key: "tab", shift: true }), { kind: "focusWindow", delta: -1 });
+  assertEquals(resolveWorkbenchMenuFocusKey({ key: "left" }), { kind: "moveMenu" });
+  assertEquals(resolveWorkbenchMenuFocusKey({ key: "home" }), { kind: "moveMenu" });
+  assertEquals(resolveWorkbenchMenuFocusKey({ key: "down" }), { kind: "selectActive" });
+  assertEquals(resolveWorkbenchMenuFocusKey({ key: "space" }), { kind: "selectActive" });
+  assertEquals(resolveWorkbenchMenuFocusKey({ key: "right", meta: true }), { kind: "ignore" });
+  assertEquals(resolveWorkbenchMenuFocusKey({ key: "x" }), { kind: "ignore" });
 });
 
 Deno.test("workbench screen dropdown key resolver separates global and menu-local actions", () => {

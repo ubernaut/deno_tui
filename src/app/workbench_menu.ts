@@ -90,6 +90,14 @@ export interface WorkbenchScreenDropdownKey {
   shift?: boolean;
 }
 
+/** Renderer-neutral action requested by a focused top menu-bar key press. */
+export type WorkbenchMenuFocusKeyAction =
+  | { kind: "ignore" }
+  | { kind: "close" }
+  | { kind: "focusWindow"; delta: -1 | 1 }
+  | { kind: "moveMenu" }
+  | { kind: "selectActive" };
+
 /** Inputs for resolving a key press while a workbench top-menu dropdown is active. */
 export interface WorkbenchScreenDropdownKeyOptions {
   event: WorkbenchScreenDropdownKey;
@@ -195,6 +203,28 @@ export function projectWorkbenchStandardTopMenuState(
     workspaceMenuOpen: state.openId === "workspace",
     menuFocused: state.focused,
   };
+}
+
+/** Resolve keyboard behavior while focus is on the top menu bar but no dropdown is necessarily active. */
+export function resolveWorkbenchMenuFocusKey(event: WorkbenchScreenDropdownKey): WorkbenchMenuFocusKeyAction {
+  if (event.ctrl || event.meta) return { kind: "ignore" };
+  switch (event.key) {
+    case "escape":
+      return { kind: "close" };
+    case "tab":
+      return { kind: "focusWindow", delta: event.shift ? -1 : 1 };
+    case "left":
+    case "right":
+    case "home":
+    case "end":
+      return { kind: "moveMenu" };
+    case "down":
+    case "return":
+    case "space":
+      return { kind: "selectActive" };
+    default:
+      return { kind: "ignore" };
+  }
 }
 
 /** Resolve global/menu-local keyboard behavior while a top menu dropdown is visible. */

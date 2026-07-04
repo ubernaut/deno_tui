@@ -48,6 +48,7 @@ import {
   projectWorkbenchStandardTopMenuState,
   renderFrameRow,
   renderFrameSlice,
+  resolveWorkbenchMenuFocusKey,
   resolveWorkbenchScreenDropdownKey,
   subscribeWorkbenchDiagnosticLog,
   translateHitTargets,
@@ -3976,22 +3977,23 @@ function handleCpuHexGridKey(event: { key: string; ctrl?: boolean; meta?: boolea
 }
 
 function handleMenuFocusKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
-  if (event.ctrl || event.meta) return;
-  if (event.key === "escape") {
-    closeTopMenus();
-    return;
-  }
-  if (event.key === "tab") {
-    closeTopMenus();
-    event.shift ? focusPrevious() : focusNext();
-    return;
-  }
-  if (event.key === "left" || event.key === "right" || event.key === "home" || event.key === "end") {
-    menu.handleKeyPress(event);
-    return;
-  }
-  if (event.key === "down" || event.key === "return" || event.key === "space") {
-    menu.selectActive();
+  const action = resolveWorkbenchMenuFocusKey(event);
+  switch (action.kind) {
+    case "ignore":
+      return;
+    case "close":
+      closeTopMenus();
+      return;
+    case "focusWindow":
+      closeTopMenus();
+      action.delta < 0 ? focusPrevious() : focusNext();
+      return;
+    case "moveMenu":
+      menu.handleKeyPress(event);
+      return;
+    case "selectActive":
+      menu.selectActive();
+      return;
   }
 }
 
