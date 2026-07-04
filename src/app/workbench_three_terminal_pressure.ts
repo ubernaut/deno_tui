@@ -204,12 +204,7 @@ export function resolveWorkbenchThreeTerminalPressureUpdate(
     changedRows: options.changedRows,
     toleranceRows: options.toleranceRows,
   });
-  const highDurationMs = Math.max(1, options.highDurationMs ?? Number.POSITIVE_INFINITY);
-  const durationScoped = !rowScoped && options.renderedThreeGrids > 0 && options.renderedThreeRows > 0 &&
-    options.changedRows > 0 && (options.durationMs ?? 0) >= highDurationMs;
-  const cadenceScoped = !rowScoped && !durationScoped && options.renderedThreeGrids > 0 &&
-    hasLowObservedWorkbenchThreeFps(options);
-  const scoped = rowScoped || durationScoped || cadenceScoped;
+  const scoped = rowScoped;
   const next = resolveWorkbenchThreeTerminalPressureBudget(currentState, {
     ...options,
     renderedThreeGrids: scoped ? options.renderedThreeGrids : 0,

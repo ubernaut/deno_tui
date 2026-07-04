@@ -317,7 +317,7 @@ Deno.test("workbench Three terminal pressure update scopes flush samples before 
   assertEquals(scoped.direction, "down");
 });
 
-Deno.test("workbench Three terminal pressure update scopes slow full-screen redraws", () => {
+Deno.test("workbench Three terminal pressure update ignores slow full-screen redraws outside Three rows", () => {
   const state = createWorkbenchThreeTerminalPressureState(960);
   const fast = resolveWorkbenchThreeTerminalPressureUpdate(state, {
     currentCells: 960,
@@ -348,9 +348,9 @@ Deno.test("workbench Three terminal pressure update scopes slow full-screen redr
     lowBytes: 35_000,
     highFrameThreshold: 1,
   });
-  assertEquals(slow.scoped, true);
-  assertEquals(slow.currentCells, 480);
-  assertEquals(slow.direction, "down");
+  assertEquals(slow.scoped, false);
+  assertEquals(slow.currentCells, 960);
+  assertEquals(slow.direction, "steady");
 });
 
 Deno.test("workbench Three terminal pressure update starts from current live cap", () => {

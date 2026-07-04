@@ -218,6 +218,9 @@ performance, shared terminal/web workbench projections, and oversized module red
   instead of spending two high-pressure frames at 480 cells before adapting down.
 - Fixed the adaptive workbench Three pressure probe to sleep on and report the current frame interval per sample, making
   byte-rate diagnostics reflect actual cadence changes after pressure updates.
+- Tightened workbench Three pressure scoping so slow full-workbench redraws and collapsed global cadence no longer
+  downshift the renderer unless the changed rows are attributable to visible Three panes; default probes continue to
+  hold 960 block cells at the 20 FPS full-resolution cadence.
 - Made high-pressure workbench Three samples downshift immediately, so manually raised 480/960-cell caps do not spend a
   second expensive terminal frame before backing off on slow sessions.
 - Retuned workbench Three terminal-pressure thresholds so the default block-mode pane can recover from 240 to 480 cells

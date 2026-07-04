@@ -214,7 +214,7 @@ Deno.test("API workbench Three policy ignores early startup-skewed cadence sampl
   assertEquals(state.highFrames, 0);
 });
 
-Deno.test("API workbench Three policy scopes collapsed cadence even when other rows changed", () => {
+Deno.test("API workbench Three policy ignores collapsed global cadence outside Three rows", () => {
   const state = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_INITIAL_CELLS);
   const next = resolveWorkbenchThreeTerminalPressureUpdate(state, {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
@@ -230,9 +230,9 @@ Deno.test("API workbench Three policy scopes collapsed cadence even when other r
     observedFrameCount: WORKBENCH_THREE_PRESSURE_MIN_FPS_FRAMES,
   });
 
-  assertEquals(next.scoped, true);
+  assertEquals(next.scoped, false);
   assertEquals(next.currentCells, WORKBENCH_THREE_INITIAL_CELLS);
-  assertEquals(next.highFrames, 1);
+  assertEquals(next.highFrames, 0);
 });
 
 Deno.test("API workbench Three policy recovers from moderate animated output under the byte-rate floor", () => {
