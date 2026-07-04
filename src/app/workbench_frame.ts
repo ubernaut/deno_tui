@@ -35,8 +35,9 @@ interface WorkbenchLineSignalRowCache {
 }
 
 interface WorkbenchFrameRowMetadata {
-  hash: number;
-  writes: number;
+  dirty: boolean;
+  fingerprint?: string;
+  width?: number;
 }
 
 /** One drawable text segment for a framed workbench window. */
@@ -135,7 +136,7 @@ export function writeFrame(frame: WorkbenchFrame, width: number, row: number, co
 /** Writes one already-styled cell into a workbench frame row and updates row-change metadata. */
 export function writeFrameCell(cells: string[], column: number, value: string): void {
   cells[column] = value;
-  updateFrameRowMetadata(cells, column, value);
+  updateFrameRowMetadata(cells);
 }
 
 /** Fills a full frame row with a style. */
@@ -218,7 +219,9 @@ export function updateWorkbenchLineSignals(
 
 function fingerprintFrameRow(cells: string[], width: number): string {
   const metadata = frameRowMetadata.get(cells);
-  if (metadata) return `${width}:${metadata.writes}:${metadata.hash.toString(36)}`;
+  if (metadata && !metadata.dirty && metadata.width === width && metadata.fingerprint !== undefined) {
+    return metadata.fingerprint;
+  }
 
   let hash = 2166136261;
   const mix = (value: number) => {
@@ -238,26 +241,23 @@ function fingerprintFrameRow(cells: string[], width: number): string {
       mix(cell.charCodeAt(index));
     }
   }
-  return `${width}:${hash.toString(36)}`;
+  const fingerprint = `${width}:${hash.toString(36)}`;
+  if (metadata) {
+    metadata.width = width;
+    metadata.fingerprint = fingerprint;
+    metadata.dirty = false;
+  }
+  return fingerprint;
 }
 
-function updateFrameRowMetadata(cells: string[], column: number, value: string): void {
+function updateFrameRowMetadata(cells: string[]): void {
   let metadata = frameRowMetadata.get(cells);
   if (!metadata) {
-    metadata = { hash: 2166136261, writes: 0 };
+    metadata = { dirty: true };
     frameRowMetadata.set(cells, metadata);
+    return;
   }
-  metadata.writes += 1;
-  metadata.hash = mixFrameRowHash(metadata.hash, column);
-  metadata.hash = mixFrameRowHash(metadata.hash, value.length);
-  for (let index = 0; index < value.length; index += 1) {
-    metadata.hash = mixFrameRowHash(metadata.hash, value.charCodeAt(index));
-  }
-}
-
-function mixFrameRowHash(hash: number, value: number): number {
-  hash ^= value;
-  return Math.imul(hash, 16777619) >>> 0;
+  metadata.dirty = true;
 }
 
 function renderFrameCells(cellAt: (column: number) => string, width: number): string {

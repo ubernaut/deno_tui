@@ -334,3 +334,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added write-time row metadata for sparse workbench frames so unchanged retained terminal lines can skip full ANSI row
   assembly; the `render/workbench-line-signal-diff-168x54` guard stays under budget after the Three grid blitter was
   routed through the shared cell writer.
+- Refined row metadata to cache fingerprints lazily at line-flush time instead of hashing every cell write, restoring
+  the scaled/capped Three grid blit benchmarks while retaining unchanged-row skips.
