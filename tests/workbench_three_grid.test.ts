@@ -74,6 +74,26 @@ Deno.test("workbench three grid reuses caller-owned row buffers while scaling", 
   assertEquals(rowBuffer, ["A", "A", "B", "B"]);
 });
 
+Deno.test("workbench three grid direct-copies rows for vertical-only scaling", () => {
+  const frame: WorkbenchFrame = [];
+  const rowBuffer = ["stale", "value"];
+  writeWorkbenchThreeGrid(
+    frame,
+    { column: 0, row: 0, width: 3, height: 4 },
+    [["A", "B", "C"], ["D", "E", "F"]],
+    ".",
+    { scale: true, rowBuffer },
+  );
+
+  assertEquals(frame, [
+    ["A", "B", "C"],
+    ["A", "B", "C"],
+    ["D", "E", "F"],
+    ["D", "E", "F"],
+  ]);
+  assertEquals(rowBuffer, ["stale", "value"]);
+});
+
 Deno.test("workbench three grid reuses caller-owned scale index buffers", () => {
   const frame: WorkbenchFrame = [];
   const sourceRowIndexes: number[] = [];
@@ -126,6 +146,26 @@ Deno.test("workbench three grid refreshes retained scale indexes after dimension
   ]);
   assertEquals(sourceRowIndexes, [0, 1, 2]);
   assertEquals(sourceColumnIndexes, [0, 1, 2]);
+});
+
+Deno.test("workbench three grid direct-copies scaled rows when source-column hints match target width", () => {
+  const frame: WorkbenchFrame = [];
+  const rowBuffer = ["unused"];
+  writeWorkbenchThreeGrid(
+    frame,
+    { column: 0, row: 0, width: 2, height: 4 },
+    [["A", "B", "hidden"], ["C", "D", "hidden"]],
+    ".",
+    { scale: true, sourceColumns: 2, rowBuffer },
+  );
+
+  assertEquals(frame, [
+    ["A", "B"],
+    ["A", "B"],
+    ["C", "D"],
+    ["C", "D"],
+  ]);
+  assertEquals(rowBuffer, ["unused"]);
 });
 
 Deno.test("workbench three grid source column hints avoid scanning wider hidden rows", () => {

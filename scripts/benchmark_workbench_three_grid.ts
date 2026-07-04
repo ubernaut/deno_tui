@@ -4,6 +4,7 @@ import { writeWorkbenchThreeGrid } from "../app/workbench_three_grid.ts";
 export interface WorkbenchThreeGridBenchmark {
   runScaled(): void;
   runCapped(): void;
+  runVerticalOnly(): void;
 }
 
 export function createWorkbenchThreeGridBenchmark(options: {
@@ -32,10 +33,10 @@ export function createWorkbenchThreeGridBenchmark(options: {
   );
   let checksum = 0;
 
-  function checksumFrame(errorMessage: string): void {
+  function checksumFrame(errorMessage: string, width = targetColumns, rows = targetRows): void {
     let total = 0;
-    for (let row = 0; row < targetRows; row += 1) {
-      total += renderFrameRow(frame[row] ?? [], targetColumns).length;
+    for (let row = 0; row < rows; row += 1) {
+      total += renderFrameRow(frame[row] ?? [], width).length;
     }
     checksum = (checksum + total) % 1_000_000;
     if (!Number.isFinite(checksum)) {
@@ -78,6 +79,23 @@ export function createWorkbenchThreeGridBenchmark(options: {
         },
       );
       checksumFrame("workbench capped Three grid checksum failed");
+    },
+
+    runVerticalOnly() {
+      const preparedFrame = prepareWorkbenchFrame(frame, targetRows);
+      writeWorkbenchThreeGrid(
+        preparedFrame,
+        { column: 0, row: 0, width: sourceColumns, height: targetRows },
+        grid,
+        " ",
+        {
+          scale: true,
+          rowBuffer,
+          sourceColumns,
+          sourceRowIndexes,
+        },
+      );
+      checksumFrame("workbench vertical-only Three grid checksum failed", sourceColumns, targetRows);
     },
   };
 }

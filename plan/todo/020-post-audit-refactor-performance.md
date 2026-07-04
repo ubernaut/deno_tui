@@ -664,3 +664,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   independently covered.
 - Extracted the Three ASCII renderer's pre-scene deferred-readback decision into a focused helper, covering unavailable
   readbacks, saturated queues, and stale-frame force-blocking without moving GPU submission code out of the renderer.
+- Added a vertical-only workbench Three grid projection fast path that direct-copies same-width source rows while still
+  scaling rows, plus a benchmark guard for the 109x70 vertical projection workload.

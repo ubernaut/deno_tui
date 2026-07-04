@@ -59,6 +59,12 @@ export function writeWorkbenchThreeGrid(
     }
 
     if (shouldScale && source && sourceColumnIndexes && sourceWidth >= sourceColumns && sourceColumns > 0) {
+      if (sourceColumns === targetWidth) {
+        writeFrameCells(target, rect.column + columnOffset, source, 0, targetWidth);
+        lastProjectedSourceRow = sourceRow;
+        lastProjectedRow = source;
+        continue;
+      }
       rowBuffer.length = targetWidth;
       for (let column = 0; column < targetWidth; column += 1) {
         rowBuffer[column] = source[sourceColumnIndexes[column]!] ?? fallbackCell;
@@ -66,6 +72,13 @@ export function writeWorkbenchThreeGrid(
       writeFrameCells(target, rect.column + columnOffset, rowBuffer, 0, targetWidth);
       lastProjectedSourceRow = sourceRow;
       lastProjectedRow = rowBuffer;
+      continue;
+    }
+
+    if (shouldScale && source && sourceWidth === targetWidth && !sourceColumnIndexes) {
+      writeFrameCells(target, rect.column + columnOffset, source, 0, targetWidth);
+      lastProjectedSourceRow = sourceRow;
+      lastProjectedRow = source;
       continue;
     }
 

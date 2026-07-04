@@ -1406,6 +1406,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     run: workbenchThreeGridBenchmark.runCapped,
   },
   {
+    name: "render/workbench-vertical-three-grid-109x70",
+    category: "render",
+    description: "Scale Three ASCII rows vertically while direct-copying same-width terminal cell rows.",
+    tags: ["render", "workbench", "three", "ascii", "frame"],
+    iterations: 200,
+    maxAverageMs: 5,
+    run: workbenchThreeGridBenchmark.runVerticalOnly,
+  },
+  {
     name: "render/ansi-styled-character-split-160",
     category: "render",
     description: "Split a full-width truecolor ANSI background row into TextObject cells.",
