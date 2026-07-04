@@ -826,3 +826,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   renderer.
 - Moved API workbench titlebar button hit-action mapping into the same focused hit helper with tests for config,
   minimize, maximize, restore, and close actions.
+- Extracted API workbench scrollbar pointer-hit offset resolution into the hit helper with tests for window vertical,
+  window horizontal, and workspace scrollbars, removing direct scrollbar math from the large click handler.

@@ -1,3 +1,5 @@
+import { scrollbarOffsetForPointer } from "../src/components/scroll_area.ts";
+
 export interface ApiWorkbenchHitWindowIds<TWindowId extends string> {
   terminalShell: TWindowId;
   controls: TWindowId;
@@ -17,6 +19,22 @@ export type ApiWorkbenchTitlebarHitAction<TWindowId extends string> =
 export interface ApiWorkbenchHitActionWindowSource {
   type: string;
   id?: unknown;
+}
+
+export interface ApiWorkbenchScrollbarOffsetInput {
+  contentWidth?: number;
+  contentHeight?: number;
+  viewportWidth?: number;
+  viewportHeight?: number;
+  currentColumns?: number;
+  currentRows?: number;
+  pointerColumn?: number;
+  pointerRow?: number;
+}
+
+export interface ApiWorkbenchScrollbarOffset {
+  columns: number;
+  rows: number;
 }
 
 /** Maps a renderer-neutral titlebar button kind to the workbench hit action it should trigger. */
@@ -64,4 +82,46 @@ export function resolveApiWorkbenchHitWindowId<TWindowId extends string>(
     default:
       return undefined;
   }
+}
+
+/** Resolves the next scroll offset for a window vertical scrollbar pointer hit. */
+export function resolveApiWorkbenchWindowVScrollbarOffset(
+  input: ApiWorkbenchScrollbarOffsetInput,
+): ApiWorkbenchScrollbarOffset {
+  return {
+    columns: Math.max(0, Math.floor(input.currentColumns ?? 0)),
+    rows: scrollbarOffsetForPointer(
+      Math.max(0, Math.floor(input.contentHeight ?? 0)),
+      Math.max(0, Math.floor(input.viewportHeight ?? 0)),
+      Math.max(0, Math.floor(input.pointerRow ?? 0)),
+    ),
+  };
+}
+
+/** Resolves the next scroll offset for a window horizontal scrollbar pointer hit. */
+export function resolveApiWorkbenchWindowHScrollbarOffset(
+  input: ApiWorkbenchScrollbarOffsetInput,
+): ApiWorkbenchScrollbarOffset {
+  return {
+    columns: scrollbarOffsetForPointer(
+      Math.max(0, Math.floor(input.contentWidth ?? 0)),
+      Math.max(0, Math.floor(input.viewportWidth ?? 0)),
+      Math.max(0, Math.floor(input.pointerColumn ?? 0)),
+    ),
+    rows: Math.max(0, Math.floor(input.currentRows ?? 0)),
+  };
+}
+
+/** Resolves the next scroll offset for the workspace vertical scrollbar. */
+export function resolveApiWorkbenchWorkspaceScrollbarOffset(
+  input: ApiWorkbenchScrollbarOffsetInput,
+): ApiWorkbenchScrollbarOffset {
+  return {
+    columns: 0,
+    rows: scrollbarOffsetForPointer(
+      Math.max(0, Math.floor(input.contentHeight ?? 0)),
+      Math.max(0, Math.floor(input.viewportHeight ?? 0)),
+      Math.max(0, Math.floor(input.pointerRow ?? 0)),
+    ),
+  };
 }

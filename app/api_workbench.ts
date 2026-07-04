@@ -8,7 +8,7 @@ import { MenuBarController, renderMenuBar } from "../src/components/menu_bar.ts"
 import { modalContentHeight, ModalController, type ModalInspection } from "../src/components/modal.ts";
 import { ProgressBarController } from "../src/components/progressbar.ts";
 import { RadioGroupController } from "../src/components/radio_group.ts";
-import { ScrollAreaController, scrollbarOffsetForPointer } from "../src/components/scroll_area.ts";
+import { ScrollAreaController } from "../src/components/scroll_area.ts";
 import { SliderController } from "../src/components/slider.ts";
 import { StepperController } from "../src/components/stepper.ts";
 import { formatTerminalOutputLine } from "../src/components/terminal_output.ts";
@@ -200,7 +200,13 @@ import {
   apiWorkbenchWindowTitle,
   createApiWorkbenchThemes,
 } from "./api_workbench_catalog.ts";
-import { resolveApiWorkbenchHitWindowId, resolveApiWorkbenchTitlebarHitAction } from "./api_workbench_hit.ts";
+import {
+  resolveApiWorkbenchHitWindowId,
+  resolveApiWorkbenchTitlebarHitAction,
+  resolveApiWorkbenchWindowHScrollbarOffset,
+  resolveApiWorkbenchWindowVScrollbarOffset,
+  resolveApiWorkbenchWorkspaceScrollbarOffset,
+} from "./api_workbench_hit.ts";
 import {
   type ApiWorkbenchBuiltInWindowId,
   apiWorkbenchVisualizationSupportsThree,
@@ -3527,25 +3533,33 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
   } else if (action.type === "workspace") applyWorkspaceMenuItem(action.index);
   else if (action.type === "windowVScrollbar") {
     const scroll = windowScroll(action.id);
-    scroll.scrollTo(
-      scroll.offset.peek().columns,
-      scrollbarOffsetForPointer(scroll.contentHeight.peek(), scroll.viewportHeight.peek(), y - target.rect.row),
-    );
+    const next = resolveApiWorkbenchWindowVScrollbarOffset({
+      contentHeight: scroll.contentHeight.peek(),
+      viewportHeight: scroll.viewportHeight.peek(),
+      currentColumns: scroll.offset.peek().columns,
+      pointerRow: y - target.rect.row,
+    });
+    scroll.scrollTo(next.columns, next.rows);
     windowManager.focus(action.id);
     syncWindowSignalsFromManager();
   } else if (action.type === "windowHScrollbar") {
     const scroll = windowScroll(action.id);
-    scroll.scrollTo(
-      scrollbarOffsetForPointer(scroll.contentWidth.peek(), scroll.viewportWidth.peek(), x - target.rect.column),
-      scroll.offset.peek().rows,
-    );
+    const next = resolveApiWorkbenchWindowHScrollbarOffset({
+      contentWidth: scroll.contentWidth.peek(),
+      viewportWidth: scroll.viewportWidth.peek(),
+      currentRows: scroll.offset.peek().rows,
+      pointerColumn: x - target.rect.column,
+    });
+    scroll.scrollTo(next.columns, next.rows);
     windowManager.focus(action.id);
     syncWindowSignalsFromManager();
   } else if (action.type === "workspaceScrollbar") {
-    workspaceScroll.scrollTo(
-      0,
-      scrollbarOffsetForPointer(workspaceScroll.contentHeight.peek(), target.rect.height, y - target.rect.row),
-    );
+    const next = resolveApiWorkbenchWorkspaceScrollbarOffset({
+      contentHeight: workspaceScroll.contentHeight.peek(),
+      viewportHeight: target.rect.height,
+      pointerRow: y - target.rect.row,
+    });
+    workspaceScroll.scrollTo(next.columns, next.rows);
   } else if (action.type === "theme") setTheme(action.index);
 }
 
