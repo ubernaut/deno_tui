@@ -195,7 +195,7 @@ Deno.test("ApiWorkbenchThreeRuntimeController preserves default Three budget dur
   const controller = new ApiWorkbenchThreeRuntimeController({
     hasLiveThreeWindow: () => true,
   });
-  const stats = { changed: 18, bytes: 9_500, durationMs: 0.08 };
+  const stats = { changed: 18, bytes: 4_600, durationMs: 0.08 };
   const sample = { renderedThreeGrids: 1, renderedThreeRows: 18 };
 
   for (let update = 2; update <= 17; update += 1) {
