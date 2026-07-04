@@ -417,3 +417,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   medium-but-expensive ASCII panes before whole-screen flushes become visibly slow.
 - Extracted the real WebGPU Three ASCII probe parser and timing report projection into a tested helper so renderer
   performance measurements can be evolved independently from the script entrypoint.
+- Moved the workbench Three grid benchmark fixture out of the main benchmark catalog, keeping the scaled/capped terminal
+  grid guards reusable while continuing to track the 220x70 performance envelopes.
