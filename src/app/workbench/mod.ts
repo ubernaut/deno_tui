@@ -22,6 +22,7 @@ export * from "../workbench_status.ts";
 export * from "../workbench_terminal.ts";
 export * from "../workbench_titlebar.ts";
 export * from "../workbench_text.ts";
+export * from "../workbench_three_terminal_pressure.ts";
 export * from "../workbench_viewport.ts";
 export * from "../workbench_window_registry.ts";
 export * from "../workbench_workspace.ts";

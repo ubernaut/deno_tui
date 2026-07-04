@@ -369,3 +369,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Made workbench-hosted Three panel render caps reactive and connected them to terminal flush byte pressure, so live
   terminal sessions can step down to a smaller source grid when SSH/tmux truecolor output gets too heavy without
   mutating per-widget ASCII configuration.
+- Extracted workbench Three terminal-pressure budgeting into a tested pure helper and expanded it to stepped source-grid
+  levels so slow SSH/tmux sessions can continue reducing payload beyond the initial 960-cell default.

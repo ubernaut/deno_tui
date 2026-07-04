@@ -277,6 +277,10 @@ import {
 } from "./workbench_modal_content.ts";
 import { WorkbenchKittyGraphicsController } from "./workbench_kitty_graphics.ts";
 import { type RowStyle, threeHeaderRows } from "./workbench_rows.ts";
+import {
+  createWorkbenchThreeTerminalPressureState,
+  resolveWorkbenchThreeTerminalPressureBudget,
+} from "../src/app/workbench_three_terminal_pressure.ts";
 import type {
   Accent,
   AsciiOptions,
@@ -310,7 +314,7 @@ const TERMINAL_OUTPUT_OPTION_ID = "terminal-output";
 const TERMINAL_SHELL_WINDOW_ID = "terminalShell";
 const TERMINAL_SHELL_OPTION_ID = "terminal-shell";
 const WORKBENCH_THREE_LIVE_MAX_CELLS = 960;
-const WORKBENCH_THREE_PRESSURE_MIN_CELLS = 480;
+const WORKBENCH_THREE_PRESSURE_LEVELS = [240, 480, WORKBENCH_THREE_LIVE_MAX_CELLS] as const;
 const WORKBENCH_THREE_PRESSURE_HIGH_BYTES = 80_000;
 const WORKBENCH_THREE_PRESSURE_LOW_BYTES = 35_000;
 
@@ -649,8 +653,7 @@ let workspacePlacementContext: WorkspacePlacementContext | null = null;
 const drawScheduler = new FrameScheduler({ intervalMs: 1000 / 18 });
 const renderedVisualizationThreePanels = new Set<VisualizationWindowId>();
 let renderedThreeGridCount = 0;
-let terminalPressureHighFrames = 0;
-let terminalPressureLowFrames = 0;
+const terminalPressure = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_LIVE_MAX_CELLS);
 type Frame = WorkbenchFrame;
 interface DropdownOverlay {
   kind: "control" | "theme" | "newWindow" | "workspace";
@@ -1064,35 +1067,18 @@ function draw(): void {
 }
 
 function updateThreeTerminalPressure(stats: WorkbenchAnsiScreenFlushStats): void {
-  if (renderedThreeGridCount <= 0 || stats.bytes <= 0) {
-    terminalPressureHighFrames = 0;
-    terminalPressureLowFrames = 0;
-    return;
-  }
-
-  const current = workbenchThreeLiveMaxCells.peek();
-  if (stats.bytes >= WORKBENCH_THREE_PRESSURE_HIGH_BYTES && current > WORKBENCH_THREE_PRESSURE_MIN_CELLS) {
-    terminalPressureHighFrames += 1;
-    terminalPressureLowFrames = 0;
-    if (terminalPressureHighFrames >= 2) {
-      workbenchThreeLiveMaxCells.value = WORKBENCH_THREE_PRESSURE_MIN_CELLS;
-      terminalPressureHighFrames = 0;
-    }
-    return;
-  }
-
-  if (stats.bytes <= WORKBENCH_THREE_PRESSURE_LOW_BYTES && current < WORKBENCH_THREE_LIVE_MAX_CELLS) {
-    terminalPressureLowFrames += 1;
-    terminalPressureHighFrames = 0;
-    if (terminalPressureLowFrames >= 120) {
-      workbenchThreeLiveMaxCells.value = WORKBENCH_THREE_LIVE_MAX_CELLS;
-      terminalPressureLowFrames = 0;
-    }
-    return;
-  }
-
-  terminalPressureHighFrames = 0;
-  terminalPressureLowFrames = 0;
+  terminalPressure.currentCells = workbenchThreeLiveMaxCells.peek();
+  const next = resolveWorkbenchThreeTerminalPressureBudget(terminalPressure, {
+    renderedThreeGrids: renderedThreeGridCount,
+    bytes: stats.bytes,
+    levels: WORKBENCH_THREE_PRESSURE_LEVELS,
+    highBytes: WORKBENCH_THREE_PRESSURE_HIGH_BYTES,
+    lowBytes: WORKBENCH_THREE_PRESSURE_LOW_BYTES,
+  });
+  terminalPressure.currentCells = next.currentCells;
+  terminalPressure.highFrames = next.highFrames;
+  terminalPressure.lowFrames = next.lowFrames;
+  if (next.changed) workbenchThreeLiveMaxCells.value = next.currentCells;
 }
 
 function scheduleDraw(): void {

@@ -4903,6 +4903,41 @@
       "documented": true
     },
     {
+      "module": "src/app/workbench_three_terminal_pressure.ts",
+      "name": "createWorkbenchThreeTerminalPressureState",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": false
+    },
+    {
+      "module": "src/app/workbench_three_terminal_pressure.ts",
+      "name": "resolveWorkbenchThreeTerminalPressureBudget",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": false
+    },
+    {
+      "module": "src/app/workbench_three_terminal_pressure.ts",
+      "name": "WorkbenchThreeTerminalPressureOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": false
+    },
+    {
+      "module": "src/app/workbench_three_terminal_pressure.ts",
+      "name": "WorkbenchThreeTerminalPressureResult",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": false
+    },
+    {
+      "module": "src/app/workbench_three_terminal_pressure.ts",
+      "name": "WorkbenchThreeTerminalPressureState",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": false
+    },
+    {
       "module": "src/app/workbench_titlebar.ts",
       "name": "createWorkbenchTitlebarLayout",
       "kind": "function",

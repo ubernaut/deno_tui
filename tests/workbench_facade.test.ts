@@ -7,6 +7,7 @@ import {
   layoutWorkbenchModal,
   layoutWorkbenchTitlebar,
   resolveWorkbenchShellBackend,
+  resolveWorkbenchThreeTerminalPressureBudget,
   translateHitTargets,
   workbenchContentViewport,
   WorkbenchTopMenuController,
@@ -44,6 +45,7 @@ Deno.test("workbench facade exposes renderer-neutral helpers", () => {
   );
   assertEquals(typeof resolveWorkbenchShellBackend, "function");
   assertEquals(typeof createWorkbenchShellSession, "function");
+  assertEquals(typeof resolveWorkbenchThreeTerminalPressureBudget, "function");
   assertEquals(typeof WorkbenchTopMenuController, "function");
   assertEquals(
     layoutWorkbenchButtonRow([{ label: "OK", action: "ok" }], { column: 0, row: 0, width: 10, height: 1 }, 0)
