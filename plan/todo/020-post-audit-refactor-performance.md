@@ -258,6 +258,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Fixed a block-mode workbench performance regression caused by cumulative SGR style prefixes in styled text splitting;
   repeated truecolor background cells now keep only the active foreground/background state instead of replaying every
   previous color change.
+- Restored the terminal workbench Three policy to blocking readback with a conservative 240-cell startup cap after live
+  probes showed deferred readback could publish a stale visible grid while reporting low renderer timings.
 - Added compact live Three ASCII renderer telemetry to the workbench Three pane header so renderer frame, scene,
   readback, assembly, and cell counts are visible during manual profiling.
 - Moved SGR state merging into a shared internal utility and routed workbench frame writes through it, so both
