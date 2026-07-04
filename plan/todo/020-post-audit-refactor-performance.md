@@ -401,3 +401,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   while focused or fullscreen Three panes keep interactive timing.
 - Extracted workbench Three rectangle write suppression and graphics-surface clipping into a focused tested helper,
   trimming inline resize/Kitty geometry logic from the large API workbench module.
+- Reduced ThreePanelFrameView renderer startup churn by resolving the initial adaptive render size once and reusing it
+  for renderer construction, applied-state capture, and the startup fallback grid.

@@ -448,17 +448,17 @@ export class ThreePanelFrameView {
       const rendererFactory = this.options.rendererFactory ??
         ((rendererOptions) => new ThreeAsciiRenderer({ ...rendererOptions, readbackStrategy: "deferred" }));
       const effectOptions = asciiEffectOptions(ascii);
+      const renderSize = this.renderSizeFor(rect, ascii);
       this.renderer = rendererFactory({
         scene: bundle.scene,
         camera: bundle.camera,
-        ...this.renderSizeFor(rect, ascii),
+        ...renderSize,
         effect: effectOptions,
         terminalEdgeBias: ascii.terminalEdgeBias,
         terminalGlyphStyle: ascii.terminalGlyphStyle,
         deferredReadbackSlots: ascii.deferredReadbackSlots,
       });
-      this.captureAppliedRendererState(rect, ascii, effectOptions);
-      const renderSize = this.renderSizeFor(rect, ascii);
+      this.captureAppliedRendererState(rect, ascii, effectOptions, renderSize);
       this.setGrid(
         buildFallbackGrid(renderSize.columns, renderSize.rows, "INITIALIZING", "ASCII RENDERER STARTING"),
       );
@@ -803,8 +803,8 @@ export class ThreePanelFrameView {
     rect: Pick<Rect, "width" | "height">,
     ascii: AsciiOptions,
     effectOptions = asciiEffectOptions(ascii),
+    renderSize = this.renderSizeFor(rect, ascii),
   ): void {
-    const renderSize = this.renderSizeFor(rect, ascii);
     this.appliedColumns = renderSize.columns;
     this.appliedRows = renderSize.rows;
     this.appliedEffectOptions = effectOptions;
