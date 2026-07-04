@@ -3,6 +3,7 @@ import {
   sameThreeSceneSignal,
   sameWorkbenchThreeScene,
   setWorkbenchThreeSceneSignal,
+  workbenchStudioScene,
   type WorkbenchThreeScene,
 } from "../app/workbench_three_scene.ts";
 
@@ -44,6 +45,65 @@ Deno.test("workbench three scene signal setter skips unchanged payloads", () => 
 
   assertEquals(setWorkbenchThreeSceneSignal(target, null), true);
   assertEquals(target.writes, 2);
+});
+
+Deno.test("workbench studio scene projects control state into a Three scene signal", () => {
+  assertEquals(
+    workbenchStudioScene({
+      density: 6,
+      progress: 42,
+      progressRatio: 0.42,
+      compactRows: true,
+      livePreview: true,
+      active: true,
+      pressed: true,
+    }),
+    {
+      mode: "studio",
+      signal: {
+        x: 0.6,
+        y: 0.42,
+        depth: 0.6,
+        twist: 0.8,
+        lift: 0.42,
+        pulse: 0.7,
+        active: true,
+        pressed: true,
+      },
+    },
+  );
+
+  assertEquals(
+    workbenchStudioScene({
+      density: 3,
+      progress: 10,
+      progressRatio: 0.1,
+      compactRows: false,
+      livePreview: false,
+    })?.signal,
+    {
+      x: 0.3,
+      y: 0.1,
+      depth: 0.3,
+      twist: 0.25,
+      lift: 0.1,
+      pulse: 0.15,
+      active: false,
+      pressed: false,
+    },
+  );
+});
+
+Deno.test("workbench studio scene returns null while blocked hidden or unavailable", () => {
+  const input = {
+    density: 6,
+    progress: 42,
+    progressRatio: 0.42,
+  };
+
+  assertEquals(workbenchStudioScene({ ...input, blocked: true }), null);
+  assertEquals(workbenchStudioScene({ ...input, minimized: true }), null);
+  assertEquals(workbenchStudioScene({ ...input, available: false }), null);
 });
 
 class FakeSceneSignal {

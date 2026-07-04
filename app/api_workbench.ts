@@ -261,7 +261,11 @@ import { workbenchInspectorRowsInto } from "./workbench_inspector.ts";
 import { workbenchLogRowsFromSourcesInto } from "./workbench_logs.ts";
 import { writeWorkbenchThreeGrid } from "./workbench_three_grid.ts";
 import { setWorkbenchThreeRect, workbenchThreeContentGraphicsRect } from "./workbench_three_geometry.ts";
-import { setWorkbenchThreeSceneSignal, type WorkbenchThreeScene } from "./workbench_three_scene.ts";
+import {
+  setWorkbenchThreeSceneSignal,
+  workbenchStudioScene,
+  type WorkbenchThreeScene,
+} from "./workbench_three_scene.ts";
 import {
   threeRendererModeLabel,
   visualizationTextContentSize,
@@ -802,19 +806,18 @@ const table = new DataTableController<ProcessRow>({
 const threeBodyRect = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
 const threeGraphicsRect = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
 const threeScene = new Computed<WorkbenchThreeScene | null>(() =>
-  genericModalBlocksThree.value || minimized.value.three || !threeAsciiAvailable.value ? null : {
-    mode: "studio",
-    signal: {
-      x: density.value.value / 10,
-      y: progress.value.value / 100,
-      depth: density.value.value / 10,
-      twist: compactRows.checked.value ? 0.8 : 0.25,
-      lift: progress.ratio(),
-      pulse: livePreview.checked.value ? 0.7 : 0.15,
-      active: activeWindow.value === "three",
-      pressed: activeControl.value === "button",
-    },
-  }
+  workbenchStudioScene({
+    blocked: genericModalBlocksThree.value,
+    minimized: minimized.value.three,
+    available: threeAsciiAvailable.value,
+    density: density.value.value,
+    progress: progress.value.value,
+    progressRatio: progress.ratio(),
+    compactRows: compactRows.checked.value,
+    livePreview: livePreview.checked.value,
+    active: activeWindow.value === "three",
+    pressed: activeControl.value === "button",
+  })
 );
 const threePanel = new ThreePanelFrameView({
   rectangle: threeBodyRect,

@@ -5,9 +5,40 @@ export interface WorkbenchThreeScene {
   signal: ThreeSceneSignal;
 }
 
+export interface WorkbenchStudioSceneInput {
+  blocked?: boolean;
+  minimized?: boolean;
+  available?: boolean;
+  density: number;
+  progress: number;
+  progressRatio: number;
+  compactRows?: boolean;
+  livePreview?: boolean;
+  active?: boolean;
+  pressed?: boolean;
+}
+
 export interface WorkbenchThreeSceneSignalTarget {
   peek(): WorkbenchThreeScene | null;
   value: WorkbenchThreeScene | null;
+}
+
+export function workbenchStudioScene(input: WorkbenchStudioSceneInput): WorkbenchThreeScene | null {
+  if (input.blocked || input.minimized || input.available === false) return null;
+  const density = input.density / 10;
+  return {
+    mode: "studio",
+    signal: {
+      x: density,
+      y: input.progress / 100,
+      depth: density,
+      twist: input.compactRows ? 0.8 : 0.25,
+      lift: input.progressRatio,
+      pulse: input.livePreview ? 0.7 : 0.15,
+      active: input.active ?? false,
+      pressed: input.pressed ?? false,
+    },
+  };
 }
 
 export function setWorkbenchThreeSceneSignal(

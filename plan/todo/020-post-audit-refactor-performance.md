@@ -630,6 +630,9 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Moved modal-blocked Three cadence/interactivity decisions into the shared terminal-pressure helper so workbench hosts
   can pause renderer work behind blocking overlays through the same tested policy path instead of carrying renderer-local
   early returns.
+- Extracted the API workbench's static studio Three scene projection into the shared Three scene helper, covering
+  control-to-scene signal mapping and blocked/minimized/unavailable gates with direct tests while preserving the default
+  30-cell pressure-probe behavior.
 - Cached the background-run classification inside split workbench frame cells, avoiding repeated ANSI-prefix scans while
   assembling animated Three block rows and preserving exact truecolor output.
 - Added a dedicated Three ASCII block-mode grid assembly path that skips glyph/edge selection for full-cell block
