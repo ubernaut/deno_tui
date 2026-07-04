@@ -69,6 +69,7 @@
     "showcase": "deno run -A ./app/showcase.ts",
     "showcase:check": "deno check ./app/showcase.ts",
     "three-ascii": "deno run -A ./examples/three_ascii.ts",
+    "three-ascii:probe": "deno run -A ./scripts/three_ascii_probe.ts",
     "viz": "deno run -A ./app/main.ts",
     "viz:check": "deno check ./app/main.ts",
     "viz:test": "deno test",

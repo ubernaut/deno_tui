@@ -652,14 +652,20 @@ export class ThreeAsciiRenderer {
     return await this.buildAnsiGridFromReadback(readbackLayout, effectState.backgroundColor);
   }
 
-  private deferAnsiGridReadback(
+  private async deferAnsiGridReadback(
     commandEncoder: GPUCommandEncoder,
     readbackLayout: ThreeAsciiReadbackLayout,
     readbackCopyPlan: ReturnType<ThreeAsciiReadbackCopyPlanCache["resolve"]>,
     backgroundColor: Color,
     deferredCompleted?: ThreeAsciiDeferredReadbackConsumeResult,
-  ): string[][] {
+  ): Promise<string[][]> {
     const completed = deferredCompleted ?? this.consumeDeferredAnsiGrid();
+    if (this.readbackStrategy !== "deferred") {
+      this.outputReadback = this.ensureReadbackBuffer(this.outputReadback, readbackLayout.byteLength);
+      this.copyReadbackCommands(commandEncoder, readbackCopyPlan, this.outputReadback);
+      this.device!.queue.submit([commandEncoder.finish()]);
+      return await this.buildAnsiGridFromReadback(readbackLayout, backgroundColor);
+    }
 
     const readback = this.deferredReadbacks.nextBuffer(
       readbackLayout.byteLength,
@@ -683,10 +689,21 @@ export class ThreeAsciiRenderer {
   }
 
   private consumeDeferredAnsiGrid(): ThreeAsciiDeferredReadbackConsumeResult {
-    const completed = this.deferredReadbacks.consumeCompleted(
-      (pending) => this.buildAnsiGridFromMappedReadback(pending),
-      (error) => new ThreeAsciiReadbackError(error),
-    );
+    let completed: ThreeAsciiDeferredReadbackConsumeResult;
+    try {
+      completed = this.deferredReadbacks.consumeCompleted(
+        (pending) => this.buildAnsiGridFromMappedReadback(pending),
+        (error) => new ThreeAsciiReadbackError(error),
+      );
+    } catch (error) {
+      if (error instanceof ThreeAsciiReadbackError) {
+        this.readbackStrategy = "blocking";
+        this.deferredReadbacks.destroy();
+        this.lastReadbackMs = 0;
+        return {};
+      }
+      throw error;
+    }
     if (completed.readbackMs !== undefined) {
       this.lastReadbackMs = completed.readbackMs;
     }

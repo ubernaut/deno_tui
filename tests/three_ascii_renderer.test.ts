@@ -220,3 +220,34 @@ Deno.test("ThreeAsciiRenderer skips scene submission when deferred readbacks are
   assertEquals(renderer.inspectPerformance()?.deferredReadbackSaturated, true);
   assertEquals(renderer.inspectPerformance()?.deferredReadbackUnresolved, 6);
 });
+
+Deno.test("ThreeAsciiRenderer demotes deferred readback failures to blocking mode", () => {
+  const renderer = new ThreeAsciiRenderer({
+    scene: new Scene(),
+    camera: new PerspectiveCamera(),
+    columns: 1,
+    rows: 1,
+    readbackStrategy: "deferred",
+  });
+  let destroyed = 0;
+  const internals = renderer as unknown as {
+    readbackStrategy: string;
+    deferredReadbacks: {
+      consumeCompleted: () => never;
+      destroy: () => void;
+    };
+    consumeDeferredAnsiGrid(): { grid?: string[][] };
+  };
+  internals.deferredReadbacks = {
+    consumeCompleted: () => {
+      throw new ThreeAsciiReadbackError(new Error("deferred map rejected"));
+    },
+    destroy: () => {
+      destroyed += 1;
+    },
+  };
+
+  assertEquals(internals.consumeDeferredAnsiGrid(), {});
+  assertEquals(internals.readbackStrategy, "blocking");
+  assertEquals(destroyed, 1);
+});

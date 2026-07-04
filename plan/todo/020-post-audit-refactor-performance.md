@@ -411,3 +411,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   helper, leaving the panel render loop to own only fallback state and rate limiting.
 - Restored the API workbench startup Three pane to a 960-cell live block-render budget, made it the initially focused
   window, and prevented terminal-pressure downshifts from warm-up placeholder frames.
+- Added a real WebGPU `three-ascii:probe` timing task and hardened deferred readback failures so unsupported or rejected
+  deferred maps demote to blocking readback instead of forcing ThreePanelFrameView into fallback/rebuild loops.
