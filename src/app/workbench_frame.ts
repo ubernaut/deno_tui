@@ -400,8 +400,20 @@ function renderBackgroundStyledRun(
     while (repeatEnd < width && cellAt(repeatEnd) === currentCell) {
       repeatEnd += 1;
     }
-    value += `${current.prefix}${repeatEnd - next === 1 ? current.text : current.text.repeat(repeatEnd - next)}`;
+    let text = repeatEnd - next === 1 ? current.text : current.text.repeat(repeatEnd - next);
     next = repeatEnd;
+    while (next < width) {
+      const nextCell = cellAt(next);
+      const nextParts = splitFrameCell(nextCell);
+      if (!isBackgroundStyledFrameCell(nextParts) || nextParts.prefix !== current.prefix) break;
+      let samePrefixEnd = next + 1;
+      while (samePrefixEnd < width && cellAt(samePrefixEnd) === nextCell) {
+        samePrefixEnd += 1;
+      }
+      text += samePrefixEnd - next === 1 ? nextParts.text : nextParts.text.repeat(samePrefixEnd - next);
+      next = samePrefixEnd;
+    }
+    value += `${current.prefix}${text}`;
     if (next >= width) break;
 
     currentCell = cellAt(next);

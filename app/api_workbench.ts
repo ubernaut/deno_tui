@@ -1,5 +1,3 @@
-import { BoxObject } from "../src/canvas/box.ts";
-import { TextObject, type TextRectangle } from "../src/canvas/text.ts";
 import { ButtonController } from "../src/components/button.ts";
 import { CheckBoxController } from "../src/components/checkbox.ts";
 import { ComboBoxController } from "../src/components/combobox.ts";
@@ -55,9 +53,9 @@ import {
   renderFrameSlice,
   subscribeWorkbenchDiagnosticLog,
   translateHitTargets,
-  updateWorkbenchLineSignals,
   upsertWorkbenchWorkspace,
   workbenchAdaptiveWindowLayout,
+  WorkbenchAnsiScreenPainter,
   workbenchButtonPaintOptions,
   type WorkbenchButtonTone,
   workbenchContentViewport,
@@ -310,6 +308,7 @@ const TERMINAL_OUTPUT_WINDOW_ID = "terminalOutput";
 const TERMINAL_OUTPUT_OPTION_ID = "terminal-output";
 const TERMINAL_SHELL_WINDOW_ID = "terminalShell";
 const TERMINAL_SHELL_OPTION_ID = "terminal-shell";
+const WORKBENCH_THREE_LIVE_MAX_CELLS = 1_920;
 
 type BuiltInWindowId =
   | "explorer"
@@ -612,7 +611,7 @@ const unsubscribeWorkbenchDiagnostics = subscribeWorkbenchDiagnosticLog(workbenc
 });
 const dynamicVisualizationWindows = new Signal<Record<VisualizationWindowId, string>>({}, { deepObserve: true });
 const selectedCpuHexTiles = new Signal<Record<VisualizationWindowId, string>>({}, { deepObserve: true });
-const lineSignals: Signal<string>[] = [];
+const screenPainter = new WorkbenchAnsiScreenPainter(tui.stdout);
 const hitTargets = new HitTargetStack<HitAction>();
 const screenFrame: Frame = [];
 const workspaceVirtualFrame: Frame = [];
@@ -838,22 +837,15 @@ const threePanel = new ThreePanelFrameView({
   enabled: threeAsciiAvailable,
   graphicsSurface: () => kittyGraphics.surfaceFor(ascii.peek()),
   frameInterval: 1000 / 18,
+  maxRenderCells: WORKBENCH_THREE_LIVE_MAX_CELLS,
   diagnostics: workbenchDiagnostics,
   onUpdate: scheduleDraw,
 });
 const visualizationThreePanels = new Map<VisualizationWindowId, DynamicThreePanel>();
 const visualizationThreeSupport = new Map<string, boolean>();
 
-new BoxObject({
-  canvas: tui.canvas,
-  rectangle: tui.rectangle,
-  style: new Computed(() => makeStyle({ bg: theme().background })),
-  zIndex: -1,
-}).draw();
-
-ensureLineObjects();
 tui.rectangle.subscribe(() => {
-  ensureLineObjects();
+  screenPainter.reset();
   draw();
 });
 
@@ -1044,7 +1036,6 @@ draw();
 
 function draw(): void {
   syncTerminalSize();
-  ensureLineObjects();
   const width = currentWidth();
   const height = currentHeight();
   hitTargets.clear();
@@ -1055,7 +1046,7 @@ function draw(): void {
   renderStatus(frame);
   renderActiveDropdownOverlay(frame);
   renderModalOverlay(frame);
-  updateWorkbenchLineSignals(lineSignals, frame, width, height);
+  screenPainter.flush(frame, width, height, renderFrameRow);
 }
 
 function scheduleDraw(): void {
@@ -2838,6 +2829,7 @@ function ensureVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
     enabled: threeAsciiAvailable,
     graphicsSurface: () => kittyGraphics.surfaceFor(asciiForWindow(id).peek()),
     frameInterval: 1000 / 18,
+    maxRenderCells: WORKBENCH_THREE_LIVE_MAX_CELLS,
     diagnostics: workbenchDiagnostics,
     onUpdate: scheduleDraw,
   });
@@ -4511,23 +4503,6 @@ function pushLog(message: string): void {
   );
 }
 
-function ensureLineObjects(): void {
-  for (let row = lineSignals.length; row < currentHeight(); row += 1) {
-    const signal = new Signal("");
-    const rowIndex = row;
-    lineSignals.push(signal);
-    new TextObject({
-      canvas: tui.canvas,
-      rectangle: new Computed<TextRectangle>(() => ({ column: 0, row: rowIndex, width: currentWidth() })),
-      value: signal,
-      overwriteRectangle: true,
-      multiCodePointSupport: true,
-      style: new Computed(() => makeStyle({ fg: theme().text, bg: theme().background })),
-      zIndex: 2,
-    }).draw();
-  }
-}
-
 function writeRows(frame: Frame, rect: Rectangle, rows: RowStyle[]): void {
   const t = theme();
   for (let index = 0; index < Math.min(rect.height, rows.length); index += 1) {
@@ -4667,7 +4642,7 @@ function syncTerminalSize(): boolean {
     if (size.columns === columns && size.rows === rows) return false;
     size.columns = columns;
     size.rows = rows;
-    ensureLineObjects();
+    screenPainter.reset();
     return true;
   } catch {
     return false;

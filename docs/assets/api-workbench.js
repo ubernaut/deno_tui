@@ -11600,8 +11600,20 @@ function renderBackgroundStyledRun(cellAt, startColumn, width, firstCell, first)
     while (repeatEnd < width && cellAt(repeatEnd) === currentCell) {
       repeatEnd += 1;
     }
-    value += `${current.prefix}${repeatEnd - next === 1 ? current.text : current.text.repeat(repeatEnd - next)}`;
+    let text = repeatEnd - next === 1 ? current.text : current.text.repeat(repeatEnd - next);
     next = repeatEnd;
+    while (next < width) {
+      const nextCell = cellAt(next);
+      const nextParts = splitFrameCell(nextCell);
+      if (!isBackgroundStyledFrameCell(nextParts) || nextParts.prefix !== current.prefix) break;
+      let samePrefixEnd = next + 1;
+      while (samePrefixEnd < width && cellAt(samePrefixEnd) === nextCell) {
+        samePrefixEnd += 1;
+      }
+      text += samePrefixEnd - next === 1 ? nextParts.text : nextParts.text.repeat(samePrefixEnd - next);
+      next = samePrefixEnd;
+    }
+    value += `${current.prefix}${text}`;
     if (next >= width) break;
     currentCell = cellAt(next);
     current = splitFrameCell(currentCell);
@@ -11713,6 +11725,9 @@ function linearRgbChannel(channel) {
   const value = channel / 255;
   return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
 }
+
+// src/app/workbench_ansi_screen.ts
+var encoder = new TextEncoder();
 
 // src/app/workbench_help.ts
 function workbenchHelpRows(options = {}) {
