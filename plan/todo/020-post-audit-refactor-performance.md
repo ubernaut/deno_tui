@@ -651,3 +651,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted workbench Three pressure-probe CLI parsing into the shared probe helper with tests for separate pressure
   caps and saved ASCII cell budgets, keeping future renderer tuning measurements aligned with the real workbench
   startup path.
+- Extracted API workbench Three pressure-change resolution out of the runtime controller into a directly tested helper,
+  leaving the controller to apply signal mutations while pressure policy, cadence, and log projection stay inspectable.

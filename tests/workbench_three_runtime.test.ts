@@ -1,5 +1,8 @@
 import { assertEquals, assertStringIncludes } from "./deps.ts";
-import { ApiWorkbenchThreeRuntimeController } from "../app/workbench_three_runtime.ts";
+import {
+  ApiWorkbenchThreeRuntimeController,
+  resolveApiWorkbenchThreePressureChange,
+} from "../app/workbench_three_runtime.ts";
 import { WORKBENCH_THREE_INITIAL_CELLS } from "../app/workbench_three_policy.ts";
 
 Deno.test("ApiWorkbenchThreeRuntimeController owns live cadence signals", () => {
@@ -59,4 +62,35 @@ Deno.test("ApiWorkbenchThreeRuntimeController backs off on scoped pressure and l
   assertStringIncludes(logs[0]!, "three pressure down 120 cells");
 
   controller.dispose();
+});
+
+Deno.test("resolveApiWorkbenchThreePressureChange reports steady pressure without log text", () => {
+  const change = resolveApiWorkbenchThreePressureChange({
+    pressure: { currentCells: 120, highFrames: 0, lowFrames: 0 },
+    currentCells: 120,
+    frameIntervalMs: 1000 / 30,
+    stats: { changed: 1, bytes: 45, durationMs: 0.1 },
+    sample: { renderedThreeGrids: 1, renderedThreeRows: 6 },
+  });
+
+  assertEquals(change, {
+    pressure: { currentCells: 120, highFrames: 0, lowFrames: 1 },
+    changed: false,
+    nextCells: 120,
+  });
+});
+
+Deno.test("resolveApiWorkbenchThreePressureChange projects downshift and log message", () => {
+  const change = resolveApiWorkbenchThreePressureChange({
+    pressure: { currentCells: 240, highFrames: 0, lowFrames: 0 },
+    currentCells: 240,
+    frameIntervalMs: 1000 / 30,
+    stats: { changed: 12, bytes: 120_000, durationMs: 0.2 },
+    sample: { renderedThreeGrids: 1, renderedThreeRows: 8 },
+  });
+
+  assertEquals(change.pressure, { currentCells: 120, highFrames: 0, lowFrames: 0 });
+  assertEquals(change.changed, true);
+  assertEquals(change.nextCells, 120);
+  assertStringIncludes(change.logMessage ?? "", "three pressure down 120 cells");
 });
