@@ -935,3 +935,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   rendered quickly but often produced visually identical frames. The new default publishes visibly changing `37x12` to
   `40x12` block grids around 56-57fps renderer-side on this host while retaining the 30/60/120/240 pressure backoff
   tiers for slow terminals.
+- Extracted themed workbench frame fill/title/border rendering into renderer-neutral commands and routed both terminal
+  and browser API workbench frame drawing through the shared projection. Focused frame/titlebar tests, terminal/web type
+  checks, and the `api-workbench-frame` benchmark passed.

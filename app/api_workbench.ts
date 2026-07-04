@@ -67,7 +67,6 @@ import {
   workbenchEmptyWorkspaceMessage,
   type WorkbenchFrame,
   type WorkbenchFrameBoxLine,
-  workbenchFrameBoxLinesInto,
   workbenchHeaderHelp,
   type WorkbenchHeaderLayout,
   type WorkbenchMenuBarHitLayout,
@@ -318,6 +317,7 @@ import {
   workbenchQuitModalContent,
 } from "./workbench_modal_content.ts";
 import { formatWorkbenchKittyGraphicsStatus, WorkbenchKittyGraphicsController } from "./workbench_kitty_graphics.ts";
+import { type WorkbenchFrameRenderCommand, workbenchFrameRenderCommandsInto } from "./workbench_frame_render.ts";
 import { type WorkbenchStyledRowRenderCommand, workbenchStyledRowsRenderCommandsInto } from "./workbench_row_render.ts";
 import { type RowStyle, type ThreeHeaderPerformance, threeHeaderRows } from "./workbench_rows.ts";
 import { writeThreeHeaderPerformance } from "./workbench_three_header.ts";
@@ -645,6 +645,7 @@ const menuBarHitLayouts: WorkbenchMenuBarHitLayout[] = [];
 const headerLayout: WorkbenchHeaderLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
 const shelfBuffers = new WorkbenchShelfBufferCache<WindowId>();
 const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
+const windowFrameRenderCommands: WorkbenchFrameRenderCommand[] = [];
 const windowScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const workspaceScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const dropdownOverlayRenderCommands: WorkbenchDropdownOverlayRenderCommand[] = [];
@@ -2646,14 +2647,18 @@ function kittyGraphicsStatus(): string {
 }
 
 function drawFrame(frame: Frame, rect: Rectangle, title: string, active: boolean): void {
-  const t = theme();
-  fillRect(frame, rect, active ? t.panelSoft : t.panel);
-  const borderStyle = { fg: active ? t.accent : t.borderStrong, bg: active ? t.panelSoft : t.panel, bold: active };
-  const titleStyle = { fg: t.background, bg: active ? t.accent : t.border, bold: true };
-  const lines = workbenchFrameBoxLinesInto(windowFrameBoxLines, rect, title);
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index]!;
-    write(frame, line.row, line.column, paint(line.text, line.kind === "title" ? titleStyle : borderStyle));
+  const commands = workbenchFrameRenderCommandsInto(windowFrameRenderCommands, windowFrameBoxLines, {
+    rect,
+    title,
+    active,
+    theme: theme(),
+  });
+  for (const command of commands) {
+    if (command.kind === "fill") {
+      fillRect(frame, command.rect, command.bg);
+    } else {
+      write(frame, command.row, command.column, paint(command.text, command.style));
+    }
   }
 }
 

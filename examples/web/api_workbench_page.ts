@@ -79,7 +79,6 @@ import {
   workbenchDropdownOverlayRenderCommandsInto,
   workbenchEmptyWorkspaceMessage,
   type WorkbenchFrameBoxLine,
-  workbenchFrameBoxLinesInto,
   type WorkbenchHeaderLayout,
   type WorkbenchMenuBarHitLayout,
   workbenchModalActionButtonsInto,
@@ -177,6 +176,10 @@ import { workbenchDataTablePageSize, workbenchDataTableRowsInto } from "../../ap
 import { workbenchExplorerRowsInto } from "../../app/workbench_explorer.ts";
 import { workbenchInspectorRowsInto } from "../../app/workbench_inspector.ts";
 import { workbenchLogRowsFromSourcesInto } from "../../app/workbench_logs.ts";
+import {
+  type WorkbenchFrameRenderCommand,
+  workbenchFrameRenderCommandsInto,
+} from "../../app/workbench_frame_render.ts";
 import {
   type WorkbenchStyledRowRenderCommand,
   workbenchStyledRowsRenderCommandsInto,
@@ -388,6 +391,7 @@ const shelfBuffers = new WorkbenchShelfBufferCache<PanelId>();
 const menuBarHitLayouts: WorkbenchMenuBarHitLayout[] = [];
 const headerLayout: WorkbenchHeaderLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
 const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
+const windowFrameRenderCommands: WorkbenchFrameRenderCommand[] = [];
 const workspaceScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const visiblePanelRects = new Map<PanelId, Rectangle>();
 const webTerminalActions: readonly WebTerminalAction[] = [
@@ -929,7 +933,6 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
   if (rect.width < 10 || rect.height < 4) return;
   hitTargets.add(rect, { type: "focus", id });
   const selected = active.peek() === id;
-  fillRect(frame, rect, selected ? theme().panelSoft : theme().panel);
   drawFrame(frame, rect, panelTitle(id), selected);
   const titlebar = layoutWorkbenchTitlebarInto(titlebarBuffers.layout(id), {
     rect,
@@ -2633,19 +2636,23 @@ function fillRect(frame: string[], rect: Rectangle, bg: string): void {
 }
 
 function drawFrame(frame: string[], rect: Rectangle, title: string, selected: boolean): void {
-  const border = selected ? theme().accent : theme().borderStrong;
-  const bg = selected ? theme().panelSoft : theme().panel;
-  const lines = workbenchFrameBoxLinesInto(windowFrameBoxLines, rect, title);
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index]!;
-    write(
-      frame,
-      line.row,
-      line.column,
-      line.kind === "title"
-        ? paint(line.text, theme().background, selected ? theme().accent : theme().border, true)
-        : paint(line.text, border, bg, selected),
-    );
+  const commands = workbenchFrameRenderCommandsInto(windowFrameRenderCommands, windowFrameBoxLines, {
+    rect,
+    title,
+    active: selected,
+    theme: theme(),
+  });
+  for (const command of commands) {
+    if (command.kind === "fill") {
+      fillRect(frame, command.rect, command.bg);
+    } else {
+      write(
+        frame,
+        command.row,
+        command.column,
+        paint(command.text, command.style.fg, command.style.bg, command.style.bold),
+      );
+    }
   }
 }
 
