@@ -1,5 +1,3 @@
-import { textWidth } from "../src/utils/strings.ts";
-
 export interface ThreeHeaderPerformance {
   totalMs: number;
   initMs?: number;
@@ -38,10 +36,10 @@ export function threeHeaderPerformanceText(performance: ThreeHeaderPerformance, 
   } asm ${Math.round(performance.assemblyMs)} ${cells}${cap}${target}${measured}${queue ? ` ${queue}` : ""}${
     pressure ? ` ${pressure}` : ""
   }`;
-  if (width >= textWidth(detailed)) return detailed;
+  if (width >= detailed.length) return detailed;
 
   const compact = `${total} ${cells}${measured || target}${queue ? ` ${queue}` : ""}${pressure ? ` ${pressure}` : ""}`;
-  return width >= textWidth(compact) ? compact : `${total} ${cells}`;
+  return width >= compact.length ? compact : `${total} ${cells}`;
 }
 
 function threeHeaderQueuePressureText(performance: ThreeHeaderPerformance): string {

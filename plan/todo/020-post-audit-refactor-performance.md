@@ -859,3 +859,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted Three header performance-text projection into `workbench_three_header.ts` with direct tests for detailed,
   compact, and narrow telemetry modes, leaving `workbench_rows.ts` focused on row composition while preserving the
   benchmarked `workbench-three-header-telemetry` path.
+- Specialized the extracted Three telemetry formatter for its ASCII-only output so width checks use direct string length
+  instead of the general Unicode text-width helper; focused formatter tests and the header telemetry benchmark passed.
