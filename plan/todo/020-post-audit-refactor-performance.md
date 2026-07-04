@@ -474,3 +474,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   helper, removing duplicated output code from full-row and changed-span painter paths without benchmark regression.
 - Added a focused `render/workbench-changed-span-detection-168` microbenchmark for retained terminal row span diffing,
   giving the extracted span detector a tight performance guard before further terminal-output tuning.
+- Extracted Three ASCII deferred readback failure handling into a focused tested helper, preserving cached-grid retry
+  behavior while keeping the renderer catch path small and the real WebGPU probe non-saturated.

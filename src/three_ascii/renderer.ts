@@ -42,6 +42,7 @@ import {
   ThreeAsciiReadbackLayoutCache,
   ThreeAsciiReadbackViewCache,
 } from "./readback.ts";
+import { handleThreeAsciiDeferredReadbackFailure } from "./readback_failure.ts";
 import {
   normalizeThreeAsciiRendererOptions,
   normalizeThreeAsciiRenderSize,
@@ -466,11 +467,10 @@ export class ThreeAsciiRenderer {
         (error) => new ThreeAsciiReadbackError(error),
       );
     } catch (error) {
-      if (error instanceof ThreeAsciiReadbackError) {
-        const grid = this.deferredReadbacks.lastCompletedGrid();
-        this.deferredReadbacks.destroy();
+      const failure = handleThreeAsciiDeferredReadbackFailure(error, ThreeAsciiReadbackError, this.deferredReadbacks);
+      if (failure.handled) {
         this.lastReadbackMs = 0;
-        return { grid, readbackUnavailable: true };
+        return failure.result!;
       }
       throw error;
     }
