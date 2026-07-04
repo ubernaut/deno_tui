@@ -1,5 +1,5 @@
 import { assertEquals, assertRejects } from "./deps.ts";
-import { ThreePanelRenderQueue } from "../app/three_panel_render_queue.ts";
+import { ThreePanelRenderQueue } from "../src/app/three_panel_render_queue.ts";
 
 Deno.test("ThreePanelRenderQueue serializes queued frame work", async () => {
   const queue = new ThreePanelRenderQueue();

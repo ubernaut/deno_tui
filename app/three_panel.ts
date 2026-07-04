@@ -17,7 +17,7 @@ import { asciiEffectOptions } from "./ascii_options.ts";
 import { createNeonThreeScene, type NeonThreeSceneBundle } from "./neon_three.ts";
 import { ThreePanelGraphicsImageController } from "./three_panel_graphics.ts";
 import { ThreePanelInteractionController, type ThreePanelInteractionState } from "./three_panel_interaction.ts";
-import { resolveThreePanelLifecycleState, type ThreePanelLifecycleState } from "./three_panel_lifecycle.ts";
+import { resolveThreePanelLifecycleState, type ThreePanelLifecycleState } from "../src/app/three_panel_lifecycle.ts";
 import {
   threePanelAdaptiveRenderCellsDiagnostic,
   threePanelGraphicsFallbackDiagnostic,
@@ -38,7 +38,7 @@ import {
   type ThreePanelRenderPolicy,
   type ThreePanelRenderSize,
 } from "./three_panel_policy.ts";
-import { defaultThreePanelRenderQueue, ThreePanelRenderQueue } from "./three_panel_render_queue.ts";
+import { defaultThreePanelRenderQueue, ThreePanelRenderQueue } from "../src/app/three_panel_render_queue.ts";
 import type { AsciiOptions, Rect, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 
 export type { ThreePanelInteractionState } from "./three_panel_interaction.ts";
@@ -59,7 +59,7 @@ export {
   type ThreePanelRenderPolicyInput,
   type ThreePanelRenderSize,
 } from "./three_panel_policy.ts";
-export { defaultThreePanelRenderQueue, ThreePanelRenderQueue } from "./three_panel_render_queue.ts";
+export { defaultThreePanelRenderQueue, ThreePanelRenderQueue } from "../src/app/three_panel_render_queue.ts";
 
 export interface ThreeSceneState {
   mode: ThreeSceneMode;
