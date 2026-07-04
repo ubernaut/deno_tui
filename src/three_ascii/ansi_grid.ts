@@ -321,7 +321,18 @@ export class ThreeAsciiAnsiGridAssembler {
         const rawGreen = colors[colorOffset + 1] as number;
         const rawBlue = colors[colorOffset + 2] as number;
         if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue) {
-          outputRow[column] = lastCell;
+          column = fillDenseBlockColorRun(
+            outputRow,
+            fillGlyphs,
+            colors,
+            rowOffset,
+            column,
+            columns,
+            rawRed,
+            rawGreen,
+            rawBlue,
+            lastCell,
+          );
           continue;
         }
 
@@ -350,7 +361,18 @@ export class ThreeAsciiAnsiGridAssembler {
         lastRawGreen = rawGreen;
         lastRawBlue = rawBlue;
 
-        outputRow[column] = cell;
+        column = fillDenseBlockColorRun(
+          outputRow,
+          fillGlyphs,
+          colors,
+          rowOffset,
+          column,
+          columns,
+          rawRed,
+          rawGreen,
+          rawBlue,
+          cell,
+        );
       }
     }
 
@@ -664,6 +686,37 @@ function fillDenseBlockBlankRun(
     column += 1;
   }
   outputRow.fill(blankAnsi, blankStart, column);
+  return column - 1;
+}
+
+function fillDenseBlockColorRun(
+  outputRow: string[],
+  fillGlyphs: ArrayLike<number>,
+  colors: ArrayLike<number>,
+  rowOffset: number,
+  column: number,
+  columns: number,
+  rawRed: number,
+  rawGreen: number,
+  rawBlue: number,
+  cell: string,
+): number {
+  const runStart = column;
+  column += 1;
+  while (column < columns) {
+    const index = rowOffset + column;
+    if ((fillGlyphs[index] as number) < MIN_VISIBLE_BLOCK_FILL_VALUE) break;
+    const colorOffset = index * 4;
+    if (
+      (colors[colorOffset] as number) !== rawRed ||
+      (colors[colorOffset + 1] as number) !== rawGreen ||
+      (colors[colorOffset + 2] as number) !== rawBlue
+    ) {
+      break;
+    }
+    column += 1;
+  }
+  outputRow.fill(cell, runStart, column);
   return column - 1;
 }
 

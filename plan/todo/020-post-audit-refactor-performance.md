@@ -203,6 +203,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   second expensive terminal frame before backing off on slow sessions.
 - Added test coverage that locks Kitty/image-only Three panels to `{ ansi: false, image: true }`, guarding against
   accidental ANSI readback/grid work when raster graphics is the selected output.
+- Optimized dense block-mode ANSI grid assembly by filling adjacent same-color visible cells as row ranges instead of
+  assigning every cell individually, covering the default terminal glyph style.
 - Stabilized default Three ASCII block rendering by using ASCII-safe shared window controls and removing fog from the
   default block preset so truecolor block cells keep source color depth.
 - Extracted the workbench Three ASCII config modal geometry into a tested internal layout helper, reducing inline modal

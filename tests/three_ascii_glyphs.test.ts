@@ -77,6 +77,44 @@ Deno.test("three ascii block grid assembly paints full cells with source truecol
   assertEquals(grid[0][1], "\x1b[48;2;255;0;0m \x1b[0m");
 });
 
+Deno.test("three ascii dense block grid assembly fills same-color visible runs", () => {
+  const grid = buildThreeAsciiAnsiGrid({
+    columns: 5,
+    rows: 1,
+    fillGlyphs: new Float32Array([14, 13, 5, 14, 14]),
+    colors: new Float32Array([
+      0.5,
+      0.25,
+      1,
+      1,
+      0.5,
+      0.25,
+      1,
+      1,
+      1,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+    ]),
+    terminalGlyphStyle: "blocks",
+    backgroundColor: 0x000000,
+  });
+
+  assertEquals(grid[0][0], "\x1b[48;2;188;137;255m \x1b[0m");
+  assertEquals(grid[0][1], grid[0][0]);
+  assertEquals(grid[0][2], "\x1b[48;2;0;0;0m \x1b[0m");
+  assertEquals(grid[0][3], "\x1b[48;2;0;255;0m \x1b[0m");
+  assertEquals(grid[0][4], grid[0][3]);
+});
+
 Deno.test("three ascii block mode preserves truecolor backgrounds for low visible fill buckets", () => {
   const grid = buildThreeAsciiAnsiGrid({
     columns: 2,
