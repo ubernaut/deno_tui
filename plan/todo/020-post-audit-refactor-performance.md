@@ -618,6 +618,9 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Retuned the API workbench startup Three ASCII policy to start at the 120-cell emergency tier, recover much more
   slowly, and reduce high-detail live cadences so SSH/tmux truecolor block rendering favors smooth motion by default
   while retaining higher-detail per-widget configuration.
+- Added a 30-cell rescue render tier and shared Three panel render queue so multiple workbench-hosted Three panes do
+  not compete for WebGPU/readback work; focused probes now show live deferred block frames at roughly 4.7KB/s for the
+  30-cell tier and 9.6KB/s for the 60-cell tier after startup while keeping panel concurrency covered by direct tests.
 - Cached the background-run classification inside split workbench frame cells, avoiding repeated ANSI-prefix scans while
   assembling animated Three block rows and preserving exact truecolor output.
 - Added a dedicated Three ASCII block-mode grid assembly path that skips glyph/edge selection for full-cell block

@@ -8,6 +8,7 @@ import {
   ThreePanelAdaptiveRenderBudgetController,
   ThreePanelFrameView,
   type ThreePanelGridRenderer,
+  ThreePanelRenderQueue,
   type ThreeSceneState,
 } from "../app/three_panel.ts";
 import { resolveThreePanelLifecycleState } from "../app/three_panel_lifecycle.ts";
@@ -413,6 +414,66 @@ Deno.test("ThreePanelFrameView exposes renderer performance telemetry", async ()
     scene.dispose();
     ascii.dispose();
     enabled.dispose();
+  }
+});
+
+Deno.test("ThreePanelFrameView serializes shared render queue work across panes", async () => {
+  const queue = new ThreePanelRenderQueue();
+  const firstRectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
+  const secondRectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
+  const firstScene = new Signal<ThreeSceneState | null>(sceneState());
+  const secondScene = new Signal<ThreeSceneState | null>({ ...sceneState(), mode: "lattice" });
+  const firstAscii = new Signal(createDefaultAsciiOptions("sharp"));
+  const secondAscii = new Signal(createDefaultAsciiOptions("sharp"));
+  const renderers: SlowGridRenderer[] = [];
+  const firstPanel = new ThreePanelFrameView({
+    rectangle: firstRectangle,
+    scene: firstScene,
+    ascii: firstAscii,
+    frameInterval: 1000 / 30,
+    renderQueue: queue,
+    rendererFactory: (options) => {
+      const renderer = new SlowGridRenderer(options.columns, options.rows, "A");
+      renderers.push(renderer);
+      return renderer;
+    },
+  });
+  const secondPanel = new ThreePanelFrameView({
+    rectangle: secondRectangle,
+    scene: secondScene,
+    ascii: secondAscii,
+    frameInterval: 1000 / 30,
+    renderQueue: queue,
+    rendererFactory: (options) => {
+      const renderer = new SlowGridRenderer(options.columns, options.rows, "B");
+      renderers.push(renderer);
+      return renderer;
+    },
+  });
+
+  try {
+    await waitFor(() => renderers.length === 2 && renderers[0]!.startCount === 1);
+    assertEquals(renderers[1]!.startCount, 0);
+    assertEquals(queue.inspect().running, 1);
+    assertEquals(queue.inspect().pending, 1);
+
+    renderers[0]!.completeFrame();
+    await waitFor(() => renderers[1]!.startCount === 1);
+    assertEquals(queue.inspect().running, 1);
+    assertEquals(queue.inspect().pending, 0);
+
+    renderers[1]!.completeFrame();
+    await waitFor(() => secondPanel.grid.peek()[0]?.[0] === "B");
+    assertEquals(firstPanel.grid.peek()[0]?.[0], "A");
+  } finally {
+    firstPanel.dispose();
+    secondPanel.dispose();
+    firstRectangle.dispose();
+    secondRectangle.dispose();
+    firstScene.dispose();
+    secondScene.dispose();
+    firstAscii.dispose();
+    secondAscii.dispose();
   }
 });
 

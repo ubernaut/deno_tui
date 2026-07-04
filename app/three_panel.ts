@@ -38,6 +38,7 @@ import {
   type ThreePanelRenderPolicy,
   type ThreePanelRenderSize,
 } from "./three_panel_policy.ts";
+import { defaultThreePanelRenderQueue, ThreePanelRenderQueue } from "./three_panel_render_queue.ts";
 import type { AsciiOptions, Rect, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 
 export type { ThreePanelInteractionState } from "./three_panel_interaction.ts";
@@ -58,6 +59,7 @@ export {
   type ThreePanelRenderPolicyInput,
   type ThreePanelRenderSize,
 } from "./three_panel_policy.ts";
+export { defaultThreePanelRenderQueue, ThreePanelRenderQueue } from "./three_panel_render_queue.ts";
 
 export interface ThreeSceneState {
   mode: ThreeSceneMode;
@@ -229,6 +231,7 @@ export class ThreePanelFrameView {
   private readonly frameInterval: ThreePanelIntervalValue;
   private readonly idleFrameInterval?: ThreePanelIntervalValue;
   private readonly interactive?: ThreePanelLiveValue;
+  private readonly renderQueue: ThreePanelRenderQueue;
   private readonly onUpdate?: () => void;
   private lastFrameTime = performance.now();
   private rendering = false;
@@ -270,6 +273,7 @@ export class ThreePanelFrameView {
       interactive?: ThreePanelLiveValue;
       maxRenderCells?: number | Signal<number>;
       readbackStrategy?: ThreeAsciiReadbackStrategy;
+      renderQueue?: ThreePanelRenderQueue;
       onUpdate?: () => void;
       rendererFactory?: ThreePanelRendererFactory;
     },
@@ -277,6 +281,7 @@ export class ThreePanelFrameView {
     this.frameInterval = options.frameInterval ?? 1000 / 10;
     this.idleFrameInterval = options.idleFrameInterval;
     this.interactive = options.interactive;
+    this.renderQueue = options.renderQueue ?? defaultThreePanelRenderQueue;
     this.onUpdate = options.onUpdate;
     this.graphics = new ThreePanelGraphicsImageController({
       diagnostics: options.diagnostics,
@@ -487,9 +492,12 @@ export class ThreePanelFrameView {
         bundle.tick(performance.now(), latest.signal);
         this.interaction.apply(this.bundle);
       };
-      const frame = renderer.renderFrame
-        ? await renderer.renderFrame(deltaTime, onFrame, policy.frameOptions)
-        : { grid: await renderer.renderToAnsiGrid(deltaTime, onFrame) };
+      const frame = await this.renderQueue.run(async () => {
+        if (!this.isCurrentFrame(frameGeneration, renderer, bundle)) return {};
+        return renderer.renderFrame
+          ? await renderer.renderFrame(deltaTime, onFrame, policy.frameOptions)
+          : { grid: await renderer.renderToAnsiGrid(deltaTime, onFrame) };
+      });
 
       if (!this.isCurrentFrame(frameGeneration, renderer, bundle)) {
         return;
