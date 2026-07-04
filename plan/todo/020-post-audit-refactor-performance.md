@@ -238,6 +238,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   repeated row reconstruction in enlarged low-resolution workbench Three panes.
 - Moved restore-next-minimized-window behavior into `WindowManagerController`, replacing renderer-local inspection scans
   with a tested shared window-manager method.
+- Extracted API workbench window-title composition into the shared catalog helper with direct tests, keeping terminal,
+  visualization, built-in, and fallback titles aligned outside the renderer.
 - Extracted API workbench Explorer row projection into a focused helper with direct tests for selection, icons, and
   caller-owned row reuse.
 - Extracted API workbench Data Table row projection and page-size calculation into a generic helper with direct tests

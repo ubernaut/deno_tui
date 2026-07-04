@@ -60,6 +60,29 @@ export function apiWorkbenchShortPanelTitle(id: string, fallback?: string): stri
   return apiWorkbenchShortPanelTitles[id] ?? apiWorkbenchPanelTitle(id, fallback);
 }
 
+export interface ApiWorkbenchWindowTitleOptions {
+  id: string;
+  visualizationLabel?: string;
+  terminalOutputId?: string;
+  terminalOutputTitle?: string;
+  terminalShellId?: string;
+  terminalShellTitle?: string;
+  fallback?: string;
+}
+
+export function apiWorkbenchWindowTitle(options: ApiWorkbenchWindowTitleOptions): string {
+  if (options.visualizationLabel !== undefined) {
+    return options.visualizationLabel || "Visualization";
+  }
+  if (options.id === options.terminalOutputId && options.terminalOutputTitle) {
+    return options.terminalOutputTitle;
+  }
+  if (options.id === options.terminalShellId && options.terminalShellTitle) {
+    return options.terminalShellTitle;
+  }
+  return apiWorkbenchPanelTitle(options.id, options.fallback);
+}
+
 export function createApiWorkbenchThemes(): ApiWorkbenchThemeSpec[] {
   return grWizardThemePalettes.map((palette) => ({
     id: palette.name,

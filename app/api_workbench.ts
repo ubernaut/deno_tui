@@ -181,6 +181,7 @@ import {
   type ApiWorkbenchProcessRow,
   apiWorkbenchRows,
   type ApiWorkbenchThemeSpec,
+  apiWorkbenchWindowTitle,
   createApiWorkbenchThemes,
 } from "./api_workbench_catalog.ts";
 import {
@@ -4667,14 +4668,18 @@ function findHit(x: number, y: number): { rect: Rectangle; action: HitAction } |
 }
 
 function windowTitle(id: WindowId): string {
-  if (isVisualizationWindow(id)) {
-    return visualizationOption(dynamicVisualizationWindows.peek()[id])?.label ?? "Visualization";
-  }
-  return id === TERMINAL_OUTPUT_WINDOW_ID
-    ? terminalOutputWindowTitle()
-    : id === TERMINAL_SHELL_WINDOW_ID
-    ? terminalShellWindowTitle()
-    : apiWorkbenchPanelTitle(id, "Three ASCII");
+  const visualizationLabel = isVisualizationWindow(id)
+    ? visualizationOption(dynamicVisualizationWindows.peek()[id])?.label ?? ""
+    : undefined;
+  return apiWorkbenchWindowTitle({
+    id,
+    visualizationLabel,
+    terminalOutputId: TERMINAL_OUTPUT_WINDOW_ID,
+    terminalOutputTitle: id === TERMINAL_OUTPUT_WINDOW_ID ? terminalOutputWindowTitle() : undefined,
+    terminalShellId: TERMINAL_SHELL_WINDOW_ID,
+    terminalShellTitle: id === TERMINAL_SHELL_WINDOW_ID ? terminalShellWindowTitle() : undefined,
+    fallback: "Three ASCII",
+  });
 }
 
 function terminalOutputWindowTitle(): string {

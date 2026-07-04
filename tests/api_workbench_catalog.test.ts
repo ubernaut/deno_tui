@@ -6,6 +6,7 @@ import {
   apiWorkbenchPanelTitle,
   apiWorkbenchRows,
   apiWorkbenchShortPanelTitle,
+  apiWorkbenchWindowTitle,
   createApiWorkbenchThemes,
 } from "../app/api_workbench_catalog.ts";
 
@@ -47,4 +48,27 @@ Deno.test("api workbench catalog exposes shared panel display titles", () => {
   assertEquals(apiWorkbenchPanelTitle("unknown", "Fallback"), "Fallback");
   assertEquals(apiWorkbenchShortPanelTitle("htmlLayout"), "Layout");
   assertEquals(apiWorkbenchShortPanelTitle("data"), "Data Table");
+});
+
+Deno.test("api workbench catalog composes shared window titles", () => {
+  assertEquals(apiWorkbenchWindowTitle({ id: "data" }), "Data Table");
+  assertEquals(apiWorkbenchWindowTitle({ id: "unknown", fallback: "Fallback" }), "Fallback");
+  assertEquals(apiWorkbenchWindowTitle({ id: "viz:cpu", visualizationLabel: "CPU Hex Grid" }), "CPU Hex Grid");
+  assertEquals(apiWorkbenchWindowTitle({ id: "viz:missing", visualizationLabel: "" }), "Visualization");
+  assertEquals(
+    apiWorkbenchWindowTitle({
+      id: "terminal",
+      terminalOutputId: "terminal",
+      terminalOutputTitle: "Terminal RAW running",
+    }),
+    "Terminal RAW running",
+  );
+  assertEquals(
+    apiWorkbenchWindowTitle({
+      id: "shell",
+      terminalShellId: "shell",
+      terminalShellTitle: "Shell WB bash",
+    }),
+    "Shell WB bash",
+  );
 });
