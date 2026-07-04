@@ -19,12 +19,36 @@ import {
   type WorkbenchTerminalOutputToolbarAction,
   workbenchTerminalOutputToolbarItemsInto,
   workbenchTerminalPaneProjectionsInto,
+  workbenchTerminalSearchModalBody,
   workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
   workbenchTerminalSessionTitleFromId,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
 } from "../src/app/workbench/mod.ts";
+
+Deno.test("workbenchTerminalSearchModalBody projects an empty search prompt", () => {
+  assertEquals(workbenchTerminalSearchModalBody({ query: "gpu" }), [
+    "Query  gpu▌",
+    "Matches none yet",
+    "Enter searches, Escape cancels, N/Shift+N move between matches in copy mode.",
+  ]);
+});
+
+Deno.test("workbenchTerminalSearchModalBody projects active match state", () => {
+  assertEquals(
+    workbenchTerminalSearchModalBody({
+      query: "ready",
+      scrollback: { matches: [2, 5, 9], activeMatch: 1 },
+      cursor: "_",
+    }),
+    [
+      "Query  ready_",
+      "Matches 3 hit 2/3",
+      "Enter searches, Escape cancels, N/Shift+N move between matches in copy mode.",
+    ],
+  );
+});
 
 Deno.test("resolveWorkbenchShellBackend prefers an available PTY backend", async () => {
   const ptyBackend = fakeBackend("fake-pty", true);

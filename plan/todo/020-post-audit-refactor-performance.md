@@ -425,3 +425,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   tested policy module so tuning the default Three pane no longer requires editing the large interactive app file.
 - Extracted the API workbench built-in window ids, launcher option catalog, visualization option ids, and lookup map into
   a tested window catalog module, reducing static menu setup in the large interactive workbench file.
+- Added a shared tested terminal search modal body projector so console and future web workbench shells can reuse the
+  same copy-mode search prompt text without embedding it in the large API workbench renderer.

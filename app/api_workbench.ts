@@ -162,6 +162,7 @@ import {
   workbenchTerminalCopyRowsInto,
   type WorkbenchTerminalPaneProjection,
   workbenchTerminalPaneProjectionsInto,
+  workbenchTerminalSearchModalBody,
   workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
   workbenchTerminalSessionTitleFromId,
@@ -2149,14 +2150,10 @@ function openTerminalShellSearchModal(): void {
 
 function terminalShellSearchModalBody(): string[] {
   const shell = activeTerminalShell();
-  const inspection = shell?.scrollback.inspect();
-  const matches = inspection?.matches.length ?? 0;
-  const active = inspection?.activeMatch === undefined ? "" : ` hit ${inspection.activeMatch + 1}/${matches}`;
-  return [
-    `Query  ${terminalShellSearchDraft.peek()}▌`,
-    matches > 0 ? `Matches ${matches}${active}` : "Matches none yet",
-    "Enter searches, Escape cancels, N/Shift+N move between matches in copy mode.",
-  ];
+  return workbenchTerminalSearchModalBody({
+    query: terminalShellSearchDraft.peek(),
+    scrollback: shell?.scrollback.inspect(),
+  });
 }
 
 function refreshTerminalShellSearchModal(): void {

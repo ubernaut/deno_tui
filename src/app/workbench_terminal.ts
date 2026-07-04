@@ -185,6 +185,19 @@ export interface WorkbenchTerminalCopyRowsOptions {
   prefixWidth?: number;
 }
 
+/** Minimal terminal scrollback search state needed to project a search modal body. */
+export interface WorkbenchTerminalSearchModalScrollbackState {
+  matches?: readonly unknown[];
+  activeMatch?: number;
+}
+
+/** Options for projecting the terminal search modal body. */
+export interface WorkbenchTerminalSearchModalBodyOptions {
+  query: string;
+  scrollback?: WorkbenchTerminalSearchModalScrollbackState;
+  cursor?: string;
+}
+
 /** Projected terminal copy-mode row metadata shared by console and browser renderers. */
 export interface WorkbenchTerminalCopyRowProjection {
   screenRow: number;
@@ -300,6 +313,20 @@ export function workbenchTerminalSessionTitleFromId(
   if (!id.startsWith(expectedPrefix)) return label;
   const suffix = id.slice(expectedPrefix.length);
   return /^\d+$/.test(suffix) ? `${label} ${suffix}` : label;
+}
+
+/** Builds the shared terminal scrollback search prompt body. */
+export function workbenchTerminalSearchModalBody(options: WorkbenchTerminalSearchModalBodyOptions): string[] {
+  const cursor = options.cursor ?? "▌";
+  const matches = options.scrollback?.matches?.length ?? 0;
+  const active = options.scrollback?.activeMatch === undefined
+    ? ""
+    : ` hit ${options.scrollback.activeMatch + 1}/${matches}`;
+  return [
+    `Query  ${options.query}${cursor}`,
+    matches > 0 ? `Matches ${matches}${active}` : "Matches none yet",
+    "Enter searches, Escape cancels, N/Shift+N move between matches in copy mode.",
+  ];
 }
 
 /** Projects terminal session tabs into a single row, returning caller-owned placements for rendering and hit testing. */
