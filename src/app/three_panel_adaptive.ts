@@ -6,6 +6,7 @@ const ADAPTIVE_PRESSURE_RENDER_CELL_STEPS = [30, 60, 120, 240, 480] as const;
 const ADAPTIVE_RENDER_CELLS_SLOW_FRAMES = 2;
 const ADAPTIVE_RENDER_CELLS_FAST_FRAMES = 120;
 export const THREE_PANEL_ADAPTIVE_WARMUP_FRAMES = 1;
+const adaptiveRenderCellStepCache = new Map<number, readonly number[]>();
 
 export interface ThreePanelAdaptiveRenderBudgetInput {
   requestedMaxCells: number;
@@ -99,10 +100,7 @@ export function resolveThreePanelAdaptiveRenderBudget(
     ADAPTIVE_RENDER_CELLS_MIN,
     Math.min(requestedMaxCells, Math.floor(input.currentMaxCells ?? requestedMaxCells)),
   );
-  const budgetSteps = [...ADAPTIVE_PRESSURE_RENDER_CELL_STEPS, ...asciiControlValues("renderMaxCells")]
-    .filter((value) => value >= ADAPTIVE_RENDER_CELLS_MIN && value <= requestedMaxCells)
-    .sort((a, b) => a - b);
-  const steps = budgetSteps.length ? budgetSteps : [requestedMaxCells];
+  const steps = adaptiveRenderCellStepsForRequest(requestedMaxCells);
   const slowThreshold = Math.max(50, input.targetMs * 1.8);
   const fastThreshold = Math.max(1, input.targetMs * 0.7);
   const sampleFrames = Math.max(0, Math.floor(input.sampleFrames ?? Number.POSITIVE_INFINITY));
@@ -142,6 +140,26 @@ export function resolveThreePanelAdaptiveRenderBudget(
 
 function normalizeRequestedMaxCells(value: number): number {
   return Math.max(1, Math.floor(value));
+}
+
+function adaptiveRenderCellStepsForRequest(requestedMaxCells: number): readonly number[] {
+  const cached = adaptiveRenderCellStepCache.get(requestedMaxCells);
+  if (cached) return cached;
+
+  const source = asciiControlValues("renderMaxCells");
+  const steps: number[] = [];
+  for (let index = 0; index < ADAPTIVE_PRESSURE_RENDER_CELL_STEPS.length; index += 1) {
+    const value = ADAPTIVE_PRESSURE_RENDER_CELL_STEPS[index]!;
+    if (value >= ADAPTIVE_RENDER_CELLS_MIN && value <= requestedMaxCells) steps.push(value);
+  }
+  for (let index = 0; index < source.length; index += 1) {
+    const value = source[index]!;
+    if (value >= ADAPTIVE_RENDER_CELLS_MIN && value <= requestedMaxCells) steps.push(value);
+  }
+  steps.sort((a, b) => a - b);
+  const resolved = steps.length ? steps : [requestedMaxCells];
+  adaptiveRenderCellStepCache.set(requestedMaxCells, resolved);
+  return resolved;
 }
 
 function previousRenderCellStep(steps: readonly number[], current: number): number {

@@ -74,6 +74,7 @@ import {
   createWorkbenchThreeTerminalPressureState,
   resolveWorkbenchThreeTerminalPressureBudget,
 } from "../src/app/workbench_three_terminal_pressure.ts";
+import { resolveThreePanelAdaptiveRenderBudget } from "../src/app/three_panel_adaptive.ts";
 import { LayoutMeasurementCache, simpleLayoutSolver } from "../src/layout/mod.ts";
 import { TerminalScreenController } from "../src/runtime/terminal_screen.ts";
 import {
@@ -200,6 +201,7 @@ const workbenchThreeHeaderPerformance: ThreeHeaderPerformance = {
 const workbenchThreePressureLevels = [120, 240, 480, 960] as const;
 const workbenchThreePressureState = createWorkbenchThreeTerminalPressureState(960);
 let workbenchThreePressureChecksum = 0;
+let threePanelAdaptiveChecksum = 0;
 const terminalInputEncoder = new TextEncoder();
 const terminalInputDecodeBatch = terminalInputEncoder.encode(
   [
@@ -1203,6 +1205,34 @@ function runWorkbenchThreePressurePolicyWorkload(): void {
   }
 }
 
+function runThreePanelAdaptiveBudgetWorkload(): void {
+  let currentMaxCells: number | undefined;
+  let slowFrames = 0;
+  let fastFrames = 0;
+  for (let index = 0; index < 240; index += 1) {
+    const phase = index % 80;
+    const requestedMaxCells = phase < 40 ? 3_840 : phase < 60 ? 960 : 240;
+    const frameMs = phase % 17 === 0 ? 180 : phase < 30 ? 18 : 42;
+    const next = resolveThreePanelAdaptiveRenderBudget({
+      requestedMaxCells,
+      currentMaxCells,
+      frameMs,
+      targetMs: 1000 / 20,
+      slowFrames,
+      fastFrames,
+      sampleFrames: index,
+    });
+    currentMaxCells = next.maxCells;
+    slowFrames = next.slowFrames;
+    fastFrames = next.fastFrames;
+    threePanelAdaptiveChecksum = (threePanelAdaptiveChecksum + (currentMaxCells ?? requestedMaxCells) + slowFrames) %
+      1_000_000;
+  }
+  if (!Number.isFinite(threePanelAdaptiveChecksum)) {
+    throw new Error("Three panel adaptive budget workload failed");
+  }
+}
+
 function runAnsiStyledCharacterSplitWorkload(): void {
   const cells = getMultiCodePointCharacters(ansiStyledSplitRow);
   if (cells.length !== 160) {
@@ -1650,6 +1680,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 2_000,
     maxAverageMs: 1,
     run: runWorkbenchThreePressurePolicyWorkload,
+  },
+  {
+    name: "render/three-panel-adaptive-budget",
+    category: "render",
+    description: "Resolve repeated Three panel adaptive render-cell budgets from frame timing samples.",
+    tags: ["render", "three", "adaptive", "budget", "policy"],
+    iterations: 2_000,
+    maxAverageMs: 1,
+    run: runThreePanelAdaptiveBudgetWorkload,
   },
   {
     name: "render/textobject-full-row-canvas-220x70",
