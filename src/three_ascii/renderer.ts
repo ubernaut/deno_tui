@@ -46,6 +46,7 @@ import {
 } from "./readback.ts";
 import { assembleThreeAsciiReadbackGrid } from "./readback_assembly.ts";
 import { handleThreeAsciiDeferredReadbackFailure } from "./readback_failure.ts";
+import { resolveThreeAsciiDeferredReadbackSubmission } from "./readback_submission.ts";
 import {
   emptyThreeAsciiRenderFrame,
   resolveThreeAsciiRenderFrameSelection,
@@ -411,10 +412,10 @@ export class ThreeAsciiRenderer {
     deferredCompleted?: ThreeAsciiDeferredReadbackConsumeResult,
   ): Promise<string[][]> {
     const completed = deferredCompleted ?? this.consumeDeferredAnsiGrid();
-    if (completed.readbackUnavailable) {
-      return completed.grid ?? [];
-    }
     if (this.readbackStrategy !== "deferred") {
+      if (completed.readbackUnavailable) {
+        return completed.grid ?? [];
+      }
       this.outputReadback = this.ensureReadbackBuffer(this.outputReadback, readbackLayout.byteLength);
       this.copyReadbackCommands(commandEncoder, readbackCopyPlan, this.outputReadback);
       this.device!.queue.submit([commandEncoder.finish()]);
@@ -425,13 +426,16 @@ export class ThreeAsciiRenderer {
       readbackLayout.byteLength,
       (current, byteLength) => this.ensureReadbackBuffer(current, byteLength),
     );
-    if (!readback) {
-      return completed.grid ?? this.deferredReadbacks.lastCompletedGrid();
-    }
+    const submission = resolveThreeAsciiDeferredReadbackSubmission(
+      completed,
+      readback,
+      this.deferredReadbacks.lastCompletedGrid(),
+    );
+    if (!submission.submit || !submission.readback) return submission.grid;
 
-    this.copyReadbackCommands(commandEncoder, readbackCopyPlan, readback);
+    this.copyReadbackCommands(commandEncoder, readbackCopyPlan, submission.readback);
     this.device!.queue.submit([commandEncoder.finish()]);
-    this.deferredReadbacks.queue(readback, {
+    this.deferredReadbacks.queue(submission.readback, {
       layout: readbackLayout,
       columns: this.columns,
       rows: this.rows,
@@ -439,7 +443,7 @@ export class ThreeAsciiRenderer {
       terminalEdgeBias: this.terminalEdgeBias,
       backgroundColor: backgroundColor.clone(),
     });
-    return completed.grid ?? this.deferredReadbacks.lastCompletedGrid();
+    return submission.grid;
   }
 
   private consumeDeferredAnsiGrid(): ThreeAsciiDeferredReadbackConsumeResult {
