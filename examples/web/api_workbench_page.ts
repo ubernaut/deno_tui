@@ -72,9 +72,6 @@ import {
   textWidth,
   translateHitTargets,
   workbenchAdaptiveWindowLayout,
-  type WorkbenchButtonRowItem,
-  type WorkbenchButtonRowPlacement,
-  type WorkbenchButtonRowRenderCommand,
   workbenchButtonRowRenderCommandsInto,
   type WorkbenchButtonTone,
   type WorkbenchDropdownOverlayRenderCommand,
@@ -184,6 +181,7 @@ import {
   workbenchMobileCommandStripItemsInto,
 } from "../../src/app/workbench_mobile.ts";
 import { WorkbenchModalBufferCache } from "../../src/app/workbench_modal_cache.ts";
+import { WorkbenchButtonRowBufferCache } from "../../src/app/workbench_button_row_cache.ts";
 import { WorkbenchTitlebarBufferCache } from "../../src/app/workbench_titlebar_cache.ts";
 import {
   applyWorkbenchAsciiConfigRowAction,
@@ -394,13 +392,9 @@ const webTerminalActions: readonly WebTerminalAction[] = [
   "previousMatch",
   "nextMatch",
 ];
-const webTerminalButtonItems: WorkbenchButtonRowItem<WebTerminalAction>[] = [];
-const webTerminalButtonPlacements: WorkbenchButtonRowPlacement<WebTerminalAction>[] = [];
-const webTerminalButtonCommands: WorkbenchButtonRowRenderCommand<WebTerminalAction>[] = [];
+const webTerminalButtonBuffers = new WorkbenchButtonRowBufferCache<WebTerminalAction>();
 const asciiConfigBuffers = new WorkbenchAsciiConfigModalBufferCache<AsciiConfigRow>();
-const mobileCommandButtonItems: WorkbenchButtonRowItem<MobileAction>[] = [];
-const mobileCommandButtonPlacements: WorkbenchButtonRowPlacement<MobileAction>[] = [];
-const mobileCommandButtonCommands: WorkbenchButtonRowRenderCommand<MobileAction>[] = [];
+const mobileCommandButtonBuffers = new WorkbenchButtonRowBufferCache<MobileAction>();
 const webTerminalSessionTabSources: WorkbenchTerminalSessionTab[] = [];
 const webTerminalSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
 const webTerminalSessionTabCommands: WorkbenchTerminalSessionTabRenderCommand[] = [];
@@ -857,19 +851,19 @@ function renderMenuHits(column: number, row: number, width: number): void {
 
 function renderMobileCommandStrip(frame: string[]): void {
   if (!isTouchOptimizedLayout() || rowsCount() < 8) return;
-  workbenchMobileCommandStripItemsInto(mobileCommandButtonItems, {
+  workbenchMobileCommandStripItemsInto(mobileCommandButtonBuffers.items, {
     activeTitle: shortPanelTitle(active.peek()),
     controlsActive: active.peek() === "controls",
     themeActive: themeMenuOpen.peek(),
   });
   layoutWorkbenchButtonRowInto(
-    mobileCommandButtonPlacements,
-    mobileCommandButtonItems,
+    mobileCommandButtonBuffers.placements,
+    mobileCommandButtonBuffers.items,
     { column: 1, row: 1, width: Math.max(0, cols() - 2), height: 2 },
     1,
   );
-  workbenchButtonRowRenderCommandsInto(mobileCommandButtonCommands, mobileCommandButtonPlacements);
-  for (const command of mobileCommandButtonCommands) {
+  workbenchButtonRowRenderCommandsInto(mobileCommandButtonBuffers.commands, mobileCommandButtonBuffers.placements);
+  for (const command of mobileCommandButtonBuffers.commands) {
     const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
     write(
       frame,
@@ -1200,7 +1194,7 @@ function renderTerminalToolbar(
   if (rect.height <= 0 || rect.width <= 0) return;
   const scrollback = activeWebTerminalScrollback();
   const scrollbackInspection = scrollback?.inspect();
-  workbenchTerminalToolbarItemsInto(webTerminalButtonItems, {
+  workbenchTerminalToolbarItemsInto(webTerminalButtonBuffers.items, {
     activeId: workspace.activeId,
     sessionCount: workspace.sessions.length,
     paneCount: workspace.layout.count,
@@ -1210,9 +1204,9 @@ function renderTerminalToolbar(
     searchQuery: scrollbackInspection?.query,
     searchMatchCount: scrollbackInspection?.matches.length,
   }, { actions: webTerminalActions });
-  layoutWorkbenchButtonRowInto(webTerminalButtonPlacements, webTerminalButtonItems, rect, rect.row);
-  workbenchButtonRowRenderCommandsInto(webTerminalButtonCommands, webTerminalButtonPlacements);
-  for (const command of webTerminalButtonCommands) {
+  layoutWorkbenchButtonRowInto(webTerminalButtonBuffers.placements, webTerminalButtonBuffers.items, rect, rect.row);
+  workbenchButtonRowRenderCommandsInto(webTerminalButtonBuffers.commands, webTerminalButtonBuffers.placements);
+  for (const command of webTerminalButtonBuffers.commands) {
     const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
     write(
       frame,

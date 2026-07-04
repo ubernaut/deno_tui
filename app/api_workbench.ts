@@ -152,12 +152,10 @@ import type { Rectangle } from "../src/types.ts";
 import { textWidth } from "../src/utils/strings.ts";
 import {
   layoutWorkbenchButtonRowInto,
-  type WorkbenchButtonRowItem,
-  type WorkbenchButtonRowPlacement,
-  type WorkbenchButtonRowRenderCommand,
   workbenchButtonRowRenderCommandsInto,
   wrappedControlOptionRowCount,
 } from "../src/app/workbench_control_layout.ts";
+import { WorkbenchButtonRowBufferCache } from "../src/app/workbench_button_row_cache.ts";
 import { WorkbenchModalBufferCache } from "../src/app/workbench_modal_cache.ts";
 import { WorkbenchTitlebarBufferCache } from "../src/app/workbench_titlebar_cache.ts";
 import { maxTextWidth, type VisibleMenuSlice, visibleMenuSliceInto } from "../src/app/workbench_text.ts";
@@ -385,12 +383,8 @@ type SavedWorkspace = WorkbenchWorkspace<AsciiOptions>;
 type SavedWorkspaceWindow = WorkbenchWorkspaceWindow<AsciiOptions>;
 
 type WorkspaceNameMode = "save" | "rename";
-const terminalOutputButtonItems: WorkbenchButtonRowItem<TerminalOutputAction>[] = [];
-const terminalOutputButtonPlacements: WorkbenchButtonRowPlacement<TerminalOutputAction>[] = [];
-const terminalOutputButtonCommands: WorkbenchButtonRowRenderCommand<TerminalOutputAction>[] = [];
-const terminalShellButtonItems: WorkbenchButtonRowItem<TerminalShellAction>[] = [];
-const terminalShellButtonPlacements: WorkbenchButtonRowPlacement<TerminalShellAction>[] = [];
-const terminalShellButtonCommands: WorkbenchButtonRowRenderCommand<TerminalShellAction>[] = [];
+const terminalOutputButtonBuffers = new WorkbenchButtonRowBufferCache<TerminalOutputAction>();
+const terminalShellButtonBuffers = new WorkbenchButtonRowBufferCache<TerminalShellAction>();
 const terminalShellSessionTabSources: WorkbenchTerminalSessionTab[] = [];
 const terminalShellSessionTabPlacements: WorkbenchTerminalSessionTabPlacement[] = [];
 const terminalShellSessionTabCommands: WorkbenchTerminalSessionTabRenderCommand[] = [];
@@ -1831,21 +1825,21 @@ function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
 }
 
 function renderTerminalOutputToolbar(frame: Frame, rect: Rectangle, startRow: number): number {
-  workbenchTerminalOutputToolbarItemsInto(terminalOutputButtonItems, {
+  workbenchTerminalOutputToolbarItemsInto(terminalOutputButtonBuffers.items, {
     running: terminalOutputSession.running,
     outputLineCount: terminalOutputSession.output.lines.peek().length,
     follow: terminalOutputSession.output.follow.peek(),
     inputMode: terminalInputMode.peek(),
   });
   const nextRow = layoutWorkbenchButtonRowInto(
-    terminalOutputButtonPlacements,
-    terminalOutputButtonItems,
+    terminalOutputButtonBuffers.placements,
+    terminalOutputButtonBuffers.items,
     rect,
     startRow,
   );
 
-  workbenchButtonRowRenderCommandsInto(terminalOutputButtonCommands, terminalOutputButtonPlacements);
-  for (const button of terminalOutputButtonCommands) {
+  workbenchButtonRowRenderCommandsInto(terminalOutputButtonBuffers.commands, terminalOutputButtonBuffers.placements);
+  for (const button of terminalOutputButtonBuffers.commands) {
     const projection = projectWorkbenchButtonCommand(button, theme(), contrastText);
     write(
       frame,
@@ -2088,7 +2082,7 @@ function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: num
   const workspaceInspection = terminalShell.inspect();
   const shell = activeTerminalShell();
   const shellInspection = shell?.inspect();
-  workbenchTerminalToolbarItemsInto(terminalShellButtonItems, {
+  workbenchTerminalToolbarItemsInto(terminalShellButtonBuffers.items, {
     activeId: workspaceInspection.activeId,
     sessionCount: workspaceInspection.sessions.length,
     paneCount: workspaceInspection.workspace.layout.count,
@@ -2103,14 +2097,14 @@ function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: num
     searchMatchCount: shellInspection?.scrollback.matches.length,
   });
   const nextRow = layoutWorkbenchButtonRowInto(
-    terminalShellButtonPlacements,
-    terminalShellButtonItems,
+    terminalShellButtonBuffers.placements,
+    terminalShellButtonBuffers.items,
     rect,
     startRow,
   );
 
-  workbenchButtonRowRenderCommandsInto(terminalShellButtonCommands, terminalShellButtonPlacements);
-  for (const button of terminalShellButtonCommands) {
+  workbenchButtonRowRenderCommandsInto(terminalShellButtonBuffers.commands, terminalShellButtonBuffers.placements);
+  for (const button of terminalShellButtonBuffers.commands) {
     const projection = projectWorkbenchButtonCommand(button, theme(), contrastText);
     write(
       frame,

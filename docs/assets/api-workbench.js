@@ -17443,6 +17443,25 @@ var WorkbenchModalBufferCache = class {
   }
 };
 
+// src/app/workbench_button_row_cache.ts
+var WorkbenchButtonRowBufferCache = class {
+  items = [];
+  placements = [];
+  commands = [];
+  clear() {
+    this.items.length = 0;
+    this.placements.length = 0;
+    this.commands.length = 0;
+  }
+  inspect() {
+    return {
+      items: this.items.length,
+      placements: this.placements.length,
+      commands: this.commands.length
+    };
+  }
+};
+
 // src/app/workbench_titlebar_cache.ts
 var WorkbenchTitlebarBufferCache = class {
   #layouts = /* @__PURE__ */ new Map();
@@ -17902,13 +17921,9 @@ var webTerminalActions = [
   "previousMatch",
   "nextMatch"
 ];
-var webTerminalButtonItems = [];
-var webTerminalButtonPlacements = [];
-var webTerminalButtonCommands = [];
+var webTerminalButtonBuffers = new WorkbenchButtonRowBufferCache();
 var asciiConfigBuffers = new WorkbenchAsciiConfigModalBufferCache();
-var mobileCommandButtonItems = [];
-var mobileCommandButtonPlacements = [];
-var mobileCommandButtonCommands = [];
+var mobileCommandButtonBuffers = new WorkbenchButtonRowBufferCache();
 var webTerminalSessionTabSources = [];
 var webTerminalSessionTabPlacements = [];
 var webTerminalSessionTabCommands = [];
@@ -18346,19 +18361,19 @@ function renderMenuHits(column, row, width) {
 }
 function renderMobileCommandStrip(frame) {
   if (!isTouchOptimizedLayout() || rowsCount() < 8) return;
-  workbenchMobileCommandStripItemsInto(mobileCommandButtonItems, {
+  workbenchMobileCommandStripItemsInto(mobileCommandButtonBuffers.items, {
     activeTitle: shortPanelTitle(active.peek()),
     controlsActive: active.peek() === "controls",
     themeActive: themeMenuOpen.peek()
   });
   layoutWorkbenchButtonRowInto(
-    mobileCommandButtonPlacements,
-    mobileCommandButtonItems,
+    mobileCommandButtonBuffers.placements,
+    mobileCommandButtonBuffers.items,
     { column: 1, row: 1, width: Math.max(0, cols() - 2), height: 2 },
     1
   );
-  workbenchButtonRowRenderCommandsInto(mobileCommandButtonCommands, mobileCommandButtonPlacements);
-  for (const command of mobileCommandButtonCommands) {
+  workbenchButtonRowRenderCommandsInto(mobileCommandButtonBuffers.commands, mobileCommandButtonBuffers.placements);
+  for (const command of mobileCommandButtonBuffers.commands) {
     const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
     write(
       frame,
@@ -18665,7 +18680,7 @@ function renderTerminalToolbar(frame, rect, workspace = webTerminalWorkspace.ins
   if (rect.height <= 0 || rect.width <= 0) return;
   const scrollback = activeWebTerminalScrollback();
   const scrollbackInspection = scrollback?.inspect();
-  workbenchTerminalToolbarItemsInto(webTerminalButtonItems, {
+  workbenchTerminalToolbarItemsInto(webTerminalButtonBuffers.items, {
     activeId: workspace.activeId,
     sessionCount: workspace.sessions.length,
     paneCount: workspace.layout.count,
@@ -18675,9 +18690,9 @@ function renderTerminalToolbar(frame, rect, workspace = webTerminalWorkspace.ins
     searchQuery: scrollbackInspection?.query,
     searchMatchCount: scrollbackInspection?.matches.length
   }, { actions: webTerminalActions });
-  layoutWorkbenchButtonRowInto(webTerminalButtonPlacements, webTerminalButtonItems, rect, rect.row);
-  workbenchButtonRowRenderCommandsInto(webTerminalButtonCommands, webTerminalButtonPlacements);
-  for (const command of webTerminalButtonCommands) {
+  layoutWorkbenchButtonRowInto(webTerminalButtonBuffers.placements, webTerminalButtonBuffers.items, rect, rect.row);
+  workbenchButtonRowRenderCommandsInto(webTerminalButtonBuffers.commands, webTerminalButtonBuffers.placements);
+  for (const command of webTerminalButtonBuffers.commands) {
     const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
     write(
       frame,
