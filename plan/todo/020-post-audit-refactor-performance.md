@@ -737,3 +737,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Lowered the workbench Three emergency 60-cell live cadence from 30fps to 20fps to reduce remote terminal backlog at
   startup. The default saved-config pressure probe still published live frames while steady output dropped from roughly
   14KB/s to roughly 9KB/s on this host.
+- Added a 30-cell rescue pressure tier for constrained terminals and aligned the Three panel adaptive budget floor with
+  that tier. Sequential probes show the normal 60-cell startup tier remains live around 9.5KB/s, while the rescue tier
+  still publishes changing frames at roughly 4.6KB/s.

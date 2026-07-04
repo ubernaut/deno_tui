@@ -7,6 +7,8 @@ import {
   WORKBENCH_THREE_INITIAL_CELLS,
   WORKBENCH_THREE_PRESSURE_LEVELS,
   WORKBENCH_THREE_READBACK_STRATEGY,
+  WORKBENCH_THREE_RESCUE_CELLS,
+  WORKBENCH_THREE_RESCUE_DRAW_INTERVAL_MS,
 } from "../app/workbench_three_policy.ts";
 import {
   createWorkbenchThreeTerminalPressureState,
@@ -15,6 +17,7 @@ import {
 
 Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
   assertEquals(Array.from(new Set(WORKBENCH_THREE_PRESSURE_LEVELS)).sort((left, right) => left - right), [
+    30,
     60,
     120,
     240,
@@ -33,6 +36,10 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
 });
 
 Deno.test("API workbench Three policy keeps live panes faster than idle panes", () => {
+  assertEquals(
+    apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_RESCUE_CELLS, { live: true }),
+    WORKBENCH_THREE_RESCUE_DRAW_INTERVAL_MS,
+  );
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(60, { live: true }), WORKBENCH_THREE_EMERGENCY_DRAW_INTERVAL_MS);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(120, { live: true }), WORKBENCH_THREE_DRAW_INTERVAL_MS);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(240, { live: true }), WORKBENCH_THREE_DRAW_INTERVAL_MS);
@@ -70,7 +77,7 @@ Deno.test("API workbench Three policy does not recover from moderate animated ou
   const sample = {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
     renderedThreeGrids: 1,
-    bytes: 2_000,
+    bytes: 1_000,
     durationMs: 0.05,
     sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(60, { live: true }),
   };
@@ -100,7 +107,7 @@ Deno.test("API workbench Three policy downshifts sustained 240-cell terminal byt
   assertEquals(state.highFrames, 0);
 });
 
-Deno.test("API workbench Three policy has a final 60-cell terminal pressure tier", () => {
+Deno.test("API workbench Three policy reaches a 30-cell rescue tier under terminal pressure", () => {
   const state = createWorkbenchThreeTerminalPressureState(120);
   const sample = {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
@@ -113,5 +120,17 @@ Deno.test("API workbench Three policy has a final 60-cell terminal pressure tier
   Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
 
   assertEquals(state.currentCells, 60);
+  assertEquals(state.highFrames, 0);
+
+  Object.assign(
+    state,
+    resolveWorkbenchThreeTerminalPressureBudget(state, {
+      ...sample,
+      bytes: 2_000,
+      sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(60, { live: true }),
+    }),
+  );
+
+  assertEquals(state.currentCells, WORKBENCH_THREE_RESCUE_CELLS);
   assertEquals(state.highFrames, 0);
 });

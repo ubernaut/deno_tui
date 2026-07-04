@@ -1,8 +1,8 @@
 import { asciiControlValues } from "./ascii_options.ts";
 import { resolveThreePanelRenderSize, type ThreePanelRenderSize } from "./three_panel_policy.ts";
 
-const ADAPTIVE_RENDER_CELLS_MIN = 60;
-const ADAPTIVE_PRESSURE_RENDER_CELL_STEPS = [60, 120, 240, 480] as const;
+const ADAPTIVE_RENDER_CELLS_MIN = 30;
+const ADAPTIVE_PRESSURE_RENDER_CELL_STEPS = [30, 60, 120, 240, 480] as const;
 const ADAPTIVE_RENDER_CELLS_SLOW_FRAMES = 2;
 const ADAPTIVE_RENDER_CELLS_FAST_FRAMES = 120;
 export const THREE_PANEL_ADAPTIVE_WARMUP_FRAMES = 1;

@@ -45,9 +45,9 @@ Deno.test("resolveThreePanelAdaptiveRenderBudget adapts within pressure render t
   assertEquals(next.maxCells, 120);
 });
 
-Deno.test("resolveThreePanelAdaptiveRenderBudget holds the emergency minimum render tier", () => {
+Deno.test("resolveThreePanelAdaptiveRenderBudget holds the rescue minimum render tier", () => {
   const next = resolveThreePanelAdaptiveRenderBudget({
-    requestedMaxCells: 60,
+    requestedMaxCells: 30,
     frameMs: 300,
     targetMs: 1000 / 18,
     slowFrames: 1,
@@ -55,4 +55,16 @@ Deno.test("resolveThreePanelAdaptiveRenderBudget holds the emergency minimum ren
   });
   assertEquals(next.direction, "steady");
   assertEquals(next.maxCells, undefined);
+});
+
+Deno.test("resolveThreePanelAdaptiveRenderBudget can step down from emergency to rescue tier", () => {
+  const next = resolveThreePanelAdaptiveRenderBudget({
+    requestedMaxCells: 60,
+    frameMs: 300,
+    targetMs: 1000 / 18,
+    slowFrames: 1,
+    fastFrames: 0,
+  });
+  assertEquals(next.direction, "down");
+  assertEquals(next.maxCells, 30);
 });
