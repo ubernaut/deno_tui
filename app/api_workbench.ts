@@ -48,6 +48,7 @@ import {
   projectWorkbenchStandardTopMenuState,
   renderFrameRow,
   renderFrameSlice,
+  resolveWorkbenchGlobalKey,
   resolveWorkbenchMenuFocusKey,
   resolveWorkbenchScreenDropdownKey,
   subscribeWorkbenchDiagnosticLog,
@@ -3723,46 +3724,112 @@ function closeThreeConfigModal(): void {
 function handleWorkbenchKey(event: KeyPressEvent): void {
   if (activeWindow.peek() === TERMINAL_SHELL_WINDOW_ID && handleTerminalShellKey(event)) return;
   if (activeWindow.peek() === TERMINAL_OUTPUT_WINDOW_ID && handleTerminalOutputKey(event)) return;
+  const global = resolveWorkbenchGlobalKey(event, { activeWindowId: activeWindow.peek() });
+  const globalHandled = applyWorkbenchGlobalKeyAction(global, { phase: "primary" });
+  if (globalHandled) return;
   if (event.ctrl || event.meta) return;
-  if (event.key === "q") openQuitModal();
-  else if (event.key === "f10") focusMenu();
-  else if (event.key === "?" || event.key === "h") openHelpModal();
-  else if (event.key === "n") openNewWindowMenu();
-  else if (event.key === "t" && event.shift) openThemeMenu();
-  else if (event.key === "t") setTheme(themeIndex.peek() + 1);
-  else if (event.key === "g") openThreeConfigModal(activeWindow.peek());
-  else if (event.key === "c") closeWindow(activeWindow.peek());
-  else if (event.key === "m") minimize(activeWindow.peek());
-  else if (event.key === "f" || event.key === "return") toggleMaximize(activeWindow.peek());
-  else if (event.key === "r" || event.key === "escape") restoreAll();
-  else if (event.key === "tab" && activeWindow.peek() === "controls") focusNextControl(event.shift ? -1 : 1);
-  else if (event.key === "tab") event.shift ? focusPrevious() : focusNext();
-  else if (focusWindowByNumber(event.key)) return;
-  else if (event.key === "0") restoreNextMinimizedWindow();
-  else if (event.key === "[") adjustTileDensity(-1);
-  else if (event.key === "]") adjustTileDensity(1);
-  else if (handleCpuHexGridKey(event)) return;
-  else if (event.key === "pageup") scrollWindow(activeWindow.peek(), 0, -windowScrollPage(activeWindow.peek()));
-  else if (event.key === "pagedown") scrollWindow(activeWindow.peek(), 0, windowScrollPage(activeWindow.peek()));
-  else if (event.key === "home") windowScrolls.get(activeWindow.peek())?.scrollTo(0, 0);
-  else if (event.key === "end") {
-    const scroll = windowScrolls.get(activeWindow.peek());
-    scroll?.scrollTo(scroll.offset.peek().columns, scroll.maxOffset().rows);
-  } else if (event.key === "left" && event.shift) scrollWindow(activeWindow.peek(), -4, 0);
-  else if (event.key === "right" && event.shift) scrollWindow(activeWindow.peek(), 4, 0);
-  else if (activeWindow.peek() === "explorer" && explorerKeys.has(event.key)) {
+
+  if (handleCpuHexGridKey(event)) return;
+  if (applyWorkbenchGlobalKeyAction(global, { phase: "preWindow" })) return;
+  if (activeWindow.peek() === "explorer" && explorerKeys.has(event.key)) {
     explorer.handleKeyPress(event, Math.max(1, currentHeight() - 8));
   } else if (activeWindow.peek() === "controls") handleControlsKey(event);
   else if (activeWindow.peek() === "data" && event.key.toLowerCase() === "s") {
     cycleDataSortColumn(event.shift ? -1 : 1);
   } else if (activeWindow.peek() === "data") table.handleKeyPress(event as never);
-  else if (event.key === "+" || event.key === "=") density.increment();
-  else if (event.key === "-" || event.key === "_") density.decrement();
-  else if (event.key === "x" || event.key === "space") livePreview.toggle();
-  else if (event.key === "left") scrollWindow(activeWindow.peek(), -1, 0);
-  else if (event.key === "right") scrollWindow(activeWindow.peek(), 1, 0);
-  else if (event.key === "up") scrollWindow(activeWindow.peek(), 0, -1);
-  else if (event.key === "down") scrollWindow(activeWindow.peek(), 0, 1);
+  else applyWorkbenchGlobalKeyAction(global, { phase: "postWindow" });
+}
+
+function applyWorkbenchGlobalKeyAction(
+  action: ReturnType<typeof resolveWorkbenchGlobalKey>,
+  options: { phase: "primary" | "preWindow" | "postWindow" },
+): boolean {
+  const id = activeWindow.peek();
+  switch (action.kind) {
+    case "ignore":
+      return false;
+    case "quit":
+      openQuitModal();
+      return true;
+    case "focusMenu":
+      focusMenu();
+      return true;
+    case "help":
+      openHelpModal();
+      return true;
+    case "openNewWindowMenu":
+      openNewWindowMenu();
+      return true;
+    case "openThemeMenu":
+      openThemeMenu();
+      return true;
+    case "cycleTheme":
+      setTheme(themeIndex.peek() + 1);
+      return true;
+    case "openThreeConfig":
+      openThreeConfigModal(id);
+      return true;
+    case "closeWindow":
+      closeWindow(id);
+      return true;
+    case "minimizeWindow":
+      minimize(id);
+      return true;
+    case "toggleMaximize":
+      toggleMaximize(id);
+      return true;
+    case "restoreAll":
+      restoreAll();
+      return true;
+    case "focusControl":
+      focusNextControl(action.delta);
+      return true;
+    case "focusWindow":
+      action.delta < 0 ? focusPrevious() : focusNext();
+      return true;
+    case "focusWindowNumber": {
+      const target = windowIds()[action.index];
+      if (!target) return false;
+      focus(target);
+      return true;
+    }
+    case "restoreNextMinimized":
+      restoreNextMinimizedWindow();
+      return true;
+    case "adjustTileDensity":
+      adjustTileDensity(action.delta);
+      return true;
+    case "scrollPage":
+      if (options.phase !== "preWindow") return false;
+      scrollWindow(id, 0, action.delta * windowScrollPage(id));
+      return true;
+    case "scrollHome":
+      if (options.phase !== "preWindow") return false;
+      windowScrolls.get(id)?.scrollTo(0, 0);
+      return true;
+    case "scrollEnd": {
+      if (options.phase !== "preWindow") return false;
+      const scroll = windowScrolls.get(id);
+      scroll?.scrollTo(scroll.offset.peek().columns, scroll.maxOffset().rows);
+      return true;
+    }
+    case "scrollHorizontal":
+      if (options.phase !== "preWindow") return false;
+      scrollWindow(id, action.delta, 0);
+      return true;
+    case "incrementDensity":
+      if (options.phase !== "postWindow") return false;
+      action.delta > 0 ? density.increment() : density.decrement();
+      return true;
+    case "toggleLivePreview":
+      if (options.phase !== "postWindow") return false;
+      livePreview.toggle();
+      return true;
+    case "scrollLine":
+      if (options.phase !== "postWindow") return false;
+      scrollWindow(id, action.columns, action.rows);
+      return true;
+  }
 }
 
 function handleTerminalShellKey(event: KeyPressEvent): boolean {
@@ -4104,15 +4171,6 @@ function syncTopMenuState(state: { openId: "theme" | "newWindow" | "workspace" |
   newWindowMenuOpen.value = projected.newWindowMenuOpen;
   workspaceMenuOpen.value = projected.workspaceMenuOpen;
   menuFocused.value = projected.menuFocused;
-}
-
-function focusWindowByNumber(key: string): boolean {
-  const index = Number.parseInt(key, 10);
-  if (!Number.isInteger(index) || index < 1) return false;
-  const id = windowIds()[index - 1];
-  if (!id) return false;
-  focus(id);
-  return true;
 }
 
 function restoreNextMinimizedWindow(): void {
