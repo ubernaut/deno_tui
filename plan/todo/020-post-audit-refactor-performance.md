@@ -472,3 +472,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   Three block span flush path independently tunable while preserving the roughly 2.2-2.3ms benchmark guard on this host.
 - Extracted retained ANSI screen output joining, encoding, writing, and flush-stat construction into a focused tested
   helper, removing duplicated output code from full-row and changed-span painter paths without benchmark regression.
+- Added a focused `render/workbench-changed-span-detection-168` microbenchmark for retained terminal row span diffing,
+  giving the extracted span detector a tight performance guard before further terminal-output tuning.

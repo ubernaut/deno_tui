@@ -50,6 +50,12 @@ import {
 import { AudioRegistry } from "../app/audio.ts";
 import { createHtmlCssLayoutDemo } from "../app/html_css_layout_demo.ts";
 import { resolveSourceFramesInto } from "../app/sources.ts";
+import {
+  type ChangedSpan,
+  changedSpansInto,
+  snapshotChangedSpans,
+  snapshotFrameRow,
+} from "../src/app/workbench_ansi_spans.ts";
 import { LayoutMeasurementCache, simpleLayoutSolver } from "../src/layout/mod.ts";
 import { TerminalScreenController } from "../src/runtime/terminal_screen.ts";
 import {
@@ -199,6 +205,12 @@ const workbenchAnsiScreenFrame: WorkbenchFrame = [];
 const workbenchAnsiSpanFrame: WorkbenchFrame = [];
 const workbenchFrameRows = 54;
 const workbenchFrameWidth = 168;
+const workbenchSpanPrevious = Array.from({ length: workbenchFrameWidth }, (_, index) => `cell-${index % 17}`);
+const workbenchSpanNext = workbenchSpanPrevious.slice();
+const workbenchSpanSpans: ChangedSpan[] = [];
+const workbenchSpanPool: ChangedSpan[] = [];
+const workbenchSpanSnapshot = snapshotFrameRow(workbenchSpanPrevious, workbenchFrameWidth);
+let workbenchChangedSpanCursor = 0;
 const workbenchLineSignals = Array.from(
   { length: workbenchFrameRows + 10 },
   () => new BenchmarkLineSignal(""),
@@ -880,6 +892,39 @@ function runWorkbenchAnsiScreenSpanFlushWorkload(): void {
   }
 }
 
+function runWorkbenchChangedSpanDetectionWorkload(): void {
+  const base = workbenchChangedSpanCursor++ % workbenchFrameWidth;
+  for (let index = 0; index < workbenchFrameWidth; index += 1) {
+    workbenchSpanNext[index] = workbenchSpanPrevious[index]!;
+  }
+  for (let index = 0; index < 12; index += 1) {
+    const column = (base + index * 13) % workbenchFrameWidth;
+    workbenchSpanNext[column] = `changed-${base}-${index}`;
+  }
+
+  const spans = changedSpansInto(
+    workbenchSpanSpans,
+    workbenchSpanPool,
+    workbenchSpanSnapshot,
+    workbenchSpanNext,
+    workbenchFrameWidth,
+  );
+  snapshotChangedSpans(workbenchSpanNext, workbenchSpanSnapshot, spans);
+  let covered = 0;
+  for (const span of spans) {
+    covered += span.width;
+  }
+  workbenchFrameChecksum = (workbenchFrameChecksum + spans.length + covered) % 1_000_000;
+  if (
+    spans.length <= 0 ||
+    spans.length > 8 ||
+    workbenchSpanSnapshot[base] !== workbenchSpanNext[base] ||
+    !Number.isFinite(workbenchFrameChecksum)
+  ) {
+    throw new Error("workbench changed-span detection workload failed");
+  }
+}
+
 function runAnsiStyledCharacterSplitWorkload(): void {
   const cells = getMultiCodePointCharacters(ansiStyledSplitRow);
   if (cells.length !== 160) {
@@ -1214,6 +1259,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 250,
     maxAverageMs: 6,
     run: runWorkbenchAnsiScreenSpanFlushWorkload,
+  },
+  {
+    name: "render/workbench-changed-span-detection-168",
+    category: "render",
+    description: "Detect and snapshot sparse changed spans in a retained workbench terminal row.",
+    tags: ["render", "workbench", "frame", "terminal", "span", "diff"],
+    iterations: 2_000,
+    maxAverageMs: 1,
+    run: runWorkbenchChangedSpanDetectionWorkload,
   },
   {
     name: "render/workbench-three-block-span-flush-168x54",
