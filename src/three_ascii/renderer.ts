@@ -19,7 +19,10 @@ import {
 } from "./deferred_readback.ts";
 import { resolveThreeAsciiDeferredPreSceneFrame } from "./deferred_frame.ts";
 import { createThreeAsciiComputeBindGroups } from "./compute_bind_groups.ts";
-import { encodeThreeAsciiComputeDispatchCommands } from "./compute_commands.ts";
+import {
+  encodeThreeAsciiComputeDispatchCommands,
+  type ThreeAsciiComputeDispatchResources,
+} from "./compute_commands.ts";
 import { ThreeAsciiComputeDispatchPlanCache } from "./compute_plan.ts";
 import { createThreeAsciiComputePipeline } from "./compute_pipeline.ts";
 import { applyThreeAsciiComputeResourcePlanState, createThreeAsciiComputeResourcePlan } from "./compute_resources.ts";
@@ -173,6 +176,10 @@ export class ThreeAsciiRenderer {
   private readonly readbackCopyPlanCache = new ThreeAsciiReadbackCopyPlanCache();
   private readonly readbackViewCache = new ThreeAsciiReadbackViewCache();
   private readonly dispatchPlanCache = new ThreeAsciiComputeDispatchPlanCache();
+  private readonly dispatchResources: ThreeAsciiComputeDispatchResources = {
+    pipelineForPass: (kind) => this.computePipelineForPass(kind),
+    bindGroupForPass: (kind) => this.computeBindGroupForPass(kind),
+  };
   private readonly readbackAssemblyContext: ThreeAsciiReadbackGridAssemblyContext = {
     viewCache: this.readbackViewCache,
     assembler: this.ansiGridAssembler,
@@ -407,10 +414,7 @@ export class ThreeAsciiRenderer {
       workgroupSize: THREE_ASCII_WORKGROUP_SIZE,
       includeEdges: includeTerminalEdges,
     });
-    encodeThreeAsciiComputeDispatchCommands(commandEncoder, dispatchPlan, {
-      pipelineForPass: (kind) => this.computePipelineForPass(kind),
-      bindGroupForPass: (kind) => this.computeBindGroupForPass(kind),
-    });
+    encodeThreeAsciiComputeDispatchCommands(commandEncoder, dispatchPlan, this.dispatchResources);
 
     const readbackLayout = this.readbackLayoutCache.resolve({
       fillByteLength: this.fillOutput!.byteLength,

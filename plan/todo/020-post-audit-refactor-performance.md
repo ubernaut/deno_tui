@@ -266,6 +266,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   can distinguish scene animation cost from GPU render submission and blocking readback wait.
 - Cached stable Three ASCII compute dispatch plans so steady-size renderer frames avoid recreating pass/workgroup
   metadata before command encoding.
+- Reused the Three ASCII compute dispatch resource adapter so steady frames avoid allocating per-frame command encoder
+  lookup closures.
 - Added compact live Three ASCII renderer telemetry to the workbench Three pane header so renderer frame, scene,
   readback, assembly, and cell counts are visible during manual profiling.
 - Moved SGR state merging into a shared internal utility and routed workbench frame writes through it, so both
