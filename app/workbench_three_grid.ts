@@ -47,6 +47,15 @@ export function writeWorkbenchThreeGrid(
     const sourceWidth = source?.length ?? 0;
     const target = frame[rect.row + rowOffset + row] ??= [];
 
+    if (shouldScale && source && sourceColumnIndexes && sourceWidth >= sourceColumns && sourceColumns > 0) {
+      rowBuffer.length = targetWidth;
+      for (let column = 0; column < targetWidth; column += 1) {
+        rowBuffer[column] = source[sourceColumnIndexes[column]!] ?? fallbackCell;
+      }
+      writeFrameCells(target, rect.column + columnOffset, rowBuffer, 0, targetWidth);
+      continue;
+    }
+
     if (!shouldScale && source && sourceWidth >= targetWidth) {
       writeFrameCells(target, rect.column + columnOffset, source, 0, targetWidth);
       continue;
