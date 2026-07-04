@@ -938,3 +938,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted themed workbench frame fill/title/border rendering into renderer-neutral commands and routed both terminal
   and browser API workbench frame drawing through the shared projection. Focused frame/titlebar tests, terminal/web type
   checks, the direct `workbench-frame-render-commands-96` guard, and the `api-workbench-frame` benchmark passed.
+- Extracted terminal workspace pane title rendering into reusable commands and routed terminal/browser shell panes
+  through shared title paint and hit geometry. Focused terminal/cache tests, terminal/web type checks, and a new
+  `terminal-pane-title-render-commands` benchmark guard passed.

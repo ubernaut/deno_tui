@@ -1,5 +1,9 @@
 import { assertEquals } from "./deps.ts";
-import { workbenchTerminalCopyRowsInto, workbenchTerminalPaneProjectionsInto } from "../src/app/workbench_terminal.ts";
+import {
+  workbenchTerminalCopyRowsInto,
+  workbenchTerminalPaneProjectionsInto,
+  workbenchTerminalPaneTitleRenderCommandsInto,
+} from "../src/app/workbench_terminal.ts";
 import { WorkbenchTerminalBufferCache } from "../src/app/workbench_terminal_cache.ts";
 
 Deno.test("workbench terminal buffer cache keeps pane and copy storage together", () => {
@@ -24,11 +28,18 @@ Deno.test("workbench terminal buffer cache keeps pane and copy storage together"
     height: 2,
     selection: { anchor: 4, focus: 4 },
   });
+  workbenchTerminalPaneTitleRenderCommandsInto(
+    cache.paneTitleCommands,
+    cache.paneProjections,
+    { background: "#000", text: "#fff", soft: "#aaa", panelSoft: "#111", accentDeep: "#090" },
+    () => "#fff",
+  );
 
-  assertEquals(cache.inspect(), { paneProjections: 1, copyRows: 2 });
+  assertEquals(cache.inspect(), { paneProjections: 1, paneTitleCommands: 1, copyRows: 2 });
   assertEquals(cache.paneProjections[0]?.sessionId, "shell-a");
+  assertEquals(cache.paneTitleCommands[0]?.paneId, "pane-a");
   assertEquals(cache.copyRows.map((row) => [row.rowIndex, row.selected]), [[4, true], [5, false]]);
 
   cache.clear();
-  assertEquals(cache.inspect(), { paneProjections: 0, copyRows: 0 });
+  assertEquals(cache.inspect(), { paneProjections: 0, paneTitleCommands: 0, copyRows: 0 });
 });

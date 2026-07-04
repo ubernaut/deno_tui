@@ -175,6 +175,8 @@ import {
   workbenchTerminalCopyRowsInto,
   type WorkbenchTerminalPaneProjection,
   workbenchTerminalPaneProjectionsInto,
+  type WorkbenchTerminalPaneTitleRenderCommand,
+  workbenchTerminalPaneTitleRenderCommandsInto,
   workbenchTerminalSearchModalBody,
   workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
@@ -2002,10 +2004,18 @@ function renderTerminalShellPanes(frame: Frame, rect: Rectangle, copyMode: boole
       titleForSession: (sessionId) => workspace.sessions.find((entry) => entry.id === sessionId)?.title,
     },
   );
+  const titleCommands = workbenchTerminalPaneTitleRenderCommandsInto(
+    terminalShellBuffers.paneTitleCommands,
+    projections,
+    theme(),
+    contrastText,
+  );
+  let titleIndex = 0;
   for (const projection of projections) {
     const shell = projection.sessionId ? terminalShell.shell(projection.sessionId) : activeTerminalShell();
     if (!shell) continue;
-    renderTerminalShellPane(frame, projection, shell, copyMode && projection.active);
+    const titleCommand = projection.titleVisible ? titleCommands[titleIndex++] : undefined;
+    renderTerminalShellPane(frame, projection, shell, copyMode && projection.active, titleCommand);
   }
 }
 
@@ -2014,6 +2024,7 @@ function renderTerminalShellPane(
   projection: WorkbenchTerminalPaneProjection,
   shell: TerminalShellController,
   copyMode: boolean,
+  titleCommand?: WorkbenchTerminalPaneTitleRenderCommand,
 ): void {
   const rect = projection.rect;
   if (rect.width <= 0 || rect.height <= 0) return;
@@ -2021,22 +2032,17 @@ function renderTerminalShellPane(
   const t = theme();
   fillRect(frame, rect, active ? t.surface : t.background);
   const content = projection.contentRect;
-  if (projection.titleVisible) {
-    const bg = active ? t.accentDeep : t.panelSoft;
+  if (titleCommand) {
     write(
       frame,
-      rect.row,
-      rect.column,
-      paint(fit(projection.title, rect.width), {
-        fg: active ? contrastText(bg, t.background, t.text) : t.soft,
-        bg,
-        bold: active,
-      }),
+      titleCommand.rect.row,
+      titleCommand.rect.column,
+      paint(titleCommand.text, titleCommand.style),
     );
-    if (projection.paneId) {
-      addHit({ column: rect.column, row: rect.row, width: rect.width, height: 1 }, {
+    if (titleCommand.paneId) {
+      addHit(titleCommand.hitRect, {
         type: "terminalShellPane",
-        id: projection.paneId,
+        id: titleCommand.paneId,
       });
     }
   }

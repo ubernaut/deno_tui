@@ -241,6 +241,31 @@ export interface WorkbenchTerminalPaneProjection {
   title: string;
 }
 
+/** Minimal theme tokens needed to paint terminal workspace pane title rows. */
+export interface WorkbenchTerminalPaneTitleTheme {
+  background: string;
+  text: string;
+  soft: string;
+  panelSoft: string;
+  accentDeep: string;
+}
+
+/** Renderer-neutral title-row command for terminal workspace panes. */
+export interface WorkbenchTerminalPaneTitleRenderCommand {
+  text: string;
+  rect: Rectangle;
+  hitRect: Rectangle;
+  paneId?: string;
+  active: boolean;
+  style: {
+    fg: string;
+    bg: string;
+    bold: boolean;
+  };
+}
+
+export type WorkbenchTerminalPaneTitleContrast = (color: string, dark: string, light: string) => string;
+
 /** Renderer-neutral shell header row projected before the live pane content. */
 export interface WorkbenchTerminalShellHeaderRow {
   kind: "status" | "hint";
@@ -791,6 +816,40 @@ export function workbenchTerminalPaneProjectionsInto(
       );
       written += 1;
     }
+  }
+  target.length = written;
+  return target;
+}
+
+/** Projects visible terminal pane title rows into renderer-neutral paint and hit commands. */
+export function workbenchTerminalPaneTitleRenderCommandsInto(
+  target: WorkbenchTerminalPaneTitleRenderCommand[],
+  panes: readonly WorkbenchTerminalPaneProjection[],
+  theme: WorkbenchTerminalPaneTitleTheme,
+  contrast: WorkbenchTerminalPaneTitleContrast,
+): WorkbenchTerminalPaneTitleRenderCommand[] {
+  let written = 0;
+  for (let index = 0; index < panes.length; index += 1) {
+    const pane = panes[index]!;
+    if (!pane.titleVisible || pane.rect.width <= 0 || pane.rect.height <= 0) continue;
+    const bg = pane.active ? theme.accentDeep : theme.panelSoft;
+    const command = target[written] ?? {
+      text: "",
+      rect: { column: 0, row: 0, width: 0, height: 1 },
+      hitRect: { column: 0, row: 0, width: 0, height: 1 },
+      active: false,
+      style: { fg: "", bg: "", bold: false },
+    };
+    command.text = fitCellText(pane.title, pane.rect.width);
+    setRect(command.rect, { column: pane.rect.column, row: pane.rect.row, width: pane.rect.width, height: 1 });
+    setRect(command.hitRect, command.rect);
+    command.paneId = pane.paneId;
+    command.active = pane.active;
+    command.style.fg = pane.active ? contrast(bg, theme.background, theme.text) : theme.soft;
+    command.style.bg = bg;
+    command.style.bold = pane.active;
+    target[written] = command;
+    written += 1;
   }
   target.length = written;
   return target;

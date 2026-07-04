@@ -182,8 +182,8 @@ Deno.test("benchmark CLI catalog covers high-volume TUI workloads", () => {
   const report = createBenchmarkCatalogReport({ cases: benchmarkCases });
   const names = report.cases.map((entry) => entry.name);
 
-  assertEquals(report.inspection.count, 78);
-  assertEquals(report.inspection.thresholded, 78);
+  assertEquals(report.inspection.count, 79);
+  assertEquals(report.inspection.thresholded, 79);
   assertEquals(report.inspection.categories, ["data", "input", "layout", "render", "runtime", "widgets"]);
   assertEquals(names.includes("data/table-select-100k"), true);
   assertEquals(names.includes("data/table-filter-25k"), true);
@@ -275,6 +275,7 @@ Deno.test("benchmark CLI catalog covers high-volume TUI workloads", () => {
   assertEquals(names.includes("runtime/terminal-screen-replay"), true);
   assertEquals(names.includes("runtime/terminal-screen-edit-churn"), true);
   assertEquals(names.includes("runtime/terminal-copy-row-projection"), true);
+  assertEquals(names.includes("runtime/terminal-pane-title-render-commands"), true);
   assertEquals(names.includes("runtime/terminal-workspace-layout-churn"), true);
   assertEquals(names.includes("runtime/scheduler-batch-100"), true);
   assertEquals(names.includes("widgets/theme-standard-39-components"), true);

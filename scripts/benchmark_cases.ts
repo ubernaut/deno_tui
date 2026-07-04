@@ -44,6 +44,8 @@ import {
   type WorkbenchFrame,
   type WorkbenchFrameBoxLine,
   workbenchTerminalCopyRowsInto,
+  type WorkbenchTerminalPaneProjection,
+  workbenchTerminalPaneTitleRenderCommandsInto,
   workbenchVisibleWindowRectsInto,
   wrapTextBoxLinesInto,
   writeFrame,
@@ -224,6 +226,23 @@ const terminalCopyVisibleRows = Array.from(
   (_, index) => `scrollback ${index.toString().padStart(3, "0")} ${"terminal copy projection ".repeat(3)}`,
 );
 const terminalCopyRowBuffer: ReturnType<typeof workbenchTerminalCopyRowsInto> = [];
+const terminalPaneTitleProjections: WorkbenchTerminalPaneProjection[] = Array.from({ length: 60 }, (_, index) => {
+  const width = 18 + (index % 9) * 3;
+  const column = (index % 6) * 36;
+  const row = Math.floor(index / 6) * 5;
+  const active = index % 7 === 0;
+  return {
+    paneId: `pane-${index}`,
+    sessionId: `shell-${index}`,
+    rect: { column, row, width, height: 4 },
+    contentRect: { column, row: row + 1, width, height: 3 },
+    active,
+    zoomed: false,
+    titleVisible: true,
+    title: `${active ? ">" : " "} Shell ${index}`,
+  };
+});
+const terminalPaneTitleBuffer: ReturnType<typeof workbenchTerminalPaneTitleRenderCommandsInto> = [];
 
 class BenchmarkLineSignal {
   writes = 0;
@@ -1870,6 +1889,31 @@ export const benchmarkCases: BenchmarkCase[] = [
       });
       if (rows.length !== 72 || rows[26]?.selected !== true || rows[0]?.lineNumber !== 2_049) {
         throw new Error("terminal copy-row projection benchmark lost row metadata");
+      }
+    },
+  },
+  {
+    name: "runtime/terminal-pane-title-render-commands",
+    category: "runtime",
+    description: "Project reusable terminal workspace pane title paint and hit commands.",
+    tags: ["runtime", "terminal", "workspace", "projection", "render"],
+    iterations: 2_000,
+    maxAverageMs: 1,
+    run: () => {
+      const commands = workbenchTerminalPaneTitleRenderCommandsInto(
+        terminalPaneTitleBuffer,
+        terminalPaneTitleProjections,
+        {
+          background: "#05020a",
+          text: "#f5efff",
+          soft: "#c8b5df",
+          panelSoft: "#27173a",
+          accentDeep: "#5d2c82",
+        },
+        (color, dark, light) => color === "#5d2c82" ? light : dark,
+      );
+      if (commands.length !== 60 || commands[0]?.style.bold !== true || commands[1]?.style.bg !== "#27173a") {
+        throw new Error("terminal pane title command benchmark lost title metadata");
       }
     },
   },

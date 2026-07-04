@@ -92,6 +92,8 @@ import {
   workbenchTerminalCopyRowsInto,
   type WorkbenchTerminalPaneProjection,
   workbenchTerminalPaneProjectionsInto,
+  type WorkbenchTerminalPaneTitleRenderCommand,
+  workbenchTerminalPaneTitleRenderCommandsInto,
   workbenchTerminalProtocolHeaderRowsInto,
   workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
@@ -1256,14 +1258,23 @@ function renderWebTerminalPanes(
       titleForSession: (sessionId) => workspace.sessions.find((entry) => entry.id === sessionId)?.title,
     },
   );
+  const titleCommands = workbenchTerminalPaneTitleRenderCommandsInto(
+    webTerminalBuffers.paneTitleCommands,
+    projections,
+    theme(),
+    contrastText,
+  );
+  let titleIndex = 0;
   for (const projection of projections) {
-    renderWebTerminalPane(frame, projection);
+    const titleCommand = projection.titleVisible ? titleCommands[titleIndex++] : undefined;
+    renderWebTerminalPane(frame, projection, titleCommand);
   }
 }
 
 function renderWebTerminalPane(
   frame: string[],
   projection: WorkbenchTerminalPaneProjection,
+  titleCommand?: WorkbenchTerminalPaneTitleRenderCommand,
 ): void {
   const rect = projection.rect;
   if (rect.width <= 0 || rect.height <= 0) return;
@@ -1271,23 +1282,17 @@ function renderWebTerminalPane(
   const activePane = projection.active;
   fillRect(frame, rect, activePane ? t.background : t.surface);
   const content = projection.contentRect;
-  if (projection.titleVisible) {
-    const bg = activePane ? t.accentDeep : t.panelSoft;
+  if (titleCommand) {
     write(
       frame,
-      rect.row,
-      rect.column,
-      paint(
-        fit(projection.title, rect.width),
-        activePane ? contrastText(bg, t.background, t.text) : t.soft,
-        bg,
-        activePane,
-      ),
+      titleCommand.rect.row,
+      titleCommand.rect.column,
+      paint(titleCommand.text, titleCommand.style.fg, titleCommand.style.bg, titleCommand.style.bold),
     );
-    if (projection.paneId) {
-      hitTargets.add({ column: rect.column, row: rect.row, width: rect.width, height: 1 }, {
+    if (titleCommand.paneId) {
+      hitTargets.add(titleCommand.hitRect, {
         type: "terminalPane",
-        id: projection.paneId,
+        id: titleCommand.paneId,
       });
     }
   }

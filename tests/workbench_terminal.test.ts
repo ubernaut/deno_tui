@@ -23,6 +23,7 @@ import {
   type WorkbenchTerminalOutputToolbarAction,
   workbenchTerminalOutputToolbarItemsInto,
   workbenchTerminalPaneProjectionsInto,
+  workbenchTerminalPaneTitleRenderCommandsInto,
   workbenchTerminalProtocolHeaderRowsInto,
   workbenchTerminalSearchModalBody,
   workbenchTerminalSessionTabRenderCommandsInto,
@@ -492,6 +493,61 @@ Deno.test("workbenchTerminalPaneProjectionsInto supports fallback panes and call
   assertEquals(target[0] === first, true);
   assertEquals(target[0]?.sessionId, "shell-b");
   assertEquals(target[0]?.contentRect, { column: 1, row: 2, width: 10, height: 2 });
+});
+
+Deno.test("workbenchTerminalPaneTitleRenderCommandsInto projects active title paint and reuses commands", () => {
+  const panes = workbenchTerminalPaneProjectionsInto(
+    [],
+    {
+      root: {
+        kind: "split",
+        id: "split",
+        direction: "row",
+        first: { kind: "pane", id: "pane-a", sessionId: "shell-a", title: "Alpha" },
+        second: { kind: "pane", id: "pane-b", sessionId: "shell-b", title: "Beta" },
+        ratio: 0.5,
+      },
+      activePaneId: "pane-b",
+    },
+    { column: 0, row: 1, width: 24, height: 6 },
+  );
+  const theme = {
+    background: "#000",
+    text: "#eee",
+    soft: "#999",
+    panelSoft: "#222",
+    accentDeep: "#070",
+  };
+  const contrast = (color: string) => color === "#070" ? "#fff" : "#000";
+  const target = [{
+    text: "stale",
+    rect: { column: 9, row: 9, width: 9, height: 1 },
+    hitRect: { column: 0, row: 0, width: 0, height: 1 },
+    active: false,
+    style: { fg: "", bg: "", bold: false },
+  }];
+  const first = target[0];
+
+  const commands = workbenchTerminalPaneTitleRenderCommandsInto(target, panes, theme, contrast);
+
+  assertEquals(commands, target);
+  assertEquals(commands[0], {
+    text: "  Alpha    ",
+    rect: { column: 0, row: 1, width: 11, height: 1 },
+    hitRect: { column: 0, row: 1, width: 11, height: 1 },
+    paneId: "pane-a",
+    active: false,
+    style: { fg: "#999", bg: "#222", bold: false },
+  });
+  assertEquals(commands[1], {
+    text: "> Beta      ",
+    rect: { column: 12, row: 1, width: 12, height: 1 },
+    hitRect: { column: 12, row: 1, width: 12, height: 1 },
+    paneId: "pane-b",
+    active: true,
+    style: { fg: "#fff", bg: "#070", bold: true },
+  });
+  assertEquals(commands[0] === first, true);
 });
 
 Deno.test("workbenchTerminalCopyRowsInto projects line numbers selection and reuse", () => {
