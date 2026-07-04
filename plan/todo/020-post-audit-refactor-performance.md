@@ -179,6 +179,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   copy command arrays on stable output shapes.
 - Moved workbench Three terminal-pressure change log formatting into the shared pressure helper so the workbench render
   loop only applies policy, state, and side effects.
+- Lowered the API workbench Three startup cap to 480 render cells and slowed automatic recovery to high-detail caps so
+  SSH/tmux sessions are not immediately saturated by the default block renderer pane.
 - Stabilized default Three ASCII block rendering by using ASCII-safe shared window controls and removing fog from the
   default block preset so truecolor block cells keep source color depth.
 - Extracted the workbench Three ASCII config modal geometry into a tested internal layout helper, reducing inline modal
