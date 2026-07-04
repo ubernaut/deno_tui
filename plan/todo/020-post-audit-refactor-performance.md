@@ -835,3 +835,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Changed per-window Three interactivity so only the active or fullscreen Three pane renders at foreground cadence;
   background visible Three panes now use idle cadence while the global scheduler still stays warm when any Three pane is
   visible. Focused policy/frame tests and the workbench Three pressure/span benchmarks passed.
+- Cached clean retained rows in the ANSI span-mode screen painter so unchanged workbench rows skip repeat span detection
+  after they are proven equal to the retained snapshot. Focused painter/frame tests passed, and the repeated workbench
+  Three block span benchmark improved to roughly 2.2ms on this host.
