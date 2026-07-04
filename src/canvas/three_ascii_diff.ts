@@ -124,6 +124,18 @@ interface QueueFullyVisibleIntegerCellsOptions extends QueueChangedCellsInternal
 
 function queueChangedFullyVisibleIntegerCells(options: QueueFullyVisibleIntegerCellsOptions): boolean {
   const { grid, rectangle, rerenderCells, rerenderRanges, previous, cacheValid, columns, rows } = options;
+  if (rerenderRanges) {
+    return queueChangedFullyVisibleIntegerRanges({
+      grid,
+      rectangle,
+      previous,
+      cacheValid,
+      columns,
+      rows,
+      rerenderRanges,
+    });
+  }
+
   let changed = false;
   const rectangleColumn = rectangle.column;
   const rectangleRow = rectangle.row;
@@ -141,13 +153,7 @@ function queueChangedFullyVisibleIntegerCells(options: QueueFullyVisibleIntegerC
         const cell = outputRow[column] as string;
         if (cacheValid && previousCells[index] === cell) {
           if (runStart !== -1) {
-            queueFullyVisibleChangedRun(
-              rerenderCells,
-              rerenderRanges,
-              canvasRow,
-              rectangleColumn + runStart,
-              rectangleColumn + column,
-            );
+            queueFullyVisibleCellRun(rerenderCells, canvasRow, rectangleColumn + runStart, rectangleColumn + column);
             runStart = -1;
           }
           continue;
@@ -157,13 +163,7 @@ function queueChangedFullyVisibleIntegerCells(options: QueueFullyVisibleIntegerC
         changed = true;
       }
       if (runStart !== -1) {
-        queueFullyVisibleChangedRun(
-          rerenderCells,
-          rerenderRanges,
-          canvasRow,
-          rectangleColumn + runStart,
-          rectangleColumn + columns,
-        );
+        queueFullyVisibleCellRun(rerenderCells, canvasRow, rectangleColumn + runStart, rectangleColumn + columns);
       }
       continue;
     }
@@ -173,13 +173,7 @@ function queueChangedFullyVisibleIntegerCells(options: QueueFullyVisibleIntegerC
       const cell = outputRow?.[column] ?? " ";
       if (cacheValid && previousCells[index] === cell) {
         if (runStart !== -1) {
-          queueFullyVisibleChangedRun(
-            rerenderCells,
-            rerenderRanges,
-            canvasRow,
-            rectangleColumn + runStart,
-            rectangleColumn + column,
-          );
+          queueFullyVisibleCellRun(rerenderCells, canvasRow, rectangleColumn + runStart, rectangleColumn + column);
           runStart = -1;
         }
         continue;
@@ -189,13 +183,67 @@ function queueChangedFullyVisibleIntegerCells(options: QueueFullyVisibleIntegerC
       changed = true;
     }
     if (runStart !== -1) {
-      queueFullyVisibleChangedRun(
-        rerenderCells,
-        rerenderRanges,
-        canvasRow,
-        rectangleColumn + runStart,
-        rectangleColumn + columns,
-      );
+      queueFullyVisibleCellRun(rerenderCells, canvasRow, rectangleColumn + runStart, rectangleColumn + columns);
+    }
+  }
+
+  return changed;
+}
+
+interface QueueFullyVisibleIntegerRangesOptions extends QueueChangedCellsInternalOptions {
+  rerenderRanges: ThreeAsciiDiffRangeQueue;
+}
+
+function queueChangedFullyVisibleIntegerRanges(options: QueueFullyVisibleIntegerRangesOptions): boolean {
+  const { grid, rectangle, rerenderRanges, previous, cacheValid, columns, rows } = options;
+  let changed = false;
+  const rectangleColumn = rectangle.column;
+  const rectangleRow = rectangle.row;
+  const previousCells = previous.cells;
+
+  for (let row = 0; row < rows; row += 1) {
+    const outputRow = grid[row];
+    const rowOffset = row * columns;
+    const canvasRow = rectangleRow + row;
+    let runStart = -1;
+
+    if (outputRow && outputRow.length >= columns) {
+      for (let column = 0; column < columns; column += 1) {
+        const index = rowOffset + column;
+        const cell = outputRow[column] as string;
+        if (cacheValid && previousCells[index] === cell) {
+          if (runStart !== -1) {
+            queueFullyVisibleRangeRun(rerenderRanges, canvasRow, rectangleColumn + runStart, rectangleColumn + column);
+            runStart = -1;
+          }
+          continue;
+        }
+        previousCells[index] = cell;
+        if (runStart === -1) runStart = column;
+        changed = true;
+      }
+      if (runStart !== -1) {
+        queueFullyVisibleRangeRun(rerenderRanges, canvasRow, rectangleColumn + runStart, rectangleColumn + columns);
+      }
+      continue;
+    }
+
+    for (let column = 0; column < columns; column += 1) {
+      const index = rowOffset + column;
+      const cell = outputRow?.[column] ?? " ";
+      if (cacheValid && previousCells[index] === cell) {
+        if (runStart !== -1) {
+          queueFullyVisibleRangeRun(rerenderRanges, canvasRow, rectangleColumn + runStart, rectangleColumn + column);
+          runStart = -1;
+        }
+        continue;
+      }
+      previousCells[index] = cell;
+      if (runStart === -1) runStart = column;
+      changed = true;
+    }
+    if (runStart !== -1) {
+      queueFullyVisibleRangeRun(rerenderRanges, canvasRow, rectangleColumn + runStart, rectangleColumn + columns);
     }
   }
 
@@ -345,20 +393,23 @@ function queueChangedRun(
   queueRerenderRangeInto(rerenderCells, row, startColumn, endColumn, canvasSize, viewRectangle);
 }
 
-function queueFullyVisibleChangedRun(
+function queueFullyVisibleCellRun(
   rerenderCells: ThreeAsciiDiffQueue,
-  rerenderRanges: ThreeAsciiDiffRangeQueue | undefined,
   row: number,
   startColumn: number,
   endColumn: number,
 ): void {
-  if (rerenderRanges) {
-    (rerenderRanges[row] ??= []).push({ row, startColumn, endColumn });
-    return;
-  }
-
   const queueRow = rerenderCells[row] ??= new Set<number>();
   for (let column = startColumn; column < endColumn; column += 1) {
     queueRow.add(column);
   }
+}
+
+function queueFullyVisibleRangeRun(
+  rerenderRanges: ThreeAsciiDiffRangeQueue,
+  row: number,
+  startColumn: number,
+  endColumn: number,
+): void {
+  (rerenderRanges[row] ??= []).push({ row, startColumn, endColumn });
 }

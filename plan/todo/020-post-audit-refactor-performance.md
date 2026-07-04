@@ -677,3 +677,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   returning a green zero-case summary, making renderer performance checks harder to misuse.
 - Added a direct Three ASCII grid-diff benchmark for `queueChangedThreeAsciiGridCells`, separating pure diff-helper
   cost from `ThreeAsciiObject` lifecycle overhead before further canvas update tuning.
+- Split the fully visible Three ASCII grid-diff path into dedicated range and cell-queue implementations so the common
+  unclipped direct-range path avoids per-run queue-mode dispatch; the object-level frame-diff guard now stays near the
+  direct helper cost.
