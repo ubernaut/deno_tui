@@ -327,6 +327,17 @@ Deno.test("workbench string frame line signal cache restores externally changed 
   assertEquals(signal.writes, 2);
 });
 
+Deno.test("workbench string frame line signal cache updates when raw row changes", () => {
+  const signal = new FakeLineSignal("");
+  const frame = ["alpha"];
+
+  assertEquals(updateWorkbenchStringLineSignals([signal], frame, 5, 1), { rows: 1, changed: 1, cleared: 0 });
+  frame[0] = "bravo";
+
+  assertEquals(updateWorkbenchStringLineSignals([signal], frame, 5, 1), { rows: 1, changed: 1, cleared: 0 });
+  assertEquals(signal.peek(), "bravo");
+});
+
 Deno.test("workbench frame fill helpers clip to the configured width", () => {
   const frame: WorkbenchFrame = [[], [], []];
   let styleCalls = 0;

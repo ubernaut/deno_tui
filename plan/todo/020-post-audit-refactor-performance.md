@@ -979,3 +979,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added full-row single-style render hints to workbench frame rows so screen flushes can reuse the original assembled
   ANSI line instead of splitting and recombining every cell. The focused full-screen flush benchmark dropped from
   roughly 3.4ms to 0.48ms on this host while neighboring span and Three block flush guards stayed within range.
+- Cached raw string-backed workbench rows alongside fitted line-signal output so repeated browser/web rows skip text
+  fitting and line hashing while still restoring externally modified signals. The focused string line-signal diff
+  benchmark dropped from roughly 2.56ms to 1.32ms on this host.

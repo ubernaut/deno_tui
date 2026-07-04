@@ -36,6 +36,7 @@ interface WorkbenchLineSignalRowCache {
   width: number;
   fingerprint: string;
   line: string;
+  raw?: string;
 }
 
 interface WorkbenchFrameRowMetadata {
@@ -347,8 +348,17 @@ export function updateWorkbenchStringLineSignals(
 
   for (let row = 0; row < rows; row += 1) {
     const signal = signals[row]!;
-    const nextLine = fitCellText(frame[row] ?? "", columns);
+    const raw = frame[row] ?? "";
     const cached = lineSignalRowCache.get(signal);
+    if (cached?.width === columns && cached.raw === raw) {
+      if (signal.peek() !== cached.line) {
+        signal.value = cached.line;
+        changed += 1;
+      }
+      continue;
+    }
+
+    const nextLine = fitCellText(raw, columns);
     const fingerprint = fallbackLineFingerprint(nextLine, columns);
     if (cached?.width === columns && cached.fingerprint === fingerprint) {
       if (signal.peek() !== cached.line) {
@@ -358,7 +368,7 @@ export function updateWorkbenchStringLineSignals(
       continue;
     }
 
-    lineSignalRowCache.set(signal, { width: columns, fingerprint, line: nextLine });
+    lineSignalRowCache.set(signal, { width: columns, fingerprint, line: nextLine, raw });
     if (signal.peek() !== nextLine) {
       signal.value = nextLine;
       changed += 1;
