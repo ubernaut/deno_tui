@@ -240,6 +240,7 @@ export class ThreePanelFrameView {
   private adaptiveRequestedMaxCells = 0;
   private adaptiveSlowFrames = 0;
   private adaptiveFastFrames = 0;
+  private adaptiveSampleFrames = 0;
   private gridFingerprint = "";
   private gridRevision?: number;
 
@@ -526,7 +527,9 @@ export class ThreePanelFrameView {
       targetMs,
       slowFrames: this.adaptiveSlowFrames,
       fastFrames: this.adaptiveFastFrames,
+      sampleFrames: this.adaptiveSampleFrames,
     });
+    this.adaptiveSampleFrames += 1;
 
     this.adaptiveSlowFrames = next.slowFrames;
     this.adaptiveFastFrames = next.fastFrames;
@@ -653,6 +656,7 @@ export class ThreePanelFrameView {
     this.activeWireframeThickness = undefined;
     this.activeDeferredReadbackSlots = undefined;
     this.interaction.clearBaseTransform();
+    this.adaptiveSampleFrames = 0;
   }
 
   private resetAppliedRendererState(): void {
@@ -715,6 +719,7 @@ export class ThreePanelFrameView {
       this.adaptiveRenderMaxCells = undefined;
       this.adaptiveSlowFrames = 0;
       this.adaptiveFastFrames = 0;
+      this.adaptiveSampleFrames = 0;
     }
     return resolveThreePanelRenderSize(rect, this.adaptiveRenderMaxCells ?? requested);
   }

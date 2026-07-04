@@ -95,12 +95,25 @@ Deno.test("resolveThreePanelRenderSize preserves small panes and caps large pane
 });
 
 Deno.test("resolveThreePanelAdaptiveRenderBudget steps down on sustained slow frames", () => {
+  const warmup = resolveThreePanelAdaptiveRenderBudget({
+    requestedMaxCells: 3_840,
+    frameMs: 220,
+    targetMs: 1000 / 18,
+    slowFrames: 0,
+    fastFrames: 0,
+    sampleFrames: 0,
+  });
+  assertEquals(warmup.direction, "steady");
+  assertEquals(warmup.slowFrames, 0);
+  assertEquals(warmup.maxCells, undefined);
+
   const first = resolveThreePanelAdaptiveRenderBudget({
     requestedMaxCells: 3_840,
     frameMs: 220,
     targetMs: 1000 / 18,
     slowFrames: 0,
     fastFrames: 0,
+    sampleFrames: 1,
   });
   assertEquals(first.direction, "steady");
   assertEquals(first.maxCells, undefined);
@@ -111,6 +124,7 @@ Deno.test("resolveThreePanelAdaptiveRenderBudget steps down on sustained slow fr
     targetMs: 1000 / 18,
     slowFrames: first.slowFrames,
     fastFrames: first.fastFrames,
+    sampleFrames: 2,
   });
   assertEquals(second.direction, "down");
   assertEquals(second.maxCells, 1_920);
@@ -583,6 +597,42 @@ Deno.test("ThreePanelFrameView lowers render cells after slow renderer telemetry
         entry.source === "three-panel" && entry.code === "three-ascii-adaptive-render-cells"
       ),
     );
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+  }
+});
+
+Deno.test("ThreePanelFrameView does not lower render cells from a startup outlier", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 160, height: 60 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal({ ...createDefaultAsciiOptions("sharp"), renderMaxCells: 3_840 });
+  const enabled = new Signal(true);
+  let renderer: SequenceTelemetryGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    enabled,
+    frameInterval: 1,
+    rendererFactory: (options) =>
+      renderer = new SequenceTelemetryGridRenderer(options.columns, options.rows, [
+        1_000,
+        16,
+        16,
+        16,
+      ]),
+  });
+
+  try {
+    await waitFor(() => (renderer?.renderCount ?? 0) >= 4);
+
+    assert(renderer);
+    assertEquals(ascii.peek().renderMaxCells, 3_840);
+    assertEquals(renderer.sizes.some(([columns, rows]) => columns * rows <= 1_920), false);
   } finally {
     panel.dispose();
     rectangle.dispose();
@@ -1364,6 +1414,28 @@ class TelemetryGridRenderer extends FakeGridRenderer {
       ansiMs: this.totalMs * 0.3,
       readbackMs: this.totalMs * 0.2,
       assemblyMs: this.totalMs * 0.05,
+    };
+  }
+}
+
+class SequenceTelemetryGridRenderer extends FakeGridRenderer {
+  constructor(columns: number, rows: number, private readonly totalMsByFrame: readonly number[]) {
+    super(columns, rows);
+  }
+
+  override inspectPerformance(): ThreeAsciiRendererPerformance {
+    const totalMs = this.totalMsByFrame[Math.max(0, Math.min(this.renderCount - 1, this.totalMsByFrame.length - 1))] ??
+      16;
+    return {
+      columns: this.columns,
+      rows: this.rows,
+      cells: this.columns * this.rows,
+      terminalGlyphStyle: this.getTerminalGlyphStyle(),
+      totalMs,
+      sceneMs: totalMs * 0.7,
+      ansiMs: totalMs * 0.3,
+      readbackMs: totalMs * 0.2,
+      assemblyMs: totalMs * 0.05,
     };
   }
 }

@@ -3,6 +3,7 @@ import { asciiControlValues } from "./ascii_options.ts";
 const ADAPTIVE_RENDER_CELLS_MIN = 960;
 const ADAPTIVE_RENDER_CELLS_SLOW_FRAMES = 2;
 const ADAPTIVE_RENDER_CELLS_FAST_FRAMES = 120;
+export const THREE_PANEL_ADAPTIVE_WARMUP_FRAMES = 1;
 
 export interface ThreePanelAdaptiveRenderBudgetInput {
   requestedMaxCells: number;
@@ -11,6 +12,8 @@ export interface ThreePanelAdaptiveRenderBudgetInput {
   targetMs: number;
   slowFrames: number;
   fastFrames: number;
+  sampleFrames?: number;
+  warmupFrames?: number;
 }
 
 export interface ThreePanelAdaptiveRenderBudgetResult {
@@ -35,6 +38,12 @@ export function resolveThreePanelAdaptiveRenderBudget(
   const steps = budgetSteps.length ? budgetSteps : [requestedMaxCells];
   const slowThreshold = Math.max(100, input.targetMs * 1.8);
   const fastThreshold = Math.max(1, input.targetMs * 0.7);
+  const sampleFrames = Math.max(0, Math.floor(input.sampleFrames ?? Number.POSITIVE_INFINITY));
+  const warmupFrames = Math.max(0, Math.floor(input.warmupFrames ?? THREE_PANEL_ADAPTIVE_WARMUP_FRAMES));
+
+  if (sampleFrames < warmupFrames) {
+    return { maxCells: input.currentMaxCells, slowFrames: 0, fastFrames: 0, direction: "steady" };
+  }
 
   if (input.frameMs >= slowThreshold) {
     const slowFrames = input.slowFrames + 1;
