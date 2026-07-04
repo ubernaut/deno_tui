@@ -203,6 +203,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   byte-rate diagnostics reflect actual cadence changes after pressure updates.
 - Made high-pressure workbench Three samples downshift immediately, so manually raised 480/960-cell caps do not spend a
   second expensive terminal frame before backing off on slow sessions.
+- Retuned workbench Three terminal-pressure thresholds so the default block-mode pane can recover from 240 to 480 cells
+  but no longer auto-stabilizes at the 960-cell tier that measured around 150KB/s on app-like probes.
 - Added test coverage that locks Kitty/image-only Three panels to `{ ansi: false, image: true }`, guarding against
   accidental ANSI readback/grid work when raster graphics is the selected output.
 - Optimized dense block-mode ANSI grid assembly by filling adjacent same-color visible cells as row ranges instead of
