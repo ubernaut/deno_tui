@@ -1184,7 +1184,7 @@ function runWorkbenchScaledThreeGridWorkload(): void {
     { column: 0, row: 0, width: workbenchScaledThreeTargetColumns, height: workbenchScaledThreeTargetRows },
     workbenchScaledThreeGrid,
     " ",
-    { scale: true, rowBuffer: workbenchScaledThreeRowBuffer },
+    { scale: true, rowBuffer: workbenchScaledThreeRowBuffer, sourceColumns: workbenchScaledThreeSourceColumns },
   );
 
   let total = 0;
@@ -1204,7 +1204,7 @@ function runWorkbenchCappedThreeGridWorkload(): void {
     { column: 0, row: 0, width: workbenchScaledThreeTargetColumns, height: workbenchScaledThreeTargetRows },
     workbenchScaledThreeGrid,
     "\x1b[48;2;8;6;18m \x1b[0m",
-    { scale: "down", rowBuffer: workbenchScaledThreeRowBuffer },
+    { scale: "down", rowBuffer: workbenchScaledThreeRowBuffer, sourceColumns: workbenchScaledThreeSourceColumns },
   );
 
   let total = 0;

@@ -1453,6 +1453,7 @@ function renderThreeGrid(frame: Frame, rect: Rectangle, grid: string[][], t: The
   writeWorkbenchThreeGrid(frame, rect, grid, paint(" ", { bg: t.surface }), {
     scale: "down",
     rowBuffer: threeGridRowBuffer,
+    sourceColumns: grid[0]?.length ?? 0,
   });
 }
 

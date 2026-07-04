@@ -10,11 +10,13 @@ export function writeWorkbenchThreeGrid(
   rect: Rectangle,
   grid: readonly (readonly string[] | undefined)[],
   fallbackCell: string,
-  options: { scale?: WorkbenchThreeGridScaleMode; rowBuffer?: string[] } = {},
+  options: { scale?: WorkbenchThreeGridScaleMode; rowBuffer?: string[]; sourceColumns?: number } = {},
 ): void {
   if (rect.width <= 0 || rect.height <= 0) return;
   const sourceRows = grid.length;
-  const sourceColumns = maxGridColumns(grid);
+  const sourceColumns = options.sourceColumns === undefined
+    ? maxGridColumns(grid)
+    : Math.max(0, Math.floor(options.sourceColumns));
   const scaleMode = options.scale;
   const shouldScale = scaleMode === true ||
     (scaleMode === "down" && (sourceRows > rect.height || sourceColumns > rect.width));
