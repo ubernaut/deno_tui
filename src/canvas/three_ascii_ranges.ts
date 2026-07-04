@@ -13,6 +13,16 @@ export interface ApplyThreeAsciiRerenderRangesOptions {
   fallbackCells?: Set<number>;
 }
 
+export interface ApplyThreeAsciiRerenderCellsOptions {
+  frameRow: (string | Uint8Array)[];
+  outputRow: readonly string[] | undefined;
+  columns: ReadonlySet<number>;
+  rectangleColumn: number;
+  columnLimit: number;
+  omitColumns?: ReadonlySet<number>;
+  queueCells: Set<number>;
+}
+
 export function applyThreeAsciiRerenderRanges(options: ApplyThreeAsciiRerenderRangesOptions): void {
   const {
     frameRow,
@@ -43,6 +53,15 @@ export function applyThreeAsciiRerenderRanges(options: ApplyThreeAsciiRerenderRa
       frameRow[column] = outputRow?.[column - rectangleColumn] ?? " ";
       fallbackCells?.add(column);
     }
+  }
+}
+
+export function applyThreeAsciiRerenderCells(options: ApplyThreeAsciiRerenderCellsOptions): void {
+  const { frameRow, outputRow, columns, rectangleColumn, columnLimit, omitColumns, queueCells } = options;
+  for (const column of columns) {
+    if (column < rectangleColumn || column >= columnLimit || omitColumns?.has(column)) continue;
+    frameRow[column] = outputRow?.[column - rectangleColumn] ?? " ";
+    queueCells.add(column);
   }
 }
 

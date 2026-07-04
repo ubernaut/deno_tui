@@ -1,5 +1,5 @@
 import { assertEquals } from "./deps.ts";
-import { applyThreeAsciiRerenderRanges } from "../src/canvas/three_ascii_ranges.ts";
+import { applyThreeAsciiRerenderCells, applyThreeAsciiRerenderRanges } from "../src/canvas/three_ascii_ranges.ts";
 
 Deno.test("applyThreeAsciiRerenderRanges copies clipped ranges and queues direct spans", () => {
   const frameRow: string[] = [];
@@ -71,4 +71,45 @@ Deno.test("applyThreeAsciiRerenderRanges uses blank fallback for sparse output r
 
   assertEquals(frameRow.slice(0, 3), ["A", " ", " "]);
   assertEquals(directRanges, [{ row: 0, startColumn: 0, endColumn: 3 }]);
+});
+
+Deno.test("applyThreeAsciiRerenderCells copies clipped cells and records queued columns", () => {
+  const frameRow: string[] = [];
+  const queueCells = new Set<number>();
+
+  applyThreeAsciiRerenderCells({
+    frameRow,
+    outputRow: ["A", "B", "C", "D"],
+    columns: new Set([1, 2, 3, 4, 5]),
+    rectangleColumn: 2,
+    columnLimit: 5,
+    queueCells,
+  });
+
+  assertEquals([frameRow[1], frameRow[2], frameRow[3], frameRow[4], frameRow[5]], [
+    undefined,
+    "A",
+    "B",
+    "C",
+    undefined,
+  ]);
+  assertEquals([...queueCells], [2, 3, 4]);
+});
+
+Deno.test("applyThreeAsciiRerenderCells respects omissions and sparse output fallback", () => {
+  const frameRow: string[] = [];
+  const queueCells = new Set<number>();
+
+  applyThreeAsciiRerenderCells({
+    frameRow,
+    outputRow: ["A"],
+    columns: new Set([0, 1, 2]),
+    rectangleColumn: 0,
+    columnLimit: 3,
+    omitColumns: new Set([1]),
+    queueCells,
+  });
+
+  assertEquals([frameRow[0], frameRow[1], frameRow[2]], ["A", undefined, " "]);
+  assertEquals([...queueCells], [0, 2]);
 });

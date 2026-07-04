@@ -12,7 +12,7 @@ import {
   createThreeAsciiGridDiffState,
   queueChangedThreeAsciiGridCells,
 } from "./three_ascii_diff.ts";
-import { applyThreeAsciiRerenderRanges } from "./three_ascii_ranges.ts";
+import { applyThreeAsciiRerenderCells, applyThreeAsciiRerenderRanges } from "./three_ascii_ranges.ts";
 import {
   type ThreeAsciiImageFrame,
   ThreeAsciiRenderer,
@@ -178,12 +178,15 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
 
       if (!rerenderColumns?.size) continue;
       const queueRow = rerenderQueue[row] ??= new Set();
-      for (const column of rerenderColumns) {
-        if (column < rectangle.column || column >= columnLimit || omitColumns?.has(column)) continue;
-        frameRow[column] = outputRow?.[column - rectangle.column] ?? " ";
-        queueRow.add(column);
-      }
-
+      applyThreeAsciiRerenderCells({
+        frameRow,
+        outputRow,
+        columns: rerenderColumns,
+        rectangleColumn: rectangle.column,
+        columnLimit,
+        omitColumns,
+        queueCells: queueRow,
+      });
       rerenderColumns.clear();
     }
   }
