@@ -15,6 +15,7 @@ import {
   saveWorkspaceModalContent,
   saveWorkspaceState,
   workspaceDeletedModalContent,
+  workspaceLoadClosePlan,
   type WorkspaceMenuEntry,
   workspaceMenuLabels,
   workspaceMenuLabelsInto,
@@ -150,6 +151,48 @@ Deno.test("currentWorkspaceWindows projects active visualization windows only", 
     { visualizationId: "gpu-monitor", ascii: { style: "glyphs" } },
   ]);
   assertEquals(windows[0]?.ascii === asciiByWindow["viz:cpu"], false);
+});
+
+Deno.test("workspaceLoadClosePlan identifies visualization cleanup and trims selected tiles", () => {
+  const windowIds = ["explorer", "viz:cpu", "controls", "viz:gpu"] as const;
+  type TestWindowId = typeof windowIds[number];
+  const selected = {
+    "viz:cpu": "cpu 0",
+    "viz:gpu": "gpu",
+  };
+
+  const plan = workspaceLoadClosePlan({
+    windowIds,
+    isVisualizationWindow: (id: TestWindowId): id is Extract<TestWindowId, `viz:${string}`> => id.startsWith("viz:"),
+    selectedVisualizationTiles: selected,
+  });
+
+  assertEquals(plan, {
+    windowIds: ["explorer", "viz:cpu", "controls", "viz:gpu"],
+    visualizationWindowIds: ["viz:cpu", "viz:gpu"],
+    selectedVisualizationTiles: {},
+    selectedVisualizationTilesChanged: true,
+  });
+  assertEquals(selected, {
+    "viz:cpu": "cpu 0",
+    "viz:gpu": "gpu",
+  });
+});
+
+Deno.test("workspaceLoadClosePlan preserves selections when no visualization window owns them", () => {
+  type TestWindowId = "explorer" | "controls";
+  const plan = workspaceLoadClosePlan({
+    windowIds: ["explorer", "controls"] as const,
+    isVisualizationWindow: (_id: TestWindowId): _id is never => false,
+    selectedVisualizationTiles: { "viz:cpu": "cpu 1" },
+  });
+
+  assertEquals(plan, {
+    windowIds: ["explorer", "controls"],
+    visualizationWindowIds: [],
+    selectedVisualizationTiles: { "viz:cpu": "cpu 1" },
+    selectedVisualizationTilesChanged: false,
+  });
 });
 
 Deno.test("workspace state transitions save rename and delete workspaces", () => {

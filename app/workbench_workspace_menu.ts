@@ -48,6 +48,21 @@ export interface CurrentWorkspaceWindowsOptions<TWindowId extends string, TAscii
   asciiForWindow: (id: TWindowId) => TAscii;
 }
 
+/** Inputs for planning workspace-load window cleanup. */
+export interface WorkspaceLoadClosePlanOptions<TWindowId extends string, TSelection = string> {
+  windowIds: readonly TWindowId[];
+  isVisualizationWindow: (id: TWindowId) => id is Extract<TWindowId, `viz:${string}`>;
+  selectedVisualizationTiles?: Readonly<Partial<Record<string, TSelection>>>;
+}
+
+/** Side-effect-free workspace-load window cleanup plan. */
+export interface WorkspaceLoadClosePlan<TWindowId extends string, TSelection = string> {
+  windowIds: TWindowId[];
+  visualizationWindowIds: Extract<TWindowId, `viz:${string}`>[];
+  selectedVisualizationTiles: Partial<Record<string, TSelection>>;
+  selectedVisualizationTilesChanged: boolean;
+}
+
 /** Inputs for saving the current loaded windows as a workspace. */
 export interface SaveWorkspaceStateOptions<TAscii = unknown> {
   workspaces: readonly WorkbenchWorkspace<TAscii>[];
@@ -286,6 +301,36 @@ export function currentWorkspaceWindows<TWindowId extends string, TAscii = unkno
     windows.push({ visualizationId, ascii: options.asciiForWindow(windowId) });
   }
   return windows;
+}
+
+/** Plans the close-all cleanup needed before loading a workspace. */
+export function workspaceLoadClosePlan<TWindowId extends string, TSelection = string>(
+  options: WorkspaceLoadClosePlanOptions<TWindowId, TSelection>,
+): WorkspaceLoadClosePlan<TWindowId, TSelection> {
+  const windowIds = new Array<TWindowId>(options.windowIds.length);
+  const visualizationWindowIds: Extract<TWindowId, `viz:${string}`>[] = [];
+  const selectedVisualizationTiles = { ...(options.selectedVisualizationTiles ?? {}) } as Partial<
+    Record<string, TSelection>
+  >;
+  let selectedVisualizationTilesChanged = false;
+
+  for (let index = 0; index < options.windowIds.length; index++) {
+    const id = options.windowIds[index]!;
+    windowIds[index] = id;
+    if (!options.isVisualizationWindow(id)) continue;
+    visualizationWindowIds.push(id);
+    if (id in selectedVisualizationTiles) {
+      delete selectedVisualizationTiles[id];
+      selectedVisualizationTilesChanged = true;
+    }
+  }
+
+  return {
+    windowIds,
+    visualizationWindowIds,
+    selectedVisualizationTiles,
+    selectedVisualizationTilesChanged,
+  };
 }
 
 /** Applies the save-workspace state transition without renderer side effects. */

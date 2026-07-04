@@ -260,6 +260,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   previous color change.
 - Extracted workspace save, rename, delete, and active-workspace refresh state transitions into tested pure helpers so
   the terminal workbench renderer no longer owns direct workspace collection mutation details.
+- Extracted workspace-load close planning into a typed pure helper so renderer cleanup, selected CPU tile pruning, and
+  close counts are computed outside the terminal workbench render/orchestration module.
 - Retuned the default workbench Three ASCII pressure policy for slow terminal links: the default pane now starts at the
   120-cell emergency tier, 240-cell animated output downshifts on sustained byte rates above roughly 35KB/s, and low
   byte-rate recovery remains conservative so SSH/tmux sessions do not immediately climb back into expensive output.

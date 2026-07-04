@@ -285,6 +285,7 @@ import {
   saveWorkspaceModalContent,
   saveWorkspaceState,
   workspaceDeletedModalContent,
+  workspaceLoadClosePlan,
   type WorkspaceMenuEntry,
   workspaceMenuLabelsInto,
   workspaceMissingModalContent,
@@ -3325,26 +3326,26 @@ function loadWorkspace(workspace: SavedWorkspace): void {
 }
 
 function closeAllWindowsForWorkspaceLoad(): void {
-  const ids = windowManager.ids() as WindowId[];
-  if (ids.length === 0) return;
+  const plan = workspaceLoadClosePlan({
+    windowIds: windowManager.ids() as WindowId[],
+    isVisualizationWindow,
+    selectedVisualizationTiles: selectedCpuHexTiles.peek(),
+  });
+  if (plan.windowIds.length === 0) return;
 
-  const selected = { ...selectedCpuHexTiles.peek() };
-  let selectedChanged = false;
-  for (const id of ids) {
-    if (isVisualizationWindow(id)) {
-      disposeVisualizationThreePanel(id);
-      disposeAsciiForWindow(id);
-      if (id in selected) {
-        delete selected[id];
-        selectedChanged = true;
-      }
-    }
+  for (const id of plan.visualizationWindowIds) {
+    disposeVisualizationThreePanel(id);
+    disposeAsciiForWindow(id);
+  }
+  for (const id of plan.windowIds) {
     windowManager.close(id);
     windowContentFrames.delete(id);
   }
-  if (selectedChanged) selectedCpuHexTiles.value = selected;
+  if (plan.selectedVisualizationTilesChanged) {
+    selectedCpuHexTiles.value = plan.selectedVisualizationTiles as Record<VisualizationWindowId, string>;
+  }
   syncWindowSignalsFromManager();
-  pushLog(`closed ${ids.length} window(s) for workspace load`);
+  pushLog(`closed ${plan.windowIds.length} window(s) for workspace load`);
 }
 
 function workspaceMenuEntries(): WorkspaceMenuEntry[] {
