@@ -1,5 +1,5 @@
 import { assertEquals } from "./deps.ts";
-import { DirtyRegion } from "../src/canvas/mod.ts";
+import { DirtyRegion, mergeDirtyRowSegmentsInPlace } from "../src/canvas/mod.ts";
 
 Deno.test("DirtyRegion merges overlapping and adjacent row segments", () => {
   const region = new DirtyRegion();
@@ -11,6 +11,22 @@ Deno.test("DirtyRegion merges overlapping and adjacent row segments", () => {
   assertEquals(region.inspect(), [
     { row: 1, startColumn: 0, endColumn: 2 },
     { row: 2, startColumn: 4, endColumn: 14 },
+  ]);
+});
+
+Deno.test("mergeDirtyRowSegmentsInPlace sorts and compacts retained row queues", () => {
+  const ranges = [
+    { row: 2, startColumn: 8, endColumn: 12 },
+    { row: 2, startColumn: 1, endColumn: 3 },
+    { row: 2, startColumn: 3, endColumn: 6 },
+    { row: 2, startColumn: 7, endColumn: 8 },
+  ];
+
+  mergeDirtyRowSegmentsInPlace(ranges);
+
+  assertEquals(ranges, [
+    { row: 2, startColumn: 1, endColumn: 6 },
+    { row: 2, startColumn: 7, endColumn: 12 },
   ]);
 });
 

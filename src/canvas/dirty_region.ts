@@ -170,15 +170,24 @@ function mergeRowSegments(segments: readonly DirtyRowSegment[]): DirtyRowSegment
   for (let index = 0; index < segments.length; index += 1) {
     sorted[index] = { ...segments[index]! };
   }
-  sorted.sort((left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn);
-  const merged: DirtyRowSegment[] = [];
-  for (const segment of sorted) {
-    const previous = merged.at(-1);
-    if (!previous || segment.startColumn > previous.endColumn) {
-      merged.push(segment);
+  mergeDirtyRowSegmentsInPlace(sorted);
+  return sorted;
+}
+
+/** Sorts and merges overlapping or adjacent row segments in place. */
+export function mergeDirtyRowSegmentsInPlace(ranges: DirtyRowSegment[]): void {
+  if (ranges.length < 2) return;
+  ranges.sort((left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn);
+  let writeIndex = 0;
+  for (let readIndex = 1; readIndex < ranges.length; readIndex += 1) {
+    const active = ranges[writeIndex]!;
+    const next = ranges[readIndex]!;
+    if (next.startColumn <= active.endColumn) {
+      active.endColumn = Math.max(active.endColumn, next.endColumn);
       continue;
     }
-    previous.endColumn = Math.max(previous.endColumn, segment.endColumn);
+    writeIndex += 1;
+    ranges[writeIndex] = next;
   }
-  return merged;
+  ranges.length = writeIndex + 1;
 }

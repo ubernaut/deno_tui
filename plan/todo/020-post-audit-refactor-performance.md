@@ -682,3 +682,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   direct helper cost.
 - Removed the default options-object allocation from `changedSpansInto`, keeping the retained workbench ANSI span
   detector allocation-light for default terminal flushes while preserving configured merge/cap behavior.
+- Consolidated canvas dirty row range merging into `mergeDirtyRowSegmentsInPlace`, replacing duplicate canvas, box, and
+  text object implementations with one tested helper for future render invalidation tuning.

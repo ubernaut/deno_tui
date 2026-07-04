@@ -5,7 +5,7 @@ import { Signal, SignalOfObject } from "../signals/mod.ts";
 import type { Rectangle } from "../types.ts";
 import { signalify } from "../utils/signals.ts";
 import { Subscription } from "../signals/types.ts";
-import type { DirtyRowSegment } from "./dirty_region.ts";
+import { type DirtyRowSegment, mergeDirtyRowSegmentsInPlace } from "./dirty_region.ts";
 
 /** Options for configuring box Object. */
 export interface BoxObjectOptions extends DrawObjectOptions {
@@ -118,7 +118,7 @@ export class BoxObject extends DrawObject<"box"> {
       const rerenderQueueRow = rerenderQueue[row] ??= new Set();
 
       if (ranges?.length) {
-        mergeBoxRowRanges(ranges);
+        mergeDirtyRowSegmentsInPlace(ranges);
         for (const range of ranges) {
           const start = Math.max(range.startColumn, rectangle.column);
           const end = Math.min(range.endColumn, columnRange);
@@ -145,22 +145,4 @@ export class BoxObject extends DrawObject<"box"> {
       }
     }
   }
-}
-
-function mergeBoxRowRanges(ranges: DirtyRowSegment[]): void {
-  if (ranges.length < 2) return;
-  ranges.sort((left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn);
-
-  let writeIndex = 0;
-  for (let readIndex = 1; readIndex < ranges.length; readIndex += 1) {
-    const active = ranges[writeIndex]!;
-    const next = ranges[readIndex]!;
-    if (next.startColumn <= active.endColumn) {
-      active.endColumn = Math.max(active.endColumn, next.endColumn);
-      continue;
-    }
-    writeIndex += 1;
-    ranges[writeIndex] = next;
-  }
-  ranges.length = writeIndex + 1;
 }
