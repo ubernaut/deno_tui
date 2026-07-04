@@ -241,6 +241,12 @@ export class WindowManagerController {
     return this.active();
   }
 
+  restoreNextMinimized(): WindowManagerWindow | undefined {
+    const window = firstMinimizedWindow(this.#orderedWindows(false));
+    if (!window) return undefined;
+    return this.restore(window.id);
+  }
+
   fullscreen(id = this.activeId.peek()): WindowManagerWindow | undefined {
     if (!id) return undefined;
     const window = this.#window(id);
@@ -421,6 +427,14 @@ function firstNonMinimizedWindow(windows: readonly WindowManagerWindow[]): Windo
   for (let index = 0; index < windows.length; index += 1) {
     const window = windows[index]!;
     if (windowState(window) !== "minimized") return window;
+  }
+  return undefined;
+}
+
+function firstMinimizedWindow(windows: readonly WindowManagerWindow[]): WindowManagerWindow | undefined {
+  for (let index = 0; index < windows.length; index += 1) {
+    const window = windows[index]!;
+    if (windowState(window) === "minimized") return window;
   }
   return undefined;
 }

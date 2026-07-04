@@ -65,6 +65,28 @@ Deno.test("window manager keeps closed windows out of focus and tab loops", () =
   manager.dispose();
 });
 
+Deno.test("window manager restores the next minimized open window in order", () => {
+  const manager = new WindowManagerController({
+    activeId: "editor",
+    windows: [
+      { id: "explorer", title: "Explorer" },
+      { id: "editor", title: "Editor" },
+      { id: "preview", title: "Preview" },
+      { id: "logs", title: "Logs", state: "closed" },
+    ],
+  });
+
+  manager.minimize("preview");
+  manager.minimize("explorer");
+  assertEquals(manager.restoreNextMinimized()?.id, "explorer");
+  assertEquals(manager.active()?.id, "explorer");
+  assertEquals(manager.inspect().windows.find((entry) => entry.id === "explorer")?.minimized, false);
+  assertEquals(manager.restoreNextMinimized()?.id, "preview");
+  assertEquals(manager.restoreNextMinimized(), undefined);
+  assertEquals(manager.inspect().windows.find((entry) => entry.id === "logs")?.closed, true);
+  manager.dispose();
+});
+
 Deno.test("window manager can upsert rename and reorder managed windows", () => {
   const manager = new WindowManagerController({
     activeId: "editor",

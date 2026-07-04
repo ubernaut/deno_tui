@@ -4225,14 +4225,13 @@ function focusWindowByNumber(key: string): boolean {
 }
 
 function restoreNextMinimizedWindow(): void {
-  const entry = windowManager.inspect().windows.find((window) => window.minimized && !window.closed);
-  if (!entry) {
+  const restored = windowManager.restoreNextMinimized();
+  if (!restored) {
     pushLog("no minimized windows");
     return;
   }
-  windowManager.restore(entry.id);
   syncWindowSignalsFromManager();
-  pushLog(`restore ${windowTitle(entry.id as WindowId)}`);
+  pushLog(`restore ${windowTitle(restored.id as WindowId)}`);
 }
 
 function handleThreeConfigKey(event: { key: string; shift?: boolean }): void {
