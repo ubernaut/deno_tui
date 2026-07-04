@@ -185,6 +185,7 @@ import {
 } from "./api_workbench_catalog.ts";
 import {
   type ApiWorkbenchBuiltInWindowId,
+  apiWorkbenchVisualizationSupportsThree,
   createApiWorkbenchWindowCatalog,
   TERMINAL_OUTPUT_OPTION_ID,
   TERMINAL_OUTPUT_WINDOW_ID,
@@ -2991,22 +2992,22 @@ function isThreeRenderedWindow(id: WindowId): boolean {
 function visualizationWindowSupportsThree(id: VisualizationWindowId): boolean {
   const visualizationId = dynamicVisualizationWindows.peek()[id];
   if (!visualizationId) return false;
-  return visualizationIdSupportsThree(visualizationId);
+  return apiWorkbenchVisualizationSupportsThree(
+    visualizationThreeSupport,
+    visualizationId,
+    probeVisualizationThreeSupport,
+  );
 }
 
-function visualizationIdSupportsThree(visualizationId: string): boolean {
-  const cached = visualizationThreeSupport.get(visualizationId);
-  if (cached !== undefined) return cached;
-  const supportsThree = Boolean(
-    renderVisualization(buildVisualizationContext(visualizationId, {
+function probeVisualizationThreeSupport(visualizationId: string): PanelRender {
+  return renderVisualization(
+    buildVisualizationContext(visualizationId, {
       column: 0,
       row: 0,
       width: 48,
       height: 16,
-    })).three,
+    }),
   );
-  visualizationThreeSupport.set(visualizationId, supportsThree);
-  return supportsThree;
 }
 
 function withWorkspacePlacement(bounds: Rectangle, offset: number, render: () => void): void {

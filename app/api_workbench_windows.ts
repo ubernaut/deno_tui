@@ -95,3 +95,19 @@ export function createApiWorkbenchWindowCatalog(
     ],
   };
 }
+
+export interface ApiWorkbenchVisualizationThreeProbe {
+  three?: unknown;
+}
+
+export function apiWorkbenchVisualizationSupportsThree(
+  cache: Map<string, boolean>,
+  visualizationId: string,
+  probe: (visualizationId: string) => ApiWorkbenchVisualizationThreeProbe,
+): boolean {
+  const cached = cache.get(visualizationId);
+  if (cached !== undefined) return cached;
+  const supportsThree = Boolean(probe(visualizationId).three);
+  cache.set(visualizationId, supportsThree);
+  return supportsThree;
+}

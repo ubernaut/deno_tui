@@ -2,6 +2,7 @@ import { assertEquals } from "./deps.ts";
 import { HTML_CSS_LAYOUT_OPTION_ID, HTML_CSS_LAYOUT_WINDOW_ID } from "../src/markup/demo_fixtures.ts";
 import {
   apiWorkbenchBuiltInWindowOrder,
+  apiWorkbenchVisualizationSupportsThree,
   createApiWorkbenchWindowCatalog,
   TERMINAL_OUTPUT_OPTION_ID,
   TERMINAL_OUTPUT_WINDOW_ID,
@@ -41,4 +42,19 @@ Deno.test("API workbench window catalog places terminal and layout options befor
   assertEquals(catalog.newWindowOptions[2]!.windowId, HTML_CSS_LAYOUT_WINDOW_ID);
   assertEquals(catalog.visualizationWindowOptionIds, ["cpu-monitor", "three-lattice"]);
   assertEquals(catalog.visualizationWindowOptionById.get("three-lattice")?.group, "Neon 3D");
+});
+
+Deno.test("API workbench visualization Three support probe caches results", () => {
+  const cache = new Map<string, boolean>();
+  let probes = 0;
+  const probe = (id: string) => {
+    probes += 1;
+    return { three: id === "three-lattice" ? {} : undefined };
+  };
+
+  assertEquals(apiWorkbenchVisualizationSupportsThree(cache, "three-lattice", probe), true);
+  assertEquals(apiWorkbenchVisualizationSupportsThree(cache, "cpu-monitor", probe), false);
+  assertEquals(apiWorkbenchVisualizationSupportsThree(cache, "three-lattice", probe), true);
+  assertEquals(apiWorkbenchVisualizationSupportsThree(cache, "cpu-monitor", probe), false);
+  assertEquals(probes, 2);
 });
