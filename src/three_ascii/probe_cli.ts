@@ -1,15 +1,13 @@
 /** Shared CLI helpers for Three ASCII probe scripts. */
 
 export function numberArg(args: readonly string[], name: string, fallback: number): number {
-  const prefix = `${name}=`;
-  const raw = args.find((arg) => arg.startsWith(prefix))?.slice(prefix.length);
+  const raw = argValue(args, name);
   const parsed = raw === undefined ? Number.NaN : Number(raw);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 export function stringArg(args: readonly string[], name: string, fallback: string): string {
-  const prefix = `${name}=`;
-  return args.find((arg) => arg.startsWith(prefix))?.slice(prefix.length) || fallback;
+  return argValue(args, name) || fallback;
 }
 
 export function choiceArg<const T extends string>(
@@ -37,4 +35,17 @@ export function formatMs(value: number | undefined): string {
 
 export function formatFps(frameMs: number): string {
   return frameMs > 0 ? (1000 / frameMs).toFixed(1) : "0.0";
+}
+
+function argValue(args: readonly string[], name: string): string | undefined {
+  const prefix = `${name}=`;
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg?.startsWith(prefix)) return arg.slice(prefix.length);
+    if (arg !== name) continue;
+    const next = args[index + 1];
+    if (next === undefined || next.startsWith("--")) return undefined;
+    return next;
+  }
+  return undefined;
 }

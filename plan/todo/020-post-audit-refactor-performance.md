@@ -534,3 +534,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   state mutation and side effects.
 - Fixed the ThreePanelFrameView deferred-readback startup path so empty deferred frames no longer replace the visible
   startup/current grid; the live probe now reports real `26x8` block grids instead of staying at `0x0` initializing.
+- Hardened the Three ASCII probe CLI helpers to accept both `--flag=value` and `--flag value`, preventing performance
+  probes from silently falling back to default cell budgets during renderer investigations.
