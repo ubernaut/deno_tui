@@ -223,6 +223,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Tuned the terminal-hosted workbench Three ASCII startup budget to begin at 480 cells and drop to 240 after the first
   high-byte terminal flush, reducing the default startup pane cost for slow SSH/tmux sessions while still allowing slow
   recovery to the 960-cell high-quality cap.
+- Made `ThreePanelFrameView` accept a reactive frame interval and wired workbench-hosted Three panes to lower FPS as
+  terminal pressure rises, reducing truecolor block-mode bytes per second in SSH/tmux sessions.
 - Extracted API workbench Explorer row projection into a focused helper with direct tests for selection, icons, and
   caller-owned row reuse.
 - Extracted API workbench Data Table row projection and page-size calculation into a generic helper with direct tests

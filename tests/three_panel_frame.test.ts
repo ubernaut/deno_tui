@@ -523,6 +523,38 @@ Deno.test("ThreePanelFrameView accepts reactive render cell caps", async () => {
   }
 });
 
+Deno.test("ThreePanelFrameView accepts reactive frame intervals", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 32, height: 12 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal(createDefaultAsciiOptions("sharp"));
+  const enabled = new Signal(true);
+  const frameInterval = new Signal(50);
+  let renderer: FakeGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    enabled,
+    frameInterval,
+    rendererFactory: (options) => renderer = new FakeGridRenderer(options.columns, options.rows),
+  });
+
+  try {
+    await waitFor(() => (renderer?.renderCount ?? 0) >= 1);
+    const firstCount = renderer!.renderCount;
+
+    frameInterval.value = 100;
+    await waitFor(() => (renderer?.renderCount ?? 0) > firstCount);
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+    frameInterval.dispose();
+  }
+});
+
 Deno.test("ThreePanelFrameView lowers render cells after slow renderer telemetry", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 160, height: 60 }, { deepObserve: true });
   const scene = new Signal<ThreeSceneState | null>(sceneState());

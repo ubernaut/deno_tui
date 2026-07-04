@@ -319,7 +319,7 @@ export class ThreePanelFrameView {
   private readonly syncCallback = () => this.sync();
   private readonly effect: Effect;
   private readonly syncScheduler = new SignalBatchScheduler();
-  private readonly frameInterval: number;
+  private readonly frameInterval: number | Signal<number>;
   private readonly onUpdate?: () => void;
   private lastFrameTime = performance.now();
   private rendering = false;
@@ -359,7 +359,7 @@ export class ThreePanelFrameView {
       graphicsSurface?: GraphicsSurface | (() => GraphicsSurface | null | undefined);
       graphicsRectangle?: SignalOfObject<Rect>;
       diagnostics?: DiagnosticsCollector;
-      frameInterval?: number;
+      frameInterval?: number | Signal<number>;
       maxRenderCells?: number | Signal<number>;
       onUpdate?: () => void;
       rendererFactory?: ThreePanelRendererFactory;
@@ -373,6 +373,7 @@ export class ThreePanelFrameView {
       void options.ascii.value;
       if (options.enabled instanceof Signal) void options.enabled.value;
       if (options.maxRenderCells instanceof Signal) void options.maxRenderCells.value;
+      if (options.frameInterval instanceof Signal) void options.frameInterval.value;
       this.scheduleSync();
     });
     this.scheduleSync();
@@ -595,7 +596,7 @@ export class ThreePanelFrameView {
       } else if (this.running) {
         this.frameTimer = setTimeout(
           () => void this.renderLoop(),
-          nextFrameDelay(this.frameInterval, frameStartedAt, performance.now()),
+          nextFrameDelay(this.currentFrameInterval(), frameStartedAt, performance.now()),
         );
       }
     }
@@ -605,7 +606,7 @@ export class ThreePanelFrameView {
     const performanceInfo = renderer.inspectPerformance?.();
     if (!performanceInfo) return;
     const now = performance.now();
-    const targetMs = Math.max(1, this.frameInterval);
+    const targetMs = Math.max(1, this.currentFrameInterval());
     const slowThreshold = Math.max(80, targetMs * 1.5);
     if (performanceInfo.totalMs < slowThreshold || now - this.lastSlowFrameReportTime < 2_000) return;
     this.lastSlowFrameReportTime = now;
@@ -648,11 +649,12 @@ export class ThreePanelFrameView {
     const performanceInfo = renderer.inspectPerformance?.();
     if (!performanceInfo) return;
     const requestedMaxCells = this.requestedRenderMaxCells(ascii);
+    const targetMs = this.currentFrameInterval();
     const next = resolveThreePanelAdaptiveRenderBudget({
       requestedMaxCells,
       currentMaxCells: this.adaptiveRenderMaxCells,
       frameMs: performanceInfo.totalMs,
-      targetMs: this.frameInterval,
+      targetMs,
       slowFrames: this.adaptiveSlowFrames,
       fastFrames: this.adaptiveFastFrames,
     });
@@ -673,13 +675,13 @@ export class ThreePanelFrameView {
       code: "three-ascii-adaptive-render-cells",
       severity: "debug",
       message: `Three ASCII render budget ${next.direction === "down" ? "reduced" : "raised"} to ${maxCells} cells.`,
-      detail: `frame ${performanceInfo.totalMs.toFixed(1)}ms, target ${this.frameInterval.toFixed(1)}ms`,
+      detail: `frame ${performanceInfo.totalMs.toFixed(1)}ms, target ${targetMs.toFixed(1)}ms`,
       context: {
         direction: next.direction,
         maxCells,
         requestedMaxCells,
         frameMs: Math.round(performanceInfo.totalMs * 10) / 10,
-        targetMs: Math.round(this.frameInterval * 10) / 10,
+        targetMs: Math.round(targetMs * 10) / 10,
       },
     });
   }
@@ -858,6 +860,11 @@ export class ThreePanelFrameView {
       ? this.options.maxRenderCells.peek()
       : this.options.maxRenderCells;
     return Math.max(1, Math.floor(maxRenderCells ?? ascii.renderMaxCells));
+  }
+
+  private currentFrameInterval(): number {
+    const frameInterval = this.frameInterval instanceof Signal ? this.frameInterval.peek() : this.frameInterval;
+    return Math.max(1, frameInterval);
   }
 
   dispose(): void {

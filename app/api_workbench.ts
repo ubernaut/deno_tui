@@ -319,6 +319,11 @@ const WORKBENCH_THREE_PRESSURE_LEVELS = [240, WORKBENCH_THREE_INITIAL_CELLS, WOR
 const WORKBENCH_THREE_PRESSURE_HIGH_BYTES = 80_000;
 const WORKBENCH_THREE_PRESSURE_LOW_BYTES = 35_000;
 const WORKBENCH_THREE_PRESSURE_HIGH_FRAME_THRESHOLD = 1;
+const WORKBENCH_THREE_FRAME_INTERVAL_BY_CELLS = new Map<number, number>([
+  [240, 1000 / 8],
+  [WORKBENCH_THREE_INITIAL_CELLS, 1000 / 10],
+  [WORKBENCH_THREE_LIVE_MAX_CELLS, 1000 / 14],
+]);
 
 type BuiltInWindowId =
   | "explorer"
@@ -648,6 +653,7 @@ const windowScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const workspaceScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const dropdownOverlayRenderCommands: WorkbenchDropdownOverlayRenderCommand[] = [];
 const workbenchThreeLiveMaxCells = new Signal(WORKBENCH_THREE_INITIAL_CELLS);
+const workbenchThreeFrameInterval = new Signal(frameIntervalForWorkbenchThreeCells(WORKBENCH_THREE_INITIAL_CELLS));
 let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
@@ -852,7 +858,7 @@ const threePanel = new ThreePanelFrameView({
   ascii,
   enabled: threeAsciiAvailable,
   graphicsSurface: () => kittyGraphics.surfaceFor(ascii.peek()),
-  frameInterval: 1000 / 18,
+  frameInterval: workbenchThreeFrameInterval,
   maxRenderCells: workbenchThreeLiveMaxCells,
   diagnostics: workbenchDiagnostics,
   onUpdate: scheduleDraw,
@@ -1044,6 +1050,7 @@ tui.on("destroy", () => {
   asciiConfigs.dispose();
   threeAsciiAvailable.dispose();
   workbenchThreeLiveMaxCells.dispose();
+  workbenchThreeFrameInterval.dispose();
   drawScheduler.cancel();
 });
 
@@ -1081,7 +1088,9 @@ function updateThreeTerminalPressure(stats: WorkbenchAnsiScreenFlushStats): void
   terminalPressure.currentCells = next.currentCells;
   terminalPressure.highFrames = next.highFrames;
   terminalPressure.lowFrames = next.lowFrames;
-  if (next.changed) workbenchThreeLiveMaxCells.value = next.currentCells;
+  if (!next.changed) return;
+  workbenchThreeLiveMaxCells.value = next.currentCells;
+  workbenchThreeFrameInterval.value = frameIntervalForWorkbenchThreeCells(next.currentCells);
 }
 
 function scheduleDraw(): void {
@@ -2870,7 +2879,7 @@ function ensureVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
     ascii: asciiForWindow(id),
     enabled: threeAsciiAvailable,
     graphicsSurface: () => kittyGraphics.surfaceFor(asciiForWindow(id).peek()),
-    frameInterval: 1000 / 18,
+    frameInterval: workbenchThreeFrameInterval,
     maxRenderCells: workbenchThreeLiveMaxCells,
     diagnostics: workbenchDiagnostics,
     onUpdate: scheduleDraw,
@@ -2878,6 +2887,10 @@ function ensureVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
   const entry = { rectangle, graphicsRectangle, scene, panel };
   visualizationThreePanels.set(id, entry);
   return entry;
+}
+
+function frameIntervalForWorkbenchThreeCells(cells: number): number {
+  return WORKBENCH_THREE_FRAME_INTERVAL_BY_CELLS.get(cells) ?? 1000 / 10;
 }
 
 function hideVisualizationThreePanel(id: VisualizationWindowId): void {
