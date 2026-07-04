@@ -27,8 +27,6 @@ import {
   hydrateWorkbenchPanelWorkspaceStore,
   initialWorkbenchDiagnosticLogRows,
   InputController,
-  isWorkbenchMenuActivationKey,
-  isWorkbenchMenuCloseKey,
   layoutWorkbenchButtonRowInto,
   layoutWorkbenchHeaderInto,
   layoutWorkbenchMenuBarHitsInto,
@@ -42,7 +40,6 @@ import {
   MenuBarController,
   modalContentHeight,
   ModalController,
-  moveWorkbenchMenuIndex,
   nextWorkbenchTerminalSessionId,
   normalizeTerminalWorkspaceSnapshot,
   normalizeWorkbenchPanelWorkspaceState,
@@ -54,6 +51,7 @@ import {
   projectWorkbenchButtonCommand,
   RadioGroupController,
   renderMenuBar,
+  resolveWorkbenchScreenDropdownKey,
   ScrollAreaController,
   scrollbarGlyph,
   scrollbarOffsetForPointer,
@@ -1731,12 +1729,37 @@ function setTheme(index: number): void {
 }
 
 function handleThemeMenuKey(event: { key: string; shift?: boolean }): void {
-  if (isWorkbenchMenuCloseKey(event.key)) {
-    closeThemeMenu();
-    return;
+  const action = resolveWorkbenchScreenDropdownKey({
+    event,
+    openId: topMenus.inspect().openId,
+    indexes: { theme: themeIndex.peek() },
+    counts: { theme: themes.length },
+  });
+  switch (action.kind) {
+    case "ignore":
+      return;
+    case "quit":
+      openQuitModal();
+      return;
+    case "help":
+      closeThemeMenu();
+      openHelpModal();
+      return;
+    case "close":
+      closeThemeMenu();
+      return;
+    case "focusWindow":
+      closeThemeMenu();
+      action.delta < 0 ? focusPrevious() : focusNext();
+      return;
+    case "moveTopMenu":
+      return;
+    case "menuItem":
+      if (action.menuId !== "theme") return;
+      themeIndex.value = action.index;
+      if (action.activate) setTheme(action.index);
+      return;
   }
-  themeIndex.value = moveWorkbenchMenuIndex(themeIndex.peek(), themes.length, event);
-  if (isWorkbenchMenuActivationKey(event.key)) setTheme(themeIndex.peek());
 }
 
 function toggleThemeMenu(): void {

@@ -1007,3 +1007,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added an allocation-free frame-row assembly path for truecolor background-space cells, keeping high-cardinality block
   rows off the generic styled-cell splitter. The focused workbench cell blit benchmark held around 1.63ms, and the
   Three block span flush benchmark held around 1.02ms on longer repeats.
+- Routed the browser API workbench theme dropdown keyboard handling through the shared screen-dropdown key resolver, so
+  web and terminal menus share close/help/quit/focus/navigation semantics instead of maintaining parallel theme-only
+  key logic.
