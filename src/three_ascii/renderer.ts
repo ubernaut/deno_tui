@@ -8,6 +8,7 @@ import {
   ThreeAsciiAnsiGridAssembler as InternalThreeAsciiAnsiGridAssembler,
   type ThreeAsciiAnsiGridInput as InternalThreeAsciiAnsiGridInput,
 } from "./ansi_grid.ts";
+import { computeThreeAsciiCameraAspect, shouldUpdateThreeAsciiCameraAspect } from "./camera_aspect.ts";
 import type { TerminalGlyphStyle } from "./glyphs.ts";
 import { HeadlessCanvas } from "./headless_canvas.ts";
 import { loadAsciiLutTextures } from "./loadAsciiLuts.ts";
@@ -577,9 +578,13 @@ export class ThreeAsciiRenderer {
       return;
     }
 
-    const aspect = (this.columns * this.pixelAspectRatio) / Math.max(1, this.rows);
+    const aspect = computeThreeAsciiCameraAspect({
+      columns: this.columns,
+      rows: this.rows,
+      pixelAspectRatio: this.pixelAspectRatio,
+    });
 
-    if (Math.abs(this.camera.aspect - aspect) > 0.000001) {
+    if (shouldUpdateThreeAsciiCameraAspect(this.camera.aspect, aspect)) {
       this.camera.aspect = aspect;
       this.camera.updateProjectionMatrix();
     }
