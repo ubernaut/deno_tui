@@ -54,6 +54,27 @@ export interface WorkbenchTopMenuDropdownOverlayOptions {
   measureText?: (value: string) => number;
 }
 
+/** Per-menu label and selection data used to project one standard top-menu overlay. */
+export interface WorkbenchStandardTopMenuDropdownEntry {
+  visible: WorkbenchTopMenuVisibleSlice;
+  labels: readonly string[];
+  selectedIndex?: number;
+  preferredWidth: number;
+  maxVisibleItems?: number;
+  itemId?: string;
+}
+
+/** Options for projecting whichever standard top-menu dropdown is currently open. */
+export interface WorkbenchStandardTopMenuDropdownOverlayOptions {
+  openId: WorkbenchStandardTopMenuId | null;
+  menuStart: number;
+  menuItems: readonly WorkbenchMenuBarItemShape[];
+  menuActiveIndex?: number;
+  maxWidth: number;
+  entries: Partial<Record<WorkbenchStandardTopMenuId, WorkbenchStandardTopMenuDropdownEntry>>;
+  measureText?: (value: string) => number;
+}
+
 /** Renderer-neutral dropdown overlay projected from a standard top menu item. */
 export interface WorkbenchTopMenuDropdownOverlay {
   kind: WorkbenchStandardTopMenuId;
@@ -386,6 +407,29 @@ export function workbenchTopMenuDropdownOverlayInto(
   };
 }
 
+/** Projects the active standard top-menu dropdown overlay, if one is open and configured. */
+export function workbenchStandardTopMenuDropdownOverlayInto(
+  options: WorkbenchStandardTopMenuDropdownOverlayOptions,
+): WorkbenchTopMenuDropdownOverlay | null {
+  const openId = options.openId;
+  if (!openId) return null;
+  const entry = options.entries[openId];
+  if (!entry) return null;
+  return workbenchTopMenuDropdownOverlayInto(entry.visible, {
+    menuStart: options.menuStart,
+    menuId: openId,
+    itemId: entry.itemId ?? workbenchTopMenuItemIdForStandardMenu(openId),
+    menuItems: options.menuItems,
+    menuActiveIndex: options.menuActiveIndex,
+    labels: entry.labels,
+    selectedIndex: entry.selectedIndex,
+    preferredWidth: entry.preferredWidth,
+    maxWidth: options.maxWidth,
+    maxVisibleItems: entry.maxVisibleItems,
+    measureText: options.measureText,
+  });
+}
+
 /** Lays out visible top-menu item hit rectangles within an available row width. */
 export function layoutWorkbenchMenuBarHits(options: WorkbenchMenuBarHitLayoutOptions): WorkbenchMenuBarHitLayout[] {
   return layoutWorkbenchMenuBarHitsInto([], options);
@@ -451,6 +495,10 @@ export function layoutWorkbenchHeaderInto(
     target.close = undefined;
   }
   return target;
+}
+
+function workbenchTopMenuItemIdForStandardMenu(menuId: WorkbenchStandardTopMenuId): string {
+  return menuId === "newWindow" ? "new" : menuId;
 }
 
 function clampMenuSelection(index: number, count: number): number {

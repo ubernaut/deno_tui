@@ -34,7 +34,6 @@ import {
   layoutWorkbenchShelfInto,
   layoutWorkbenchTabsInto,
   layoutWorkbenchTitlebarInto,
-  layoutWorkbenchTopMenuItemRect,
   loadWorkbenchPanelWorkspaceCache,
   maxTextWidth,
   MenuBarController,
@@ -85,6 +84,7 @@ import {
   type WorkbenchScrollbarRenderCommand,
   workbenchShelfEntriesInto,
   workbenchShelfRenderCommandsInto,
+  workbenchStandardTopMenuDropdownOverlayInto,
   workbenchStatusSnapshotLine,
   workbenchTabEntriesInto,
   workbenchTerminalCopyRowsInto,
@@ -102,6 +102,7 @@ import {
   workbenchTerminalToolbarStateFromSnapshot,
   type WorkbenchTitlebarButtonKind,
   workbenchTitlebarButtonRenderCommandsInto,
+  type WorkbenchTopMenuVisibleSlice,
   workbenchVisibleWindowRectsInto,
   workbenchWorkspaceScrollbarRenderCommandsInto,
   WorkbenchWorkspaceViewportController,
@@ -268,9 +269,11 @@ type AsciiOptions = ThreeAsciiConfigOptions;
 type AsciiConfigRow = WorkbenchAsciiConfigRow;
 
 interface DropdownOverlay {
-  kind: "theme" | "control";
+  kind: "theme" | "newWindow" | "workspace" | "control";
+  coordinate?: "screen" | "workspace";
   rect: Rectangle;
   items: string[];
+  itemIndexes?: number[];
   selectedIndex?: number;
 }
 
@@ -436,6 +439,7 @@ const controlSliderSetHit: ApiWorkbenchControlHitPlacement = {
 const controlStepperHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 const modalBuffers = new WorkbenchModalBufferCache<number>();
 const dropdownOverlayRenderCommands: WorkbenchDropdownOverlayRenderCommand[] = [];
+const themeMenuSlice: WorkbenchTopMenuVisibleSlice = { items: [], indexes: [] };
 let dropdownOverlay: DropdownOverlay | null = null;
 let pointerDrag: {
   x: number;
@@ -742,19 +746,22 @@ function draw(): void {
     writeButton(frame, header.close.row, header.close.column, "x", { compact: true, tone: "danger" });
     hitTargets.add(header.close, { type: "quit" });
   }
-  if (themeMenuOpen.peek()) {
-    dropdownOverlay = {
-      kind: "theme",
-      rect: menuItemRect(
-        17,
-        "theme",
-        themeMenuWidth,
-        themes.length + 2,
-      ),
-      items: themeLabels,
-      selectedIndex: themeIndex.peek(),
-    };
-  }
+  dropdownOverlay = workbenchStandardTopMenuDropdownOverlayInto({
+    openId: topMenus.inspect().openId,
+    menuStart: header.menu.column,
+    menuItems: menu.items.peek(),
+    menuActiveIndex: menu.activeIndex.peek(),
+    maxWidth: width,
+    entries: {
+      theme: {
+        visible: themeMenuSlice,
+        labels: themeLabels,
+        selectedIndex: themeIndex.peek(),
+        preferredWidth: themeMenuWidth,
+      },
+    },
+    measureText: textWidth,
+  });
   renderMobileCommandStrip(frame);
   const body = { column: 1, row: 3, width: Math.max(10, width - 2), height: Math.max(6, height - 5) };
   const layout = workspaceLayout({
@@ -893,19 +900,6 @@ function renderMobileCommandStrip(frame: string[]): void {
     );
     hitTargets.add(command.hitRect, { type: "mobileAction", action: command.item.action });
   }
-}
-
-function menuItemRect(menuStart: number, itemId: string, preferredWidth: number, preferredHeight: number): Rectangle {
-  return layoutWorkbenchTopMenuItemRect({
-    menuStart,
-    itemId,
-    items: menu.items.peek(),
-    activeIndex: menu.activeIndex.peek(),
-    preferredWidth,
-    preferredHeight,
-    maxWidth: cols(),
-    measureText: textWidth,
-  });
 }
 
 function renderWindowTabs(frame: string[]): void {

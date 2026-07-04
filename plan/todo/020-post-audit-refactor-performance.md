@@ -191,6 +191,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   duplicate probe-local math.
 - Extracted shared workbench status snapshot line composition so terminal and browser adapters no longer duplicate
   focus/theme/tile-density/diagnostic status-bar wiring.
+- Extracted active standard top-menu dropdown projection so terminal and browser workbench adapters share menu
+  anchoring, visible slicing, selected-index mapping, and item id defaults.
 - Added sustained byte-rate context to workbench Three pressure change logs so adaptive downshifts show the same signal
   used by the policy.
 - Lowered the workbench Three sustained terminal byte-rate pressure threshold to make the default block renderer back

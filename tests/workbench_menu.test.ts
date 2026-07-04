@@ -11,6 +11,7 @@ import {
   projectWorkbenchStandardTopMenuState,
   resolveWorkbenchMenuFocusKey,
   resolveWorkbenchScreenDropdownKey,
+  workbenchStandardTopMenuDropdownOverlayInto,
   workbenchStandardTopMenuIdForItem,
   WorkbenchTopMenuController,
   workbenchTopMenuDropdownOverlayInto,
@@ -233,6 +234,59 @@ Deno.test("workbenchTopMenuDropdownOverlayInto projects anchored visible menu sl
   assertEquals(next.items, ["Unit-01"]);
   assertEquals(next.itemIndexes, [0]);
   assertEquals(next.selectedIndex, 0);
+});
+
+Deno.test("workbenchStandardTopMenuDropdownOverlayInto projects the open standard menu", () => {
+  const themeVisible = { items: [], indexes: [] };
+  const newVisible = { items: [], indexes: [] };
+  const overlay = workbenchStandardTopMenuDropdownOverlayInto({
+    openId: "newWindow",
+    menuStart: 4,
+    menuItems: [
+      { id: "theme", label: "Theme" },
+      { id: "new", label: "New" },
+      { id: "workspace", label: "Workspace" },
+    ],
+    menuActiveIndex: 1,
+    maxWidth: 80,
+    entries: {
+      theme: {
+        visible: themeVisible,
+        labels: ["Unit-01"],
+        selectedIndex: 0,
+        preferredWidth: 18,
+      },
+      newWindow: {
+        visible: newVisible,
+        labels: ["Inspector", "Data", "Three", "Logs"],
+        selectedIndex: 2,
+        preferredWidth: 20,
+        maxVisibleItems: 2,
+      },
+    },
+    measureText: (value) => value.length,
+  });
+
+  assertEquals(overlay, {
+    kind: "newWindow",
+    coordinate: "screen",
+    rect: { column: 10, row: 1, width: 20, height: 4 },
+    items: ["Data", "Three"],
+    itemIndexes: [1, 2],
+    selectedIndex: 1,
+  });
+  assertEquals(overlay?.items === newVisible.items, true);
+  assertEquals(themeVisible.items, []);
+  assertEquals(
+    workbenchStandardTopMenuDropdownOverlayInto({
+      openId: "workspace",
+      menuStart: 4,
+      menuItems: [{ id: "workspace", label: "Workspace" }],
+      maxWidth: 80,
+      entries: {},
+    }),
+    null,
+  );
 });
 
 Deno.test("layoutWorkbenchMenuBarHits returns visible menu item rectangles", () => {
