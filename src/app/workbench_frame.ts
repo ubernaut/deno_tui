@@ -194,12 +194,12 @@ export function fillFrameRect(
 
 /** Assembles one frame row from sparse styled cells. */
 export function renderFrameRow(cells: string[], width: number): string {
-  return renderFrameCells((column) => cells[column] ?? " ", width);
+  return renderFrameArrayCells(cells, 0, width);
 }
 
 /** Assembles a clipped frame row slice from sparse styled cells. */
 export function renderFrameSlice(cells: string[], start: number, width: number): string {
-  return renderFrameCells((column) => cells[start + column] ?? " ", width);
+  return renderFrameArrayCells(cells, start, width);
 }
 
 /** Applies a sparse workbench frame to retained line signals while skipping unchanged terminal rows. */
@@ -365,28 +365,28 @@ function updateFrameRowMetadata(cells: string[]): void {
   metadata.dirty = true;
 }
 
-function renderFrameCells(cellAt: (column: number) => string, width: number): string {
+function renderFrameArrayCells(cells: string[], start: number, width: number): string {
   let row = "";
   for (let column = 0; column < width;) {
-    const firstCell = cellAt(column);
+    const firstCell = cells[start + column] ?? " ";
     const first = splitFrameCell(firstCell);
     if (isBackgroundStyledFrameCell(first)) {
-      const styled = renderBackgroundStyledRun(cellAt, column, width, firstCell, first);
+      const styled = renderBackgroundStyledRun(cells, start, column, width, firstCell, first);
       row += styled.value;
       column = styled.nextColumn;
       continue;
     }
     let next = column + 1;
-    while (next < width && cellAt(next) === firstCell) {
+    while (next < width && (cells[start + next] ?? " ") === firstCell) {
       next += 1;
     }
     let text = next - column === 1 ? first.text : first.text.repeat(next - column);
     while (next < width) {
-      const currentCell = cellAt(next);
+      const currentCell = cells[start + next] ?? " ";
       const current = splitFrameCell(currentCell);
       if (current.prefix !== first.prefix || current.suffix !== first.suffix) break;
       let repeatEnd = next + 1;
-      while (repeatEnd < width && cellAt(repeatEnd) === currentCell) {
+      while (repeatEnd < width && (cells[start + repeatEnd] ?? " ") === currentCell) {
         repeatEnd += 1;
       }
       text += repeatEnd - next === 1 ? current.text : current.text.repeat(repeatEnd - next);
@@ -399,7 +399,8 @@ function renderFrameCells(cellAt: (column: number) => string, width: number): st
 }
 
 function renderBackgroundStyledRun(
-  cellAt: (column: number) => string,
+  cells: string[],
+  start: number,
   startColumn: number,
   width: number,
   firstCell: string,
@@ -412,17 +413,17 @@ function renderBackgroundStyledRun(
 
   while (next < width) {
     let repeatEnd = next + 1;
-    while (repeatEnd < width && cellAt(repeatEnd) === currentCell) {
+    while (repeatEnd < width && (cells[start + repeatEnd] ?? " ") === currentCell) {
       repeatEnd += 1;
     }
     let text = repeatEnd - next === 1 ? current.text : current.text.repeat(repeatEnd - next);
     next = repeatEnd;
     while (next < width) {
-      const nextCell = cellAt(next);
+      const nextCell = cells[start + next] ?? " ";
       const nextParts = splitFrameCell(nextCell);
       if (!isBackgroundStyledFrameCell(nextParts) || nextParts.prefix !== current.prefix) break;
       let samePrefixEnd = next + 1;
-      while (samePrefixEnd < width && cellAt(samePrefixEnd) === nextCell) {
+      while (samePrefixEnd < width && (cells[start + samePrefixEnd] ?? " ") === nextCell) {
         samePrefixEnd += 1;
       }
       text += samePrefixEnd - next === 1 ? nextParts.text : nextParts.text.repeat(samePrefixEnd - next);
@@ -431,7 +432,7 @@ function renderBackgroundStyledRun(
     value += `${current.prefix}${text}`;
     if (next >= width) break;
 
-    currentCell = cellAt(next);
+    currentCell = cells[start + next] ?? " ";
     current = splitFrameCell(currentCell);
     if (!isBackgroundStyledFrameCell(current)) break;
   }

@@ -225,6 +225,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   full-screen redraws do not immediately pin the default Three pane to low fidelity.
 - Retuned API workbench Three per-grid terminal-pressure thresholds for the new richer cell tiers so normal truecolor
   block frames can remain at 1920/3840 cells while slow terminal writes still downshift through duration pressure.
+- Specialized array-backed workbench row/slice assembly so Three block pane flushes avoid per-cell callback dispatch
+  while preserving styled-run compaction and clipping behavior.
 - Changed workbench Three cadence so any visible normal/fullscreen Three-backed pane uses the live interval instead of
   being throttled to idle just because focus is elsewhere.
 - Tightened API workbench Three terminal-pressure adaptation to step down on the first heavy terminal flush, improving
