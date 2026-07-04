@@ -199,6 +199,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   instead of spending two high-pressure frames at 480 cells before adapting down.
 - Fixed the adaptive workbench Three pressure probe to sleep on and report the current frame interval per sample, making
   byte-rate diagnostics reflect actual cadence changes after pressure updates.
+- Made high-pressure workbench Three samples downshift immediately, so manually raised 480/960-cell caps do not spend a
+  second expensive terminal frame before backing off on slow sessions.
 - Stabilized default Three ASCII block rendering by using ASCII-safe shared window controls and removing fog from the
   default block preset so truecolor block cells keep source color depth.
 - Extracted the workbench Three ASCII config modal geometry into a tested internal layout helper, reducing inline modal
