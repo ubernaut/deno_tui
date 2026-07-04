@@ -195,6 +195,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   anchoring, visible slicing, selected-index mapping, and item id defaults.
 - Tightened Three workbench pressure adaptation so collapsed observed cadence can downshift even when unrelated
   workbench rows changed in the same flush, and reduced the low-FPS warmup from 24 to 6 renderer updates.
+- Raised the workbench Three low-FPS pressure threshold from catastrophic collapse to 60% of target FPS and fixed the
+  rescue-tier recovery path so low observed cadence cannot accumulate quiet-output recovery frames at the floor.
 - Added sustained byte-rate context to workbench Three pressure change logs so adaptive downshifts show the same signal
   used by the policy.
 - Lowered the workbench Three sustained terminal byte-rate pressure threshold to make the default block renderer back

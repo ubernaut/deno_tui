@@ -278,6 +278,15 @@ export function resolveWorkbenchThreeTerminalPressureBudget(
       direction: "steady",
     };
   }
+  if (highPressure) {
+    return {
+      currentCells: current,
+      highFrames: 0,
+      lowFrames: 0,
+      changed: current !== state.currentCells,
+      direction: "steady",
+    };
+  }
 
   const lowByteRate = bytesPerSecond <= lowBytesPerSecond;
   if (

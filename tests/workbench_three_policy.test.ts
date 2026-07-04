@@ -148,6 +148,47 @@ Deno.test("API workbench Three policy backs off when observed FPS collapses", ()
   assertEquals(state.highFrames, 0);
 });
 
+Deno.test("API workbench Three policy backs off when observed FPS is visibly below target", () => {
+  const state = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_INITIAL_CELLS);
+  const sample = {
+    ...API_WORKBENCH_THREE_PRESSURE_POLICY,
+    renderedThreeGrids: 1,
+    bytes: 1_200,
+    durationMs: 0.05,
+    sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
+    observedFps: 10,
+    targetFps: 20,
+    observedFrameCount: WORKBENCH_THREE_PRESSURE_MIN_FPS_FRAMES,
+  };
+
+  Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
+
+  assertEquals(state.currentCells, 120);
+  assertEquals(state.highFrames, 0);
+});
+
+Deno.test("API workbench Three policy does not recover while observed FPS is still low", () => {
+  const state = createWorkbenchThreeTerminalPressureState(120);
+  const sample = {
+    ...API_WORKBENCH_THREE_PRESSURE_POLICY,
+    renderedThreeGrids: 1,
+    bytes: 300,
+    durationMs: 0.05,
+    sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(120, { live: true }),
+    observedFps: 8,
+    targetFps: 15,
+    observedFrameCount: WORKBENCH_THREE_PRESSURE_MIN_FPS_FRAMES,
+  };
+
+  const frames = (API_WORKBENCH_THREE_PRESSURE_POLICY.lowFrameThreshold ?? 1) + 5;
+  for (let index = 0; index < frames; index += 1) {
+    Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
+  }
+
+  assertEquals(state.currentCells, WORKBENCH_THREE_RESCUE_CELLS);
+  assertEquals(state.lowFrames, 0);
+});
+
 Deno.test("API workbench Three policy ignores early startup-skewed cadence samples", () => {
   const state = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_INITIAL_CELLS);
   const sample = {
