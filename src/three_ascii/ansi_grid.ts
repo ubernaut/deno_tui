@@ -94,6 +94,11 @@ export class ThreeAsciiAnsiGridAssembler {
     const grid = this.reuseGrid ? this.prepareReusableGrid(rows, columns) : createStringGrid(rows, columns);
 
     if (!hasEdges) {
+      if (terminalGlyphMode === GLYPH_MODE_BLOCKS) {
+        return denseFill && denseColors
+          ? this.buildDenseBlockGrid(grid, columns, rows, fillGlyphs, colors)
+          : this.buildBlockGrid(grid, columns, rows, fillGlyphs, colors);
+      }
       if (denseFill && denseColors) {
         return this.buildDenseFillOnlyGrid(
           grid,
@@ -236,6 +241,160 @@ export class ThreeAsciiAnsiGridAssembler {
     this.cachedCellBackgroundKey = -1;
     this.cachedCellGlyphMode = -1;
     this.toByte.clear();
+  }
+
+  private buildBlockGrid(
+    grid: string[][],
+    columns: number,
+    rows: number,
+    fillGlyphs: ArrayLike<number>,
+    colors: ArrayLike<number>,
+  ): string[][] {
+    let lastForegroundKey = -1;
+    let lastCell = "";
+    let lastRawRed = Number.NaN;
+    let lastRawGreen = Number.NaN;
+    let lastRawBlue = Number.NaN;
+
+    for (let row = 0; row < rows; row += 1) {
+      const outputRow = grid[row];
+      const rowOffset = row * columns;
+
+      for (let column = 0; column < columns; column += 1) {
+        const index = rowOffset + column;
+        const fillGlyphIndex = Math.round(fillGlyphs[index] ?? 0);
+        if (fillGlyphIndex < MIN_VISIBLE_FILL_GLYPH_INDEX) {
+          const blankStart = column;
+          column += 1;
+          while (
+            column < columns && Math.round(fillGlyphs[rowOffset + column] ?? 0) < MIN_VISIBLE_FILL_GLYPH_INDEX
+          ) {
+            column += 1;
+          }
+          outputRow.fill(this.blankAnsi, blankStart, column);
+          column -= 1;
+          continue;
+        }
+
+        const colorOffset = index * 4;
+        const rawRed = colors[colorOffset] ?? 0;
+        const rawGreen = colors[colorOffset + 1] ?? 0;
+        const rawBlue = colors[colorOffset + 2] ?? 0;
+        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue) {
+          outputRow[column] = lastCell;
+          continue;
+        }
+
+        const foregroundKey = this.byteColorKeyForIndex(index, rawRed, rawGreen, rawBlue);
+        if (foregroundKey === lastForegroundKey) {
+          outputRow[column] = lastCell;
+          continue;
+        }
+
+        const cachedCell = this.cachedCellForIndex(index, foregroundKey, SOLID_BLOCK_GLYPH_KEY);
+        if (cachedCell !== undefined) {
+          outputRow[column] = cachedCell;
+          lastForegroundKey = foregroundKey;
+          lastCell = cachedCell;
+          lastRawRed = rawRed;
+          lastRawGreen = rawGreen;
+          lastRawBlue = rawBlue;
+          continue;
+        }
+
+        const foregroundRed = (foregroundKey >> 16) & 0xff;
+        const foregroundGreen = (foregroundKey >> 8) & 0xff;
+        const foregroundBlue = foregroundKey & 0xff;
+        const cell = this.blockCellFor(foregroundKey, foregroundRed, foregroundGreen, foregroundBlue);
+        this.setCachedCellForIndex(index, foregroundKey, SOLID_BLOCK_GLYPH_KEY, cell);
+        lastForegroundKey = foregroundKey;
+        lastCell = cell;
+        lastRawRed = rawRed;
+        lastRawGreen = rawGreen;
+        lastRawBlue = rawBlue;
+
+        outputRow[column] = cell;
+      }
+    }
+
+    return grid;
+  }
+
+  private buildDenseBlockGrid(
+    grid: string[][],
+    columns: number,
+    rows: number,
+    fillGlyphs: ArrayLike<number>,
+    colors: ArrayLike<number>,
+  ): string[][] {
+    let lastForegroundKey = -1;
+    let lastCell = "";
+    let lastRawRed = Number.NaN;
+    let lastRawGreen = Number.NaN;
+    let lastRawBlue = Number.NaN;
+
+    for (let row = 0; row < rows; row += 1) {
+      const outputRow = grid[row];
+      const rowOffset = row * columns;
+
+      for (let column = 0; column < columns; column += 1) {
+        const index = rowOffset + column;
+        const fillGlyphIndex = Math.round(fillGlyphs[index] as number);
+        if (fillGlyphIndex < MIN_VISIBLE_FILL_GLYPH_INDEX) {
+          const blankStart = column;
+          column += 1;
+          while (
+            column < columns && Math.round(fillGlyphs[rowOffset + column] as number) < MIN_VISIBLE_FILL_GLYPH_INDEX
+          ) {
+            column += 1;
+          }
+          outputRow.fill(this.blankAnsi, blankStart, column);
+          column -= 1;
+          continue;
+        }
+
+        const colorOffset = index * 4;
+        const rawRed = colors[colorOffset] as number;
+        const rawGreen = colors[colorOffset + 1] as number;
+        const rawBlue = colors[colorOffset + 2] as number;
+        if (rawRed === lastRawRed && rawGreen === lastRawGreen && rawBlue === lastRawBlue) {
+          outputRow[column] = lastCell;
+          continue;
+        }
+
+        const foregroundKey = this.byteColorKeyForIndex(index, rawRed, rawGreen, rawBlue);
+        if (foregroundKey === lastForegroundKey) {
+          outputRow[column] = lastCell;
+          continue;
+        }
+
+        const cachedCell = this.cachedCellForIndex(index, foregroundKey, SOLID_BLOCK_GLYPH_KEY);
+        if (cachedCell !== undefined) {
+          outputRow[column] = cachedCell;
+          lastForegroundKey = foregroundKey;
+          lastCell = cachedCell;
+          lastRawRed = rawRed;
+          lastRawGreen = rawGreen;
+          lastRawBlue = rawBlue;
+          continue;
+        }
+
+        const foregroundRed = (foregroundKey >> 16) & 0xff;
+        const foregroundGreen = (foregroundKey >> 8) & 0xff;
+        const foregroundBlue = foregroundKey & 0xff;
+        const cell = this.blockCellFor(foregroundKey, foregroundRed, foregroundGreen, foregroundBlue);
+        this.setCachedCellForIndex(index, foregroundKey, SOLID_BLOCK_GLYPH_KEY, cell);
+        lastForegroundKey = foregroundKey;
+        lastCell = cell;
+        lastRawRed = rawRed;
+        lastRawGreen = rawGreen;
+        lastRawBlue = rawBlue;
+
+        outputRow[column] = cell;
+      }
+    }
+
+    return grid;
   }
 
   private buildFillOnlyGrid(
@@ -433,9 +592,7 @@ export class ThreeAsciiAnsiGridAssembler {
     if (cell !== undefined) return cell;
 
     if (isSolidBlockFillGlyphKey(glyphKey)) {
-      cell = `${rgbToAnsiBackground(foregroundRed, foregroundGreen, foregroundBlue)} ${RESET}`;
-      this.cellCache.set(cellKey, cell);
-      return cell;
+      return this.blockCellFor(foregroundKey, foregroundRed, foregroundGreen, foregroundBlue);
     }
 
     let foregroundAnsi = this.foregroundAnsiCache.get(foregroundKey);
@@ -446,6 +603,15 @@ export class ThreeAsciiAnsiGridAssembler {
 
     const glyph = glyphForKey(glyphKey);
     cell = `${this.backgroundAnsi}${foregroundAnsi}${glyph}${RESET}`;
+    this.cellCache.set(cellKey, cell);
+    return cell;
+  }
+
+  private blockCellFor(foregroundKey: number, foregroundRed: number, foregroundGreen: number, foregroundBlue: number) {
+    const cellKey = foregroundKey * CELL_GLYPH_KEY_STRIDE + SOLID_BLOCK_GLYPH_KEY;
+    let cell = this.cellCache.get(cellKey);
+    if (cell !== undefined) return cell;
+    cell = `${rgbToAnsiBackground(foregroundRed, foregroundGreen, foregroundBlue)} ${RESET}`;
     this.cellCache.set(cellKey, cell);
     return cell;
   }
