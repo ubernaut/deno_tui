@@ -85,7 +85,7 @@ import {
   type WorkbenchScrollbarRenderCommand,
   workbenchShelfEntriesInto,
   workbenchShelfRenderCommandsInto,
-  workbenchStatusLine,
+  workbenchStatusSnapshotLine,
   workbenchTabEntriesInto,
   workbenchTerminalCopyRowsInto,
   type WorkbenchTerminalPaneProjection,
@@ -811,11 +811,13 @@ function draw(): void {
   renderModalOverlay(frame);
   frame[height - 1] = fit(
     paint(
-      workbenchStatusLine({
-        focus: active.peek(),
-        theme: theme().label,
-        tileDensity: tileDensity.peek(),
-        diagnostics: formatWorkbenchDiagnosticStatus(webDiagnostics),
+      workbenchStatusSnapshotLine({
+        snapshot: {
+          focus: active.peek(),
+          theme: theme().label,
+          tileDensity: tileDensity.peek(),
+          diagnostics: formatWorkbenchDiagnosticStatus(webDiagnostics),
+        },
         width,
         shortcutProfile: "web",
       }),

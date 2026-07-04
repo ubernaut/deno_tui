@@ -76,7 +76,7 @@ import {
   workbenchShelfEntriesInto,
   workbenchShelfRenderCommandsInto,
   workbenchStandardTopMenuIdForItem,
-  workbenchStatusLine,
+  workbenchStatusSnapshotLine,
   workbenchTabEntriesInto,
   type WorkbenchTerminalOutputToolbarAction,
   workbenchTerminalOutputToolbarItemsInto,
@@ -2481,11 +2481,13 @@ function renderWindowTabs(frame: Frame): void {
 function renderStatus(frame: Frame): void {
   const t = theme();
   const width = currentWidth();
-  const line = workbenchStatusLine({
-    focus: windowTitle(activeWindow.peek()),
-    theme: theme().label,
-    tileDensity: tileDensity.peek(),
-    diagnostics: formatWorkbenchDiagnosticStatus(workbenchDiagnostics),
+  const line = workbenchStatusSnapshotLine({
+    snapshot: {
+      focus: windowTitle(activeWindow.peek()),
+      theme: theme().label,
+      tileDensity: tileDensity.peek(),
+      diagnostics: formatWorkbenchDiagnosticStatus(workbenchDiagnostics),
+    },
     width,
   });
   write(frame, currentHeight() - 1, 0, paint(line, { fg: t.text, bg: t.panelSoft }));

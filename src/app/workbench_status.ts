@@ -43,6 +43,21 @@ export interface WorkbenchStatusLineOptions extends WorkbenchStatusLeftOptions {
   shortcutProfile?: WorkbenchStatusShortcutProfile;
 }
 
+/** Renderer-neutral snapshot used to compose workbench bottom status bars. */
+export interface WorkbenchStatusSnapshot {
+  focus: string;
+  theme: string;
+  tileDensity: number;
+  diagnostics?: string;
+}
+
+/** Options for composing a bottom status bar from an already sampled workbench snapshot. */
+export interface WorkbenchStatusSnapshotLineOptions {
+  snapshot: WorkbenchStatusSnapshot;
+  width: number;
+  shortcutProfile?: WorkbenchStatusShortcutProfile;
+}
+
 /** Converts a signed tile-density preference into a status-bar label. */
 export function workbenchTileDensityLabel(value: number): WorkbenchTileDensityLabel {
   if (value === 0 || !Number.isFinite(value)) return "balanced";
@@ -75,6 +90,18 @@ export function workbenchStatusLine(options: WorkbenchStatusLineOptions): string
     workbenchStatusShortcuts(options.shortcutProfile),
     options.width,
   );
+}
+
+/** Builds the fully-aligned status row from a renderer-owned state snapshot. */
+export function workbenchStatusSnapshotLine(options: WorkbenchStatusSnapshotLineOptions): string {
+  return workbenchStatusLine({
+    focus: options.snapshot.focus,
+    theme: options.snapshot.theme,
+    tileDensity: options.snapshot.tileDensity,
+    diagnostics: options.snapshot.diagnostics,
+    width: options.width,
+    shortcutProfile: options.shortcutProfile,
+  });
 }
 
 /** Builds the responsive workbench header help text, or an empty string when too narrow. */

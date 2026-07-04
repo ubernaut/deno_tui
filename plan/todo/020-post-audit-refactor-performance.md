@@ -189,6 +189,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   policy, probes, and future diagnostics can stay aligned.
 - Routed workbench Three pressure probe byte-rate reporting through the shared pressure helper instead of carrying
   duplicate probe-local math.
+- Extracted shared workbench status snapshot line composition so terminal and browser adapters no longer duplicate
+  focus/theme/tile-density/diagnostic status-bar wiring.
 - Added sustained byte-rate context to workbench Three pressure change logs so adaptive downshifts show the same signal
   used by the policy.
 - Lowered the workbench Three sustained terminal byte-rate pressure threshold to make the default block renderer back

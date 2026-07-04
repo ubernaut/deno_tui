@@ -5,6 +5,7 @@ import {
   workbenchStatusLeft,
   workbenchStatusLine,
   workbenchStatusShortcuts,
+  workbenchStatusSnapshotLine,
   workbenchTileDensityLabel,
 } from "../src/app/workbench/mod.ts";
 
@@ -57,6 +58,22 @@ Deno.test("workbench status helper composes aligned full status lines", () => {
       width: 72,
     }),
     "focus data | Unit-01 | tiles dense | diag ok1-8 focus  T theme  H help  ",
+  );
+});
+
+Deno.test("workbench status snapshot helper composes aligned status lines", () => {
+  assertEquals(
+    workbenchStatusSnapshotLine({
+      snapshot: {
+        focus: "Logs",
+        theme: "Ghost Shell",
+        tileDensity: -1,
+        diagnostics: "slow frame",
+      },
+      width: 64,
+      shortcutProfile: "web",
+    }),
+    "focus Logs | Ghost Shell | tiles wide | slow frame1-8 focus  T t",
   );
 });
 
