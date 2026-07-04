@@ -1,4 +1,5 @@
 import { average, formatFps, formatMs } from "./probe_cli.ts";
+import { workbenchThreeTerminalBytesPerSecond } from "../app/workbench_three_terminal_pressure.ts";
 
 export interface WorkbenchThreePressureProbeSample {
   index: number;
@@ -98,7 +99,10 @@ export function formatWorkbenchThreePressureProbeLines(
     `warmup=${formatMs(summary.warmup?.rendererMs)} renderer=${formatMs(summary.averageRendererMs)} fps=${
       formatFps(summary.averageRendererMs)
     } flush=${formatMs(summary.averageFlushMs)} bytes=${Math.round(summary.averageBytes)} rate=${
-      Math.round(workbenchThreeProbeBytesPerSecond(summary.averageBytes, options.intervalMs))
+      Math.round(workbenchThreeTerminalBytesPerSecond({
+        bytes: summary.averageBytes,
+        sampleDurationMs: options.intervalMs,
+      }))
     }B/s changedRows=${summary.averageChangedRows.toFixed(1)} sourceRows=${
       summary.averageSourceChangedRows.toFixed(1)
     } updates=${latest?.gridUpdates ?? 0} latest=${
@@ -117,11 +121,6 @@ export function formatWorkbenchThreePressureProbeLines(
     );
   }
   return lines;
-}
-
-export function workbenchThreeProbeBytesPerSecond(bytes: number, intervalMs: number): number {
-  if (intervalMs <= 0) return 0;
-  return bytes / (intervalMs / 1000);
 }
 
 function workbenchThreeProbeGridRowsEqual(
