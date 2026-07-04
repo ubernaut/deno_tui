@@ -11,6 +11,7 @@ export interface DirtyRowSegment {
 /** Row-segment dirty region used to reason about canvas invalidation without expanding every cell. */
 export class DirtyRegion {
   readonly #rows = new Map<number, DirtyRowSegment[]>();
+  #segments = 0;
 
   /** Creates a dirty region from rectangle bounds. */
   static fromRectangles(rectangles: readonly Rectangle[]): DirtyRegion {
@@ -21,7 +22,7 @@ export class DirtyRegion {
 
   /** Replaces the region contents with merged rectangle bounds. */
   resetFromRectangles(rectangles: readonly Rectangle[]): void {
-    this.clear();
+    this.clearRetainingRows();
     for (const rectangle of rectangles) {
       this.addRectangleUnmerged(rectangle);
     }
@@ -63,21 +64,25 @@ export class DirtyRegion {
 
     const segments = this.#rows.get(normalizedRow);
     if (segments) {
+      const before = segments.length;
       segments.push({ row: normalizedRow, startColumn: start, endColumn: end });
       mergeDirtyRowSegmentsInPlace(segments);
+      this.#segments += segments.length - before;
     } else {
       this.#rows.set(normalizedRow, [{ row: normalizedRow, startColumn: start, endColumn: end }]);
+      this.#segments += 1;
     }
   }
 
   /** Removes all row segments from the dirty region. */
   clear(): void {
     this.#rows.clear();
+    this.#segments = 0;
   }
 
   /** Returns true when the dirty region has no row segments. */
   isEmpty(): boolean {
-    return this.#rows.size === 0;
+    return this.#segments === 0;
   }
 
   /** Returns cloned row segments sorted by row then start column. */
@@ -163,9 +168,17 @@ export class DirtyRegion {
   }
 
   private mergeRows(): void {
+    let segmentCount = 0;
     for (const segments of this.#rows.values()) {
       mergeDirtyRowSegmentsInPlace(segments);
+      segmentCount += segments.length;
     }
+    this.#segments = segmentCount;
+  }
+
+  private clearRetainingRows(): void {
+    for (const segments of this.#rows.values()) segments.length = 0;
+    this.#segments = 0;
   }
 }
 

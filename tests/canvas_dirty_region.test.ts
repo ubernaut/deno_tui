@@ -85,3 +85,20 @@ Deno.test("DirtyRegion can reset from rectangle batches", () => {
 
   assertEquals(region.inspect(), [{ row: 2, startColumn: 5, endColumn: 11 }]);
 });
+
+Deno.test("DirtyRegion reset can reuse storage while reporting empty batches", () => {
+  const region = DirtyRegion.fromRectangles([
+    { row: 0, column: 0, width: 10, height: 2 },
+    { row: 4, column: 3, width: 2, height: 1 },
+  ]);
+
+  region.resetFromRectangles([]);
+
+  assertEquals(region.isEmpty(), true);
+  assertEquals(region.inspect(), []);
+
+  region.resetFromRectangles([{ row: 4, column: 6, width: 3, height: 1 }]);
+
+  assertEquals(region.isEmpty(), false);
+  assertEquals(region.inspect(), [{ row: 4, startColumn: 6, endColumn: 9 }]);
+});

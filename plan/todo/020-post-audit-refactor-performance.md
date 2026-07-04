@@ -974,3 +974,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   frames and themed workbench fills. This keeps foreground-only styled spaces on the general path while cutting the
   `workbench-cell-blit-viewport` benchmark from roughly 3.7ms to 1.7ms and the Three block span flush benchmark from
   roughly 2.0ms to 1.35ms on this host.
+- Reused DirtyRegion row buckets across canvas reset batches without changing public `clear()` behavior, keeping the
+  dirty-region microbenchmark in its prior range while trimming modal overlap churn to roughly 15ms on this host.
