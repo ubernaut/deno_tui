@@ -953,3 +953,9 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Retuned the default API workbench Three ASCII pressure policy for tmux/SSH: startup now uses a 240-cell block grid
   instead of 480 cells, sustained byte-rate pressure starts at 60KB/s, and scoped high-pressure samples downshift after
   two frames. Focused policy/runtime/probe tests, default/adaptive pressure probes, and pressure benchmarks passed.
+- Lowered the default API workbench Three startup pressure to 120 cells after tmux-side reports still showed poor
+  perceived FPS at higher terminal-output rates. Sequential blocking probes now hold roughly 58fps renderer-side with
+  about 22KB/s terminal output at an `18x6` block grid, while the live panel probe stays near 58fps at `20x6`.
+- Made `ThreePanelFrameView` fingerprint revisioned renderer grids before publishing them to the workbench, so
+  revision-only frames that quantize to identical terminal cells do not force a redraw. This keeps mutable-grid updates
+  correct and removes wasted terminal flushes for low-resolution block frames that repeat visually.

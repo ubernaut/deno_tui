@@ -607,17 +607,20 @@ export class ThreePanelFrameView {
 
   private setGrid(grid: string[][], forceUpdate = false, revision?: number): void {
     if (this.disposed) return;
+    const fingerprint = fingerprintThreePanelGrid(grid);
     if (revision !== undefined) {
-      if (this.gridRevision === revision && this.grid.peek() === grid) return;
+      if (this.gridFingerprint === fingerprint) {
+        this.gridRevision = revision;
+        return;
+      }
       this.gridRevision = revision;
-      this.gridFingerprint = "";
+      this.gridFingerprint = fingerprint;
       this.grid.jink(grid);
       this.onUpdate?.();
       return;
     }
     this.gridRevision = undefined;
     if (!forceUpdate && this.grid.peek() === grid) return;
-    const fingerprint = fingerprintThreePanelGrid(grid);
     if (this.gridFingerprint === fingerprint) return;
     this.gridFingerprint = fingerprint;
     this.grid.jink(grid);
