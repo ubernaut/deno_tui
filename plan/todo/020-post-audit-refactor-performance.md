@@ -524,3 +524,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added an awaited first-frame deferred readback bootstrap for Three ASCII renderers so deferred mode publishes a real
   ANSI grid on startup instead of returning blank cached frames until an async map happens to resolve; steady-state
   frames continue to use nonblocking deferred readback slots.
+- Retuned the API workbench default Three ASCII startup budget from 480 to 240 cells after the pressure probe showed
+  roughly half the terminal payload at the same live cadence, while preserving 480/960 as recovery/detail levels.
