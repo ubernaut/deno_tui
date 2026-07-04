@@ -93,7 +93,7 @@ const panel = new ThreePanelFrameView({
   maxRenderCells,
   frameInterval,
   readbackStrategy,
-  onUpdate: () => {
+  onFrame: () => {
     gridUpdates += 1;
     cadence.record();
   },

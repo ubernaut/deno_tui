@@ -61,7 +61,7 @@ const panel = new ThreePanelFrameView({
   frameInterval,
   maxRenderCells,
   readbackStrategy,
-  onUpdate: () => {
+  onFrame: () => {
     updates += 1;
   },
 });

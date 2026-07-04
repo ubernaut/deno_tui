@@ -1126,3 +1126,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   poisoning measured FPS and shrinking a healthy renderer after the overlay disappears.
 - Extracted the workbench Three overlay pressure gate into `src/app` with focused tests, keeping modal/dropdown/config
   cooldown behavior renderer-neutral and reducing pressure-policy state in the large API Workbench demo file.
+- Split Three panel renderer-frame cadence from grid-publication redraws. Startup/fallback grids no longer count as live
+  renderer frames, while tiny unchanged block grids still report real renderer cadence; the narrow live probe now sees
+  all 90 renderer frames and the default workbench pressure probe holds the 960-cell block budget at roughly 20fps.

@@ -83,6 +83,12 @@ export interface ThreePanelLifecycleInspection {
   frameGeneration: number;
 }
 
+export interface ThreePanelFrameUpdate {
+  rendererBacked: boolean;
+  rows: number;
+  columns: number;
+}
+
 type ThreePanelLiveValue = boolean | Signal<boolean> | (() => boolean);
 type ThreePanelIntervalValue = number | Signal<number>;
 type ThreePanelRenderCellsValue = number | Signal<number>;
@@ -236,7 +242,8 @@ export class ThreePanelFrameView {
   private readonly idleFrameInterval?: ThreePanelIntervalValue;
   private readonly interactive?: ThreePanelLiveValue;
   private readonly renderQueue: ThreePanelRenderQueue;
-  private readonly onUpdate?: () => void;
+  private readonly onFrame?: (update: ThreePanelFrameUpdate) => void;
+  private readonly onUpdate?: (update?: ThreePanelFrameUpdate) => void;
   private lastFrameTime = performance.now();
   private rendering = false;
   private running = false;
@@ -278,7 +285,8 @@ export class ThreePanelFrameView {
       idleMaxRenderCells?: ThreePanelRenderCellsValue;
       readbackStrategy?: ThreeAsciiReadbackStrategy;
       renderQueue?: ThreePanelRenderQueue;
-      onUpdate?: () => void;
+      onFrame?: (update: ThreePanelFrameUpdate) => void;
+      onUpdate?: (update?: ThreePanelFrameUpdate) => void;
       rendererFactory?: ThreePanelRendererFactory;
     },
   ) {
@@ -286,6 +294,7 @@ export class ThreePanelFrameView {
     this.idleFrameInterval = options.idleFrameInterval;
     this.interactive = options.interactive;
     this.renderQueue = options.renderQueue ?? defaultThreePanelRenderQueue;
+    this.onFrame = options.onFrame;
     this.onUpdate = options.onUpdate;
     this.graphics = new ThreePanelGraphicsImageController({
       diagnostics: options.diagnostics,
@@ -518,6 +527,11 @@ export class ThreePanelFrameView {
       this.failed = false;
       const renderSize = this.renderSizeFor(rect, ascii);
       const nextGrid = policy.renderAscii ? frame.grid ?? [] : this.blankGridFor(renderSize.columns, renderSize.rows);
+      this.onFrame?.({
+        rendererBacked: true,
+        rows: nextGrid.length,
+        columns: nextGrid[0]?.length ?? 0,
+      });
       if (!policy.renderAscii || this.hasGridCells(nextGrid)) {
         this.setGrid(
           nextGrid,
@@ -607,11 +621,24 @@ export class ThreePanelFrameView {
     this.syncScheduler.schedule(this.syncCallback);
   }
 
-  private setGrid(grid: string[][], forceUpdate = false, revision?: number): void {
+  private setGrid(grid: string[][], rendererBacked = false, revision?: number): void {
     if (this.disposed) return;
-    if (!this.gridPublication.shouldPublish({ grid, currentGrid: this.grid.peek(), forceUpdate, revision })) return;
+    if (
+      !this.gridPublication.shouldPublish({
+        grid,
+        currentGrid: this.grid.peek(),
+        forceUpdate: rendererBacked,
+        revision,
+      })
+    ) {
+      return;
+    }
     this.grid.jink(grid);
-    this.onUpdate?.();
+    this.onUpdate?.({
+      rendererBacked,
+      rows: grid.length,
+      columns: grid[0]?.length ?? 0,
+    });
   }
 
   private blankGridFor(columns: number, rows: number): string[][] {

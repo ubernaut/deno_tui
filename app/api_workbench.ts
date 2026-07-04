@@ -898,10 +898,11 @@ const threePanel = createWorkbenchThreePanelFrameView({
   interactive: () => isThreeWindowInteractive("three"),
   maxRenderCells: workbenchThreeLiveMaxCells,
   diagnostics: workbenchDiagnostics,
-  onUpdate: () => {
+  onFrame: () => {
     threeCadence.record();
     scheduleDraw();
   },
+  onUpdate: scheduleDraw,
 });
 const visualizationThreePanels = new WorkbenchThreePanelRegistry<
   VisualizationWindowId,
@@ -2865,10 +2866,11 @@ function createVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
     interactive: () => isThreeWindowInteractive(id),
     maxRenderCells: workbenchThreeLiveMaxCells,
     diagnostics: workbenchDiagnostics,
-    onUpdate: () => {
+    onFrame: () => {
       threeCadence.record();
       scheduleDraw();
     },
+    onUpdate: scheduleDraw,
   });
   return { rectangle, graphicsRectangle, scene, panel };
 }

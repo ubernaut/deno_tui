@@ -6,6 +6,7 @@ import {
   resolveThreePanelRenderPolicy,
   resolveThreePanelRenderSize,
   ThreePanelAdaptiveRenderBudgetController,
+  type ThreePanelFrameUpdate,
   ThreePanelFrameView,
   type ThreePanelGridRenderer,
   ThreePanelRenderQueue,
@@ -336,6 +337,8 @@ Deno.test("ThreePanelFrameView shows startup grid while first frame initializes"
   const scene = new Signal<ThreeSceneState | null>(sceneState());
   const ascii = new Signal(createDefaultAsciiOptions("sharp"));
   const enabled = new Signal(true);
+  const updates: ThreePanelFrameUpdate[] = [];
+  const frames: ThreePanelFrameUpdate[] = [];
   let renderer: SlowGridRenderer | undefined;
   const panel = new ThreePanelFrameView({
     rectangle,
@@ -344,13 +347,23 @@ Deno.test("ThreePanelFrameView shows startup grid while first frame initializes"
     enabled,
     frameInterval: 1000 / 30,
     rendererFactory: (options) => renderer = new SlowGridRenderer(options.columns, options.rows),
+    onFrame: (update) => {
+      frames.push(update);
+    },
+    onUpdate: (update) => {
+      if (update) updates.push(update);
+    },
   });
 
   try {
     await waitFor(() => (renderer?.startCount ?? 0) >= 1);
     assertEquals(panel.grid.peek().flat().join("").includes("ASCII RENDERER STARTING"), true);
+    assertEquals(updates.at(-1), { rendererBacked: false, rows: 8, columns: 32 });
+    assertEquals(frames, []);
     renderer?.completeFrame();
     await waitFor(() => panel.grid.peek().flat().join("").includes("ASCII RENDERER STARTING") === false);
+    assertEquals(frames.at(-1), { rendererBacked: true, rows: 8, columns: 32 });
+    assertEquals(updates.at(-1), { rendererBacked: true, rows: 8, columns: 32 });
   } finally {
     panel.dispose();
     rectangle.dispose();
