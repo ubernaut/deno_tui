@@ -71,6 +71,7 @@ import {
   type TextRectangle,
   textWidth,
   translateHitTargets,
+  updateWorkbenchStringLineSignals,
   workbenchAdaptiveWindowLayout,
   workbenchButtonRowRenderCommandsInto,
   type WorkbenchButtonTone,
@@ -800,8 +801,7 @@ function draw(): void {
     ),
     width,
   );
-  for (let row = 0; row < height; row++) lineSignals[row]!.value = fit(frame[row] ?? "", width);
-  for (let row = height; row < lineSignals.length; row++) lineSignals[row]!.value = "";
+  updateWorkbenchStringLineSignals(lineSignals, frame, width, height);
 }
 
 function renderShelf(frame: string[]): void {

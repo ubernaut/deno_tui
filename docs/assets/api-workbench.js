@@ -11469,6 +11469,7 @@ function inset(rect, amount) {
 var RESET2 = "\x1B[0m";
 var MAX_FRAME_CELL_PARTS_CACHE_SIZE = 32768;
 var frameCellPartsCache = /* @__PURE__ */ new Map();
+var lineSignalRowCache = /* @__PURE__ */ new WeakMap();
 function prepareWorkbenchRows(rows2, count, create, reset) {
   const rowCount = Math.max(0, Math.floor(count));
   rows2.length = rowCount;
@@ -11515,6 +11516,47 @@ function renderFrameRow(cells, width) {
 }
 function renderFrameSlice(cells, start, width) {
   return renderFrameCells((column) => cells[start + column] ?? " ", width);
+}
+function updateWorkbenchStringLineSignals(signals, frame, width, height) {
+  const rows2 = Math.max(0, Math.min(signals.length, Math.floor(height)));
+  const columns2 = Math.max(0, Math.floor(width));
+  let changed = 0;
+  let cleared = 0;
+  for (let row = 0; row < rows2; row += 1) {
+    const signal = signals[row];
+    const nextLine = fitCellText(frame[row] ?? "", columns2);
+    const cached = lineSignalRowCache.get(signal);
+    const fingerprint = fallbackLineFingerprint(nextLine, columns2);
+    if (cached?.width === columns2 && cached.fingerprint === fingerprint) {
+      if (signal.peek() !== cached.line) {
+        signal.value = cached.line;
+        changed += 1;
+      }
+      continue;
+    }
+    lineSignalRowCache.set(signal, { width: columns2, fingerprint, line: nextLine });
+    if (signal.peek() !== nextLine) {
+      signal.value = nextLine;
+      changed += 1;
+    }
+  }
+  for (let row = rows2; row < signals.length; row += 1) {
+    const signal = signals[row];
+    if (signal.peek() !== "") {
+      signal.value = "";
+      cleared += 1;
+    }
+    lineSignalRowCache.delete(signal);
+  }
+  return { rows: rows2, changed, cleared };
+}
+function fallbackLineFingerprint(line, width) {
+  let hash = 2166136261;
+  for (let index = 0; index < line.length; index += 1) {
+    hash ^= line.charCodeAt(index);
+    hash = Math.imul(hash, 16777619) >>> 0;
+  }
+  return `${width}:line:${hash.toString(36)}`;
 }
 function renderFrameCells(cellAt, width) {
   let row = "";
@@ -18357,8 +18399,7 @@ function draw() {
     ),
     width
   );
-  for (let row = 0; row < height; row++) lineSignals[row].value = fit(frame[row] ?? "", width);
-  for (let row = height; row < lineSignals.length; row++) lineSignals[row].value = "";
+  updateWorkbenchStringLineSignals(lineSignals, frame, width, height);
 }
 function renderShelf(frame) {
   const row = rowsCount() - 2;

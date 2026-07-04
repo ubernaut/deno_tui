@@ -14,6 +14,7 @@ import {
   renderFrameSlice,
   toStyledCells,
   updateWorkbenchLineSignals,
+  updateWorkbenchStringLineSignals,
   type WorkbenchFrame,
   workbenchFrameBoxLinesInto,
   writeFrame,
@@ -177,6 +178,35 @@ Deno.test("workbench frame line signal cache scans rows directly mutated after p
 
   assertEquals(updateWorkbenchLineSignals([signal], frame, 3, 1), { rows: 1, changed: 1, cleared: 0 });
   assertEquals(signal.peek(), "A  ");
+});
+
+Deno.test("workbench string frame line signal updates skip unchanged fitted rows and clear stale rows", () => {
+  const frame = ["hello", "\x1b[31mAB\x1b[0m"];
+  const signals = [
+    new FakeLineSignal("hello"),
+    new FakeLineSignal(""),
+    new FakeLineSignal("stale"),
+  ];
+
+  assertEquals(updateWorkbenchStringLineSignals(signals, frame, 5, 2), { rows: 2, changed: 1, cleared: 1 });
+  assertEquals(signals.map((signal) => signal.peek()), ["hello", "\x1b[31mAB\x1b[0m   ", ""]);
+  assertEquals(signals.map((signal) => signal.writes), [0, 1, 1]);
+
+  assertEquals(updateWorkbenchStringLineSignals(signals, frame, 5, 2), { rows: 2, changed: 0, cleared: 0 });
+  assertEquals(signals.map((signal) => signal.writes), [0, 1, 1]);
+});
+
+Deno.test("workbench string frame line signal cache restores externally changed retained rows", () => {
+  const signal = new FakeLineSignal("");
+  const frame = ["\x1b[32mAB\x1b[0m"];
+
+  assertEquals(updateWorkbenchStringLineSignals([signal], frame, 5, 1), { rows: 1, changed: 1, cleared: 0 });
+  assertEquals(signal.peek(), "\x1b[32mAB\x1b[0m   ");
+
+  signal.force("external");
+  assertEquals(updateWorkbenchStringLineSignals([signal], frame, 5, 1), { rows: 1, changed: 1, cleared: 0 });
+  assertEquals(signal.peek(), "\x1b[32mAB\x1b[0m   ");
+  assertEquals(signal.writes, 2);
 });
 
 Deno.test("workbench frame fill helpers clip to the configured width", () => {

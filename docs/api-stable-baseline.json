@@ -3735,6 +3735,13 @@
     },
     {
       "module": "src/app/workbench_frame.ts",
+      "name": "updateWorkbenchStringLineSignals",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_frame.ts",
       "name": "WorkbenchFrame",
       "kind": "type",
       "typeOnly": true,

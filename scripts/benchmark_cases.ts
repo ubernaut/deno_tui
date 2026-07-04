@@ -41,6 +41,7 @@ import {
   ThreeAsciiRenderer,
   tileRects,
   updateWorkbenchLineSignals,
+  updateWorkbenchStringLineSignals,
   visibleListRows,
   WindowManagerController,
   type WorkbenchFrame,
@@ -1040,6 +1041,35 @@ function runWorkbenchLineSignalDiffWorkload(): void {
   }
 }
 
+function runWorkbenchStringLineSignalDiffWorkload(): void {
+  workbenchLineSignalFrameIndex = 1 - workbenchLineSignalFrameIndex;
+  workbenchStringFrame.length = workbenchFrameRows;
+  for (let row = 0; row < workbenchFrameRows; row += 1) {
+    const accent = 80 + ((row + workbenchLineSignalFrameIndex * 31) % 120);
+    workbenchStringFrame[row] = `\x1b[48;2;12;8;28m\x1b[38;2;${accent};255;180m${row.toString().padStart(2, "0")} ${
+      "▰".repeat(workbenchFrameWidth - 3)
+    }\x1b[0m`;
+  }
+
+  const first = updateWorkbenchStringLineSignals(
+    workbenchLineSignals,
+    workbenchStringFrame,
+    workbenchFrameWidth,
+    workbenchFrameRows,
+  );
+  const second = updateWorkbenchStringLineSignals(
+    workbenchLineSignals,
+    workbenchStringFrame,
+    workbenchFrameWidth,
+    workbenchFrameRows,
+  );
+  workbenchFrameChecksum = (workbenchFrameChecksum + first.changed + first.cleared + second.changed + second.cleared) %
+    1_000_000;
+  if (first.changed !== workbenchFrameRows || second.changed !== 0 || !Number.isFinite(workbenchFrameChecksum)) {
+    throw new Error("workbench string line signal diff workload failed");
+  }
+}
+
 function runWorkbenchScaledThreeGridWorkload(): void {
   const frame = prepareWorkbenchFrame(workbenchScaledThreeFrame, workbenchScaledThreeTargetRows);
   writeWorkbenchThreeGrid(
@@ -1387,6 +1417,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 250,
     maxAverageMs: 8,
     run: runWorkbenchLineSignalDiffWorkload,
+  },
+  {
+    name: "render/workbench-string-line-signal-diff-168x54",
+    category: "render",
+    description: "Apply string-backed browser workbench rows to retained line signals while skipping unchanged rows.",
+    tags: ["render", "workbench", "frame", "signals", "web"],
+    iterations: 250,
+    maxAverageMs: 8,
+    run: runWorkbenchStringLineSignalDiffWorkload,
   },
   {
     name: "render/textobject-full-row-canvas-220x70",

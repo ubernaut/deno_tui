@@ -255,6 +255,50 @@ export function updateWorkbenchLineSignals(
   return { rows, changed, cleared };
 }
 
+/** Applies a string-backed workbench frame to retained line signals while skipping unchanged terminal rows. */
+export function updateWorkbenchStringLineSignals(
+  signals: readonly WorkbenchLineSignal[],
+  frame: readonly string[],
+  width: number,
+  height: number,
+): WorkbenchLineSignalUpdateStats {
+  const rows = Math.max(0, Math.min(signals.length, Math.floor(height)));
+  const columns = Math.max(0, Math.floor(width));
+  let changed = 0;
+  let cleared = 0;
+
+  for (let row = 0; row < rows; row += 1) {
+    const signal = signals[row]!;
+    const nextLine = fitCellText(frame[row] ?? "", columns);
+    const cached = lineSignalRowCache.get(signal);
+    const fingerprint = fallbackLineFingerprint(nextLine, columns);
+    if (cached?.width === columns && cached.fingerprint === fingerprint) {
+      if (signal.peek() !== cached.line) {
+        signal.value = cached.line;
+        changed += 1;
+      }
+      continue;
+    }
+
+    lineSignalRowCache.set(signal, { width: columns, fingerprint, line: nextLine });
+    if (signal.peek() !== nextLine) {
+      signal.value = nextLine;
+      changed += 1;
+    }
+  }
+
+  for (let row = rows; row < signals.length; row += 1) {
+    const signal = signals[row]!;
+    if (signal.peek() !== "") {
+      signal.value = "";
+      cleared += 1;
+    }
+    lineSignalRowCache.delete(signal);
+  }
+
+  return { rows, changed, cleared };
+}
+
 function fingerprintFrameRow(cells: string[], width: number): string {
   let hash = 2166136261;
   const mix = (value: number) => {
