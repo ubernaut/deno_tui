@@ -828,3 +828,7 @@ performance, shared terminal/web workbench projections, and oversized module red
   minimize, maximize, restore, and close actions.
 - Extracted API workbench scrollbar pointer-hit offset resolution into the hit helper with tests for window vertical,
   window horizontal, and workspace scrollbars, removing direct scrollbar math from the large click handler.
+- Added workbench Three terminal-pressure inspection to the runtime controller and surfaced compact pressure tier,
+  byte-rate, and scoped/wide labels in the built-in Three header. Focused tests, the header/block renderer benchmarks,
+  and a 12-frame default blocking pressure probe passed; the probe shows roughly 17-18ms renderer frames at the 60-cell
+  startup tier with about 10KB/s terminal output on this host.

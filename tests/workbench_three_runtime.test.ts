@@ -97,6 +97,7 @@ Deno.test("resolveApiWorkbenchThreePressureChange reports steady pressure withou
     pressure: { currentCells: 120, highFrames: 0, lowFrames: 1 },
     changed: false,
     nextCells: 120,
+    scoped: true,
   });
 });
 
@@ -112,5 +113,43 @@ Deno.test("resolveApiWorkbenchThreePressureChange projects downshift and log mes
   assertEquals(change.pressure, { currentCells: 120, highFrames: 0, lowFrames: 0 });
   assertEquals(change.changed, true);
   assertEquals(change.nextCells, 120);
+  assertEquals(change.scoped, true);
   assertStringIncludes(change.logMessage ?? "", "three pressure down 120 cells");
+});
+
+Deno.test("ApiWorkbenchThreeRuntimeController exposes last pressure diagnostics", () => {
+  const controller = new ApiWorkbenchThreeRuntimeController({
+    hasLiveThreeWindow: () => true,
+  });
+
+  assertEquals(controller.inspectPressureDetails(), {
+    currentCells: WORKBENCH_THREE_INITIAL_CELLS,
+    highFrames: 0,
+    lowFrames: 0,
+    lastBytes: 0,
+    lastByteRate: 0,
+    lastChangedRows: 0,
+    lastRenderedGrids: 0,
+    lastRenderedRows: 0,
+    lastScoped: false,
+  });
+
+  controller.updatePressure(
+    { changed: 4, bytes: 2_000, durationMs: 0.1 },
+    { renderedThreeGrids: 1, renderedThreeRows: 4 },
+  );
+
+  assertEquals(controller.inspectPressureDetails(), {
+    currentCells: 30,
+    highFrames: 0,
+    lowFrames: 0,
+    lastBytes: 2_000,
+    lastByteRate: 40_000,
+    lastChangedRows: 4,
+    lastRenderedGrids: 1,
+    lastRenderedRows: 4,
+    lastScoped: true,
+  });
+
+  controller.dispose();
 });

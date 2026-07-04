@@ -1397,6 +1397,7 @@ function renderThree(frame: Frame, rect: Rectangle): void {
   const mode = threeRendererModeLabel(ascii.peek()).toUpperCase();
   if (threeAsciiAvailable.peek()) {
     const performance = threePanel.inspectPerformance();
+    const pressure = workbenchThreeRuntime.inspectPressureDetails();
     writeRows(
       frame,
       rect,
@@ -1409,6 +1410,11 @@ function renderThree(frame: Frame, rect: Rectangle): void {
             ...performance,
             sourceMaxCells: workbenchThreeLiveMaxCells.peek(),
             targetFps: 1000 / workbenchThreeFrameInterval.peek(),
+            pressureCells: pressure.currentCells,
+            pressureHighFrames: pressure.highFrames,
+            pressureLowFrames: pressure.lowFrames,
+            pressureByteRate: pressure.lastByteRate,
+            pressureScoped: pressure.lastScoped,
           }
           : undefined,
       ),

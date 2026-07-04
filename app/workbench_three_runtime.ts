@@ -3,6 +3,7 @@ import {
   createWorkbenchThreeTerminalPressureState,
   formatWorkbenchThreeTerminalPressureUpdateLog,
   resolveWorkbenchThreeTerminalPressureUpdate,
+  workbenchThreeTerminalBytesPerSecond,
   type WorkbenchThreeTerminalPressureState,
 } from "../src/app/workbench_three_terminal_pressure.ts";
 import {
@@ -34,7 +35,17 @@ export interface ApiWorkbenchThreePressureChange {
   pressure: WorkbenchThreeTerminalPressureState;
   changed: boolean;
   nextCells: number;
+  scoped: boolean;
   logMessage?: string;
+}
+
+export interface ApiWorkbenchThreePressureInspection extends WorkbenchThreeTerminalPressureState {
+  lastBytes: number;
+  lastByteRate: number;
+  lastChangedRows: number;
+  lastRenderedGrids: number;
+  lastRenderedRows: number;
+  lastScoped: boolean;
 }
 
 export interface ApiWorkbenchThreeRuntimeOptions {
@@ -62,13 +73,14 @@ export function resolveApiWorkbenchThreePressureChange(
     lowFrames: next.lowFrames,
   };
   if (!next.changed) {
-    return { pressure, changed: false, nextCells: input.currentCells };
+    return { pressure, changed: false, nextCells: input.currentCells, scoped: next.scoped };
   }
 
   return {
     pressure,
     changed: true,
     nextCells: next.currentCells,
+    scoped: next.scoped,
     logMessage: formatWorkbenchThreeTerminalPressureUpdateLog({
       direction: next.direction,
       currentCells: next.currentCells,
@@ -87,12 +99,14 @@ export class ApiWorkbenchThreeRuntimeController {
 
   #pressure: WorkbenchThreeTerminalPressureState;
   #pressureSample: ApiWorkbenchThreePressureSample = emptyPressureSample();
+  #lastPressureInspection: ApiWorkbenchThreePressureInspection;
 
   constructor(private readonly options: ApiWorkbenchThreeRuntimeOptions) {
     this.frameInterval = new Signal(
       apiWorkbenchThreeFrameIntervalForCells(this.liveMaxCells.peek(), { live: this.options.hasLiveThreeWindow() }),
     );
     this.#pressure = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_INITIAL_CELLS);
+    this.#lastPressureInspection = emptyPressureInspection(this.#pressure);
   }
 
   syncFrameInterval(): void {
@@ -129,6 +143,18 @@ export class ApiWorkbenchThreeRuntimeController {
     this.#pressure.currentCells = change.pressure.currentCells;
     this.#pressure.highFrames = change.pressure.highFrames;
     this.#pressure.lowFrames = change.pressure.lowFrames;
+    this.#lastPressureInspection = {
+      ...change.pressure,
+      lastBytes: Math.max(0, Math.floor(stats.bytes)),
+      lastByteRate: workbenchThreeTerminalBytesPerSecond({
+        bytes: stats.bytes,
+        sampleDurationMs: this.frameInterval.peek(),
+      }),
+      lastChangedRows: Math.max(0, Math.floor(stats.changed)),
+      lastRenderedGrids: Math.max(0, Math.floor(sample.renderedThreeGrids)),
+      lastRenderedRows: Math.max(0, Math.floor(sample.renderedThreeRows)),
+      lastScoped: change.scoped,
+    };
     if (!change.changed) return;
 
     this.liveMaxCells.value = change.nextCells;
@@ -138,6 +164,10 @@ export class ApiWorkbenchThreeRuntimeController {
 
   inspectPressure(): WorkbenchThreeTerminalPressureState {
     return { ...this.#pressure };
+  }
+
+  inspectPressureDetails(): ApiWorkbenchThreePressureInspection {
+    return { ...this.#lastPressureInspection };
   }
 
   dispose(): void {
@@ -153,4 +183,18 @@ function emptyPressureSample(target: ApiWorkbenchThreePressureSample = {
   target.renderedThreeGrids = 0;
   target.renderedThreeRows = 0;
   return target;
+}
+
+function emptyPressureInspection(
+  pressure: WorkbenchThreeTerminalPressureState,
+): ApiWorkbenchThreePressureInspection {
+  return {
+    ...pressure,
+    lastBytes: 0,
+    lastByteRate: 0,
+    lastChangedRows: 0,
+    lastRenderedGrids: 0,
+    lastRenderedRows: 0,
+    lastScoped: false,
+  };
 }

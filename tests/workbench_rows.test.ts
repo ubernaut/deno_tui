@@ -32,10 +32,15 @@ Deno.test("threeHeaderRows includes compact renderer telemetry when it fits", ()
     deferredReadbackUnresolved: 2,
     sourceMaxCells: 3840,
     targetFps: 14.2,
+    pressureCells: 60,
+    pressureHighFrames: 0,
+    pressureLowFrames: 12,
+    pressureByteRate: 12_581,
+    pressureScoped: true,
   });
   assertEquals(
     rows[1]?.text,
-    "torus knot · sphere · block · floor plane · frame 17ms scene 12 read 4 asm 1 1920c cap 3840c @14fps q2/6",
+    "torus knot · sphere · block · floor plane · frame 17ms scene 12 read 4 asm 1 1920c cap 3840c @14fps q2/6 io 13KB/s tier 60c h0/l12",
   );
   assertEquals(
     threeHeaderRows("BLOCKS", 132, theme, {
@@ -59,8 +64,12 @@ Deno.test("threeHeaderRows includes compact renderer telemetry when it fits", ()
       deferredReadbackUnresolved: 6,
       deferredReadbackSaturated: true,
       targetFps: 18,
+      pressureCells: 30,
+      pressureHighFrames: 1,
+      pressureLowFrames: 0,
+      pressureScoped: false,
     })[1]?.text,
-    "17ms 1920c @18fps sat6/6",
+    "17ms 1920c",
   );
 });
 
