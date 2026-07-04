@@ -310,3 +310,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   as the package default.
 - Extracted deferred Three ASCII readback queueing into a focused internal helper with direct tests for slot
   backpressure, stale-frame invalidation, mapped-frame consumption, mapped errors, and cleanup.
+- Reduced terminal flush pressure for animated workbench rows by changing overwrite-mode `TextObject` updates to queue
+  only changed row spans instead of repainting the full terminal row on every value change.

@@ -1949,7 +1949,7 @@ var TextObject = class extends DrawObject {
       const barrier = overwriteRectangle ? width < previousValueChars.length ? width : -1 : valueChars.length < previousValueChars.length ? valueChars.length : -1;
       const columnRange = Math.max(valueChars.length, previousValueChars.length);
       if (overwriteRectangle && width !== void 0 && valueChars.length >= width) {
-        this.queueRerenderRange(row, column, column + width);
+        queueChangedOverwriteRanges(this, previousValueChars, valueChars, row, column, width);
         return;
       }
       if (barrier !== -1) {
@@ -2110,6 +2110,24 @@ var TextObject = class extends DrawObject {
     }
   }
 };
+function queueChangedOverwriteRanges(object, previousValueChars, valueChars, row, column, width) {
+  let runStart = -1;
+  for (let offset = 0; offset < width; offset += 1) {
+    const next = valueChars[offset] ?? " ";
+    const previous = previousValueChars[offset] ?? " ";
+    if (next === previous) {
+      if (runStart !== -1) {
+        object.queueRerenderRange(row, column + runStart, column + offset);
+        runStart = -1;
+      }
+      continue;
+    }
+    if (runStart === -1) runStart = offset;
+  }
+  if (runStart !== -1) {
+    object.queueRerenderRange(row, column + runStart, column + width);
+  }
+}
 function mergeTextRowRanges(ranges) {
   if (ranges.length < 2) return;
   ranges.sort((left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn);

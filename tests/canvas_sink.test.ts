@@ -124,7 +124,7 @@ Deno.test("box renderer flushes queued row ranges as contiguous updates", () => 
   assertEquals(sink.lastStats?.flushedCells, 4);
 });
 
-Deno.test("text renderer flushes overwrite rows as contiguous ranges", () => {
+Deno.test("text renderer flushes changed overwrite spans as contiguous ranges", () => {
   const sink = new DirectRangeSink();
   const canvas = new Canvas({
     sink,
@@ -148,9 +148,37 @@ Deno.test("text renderer flushes overwrite rows as contiguous ranges", () => {
   canvas.render();
 
   assertEquals(sink.flushCalls, 0);
-  assertEquals(sink.ranges, [{ row: 0, startColumn: 0, values: ["b", "e", "t", "a", " ", " ", " ", " "] }]);
+  assertEquals(sink.ranges, [{ row: 0, startColumn: 0, values: ["b", "e", "t", "a", " "] }]);
   assertEquals(sink.updates.length, 0);
   assertEquals(sink.stats?.dirtyRowRanges, 1);
+});
+
+Deno.test("text renderer avoids full-row flushes for sparse overwrite changes", () => {
+  const sink = new DirectRangeSink();
+  const canvas = new Canvas({
+    sink,
+    size: { columns: 12, rows: 1 },
+  });
+  const value = new Signal("left middle ");
+  const text = new TextObject({
+    canvas,
+    rectangle: { column: 0, row: 0, width: 12 },
+    value,
+    overwriteRectangle: true,
+    style: (text) => text,
+    zIndex: 1,
+  });
+
+  text.draw();
+  canvas.render();
+  sink.clear();
+
+  value.value = "left mIddle ";
+  canvas.render();
+
+  assertEquals(sink.flushCalls, 0);
+  assertEquals(sink.ranges, [{ row: 0, startColumn: 6, values: ["I"] }]);
+  assertEquals(sink.stats?.flushedCells, 1);
 });
 
 Deno.test("canvas notifies sinks when size changes", () => {

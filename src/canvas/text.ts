@@ -82,7 +82,7 @@ export class TextObject extends DrawObject<"text"> {
 
       const columnRange = Math.max(valueChars.length, previousValueChars.length);
       if (overwriteRectangle && width !== undefined && valueChars.length >= width) {
-        this.queueRerenderRange(row, column, column + width);
+        queueChangedOverwriteRanges(this, previousValueChars, valueChars, row, column, width);
         return;
       }
 
@@ -285,6 +285,32 @@ export class TextObject extends DrawObject<"text"> {
 
       rerenderColumns.clear();
     }
+  }
+}
+
+function queueChangedOverwriteRanges(
+  object: TextObject,
+  previousValueChars: string[] | string,
+  valueChars: string[] | string,
+  row: number,
+  column: number,
+  width: number,
+): void {
+  let runStart = -1;
+  for (let offset = 0; offset < width; offset += 1) {
+    const next = valueChars[offset] ?? " ";
+    const previous = previousValueChars[offset] ?? " ";
+    if (next === previous) {
+      if (runStart !== -1) {
+        object.queueRerenderRange(row, column + runStart, column + offset);
+        runStart = -1;
+      }
+      continue;
+    }
+    if (runStart === -1) runStart = offset;
+  }
+  if (runStart !== -1) {
+    object.queueRerenderRange(row, column + runStart, column + width);
   }
 }
 
