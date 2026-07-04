@@ -293,19 +293,11 @@ import {
 import { formatWorkbenchKittyGraphicsStatus, WorkbenchKittyGraphicsController } from "./workbench_kitty_graphics.ts";
 import { type RowStyle, threeHeaderRows } from "./workbench_rows.ts";
 import {
-  createWorkbenchThreeTerminalPressureState,
-  formatWorkbenchThreeTerminalPressureUpdateLog,
-  resolveWorkbenchThreeTerminalPressureUpdate,
   shouldCountWorkbenchThreeGridPressure,
   workbenchThreeShouldUseLiveCadence,
 } from "../src/app/workbench_three_terminal_pressure.ts";
-import {
-  API_WORKBENCH_THREE_PRESSURE_POLICY,
-  apiWorkbenchThreeFrameIntervalForCells as frameIntervalForWorkbenchThreeCells,
-  WORKBENCH_THREE_DRAW_INTERVAL_MS,
-  WORKBENCH_THREE_INITIAL_CELLS,
-  WORKBENCH_THREE_READBACK_STRATEGY,
-} from "./workbench_three_policy.ts";
+import { WORKBENCH_THREE_DRAW_INTERVAL_MS, WORKBENCH_THREE_READBACK_STRATEGY } from "./workbench_three_policy.ts";
+import { ApiWorkbenchThreeRuntimeController } from "./workbench_three_runtime.ts";
 import type {
   Accent,
   AsciiOptions,
@@ -613,10 +605,12 @@ const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
 const windowScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const workspaceScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const dropdownOverlayRenderCommands: WorkbenchDropdownOverlayRenderCommand[] = [];
-const workbenchThreeLiveMaxCells = new Signal(WORKBENCH_THREE_INITIAL_CELLS);
-const workbenchThreeFrameInterval = new Signal(
-  frameIntervalForWorkbenchThreeCells(WORKBENCH_THREE_INITIAL_CELLS, { live: hasLiveThreeRenderedWindow() }),
-);
+const workbenchThreeRuntime = new ApiWorkbenchThreeRuntimeController({
+  hasLiveThreeWindow: hasLiveThreeRenderedWindow,
+  onPressureChange: pushLog,
+});
+const workbenchThreeLiveMaxCells = workbenchThreeRuntime.liveMaxCells;
+const workbenchThreeFrameInterval = workbenchThreeRuntime.frameInterval;
 let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
@@ -625,7 +619,6 @@ const drawScheduler = new FrameScheduler({ intervalMs: WORKBENCH_THREE_DRAW_INTE
 const renderedVisualizationThreePanels = new Set<VisualizationWindowId>();
 let renderedThreeGridCount = 0;
 let renderedThreeGridRows = 0;
-const terminalPressure = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_INITIAL_CELLS);
 type Frame = WorkbenchFrame;
 interface DropdownOverlay {
   kind: "control" | "theme" | "newWindow" | "workspace";
@@ -1014,8 +1007,7 @@ tui.on("destroy", () => {
   workbenchAudioRegistry.dispose();
   asciiConfigs.dispose();
   threeAsciiAvailable.dispose();
-  workbenchThreeLiveMaxCells.dispose();
-  workbenchThreeFrameInterval.dispose();
+  workbenchThreeRuntime.dispose();
   drawScheduler.cancel();
 });
 
@@ -1043,30 +1035,10 @@ function draw(): void {
 }
 
 function updateThreeTerminalPressure(stats: WorkbenchAnsiScreenFlushStats): void {
-  const next = resolveWorkbenchThreeTerminalPressureUpdate(terminalPressure, {
-    ...API_WORKBENCH_THREE_PRESSURE_POLICY,
-    currentCells: workbenchThreeLiveMaxCells.peek(),
+  workbenchThreeRuntime.updatePressure(stats, {
     renderedThreeGrids: renderedThreeGridCount,
     renderedThreeRows: renderedThreeGridRows,
-    changedRows: stats.changed,
-    bytes: stats.bytes,
-    durationMs: stats.durationMs,
-    sampleDurationMs: workbenchThreeFrameInterval.peek(),
   });
-  terminalPressure.currentCells = next.currentCells;
-  terminalPressure.highFrames = next.highFrames;
-  terminalPressure.lowFrames = next.lowFrames;
-  if (!next.changed) return;
-  workbenchThreeLiveMaxCells.value = next.currentCells;
-  syncWorkbenchThreeFrameInterval();
-  pushLog(formatWorkbenchThreeTerminalPressureUpdateLog({
-    direction: next.direction,
-    currentCells: next.currentCells,
-    bytes: stats.bytes,
-    durationMs: stats.durationMs,
-    sampleDurationMs: workbenchThreeFrameInterval.peek(),
-    renderedThreeGrids: renderedThreeGridCount,
-  }));
 }
 
 function scheduleDraw(): void {
@@ -2885,12 +2857,7 @@ function ensureVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
 }
 
 function syncWorkbenchThreeFrameInterval(): void {
-  const next = frameIntervalForWorkbenchThreeCells(workbenchThreeLiveMaxCells.peek(), {
-    live: hasLiveThreeRenderedWindow(),
-  });
-  if (workbenchThreeFrameInterval.peek() !== next) {
-    workbenchThreeFrameInterval.value = next;
-  }
+  workbenchThreeRuntime.syncFrameInterval();
 }
 
 function hasLiveThreeRenderedWindow(): boolean {

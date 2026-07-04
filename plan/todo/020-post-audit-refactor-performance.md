@@ -213,6 +213,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Fixed the Three panel live probe to honor and report `--readback=blocking|deferred`, making the blocking/deferred
   tradeoff measurable directly; serial probes show blocking updates every frame at the 960-cell tier while deferred
   remains lower CPU/GPU wait but can delay visible grid publication.
+- Extracted API workbench Three runtime cadence and terminal-pressure state into `ApiWorkbenchThreeRuntimeController`
+  with direct tests, reducing inline pressure bookkeeping in the main workbench renderer.
 - Stabilized default Three ASCII block rendering by using ASCII-safe shared window controls and removing fog from the
   default block preset so truecolor block cells keep source color depth.
 - Extracted the workbench Three ASCII config modal geometry into a tested internal layout helper, reducing inline modal
