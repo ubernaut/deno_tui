@@ -1,5 +1,5 @@
 import { assertEquals } from "./deps.ts";
-import { resolveThreePanelAdaptiveRenderBudget } from "../app/three_panel_adaptive.ts";
+import { resolveThreePanelAdaptiveRenderBudget } from "../src/app/three_panel_adaptive.ts";
 
 Deno.test("resolveThreePanelAdaptiveRenderBudget waits for sustained slow frames before stepping down", () => {
   const first = resolveThreePanelAdaptiveRenderBudget({

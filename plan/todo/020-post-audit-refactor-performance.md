@@ -1042,3 +1042,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Moved shared workbench row projection, styled-row command rendering, and Three header telemetry formatting into
   `src/app`, keeping data table footers, Three headers, terminal rows, browser rows, and benchmarks on the same tested
   facade exports.
+- Moved Three panel adaptive render-cell budgeting into `src/app`, keeping startup pressure defaults and recovery logic
+  independent of demo-only modules.

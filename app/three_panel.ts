@@ -27,7 +27,7 @@ import {
 import {
   resolveThreePanelAdaptiveRenderBudget,
   ThreePanelAdaptiveRenderBudgetController,
-} from "./three_panel_adaptive.ts";
+} from "../src/app/three_panel_adaptive.ts";
 import { threePanelAsciiEffectOptionsEqual, threePanelRendererStateMatches } from "../src/app/three_panel_effect.ts";
 import { fingerprintThreePanelGrid, threePanelBlankGrid } from "../src/app/three_panel_grid.ts";
 import {
@@ -49,7 +49,7 @@ export {
   type ThreePanelAdaptiveRenderBudgetResult,
   type ThreePanelAdaptiveRenderBudgetUpdateInput,
   type ThreePanelAdaptiveRenderBudgetUpdateResult,
-} from "./three_panel_adaptive.ts";
+} from "../src/app/three_panel_adaptive.ts";
 export {
   resolveThreePanelFrameInterval,
   resolveThreePanelRenderPolicy,
