@@ -1109,3 +1109,7 @@ performance, shared terminal/web workbench projections, and oversized module red
   steady block-mode frames avoid per-frame profile object allocation and redundant `setRenderProfile` calls. Focused
   renderer/profile tests, the new `three-ascii-render-profile-1k` benchmark, the uniform cache benchmark, and the
   workbench startup probe passed.
+- Switched the API Workbench Three startup path to deferred WebGPU readback after the current 220x70 pressure probe
+  showed block-mode renderer time dropping from roughly 18ms with blocking readback to roughly 7ms with deferred
+  readback at the same 960-cell budget. Deferred remains backed by the existing queue warmup/placeholder behavior and
+  focused pressure tests now pin the faster default.
