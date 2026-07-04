@@ -656,3 +656,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Switched the API workbench Three startup renderer policy back to deferred readback after the bounded stale-grid
   fallback made it safe for live panes; the default 240-cell startup pressure probe now uses `readback=deferred` and
   measured roughly 9.8ms average renderer frames versus roughly 20.9ms with blocking readback on this host.
+- Added a low byte-rate recovery gate to the workbench Three terminal-pressure model so animated 120-cell output does
+  not auto-climb back to 240 cells unless the terminal is sustaining less than 20KB/s; the 80-frame startup probe now
+  stays at the 18x6 emergency grid instead of recovering into a larger payload on moderate animated output.

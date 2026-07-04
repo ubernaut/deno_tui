@@ -196,6 +196,27 @@ Deno.test("workbench Three terminal pressure only recovers when total and per-gr
   );
 });
 
+Deno.test("workbench Three terminal pressure only recovers below the low byte-rate floor", () => {
+  const state = createWorkbenchThreeTerminalPressureState(120);
+  const base = {
+    renderedThreeGrids: 1,
+    bytes: 900,
+    sampleDurationMs: 33.33,
+    levels: [120, 240, 480, 960],
+    highBytes: 80_000,
+    lowBytes: 35_000,
+    lowBytesPerGrid: 1_500,
+    lowBytesPerSecond: 20_000,
+    lowFrameThreshold: 1,
+  };
+
+  assertEquals(resolveWorkbenchThreeTerminalPressureBudget(state, base).currentCells, 120);
+  assertEquals(
+    resolveWorkbenchThreeTerminalPressureBudget(state, { ...base, bytes: 500 }).currentCells,
+    240,
+  );
+});
+
 Deno.test("workbench Three terminal pressure resets counters when no Three grid was rendered", () => {
   const state = { currentCells: 480, highFrames: 1, lowFrames: 2 };
   const next = resolveWorkbenchThreeTerminalPressureBudget(state, {
