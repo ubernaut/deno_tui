@@ -19,7 +19,6 @@ import {
   buttonText,
   centerCellText as centerText,
   clampWorkbenchTileDensity,
-  clipRect,
   contrastText,
   createWorkbenchVisualizationWindowOptions,
   createWorkbenchWorkspaceStore,
@@ -244,6 +243,7 @@ import { workbenchExplorerRowsInto } from "./workbench_explorer.ts";
 import { workbenchInspectorRowsInto } from "./workbench_inspector.ts";
 import { workbenchLogRowsFromSourcesInto } from "./workbench_logs.ts";
 import { writeWorkbenchThreeGrid } from "./workbench_three_grid.ts";
+import { setWorkbenchThreeRect, workbenchThreeGraphicsRect } from "./workbench_three_geometry.ts";
 import { setWorkbenchThreeSceneSignal, type WorkbenchThreeScene } from "./workbench_three_scene.ts";
 import {
   threeRendererModeLabel,
@@ -1435,8 +1435,8 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
     };
     addHit(sceneRect, { type: "threeViewport", id });
     const entry = ensureVisualizationThreePanel(id);
-    setSignalRect(entry.rectangle, { column: 0, row: 0, width: sceneRect.width, height: sceneRect.height });
-    setSignalRect(entry.graphicsRectangle, contentRectToGraphicsRect(sceneRect));
+    setWorkbenchThreeRect(entry.rectangle, { column: 0, row: 0, width: sceneRect.width, height: sceneRect.height });
+    setWorkbenchThreeRect(entry.graphicsRectangle, contentRectToGraphicsRect(sceneRect));
     setWorkbenchThreeSceneSignal(entry.scene, rendered.three ?? null);
     renderedVisualizationThreePanels.add(id);
     renderThreeGrid(frame, sceneRect, entry.panel.grid.peek(), t);
@@ -2945,8 +2945,8 @@ function hideVisualizationThreePanel(id: VisualizationWindowId): void {
   const entry = visualizationThreePanels.get(id);
   if (!entry) return;
   setWorkbenchThreeSceneSignal(entry.scene, null);
-  setSignalRect(entry.rectangle, { column: 0, row: 0, width: 0, height: 0 });
-  setSignalRect(entry.graphicsRectangle, { column: 0, row: 0, width: 0, height: 0 });
+  setWorkbenchThreeRect(entry.rectangle, { column: 0, row: 0, width: 0, height: 0 });
+  setWorkbenchThreeRect(entry.graphicsRectangle, { column: 0, row: 0, width: 0, height: 0 });
 }
 
 function hideVisualizationThreePanelsExcept(visibleIds: ReadonlySet<VisualizationWindowId>): void {
@@ -2966,22 +2966,11 @@ function disposeVisualizationThreePanel(id: VisualizationWindowId): void {
 }
 
 function setThreeBodyRect(rect: Rectangle): void {
-  setSignalRect(threeBodyRect, rect);
+  setWorkbenchThreeRect(threeBodyRect, rect);
 }
 
 function setThreeGraphicsRect(rect: Rectangle): void {
-  setSignalRect(threeGraphicsRect, rect);
-}
-
-function setSignalRect(target: Signal<Rectangle>, rect: Rectangle): void {
-  const current = target.peek();
-  if (
-    current.column === rect.column && current.row === rect.row && current.width === rect.width &&
-    current.height === rect.height
-  ) {
-    return;
-  }
-  target.value = rect;
+  setWorkbenchThreeRect(threeGraphicsRect, rect);
 }
 
 function screenDropdownOpen(): boolean {
@@ -3076,31 +3065,11 @@ function withWorkspacePlacement(bounds: Rectangle, offset: number, render: () =>
 }
 
 function contentRectToGraphicsRect(rect: Rectangle): Rectangle {
-  const windowContext = windowRenderContext;
-  if (!windowContext) return rect;
-  const windowRect = {
-    column: windowContext.viewport.column + rect.column - windowContext.offset.columns,
-    row: windowContext.viewport.row + rect.row - windowContext.offset.rows,
-    width: rect.width,
-    height: rect.height,
-  };
-  const visibleInWindow = clipRect(windowRect, windowContext.viewport);
-  if (visibleInWindow.width !== rect.width || visibleInWindow.height !== rect.height) {
-    return { column: visibleInWindow.column, row: visibleInWindow.row, width: 0, height: 0 };
-  }
-
-  const workspaceContext = workspacePlacementContext;
-  if (!workspaceContext) return windowRect;
-  const screenRect = {
-    ...windowRect,
-    column: windowRect.column + workspaceContext.columnDelta,
-    row: windowRect.row + workspaceContext.rowDelta,
-  };
-  const visibleOnScreen = clipRect(screenRect, workspaceContext.clip);
-  if (visibleOnScreen.width !== rect.width || visibleOnScreen.height !== rect.height) {
-    return { column: visibleOnScreen.column, row: visibleOnScreen.row, width: 0, height: 0 };
-  }
-  return screenRect;
+  return workbenchThreeGraphicsRect({
+    rect,
+    window: windowRenderContext,
+    workspace: workspacePlacementContext,
+  });
 }
 
 function blitWorkspace(frame: Frame, virtual: Frame, bounds: Rectangle, offset: number, width: number): void {

@@ -399,3 +399,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   detail for smoother motion, with tested frame-interval selection for live and idle workbench Three panes.
 - Made workbench Three cadence focus-aware through a shared tested helper so background Three panes use idle timing
   while focused or fullscreen Three panes keep interactive timing.
+- Extracted workbench Three rectangle write suppression and graphics-surface clipping into a focused tested helper,
+  trimming inline resize/Kitty geometry logic from the large API workbench module.
