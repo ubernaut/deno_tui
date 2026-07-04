@@ -320,6 +320,11 @@ export interface ThreeAsciiRendererPerformance {
   ansiMs: number;
   readbackMs: number;
   assemblyMs: number;
+  deferredReadbackSlots?: number;
+  deferredReadbackPending?: number;
+  deferredReadbackUnresolved?: number;
+  deferredReadbackResolved?: number;
+  deferredReadbackSaturated?: boolean;
 }
 
 /** Stable error raised when WebGPU output buffers cannot be mapped back to CPU-readable memory. */
@@ -499,6 +504,7 @@ export class ThreeAsciiRenderer {
       if (!deferredAnsiGrid.grid && this.deferredReadbacks.isSaturated()) {
         const frameEnd = performance.now();
         const previous = this.lastPerformance;
+        const queue = this.deferredReadbacks.inspect();
         this.lastPerformance = {
           columns: this.columns,
           rows: this.rows,
@@ -509,6 +515,11 @@ export class ThreeAsciiRenderer {
           ansiMs: 0,
           readbackMs: this.lastReadbackMs,
           assemblyMs: 0,
+          deferredReadbackSlots: queue.slotCount,
+          deferredReadbackPending: queue.pending,
+          deferredReadbackUnresolved: queue.unresolved,
+          deferredReadbackResolved: queue.resolved,
+          deferredReadbackSaturated: true,
         };
         return { grid: this.deferredReadbacks.lastCompletedGrid() };
       }
@@ -532,6 +543,7 @@ export class ThreeAsciiRenderer {
       frame.grid = await this.computeAnsiGrid(deferredAnsiGrid);
     }
     const frameEnd = performance.now();
+    const queue = this.readbackStrategy === "deferred" ? this.deferredReadbacks.inspect() : undefined;
     this.lastPerformance = {
       columns: this.columns,
       rows: this.rows,
@@ -542,6 +554,11 @@ export class ThreeAsciiRenderer {
       ansiMs: renderAnsi ? frameEnd - sceneEnd : 0,
       readbackMs: renderAnsi ? this.lastReadbackMs : 0,
       assemblyMs: renderAnsi ? this.lastAssemblyMs : 0,
+      deferredReadbackSlots: queue?.slotCount,
+      deferredReadbackPending: queue?.pending,
+      deferredReadbackUnresolved: queue?.unresolved,
+      deferredReadbackResolved: queue?.resolved,
+      deferredReadbackSaturated: queue?.saturated,
     };
 
     return frame;

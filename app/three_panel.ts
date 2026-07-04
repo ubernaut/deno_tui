@@ -611,7 +611,11 @@ export class ThreePanelFrameView {
       }ms at ${performanceInfo.columns}x${performanceInfo.rows}`,
       detail: `scene ${performanceInfo.sceneMs.toFixed(1)}ms, ansi ${performanceInfo.ansiMs.toFixed(1)}ms, readback ${
         performanceInfo.readbackMs.toFixed(1)
-      }ms, assembly ${performanceInfo.assemblyMs.toFixed(1)}ms`,
+      }ms, assembly ${performanceInfo.assemblyMs.toFixed(1)}ms${
+        performanceInfo.deferredReadbackSlots
+          ? `, queue ${performanceInfo.deferredReadbackUnresolved ?? 0}/${performanceInfo.deferredReadbackSlots}`
+          : ""
+      }`,
       context: {
         columns: performanceInfo.columns,
         rows: performanceInfo.rows,
@@ -622,6 +626,10 @@ export class ThreePanelFrameView {
         ansiMs: Math.round(performanceInfo.ansiMs * 10) / 10,
         readbackMs: Math.round(performanceInfo.readbackMs * 10) / 10,
         assemblyMs: Math.round(performanceInfo.assemblyMs * 10) / 10,
+        deferredReadbackSlots: performanceInfo.deferredReadbackSlots,
+        deferredReadbackPending: performanceInfo.deferredReadbackPending,
+        deferredReadbackUnresolved: performanceInfo.deferredReadbackUnresolved,
+        deferredReadbackSaturated: performanceInfo.deferredReadbackSaturated,
       },
     });
   }

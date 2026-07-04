@@ -29,6 +29,14 @@ Deno.test("deferred readback queue reuses free slots and applies backpressure", 
 
   queue.queue(first!, frameOptions());
   queue.queue(second!, frameOptions());
+  assertEquals(queue.inspect(), {
+    slotCount: 2,
+    pending: 2,
+    unresolved: 2,
+    resolved: 0,
+    saturated: true,
+    generation: 0,
+  });
   assertEquals(
     queue.nextBuffer(20, (_current, byteLength) => slot(new FakeDeferredReadbackBuffer(nextId++), byteLength)),
     undefined,
@@ -59,6 +67,7 @@ Deno.test("deferred readback queue consumes resolved frames and reports timing",
   assertEquals(buffer.getMappedRangeCalls, 1);
   assertEquals(buffer.unmapCalls, 1);
   assertEquals(queue.pending.length, 0);
+  assertEquals(queue.inspect().pending, 0);
 });
 
 Deno.test("deferred readback queue skips stale resolved frames after invalidation", async () => {

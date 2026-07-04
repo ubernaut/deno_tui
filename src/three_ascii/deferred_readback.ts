@@ -37,6 +37,16 @@ export interface ThreeAsciiDeferredReadbackConsumeResult {
   readbackMs?: number;
 }
 
+/** Current deferred-readback queue pressure for live renderer telemetry. */
+export interface ThreeAsciiDeferredReadbackInspection {
+  slotCount: number;
+  pending: number;
+  unresolved: number;
+  resolved: number;
+  saturated: boolean;
+  generation: number;
+}
+
 /** Owns deferred WebGPU readback slots and stale-frame invalidation for terminal Three ASCII frames. */
 export class ThreeAsciiDeferredReadbackQueue<TBuffer extends ThreeAsciiDeferredReadbackBuffer> {
   readonly pending: Array<ThreeAsciiDeferredReadbackFrame<TBuffer>> = [];
@@ -63,12 +73,25 @@ export class ThreeAsciiDeferredReadbackQueue<TBuffer extends ThreeAsciiDeferredR
     return this.lastGrid;
   }
 
-  isSaturated(): boolean {
+  inspect(): ThreeAsciiDeferredReadbackInspection {
     let unresolved = 0;
+    let resolved = 0;
     for (const pending of this.pending) {
-      if (!pending.resolved) unresolved += 1;
+      if (pending.resolved) resolved += 1;
+      else unresolved += 1;
     }
-    return unresolved >= this.slotCount;
+    return {
+      slotCount: this.slotCount,
+      pending: this.pending.length,
+      unresolved,
+      resolved,
+      saturated: unresolved >= this.slotCount,
+      generation: this.generation,
+    };
+  }
+
+  isSaturated(): boolean {
+    return this.inspect().saturated;
   }
 
   invalidate(): void {

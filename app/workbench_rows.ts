@@ -33,6 +33,10 @@ export interface ThreeHeaderPerformance {
   readbackMs: number;
   assemblyMs: number;
   cells: number;
+  deferredReadbackSlots?: number;
+  deferredReadbackPending?: number;
+  deferredReadbackUnresolved?: number;
+  deferredReadbackSaturated?: boolean;
 }
 
 /** Builds responsive title/detail rows for the built-in Three ASCII workbench window. */
@@ -65,11 +69,22 @@ export function threeHeaderRows(
 function formatThreeHeaderPerformance(performance: ThreeHeaderPerformance, width: number): string {
   const total = `${Math.round(performance.totalMs)}ms`;
   const cells = `${performance.cells}c`;
+  const queue = formatThreeHeaderQueuePressure(performance);
   const detailed = `frame ${total} scene ${Math.round(performance.sceneMs)} read ${
     Math.round(performance.readbackMs)
-  } asm ${Math.round(performance.assemblyMs)} ${cells}`;
+  } asm ${Math.round(performance.assemblyMs)} ${cells}${queue ? ` ${queue}` : ""}`;
   if (width >= textWidth(detailed)) return detailed;
-  return `${total} ${cells}`;
+  const compact = `${total} ${cells}${queue ? ` ${queue}` : ""}`;
+  return width >= textWidth(compact) ? compact : `${total} ${cells}`;
+}
+
+function formatThreeHeaderQueuePressure(performance: ThreeHeaderPerformance): string {
+  if (
+    performance.deferredReadbackSlots === undefined ||
+    performance.deferredReadbackUnresolved === undefined
+  ) return "";
+  const prefix = performance.deferredReadbackSaturated ? "sat" : "q";
+  return `${prefix}${performance.deferredReadbackUnresolved}/${performance.deferredReadbackSlots}`;
 }
 
 /** Builds responsive footer rows for the API Workbench data table. */

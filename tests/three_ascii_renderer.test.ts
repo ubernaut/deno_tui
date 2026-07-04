@@ -183,6 +183,14 @@ Deno.test("ThreeAsciiRenderer skips scene submission when deferred readbacks are
     deferredReadbacks: {
       consumeCompleted: () => { grid?: string[][]; readbackMs?: number };
       isSaturated: () => boolean;
+      inspect: () => {
+        slotCount: number;
+        pending: number;
+        unresolved: number;
+        resolved: number;
+        saturated: boolean;
+        generation: number;
+      };
       lastCompletedGrid: () => string[][];
     };
     renderScene: () => Promise<void>;
@@ -190,6 +198,14 @@ Deno.test("ThreeAsciiRenderer skips scene submission when deferred readbacks are
   internals.deferredReadbacks = {
     consumeCompleted: () => ({}),
     isSaturated: () => true,
+    inspect: () => ({
+      slotCount: 6,
+      pending: 6,
+      unresolved: 6,
+      resolved: 0,
+      saturated: true,
+      generation: 0,
+    }),
     lastCompletedGrid: () => cachedGrid,
   };
   internals.renderScene = () => {
@@ -201,4 +217,6 @@ Deno.test("ThreeAsciiRenderer skips scene submission when deferred readbacks are
 
   assertEquals(frame.grid, cachedGrid);
   assertEquals(sceneSubmissions, 0);
+  assertEquals(renderer.inspectPerformance()?.deferredReadbackSaturated, true);
+  assertEquals(renderer.inspectPerformance()?.deferredReadbackUnresolved, 6);
 });

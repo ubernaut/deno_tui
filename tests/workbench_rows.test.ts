@@ -28,10 +28,12 @@ Deno.test("threeHeaderRows includes compact renderer telemetry when it fits", ()
     readbackMs: 4.1,
     assemblyMs: 1.3,
     cells: 1920,
+    deferredReadbackSlots: 6,
+    deferredReadbackUnresolved: 2,
   });
   assertEquals(
     rows[1]?.text,
-    "torus knot · sphere · block · floor plane · frame 17ms scene 12 read 4 asm 1 1920c",
+    "torus knot · sphere · block · floor plane · frame 17ms scene 12 read 4 asm 1 1920c q2/6",
   );
   assertEquals(
     threeHeaderRows("BLOCKS", 18, theme, {
@@ -40,6 +42,9 @@ Deno.test("threeHeaderRows includes compact renderer telemetry when it fits", ()
       readbackMs: 4.1,
       assemblyMs: 1.3,
       cells: 1920,
+      deferredReadbackSlots: 6,
+      deferredReadbackUnresolved: 6,
+      deferredReadbackSaturated: true,
     })[1]?.text,
     "torus · sphere · block · floor",
   );
