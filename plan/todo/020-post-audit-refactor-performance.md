@@ -218,6 +218,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted API workbench Inspector row projection into a focused helper with direct tests, keeping the main renderer
   responsible only for writing projected rows.
 - Extracted API workbench Logs row projection into a focused helper that reuses row objects across draws.
+- Reused workbench ANSI changed-span scratch buffers and span objects across flushes, keeping sparse terminal output
+  allocation-light; focused `workbench-ansi-screen-span-flush-168x54` measured around 2.16ms after the change.
 - Extracted API workbench Explorer row projection into a focused helper with direct tests for selection, icons, and
   caller-owned row reuse.
 - Extracted API workbench Data Table row projection and page-size calculation into a generic helper with direct tests

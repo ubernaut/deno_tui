@@ -25,6 +25,8 @@ export class WorkbenchAnsiScreenPainter {
   #rows: string[] = [];
   #cells: string[][] = [];
   #widths: number[] = [];
+  #changedSpans: ChangedSpan[] = [];
+  #changedSpanPool: ChangedSpan[] = [];
   #rowCache = new WeakMap<string[], WorkbenchAnsiScreenRowCache>();
 
   constructor(private readonly stdout: CanvasStdout) {}
@@ -83,6 +85,7 @@ export class WorkbenchAnsiScreenPainter {
     this.#rows.length = 0;
     this.#cells.length = 0;
     this.#widths.length = 0;
+    this.#changedSpans.length = 0;
     this.#rowCache = new WeakMap();
   }
 
@@ -117,7 +120,13 @@ export class WorkbenchAnsiScreenPainter {
         continue;
       }
 
-      const spans = changedSpans(previous, frameRow, columns);
+      const spans = changedSpansInto(
+        this.#changedSpans,
+        this.#changedSpanPool,
+        previous,
+        frameRow,
+        columns,
+      );
       if (spans.length === 0) continue;
       for (const span of spans) {
         output.push(moveCursor(row, span.start), renderSlice(frameRow, span.start, span.width));
@@ -156,8 +165,14 @@ interface ChangedSpan {
   width: number;
 }
 
-function changedSpans(previous: readonly string[], next: readonly string[], width: number): ChangedSpan[] {
-  const spans: ChangedSpan[] = [];
+function changedSpansInto(
+  spans: ChangedSpan[],
+  pool: ChangedSpan[],
+  previous: readonly string[],
+  next: readonly string[],
+  width: number,
+): ChangedSpan[] {
+  spans.length = 0;
   let spanStart = -1;
   let lastChanged = -1;
 
@@ -168,7 +183,7 @@ function changedSpans(previous: readonly string[], next: readonly string[], widt
     if (spanStart < 0) {
       spanStart = column;
     } else if (column - lastChanged > MERGE_CHANGED_SPAN_GAP + 1) {
-      spans.push({ start: spanStart, end: lastChanged, width: lastChanged - spanStart + 1 });
+      writeChangedSpan(spans, pool, spans.length, spanStart, lastChanged);
       if (spans.length >= MAX_CHANGED_SPANS_PER_ROW) {
         spanStart = column;
         lastChanged = column;
@@ -181,15 +196,31 @@ function changedSpans(previous: readonly string[], next: readonly string[], widt
 
   if (spanStart < 0) return spans;
   if (spans.length >= MAX_CHANGED_SPANS_PER_ROW) {
-    spans[spans.length - 1] = {
-      start: spans[spans.length - 1]!.start,
-      end: width - 1,
-      width: width - spans[spans.length - 1]!.start,
-    };
+    writeChangedSpan(spans, pool, spans.length - 1, spans[spans.length - 1]!.start, width - 1);
     return spans;
   }
-  spans.push({ start: spanStart, end: lastChanged, width: lastChanged - spanStart + 1 });
+  writeChangedSpan(spans, pool, spans.length, spanStart, lastChanged);
   return spans;
+}
+
+function writeChangedSpan(
+  spans: ChangedSpan[],
+  pool: ChangedSpan[],
+  index: number,
+  start: number,
+  end: number,
+): void {
+  const span = pool[index];
+  if (span) {
+    span.start = start;
+    span.end = end;
+    span.width = end - start + 1;
+    spans[index] = span;
+    return;
+  }
+  const nextSpan = { start, end, width: end - start + 1 };
+  pool[index] = nextSpan;
+  spans[index] = nextSpan;
 }
 
 function snapshotChangedSpans(
