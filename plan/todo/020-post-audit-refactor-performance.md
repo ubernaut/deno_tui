@@ -419,3 +419,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   performance measurements can be evolved independently from the script entrypoint.
 - Moved the workbench Three grid benchmark fixture out of the main benchmark catalog, keeping the scaled/capped terminal
   grid guards reusable while continuing to track the 220x70 performance envelopes.
+- Split the Three ASCII benchmark family out of the main benchmark catalog, so readback, image compaction, uniform-clean,
+  ANSI grid assembly, and frame-diff guards live with their synthetic buffers instead of inflating the shared registry.
