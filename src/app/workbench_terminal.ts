@@ -10,6 +10,7 @@ import {
 } from "../runtime/terminal_workspace.ts";
 import type { Rectangle } from "../types.ts";
 import { textWidth } from "../utils/strings.ts";
+import type { TerminalInputMode } from "./terminal_input.ts";
 import { buttonText, fitCellText } from "./workbench_frame.ts";
 import type { WorkbenchButtonRowItem } from "./workbench_control_layout.ts";
 
@@ -141,6 +142,22 @@ export interface WorkbenchTerminalOutputToolbarState {
   inputMode?: "raw" | "workbench";
 }
 
+/** Options for resolving a Workbench terminal input-mode toggle. */
+export interface WorkbenchTerminalInputModeToggleOptions {
+  mode: TerminalInputMode;
+  canEnterRaw: boolean;
+  enterRawMessage: string;
+  enterWorkbenchMessage: string;
+  rawUnavailableMessage: string;
+}
+
+/** Resolved Workbench terminal input-mode toggle decision. */
+export interface WorkbenchTerminalInputModeToggleResult {
+  mode: TerminalInputMode;
+  changed: boolean;
+  message: string;
+}
+
 /** Options for projecting a terminal toolbar action list. */
 export interface WorkbenchTerminalToolbarItemOptions {
   actions?: readonly WorkbenchTerminalToolbarAction[];
@@ -241,6 +258,59 @@ export const WORKBENCH_TERMINAL_OUTPUT_TOOLBAR_ACTIONS: readonly WorkbenchTermin
   "raw",
   "copy",
 ] as const;
+
+/** Resolves the next terminal input mode without mutating UI state. */
+export function resolveWorkbenchTerminalInputModeToggle(
+  options: WorkbenchTerminalInputModeToggleOptions,
+): WorkbenchTerminalInputModeToggleResult {
+  if (options.mode === "raw") {
+    return {
+      mode: "workbench",
+      changed: true,
+      message: options.enterWorkbenchMessage,
+    };
+  }
+
+  if (!options.canEnterRaw) {
+    return {
+      mode: options.mode,
+      changed: false,
+      message: options.rawUnavailableMessage,
+    };
+  }
+
+  return {
+    mode: "raw",
+    changed: true,
+    message: options.enterRawMessage,
+  };
+}
+
+/** Resolves the API Workbench process-output terminal input-mode toggle. */
+export function resolveWorkbenchTerminalProcessInputModeToggle(
+  options: { mode: TerminalInputMode; running: boolean },
+): WorkbenchTerminalInputModeToggleResult {
+  return resolveWorkbenchTerminalInputModeToggle({
+    mode: options.mode,
+    canEnterRaw: options.running,
+    enterRawMessage: "terminal input raw mode",
+    enterWorkbenchMessage: "terminal input workbench mode",
+    rawUnavailableMessage: "terminal raw input requires running process",
+  });
+}
+
+/** Resolves the API Workbench shell terminal input-mode toggle. */
+export function resolveWorkbenchTerminalShellInputModeToggle(
+  options: { mode: TerminalInputMode; running: boolean },
+): WorkbenchTerminalInputModeToggleResult {
+  return resolveWorkbenchTerminalInputModeToggle({
+    mode: options.mode,
+    canEnterRaw: options.running,
+    enterRawMessage: "shell input raw mode",
+    enterWorkbenchMessage: "shell input workbench mode",
+    rawUnavailableMessage: "shell raw input requires a running shell",
+  });
+}
 
 /** Resolves the preferred PTY shell backend and falls back to the process backend when PTY is unavailable. */
 export async function resolveWorkbenchShellBackend(

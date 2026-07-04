@@ -159,6 +159,8 @@ import { maxTextWidth, type VisibleMenuSlice, visibleMenuSliceInto } from "../sr
 import {
   nextWorkbenchTerminalSessionId,
   resolveWorkbenchShellBackend,
+  resolveWorkbenchTerminalProcessInputModeToggle,
+  resolveWorkbenchTerminalShellInputModeToggle,
   workbenchTerminalCopyRowsInto,
   type WorkbenchTerminalPaneProjection,
   workbenchTerminalPaneProjectionsInto,
@@ -1894,17 +1896,12 @@ function terminalInputModeLabel(): string {
 }
 
 function toggleTerminalInputMode(): void {
-  if (terminalInputMode.peek() === "raw") {
-    terminalInputMode.value = "workbench";
-    pushLog("terminal input workbench mode");
-    return;
-  }
-  if (!terminalOutputSession.running) {
-    pushLog("terminal raw input requires running process");
-    return;
-  }
-  terminalInputMode.value = "raw";
-  pushLog("terminal input raw mode");
+  const next = resolveWorkbenchTerminalProcessInputModeToggle({
+    mode: terminalInputMode.peek(),
+    running: terminalOutputSession.running,
+  });
+  if (next.changed) terminalInputMode.value = next.mode;
+  pushLog(next.message);
 }
 
 function renderTerminalShell(frame: Frame, rect: Rectangle): void {
@@ -2159,17 +2156,12 @@ function terminalShellInputModeLabel(): string {
 }
 
 function toggleTerminalShellInputMode(): void {
-  if (terminalShellInputMode.peek() === "raw") {
-    terminalShellInputMode.value = "workbench";
-    pushLog("shell input workbench mode");
-    return;
-  }
-  if (!activeTerminalShell()?.running) {
-    pushLog("shell raw input requires a running shell");
-    return;
-  }
-  terminalShellInputMode.value = "raw";
-  pushLog("shell input raw mode");
+  const next = resolveWorkbenchTerminalShellInputModeToggle({
+    mode: terminalShellInputMode.peek(),
+    running: activeTerminalShell()?.running === true,
+  });
+  if (next.changed) terminalShellInputMode.value = next.mode;
+  pushLog(next.message);
 }
 
 function openTerminalShellSearchModal(): void {

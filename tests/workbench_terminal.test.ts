@@ -15,6 +15,8 @@ import {
   createWorkbenchShellSession,
   nextWorkbenchTerminalSessionId,
   resolveWorkbenchShellBackend,
+  resolveWorkbenchTerminalProcessInputModeToggle,
+  resolveWorkbenchTerminalShellInputModeToggle,
   workbenchTerminalCopyRowsInto,
   type WorkbenchTerminalOutputToolbarAction,
   workbenchTerminalOutputToolbarItemsInto,
@@ -26,6 +28,48 @@ import {
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
 } from "../src/app/workbench/mod.ts";
+
+Deno.test("resolveWorkbenchTerminalProcessInputModeToggle leaves workbench mode when process is stopped", () => {
+  assertEquals(resolveWorkbenchTerminalProcessInputModeToggle({ mode: "workbench", running: false }), {
+    mode: "workbench",
+    changed: false,
+    message: "terminal raw input requires running process",
+  });
+});
+
+Deno.test("resolveWorkbenchTerminalProcessInputModeToggle enters and exits raw mode", () => {
+  assertEquals(resolveWorkbenchTerminalProcessInputModeToggle({ mode: "workbench", running: true }), {
+    mode: "raw",
+    changed: true,
+    message: "terminal input raw mode",
+  });
+  assertEquals(resolveWorkbenchTerminalProcessInputModeToggle({ mode: "raw", running: false }), {
+    mode: "workbench",
+    changed: true,
+    message: "terminal input workbench mode",
+  });
+});
+
+Deno.test("resolveWorkbenchTerminalShellInputModeToggle leaves workbench mode when shell is stopped", () => {
+  assertEquals(resolveWorkbenchTerminalShellInputModeToggle({ mode: "workbench", running: false }), {
+    mode: "workbench",
+    changed: false,
+    message: "shell raw input requires a running shell",
+  });
+});
+
+Deno.test("resolveWorkbenchTerminalShellInputModeToggle enters and exits raw mode", () => {
+  assertEquals(resolveWorkbenchTerminalShellInputModeToggle({ mode: "workbench", running: true }), {
+    mode: "raw",
+    changed: true,
+    message: "shell input raw mode",
+  });
+  assertEquals(resolveWorkbenchTerminalShellInputModeToggle({ mode: "raw", running: false }), {
+    mode: "workbench",
+    changed: true,
+    message: "shell input workbench mode",
+  });
+});
 
 Deno.test("workbenchTerminalSearchModalBody projects an empty search prompt", () => {
   assertEquals(workbenchTerminalSearchModalBody({ query: "gpu" }), [
