@@ -468,3 +468,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Optimized workbench frame styled-cell splitting for the common Three block-mode truecolor cell shape, avoiding
   per-cell `Array.from()` parsing in large ANSI rows; the `workbench-three-block-span-flush-168x54` guard now averages
   roughly 2.5ms on this host.
+- Extracted retained ANSI screen changed-span detection and snapshot updates into a focused tested helper, keeping the
+  Three block span flush path independently tunable while preserving the roughly 2.2-2.3ms benchmark guard on this host.
