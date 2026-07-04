@@ -19,6 +19,7 @@ import {
   workbenchFrameBoxLinesInto,
   writeFrame,
   writeFrameCells,
+  writeFrameCellsUnchecked,
   writeStringFrameRow,
 } from "../src/app/workbench_frame.ts";
 
@@ -123,6 +124,13 @@ Deno.test("workbench frame span writes clip negative columns without sparse nega
 
   assertEquals(row.slice(0, 2), ["C", "D"]);
   assertEquals(Object.hasOwn(row, "-1"), false);
+});
+
+Deno.test("workbench frame unchecked span writes caller-clipped cells", () => {
+  const row = ["x"];
+  writeFrameCellsUnchecked(row, 1, ["A", "B", "C"], 2);
+
+  assertEquals(row, ["x", "A", "B"]);
 });
 
 Deno.test("workbench frame writes ANSI strings into string-backed rows", () => {

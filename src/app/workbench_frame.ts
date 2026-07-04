@@ -134,6 +134,22 @@ export function writeFrameCells(
   updateFrameRowMetadata(cells);
 }
 
+/** Writes an already-clipped contiguous cell range and marks the row dirty once. */
+export function writeFrameCellsUnchecked(
+  cells: string[],
+  column: number,
+  values: readonly string[],
+  count = values.length,
+): void {
+  const writeColumn = Math.floor(column);
+  const sourceCount = Math.max(0, Math.min(values.length, Math.floor(count)));
+  if (sourceCount <= 0) return;
+  for (let index = 0; index < sourceCount; index += 1) {
+    cells[writeColumn + index] = values[index]!;
+  }
+  updateFrameRowMetadata(cells);
+}
+
 /** Fills a full frame row with a style. */
 export function fillFrameRow(
   frame: WorkbenchFrame,

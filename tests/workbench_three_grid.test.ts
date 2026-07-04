@@ -20,6 +20,19 @@ Deno.test("workbench three grid writes ANSI cells into a frame rectangle", () =>
   assertEquals(frame[2]?.slice(2, 5), ["D", "E", "F"]);
 });
 
+Deno.test("workbench three grid clips negative columns through the safe writer", () => {
+  const frame: WorkbenchFrame = [];
+  writeWorkbenchThreeGrid(
+    frame,
+    { column: -2, row: 0, width: 4, height: 1 },
+    [["A", "B", "C", "D"]],
+    ".",
+  );
+
+  assertEquals(frame[0]?.slice(0, 2), ["C", "D"]);
+  assertEquals(Object.hasOwn(frame[0]!, "-1"), false);
+});
+
 Deno.test("workbench three grid uses caller-provided fallback cells", () => {
   const frame: WorkbenchFrame = [];
   writeWorkbenchThreeGrid(

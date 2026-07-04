@@ -358,11 +358,14 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Retuned API workbench Three per-grid terminal-pressure thresholds for the new richer cell tiers so normal truecolor
   block frames can remain at 1920/3840 cells while slow terminal writes still downshift through duration pressure.
 - Specialized array-backed workbench row/slice assembly so Three block pane flushes avoid per-cell callback dispatch
+  while preserving styled-run compaction and clipping behavior.
 - Rechecked the reported default workbench Three block-mode slowdown with serial live probes. Deferred readback and the
   terminal profile still produce roughly 6ms steady renderer work on this host; the remaining visible bottleneck was the
   default 60-cell emergency startup tier and 20fps cadence cap. The workbench now starts the default Three pane at the
   120-cell normal live tier with 30fps scheduling, while retaining 60/30-cell downshift tiers for slow SSH/tmux output.
-  while preserving styled-run compaction and clipping behavior.
+- Added an already-clipped frame-cell writer for renderer projection hot paths and routed Workbench Three grid blits
+  through it with a safe fallback for negative columns. Focused grid benchmarks stayed under budget and repeated
+  samples improved scaled/capped/vertical projection modes while preserving clipped write behavior in tests.
 - Split workbench styled-cell tokenization and row/slice assembly into `workbench_frame_rows.ts`, preserving the
   existing frame facade while keeping the terminal hot path independently testable and benchmarked.
 - Extracted ThreePanelFrameView graphics-image handle ownership into `ThreePanelGraphicsImageController` with direct
