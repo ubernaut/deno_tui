@@ -6,9 +6,9 @@ import {
   resolveWorkbenchThreeTerminalPressureUpdate,
   shouldApplyWorkbenchThreeTerminalPressureSample,
   shouldCountWorkbenchThreeGridPressure,
-  workbenchThreeTerminalBytesPerSecond,
   workbenchThreeFrameIntervalForCells,
   workbenchThreeShouldUseLiveCadence,
+  workbenchThreeTerminalBytesPerSecond,
 } from "../src/app/workbench_three_terminal_pressure.ts";
 
 Deno.test("workbench Three terminal pressure steps down across sustained heavy output", () => {
@@ -246,6 +246,42 @@ Deno.test("workbench Three terminal pressure update scopes flush samples before 
   assertEquals(scoped.scoped, true);
   assertEquals(scoped.currentCells, 480);
   assertEquals(scoped.direction, "down");
+});
+
+Deno.test("workbench Three terminal pressure update scopes slow full-screen redraws", () => {
+  const state = createWorkbenchThreeTerminalPressureState(960);
+  const fast = resolveWorkbenchThreeTerminalPressureUpdate(state, {
+    currentCells: 960,
+    renderedThreeGrids: 1,
+    renderedThreeRows: 12,
+    changedRows: 54,
+    bytes: 100_000,
+    durationMs: 10,
+    highDurationMs: 50,
+    levels: [120, 240, 480, 960],
+    highBytes: 80_000,
+    lowBytes: 35_000,
+    highFrameThreshold: 1,
+  });
+  assertEquals(fast.scoped, false);
+  assertEquals(fast.currentCells, 960);
+
+  const slow = resolveWorkbenchThreeTerminalPressureUpdate(state, {
+    currentCells: 960,
+    renderedThreeGrids: 1,
+    renderedThreeRows: 12,
+    changedRows: 54,
+    bytes: 100_000,
+    durationMs: 90,
+    highDurationMs: 50,
+    levels: [120, 240, 480, 960],
+    highBytes: 80_000,
+    lowBytes: 35_000,
+    highFrameThreshold: 1,
+  });
+  assertEquals(slow.scoped, true);
+  assertEquals(slow.currentCells, 480);
+  assertEquals(slow.direction, "down");
 });
 
 Deno.test("workbench Three terminal pressure update starts from current live cap", () => {

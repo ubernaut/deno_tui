@@ -149,12 +149,16 @@ export function resolveWorkbenchThreeTerminalPressureUpdate(
     highFrames: state.highFrames,
     lowFrames: state.lowFrames,
   };
-  const scoped = shouldApplyWorkbenchThreeTerminalPressureSample({
+  const rowScoped = shouldApplyWorkbenchThreeTerminalPressureSample({
     renderedThreeGrids: options.renderedThreeGrids,
     renderedThreeRows: options.renderedThreeRows,
     changedRows: options.changedRows,
     toleranceRows: options.toleranceRows,
   });
+  const highDurationMs = Math.max(1, options.highDurationMs ?? Number.POSITIVE_INFINITY);
+  const durationScoped = !rowScoped && options.renderedThreeGrids > 0 && options.renderedThreeRows > 0 &&
+    options.changedRows > 0 && (options.durationMs ?? 0) >= highDurationMs;
+  const scoped = rowScoped || durationScoped;
   const next = resolveWorkbenchThreeTerminalPressureBudget(currentState, {
     ...options,
     renderedThreeGrids: scoped ? options.renderedThreeGrids : 0,

@@ -444,6 +444,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   SSH/tmux sessions that spend hundreds of milliseconds flushing the default Three pane do not wait through repeated
   bad frames before dropping to the emergency render budget; local pressure probes still hold the 240-cell tier when
   steady output stays under threshold.
+- Extended Three terminal-pressure scoping so fast unrelated full-screen redraws remain ignored, but slow full-screen
+  flushes with visible Three output can still trigger the emergency budget immediately on constrained terminals.
 - Returned Three grid projection metadata from the workbench grid writer and routed terminal-pressure row accounting
   through the actual rendered target height, keeping capped/scaled grid pressure measurement aligned with paint output.
 - Extracted the workbench Three terminal-pressure flush update into a pure resolver that combines live-cap resync,
