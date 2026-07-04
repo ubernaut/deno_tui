@@ -50,6 +50,22 @@ export interface MicrotaskSchedulerOptions {
   onError?: (error: unknown) => void;
 }
 
+/** Serializable inspection snapshot for a throttled frame scheduler. */
+export interface FrameSchedulerInspection {
+  scheduled: boolean;
+  flushed: number;
+  cancelled: number;
+  intervalMs: number;
+  lastFlushAt?: number;
+}
+
+/** Options for coalescing UI invalidations behind a minimum frame interval. */
+export interface FrameSchedulerOptions {
+  intervalMs?: number;
+  timer?: RenderLoopTimer;
+  onError?: (error: unknown) => void;
+}
+
 /** Coalesces repeated scheduling requests into one pending microtask. */
 export class MicrotaskScheduler {
   readonly #queueMicrotask: (callback: () => void) => void;
@@ -103,6 +119,92 @@ export class MicrotaskScheduler {
     const callback = this.#callback;
     this.#scheduled = false;
     this.#callback = undefined;
+    this.#flushed += 1;
+    try {
+      callback?.();
+    } catch (error) {
+      this.#onError?.(error);
+      if (!this.#onError) throw error;
+    }
+  }
+}
+
+/** Coalesces repeated UI invalidations and flushes them no faster than the configured frame interval. */
+export class FrameScheduler {
+  readonly #timer: RenderLoopTimer;
+  readonly #onError?: (error: unknown) => void;
+  readonly #intervalMs: number;
+  #scheduled = false;
+  #callback: (() => void) | undefined;
+  #handle: unknown;
+  #lastFlushAt: number | undefined;
+  #flushed = 0;
+  #cancelled = 0;
+
+  constructor(options: FrameSchedulerOptions = {}) {
+    this.#timer = options.timer ?? {
+      setTimeout: (callback, delay) => setTimeout(callback, delay),
+      clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+      now: () => performance.now(),
+    };
+    this.#intervalMs = Math.max(0, options.intervalMs ?? 1000 / 30);
+    this.#onError = options.onError;
+  }
+
+  get scheduled(): boolean {
+    return this.#scheduled;
+  }
+
+  schedule(callback: () => void): boolean {
+    this.#callback = callback;
+    if (this.#scheduled) return false;
+    this.#scheduled = true;
+
+    const now = this.#timer.now();
+    const delay = this.#lastFlushAt === undefined ? 0 : Math.max(0, this.#intervalMs - (now - this.#lastFlushAt));
+    this.#handle = this.#timer.setTimeout(() => this.#flush(), delay);
+    return true;
+  }
+
+  flush(): boolean {
+    if (!this.#scheduled) return false;
+    if (this.#handle !== undefined) {
+      this.#timer.clearTimeout(this.#handle);
+      this.#handle = undefined;
+    }
+    this.#flush();
+    return true;
+  }
+
+  cancel(): boolean {
+    if (!this.#scheduled) return false;
+    this.#scheduled = false;
+    this.#callback = undefined;
+    if (this.#handle !== undefined) {
+      this.#timer.clearTimeout(this.#handle);
+      this.#handle = undefined;
+    }
+    this.#cancelled += 1;
+    return true;
+  }
+
+  inspect(): FrameSchedulerInspection {
+    return {
+      scheduled: this.#scheduled,
+      flushed: this.#flushed,
+      cancelled: this.#cancelled,
+      intervalMs: this.#intervalMs,
+      lastFlushAt: this.#lastFlushAt,
+    };
+  }
+
+  #flush(): void {
+    if (!this.#scheduled) return;
+    const callback = this.#callback;
+    this.#scheduled = false;
+    this.#callback = undefined;
+    this.#handle = undefined;
+    this.#lastFlushAt = this.#timer.now();
     this.#flushed += 1;
     try {
       callback?.();

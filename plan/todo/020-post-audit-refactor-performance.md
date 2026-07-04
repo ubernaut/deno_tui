@@ -328,3 +328,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added content fingerprinting to workbench-hosted Three panels so deferred readbacks that repeat an unchanged ASCII
   grid do not force redundant workbench redraws while still supporting mutable renderer-owned grids when their cells
   change.
+- Added a reusable `FrameScheduler` and routed API workbench invalidations through an 18 FPS global frame gate so
+  multiple animated Three panels coalesce into one terminal redraw cadence instead of each panel forcing its own full
+  workbench pass.

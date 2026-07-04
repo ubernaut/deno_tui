@@ -10602,6 +10602,27 @@
     },
     {
       "module": "src/runtime/render_loop.ts",
+      "name": "FrameScheduler",
+      "kind": "class",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/render_loop.ts",
+      "name": "FrameSchedulerInspection",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/render_loop.ts",
+      "name": "FrameSchedulerOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/render_loop.ts",
       "name": "MicrotaskScheduler",
       "kind": "class",
       "typeOnly": false,

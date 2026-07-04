@@ -130,7 +130,7 @@ import {
 } from "../src/app/terminal_input.ts";
 import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import { formatProcessCommandLine, ProcessSessionController } from "../src/runtime/process_session.ts";
-import { MicrotaskScheduler } from "../src/runtime/render_loop.ts";
+import { FrameScheduler } from "../src/runtime/render_loop.ts";
 import { type TerminalBackend } from "../src/runtime/terminal_backend.ts";
 import type { TerminalShellController } from "../src/runtime/terminal_shell.ts";
 import { TerminalShellWorkspaceController } from "../src/runtime/terminal_shell_workspace.ts";
@@ -664,7 +664,7 @@ let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
 let workspacePlacementContext: WorkspacePlacementContext | null = null;
-const drawScheduler = new MicrotaskScheduler();
+const drawScheduler = new FrameScheduler({ intervalMs: 1000 / 18 });
 const renderedVisualizationThreePanels = new Set<VisualizationWindowId>();
 type Frame = WorkbenchFrame;
 interface DropdownOverlay {

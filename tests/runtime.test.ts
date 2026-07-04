@@ -51,7 +51,7 @@ import {
   formatRuntimeWorkloadMarkdown,
   inspectRuntimeWorkload,
 } from "../src/runtime/telemetry.ts";
-import { createRenderLoop, MicrotaskScheduler, RenderLoop } from "../src/runtime/render_loop.ts";
+import { createRenderLoop, FrameScheduler, MicrotaskScheduler, RenderLoop } from "../src/runtime/render_loop.ts";
 import {
   DiagnosticsCollector,
   formatDiagnostics,
@@ -946,6 +946,72 @@ Deno.test("MicrotaskScheduler reports callback errors without leaving stale sche
 
   assertEquals(errors, [failure]);
   assertEquals(scheduler.inspect(), { scheduled: false, flushed: 1, cancelled: 0 });
+});
+
+Deno.test("FrameScheduler coalesces invalidations behind a frame interval", () => {
+  const timer = new TestRenderLoopTimer();
+  const scheduler = new FrameScheduler({ timer, intervalMs: 16 });
+  const runs: string[] = [];
+
+  assertEquals(scheduler.schedule(() => runs.push("first")), true);
+  assertEquals(timer.pendingCount(), 1);
+  assertEquals(timer.lastDelay(), 0);
+  assertEquals(scheduler.schedule(() => runs.push("latest")), false);
+
+  timer.flushNext();
+  assertEquals(runs, ["latest"]);
+  assertEquals(scheduler.inspect(), {
+    scheduled: false,
+    flushed: 1,
+    cancelled: 0,
+    intervalMs: 16,
+    lastFlushAt: 0,
+  });
+
+  timer.advance(5);
+  assertEquals(scheduler.schedule(() => runs.push("delayed")), true);
+  assertEquals(timer.lastDelay(), 11);
+  timer.advance(11);
+  timer.flushNext();
+
+  assertEquals(runs, ["latest", "delayed"]);
+  assertEquals(scheduler.inspect().lastFlushAt, 16);
+});
+
+Deno.test("FrameScheduler can cancel flush and report callback errors", () => {
+  const timer = new TestRenderLoopTimer();
+  const failure = new Error("frame failed");
+  const errors: unknown[] = [];
+  const scheduler = new FrameScheduler({
+    timer,
+    intervalMs: 20,
+    onError: (error) => errors.push(error),
+  });
+  const runs: string[] = [];
+
+  assertEquals(scheduler.schedule(() => runs.push("cancelled")), true);
+  assertEquals(scheduler.cancel(), true);
+  assertEquals(scheduler.cancel(), false);
+  timer.flushNext();
+  assertEquals(runs, []);
+  assertEquals(scheduler.inspect(), {
+    scheduled: false,
+    flushed: 0,
+    cancelled: 1,
+    intervalMs: 20,
+    lastFlushAt: undefined,
+  });
+
+  assertEquals(
+    scheduler.schedule(() => {
+      throw failure;
+    }),
+    true,
+  );
+  timer.flushNext();
+
+  assertEquals(errors, [failure]);
+  assertEquals(scheduler.inspect().flushed, 1);
 });
 
 Deno.test("AsyncScheduler can clear queued work without stopping active work", async () => {
