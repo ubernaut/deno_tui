@@ -821,3 +821,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted standard top-menu dropdown overlay projection into the shared menu helper so theme, new-window, and
   workspace dropdowns reuse tested anchoring, visible-slice, width, and selected-index remapping instead of carrying
   that renderer math inline in the terminal workbench.
+- Extracted API workbench hit-action-to-window resolution into a focused helper with direct tests, keeping hover/focus
+  routing for window chrome, terminal shell content, controls, data rows, and explorer rows out of the large terminal
+  renderer.

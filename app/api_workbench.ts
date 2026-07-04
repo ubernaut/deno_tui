@@ -201,6 +201,7 @@ import {
   apiWorkbenchWindowTitle,
   createApiWorkbenchThemes,
 } from "./api_workbench_catalog.ts";
+import { resolveApiWorkbenchHitWindowId } from "./api_workbench_hit.ts";
 import {
   type ApiWorkbenchBuiltInWindowId,
   apiWorkbenchVisualizationSupportsThree,
@@ -3067,18 +3068,12 @@ function windowScrollPage(id: WindowId): number {
 function windowAt(x: number, y: number): WindowId | undefined {
   const hit = findHit(x, y);
   if (!hit) return undefined;
-  const action = hit.action;
-  if (
-    action.type === "focus" || action.type === "minimize" || action.type === "maximize" ||
-    action.type === "restore" || action.type === "close" || action.type === "windowVScrollbar" ||
-    action.type === "windowHScrollbar" || action.type === "threeViewport"
-  ) {
-    return action.id;
-  }
-  if (action.type === "terminalShellContent") return TERMINAL_SHELL_WINDOW_ID;
-  if (action.type === "control") return "controls";
-  if (action.type === "dataRow") return "data";
-  if (action.type === "explorerRow") return "explorer";
+  return resolveApiWorkbenchHitWindowId<WindowId>(hit.action, {
+    terminalShell: TERMINAL_SHELL_WINDOW_ID,
+    controls: "controls",
+    data: "data",
+    explorer: "explorer",
+  });
 }
 
 function focus(id: WindowId): void {
