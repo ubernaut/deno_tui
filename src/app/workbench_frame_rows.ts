@@ -5,6 +5,7 @@ const RESET = "\x1b[0m";
 const MAX_FRAME_CELL_PARTS_CACHE_SIZE = 32768;
 const frameCellPartsCache = new Map<string, FrameCellParts>();
 const plainAsciiCellPartsCache: Array<FrameCellParts | undefined> = [];
+const runRenderResult: FrameRunRenderResult = { value: "", nextColumn: 0 };
 
 /** Converts an ANSI-styled string into independently styled terminal cells. */
 export function toStyledCells(value: string): string[] {
@@ -103,7 +104,7 @@ function renderBackgroundSpaceRun(
   width: number,
   firstCell: string,
   firstPrefix: string,
-): { value: string; nextColumn: number } {
+): FrameRunRenderResult {
   let next = startColumn;
   let value = "";
   let currentCell = firstCell;
@@ -134,7 +135,9 @@ function renderBackgroundSpaceRun(
     currentPrefix = frameCellBackgroundSpacePrefix(currentCell);
   }
 
-  return { value: `${value}${RESET}`, nextColumn: next };
+  runRenderResult.value = `${value}${RESET}`;
+  runRenderResult.nextColumn = next;
+  return runRenderResult;
 }
 
 function renderBackgroundStyledRun(
@@ -144,7 +147,7 @@ function renderBackgroundStyledRun(
   width: number,
   firstCell: string,
   first: FrameCellParts,
-): { value: string; nextColumn: number } {
+): FrameRunRenderResult {
   let next = startColumn;
   let value = "";
   let currentCell = firstCell;
@@ -176,7 +179,9 @@ function renderBackgroundStyledRun(
     if (!isBackgroundStyledFrameCell(current)) break;
   }
 
-  return { value: `${value}${RESET}`, nextColumn: next };
+  runRenderResult.value = `${value}${RESET}`;
+  runRenderResult.nextColumn = next;
+  return runRenderResult;
 }
 
 function isBackgroundStyledFrameCell(cell: FrameCellParts): boolean {
@@ -188,6 +193,11 @@ interface FrameCellParts {
   text: string;
   suffix: string;
   backgroundStyled: boolean;
+}
+
+interface FrameRunRenderResult {
+  value: string;
+  nextColumn: number;
 }
 
 function splitFrameCell(cell: string): FrameCellParts {

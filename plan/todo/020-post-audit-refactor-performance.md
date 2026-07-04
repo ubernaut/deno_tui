@@ -1140,3 +1140,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   identity semantics while making stale-frame drop behavior testable outside the large demo adapter.
 - Consolidated Three panel applied renderer state into a shared snapshot/update planner, reducing per-field adapter state
   while keeping resize/effect/glyph setter decisions pure and tested.
+- Reused a scratch result object in workbench frame row background-run assembly, removing per-run result allocation on
+  ANSI/background-heavy workbench and Three span flush paths while preserving existing row compaction behavior.
