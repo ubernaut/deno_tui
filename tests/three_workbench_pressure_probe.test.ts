@@ -8,8 +8,8 @@ Deno.test("summarizeWorkbenchThreePressureProbe excludes placeholder and startup
   const samples: WorkbenchThreePressureProbeSample[] = [
     sample({ index: 1, rendererMs: 0, rows: 8, columns: 26, cells: 208 }),
     sample({ index: 2, rendererMs: 1680, rows: 8, columns: 26, cells: 208 }),
-    sample({ index: 3, rendererMs: 0.8, flushMs: 0.03, bytes: 45, changedRows: 1 }),
-    sample({ index: 4, rendererMs: 1.2, flushMs: 0.05, bytes: 55, changedRows: 3 }),
+    sample({ index: 3, rendererMs: 0.8, flushMs: 0.03, bytes: 45, changedRows: 1, sourceChangedRows: 8 }),
+    sample({ index: 4, rendererMs: 1.2, flushMs: 0.05, bytes: 55, changedRows: 3, sourceChangedRows: 4 }),
   ];
 
   const summary = summarizeWorkbenchThreePressureProbe(samples);
@@ -21,6 +21,7 @@ Deno.test("summarizeWorkbenchThreePressureProbe excludes placeholder and startup
   assertEquals(summary.averageFlushMs, 0.04);
   assertEquals(summary.averageBytes, 50);
   assertEquals(summary.averageChangedRows, 2);
+  assertEquals(summary.averageSourceChangedRows, 6);
 });
 
 Deno.test("summarizeWorkbenchThreePressureProbe reports empty steady metrics without valid renderer frames", () => {
@@ -35,6 +36,7 @@ Deno.test("summarizeWorkbenchThreePressureProbe reports empty steady metrics wit
   assertEquals(summary.averageFlushMs, 0);
   assertEquals(summary.averageBytes, 0);
   assertEquals(summary.averageChangedRows, 0);
+  assertEquals(summary.averageSourceChangedRows, 0);
 });
 
 function sample(
@@ -49,6 +51,8 @@ function sample(
     flushMs: overrides.flushMs ?? 0.01,
     bytes: overrides.bytes ?? 10,
     changedRows: overrides.changedRows ?? 1,
+    sourceChangedRows: overrides.sourceChangedRows ?? 1,
+    gridUpdates: overrides.gridUpdates ?? 1,
     columns: overrides.columns ?? 26,
     rows: overrides.rows ?? 8,
     cells: overrides.cells ?? 208,

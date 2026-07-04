@@ -9,6 +9,8 @@ export interface WorkbenchThreePressureProbeSample {
   flushMs: number;
   bytes: number;
   changedRows: number;
+  sourceChangedRows: number;
+  gridUpdates: number;
   columns: number;
   rows: number;
   cells: number;
@@ -22,6 +24,7 @@ export interface WorkbenchThreePressureProbeSummary {
   averageFlushMs: number;
   averageBytes: number;
   averageChangedRows: number;
+  averageSourceChangedRows: number;
 }
 
 /** Summarizes workbench Three pressure samples while excluding placeholder and startup renderer frames. */
@@ -40,5 +43,6 @@ export function summarizeWorkbenchThreePressureProbe(
     averageFlushMs: average(steady.map((sample) => sample.flushMs)),
     averageBytes: average(steady.map((sample) => sample.bytes)),
     averageChangedRows: average(steady.map((sample) => sample.changedRows)),
+    averageSourceChangedRows: average(steady.map((sample) => sample.sourceChangedRows)),
   };
 }

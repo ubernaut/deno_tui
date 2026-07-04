@@ -58,6 +58,7 @@ const ascii = new Signal({
   renderMaxCells: maxCells,
 });
 const maxRenderCells = new Signal(maxCells);
+let gridUpdates = 0;
 const panel = new ThreePanelFrameView({
   rectangle,
   scene,
@@ -65,9 +66,13 @@ const panel = new ThreePanelFrameView({
   maxRenderCells,
   frameInterval: intervalMs,
   readbackStrategy,
+  onUpdate: () => {
+    gridUpdates += 1;
+  },
 });
 
 const samples: WorkbenchThreePressureProbeSample[] = [];
+let previousGrid: readonly (readonly string[] | undefined)[] = [];
 
 try {
   for (let index = 1; index <= frames; index += 1) {
@@ -109,7 +114,9 @@ console.log(
     formatFps(summary.averageRendererMs)
   } flush=${formatMs(summary.averageFlushMs)} bytes=${Math.round(summary.averageBytes)} changedRows=${
     summary.averageChangedRows.toFixed(1)
-  } latest=${latest ? `${latest.columns}x${latest.rows}/${latest.cells}c` : "none"} totalBytes=${bytesWritten}`,
+  } sourceRows=${summary.averageSourceChangedRows.toFixed(1)} updates=${latest?.gridUpdates ?? 0} latest=${
+    latest ? `${latest.columns}x${latest.rows}/${latest.cells}c` : "none"
+  } totalBytes=${bytesWritten}`,
 );
 for (const sample of samples) {
   console.log(
@@ -117,7 +124,9 @@ for (const sample of samples) {
       formatMs(sample.sceneMs)
     } read=${formatMs(sample.readbackMs)} asm=${formatMs(sample.assemblyMs)} flush=${
       formatMs(sample.flushMs)
-    } bytes=${sample.bytes} changed=${sample.changedRows} grid=${sample.columns}x${sample.rows}`,
+    } bytes=${sample.bytes} changed=${sample.changedRows} sourceChanged=${sample.sourceChangedRows} updates=${
+      sample.gridUpdates
+    } grid=${sample.columns}x${sample.rows}`,
   );
 }
 
@@ -146,6 +155,8 @@ function drawSample(index: number): WorkbenchThreePressureProbeSample {
   );
   const stats = painter.flush(prepared, frameWidth, frameHeight, renderFrameRow, renderFrameSlice);
   const performance = panel.inspectPerformance();
+  const sourceChangedRows = countChangedGridRows(previousGrid, grid);
+  previousGrid = snapshotGridRows(grid);
   return {
     index,
     rendererMs: performance?.totalMs ?? 0,
@@ -155,8 +166,41 @@ function drawSample(index: number): WorkbenchThreePressureProbeSample {
     flushMs: stats.durationMs,
     bytes: stats.bytes,
     changedRows: stats.changed,
+    sourceChangedRows,
+    gridUpdates,
     columns: performance?.columns ?? grid[0]?.length ?? 0,
     rows: performance?.rows ?? grid.length,
     cells: performance?.cells ?? (grid[0]?.length ?? 0) * grid.length,
   };
+}
+
+function snapshotGridRows(grid: readonly (readonly string[] | undefined)[]): readonly string[][] {
+  const snapshot = new Array<string[]>(grid.length);
+  for (let row = 0; row < grid.length; row += 1) {
+    snapshot[row] = [...(grid[row] ?? [])];
+  }
+  return snapshot;
+}
+
+function countChangedGridRows(
+  previous: readonly (readonly string[] | undefined)[],
+  next: readonly (readonly string[] | undefined)[],
+): number {
+  const rows = Math.max(previous.length, next.length);
+  let changed = 0;
+  for (let row = 0; row < rows; row += 1) {
+    if (!gridRowsEqual(previous[row], next[row])) changed += 1;
+  }
+  return changed;
+}
+
+function gridRowsEqual(left: readonly string[] | undefined, right: readonly string[] | undefined): boolean {
+  if (left === right) return true;
+  const leftLength = left?.length ?? 0;
+  const rightLength = right?.length ?? 0;
+  if (leftLength !== rightLength) return false;
+  for (let column = 0; column < leftLength; column += 1) {
+    if (left![column] !== right![column]) return false;
+  }
+  return true;
 }

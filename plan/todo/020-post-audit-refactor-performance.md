@@ -382,6 +382,9 @@ performance, shared terminal/web workbench projections, and oversized module red
   module with direct tests, keeping browser restore defaults out of the large page renderer.
 - Switched workbench-hosted Three ASCII panes back to bounded deferred readback after probes showed blocking WebGPU
   readback could stall real frame publication on this host while deferred kept steady post-warmup renderer timings.
+- Added source-grid row change and panel update counters to the Three workbench pressure probe, then raised the default
+  startup render budget to the 960-cell live cap because the 240-cell tier was too coarse to show regular source changes
+  for the default scene even though the renderer was submitting frames.
 - Added focused benchmark guards for reusable monitor source-frame resolution and 88-core CPU hex tile layout projection
   so future source/monitor refactors keep those hot paths measured.
 - Reused repeated styled cell strings inside ANSI-aware text splitting so block-mode workbench rows avoid rebuilding the
