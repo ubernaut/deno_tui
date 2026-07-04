@@ -57,7 +57,10 @@ import { createHtmlCssLayoutDemo } from "../app/html_css_layout_demo.ts";
 import { resolveSourceFramesInto } from "../app/sources.ts";
 import { type ThreeHeaderPerformance, threeHeaderRows, type WorkbenchRowTheme } from "../app/workbench_rows.ts";
 import { type WorkbenchFrameRenderCommand, workbenchFrameRenderCommandsInto } from "../app/workbench_frame_render.ts";
-import { currentWorkspaceVisualizationIdsInto, currentWorkspaceWindowsInto } from "../app/workbench_workspace_menu.ts";
+import {
+  currentWorkspaceVisualizationIdsInto,
+  currentWorkspaceWindowsInto,
+} from "../src/app/workbench_workspace_menu.ts";
 import {
   type ChangedSpan,
   changedSpansInto,

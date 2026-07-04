@@ -312,7 +312,7 @@ import {
   workspaceNameModalBody as buildWorkspaceNameModalBody,
   workspaceRenamedModalContent,
   workspaceSavedModalContent,
-} from "./workbench_workspace_menu.ts";
+} from "../src/app/workbench_workspace_menu.ts";
 import {
   workbenchDemoModalContent,
   workbenchHelpModalContent,

@@ -1,4 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
+import type { ModalContent } from "../components/modal.ts";
 import {
   deleteWorkbenchWorkspace,
   findWorkbenchWorkspace,
@@ -7,8 +8,7 @@ import {
   upsertWorkbenchWorkspace,
   type WorkbenchWorkspace,
   type WorkbenchWorkspaceWindow,
-} from "../src/app/mod.ts";
-import type { ModalContent } from "../src/components/modal.ts";
+} from "./workbench_workspace.ts";
 
 /** Workspace menu action supported by the API workbench demo. */
 export type WorkspaceMenuAction = "save" | "open" | "rename" | "delete" | "empty";

@@ -1013,3 +1013,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Moved the renderer-neutral workbench content-size estimator from the demo `app/` tree into `src/app` and exported it
   through the shared workbench facade, keeping scrollable window sizing available to terminal and web adapters from the
   same tested module.
+- Moved the renderer-neutral workspace menu/state planner from the demo `app/` tree into `src/app` and exported it
+  through the workbench facade, reducing demo-owned workspace orchestration while preserving the existing save/open/
+  rename/delete tests.

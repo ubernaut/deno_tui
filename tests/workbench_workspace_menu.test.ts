@@ -26,7 +26,7 @@ import {
   workspaceNameModalBody,
   workspaceRenamedModalContent,
   workspaceSavedModalContent,
-} from "../app/workbench_workspace_menu.ts";
+} from "../src/app/workbench_workspace_menu.ts";
 import type { WorkbenchWorkspace, WorkbenchWorkspaceWindow } from "../src/app/mod.ts";
 
 Deno.test("buildWorkspaceMenuEntries includes save and empty states", () => {
