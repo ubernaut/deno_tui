@@ -94,6 +94,12 @@ performance, shared terminal/web workbench projections, and oversized module red
   glyph, improving solid block richness and terminal line-gap coverage without changing glyph or edge modes.
 - Extracted terminal session-tab render commands so console and browser workbench adapters share row gap, clipped label,
   active-state, and hit-rectangle projection.
+- Added shared workbench terminal projection buffer caches so terminal and browser shell panes retain pane/copy-row
+  storage through the same helper instead of owning parallel arrays.
+- Added Three ASCII renderer frame revisions so real renderer frames can publish reused mutable grids without hashing
+  the full ANSI cell matrix on every update.
+- Batched workbench frame row dirty metadata updates for text writes and Three ASCII grid blits, reducing per-cell
+  publication overhead in block-heavy workbench frames.
 - Extracted workbench scrollbar render commands so console and browser adapters share vertical/horizontal scrollbar cell
   projection and hit rectangles.
 - Fixed Three ASCII block-mode color fidelity by keying adjacent-cell reuse on fill buckets and tinting full-height
