@@ -1,6 +1,11 @@
 import { assert, assertEquals } from "./deps.ts";
 import { createDefaultAsciiOptions } from "../app/ascii_options.ts";
-import { resolveThreePanelRenderPolicy, resolveThreePanelRenderSize } from "../app/three_panel_policy.ts";
+import {
+  resolveThreePanelFrameInterval,
+  resolveThreePanelRenderPolicy,
+  resolveThreePanelRenderSize,
+  resolveThreePanelRequestedMaxCells,
+} from "../app/three_panel_policy.ts";
 
 Deno.test("resolveThreePanelRenderPolicy selects ASCII-only rendering by default", () => {
   const ascii = createDefaultAsciiOptions("sharp");
@@ -74,4 +79,18 @@ Deno.test("resolveThreePanelRenderSize preserves small panes and caps large pane
   assert(capped.rows < 60);
   assert(capped.columns * capped.rows <= 3_840);
   assert(capped.columns / capped.rows > 160 / 60 - 0.2);
+});
+
+Deno.test("resolveThreePanelRequestedMaxCells clamps user settings under pressure caps", () => {
+  assertEquals(resolveThreePanelRequestedMaxCells({ userMaxCells: 1_920 }), 1_920);
+  assertEquals(resolveThreePanelRequestedMaxCells({ userMaxCells: 1_920, pressureMaxCells: 240 }), 240);
+  assertEquals(resolveThreePanelRequestedMaxCells({ userMaxCells: 240, pressureMaxCells: 1_920 }), 240);
+  assertEquals(resolveThreePanelRequestedMaxCells({ userMaxCells: 240.9, pressureMaxCells: 120.9 }), 120);
+  assertEquals(resolveThreePanelRequestedMaxCells({ userMaxCells: 0, pressureMaxCells: 0 }), 1);
+});
+
+Deno.test("resolveThreePanelFrameInterval floors frame cadence to a positive delay", () => {
+  assertEquals(resolveThreePanelFrameInterval(33.33), 33.33);
+  assertEquals(resolveThreePanelFrameInterval(0), 1);
+  assertEquals(resolveThreePanelFrameInterval(-10), 1);
 });

@@ -20,6 +20,11 @@ export interface ThreePanelRenderSize {
   rows: number;
 }
 
+export interface ThreePanelRequestedMaxCellsInput {
+  userMaxCells: number;
+  pressureMaxCells?: number;
+}
+
 export function resolveThreePanelRenderSize(
   rect: Pick<Rect, "width" | "height">,
   maxCells?: number,
@@ -35,6 +40,18 @@ export function resolveThreePanelRenderSize(
     columns: Math.max(1, Math.min(columns, Math.floor(columns * scale))),
     rows: Math.max(1, Math.min(rows, Math.floor(rows * scale))),
   };
+}
+
+export function resolveThreePanelRequestedMaxCells(input: ThreePanelRequestedMaxCellsInput): number {
+  const userCells = Math.max(1, Math.floor(input.userMaxCells));
+  const pressureCap = input.pressureMaxCells === undefined
+    ? userCells
+    : Math.max(1, Math.floor(input.pressureMaxCells));
+  return Math.min(userCells, pressureCap);
+}
+
+export function resolveThreePanelFrameInterval(frameInterval: number): number {
+  return Math.max(1, frameInterval);
 }
 
 export function resolveThreePanelRenderPolicy(input: ThreePanelRenderPolicyInput): ThreePanelRenderPolicy {

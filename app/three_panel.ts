@@ -31,8 +31,10 @@ import {
 import { threePanelAsciiEffectOptionsEqual, threePanelRendererStateMatches } from "./three_panel_effect.ts";
 import { fingerprintThreePanelGrid, threePanelBlankGrid } from "./three_panel_grid.ts";
 import {
+  resolveThreePanelFrameInterval,
   resolveThreePanelRenderPolicy,
   resolveThreePanelRenderSize,
+  resolveThreePanelRequestedMaxCells,
   type ThreePanelRenderPolicy,
   type ThreePanelRenderSize,
 } from "./three_panel_policy.ts";
@@ -48,8 +50,10 @@ export {
   type ThreePanelAdaptiveRenderBudgetUpdateResult,
 } from "./three_panel_adaptive.ts";
 export {
+  resolveThreePanelFrameInterval,
   resolveThreePanelRenderPolicy,
   resolveThreePanelRenderSize,
+  resolveThreePanelRequestedMaxCells,
   type ThreePanelRenderPolicy,
   type ThreePanelRenderPolicyInput,
   type ThreePanelRenderSize,
@@ -748,14 +752,15 @@ export class ThreePanelFrameView {
     const maxRenderCells = this.options.maxRenderCells instanceof Signal
       ? this.options.maxRenderCells.peek()
       : this.options.maxRenderCells;
-    const userCells = Math.max(1, Math.floor(ascii.renderMaxCells));
-    const pressureCap = maxRenderCells === undefined ? userCells : Math.max(1, Math.floor(maxRenderCells));
-    return Math.min(userCells, pressureCap);
+    return resolveThreePanelRequestedMaxCells({
+      userMaxCells: ascii.renderMaxCells,
+      pressureMaxCells: maxRenderCells,
+    });
   }
 
   private currentFrameInterval(): number {
     const frameInterval = this.frameInterval instanceof Signal ? this.frameInterval.peek() : this.frameInterval;
-    return Math.max(1, frameInterval);
+    return resolveThreePanelFrameInterval(frameInterval);
   }
 
   dispose(): void {

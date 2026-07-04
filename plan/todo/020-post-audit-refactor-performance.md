@@ -659,3 +659,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added a low byte-rate recovery gate to the workbench Three terminal-pressure model so animated 120-cell output does
   not auto-climb back to 240 cells unless the terminal is sustaining less than 20KB/s; the 80-frame startup probe now
   stays at the 18x6 emergency grid instead of recovering into a larger payload on moderate animated output.
+- Extracted Three panel effective render-budget and frame-interval normalization into the renderer policy module with
+  direct tests, leaving `ThreePanelFrameView` to read signals while pressure-cap clamping remains reusable and
+  independently covered.
