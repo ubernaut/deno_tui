@@ -3105,17 +3105,19 @@ function focus(id: WindowId): void {
 }
 
 function focusNext(): void {
-  const ids = windowManager.ids() as WindowId[];
-  if (ids.length === 0) return;
-  const index = ids.indexOf(activeWindow.peek());
-  focus(ids[(index + 1) % ids.length]!);
+  const next = windowManager.focusNext(1)?.id as WindowId | undefined;
+  if (next) {
+    syncWindowSignalsFromManager();
+    pushLog(`focus ${windowTitle(next)}`);
+  }
 }
 
 function focusPrevious(): void {
-  const ids = windowManager.ids() as WindowId[];
-  if (ids.length === 0) return;
-  const index = ids.indexOf(activeWindow.peek());
-  focus(ids[(index - 1 + ids.length) % ids.length]!);
+  const next = windowManager.focusNext(-1)?.id as WindowId | undefined;
+  if (next) {
+    syncWindowSignalsFromManager();
+    pushLog(`focus ${windowTitle(next)}`);
+  }
 }
 
 function minimize(id: WindowId): void {

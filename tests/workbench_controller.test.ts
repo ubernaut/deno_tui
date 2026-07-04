@@ -59,6 +59,26 @@ Deno.test("WorkbenchController keeps menu index updates bounded", () => {
   controller.dispose();
 });
 
+Deno.test("WorkbenchController cycles focus forward and backward across open windows", () => {
+  const controller = new WorkbenchController<"theme">({
+    activeId: "data",
+    windows: [
+      { id: "explorer", title: "Explorer" },
+      { id: "data", title: "Data" },
+      { id: "logs", title: "Logs" },
+      { id: "closed", title: "Closed", state: "closed" },
+    ],
+  });
+
+  assertEquals(controller.focusNextWindow(), "logs");
+  assertEquals(controller.focusNextWindow(), "explorer");
+  assertEquals(controller.focusNextWindow(-1), "logs");
+  assertEquals(controller.focusNextWindow(-1), "data");
+  assertEquals(controller.inspect().activeWindowId, "data");
+
+  controller.dispose();
+});
+
 Deno.test("WorkbenchController supports matching terminal and web adapter flows", () => {
   const terminal = createAdapterController<"theme" | "newWindow" | "workspace">();
   const web = createAdapterController<"theme">();

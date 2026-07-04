@@ -272,6 +272,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   driven by option metadata instead of hard-coded terminal workbench option id checks.
 - Extracted dynamic visualization window toggle decisions into the shared window registry so loaded-state checks and
   close/add ids are tested outside the terminal workbench app.
+- Routed terminal workbench forward/backward focus cycling through the shared window manager controller and added direct
+  wraparound coverage so the app no longer reimplements open-window traversal.
 - Retuned the default workbench Three ASCII pressure policy for slow terminal links: the default pane now starts at the
   120-cell emergency tier, 240-cell animated output downshifts on sustained byte rates above roughly 35KB/s, and low
   byte-rate recovery remains conservative so SSH/tmux sessions do not immediately climb back into expensive output.
