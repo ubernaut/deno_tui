@@ -25,6 +25,13 @@ export interface WorkbenchTextPromptInputResult {
   value: string;
 }
 
+/** Callbacks for applying a prompt input result to host-owned state. */
+export interface WorkbenchTextPromptInputHandlers {
+  onCancel?: (value: string) => void;
+  onSubmit?: (value: string) => void;
+  onUpdate?: (value: string) => void;
+}
+
 /** Applies common Escape/Backspace/Return/printable-key behavior for workbench text prompts. */
 export function applyWorkbenchTextPromptInput(
   options: WorkbenchTextPromptInputOptions,
@@ -42,4 +49,25 @@ export function applyWorkbenchTextPromptInput(
     };
   }
   return { action: "ignore", value };
+}
+
+/** Applies one text-prompt key event and dispatches the resulting host action. */
+export function dispatchWorkbenchTextPromptInput(
+  options: WorkbenchTextPromptInputOptions,
+  handlers: WorkbenchTextPromptInputHandlers,
+): boolean {
+  const input = applyWorkbenchTextPromptInput(options);
+  switch (input.action) {
+    case "ignore":
+      return false;
+    case "cancel":
+      handlers.onCancel?.(input.value);
+      return true;
+    case "submit":
+      handlers.onSubmit?.(input.value);
+      return true;
+    case "update":
+      handlers.onUpdate?.(input.value);
+      return true;
+  }
 }

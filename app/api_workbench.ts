@@ -15,13 +15,13 @@ import { formatTerminalOutputLine } from "../src/components/terminal_output.ts";
 import { TextBoxController, type TextBoxVisualLine } from "../src/components/textbox.ts";
 import {
   appendBoundedWorkbenchLogRow,
-  applyWorkbenchTextPromptInput,
   buttonText,
   centerCellText as centerText,
   clampWorkbenchTileDensity,
   contrastText,
   createWorkbenchWorkspaceStore,
   deleteWorkbenchWorkspace,
+  dispatchWorkbenchTextPromptInput,
   fillFrameRect,
   fillFrameRow,
   findWorkbenchWorkspace,
@@ -2187,25 +2187,22 @@ function closeTerminalShellSearchModal(): void {
 }
 
 function handleTerminalShellSearchKey(event: { key: string; ctrl?: boolean; meta?: boolean }): boolean {
-  const input = applyWorkbenchTextPromptInput({
+  return dispatchWorkbenchTextPromptInput({
     event,
     value: terminalShellSearchDraft.peek(),
     maxLength: 80,
     measureText: textWidth,
+  }, {
+    onCancel: () => {
+      closeTerminalShellSearchModal();
+      pushLog("shell search cancelled");
+    },
+    onSubmit: () => runTerminalShellSearch(),
+    onUpdate: (value) => {
+      terminalShellSearchDraft.value = value;
+      refreshTerminalShellSearchModal();
+    },
   });
-  if (input.action === "ignore") return false;
-  if (input.action === "cancel") {
-    closeTerminalShellSearchModal();
-    pushLog("shell search cancelled");
-    return true;
-  }
-  if (input.action === "submit") {
-    runTerminalShellSearch();
-    return true;
-  }
-  terminalShellSearchDraft.value = input.value;
-  refreshTerminalShellSearchModal();
-  return true;
 }
 
 function runTerminalShellSearch(): void {
@@ -3220,26 +3217,25 @@ function refreshWorkspaceNameModal(): void {
 }
 
 function handleWorkspaceNameKey(event: { key: string; ctrl?: boolean; meta?: boolean }): boolean {
-  const input = applyWorkbenchTextPromptInput({
+  return dispatchWorkbenchTextPromptInput({
     event,
     value: workspaceNameDraft.peek(),
     maxLength: 48,
     measureText: textWidth,
+  }, {
+    onCancel: () => {
+      clearWorkspaceModalState();
+      modal.close();
+    },
+    onSubmit: () => {
+      if (workspaceNameMode.peek() === "rename") void renameWorkspace();
+      else void saveCurrentWorkspace();
+    },
+    onUpdate: (value) => {
+      workspaceNameDraft.value = value;
+      refreshWorkspaceNameModal();
+    },
   });
-  if (input.action === "ignore") return false;
-  if (input.action === "cancel") {
-    clearWorkspaceModalState();
-    modal.close();
-    return true;
-  }
-  if (input.action === "submit") {
-    if (workspaceNameMode.peek() === "rename") void renameWorkspace();
-    else void saveCurrentWorkspace();
-    return true;
-  }
-  workspaceNameDraft.value = input.value;
-  refreshWorkspaceNameModal();
-  return true;
 }
 
 async function saveCurrentWorkspace(): Promise<void> {
