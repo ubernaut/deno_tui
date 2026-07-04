@@ -221,9 +221,12 @@ performance, shared terminal/web workbench projections, and oversized module red
   keeping model rotation/zoom focus behavior tested without starting a TUI session or renderer.
 - Moved workbench Three policy, geometry, and cadence helpers into shared `src/app` modules and exported them through
   the workbench facade so app, scripts, and tests no longer import those pure helpers from `app/` internals.
-- Retuned the default API workbench Three block renderer startup path to 480 cells with blocking readback retained after
-  live probes showed deferred readback regressing visible publication; dynamic Three visualization panes now feed the
-  shared cadence meter so terminal-pressure adaptation sees all live Three windows instead of only the built-in pane.
+- Retuned the default workbench Three block renderer for slow SSH/tmux terminals: startup now begins at 240 cells,
+  sustained byte-rate pressure downshifts after one scoped frame, and live low-detail cadence tiers produce roughly
+  12-16KB/s in the adaptive pressure probe instead of sitting near the old 40-60KB/s range.
+- Kept blocking readback for the default API workbench Three block renderer after live probes showed deferred readback
+  regressing visible publication; dynamic Three visualization panes now feed the shared cadence meter so
+  terminal-pressure adaptation sees all live Three windows instead of only the built-in pane.
 - Extracted API workbench touch-hit expansion and compact/coarse layout detection into shared hit helpers, so terminal
   and browser workbench adapters use the same enlarged pointer targets on mobile-sized layouts.
 - Routed the browser API workbench background canvas through the shared `parseHexColor` helper instead of carrying a
