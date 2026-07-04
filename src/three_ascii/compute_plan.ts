@@ -9,6 +9,55 @@ export interface ThreeAsciiComputeDispatchPlan {
   readonly passes: readonly ThreeAsciiComputePassPlan[];
 }
 
+/** Reuses compute dispatch plan objects while render size and edge mode are unchanged. */
+export class ThreeAsciiComputeDispatchPlanCache {
+  private cached?: ThreeAsciiComputeDispatchPlan;
+  private columns = -1;
+  private rows = -1;
+  private workgroupSize = -1;
+  private includeEdges = false;
+
+  resolve(options: {
+    columns: number;
+    rows: number;
+    workgroupSize: number;
+    includeEdges: boolean;
+  }): ThreeAsciiComputeDispatchPlan {
+    const columns = Math.max(1, Math.floor(options.columns));
+    const rows = Math.max(1, Math.floor(options.rows));
+    const workgroupSize = Math.max(1, Math.floor(options.workgroupSize));
+    if (
+      this.cached &&
+      this.columns === columns &&
+      this.rows === rows &&
+      this.workgroupSize === workgroupSize &&
+      this.includeEdges === options.includeEdges
+    ) {
+      return this.cached;
+    }
+
+    this.columns = columns;
+    this.rows = rows;
+    this.workgroupSize = workgroupSize;
+    this.includeEdges = options.includeEdges;
+    this.cached = createThreeAsciiComputeDispatchPlan({
+      columns,
+      rows,
+      workgroupSize,
+      includeEdges: options.includeEdges,
+    });
+    return this.cached;
+  }
+
+  clear(): void {
+    this.cached = undefined;
+    this.columns = -1;
+    this.rows = -1;
+    this.workgroupSize = -1;
+    this.includeEdges = false;
+  }
+}
+
 const FILL_PASS: ThreeAsciiComputePassPlan = {
   kind: "fill",
   label: "deno_tui.three_ascii.fill",

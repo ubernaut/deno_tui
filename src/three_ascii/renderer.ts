@@ -20,7 +20,7 @@ import {
 import { resolveThreeAsciiDeferredPreSceneFrame } from "./deferred_frame.ts";
 import { createThreeAsciiComputeBindGroups } from "./compute_bind_groups.ts";
 import { encodeThreeAsciiComputeDispatchCommands } from "./compute_commands.ts";
-import { createThreeAsciiComputeDispatchPlan } from "./compute_plan.ts";
+import { ThreeAsciiComputeDispatchPlanCache } from "./compute_plan.ts";
 import { createThreeAsciiComputePipeline } from "./compute_pipeline.ts";
 import { applyThreeAsciiComputeResourcePlanState, createThreeAsciiComputeResourcePlan } from "./compute_resources.ts";
 import {
@@ -172,6 +172,7 @@ export class ThreeAsciiRenderer {
   private readonly readbackLayoutCache = new ThreeAsciiReadbackLayoutCache();
   private readonly readbackCopyPlanCache = new ThreeAsciiReadbackCopyPlanCache();
   private readonly readbackViewCache = new ThreeAsciiReadbackViewCache();
+  private readonly dispatchPlanCache = new ThreeAsciiComputeDispatchPlanCache();
   private readonly readbackAssemblyContext: ThreeAsciiReadbackGridAssemblyContext = {
     viewCache: this.readbackViewCache,
     assembler: this.ansiGridAssembler,
@@ -400,7 +401,7 @@ export class ThreeAsciiRenderer {
     const commandEncoder = this.device!.createCommandEncoder({
       label: "deno_tui.three_ascii.cells",
     });
-    const dispatchPlan = createThreeAsciiComputeDispatchPlan({
+    const dispatchPlan = this.dispatchPlanCache.resolve({
       columns: this.columns,
       rows: this.rows,
       workgroupSize: THREE_ASCII_WORKGROUP_SIZE,
@@ -574,6 +575,7 @@ export class ThreeAsciiRenderer {
     this.readbackLayoutCache.clear();
     this.readbackCopyPlanCache.clear();
     this.readbackViewCache.clear();
+    this.dispatchPlanCache.clear();
 
     this.renderPipeline?.dispose();
     this.renderPipeline = undefined;

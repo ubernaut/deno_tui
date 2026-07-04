@@ -1,5 +1,8 @@
 import { assertEquals } from "./deps.ts";
-import { createThreeAsciiComputeDispatchPlan } from "../src/three_ascii/compute_plan.ts";
+import {
+  createThreeAsciiComputeDispatchPlan,
+  ThreeAsciiComputeDispatchPlanCache,
+} from "../src/three_ascii/compute_plan.ts";
 
 Deno.test("createThreeAsciiComputeDispatchPlan omits edge pass for block/fill-only modes", () => {
   assertEquals(
@@ -50,4 +53,20 @@ Deno.test("createThreeAsciiComputeDispatchPlan clamps invalid dimensions", () =>
     }).workgroupsX,
     1,
   );
+});
+
+Deno.test("ThreeAsciiComputeDispatchPlanCache reuses stable dispatch plans", () => {
+  const cache = new ThreeAsciiComputeDispatchPlanCache();
+  const first = cache.resolve({ columns: 40, rows: 24, workgroupSize: 8, includeEdges: false });
+  const second = cache.resolve({ columns: 40.9, rows: 24.1, workgroupSize: 8.8, includeEdges: false });
+  assertEquals(second === first, true);
+
+  const edge = cache.resolve({ columns: 40, rows: 24, workgroupSize: 8, includeEdges: true });
+  assertEquals(edge === first, false);
+  assertEquals(edge.passes.map((pass) => pass.kind), ["fill", "edge", "color"]);
+
+  cache.clear();
+  const afterClear = cache.resolve({ columns: 40, rows: 24, workgroupSize: 8, includeEdges: true });
+  assertEquals(afterClear === edge, false);
+  assertEquals(afterClear, edge);
 });

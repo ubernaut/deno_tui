@@ -264,6 +264,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   sessions can downshift below the user-facing 960-cell render setting without mutating saved ASCII config.
 - Split Three ASCII renderer telemetry into scene update and WebGPU render phases so probes and slow-frame diagnostics
   can distinguish scene animation cost from GPU render submission and blocking readback wait.
+- Cached stable Three ASCII compute dispatch plans so steady-size renderer frames avoid recreating pass/workgroup
+  metadata before command encoding.
 - Added compact live Three ASCII renderer telemetry to the workbench Three pane header so renderer frame, scene,
   readback, assembly, and cell counts are visible during manual profiling.
 - Moved SGR state merging into a shared internal utility and routed workbench frame writes through it, so both
