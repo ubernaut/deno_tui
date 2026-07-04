@@ -27,9 +27,9 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
   assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 240);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 240_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 160_000);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 24_000);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 750_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerGrid, 12_000);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerSecond, 8_000);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerSecond, 180_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highFrameThreshold, 1);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowFrameThreshold, 30);
   assertEquals(WORKBENCH_THREE_READBACK_STRATEGY, "blocking");
@@ -89,7 +89,7 @@ Deno.test("API workbench Three policy backs off after sustained high-pressure te
   const sample = {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
     renderedThreeGrids: 1,
-    bytes: 24_000,
+    bytes: 180_000,
     durationMs: 0.05,
     sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(480, { live: true }),
   };
@@ -102,7 +102,7 @@ Deno.test("API workbench Three policy backs off after sustained high-pressure te
   assertEquals(state.highFrames, 0);
 });
 
-Deno.test("API workbench Three policy downshifts ordinary startup block frames before terminal saturation", () => {
+Deno.test("API workbench Three policy keeps ordinary startup block frames at the initial tier", () => {
   const state = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_INITIAL_CELLS);
   const sample = {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
@@ -117,7 +117,7 @@ Deno.test("API workbench Three policy downshifts ordinary startup block frames b
     Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
   }
 
-  assertEquals(state.currentCells, 120);
+  assertEquals(state.currentCells, WORKBENCH_THREE_INITIAL_CELLS);
   assertEquals(state.highFrames, 0);
 });
 
@@ -142,7 +142,7 @@ Deno.test("API workbench Three policy backs off when observed FPS collapses", ()
   assertEquals(state.highFrames, 0);
 });
 
-Deno.test("API workbench Three policy does not recover from moderate animated output", () => {
+Deno.test("API workbench Three policy recovers from moderate animated output under the byte-rate floor", () => {
   const state = createWorkbenchThreeTerminalPressureState(60);
   const sample = {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
@@ -157,8 +157,8 @@ Deno.test("API workbench Three policy does not recover from moderate animated ou
     Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
   }
 
-  assertEquals(state.currentCells, 60);
-  assertEquals(state.lowFrames, 0);
+  assertEquals(state.currentCells, 120);
+  assertEquals(state.lowFrames, 5);
 });
 
 Deno.test("API workbench Three policy downshifts sustained 240-cell terminal byte rate", () => {
@@ -166,7 +166,7 @@ Deno.test("API workbench Three policy downshifts sustained 240-cell terminal byt
   const sample = {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
     renderedThreeGrids: 1,
-    bytes: 8_000,
+    bytes: 40_000,
     durationMs: 0.05,
     sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(240, { live: true }),
   };
@@ -185,7 +185,7 @@ Deno.test("API workbench Three policy reaches a 30-cell rescue tier under termin
   const sample = {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
     renderedThreeGrids: 1,
-    bytes: 8_000,
+    bytes: 50_000,
     durationMs: 0.05,
     sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(120, { live: true }),
   };
@@ -203,7 +203,7 @@ Deno.test("API workbench Three policy reaches a 30-cell rescue tier under termin
       state,
       resolveWorkbenchThreeTerminalPressureBudget(state, {
         ...sample,
-        bytes: 10_000,
+        bytes: 80_000,
         sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(60, { live: true }),
       }),
     );

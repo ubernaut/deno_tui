@@ -1046,3 +1046,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   independent of demo-only modules.
 - Gated workbench Three FPS-based pressure downshifts behind a minimum observed frame count so startup/stall noise does
   not immediately force the default block renderer into a lower terminal budget.
+- Raised the workbench Three sustained byte-rate pressure thresholds so healthy truecolor block animation stays at the
+  240-cell startup tier; slow flush duration, collapsed measured FPS, and genuinely heavy frames still back off.
