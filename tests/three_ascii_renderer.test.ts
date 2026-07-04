@@ -80,8 +80,13 @@ Deno.test("ThreeAsciiRenderer avoids compute resource rebuilds for effect option
     rows: 4,
   });
   const internals = renderer as unknown as {
+    asciiNode: { applyOptions: (options: unknown) => void };
     computeDirty: boolean;
     uniformDirty: boolean;
+  };
+  const patches: unknown[] = [];
+  internals.asciiNode = {
+    applyOptions: (options) => patches.push(options),
   };
 
   internals.computeDirty = false;
@@ -89,10 +94,20 @@ Deno.test("ThreeAsciiRenderer avoids compute resource rebuilds for effect option
   renderer.setEffectOptions({ normalThreshold: 0.2 });
   assertEquals(internals.computeDirty, false);
   assertEquals(internals.uniformDirty, false);
+  assertEquals(patches, [{ normalThreshold: 0.2 }]);
+
+  renderer.setEffectOptions({ normalThreshold: 0.2 });
+  assertEquals(patches, [{ normalThreshold: 0.2 }]);
 
   renderer.setEffectOptions({ edgeThreshold: 6 });
   assertEquals(internals.computeDirty, false);
   assertEquals(internals.uniformDirty, true);
+  assertEquals(patches, [{ normalThreshold: 0.2 }, { edgeThreshold: 6 }]);
+
+  internals.uniformDirty = false;
+  renderer.setEffectOptions({ edgeThreshold: 6, backgroundColor: 0x000000 });
+  assertEquals(internals.uniformDirty, false);
+  assertEquals(patches, [{ normalThreshold: 0.2 }, { edgeThreshold: 6 }]);
 });
 
 Deno.test("ThreeAsciiRenderer wraps failed GPU readback mapping with a stable error", async () => {

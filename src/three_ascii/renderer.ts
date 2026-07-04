@@ -344,6 +344,40 @@ function threeAsciiEffectOptionsAffectComputeUniforms(options: Partial<AcerolaAs
     options.depthOffset !== undefined;
 }
 
+const EFFECT_SCALAR_OPTION_KEYS = [
+  "resolutionScale",
+  "zoom",
+  "kernelSize",
+  "sigma",
+  "sigmaScale",
+  "tau",
+  "threshold",
+  "useDepth",
+  "depthThreshold",
+  "useNormals",
+  "normalThreshold",
+  "depthCutoff",
+  "edgeThreshold",
+  "edges",
+  "fill",
+  "exposure",
+  "attenuation",
+  "invertLuminance",
+  "blendWithBase",
+  "depthFalloff",
+  "depthOffset",
+  "viewDog",
+  "viewUncompressed",
+  "viewEdges",
+] as const;
+
+function sameThreeAsciiOffset(
+  left: AcerolaAsciiNodeOptions["offset"],
+  right: NonNullable<AcerolaAsciiNodeOptions["offset"]>,
+): boolean {
+  return left !== undefined && left.x === right.x && left.y === right.y;
+}
+
 /** Input buffers for assembling a terminal ANSI grid from three Ascii GPU readback data. */
 export interface ThreeAsciiAnsiGridInput extends InternalThreeAsciiAnsiGridInput {}
 
@@ -438,52 +472,45 @@ export class ThreeAsciiRenderer {
   }
 
   setEffectOptions(options: Partial<AcerolaAsciiNodeOptions>): void {
+    const patch: Partial<AcerolaAsciiNodeOptions> = {};
     let uniformDirty = false;
     if (options.asciiColor !== undefined) {
-      this.effectOptions.asciiColor = colorValue(options.asciiColor, 0xffffff);
-      uniformDirty = true;
+      const next = colorValue(options.asciiColor, 0xffffff);
+      const previous = colorValue(this.effectOptions.asciiColor, 0xffffff);
+      if (!previous.equals(next)) {
+        this.effectOptions.asciiColor = next;
+        patch.asciiColor = next;
+        uniformDirty = true;
+      }
     }
 
     if (options.backgroundColor !== undefined) {
-      this.effectOptions.backgroundColor = colorValue(options.backgroundColor, 0x000000);
-      uniformDirty = true;
+      const next = colorValue(options.backgroundColor, 0x000000);
+      const previous = colorValue(this.effectOptions.backgroundColor, 0x000000);
+      if (!previous.equals(next)) {
+        this.effectOptions.backgroundColor = next;
+        patch.backgroundColor = next;
+        uniformDirty = true;
+      }
     }
 
-    uniformDirty = uniformDirty || threeAsciiEffectOptionsAffectComputeUniforms(options);
-    this.applyEffectOptionPatch(options);
-
-    this.asciiNode?.applyOptions(options);
-    if (uniformDirty) {
-      this.uniformDirty = true;
+    for (const key of EFFECT_SCALAR_OPTION_KEYS) {
+      const value = options[key];
+      if (value === undefined || this.effectOptions[key] === value) continue;
+      (this.effectOptions as Record<string, unknown>)[key] = value;
+      (patch as Record<string, unknown>)[key] = value;
     }
-  }
 
-  private applyEffectOptionPatch(options: Partial<AcerolaAsciiNodeOptions>): void {
-    if (options.resolutionScale !== undefined) this.effectOptions.resolutionScale = options.resolutionScale;
-    if (options.zoom !== undefined) this.effectOptions.zoom = options.zoom;
-    if (options.offset !== undefined) this.effectOptions.offset = options.offset;
-    if (options.kernelSize !== undefined) this.effectOptions.kernelSize = options.kernelSize;
-    if (options.sigma !== undefined) this.effectOptions.sigma = options.sigma;
-    if (options.sigmaScale !== undefined) this.effectOptions.sigmaScale = options.sigmaScale;
-    if (options.tau !== undefined) this.effectOptions.tau = options.tau;
-    if (options.threshold !== undefined) this.effectOptions.threshold = options.threshold;
-    if (options.useDepth !== undefined) this.effectOptions.useDepth = options.useDepth;
-    if (options.depthThreshold !== undefined) this.effectOptions.depthThreshold = options.depthThreshold;
-    if (options.useNormals !== undefined) this.effectOptions.useNormals = options.useNormals;
-    if (options.normalThreshold !== undefined) this.effectOptions.normalThreshold = options.normalThreshold;
-    if (options.depthCutoff !== undefined) this.effectOptions.depthCutoff = options.depthCutoff;
-    if (options.edgeThreshold !== undefined) this.effectOptions.edgeThreshold = options.edgeThreshold;
-    if (options.edges !== undefined) this.effectOptions.edges = options.edges;
-    if (options.fill !== undefined) this.effectOptions.fill = options.fill;
-    if (options.exposure !== undefined) this.effectOptions.exposure = options.exposure;
-    if (options.attenuation !== undefined) this.effectOptions.attenuation = options.attenuation;
-    if (options.invertLuminance !== undefined) this.effectOptions.invertLuminance = options.invertLuminance;
-    if (options.blendWithBase !== undefined) this.effectOptions.blendWithBase = options.blendWithBase;
-    if (options.depthFalloff !== undefined) this.effectOptions.depthFalloff = options.depthFalloff;
-    if (options.depthOffset !== undefined) this.effectOptions.depthOffset = options.depthOffset;
-    if (options.viewDog !== undefined) this.effectOptions.viewDog = options.viewDog;
-    if (options.viewUncompressed !== undefined) this.effectOptions.viewUncompressed = options.viewUncompressed;
-    if (options.viewEdges !== undefined) this.effectOptions.viewEdges = options.viewEdges;
+    if (options.offset !== undefined && !sameThreeAsciiOffset(this.effectOptions.offset, options.offset)) {
+      this.effectOptions.offset = options.offset;
+      patch.offset = options.offset;
+    }
+
+    if (Object.keys(patch).length === 0) return;
+
+    uniformDirty = uniformDirty || threeAsciiEffectOptionsAffectComputeUniforms(patch);
+    this.asciiNode?.applyOptions(patch);
+    if (uniformDirty) this.uniformDirty = true;
   }
 
   getTerminalEdgeBias(): number {
