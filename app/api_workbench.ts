@@ -170,6 +170,7 @@ import {
   workbenchTerminalSearchModalBody,
   workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
+  workbenchTerminalSessionTabSourcesInto,
   workbenchTerminalSessionTitleFromId,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
@@ -2233,15 +2234,7 @@ function renderTerminalShellSessionTabs(
 ): number {
   const t = theme();
   if (startRow >= rect.row + rect.height) return startRow;
-  terminalShellSessionTabBuffers.sources.length = 0;
-  for (const session of inspection.sessions) {
-    terminalShellSessionTabBuffers.sources.push({
-      id: session.id,
-      title: session.title,
-      running: session.shell.running,
-      status: session.shell.status,
-    });
-  }
+  workbenchTerminalSessionTabSourcesInto(terminalShellSessionTabBuffers.sources, inspection.sessions);
   workbenchTerminalSessionTabsInto(
     terminalShellSessionTabBuffers.placements,
     terminalShellSessionTabBuffers.sources,

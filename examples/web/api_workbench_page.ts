@@ -96,6 +96,7 @@ import {
   workbenchTerminalProtocolHeaderRowsInto,
   workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
+  workbenchTerminalSessionTabSourcesInto,
   workbenchTerminalSessionTitleFromId,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
@@ -1228,15 +1229,7 @@ function renderTerminalSessionTabs(frame: string[], rect: Rectangle): void {
   if (rect.height <= 0 || rect.width <= 0) return;
   const workspace = webTerminalWorkspace.inspect();
   const t = theme();
-  webTerminalSessionTabBuffers.sources.length = 0;
-  for (const session of workspace.sessions) {
-    webTerminalSessionTabBuffers.sources.push({
-      id: session.id,
-      title: session.title,
-      running: session.running,
-      status: session.status,
-    });
-  }
+  workbenchTerminalSessionTabSourcesInto(webTerminalSessionTabBuffers.sources, workspace.sessions);
   workbenchTerminalSessionTabsInto(
     webTerminalSessionTabBuffers.placements,
     webTerminalSessionTabBuffers.sources,

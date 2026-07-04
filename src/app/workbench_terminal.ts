@@ -50,6 +50,18 @@ export interface WorkbenchTerminalSessionTab {
   status?: string;
 }
 
+/** Session-like source accepted by the shared terminal session-tab projector. */
+export interface WorkbenchTerminalSessionTabSource {
+  id: string;
+  title: string;
+  running?: boolean;
+  status?: string;
+  shell?: {
+    running?: boolean;
+    status?: string;
+  };
+}
+
 /** Minimal session id metadata used when creating the next workbench terminal session. */
 export interface WorkbenchTerminalSessionIdSource {
   id: string;
@@ -397,6 +409,24 @@ export function workbenchTerminalSessionTitleFromId(
   return /^\d+$/.test(suffix) ? `${label} ${suffix}` : label;
 }
 
+/** Projects terminal session-like controller state into caller-owned tab sources. */
+export function workbenchTerminalSessionTabSourcesInto(
+  target: WorkbenchTerminalSessionTab[],
+  sessions: readonly WorkbenchTerminalSessionTabSource[],
+): WorkbenchTerminalSessionTab[] {
+  target.length = sessions.length;
+  for (let index = 0; index < sessions.length; index += 1) {
+    const session = sessions[index]!;
+    const row = target[index] ?? { id: session.id, title: session.title };
+    row.id = session.id;
+    row.title = session.title;
+    row.running = session.running ?? session.shell?.running;
+    row.status = session.status ?? session.shell?.status;
+    target[index] = row;
+  }
+  return target;
+}
+
 /** Builds the shared terminal scrollback search prompt body. */
 export function workbenchTerminalSearchModalBody(options: WorkbenchTerminalSearchModalBodyOptions): string[] {
   const cursor = options.cursor ?? "▌";
@@ -418,9 +448,9 @@ export function workbenchTerminalProtocolHeaderRowsInto(
 ): string[] {
   target.length = 2;
   target[0] = options.title ?? "REMOTE TERMINAL / BROWSER SHELL MODEL";
-  target[1] = `active ${options.activeTitle ?? "none"}  screen ${options.columns}x${options.rows}  cursor ${
-    options.cursorColumn
-  },${options.cursorRow}  sessions ${options.sessionCount}  panes ${options.paneCount}`;
+  target[1] = `active ${
+    options.activeTitle ?? "none"
+  }  screen ${options.columns}x${options.rows}  cursor ${options.cursorColumn},${options.cursorRow}  sessions ${options.sessionCount}  panes ${options.paneCount}`;
   return target;
 }
 

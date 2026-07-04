@@ -25,6 +25,7 @@ import {
   workbenchTerminalSearchModalBody,
   workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
+  workbenchTerminalSessionTabSourcesInto,
   workbenchTerminalSessionTitleFromId,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
@@ -217,6 +218,27 @@ Deno.test("workbench terminal session id helpers avoid collisions and format tit
     "Pages Shell 8",
   );
   assertEquals(workbenchTerminalSessionTitleFromId("custom", { label: "Session" }), "Session");
+});
+
+Deno.test("workbenchTerminalSessionTabSourcesInto projects direct and shell-backed session state", () => {
+  const target = [{ id: "old", title: "Old", running: false, status: "stale" }];
+  const rows = workbenchTerminalSessionTabSourcesInto(target, [
+    { id: "shell-1", title: "Shell One", shell: { running: true, status: "running" } },
+    { id: "web-1", title: "Web One", running: false, status: "idle" },
+  ]);
+
+  assertEquals(rows, [
+    { id: "shell-1", title: "Shell One", running: true, status: "running" },
+    { id: "web-1", title: "Web One", running: false, status: "idle" },
+  ]);
+  assertEquals(rows[0] === target[0], true);
+
+  workbenchTerminalSessionTabSourcesInto(target, [
+    { id: "shell-2", title: "Shell Two", shell: { running: false, status: "stopped" } },
+  ]);
+  assertEquals(target, [
+    { id: "shell-2", title: "Shell Two", running: false, status: "stopped" },
+  ]);
 });
 
 Deno.test("workbenchTerminalSessionTabsInto projects clipped selectable tabs", () => {

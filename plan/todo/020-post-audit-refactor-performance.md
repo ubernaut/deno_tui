@@ -446,6 +446,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   steady output stays under threshold.
 - Extended Three terminal-pressure scoping so fast unrelated full-screen redraws remain ignored, but slow full-screen
   flushes with visible Three output can still trigger the emergency budget immediately on constrained terminals.
+- Added a shared terminal session-tab source projector and routed console plus browser workbench shell tabs through it,
+  removing duplicate session-state loops while preserving retained tab buffers.
 - Returned Three grid projection metadata from the workbench grid writer and routed terminal-pressure row accounting
   through the actual rendered target height, keeping capped/scaled grid pressure measurement aligned with paint output.
 - Extracted the workbench Three terminal-pressure flush update into a pure resolver that combines live-cap resync,
