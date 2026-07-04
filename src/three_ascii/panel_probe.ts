@@ -1,4 +1,4 @@
-import { average, formatFps, formatMs } from "./probe_cli.ts";
+import { formatFps, formatMs } from "./probe_cli.ts";
 
 export interface ThreePanelProbeSample {
   index: number;
@@ -56,18 +56,48 @@ export interface ThreePanelProbeValidationResult {
 }
 
 export function summarizeThreePanelProbe(samples: readonly ThreePanelProbeSample[]): ThreePanelProbeSummary {
-  const steady = samples.slice(1).filter((sample) => sample.rows > 0 && sample.columns > 0);
+  const steady: ThreePanelProbeSample[] = [];
+  let totalMs = 0;
+  let initMs = 0;
+  let sceneMs = 0;
+  let sceneUpdateMs = 0;
+  let sceneUpdateCount = 0;
+  let sceneRenderMs = 0;
+  let sceneRenderCount = 0;
+  let readbackMs = 0;
+  let assemblyMs = 0;
+
+  for (let index = 1; index < samples.length; index += 1) {
+    const sample = samples[index]!;
+    if (sample.rows <= 0 || sample.columns <= 0) continue;
+    steady.push(sample);
+    totalMs += sample.totalMs;
+    initMs += sample.initMs;
+    sceneMs += sample.sceneMs;
+    if (sample.sceneUpdateMs !== undefined) {
+      sceneUpdateMs += sample.sceneUpdateMs;
+      sceneUpdateCount += 1;
+    }
+    if (sample.sceneRenderMs !== undefined) {
+      sceneRenderMs += sample.sceneRenderMs;
+      sceneRenderCount += 1;
+    }
+    readbackMs += sample.readbackMs;
+    assemblyMs += sample.assemblyMs;
+  }
+
+  const steadyCount = steady.length;
   return {
     first: samples[0],
     latest: samples.at(-1),
     steady,
-    averageTotalMs: average(steady.map((sample) => sample.totalMs)),
-    averageInitMs: average(steady.map((sample) => sample.initMs)),
-    averageSceneMs: average(steady.map((sample) => sample.sceneMs)),
-    averageSceneUpdateMs: averageDefined(steady.map((sample) => sample.sceneUpdateMs)),
-    averageSceneRenderMs: averageDefined(steady.map((sample) => sample.sceneRenderMs)),
-    averageReadbackMs: average(steady.map((sample) => sample.readbackMs)),
-    averageAssemblyMs: average(steady.map((sample) => sample.assemblyMs)),
+    averageTotalMs: averageFromSum(totalMs, steadyCount),
+    averageInitMs: averageFromSum(initMs, steadyCount),
+    averageSceneMs: averageFromSum(sceneMs, steadyCount),
+    averageSceneUpdateMs: averageFromSum(sceneUpdateMs, sceneUpdateCount),
+    averageSceneRenderMs: averageFromSum(sceneRenderMs, sceneRenderCount),
+    averageReadbackMs: averageFromSum(readbackMs, steadyCount),
+    averageAssemblyMs: averageFromSum(assemblyMs, steadyCount),
   };
 }
 
@@ -144,6 +174,6 @@ function formatScenePhaseSummary(summary: ThreePanelProbeSummary): string {
   return ` update=${formatMs(summary.averageSceneUpdateMs)} render=${formatMs(summary.averageSceneRenderMs)}`;
 }
 
-function averageDefined(values: readonly (number | undefined)[]): number {
-  return average(values.filter((value): value is number => value !== undefined));
+function averageFromSum(total: number, count: number): number {
+  return count === 0 ? 0 : total / count;
 }

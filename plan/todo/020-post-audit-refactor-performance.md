@@ -1146,3 +1146,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   pressure, and row-scope pressure can be distinguished directly in the live workbench.
 - Extracted workbench ANSI span-row cache matching into a small shared helper with direct coverage, making clean-row and
   rendered-hint skip policy testable outside the retained terminal screen painter.
+- Reworked Three panel probe summarization to compute steady samples and averages in one pass instead of allocating
+  slice/filter/map arrays for each metric, keeping renderer performance probes lightweight.
