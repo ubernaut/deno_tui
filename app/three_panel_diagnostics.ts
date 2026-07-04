@@ -26,7 +26,9 @@ export function threePanelSlowFrameDiagnostic(performance: ThreeAsciiRendererPer
     code: "three-ascii-slow-frame",
     severity: "debug",
     message: `Three ASCII frame ${performance.totalMs.toFixed(1)}ms at ${performance.columns}x${performance.rows}`,
-    detail: `init ${performance.initMs.toFixed(1)}ms, scene ${performance.sceneMs.toFixed(1)}ms, ansi ${
+    detail: `init ${performance.initMs.toFixed(1)}ms, scene ${performance.sceneMs.toFixed(1)}ms${
+      performance.sceneUpdateMs === undefined ? "" : `, update ${performance.sceneUpdateMs.toFixed(1)}ms`
+    }${performance.sceneRenderMs === undefined ? "" : `, render ${performance.sceneRenderMs.toFixed(1)}ms`}, ansi ${
       performance.ansiMs.toFixed(1)
     }ms, readback ${performance.readbackMs.toFixed(1)}ms, assembly ${performance.assemblyMs.toFixed(1)}ms${
       threePanelReadbackQueueDetail(performance)
@@ -95,6 +97,8 @@ function threePanelPerformanceContext(performance: ThreeAsciiRendererPerformance
     totalMs: roundTenth(performance.totalMs),
     initMs: roundTenth(performance.initMs),
     sceneMs: roundTenth(performance.sceneMs),
+    sceneUpdateMs: optionalRoundTenth(performance.sceneUpdateMs),
+    sceneRenderMs: optionalRoundTenth(performance.sceneRenderMs),
     ansiMs: roundTenth(performance.ansiMs),
     readbackMs: roundTenth(performance.readbackMs),
     assemblyMs: roundTenth(performance.assemblyMs),
@@ -113,4 +117,8 @@ function threePanelReadbackQueueDetail(performance: ThreeAsciiRendererPerformanc
 
 function roundTenth(value: number): number {
   return Math.round(value * 10) / 10;
+}
+
+function optionalRoundTenth(value: number | undefined): number | undefined {
+  return value === undefined ? undefined : roundTenth(value);
 }

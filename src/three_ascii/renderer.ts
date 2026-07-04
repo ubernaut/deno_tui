@@ -336,7 +336,7 @@ export class ThreeAsciiRenderer {
       }
     }
 
-    const sceneTiming = await this.renderScene(deltaTime, onFrame) ?? { initMs: 0 };
+    const sceneTiming = await this.renderScene(deltaTime, onFrame) ?? { initMs: 0, updateMs: 0, renderMs: 0 };
     const sceneEnd = performance.now();
 
     const frame: ThreeAsciiRenderFrame = {};
@@ -357,6 +357,8 @@ export class ThreeAsciiRenderer {
       frameMs: frameEnd - frameStart,
       initMs: sceneTiming.initMs,
       sceneMs: sceneEnd - frameStart,
+      sceneUpdateMs: sceneTiming.updateMs,
+      sceneRenderMs: sceneTiming.renderMs,
       ansiMs: renderAnsi ? frameEnd - sceneEnd : 0,
       readbackMs: renderAnsi ? this.lastReadbackMs : 0,
       assemblyMs: renderAnsi ? this.lastAssemblyMs : 0,
@@ -369,18 +371,21 @@ export class ThreeAsciiRenderer {
   private async renderScene(
     deltaTime: number,
     onFrame?: (deltaTime: number) => void | Promise<void>,
-  ): Promise<{ initMs: number }> {
+  ): Promise<{ initMs: number; updateMs: number; renderMs: number }> {
     const initialized = this.renderer !== undefined;
     const initStart = initialized ? 0 : performance.now();
     await this.init();
     const initMs = initialized ? 0 : performance.now() - initStart;
+    const updateStart = performance.now();
     if (onFrame) {
       await onFrame(deltaTime);
     }
+    const updateMs = performance.now() - updateStart;
+    const renderStart = performance.now();
     this.applySize();
     this.updateCameraAspect();
     this.renderPipeline!.render();
-    return { initMs };
+    return { initMs, updateMs, renderMs: performance.now() - renderStart };
   }
 
   private async computeAnsiGrid(

@@ -9,6 +9,8 @@ export interface ThreeAsciiRendererPerformance {
   totalMs: number;
   initMs: number;
   sceneMs: number;
+  sceneUpdateMs?: number;
+  sceneRenderMs?: number;
   ansiMs: number;
   readbackMs: number;
   assemblyMs: number;
@@ -34,6 +36,8 @@ export interface ThreeAsciiRendererPerformanceInput {
   frameMs: number;
   initMs?: number;
   sceneMs: number;
+  sceneUpdateMs?: number;
+  sceneRenderMs?: number;
   ansiMs: number;
   readbackMs: number;
   assemblyMs: number;
@@ -61,6 +65,8 @@ export function createThreeAsciiRendererPerformance(
     totalMs: input.frameMs,
     initMs: input.initMs ?? 0,
     sceneMs: input.sceneMs,
+    sceneUpdateMs: input.sceneUpdateMs,
+    sceneRenderMs: input.sceneRenderMs,
     ansiMs: input.ansiMs,
     readbackMs: input.readbackMs,
     assemblyMs: input.assemblyMs,
@@ -83,6 +89,8 @@ export function createThreeAsciiRendererSaturatedPerformance(
     totalMs: input.previousFrameMs ?? input.frameMs,
     initMs: 0,
     sceneMs: 0,
+    sceneUpdateMs: 0,
+    sceneRenderMs: 0,
     ansiMs: 0,
     readbackMs: input.readbackMs,
     assemblyMs: 0,

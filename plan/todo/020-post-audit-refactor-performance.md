@@ -262,6 +262,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   probes showed deferred readback could publish a stale visible grid while reporting low renderer timings.
 - Extended Three panel frame-time adaptation to the internal 120/240/480 pressure tiers so slow blocking-readback
   sessions can downshift below the user-facing 960-cell render setting without mutating saved ASCII config.
+- Split Three ASCII renderer telemetry into scene update and WebGPU render phases so probes and slow-frame diagnostics
+  can distinguish scene animation cost from GPU render submission and blocking readback wait.
 - Added compact live Three ASCII renderer telemetry to the workbench Three pane header so renderer frame, scene,
   readback, assembly, and cell counts are visible during manual profiling.
 - Moved SGR state merging into a shared internal utility and routed workbench frame writes through it, so both

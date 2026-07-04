@@ -190,6 +190,8 @@ function drawSample(index: number): WorkbenchThreePressureProbeSample {
     rendererMs: performance?.totalMs ?? 0,
     initMs: performance?.initMs ?? 0,
     sceneMs: performance?.sceneMs ?? 0,
+    sceneUpdateMs: performance?.sceneUpdateMs,
+    sceneRenderMs: performance?.sceneRenderMs,
     readbackMs: performance?.readbackMs ?? 0,
     assemblyMs: performance?.assemblyMs ?? 0,
     flushMs: stats.durationMs,

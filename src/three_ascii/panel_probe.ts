@@ -6,6 +6,8 @@ export interface ThreePanelProbeSample {
   totalMs: number;
   initMs: number;
   sceneMs: number;
+  sceneUpdateMs?: number;
+  sceneRenderMs?: number;
   readbackMs: number;
   assemblyMs: number;
   columns: number;
@@ -36,6 +38,8 @@ export interface ThreePanelProbeSummary {
   averageTotalMs: number;
   averageInitMs: number;
   averageSceneMs: number;
+  averageSceneUpdateMs: number;
+  averageSceneRenderMs: number;
   averageReadbackMs: number;
   averageAssemblyMs: number;
 }
@@ -49,6 +53,8 @@ export function summarizeThreePanelProbe(samples: readonly ThreePanelProbeSample
     averageTotalMs: average(steady.map((sample) => sample.totalMs)),
     averageInitMs: average(steady.map((sample) => sample.initMs)),
     averageSceneMs: average(steady.map((sample) => sample.sceneMs)),
+    averageSceneUpdateMs: averageDefined(steady.map((sample) => sample.sceneUpdateMs)),
+    averageSceneRenderMs: averageDefined(steady.map((sample) => sample.sceneRenderMs)),
     averageReadbackMs: average(steady.map((sample) => sample.readbackMs)),
     averageAssemblyMs: average(steady.map((sample) => sample.assemblyMs)),
   };
@@ -72,7 +78,9 @@ export function formatThreePanelProbeLines(
     } latest=${latest ? `${latest.columns}x${latest.rows}/${latest.cells}c` : "none"} firstGrid=${
       formatMs(firstGridElapsedMs)
     }`,
-    `init=${formatMs(summary.averageInitMs)} scene=${formatMs(summary.averageSceneMs)} readback=${
+    `init=${formatMs(summary.averageInitMs)} scene=${formatMs(summary.averageSceneMs)}${
+      formatScenePhaseSummary(summary)
+    } readback=${
       formatMs(summary.averageReadbackMs)
     } assembly=${formatMs(summary.averageAssemblyMs)} updates=${latest?.updates ?? 0}${
       formatDeferredQueueSummary(latest)
@@ -98,4 +106,13 @@ function formatDeferredQueueSummary(sample: ThreePanelProbeSample | undefined): 
   return ` queue=${sample.deferredPending}/${sample.deferredUnresolved ?? 0}/${
     sample.deferredResolved ?? 0
   }${saturation}`;
+}
+
+function formatScenePhaseSummary(summary: ThreePanelProbeSummary): string {
+  if (summary.averageSceneUpdateMs === 0 && summary.averageSceneRenderMs === 0) return "";
+  return ` update=${formatMs(summary.averageSceneUpdateMs)} render=${formatMs(summary.averageSceneRenderMs)}`;
+}
+
+function averageDefined(values: readonly (number | undefined)[]): number {
+  return average(values.filter((value): value is number => value !== undefined));
 }

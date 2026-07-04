@@ -108,6 +108,8 @@ function samplePanel(
     totalMs: performanceInfo.totalMs,
     initMs: performanceInfo.initMs,
     sceneMs: performanceInfo.sceneMs,
+    sceneUpdateMs: performanceInfo.sceneUpdateMs,
+    sceneRenderMs: performanceInfo.sceneRenderMs,
     readbackMs: performanceInfo.readbackMs,
     assemblyMs: performanceInfo.assemblyMs,
     columns,

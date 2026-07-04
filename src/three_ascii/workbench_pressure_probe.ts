@@ -10,6 +10,8 @@ export interface WorkbenchThreePressureProbeSample {
   rendererMs: number;
   initMs: number;
   sceneMs: number;
+  sceneUpdateMs?: number;
+  sceneRenderMs?: number;
   readbackMs: number;
   assemblyMs: number;
   flushMs: number;
@@ -163,7 +165,7 @@ export function formatWorkbenchThreePressureProbeLines(
     lines.push(
       `${sample.index.toString().padStart(2, "0")} renderer=${formatMs(sample.rendererMs)} init=${
         formatMs(sample.initMs)
-      } scene=${formatMs(sample.sceneMs)} read=${formatMs(sample.readbackMs)} asm=${
+      } scene=${formatMs(sample.sceneMs)}${formatScenePhases(sample)} read=${formatMs(sample.readbackMs)} asm=${
         formatMs(sample.assemblyMs)
       } flush=${formatMs(sample.flushMs)} bytes=${sample.bytes} rate=${
         Math.round(workbenchThreeTerminalBytesPerSecond(sample))
@@ -173,6 +175,11 @@ export function formatWorkbenchThreePressureProbeLines(
     );
   }
   return lines;
+}
+
+function formatScenePhases(sample: WorkbenchThreePressureProbeSample): string {
+  if (sample.sceneUpdateMs === undefined && sample.sceneRenderMs === undefined) return "";
+  return ` update=${formatMs(sample.sceneUpdateMs ?? 0)} render=${formatMs(sample.sceneRenderMs ?? 0)}`;
 }
 
 function pressureByteRates(samples: readonly WorkbenchThreePressureProbeSample[]): number[] {
