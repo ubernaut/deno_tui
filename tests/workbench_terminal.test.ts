@@ -18,6 +18,7 @@ import {
   resolveWorkbenchTerminalOutputKeyAction,
   resolveWorkbenchTerminalProcessInputModeToggle,
   resolveWorkbenchTerminalShellInputModeToggle,
+  resolveWorkbenchTerminalShellKeyAction,
   workbenchTerminalCopyRowsInto,
   type WorkbenchTerminalOutputToolbarAction,
   workbenchTerminalOutputToolbarItemsInto,
@@ -612,6 +613,28 @@ Deno.test("resolveWorkbenchTerminalOutputKeyAction maps process terminal shortcu
   assertEquals(resolveWorkbenchTerminalOutputKeyAction({ key: "p", ctrl: true }), undefined);
   assertEquals(resolveWorkbenchTerminalOutputKeyAction({ key: "p", meta: true }), undefined);
   assertEquals(resolveWorkbenchTerminalOutputKeyAction({ key: "x" }), undefined);
+});
+
+Deno.test("resolveWorkbenchTerminalShellKeyAction maps shell workbench shortcuts", () => {
+  assertEquals(resolveWorkbenchTerminalShellKeyAction({ key: "pageup" }), "copyPageUp");
+  assertEquals(resolveWorkbenchTerminalShellKeyAction({ key: "pagedown" }), "copyPageDown");
+  assertEquals(resolveWorkbenchTerminalShellKeyAction({ key: "p" }), "start");
+  assertEquals(resolveWorkbenchTerminalShellKeyAction({ key: "S" }), "stop");
+  assertEquals(resolveWorkbenchTerminalShellKeyAction({ key: "u" }), "restart");
+  assertEquals(resolveWorkbenchTerminalShellKeyAction({ key: "k" }), "clear");
+  assertEquals(resolveWorkbenchTerminalShellKeyAction({ key: "n" }), "new");
+  assertEquals(resolveWorkbenchTerminalShellKeyAction({ key: "N", shift: true }), "new");
+  assertEquals(resolveWorkbenchTerminalShellKeyAction({ key: "-" }), "splitRow");
+  assertEquals(resolveWorkbenchTerminalShellKeyAction({ key: "\\" }), "splitColumn");
+  assertEquals(resolveWorkbenchTerminalShellKeyAction({ key: "z" }), "zoomPane");
+  assertEquals(resolveWorkbenchTerminalShellKeyAction({ key: "," }), "previous");
+  assertEquals(resolveWorkbenchTerminalShellKeyAction({ key: "." }), "next");
+  assertEquals(resolveWorkbenchTerminalShellKeyAction({ key: "i" }), "raw");
+  assertEquals(resolveWorkbenchTerminalShellKeyAction({ key: "/" }), "search");
+  assertEquals(resolveWorkbenchTerminalShellKeyAction({ key: "home" }), "top");
+  assertEquals(resolveWorkbenchTerminalShellKeyAction({ key: "end" }), "bottom");
+  assertEquals(resolveWorkbenchTerminalShellKeyAction({ key: "p", ctrl: true }), undefined);
+  assertEquals(resolveWorkbenchTerminalShellKeyAction({ key: "x" }), undefined);
 });
 
 function fakeBackend(id: string, pty: boolean): TerminalBackend {

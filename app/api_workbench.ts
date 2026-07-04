@@ -52,6 +52,7 @@ import {
   resolveWorkbenchMenuFocusKey,
   resolveWorkbenchScreenDropdownKey,
   resolveWorkbenchTerminalOutputKeyAction,
+  resolveWorkbenchTerminalShellKeyAction,
   subscribeWorkbenchDiagnosticLog,
   translateHitTargets,
   workbenchAdaptiveWindowLayout,
@@ -3887,47 +3888,14 @@ function handleTerminalShellKey(event: KeyPressEvent): boolean {
   }
 
   if (event.ctrl || event.meta) return false;
-  const key = event.key.toLowerCase();
-  if (event.key === "pageup" || event.key === "pagedown") {
+  const action = resolveWorkbenchTerminalShellKeyAction(event);
+  if (action === "copyPageUp" || action === "copyPageDown") {
     shell.scrollback.enterCopyMode();
-    shell.scrollback.page(event.key === "pageup" ? -1 : 1);
+    shell.scrollback.page(action === "copyPageUp" ? -1 : 1);
     terminalShellInputMode.value = "workbench";
     scheduleDraw();
     return true;
   }
-  const action = key === "p"
-    ? "start"
-    : key === "s"
-    ? "stop"
-    : key === "u"
-    ? "restart"
-    : key === "k"
-    ? "clear"
-    : key === "n"
-    ? "new"
-    : key === "-"
-    ? "splitRow"
-    : key === "\\"
-    ? "splitColumn"
-    : key === "z"
-    ? "zoomPane"
-    : key === ","
-    ? "previous"
-    : key === "."
-    ? "next"
-    : key === "i"
-    ? "raw"
-    : event.key === "/"
-    ? "search"
-    : key === "n" && event.shift
-    ? "previousMatch"
-    : key === "n"
-    ? "nextMatch"
-    : event.key === "home"
-    ? "top"
-    : event.key === "end"
-    ? "bottom"
-    : undefined;
   if (!action) return false;
   void applyTerminalShellAction(action);
   return true;

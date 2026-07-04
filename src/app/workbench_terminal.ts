@@ -338,6 +338,45 @@ export function resolveWorkbenchTerminalOutputKeyAction(
   }
 }
 
+/** Resolves shell terminal workbench-mode shortcuts into toolbar actions. */
+export function resolveWorkbenchTerminalShellKeyAction(
+  event: WorkbenchTerminalKey,
+): WorkbenchTerminalToolbarAction | "copyPageUp" | "copyPageDown" | undefined {
+  if (event.ctrl || event.meta) return undefined;
+  if (event.key === "pageup") return "copyPageUp";
+  if (event.key === "pagedown") return "copyPageDown";
+  if (event.key === "/") return "search";
+  if (event.key === "home") return "top";
+  if (event.key === "end") return "bottom";
+  const key = event.key.toLowerCase();
+  switch (key) {
+    case "p":
+      return "start";
+    case "s":
+      return "stop";
+    case "u":
+      return "restart";
+    case "k":
+      return "clear";
+    case "n":
+      return "new";
+    case "-":
+      return "splitRow";
+    case "\\":
+      return "splitColumn";
+    case "z":
+      return "zoomPane";
+    case ",":
+      return "previous";
+    case ".":
+      return "next";
+    case "i":
+      return "raw";
+    default:
+      return undefined;
+  }
+}
+
 /** Resolves the next terminal input mode without mutating UI state. */
 export function resolveWorkbenchTerminalInputModeToggle(
   options: WorkbenchTerminalInputModeToggleOptions,
