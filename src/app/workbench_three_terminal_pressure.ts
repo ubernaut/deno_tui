@@ -68,14 +68,14 @@ export function workbenchThreeFrameIntervalForCells(
   return intervals.get(Math.max(1, Math.floor(cells))) ?? Math.max(1, fallback);
 }
 
-/** Returns true when the focused/fullscreen visible workbench window is a Three-backed pane. */
+/** Returns true when any visible workbench window should keep Three rendering interactive. */
 export function workbenchThreeShouldUseLiveCadence(options: WorkbenchThreeLiveCadenceOptions): boolean {
   if (options.fullscreenId) return options.isThreeWindow(options.fullscreenId);
-  if (!options.activeId || !options.isThreeWindow(options.activeId)) return false;
   for (const window of options.windows) {
-    if (window.id !== options.activeId) continue;
     const state = window.state ?? "normal";
-    return state === "normal" || state === "fullscreen";
+    if ((state === "normal" || state === "fullscreen") && options.isThreeWindow(window.id)) {
+      return true;
+    }
   }
   return false;
 }
