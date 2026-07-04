@@ -490,6 +490,14 @@ function appendCanvasRowRangeUpdates(
   rowRanges: CanvasRowRangeUpdate[],
   cellUpdates?: CanvasCellUpdate[],
 ): number {
+  if (!cellUpdates) {
+    const values = sliceDefinedRowRange(rowBuffer, startColumn, endColumn);
+    if (values) {
+      rowRanges.push({ row, startColumn, values });
+      return values.length;
+    }
+  }
+
   let flushedCells = 0;
   let activeValues: (string | Uint8Array)[] | undefined;
   let activeStart = startColumn;
@@ -517,4 +525,15 @@ function appendCanvasRowRangeUpdates(
     rowRanges.push({ row, startColumn: activeStart, values: activeValues });
   }
   return flushedCells;
+}
+
+function sliceDefinedRowRange(
+  rowBuffer: (string | Uint8Array)[],
+  startColumn: number,
+  endColumn: number,
+): (string | Uint8Array)[] | undefined {
+  for (let column = startColumn; column < endColumn; column += 1) {
+    if (rowBuffer[column] === undefined) return undefined;
+  }
+  return rowBuffer.slice(startColumn, endColumn);
 }

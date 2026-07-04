@@ -985,3 +985,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added a full-row fast path for string-backed workbench writes with leading SGR styles and a final reset, avoiding
   per-cell conversion when browser/web rows overwrite the full width. The focused full-row string benchmark dropped
   from roughly 1.82ms to 0.29ms on this host.
+- Added row-range flush shortcuts for range-aware sinks and a repeated-cell fast path in ANSI range compaction. The
+  dense `TextObject` full-row canvas benchmark dropped from roughly 2.57ms to 2.11ms, and the workbench ANSI screen
+  flush benchmark dropped from roughly 0.47ms to 0.39ms on this host.

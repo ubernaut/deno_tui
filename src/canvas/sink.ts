@@ -139,7 +139,19 @@ function compactAnsiUpdateSpan(updates: readonly CanvasCellUpdate[], start: numb
 }
 
 function compactAnsiCellSpan(values: readonly (string | Uint8Array)[], start: number): AnsiCellSpan {
-  const first = splitAnsiCellValue(values[start]!);
+  const firstValue = values[start]!;
+  const first = splitAnsiCellValue(firstValue);
+  let repeatedCells = 1;
+  while (start + repeatedCells < values.length && values[start + repeatedCells] === firstValue) {
+    repeatedCells += 1;
+  }
+  if (repeatedCells > 1) {
+    return {
+      text: `${first.prefix}${first.text.repeat(repeatedCells)}${first.suffix}`,
+      cells: repeatedCells,
+    };
+  }
+
   let text = first.text;
   let index = start + 1;
   while (index < values.length) {
