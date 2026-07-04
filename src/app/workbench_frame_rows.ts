@@ -60,6 +60,13 @@ function renderFrameArrayCells(cells: string[], start: number, width: number): s
   let row = "";
   for (let column = 0; column < columns;) {
     const firstCell = cells[offset + column] ?? " ";
+    const backgroundSpacePrefix = frameCellBackgroundSpacePrefix(firstCell);
+    if (backgroundSpacePrefix !== undefined) {
+      const styled = renderBackgroundSpaceRun(cells, offset, column, columns, firstCell, backgroundSpacePrefix);
+      row += styled.value;
+      column = styled.nextColumn;
+      continue;
+    }
     const first = splitFrameCell(firstCell);
     if (isBackgroundStyledFrameCell(first)) {
       const styled = renderBackgroundStyledRun(cells, offset, column, columns, firstCell, first);
@@ -87,6 +94,47 @@ function renderFrameArrayCells(cells: string[], start: number, width: number): s
     column = next;
   }
   return row;
+}
+
+function renderBackgroundSpaceRun(
+  cells: string[],
+  start: number,
+  startColumn: number,
+  width: number,
+  firstCell: string,
+  firstPrefix: string,
+): { value: string; nextColumn: number } {
+  let next = startColumn;
+  let value = "";
+  let currentCell = firstCell;
+  let currentPrefix: string | undefined = firstPrefix;
+
+  while (next < width && currentPrefix !== undefined) {
+    let repeatEnd = next + 1;
+    while (repeatEnd < width && (cells[start + repeatEnd] ?? " ") === currentCell) {
+      repeatEnd += 1;
+    }
+    value += `${currentPrefix}${" ".repeat(repeatEnd - next)}`;
+    next = repeatEnd;
+
+    while (next < width) {
+      const nextCell = cells[start + next] ?? " ";
+      const nextPrefix = frameCellBackgroundSpacePrefix(nextCell);
+      if (nextPrefix === undefined || nextPrefix !== currentPrefix) break;
+      let samePrefixEnd = next + 1;
+      while (samePrefixEnd < width && (cells[start + samePrefixEnd] ?? " ") === nextCell) {
+        samePrefixEnd += 1;
+      }
+      value += " ".repeat(samePrefixEnd - next);
+      next = samePrefixEnd;
+    }
+
+    if (next >= width) break;
+    currentCell = cells[start + next] ?? " ";
+    currentPrefix = frameCellBackgroundSpacePrefix(currentCell);
+  }
+
+  return { value: `${value}${RESET}`, nextColumn: next };
 }
 
 function renderBackgroundStyledRun(
@@ -170,18 +218,24 @@ function splitFrameCell(cell: string): FrameCellParts {
 }
 
 function splitBackgroundSpaceFrameCell(cell: string): FrameCellParts | undefined {
-  if (cell.charCodeAt(0) !== 0x1b || !cell.endsWith("m \x1b[0m")) return undefined;
-  const resetStart = cell.length - RESET.length;
-  const textIndex = resetStart - 1;
-  if (cell.charCodeAt(textIndex) !== 0x20) return undefined;
-  const prefix = cell.slice(0, textIndex);
-  if (!hasBackgroundSgr(prefix)) return undefined;
+  const prefix = frameCellBackgroundSpacePrefix(cell);
+  if (prefix === undefined) return undefined;
   return {
     prefix,
     text: " ",
     suffix: RESET,
     backgroundStyled: true,
   };
+}
+
+function frameCellBackgroundSpacePrefix(cell: string): string | undefined {
+  if (cell.charCodeAt(0) !== 0x1b || !cell.endsWith("m \x1b[0m")) return undefined;
+  const resetStart = cell.length - RESET.length;
+  const textIndex = resetStart - 1;
+  if (cell.charCodeAt(textIndex) !== 0x20) return undefined;
+  const prefix = cell.slice(0, textIndex);
+  if (!hasBackgroundSgr(prefix)) return undefined;
+  return prefix;
 }
 
 function hasBackgroundSgr(prefix: string): boolean {

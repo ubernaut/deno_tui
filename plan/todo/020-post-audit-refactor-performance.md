@@ -997,3 +997,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added a simple leading-SGR ASCII row splitter and avoided duplicate first-cell parsing in ANSI range compaction. The
   focused ANSI styled character split benchmark dropped from roughly 0.006-0.007ms to roughly 0.005ms on this host,
   with dense TextObject full-row canvas remaining around 2.01ms on longer repeats.
+- Added an allocation-free frame-row assembly path for truecolor background-space cells, keeping high-cardinality block
+  rows off the generic styled-cell splitter. The focused workbench cell blit benchmark held around 1.63ms, and the
+  Three block span flush benchmark held around 1.02ms on longer repeats.
