@@ -193,6 +193,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   focus/theme/tile-density/diagnostic status-bar wiring.
 - Extracted active standard top-menu dropdown projection so terminal and browser workbench adapters share menu
   anchoring, visible slicing, selected-index mapping, and item id defaults.
+- Tightened Three workbench pressure adaptation so collapsed observed cadence can downshift even when unrelated
+  workbench rows changed in the same flush, and reduced the low-FPS warmup from 24 to 6 renderer updates.
 - Added sustained byte-rate context to workbench Three pressure change logs so adaptive downshifts show the same signal
   used by the policy.
 - Lowered the workbench Three sustained terminal byte-rate pressure threshold to make the default block renderer back

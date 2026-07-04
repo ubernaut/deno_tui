@@ -207,7 +207,9 @@ export function resolveWorkbenchThreeTerminalPressureUpdate(
   const highDurationMs = Math.max(1, options.highDurationMs ?? Number.POSITIVE_INFINITY);
   const durationScoped = !rowScoped && options.renderedThreeGrids > 0 && options.renderedThreeRows > 0 &&
     options.changedRows > 0 && (options.durationMs ?? 0) >= highDurationMs;
-  const scoped = rowScoped || durationScoped;
+  const cadenceScoped = !rowScoped && !durationScoped && options.renderedThreeGrids > 0 &&
+    hasLowObservedWorkbenchThreeFps(options);
+  const scoped = rowScoped || durationScoped || cadenceScoped;
   const next = resolveWorkbenchThreeTerminalPressureBudget(currentState, {
     ...options,
     renderedThreeGrids: scoped ? options.renderedThreeGrids : 0,
@@ -253,13 +255,7 @@ export function resolveWorkbenchThreeTerminalPressureBudget(
   const bytesPerSecond = workbenchThreeTerminalBytesPerSecond(options);
   const lowBytesPerGrid = options.lowBytesPerGrid ?? Number.POSITIVE_INFINITY;
   const lowBytesPerSecond = options.lowBytesPerSecond ?? Number.POSITIVE_INFINITY;
-  const targetFps = Math.max(0, options.targetFps ?? 0);
-  const observedFps = Math.max(0, options.observedFps ?? Number.POSITIVE_INFINITY);
-  const lowFpsRatio = Math.max(0.05, options.lowFpsRatio ?? 0.5);
-  const observedFrameCount = Math.max(0, Math.floor(options.observedFrameCount ?? Number.POSITIVE_INFINITY));
-  const minObservedFpsFrames = Math.max(1, Math.floor(options.minObservedFpsFrames ?? 6));
-  const lowObservedFps = observedFrameCount >= minObservedFpsFrames && targetFps > 0 &&
-    observedFps < targetFps * lowFpsRatio;
+  const lowObservedFps = hasLowObservedWorkbenchThreeFps(options);
   const highPressure = options.bytes >= options.highBytes || bytesPerGrid >= highBytesPerGrid ||
     (options.durationMs ?? 0) >= highDurationMs || bytesPerSecond >= highBytesPerSecond || lowObservedFps;
   if (highPressure && current > levels[0]!) {
@@ -315,6 +311,20 @@ export function resolveWorkbenchThreeTerminalPressureBudget(
 export function workbenchThreeTerminalBytesPerSecond(options: WorkbenchThreeTerminalByteRateOptions): number {
   if (options.sampleDurationMs === undefined || options.sampleDurationMs <= 0 || options.bytes <= 0) return 0;
   return options.bytes / (options.sampleDurationMs / 1000);
+}
+
+function hasLowObservedWorkbenchThreeFps(
+  options: Pick<
+    WorkbenchThreeTerminalPressureOptions,
+    "observedFps" | "targetFps" | "lowFpsRatio" | "observedFrameCount" | "minObservedFpsFrames"
+  >,
+): boolean {
+  const targetFps = Math.max(0, options.targetFps ?? 0);
+  const observedFps = Math.max(0, options.observedFps ?? Number.POSITIVE_INFINITY);
+  const lowFpsRatio = Math.max(0.05, options.lowFpsRatio ?? 0.5);
+  const observedFrameCount = Math.max(0, Math.floor(options.observedFrameCount ?? Number.POSITIVE_INFINITY));
+  const minObservedFpsFrames = Math.max(1, Math.floor(options.minObservedFpsFrames ?? 6));
+  return observedFrameCount >= minObservedFpsFrames && targetFps > 0 && observedFps < targetFps * lowFpsRatio;
 }
 
 function normalizedLevels(levels: readonly number[]): number[] {

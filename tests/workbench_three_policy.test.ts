@@ -15,6 +15,7 @@ import {
 import {
   createWorkbenchThreeTerminalPressureState,
   resolveWorkbenchThreeTerminalPressureBudget,
+  resolveWorkbenchThreeTerminalPressureUpdate,
 } from "../src/app/workbench_three_terminal_pressure.ts";
 
 Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
@@ -167,6 +168,27 @@ Deno.test("API workbench Three policy ignores early startup-skewed cadence sampl
 
   assertEquals(state.currentCells, WORKBENCH_THREE_INITIAL_CELLS);
   assertEquals(state.highFrames, 0);
+});
+
+Deno.test("API workbench Three policy scopes collapsed cadence even when other rows changed", () => {
+  const state = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_INITIAL_CELLS);
+  const next = resolveWorkbenchThreeTerminalPressureUpdate(state, {
+    ...API_WORKBENCH_THREE_PRESSURE_POLICY,
+    currentCells: WORKBENCH_THREE_INITIAL_CELLS,
+    renderedThreeGrids: 1,
+    renderedThreeRows: 8,
+    changedRows: 42,
+    bytes: 1_200,
+    durationMs: 0.05,
+    sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
+    observedFps: 3,
+    targetFps: 20,
+    observedFrameCount: WORKBENCH_THREE_PRESSURE_MIN_FPS_FRAMES,
+  });
+
+  assertEquals(next.scoped, true);
+  assertEquals(next.currentCells, 120);
+  assertEquals(next.highFrames, 0);
 });
 
 Deno.test("API workbench Three policy recovers from moderate animated output under the byte-rate floor", () => {
