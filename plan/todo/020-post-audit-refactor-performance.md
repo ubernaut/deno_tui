@@ -755,3 +755,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added a 30-cell rescue pressure tier for constrained terminals and aligned the Three panel adaptive budget floor with
   that tier. Sequential probes show the normal 60-cell startup tier remains live around 9.5KB/s, while the rescue tier
   still publishes changing frames at roughly 4.6KB/s.
+- Extracted dynamic visualization Three-scene gating into the shared workbench Three scene helper so modal blocking,
+  renderer availability, and minimum live-render dimensions are tested outside the main workbench renderer.

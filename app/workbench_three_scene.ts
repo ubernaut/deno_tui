@@ -18,6 +18,16 @@ export interface WorkbenchStudioSceneInput {
   pressed?: boolean;
 }
 
+export interface WorkbenchVisualizationThreeSceneInput {
+  blocked?: boolean;
+  available?: boolean;
+  width: number;
+  height: number;
+  scene?: WorkbenchThreeScene | null;
+  minWidth?: number;
+  minHeight?: number;
+}
+
 export interface WorkbenchThreeSceneSignalTarget {
   peek(): WorkbenchThreeScene | null;
   value: WorkbenchThreeScene | null;
@@ -39,6 +49,19 @@ export function workbenchStudioScene(input: WorkbenchStudioSceneInput): Workbenc
       pressed: input.pressed ?? false,
     },
   };
+}
+
+export function workbenchVisualizationThreeScene(
+  input: WorkbenchVisualizationThreeSceneInput,
+): WorkbenchThreeScene | null {
+  if (
+    input.blocked ||
+    input.available === false ||
+    !input.scene ||
+    input.width < (input.minWidth ?? 8) ||
+    input.height < (input.minHeight ?? 9)
+  ) return null;
+  return input.scene;
 }
 
 export function setWorkbenchThreeSceneSignal(

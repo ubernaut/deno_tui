@@ -265,6 +265,7 @@ import {
   setWorkbenchThreeSceneSignal,
   workbenchStudioScene,
   type WorkbenchThreeScene,
+  workbenchVisualizationThreeScene,
 } from "./workbench_three_scene.ts";
 import {
   threeRendererModeLabel,
@@ -1322,11 +1323,14 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
   const context = buildVisualizationContext(visualizationId, rect, { windowId: id });
   const rendered = renderVisualization(context);
   const accent = accentColor(rendered.accent);
-  const useThreeScene = Boolean(
-    rendered.three && threeAsciiAvailable.peek() && !genericModalBlocksThree.peek() && rect.width >= 8 &&
-      rect.height >= 9,
-  );
-  if (useThreeScene) {
+  const threeScene = workbenchVisualizationThreeScene({
+    scene: rendered.three ?? null,
+    available: threeAsciiAvailable.peek(),
+    blocked: genericModalBlocksThree.peek(),
+    width: rect.width,
+    height: rect.height,
+  });
+  if (threeScene) {
     writeRows(frame, rect, [
       {
         text: ` ${option.group.toUpperCase()} · ${rendered.title ?? option.label.toUpperCase()} `,
@@ -1365,7 +1369,7 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
     const entry = ensureVisualizationThreePanel(id);
     setWorkbenchThreeRect(entry.rectangle, { column: 0, row: 0, width: sceneRect.width, height: sceneRect.height });
     setWorkbenchThreeRect(entry.graphicsRectangle, contentRectToGraphicsRect(sceneRect));
-    setWorkbenchThreeSceneSignal(entry.scene, rendered.three ?? null);
+    setWorkbenchThreeSceneSignal(entry.scene, threeScene);
     renderedVisualizationThreePanels.add(id);
     const grid = entry.panel.grid.peek();
     renderThreeGrid(frame, sceneRect, grid, t, {

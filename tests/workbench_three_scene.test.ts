@@ -5,6 +5,7 @@ import {
   setWorkbenchThreeSceneSignal,
   workbenchStudioScene,
   type WorkbenchThreeScene,
+  workbenchVisualizationThreeScene,
 } from "../app/workbench_three_scene.ts";
 
 const signal = {
@@ -104,6 +105,18 @@ Deno.test("workbench studio scene returns null while blocked hidden or unavailab
   assertEquals(workbenchStudioScene({ ...input, blocked: true }), null);
   assertEquals(workbenchStudioScene({ ...input, minimized: true }), null);
   assertEquals(workbenchStudioScene({ ...input, available: false }), null);
+});
+
+Deno.test("workbench visualization three scene gates live rendering", () => {
+  const scene: WorkbenchThreeScene = { mode: "lattice", signal };
+
+  assertEquals(workbenchVisualizationThreeScene({ scene, width: 16, height: 12 }), scene);
+  assertEquals(workbenchVisualizationThreeScene({ scene, width: 7, height: 12 }), null);
+  assertEquals(workbenchVisualizationThreeScene({ scene, width: 16, height: 8 }), null);
+  assertEquals(workbenchVisualizationThreeScene({ scene, width: 7, height: 8, minWidth: 6, minHeight: 6 }), scene);
+  assertEquals(workbenchVisualizationThreeScene({ scene, width: 16, height: 12, blocked: true }), null);
+  assertEquals(workbenchVisualizationThreeScene({ scene, width: 16, height: 12, available: false }), null);
+  assertEquals(workbenchVisualizationThreeScene({ scene: null, width: 16, height: 12 }), null);
 });
 
 class FakeSceneSignal {
