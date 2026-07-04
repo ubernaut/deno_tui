@@ -413,6 +413,20 @@ Deno.test("workbench Three live cadence follows focused or fullscreen Three pane
     workbenchThreeShouldUseLiveCadence({ activeId: "three", fullscreenId: "explorer", windows, isThreeWindow }),
     false,
   );
+  assertEquals(
+    workbenchThreeShouldUseLiveCadence({ activeId: "three", windows, isThreeWindow, blocked: true }),
+    false,
+  );
+  assertEquals(
+    workbenchThreeShouldUseLiveCadence({
+      activeId: "explorer",
+      fullscreenId: "three",
+      windows,
+      isThreeWindow,
+      blocked: true,
+    }),
+    false,
+  );
 });
 
 Deno.test("workbench Three live cadence ignores hidden Three panes", () => {
@@ -445,6 +459,7 @@ Deno.test("workbench Three per-window interactivity follows only the targeted pa
     }),
     true,
   );
+  assertEquals(workbenchThreeWindowIsInteractive({ id: "three", activeId: "three", windows, blocked: true }), false);
 });
 
 Deno.test("workbench Three pressure ignores startup fallback grids without renderer telemetry", () => {

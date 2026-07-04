@@ -76,6 +76,7 @@ export interface WorkbenchThreeLiveCadenceOptions {
   fullscreenId?: string;
   windows: readonly WorkbenchThreeCadenceWindow[];
   isThreeWindow: (id: string) => boolean;
+  blocked?: boolean;
 }
 
 /** Inputs used to decide whether one workbench Three pane should use live cadence. */
@@ -84,6 +85,7 @@ export interface WorkbenchThreeWindowInteractivityOptions {
   activeId?: string;
   fullscreenId?: string;
   windows: readonly WorkbenchThreeCadenceWindow[];
+  blocked?: boolean;
 }
 
 /** Minimal renderer telemetry needed to decide whether a visible grid is real Three output. */
@@ -126,6 +128,7 @@ export function workbenchThreeFrameIntervalForCells(
 
 /** Returns true when the focused or fullscreen workbench window should keep Three rendering interactive. */
 export function workbenchThreeShouldUseLiveCadence(options: WorkbenchThreeLiveCadenceOptions): boolean {
+  if (options.blocked) return false;
   if (options.fullscreenId) return options.isThreeWindow(options.fullscreenId);
   if (!options.activeId || !options.isThreeWindow(options.activeId)) return false;
   for (const window of options.windows) {
@@ -142,6 +145,7 @@ export function workbenchThreeWindowIsInteractive(options: WorkbenchThreeWindowI
     activeId: options.activeId === options.id ? options.id : undefined,
     fullscreenId: options.fullscreenId,
     windows: options.windows,
+    blocked: options.blocked,
     isThreeWindow: (candidate) => candidate === options.id,
   });
 }

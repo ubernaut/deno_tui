@@ -2845,22 +2845,22 @@ function syncWorkbenchThreeFrameInterval(): void {
 }
 
 function hasLiveThreeRenderedWindow(): boolean {
-  if (genericModalBlocksThree.peek()) return false;
   return workbenchThreeShouldUseLiveCadence({
     activeId: activeWindow.peek(),
     fullscreenId: windowManager.fullscreenId.peek(),
     windows: windowManager.orderedWindows(),
     isThreeWindow: (id) => isThreeRenderedWindow(id as WindowId),
+    blocked: genericModalBlocksThree.peek(),
   });
 }
 
 function isThreeWindowInteractive(id: WindowId): boolean {
-  if (genericModalBlocksThree.peek()) return false;
   return workbenchThreeWindowIsInteractive({
     id,
     activeId: activeWindow.peek(),
     fullscreenId: windowManager.fullscreenId.peek(),
     windows: windowManager.orderedWindows(),
+    blocked: genericModalBlocksThree.peek(),
   });
 }
 

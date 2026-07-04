@@ -627,6 +627,9 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Moved the default workbench Three startup cap to the 30-cell rescue tier so slow SSH/tmux terminals start on the
   lowest-bandwidth live profile immediately; the default pressure probe now reports roughly 9x3 source grids at about
   4.6KB/s steady terminal output after startup.
+- Moved modal-blocked Three cadence/interactivity decisions into the shared terminal-pressure helper so workbench hosts
+  can pause renderer work behind blocking overlays through the same tested policy path instead of carrying renderer-local
+  early returns.
 - Cached the background-run classification inside split workbench frame cells, avoiding repeated ANSI-prefix scans while
   assembling animated Three block rows and preserving exact truecolor output.
 - Added a dedicated Three ASCII block-mode grid assembly path that skips glyph/edge selection for full-cell block
