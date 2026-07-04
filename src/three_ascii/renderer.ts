@@ -17,6 +17,7 @@ import {
   type ThreeAsciiDeferredReadbackFrame,
   ThreeAsciiDeferredReadbackQueue,
 } from "./deferred_readback.ts";
+import { resolveThreeAsciiDeferredReadbackStaleness } from "./deferred_readback_staleness.ts";
 import { createThreeAsciiComputeBindGroups } from "./compute_bind_groups.ts";
 import { encodeThreeAsciiComputeDispatchCommands } from "./compute_commands.ts";
 import { createThreeAsciiComputeDispatchPlan } from "./compute_plan.ts";
@@ -482,18 +483,14 @@ export class ThreeAsciiRenderer {
   }
 
   private updateDeferredReadbackStaleness(completed: ThreeAsciiDeferredReadbackConsumeResult): boolean {
-    if (completed.grid) {
-      this.deferredReadbackStaleFrames = 0;
-      return false;
-    }
-    if (this.deferredReadbackMaxStaleFrames <= 0 || this.deferredReadbacks.lastCompletedGrid().length === 0) {
-      return false;
-    }
-    this.deferredReadbackStaleFrames += 1;
-    if (this.deferredReadbackStaleFrames < this.deferredReadbackMaxStaleFrames) {
-      return false;
-    }
-    return true;
+    const next = resolveThreeAsciiDeferredReadbackStaleness({
+      staleFrames: this.deferredReadbackStaleFrames,
+      maxStaleFrames: this.deferredReadbackMaxStaleFrames,
+      completedGrid: Boolean(completed.grid),
+      hasCachedGrid: this.deferredReadbacks.lastCompletedGrid().length > 0,
+    });
+    this.deferredReadbackStaleFrames = next.staleFrames;
+    return next.forceBlockingReadback;
   }
 
   private consumeDeferredAnsiGrid(): ThreeAsciiDeferredReadbackConsumeResult {

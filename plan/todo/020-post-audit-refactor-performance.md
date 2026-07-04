@@ -556,3 +556,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   frames, the renderer performs one blocking readback, replaces the deferred queue's displayed grid, invalidates older
   pending maps, and resumes deferred mode. The workbench pressure probe now accepts `--readback`, and the 960-cell
   deferred probe publishes changed rows every frame at roughly 12.7ms renderer time versus roughly 24ms blocking.
+- Extracted deferred readback stale-frame threshold policy into a focused tested helper so renderer lifecycle code
+  delegates the force-blocking decision instead of owning another inline state machine.
