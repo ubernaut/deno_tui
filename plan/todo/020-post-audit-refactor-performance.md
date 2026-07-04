@@ -977,8 +977,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added observed-FPS pressure adaptation for workbench-hosted Three panes. The renderer already responds to byte and
   blocking write pressure; it now also backs off when the UI cadence meter reports a sustained collapse below half the
   target FPS, covering remote/tmux cases where the terminal renders slowly without making `writeSync` block.
-- Added a fast parser path for the common truecolor background-space cell shape emitted by block-mode Three ASCII
-  frames and themed workbench fills. This keeps foreground-only styled spaces on the general path while cutting the
+- Added a fast parser path for the common truecolor background-space cell shape emitted by block-mode Three ASCII frames
+  and themed workbench fills. This keeps foreground-only styled spaces on the general path while cutting the
   `workbench-cell-blit-viewport` benchmark from roughly 3.7ms to 1.7ms and the Three block span flush benchmark from
   roughly 2.0ms to 1.35ms on this host.
 - Reused DirtyRegion row buckets across canvas reset batches without changing public `clear()` behavior, keeping the
@@ -990,8 +990,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   fitting and line hashing while still restoring externally modified signals. The focused string line-signal diff
   benchmark dropped from roughly 2.56ms to 1.32ms on this host.
 - Added a full-row fast path for string-backed workbench writes with leading SGR styles and a final reset, avoiding
-  per-cell conversion when browser/web rows overwrite the full width. The focused full-row string benchmark dropped
-  from roughly 1.82ms to 0.29ms on this host.
+  per-cell conversion when browser/web rows overwrite the full width. The focused full-row string benchmark dropped from
+  roughly 1.82ms to 0.29ms on this host.
 - Added row-range flush shortcuts for range-aware sinks and a repeated-cell fast path in ANSI range compaction. The
   dense `TextObject` full-row canvas benchmark dropped from roughly 2.57ms to 2.11ms, and the workbench ANSI screen
   flush benchmark dropped from roughly 0.47ms to 0.39ms on this host.
@@ -1002,11 +1002,14 @@ performance, shared terminal/web workbench projections, and oversized module red
   styled background skip span diffing. The focused Three block span flush benchmark dropped from roughly 1.40ms to
   1.02ms on this host.
 - Added a simple leading-SGR ASCII row splitter and avoided duplicate first-cell parsing in ANSI range compaction. The
-  focused ANSI styled character split benchmark dropped from roughly 0.006-0.007ms to roughly 0.005ms on this host,
-  with dense TextObject full-row canvas remaining around 2.01ms on longer repeats.
+  focused ANSI styled character split benchmark dropped from roughly 0.006-0.007ms to roughly 0.005ms on this host, with
+  dense TextObject full-row canvas remaining around 2.01ms on longer repeats.
 - Added an allocation-free frame-row assembly path for truecolor background-space cells, keeping high-cardinality block
-  rows off the generic styled-cell splitter. The focused workbench cell blit benchmark held around 1.63ms, and the
-  Three block span flush benchmark held around 1.02ms on longer repeats.
+  rows off the generic styled-cell splitter. The focused workbench cell blit benchmark held around 1.63ms, and the Three
+  block span flush benchmark held around 1.02ms on longer repeats.
 - Routed the browser API workbench theme dropdown keyboard handling through the shared screen-dropdown key resolver, so
-  web and terminal menus share close/help/quit/focus/navigation semantics instead of maintaining parallel theme-only
-  key logic.
+  web and terminal menus share close/help/quit/focus/navigation semantics instead of maintaining parallel theme-only key
+  logic.
+- Moved the renderer-neutral workbench content-size estimator from the demo `app/` tree into `src/app` and exported it
+  through the shared workbench facade, keeping scrollable window sizing available to terminal and web adapters from the
+  same tested module.

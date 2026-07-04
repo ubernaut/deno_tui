@@ -271,7 +271,7 @@ import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelFrameView } from "./three_panel.ts";
 import { createWorkbenchThreePanelFrameView } from "./workbench_three_panel.ts";
 import { workbenchDataTablePageSize, workbenchDataTableRowsInto } from "./workbench_data_table.ts";
-import { explorerTextRowsInto, workbenchWindowContentSize } from "./workbench_content_size.ts";
+import { explorerTextRowsInto, workbenchWindowContentSize } from "../src/app/workbench_content_size.ts";
 import { workbenchExplorerRowsInto } from "./workbench_explorer.ts";
 import { workbenchInspectorRowsInto } from "./workbench_inspector.ts";
 import { workbenchLogRowsFromSourcesInto } from "./workbench_logs.ts";
@@ -4544,8 +4544,7 @@ function findHit(x: number, y: number): { rect: Rectangle; action: HitAction } |
     expandedApiWorkbenchTouchHitRect({
       rect,
       bounds: { column: 0, row: 0, width: currentWidth(), height: currentHeight() },
-    })
-  );
+    }));
 }
 
 function isTouchOptimizedLayout(): boolean {

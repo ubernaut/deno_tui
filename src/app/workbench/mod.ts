@@ -10,6 +10,7 @@ export * from "../workbench_frame.ts";
 export * from "../workbench_ansi_screen.ts";
 export * from "../workbench_help.ts";
 export * from "../workbench_button_style.ts";
+export * from "../workbench_content_size.ts";
 export * from "../workbench_control_layout.ts";
 export * from "../workbench_diagnostics.ts";
 export * from "../workbench_layout.ts";

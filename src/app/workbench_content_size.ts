@@ -1,6 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { maxTextWidth, maxTextWidthBy } from "../src/app/workbench_text.ts";
-import type { Rectangle } from "../src/types.ts";
+import type { Rectangle } from "../types.ts";
+import { maxTextWidth, maxTextWidthBy } from "./workbench_text.ts";
 
 /** Minimal column metadata needed to estimate API workbench data-table width. */
 export interface WorkbenchContentSizeColumn {
