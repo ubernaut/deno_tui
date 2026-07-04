@@ -105,4 +105,27 @@ Deno.test("WorkbenchAnsiScreenPainter can flush only changed row spans", () => {
   const stats = painter.flush(frame, 12, 1, renderFrameRow, renderFrameSlice);
   assertEquals(stats.changed, 1);
   assertEquals(new TextDecoder().decode(chunks[0]), "\x1b[1;7HW");
+  assertEquals(stats.bytes < "\x1b[1;1Hhello World!".length, true);
+});
+
+Deno.test("WorkbenchAnsiScreenPainter redraws safely after switching from span to full-row mode", () => {
+  const chunks: Uint8Array[] = [];
+  const painter = new WorkbenchAnsiScreenPainter({
+    writeSync(data) {
+      chunks.push(data);
+      return data.byteLength;
+    },
+  });
+  const frame: WorkbenchFrame = [[]];
+  writeFrame(frame, 8, 0, 0, "abcdefgh");
+  painter.flush(frame, 8, 1, renderFrameRow, renderFrameSlice);
+  chunks.length = 0;
+
+  writeFrame(frame, 8, 0, 3, "Z");
+  painter.flush(frame, 8, 1, renderFrameRow, renderFrameSlice);
+  chunks.length = 0;
+
+  const stats = painter.flush(frame, 8, 1, renderFrameRow);
+  assertEquals(stats.changed, 1);
+  assertEquals(new TextDecoder().decode(chunks[0]), "\x1b[1;1HabcZefgh");
 });
