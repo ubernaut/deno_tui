@@ -237,6 +237,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   checks available from shared renderer helpers instead of demo-local paths.
 - Skipped full-grid fingerprinting when a renderer frame reports the same `gridRevision`, leaving expensive content
   hashing only for unrevisioned frames or revision changes.
+- Moved Three panel render policy and diagnostics projection into `src/app`, keeping Kitty/ASCII output selection and
+  renderer telemetry formatting available as shared tested helpers.
 - Extracted API workbench touch-hit expansion and compact/coarse layout detection into shared hit helpers, so terminal
   and browser workbench adapters use the same enlarged pointer targets on mobile-sized layouts.
 - Routed the browser API workbench background canvas through the shared `parseHexColor` helper instead of carrying a

@@ -5,7 +5,7 @@ import {
   resolveThreePanelRenderPolicy,
   resolveThreePanelRenderSize,
   resolveThreePanelRequestedMaxCells,
-} from "../app/three_panel_policy.ts";
+} from "../src/app/three_panel_policy.ts";
 
 Deno.test("resolveThreePanelRenderPolicy selects ASCII-only rendering by default", () => {
   const ascii = createDefaultAsciiOptions("sharp");

@@ -4,7 +4,7 @@ import {
   threePanelGraphicsFallbackDiagnostic,
   threePanelGraphicsFallbackReason,
   threePanelSlowFrameDiagnostic,
-} from "../app/three_panel_diagnostics.ts";
+} from "../src/app/three_panel_diagnostics.ts";
 
 Deno.test("threePanelSlowFrameDiagnostic formats renderer timings and readback queue state", () => {
   const diagnostic = threePanelSlowFrameDiagnostic({

@@ -23,7 +23,7 @@ import {
   threePanelGraphicsFallbackDiagnostic,
   threePanelGraphicsFallbackReason,
   threePanelSlowFrameDiagnostic,
-} from "./three_panel_diagnostics.ts";
+} from "../src/app/three_panel_diagnostics.ts";
 import {
   resolveThreePanelAdaptiveRenderBudget,
   ThreePanelAdaptiveRenderBudgetController,
@@ -37,7 +37,7 @@ import {
   resolveThreePanelRequestedMaxCells,
   type ThreePanelRenderPolicy,
   type ThreePanelRenderSize,
-} from "./three_panel_policy.ts";
+} from "../src/app/three_panel_policy.ts";
 import { defaultThreePanelRenderQueue, ThreePanelRenderQueue } from "../src/app/three_panel_render_queue.ts";
 import type { AsciiOptions, Rect, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 
@@ -58,7 +58,7 @@ export {
   type ThreePanelRenderPolicy,
   type ThreePanelRenderPolicyInput,
   type ThreePanelRenderSize,
-} from "./three_panel_policy.ts";
+} from "../src/app/three_panel_policy.ts";
 export { defaultThreePanelRenderQueue, ThreePanelRenderQueue } from "../src/app/three_panel_render_queue.ts";
 
 export interface ThreeSceneState {

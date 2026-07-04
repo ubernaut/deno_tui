@@ -1,10 +1,15 @@
-import type { ThreeAsciiRenderFrameOptions } from "../src/three_ascii/renderer.ts";
-import type { AsciiOptions, Rect } from "./types.ts";
+import type { ThreeAsciiConfigOptions } from "../three_ascii/options.ts";
+import type { ThreeAsciiRenderFrameOptions } from "../three_ascii/renderer.ts";
+
+export interface ThreePanelRectLike {
+  width: number;
+  height: number;
+}
 
 export interface ThreePanelRenderPolicyInput {
-  ascii: Pick<AsciiOptions, "kittyGraphics" | "kittyDisableAscii">;
+  ascii: Pick<ThreeAsciiConfigOptions, "kittyGraphics" | "kittyDisableAscii">;
   graphicsAvailable: boolean;
-  graphicsRectangle: Pick<Rect, "width" | "height">;
+  graphicsRectangle: ThreePanelRectLike;
   rendererSupportsImage: boolean;
 }
 
@@ -26,7 +31,7 @@ export interface ThreePanelRequestedMaxCellsInput {
 }
 
 export function resolveThreePanelRenderSize(
-  rect: Pick<Rect, "width" | "height">,
+  rect: ThreePanelRectLike,
   maxCells?: number,
 ): ThreePanelRenderSize {
   const columns = Math.max(1, Math.floor(rect.width));

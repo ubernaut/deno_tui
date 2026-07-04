@@ -1,6 +1,6 @@
-import type { DiagnosticInput } from "../src/runtime/diagnostics.ts";
-import type { GraphicsSurfaceInspection } from "../src/runtime/graphics_surface.ts";
-import type { ThreeAsciiRendererPerformance } from "../src/three_ascii/renderer.ts";
+import type { DiagnosticInput } from "../runtime/diagnostics.ts";
+import type { GraphicsSurfaceInspection } from "../runtime/graphics_surface.ts";
+import type { ThreeAsciiRendererPerformance } from "../three_ascii/renderer.ts";
 
 export interface ThreePanelAdaptiveDiagnosticOptions {
   direction: "down" | "up" | "steady";

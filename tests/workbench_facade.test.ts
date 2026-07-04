@@ -8,6 +8,7 @@ import {
   layoutWorkbenchButtonRow,
   layoutWorkbenchModal,
   layoutWorkbenchTitlebar,
+  resolveThreePanelRenderPolicy,
   resolveWorkbenchShellBackend,
   resolveWorkbenchThreeGridProjection,
   resolveWorkbenchThreeTerminalPressureBudget,
@@ -15,6 +16,7 @@ import {
   threeHeaderRows,
   threePanelBlankGrid,
   ThreePanelRenderQueue,
+  threePanelSlowFrameDiagnostic,
   translateHitTargets,
   workbenchContentViewport,
   workbenchFrameRenderCommandsInto,
@@ -59,6 +61,8 @@ Deno.test("workbench facade exposes renderer-neutral helpers", () => {
   assertEquals(typeof resolveWorkbenchShellBackend, "function");
   assertEquals(typeof createWorkbenchShellSession, "function");
   assertEquals(typeof threePanelBlankGrid, "function");
+  assertEquals(typeof resolveThreePanelRenderPolicy, "function");
+  assertEquals(typeof threePanelSlowFrameDiagnostic, "function");
   assertEquals(typeof ThreePanelRenderQueue, "function");
   assertEquals(typeof resolveWorkbenchThreeTerminalPressureBudget, "function");
   assertEquals(typeof workbenchFrameRenderCommandsInto, "function");

@@ -1,5 +1,5 @@
 import { asciiControlValues } from "./ascii_options.ts";
-import { resolveThreePanelRenderSize, type ThreePanelRenderSize } from "./three_panel_policy.ts";
+import { resolveThreePanelRenderSize, type ThreePanelRenderSize } from "../src/app/three_panel_policy.ts";
 
 const ADAPTIVE_RENDER_CELLS_MIN = 30;
 const ADAPTIVE_PRESSURE_RENDER_CELL_STEPS = [30, 60, 120, 240, 480] as const;
