@@ -67,7 +67,7 @@ export function prepareWorkbenchRows<T>(
 export function prepareWorkbenchFrame(frame: WorkbenchFrame, rows: number): WorkbenchFrame {
   return prepareWorkbenchRows(frame, rows, () => [], (row) => {
     row.length = 0;
-    frameRowMetadata.delete(row);
+    markFrameRowCleared(row);
     return row;
   });
 }
@@ -359,6 +359,13 @@ function revisionFrameRowFingerprint(metadata: WorkbenchFrameRowMetadata, width:
 function markFrameRowClean(metadata: WorkbenchFrameRowMetadata): WorkbenchFrameRowMetadata {
   metadata.dirty = false;
   return metadata;
+}
+
+function markFrameRowCleared(cells: string[]): void {
+  const metadata = frameRowMetadata.get(cells);
+  if (!metadata) return;
+  metadata.revision += 1;
+  metadata.dirty = true;
 }
 
 function updateFrameRowMetadata(cells: string[]): void {
