@@ -219,6 +219,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   creation, hide/hideExcept, disposal, and clear behavior without constructing real WebGPU renderers in tests.
 - Extracted workbench Three viewport mouse drag and wheel routing into `WorkbenchThreeViewportInteractionController`,
   keeping model rotation/zoom focus behavior tested without starting a TUI session or renderer.
+- Moved API workbench Three rendered-grid pressure sampling into `ApiWorkbenchThreeRuntimeController`, keeping per-draw
+  reset/record/update bookkeeping tested outside the main renderer.
 - Stabilized default Three ASCII block rendering by using ASCII-safe shared window controls and removing fog from the
   default block preset so truecolor block cells keep source color depth.
 - Extracted the workbench Three ASCII config modal geometry into a tested internal layout helper, reducing inline modal

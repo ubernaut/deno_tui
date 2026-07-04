@@ -618,8 +618,6 @@ let windowRenderContext: WindowRenderContext | null = null;
 let workspacePlacementContext: WorkspacePlacementContext | null = null;
 const drawScheduler = new FrameScheduler({ intervalMs: WORKBENCH_THREE_DRAW_INTERVAL_MS });
 const renderedVisualizationThreePanels = new Set<VisualizationWindowId>();
-let renderedThreeGridCount = 0;
-let renderedThreeGridRows = 0;
 type Frame = WorkbenchFrame;
 interface DropdownOverlay {
   kind: "control" | "theme" | "newWindow" | "workspace";
@@ -1008,8 +1006,7 @@ function draw(): void {
   const height = currentHeight();
   hitTargets.clear();
   dropdownOverlay = null;
-  renderedThreeGridCount = 0;
-  renderedThreeGridRows = 0;
+  workbenchThreeRuntime.resetPressureSample();
   syncWorkbenchThreeFrameInterval();
   const frame = prepareWorkbenchFrame(screenFrame, height);
   renderHeader(frame);
@@ -1022,10 +1019,7 @@ function draw(): void {
 }
 
 function updateThreeTerminalPressure(stats: WorkbenchAnsiScreenFlushStats): void {
-  workbenchThreeRuntime.updatePressure(stats, {
-    renderedThreeGrids: renderedThreeGridCount,
-    renderedThreeRows: renderedThreeGridRows,
-  });
+  workbenchThreeRuntime.updatePressure(stats);
 }
 
 function scheduleDraw(): void {
@@ -1464,8 +1458,7 @@ function renderThreeGrid(
     sourceColumnIndexes: threeGridSourceColumnIndexes,
   });
   if ((options.countForPressure ?? true) && projection) {
-    renderedThreeGridCount += 1;
-    renderedThreeGridRows += projection.targetHeight;
+    workbenchThreeRuntime.recordRenderedGridForPressure(projection.targetHeight);
   }
 }
 

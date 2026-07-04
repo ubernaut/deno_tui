@@ -18,6 +18,29 @@ Deno.test("ApiWorkbenchThreeRuntimeController owns live cadence signals", () => 
   controller.dispose();
 });
 
+Deno.test("ApiWorkbenchThreeRuntimeController records and resets rendered grid pressure samples", () => {
+  const controller = new ApiWorkbenchThreeRuntimeController({
+    hasLiveThreeWindow: () => true,
+  });
+
+  controller.recordRenderedGridForPressure(17.9);
+  controller.recordRenderedGridForPressure(-4);
+
+  assertEquals(controller.inspectPressureSample(), {
+    renderedThreeGrids: 2,
+    renderedThreeRows: 17,
+  });
+
+  controller.resetPressureSample();
+
+  assertEquals(controller.inspectPressureSample(), {
+    renderedThreeGrids: 0,
+    renderedThreeRows: 0,
+  });
+
+  controller.dispose();
+});
+
 Deno.test("ApiWorkbenchThreeRuntimeController applies sustained pressure and logs changes", () => {
   const logs: string[] = [];
   const controller = new ApiWorkbenchThreeRuntimeController({

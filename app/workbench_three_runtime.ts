@@ -33,6 +33,7 @@ export class ApiWorkbenchThreeRuntimeController {
   readonly frameInterval: Signal<number>;
 
   #pressure: WorkbenchThreeTerminalPressureState;
+  #pressureSample: ApiWorkbenchThreePressureSample = emptyPressureSample();
 
   constructor(private readonly options: ApiWorkbenchThreeRuntimeOptions) {
     this.frameInterval = new Signal(
@@ -48,7 +49,23 @@ export class ApiWorkbenchThreeRuntimeController {
     if (this.frameInterval.peek() !== next) this.frameInterval.value = next;
   }
 
-  updatePressure(stats: ApiWorkbenchThreeFlushStats, sample: ApiWorkbenchThreePressureSample): void {
+  resetPressureSample(): void {
+    this.#pressureSample = emptyPressureSample(this.#pressureSample);
+  }
+
+  recordRenderedGridForPressure(rows: number): void {
+    this.#pressureSample.renderedThreeGrids += 1;
+    this.#pressureSample.renderedThreeRows += Math.max(0, Math.floor(rows));
+  }
+
+  inspectPressureSample(): ApiWorkbenchThreePressureSample {
+    return { ...this.#pressureSample };
+  }
+
+  updatePressure(
+    stats: ApiWorkbenchThreeFlushStats,
+    sample: ApiWorkbenchThreePressureSample = this.#pressureSample,
+  ): void {
     const next = resolveWorkbenchThreeTerminalPressureUpdate(this.#pressure, {
       ...API_WORKBENCH_THREE_PRESSURE_POLICY,
       currentCells: this.liveMaxCells.peek(),
@@ -86,4 +103,13 @@ export class ApiWorkbenchThreeRuntimeController {
     this.liveMaxCells.dispose();
     this.frameInterval.dispose();
   }
+}
+
+function emptyPressureSample(target: ApiWorkbenchThreePressureSample = {
+  renderedThreeGrids: 0,
+  renderedThreeRows: 0,
+}): ApiWorkbenchThreePressureSample {
+  target.renderedThreeGrids = 0;
+  target.renderedThreeRows = 0;
+  return target;
 }
