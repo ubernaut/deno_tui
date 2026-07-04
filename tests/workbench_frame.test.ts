@@ -146,6 +146,30 @@ Deno.test("workbench frame line signal updates skip unchanged rows and clear sta
   assertEquals(signals.map((signal) => signal.writes), [0, 1, 1]);
 });
 
+Deno.test("workbench frame line signal cache restores externally changed retained rows", () => {
+  const frame: WorkbenchFrame = [[]];
+  writeFrame(frame, 5, 0, 0, "\x1b[32mAB\x1b[0m");
+  const signal = new FakeLineSignal("");
+
+  assertEquals(updateWorkbenchLineSignals([signal], frame, 5, 1), { rows: 1, changed: 1, cleared: 0 });
+  assertEquals(signal.peek(), "\x1b[32mAB\x1b[0m   ");
+
+  signal.force("external");
+  assertEquals(updateWorkbenchLineSignals([signal], frame, 5, 1), { rows: 1, changed: 1, cleared: 0 });
+  assertEquals(signal.peek(), "\x1b[32mAB\x1b[0m   ");
+  assertEquals(signal.writes, 2);
+});
+
+Deno.test("workbench frame line signal cache scans rows directly mutated after prepare", () => {
+  const frame: WorkbenchFrame = [[]];
+  prepareWorkbenchFrame(frame, 1);
+  frame[0]![0] = "A";
+  const signal = new FakeLineSignal("");
+
+  assertEquals(updateWorkbenchLineSignals([signal], frame, 3, 1), { rows: 1, changed: 1, cleared: 0 });
+  assertEquals(signal.peek(), "A  ");
+});
+
 Deno.test("workbench frame fill helpers clip to the configured width", () => {
   const frame: WorkbenchFrame = [[], [], []];
   let styleCalls = 0;
@@ -206,6 +230,10 @@ class FakeLineSignal {
 
   set value(value: string) {
     this.writes += 1;
+    this.current = value;
+  }
+
+  force(value: string): void {
     this.current = value;
   }
 }

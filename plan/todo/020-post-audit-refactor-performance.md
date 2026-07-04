@@ -331,3 +331,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added a reusable `FrameScheduler` and routed API workbench invalidations through an 18 FPS global frame gate so
   multiple animated Three panels coalesce into one terminal redraw cadence instead of each panel forcing its own full
   workbench pass.
+- Added write-time row metadata for sparse workbench frames so unchanged retained terminal lines can skip full ANSI row
+  assembly; the `render/workbench-line-signal-diff-168x54` guard stays under budget after the Three grid blitter was
+  routed through the shared cell writer.

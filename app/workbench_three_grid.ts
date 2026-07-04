@@ -1,6 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../src/types.ts";
-import type { WorkbenchFrame } from "../src/app/workbench_frame.ts";
+import { type WorkbenchFrame, writeFrameCell } from "../src/app/workbench_frame.ts";
 
 export type WorkbenchThreeGridScaleMode = boolean | "down";
 
@@ -35,7 +35,7 @@ export function writeWorkbenchThreeGrid(
       const sourceColumn = shouldScale && sourceWidth > 0
         ? Math.min(sourceWidth - 1, Math.floor((column * sourceWidth) / targetWidth))
         : column;
-      target[rect.column + columnOffset + column] = source?.[sourceColumn] ?? fallbackCell;
+      writeFrameCell(target, rect.column + columnOffset + column, source?.[sourceColumn] ?? fallbackCell);
     }
   }
 }
