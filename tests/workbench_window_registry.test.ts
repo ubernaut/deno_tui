@@ -6,6 +6,7 @@ import {
   isWorkbenchWindowOptionLoaded,
   workbenchVisualizationIdFromWindowId,
   workbenchVisualizationWindowId,
+  workbenchVisualizationWindowRegistrationPlan,
   workbenchWindowOptionMenuLabel,
   workbenchWindowOptionMenuLabelsInto,
   workbenchWindowOptionMinimums,
@@ -71,6 +72,49 @@ Deno.test("workbench window registry formats labels and option minimums", () => 
   assertEquals(
     workbenchWindowOptionMinimums({ id: "three-lattice", label: "Lattice", group: "Neon 3D", description: "3d" }),
     { minWidth: 42, minHeight: 16 },
+  );
+});
+
+Deno.test("workbench window registry plans visualization window creation and restore", () => {
+  const option = {
+    id: "cpu-hex-grid",
+    label: "CPU Hex Grid",
+    group: "Monitor" as const,
+    description: "cores",
+  };
+
+  assertEquals(
+    workbenchVisualizationWindowRegistrationPlan({
+      option,
+      existingWindowIds: ["explorer", "controls"],
+      currentWindowCount: 4,
+    }),
+    {
+      id: "viz:cpu-hex-grid",
+      visualizationId: "cpu-hex-grid",
+      action: "create",
+      registration: {
+        id: "viz:cpu-hex-grid",
+        title: "CPU Hex Grid",
+        minWidth: 36,
+        minHeight: 12,
+        closable: true,
+        order: 4,
+      },
+    },
+  );
+
+  assertEquals(
+    workbenchVisualizationWindowRegistrationPlan({
+      option,
+      existingWindowIds: ["viz:cpu-hex-grid"],
+      currentWindowCount: 9,
+    }),
+    {
+      id: "viz:cpu-hex-grid",
+      visualizationId: "cpu-hex-grid",
+      action: "restore",
+    },
   );
 });
 

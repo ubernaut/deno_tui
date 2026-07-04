@@ -80,9 +80,9 @@ import {
   workbenchVisibleWindowRectsInto,
   workbenchVisualizationIdFromWindowId,
   workbenchVisualizationWindowId,
+  workbenchVisualizationWindowRegistrationPlan,
   type WorkbenchWindowOption,
   workbenchWindowOptionMenuLabelsInto,
-  workbenchWindowOptionMinimums,
   workbenchWindowScrollbarRenderCommandsInto,
   type WorkbenchWorkspace,
   workbenchWorkspaceScrollbarRenderCommandsInto,
@@ -4228,19 +4228,15 @@ function addVisualizationWindow(
   if (!options.keepMenuOpen) closeTopMenus();
   if (options.ascii) setAsciiForWindow(id, options.ascii);
   else asciiForWindow(id);
-  if (!windowManager.ids({ includeClosed: true }).includes(id)) {
-    dynamicVisualizationWindows.value = { ...dynamicVisualizationWindows.peek(), [id]: option.id };
+  const plan = workbenchVisualizationWindowRegistrationPlan({
+    option,
+    existingWindowIds: windowManager.ids({ includeClosed: true }),
+    currentWindowCount: windowManager.windows.peek().length,
+  });
+  if (plan.action === "create") {
+    dynamicVisualizationWindows.value = { ...dynamicVisualizationWindows.peek(), [id]: plan.visualizationId };
     windowScrolls.set(id, new ScrollAreaController({ showScrollbar: true }));
-    windowManager.windows.value = [
-      ...windowManager.windows.peek(),
-      {
-        id,
-        title: option.label,
-        ...workbenchWindowOptionMinimums(option),
-        closable: true,
-        order: windowManager.windows.peek().length,
-      },
-    ];
+    windowManager.windows.value = [...windowManager.windows.peek(), plan.registration!];
   } else {
     windowManager.restore(id);
   }

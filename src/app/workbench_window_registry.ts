@@ -33,6 +33,30 @@ export interface WorkbenchWindowOptionMinimums {
   minHeight: number;
 }
 
+/** Window record needed when registering a dynamic visualization window. */
+export interface WorkbenchVisualizationWindowRegistration<TWindowId extends string = `viz:${string}`>
+  extends WorkbenchWindowOptionMinimums {
+  id: TWindowId;
+  title: string;
+  closable: true;
+  order: number;
+}
+
+/** Side-effect-free plan for opening a visualization option in a workbench. */
+export interface WorkbenchVisualizationWindowRegistrationPlan<TWindowId extends string = `viz:${string}`> {
+  id: TWindowId;
+  visualizationId: string;
+  action: "create" | "restore";
+  registration?: WorkbenchVisualizationWindowRegistration<TWindowId>;
+}
+
+/** Inputs for planning dynamic visualization window registration. */
+export interface WorkbenchVisualizationWindowRegistrationOptions {
+  option: WorkbenchWindowOption;
+  existingWindowIds: Iterable<string>;
+  currentWindowCount: number;
+}
+
 /** Create a stable workbench window option list from built-ins and visualization metadata. */
 export function createWorkbenchWindowOptions(input: WorkbenchWindowOptionCatalogInput): WorkbenchWindowOption[] {
   const builtIns = input.builtIns ?? [];
@@ -111,6 +135,29 @@ export function isWorkbenchWindowOptionLoaded(
 /** Resolve the concrete managed window id for a launcher option. */
 export function workbenchWindowOptionWindowId(option: WorkbenchWindowOption): string {
   return option.windowId ?? workbenchVisualizationWindowId(option.id);
+}
+
+/** Plans whether opening a visualization option should create a window record or restore an existing one. */
+export function workbenchVisualizationWindowRegistrationPlan(
+  options: WorkbenchVisualizationWindowRegistrationOptions,
+): WorkbenchVisualizationWindowRegistrationPlan {
+  const id = workbenchVisualizationWindowId(options.option.id);
+  const ids = options.existingWindowIds instanceof Set ? options.existingWindowIds : new Set(options.existingWindowIds);
+  if (ids.has(id)) {
+    return { id, visualizationId: options.option.id, action: "restore" };
+  }
+  return {
+    id,
+    visualizationId: options.option.id,
+    action: "create",
+    registration: {
+      id,
+      title: options.option.label,
+      ...workbenchWindowOptionMinimums(options.option),
+      closable: true,
+      order: Math.max(0, Math.floor(options.currentWindowCount)),
+    },
+  };
 }
 
 /** Render a New Window menu label with checkbox state, group, and title. */
