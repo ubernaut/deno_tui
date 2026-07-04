@@ -98,6 +98,30 @@ Deno.test("workbench frame helpers keep repeated SGR background cells compact", 
   );
 });
 
+Deno.test("workbench frame writes single-style ANSI rows through the fast path", () => {
+  const frame: WorkbenchFrame = [[]];
+  writeFrame(frame, 5, 0, 0, "\x1b[1;38;2;9;4;15;48;2;156;255;79m API \x1b[0m");
+
+  assertEquals(frame[0], [
+    "\x1b[1;38;2;9;4;15;48;2;156;255;79m \x1b[0m",
+    "\x1b[1;38;2;9;4;15;48;2;156;255;79mA\x1b[0m",
+    "\x1b[1;38;2;9;4;15;48;2;156;255;79mP\x1b[0m",
+    "\x1b[1;38;2;9;4;15;48;2;156;255;79mI\x1b[0m",
+    "\x1b[1;38;2;9;4;15;48;2;156;255;79m \x1b[0m",
+  ]);
+  assertEquals(
+    renderFrameRow(frame[0]!, 5),
+    "\x1b[1;38;2;9;4;15;48;2;156;255;79m API \x1b[0m",
+  );
+});
+
+Deno.test("workbench frame keeps mixed ANSI sequences on the general parser", () => {
+  const frame: WorkbenchFrame = [[]];
+  writeFrame(frame, 3, 0, 0, "\x1b[31mA\x1b[32mB\x1b[0m");
+
+  assertEquals(frame[0], ["\x1b[31mA\x1b[0m", "\x1b[32mB\x1b[0m"]);
+});
+
 Deno.test("workbench frame row assembly resets before foreground-only cells after backgrounds", () => {
   const frame: WorkbenchFrame = [[
     "\x1b[48;2;10;20;30m \x1b[0m",

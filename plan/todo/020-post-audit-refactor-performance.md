@@ -366,6 +366,10 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added an already-clipped frame-cell writer for renderer projection hot paths and routed Workbench Three grid blits
   through it with a safe fallback for negative columns. Focused grid benchmarks stayed under budget and repeated
   samples improved scaled/capped/vertical projection modes while preserving clipped write behavior in tests.
+- Added a single-style ANSI write fast path for workbench frame rows, covering the common full-row
+  `SGR + plain text + reset` shape used by workbench backgrounds and block panes while preserving mixed ANSI parsing.
+  Repeated flush benchmarks improved `workbench-ansi-screen-flush`, `workbench-ansi-screen-span-flush`, and
+  `workbench-three-block-span-flush` on this host.
 - Split workbench styled-cell tokenization and row/slice assembly into `workbench_frame_rows.ts`, preserving the
   existing frame facade while keeping the terminal hot path independently testable and benchmarked.
 - Extracted ThreePanelFrameView graphics-image handle ownership into `ThreePanelGraphicsImageController` with direct

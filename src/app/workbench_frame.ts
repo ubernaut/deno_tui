@@ -1,6 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
-import { mergeSgrStyle } from "../utils/sgr_style.ts";
+import { isSgrReset, mergeSgrStyle } from "../utils/sgr_style.ts";
 import { stripStyles, textWidth } from "../utils/strings.ts";
 import { readSgrSequenceAt, renderFrameRow, renderFrameSlice, toStyledCells } from "./workbench_frame_rows.ts";
 
@@ -76,6 +76,11 @@ export function prepareWorkbenchFrame(frame: WorkbenchFrame, rows: number): Work
 export function writeFrame(frame: WorkbenchFrame, width: number, row: number, column: number, value: string): void {
   if (row < 0 || row >= frame.length || column >= width) return;
   const cells = frame[row] ??= [];
+  const singleStyle = singleSgrStyledText(value);
+  if (singleStyle) {
+    writeSingleStyleFrameText(cells, width, column, singleStyle.text, singleStyle.style);
+    return;
+  }
   let style = "";
   let targetColumn = column;
   let wrote = false;
@@ -100,6 +105,37 @@ export function writeFrame(frame: WorkbenchFrame, width: number, row: number, co
   if (wrote) {
     updateFrameRowMetadata(cells);
   }
+}
+
+function writeSingleStyleFrameText(
+  cells: string[],
+  width: number,
+  column: number,
+  text: string,
+  style: string,
+): void {
+  let targetColumn = column;
+  let wrote = false;
+  for (let index = 0; index < text.length && targetColumn < width;) {
+    const char = text[index]!;
+    if (targetColumn >= 0) {
+      cells[targetColumn] = style ? `${style}${char}\x1b[0m` : char;
+      wrote = true;
+    }
+    targetColumn += 1;
+    index += char.length;
+  }
+  if (wrote) updateFrameRowMetadata(cells);
+}
+
+function singleSgrStyledText(value: string): { style: string; text: string } | undefined {
+  if (value.charCodeAt(0) !== 0x1b || !value.endsWith("\x1b[0m")) return undefined;
+  const sequence = readSgrSequenceAt(value, 0);
+  if (!sequence || sequence.length >= value.length - "\x1b[0m".length) return undefined;
+  const bodyStart = sequence.length;
+  const bodyEnd = value.length - "\x1b[0m".length;
+  if (value.indexOf("\x1b", bodyStart) !== bodyEnd) return undefined;
+  return { style: isSgrReset(sequence) ? "" : sequence, text: value.slice(bodyStart, bodyEnd) };
 }
 
 /** Writes one already-styled cell into a workbench frame row and updates row-change metadata. */
