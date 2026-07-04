@@ -1051,6 +1051,7 @@ function updateThreeTerminalPressure(stats: WorkbenchAnsiScreenFlushStats): void
     changedRows: stats.changed,
     bytes: stats.bytes,
     durationMs: stats.durationMs,
+    sampleDurationMs: workbenchThreeFrameInterval.peek(),
   });
   terminalPressure.currentCells = next.currentCells;
   terminalPressure.highFrames = next.highFrames;

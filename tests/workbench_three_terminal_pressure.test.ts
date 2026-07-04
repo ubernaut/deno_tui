@@ -107,6 +107,46 @@ Deno.test("workbench Three terminal pressure can step down from per-grid byte pr
   assertEquals(next.direction, "down");
 });
 
+Deno.test("workbench Three terminal pressure can step down from sustained terminal byte rate", () => {
+  const state = createWorkbenchThreeTerminalPressureState(960);
+  const options = {
+    renderedThreeGrids: 1,
+    bytes: 7_000,
+    sampleDurationMs: 50,
+    levels: [240, 480, 960],
+    highBytes: 240_000,
+    lowBytes: 1_000,
+    highBytesPerGrid: 96_000,
+    highBytesPerSecond: 120_000,
+    highFrameThreshold: 2,
+  };
+
+  Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, options));
+  assertEquals(state.currentCells, 960);
+  assertEquals(state.highFrames, 1);
+
+  Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, options));
+  assertEquals(state.currentCells, 480);
+  assertEquals(state.highFrames, 0);
+});
+
+Deno.test("workbench Three terminal pressure ignores byte rate without a sample duration", () => {
+  const state = createWorkbenchThreeTerminalPressureState(960);
+  const next = resolveWorkbenchThreeTerminalPressureBudget(state, {
+    renderedThreeGrids: 1,
+    bytes: 7_000,
+    levels: [240, 480, 960],
+    highBytes: 240_000,
+    lowBytes: 1_000,
+    highBytesPerGrid: 96_000,
+    highBytesPerSecond: 120_000,
+    highFrameThreshold: 1,
+  });
+
+  assertEquals(next.currentCells, 960);
+  assertEquals(next.direction, "steady");
+});
+
 Deno.test("workbench Three terminal pressure permits larger block frames under tuned per-grid budget", () => {
   const state = createWorkbenchThreeTerminalPressureState(1_920);
   const next = resolveWorkbenchThreeTerminalPressureBudget(state, {

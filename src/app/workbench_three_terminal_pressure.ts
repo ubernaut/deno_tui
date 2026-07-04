@@ -16,6 +16,8 @@ export interface WorkbenchThreeTerminalPressureOptions {
   highBytesPerGrid?: number;
   lowBytesPerGrid?: number;
   highDurationMs?: number;
+  sampleDurationMs?: number;
+  highBytesPerSecond?: number;
   highFrameThreshold?: number;
   lowFrameThreshold?: number;
 }
@@ -185,9 +187,11 @@ export function resolveWorkbenchThreeTerminalPressureBudget(
   const highDurationMs = Math.max(1, options.highDurationMs ?? Number.POSITIVE_INFINITY);
   const bytesPerGrid = options.bytes / Math.max(1, options.renderedThreeGrids);
   const highBytesPerGrid = options.highBytesPerGrid ?? Number.POSITIVE_INFINITY;
+  const highBytesPerSecond = options.highBytesPerSecond ?? Number.POSITIVE_INFINITY;
+  const bytesPerSecond = bytesPerSecondForSample(options.bytes, options.sampleDurationMs);
   const lowBytesPerGrid = options.lowBytesPerGrid ?? Number.POSITIVE_INFINITY;
   const highPressure = options.bytes >= options.highBytes || bytesPerGrid >= highBytesPerGrid ||
-    (options.durationMs ?? 0) >= highDurationMs;
+    (options.durationMs ?? 0) >= highDurationMs || bytesPerSecond >= highBytesPerSecond;
   if (highPressure && current > levels[0]!) {
     const highFrames = state.highFrames + 1;
     if (highFrames >= highFrameThreshold) {
@@ -231,6 +235,11 @@ export function resolveWorkbenchThreeTerminalPressureBudget(
     changed: current !== state.currentCells,
     direction: "steady",
   };
+}
+
+function bytesPerSecondForSample(bytes: number, sampleDurationMs: number | undefined): number {
+  if (sampleDurationMs === undefined || sampleDurationMs <= 0) return 0;
+  return bytes / (sampleDurationMs / 1000);
 }
 
 function normalizedLevels(levels: readonly number[]): number[] {
