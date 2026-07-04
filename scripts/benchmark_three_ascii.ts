@@ -355,6 +355,26 @@ export const threeAsciiBenchmarkCases: BenchmarkCase[] = [
     },
   },
   {
+    name: "render/three-ascii-ansi-grid-block-runs-96x40",
+    category: "render",
+    description: "CPU-assemble dense same-color block-mode rows using visible-cell range fills.",
+    tags: ["render", "three", "ascii", "ansi", "cpu", "assembly", "blocks", "runs"],
+    iterations: 250,
+    maxAverageMs: 5,
+    run: () => {
+      const grid = buildThreeAsciiAnsiGrid({
+        columns: threeAsciiColumns,
+        rows: threeAsciiRows,
+        fillGlyphs: threeAsciiSolidFillGlyphs,
+        colors: threeAsciiSolidColors,
+        terminalGlyphStyle: "blocks",
+        terminalEdgeBias: 1.15,
+        backgroundColor: 0x000000,
+      });
+      assertThreeAsciiGridDimensions(grid, "block-run three Ascii grid dimensions changed");
+    },
+  },
+  {
     name: "render/three-ascii-ansi-grid-partial-block-96x40",
     category: "render",
     description: "CPU-assemble a partial block-mode Three ASCII grid with recurring mixed foreground colors.",

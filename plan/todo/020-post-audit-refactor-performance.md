@@ -205,6 +205,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   accidental ANSI readback/grid work when raster graphics is the selected output.
 - Optimized dense block-mode ANSI grid assembly by filling adjacent same-color visible cells as row ranges instead of
   assigning every cell individually, covering the default terminal glyph style.
+- Added a focused `three-ascii-ansi-grid-block-runs-96x40` benchmark guard for dense same-color block rows so the
+  range-fill path is measured directly instead of only through broader ANSI-grid cases.
 - Stabilized default Three ASCII block rendering by using ASCII-safe shared window controls and removing fog from the
   default block preset so truecolor block cells keep source color depth.
 - Extracted the workbench Three ASCII config modal geometry into a tested internal layout helper, reducing inline modal
