@@ -103,7 +103,7 @@ export function resolveThreePanelAdaptiveRenderBudget(
     .filter((value) => value >= ADAPTIVE_RENDER_CELLS_MIN && value <= requestedMaxCells)
     .sort((a, b) => a - b);
   const steps = budgetSteps.length ? budgetSteps : [requestedMaxCells];
-  const slowThreshold = Math.max(100, input.targetMs * 1.8);
+  const slowThreshold = Math.max(50, input.targetMs * 1.8);
   const fastThreshold = Math.max(1, input.targetMs * 0.7);
   const sampleFrames = Math.max(0, Math.floor(input.sampleFrames ?? Number.POSITIVE_INFINITY));
   const warmupFrames = Math.max(0, Math.floor(input.warmupFrames ?? THREE_PANEL_ADAPTIVE_WARMUP_FRAMES));

@@ -462,6 +462,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   reducing the focused `canvas-overlap-modal-churn` benchmark from roughly 17ms to 14.5ms on this host.
 - Fixed the workbench Three pressure probe sampling order so it mutates scene state before waiting for the next frame;
   the probe now validates real renderer frames instead of sampling stale fallback grids with zero performance telemetry.
+- Lowered the Three panel adaptive slow-frame floor from 100ms to 50ms so 70-90ms renderer frames at 24-30fps targets
+  downshift quality after sustained pressure instead of remaining visibly sluggish.
 - Extracted CPU hex-grid selection map updates and selected-tile scroll targeting into the visualization module with
   direct tests, keeping API workbench CPU selection code focused on focus, scroll application, and logging side effects.
 - Reused workbench ANSI changed-span scratch buffers and span objects across flushes, keeping sparse terminal output
