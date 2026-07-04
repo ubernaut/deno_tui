@@ -734,3 +734,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted Three ASCII terminal compute-mode resolution into a pure helper covering block/glyph edge and depth-color
   pass selection. Focused compute-mode tests, renderer/resource tests, the default workbench pressure probe, and the
   `three-ascii` benchmark suite passed.
+- Lowered the workbench Three emergency 60-cell live cadence from 30fps to 20fps to reduce remote terminal backlog at
+  startup. The default saved-config pressure probe still published live frames while steady output dropped from roughly
+  14KB/s to roughly 9KB/s on this host.

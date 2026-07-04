@@ -3,7 +3,10 @@ import {
   ApiWorkbenchThreeRuntimeController,
   resolveApiWorkbenchThreePressureChange,
 } from "../app/workbench_three_runtime.ts";
-import { WORKBENCH_THREE_INITIAL_CELLS } from "../app/workbench_three_policy.ts";
+import {
+  WORKBENCH_THREE_EMERGENCY_DRAW_INTERVAL_MS,
+  WORKBENCH_THREE_INITIAL_CELLS,
+} from "../app/workbench_three_policy.ts";
 
 Deno.test("ApiWorkbenchThreeRuntimeController owns live cadence signals", () => {
   let live = true;
@@ -12,7 +15,7 @@ Deno.test("ApiWorkbenchThreeRuntimeController owns live cadence signals", () => 
   });
 
   assertEquals(controller.liveMaxCells.peek(), WORKBENCH_THREE_INITIAL_CELLS);
-  assertEquals(controller.frameInterval.peek(), 1000 / 30);
+  assertEquals(controller.frameInterval.peek(), WORKBENCH_THREE_EMERGENCY_DRAW_INTERVAL_MS);
 
   live = false;
   controller.syncFrameInterval();

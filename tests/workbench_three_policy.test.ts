@@ -3,6 +3,7 @@ import {
   API_WORKBENCH_THREE_PRESSURE_POLICY,
   apiWorkbenchThreeFrameIntervalForCells,
   WORKBENCH_THREE_DRAW_INTERVAL_MS,
+  WORKBENCH_THREE_EMERGENCY_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_INITIAL_CELLS,
   WORKBENCH_THREE_PRESSURE_LEVELS,
   WORKBENCH_THREE_READBACK_STRATEGY,
@@ -32,7 +33,7 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
 });
 
 Deno.test("API workbench Three policy keeps live panes faster than idle panes", () => {
-  assertEquals(apiWorkbenchThreeFrameIntervalForCells(60, { live: true }), WORKBENCH_THREE_DRAW_INTERVAL_MS);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(60, { live: true }), WORKBENCH_THREE_EMERGENCY_DRAW_INTERVAL_MS);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(120, { live: true }), WORKBENCH_THREE_DRAW_INTERVAL_MS);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(240, { live: true }), WORKBENCH_THREE_DRAW_INTERVAL_MS);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(480, { live: true }), 1000 / 24);
@@ -44,8 +45,8 @@ Deno.test("API workbench Three policy keeps live panes faster than idle panes", 
 });
 
 Deno.test("API workbench Three policy starts at a conservative live budget", () => {
-  assertEquals(apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }), 1000 / 30);
-  assertEquals(apiWorkbenchThreeFrameIntervalForCells(60, { live: true }), 1000 / 30);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }), 1000 / 20);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(60, { live: true }), 1000 / 20);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(960, { live: true }), 1000 / 20);
 });
 
