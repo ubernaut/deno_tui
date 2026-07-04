@@ -261,6 +261,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Retuned the default workbench Three ASCII pressure policy for slow terminal links: the default pane now starts at the
   120-cell emergency tier, 240-cell animated output downshifts on sustained byte rates above roughly 35KB/s, and low
   byte-rate recovery remains conservative so SSH/tmux sessions do not immediately climb back into expensive output.
+- Cached normalized workbench Three pressure levels behind a mutation-aware source snapshot and added a focused
+  `workbench-three-pressure-policy` benchmark so the adaptive controller stays measured alongside frame flushing.
 - Restored the terminal workbench Three policy to blocking readback with a conservative 240-cell startup cap after live
   probes showed deferred readback could publish a stale visible grid while reporting low renderer timings.
 - Extended Three panel frame-time adaptation to the internal 120/240/480 pressure tiers so slow blocking-readback

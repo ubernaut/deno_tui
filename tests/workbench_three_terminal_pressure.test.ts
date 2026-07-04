@@ -58,6 +58,25 @@ Deno.test("workbench Three terminal pressure recovers slowly after low output", 
   assertEquals(state.lowFrames, 0);
 });
 
+Deno.test("workbench Three terminal pressure notices mutated level arrays", () => {
+  const levels = [240, 480, 960];
+  const state = createWorkbenchThreeTerminalPressureState(960);
+  const options = {
+    renderedThreeGrids: 1,
+    bytes: 90_000,
+    levels,
+    highBytes: 80_000,
+    lowBytes: 35_000,
+    highFrameThreshold: 1,
+  };
+
+  assertEquals(resolveWorkbenchThreeTerminalPressureBudget(state, options).currentCells, 480);
+
+  levels[1] = 360;
+
+  assertEquals(resolveWorkbenchThreeTerminalPressureBudget(state, options).currentCells, 360);
+});
+
 Deno.test("workbench Three terminal pressure can step down on the first high-output frame", () => {
   const state = createWorkbenchThreeTerminalPressureState(480);
   const next = resolveWorkbenchThreeTerminalPressureBudget(state, {

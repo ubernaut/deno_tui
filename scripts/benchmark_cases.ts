@@ -57,6 +57,10 @@ import {
   snapshotChangedSpans,
   snapshotFrameRow,
 } from "../src/app/workbench_ansi_spans.ts";
+import {
+  createWorkbenchThreeTerminalPressureState,
+  resolveWorkbenchThreeTerminalPressureBudget,
+} from "../src/app/workbench_three_terminal_pressure.ts";
 import { LayoutMeasurementCache, simpleLayoutSolver } from "../src/layout/mod.ts";
 import { TerminalScreenController } from "../src/runtime/terminal_screen.ts";
 import {
@@ -179,6 +183,9 @@ const workbenchThreeHeaderPerformance: ThreeHeaderPerformance = {
   deferredReadbackSlots: 6,
   deferredReadbackUnresolved: 2,
 };
+const workbenchThreePressureLevels = [120, 240, 480, 960] as const;
+const workbenchThreePressureState = createWorkbenchThreeTerminalPressureState(960);
+let workbenchThreePressureChecksum = 0;
 const terminalInputEncoder = new TextEncoder();
 const terminalInputDecodeBatch = terminalInputEncoder.encode(
   [
@@ -999,6 +1006,37 @@ function runWorkbenchThreeHeaderTelemetryWorkload(): void {
   }
 }
 
+function runWorkbenchThreePressurePolicyWorkload(): void {
+  for (let index = 0; index < 64; index += 1) {
+    const heavy = index % 11 === 0;
+    const low = index % 7 === 0;
+    const next = resolveWorkbenchThreeTerminalPressureBudget(workbenchThreePressureState, {
+      renderedThreeGrids: 1,
+      bytes: heavy ? 120_000 : low ? 800 : 2_200,
+      durationMs: heavy ? 65 : 0.2,
+      levels: workbenchThreePressureLevels,
+      highBytes: 240_000,
+      lowBytes: 35_000,
+      highBytesPerGrid: 96_000,
+      lowBytesPerGrid: 1_500,
+      highBytesPerSecond: 35_000,
+      lowBytesPerSecond: 12_000,
+      highDurationMs: 50,
+      sampleDurationMs: 1000 / 30,
+      highFrameThreshold: 1,
+      lowFrameThreshold: 60,
+    });
+    workbenchThreePressureState.currentCells = next.currentCells;
+    workbenchThreePressureState.highFrames = next.highFrames;
+    workbenchThreePressureState.lowFrames = next.lowFrames;
+    workbenchThreePressureChecksum = (workbenchThreePressureChecksum + next.currentCells + next.highFrames) %
+      1_000_000;
+  }
+  if (!Number.isFinite(workbenchThreePressureChecksum)) {
+    throw new Error("workbench Three pressure policy workload failed");
+  }
+}
+
 function runAnsiStyledCharacterSplitWorkload(): void {
   const cells = getMultiCodePointCharacters(ansiStyledSplitRow);
   if (cells.length !== 160) {
@@ -1377,6 +1415,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 2_000,
     maxAverageMs: 1,
     run: runWorkbenchThreeHeaderTelemetryWorkload,
+  },
+  {
+    name: "render/workbench-three-pressure-policy",
+    category: "render",
+    description: "Resolve repeated workbench Three terminal-pressure samples against stable policy levels.",
+    tags: ["render", "workbench", "three", "pressure", "terminal"],
+    iterations: 2_000,
+    maxAverageMs: 1,
+    run: runWorkbenchThreePressurePolicyWorkload,
   },
   {
     name: "render/textobject-full-row-canvas-220x70",

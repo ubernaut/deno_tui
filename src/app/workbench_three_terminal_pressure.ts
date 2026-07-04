@@ -1,3 +1,6 @@
+/** Caches normalized pressure levels for stable policy arrays used on every frame. */
+const normalizedLevelCache = new WeakMap<readonly number[], { source: number[]; levels: number[] }>();
+
 /** Mutable terminal-output pressure counters for workbench-hosted Three ASCII panes. */
 export interface WorkbenchThreeTerminalPressureState {
   currentCells: number;
@@ -262,9 +265,34 @@ export function workbenchThreeTerminalBytesPerSecond(options: WorkbenchThreeTerm
 }
 
 function normalizedLevels(levels: readonly number[]): number[] {
-  const normalized = Array.from(new Set(levels.map((level) => Math.max(1, Math.floor(level)))))
-    .sort((left, right) => left - right);
-  return normalized.length > 0 ? normalized : [1];
+  const cached = normalizedLevelCache.get(levels);
+  if (cached && samePressureLevelSource(cached.source, levels)) return cached.levels;
+  const source = new Array<number>(levels.length);
+  const unique: number[] = [];
+  for (let index = 0; index < levels.length; index += 1) {
+    const raw = levels[index]!;
+    source[index] = raw;
+    const normalized = Math.max(1, Math.floor(raw));
+    let exists = false;
+    for (let uniqueIndex = 0; uniqueIndex < unique.length; uniqueIndex += 1) {
+      if (unique[uniqueIndex] !== normalized) continue;
+      exists = true;
+      break;
+    }
+    if (!exists) unique.push(normalized);
+  }
+  unique.sort((left, right) => left - right);
+  const normalized = unique.length > 0 ? unique : [1];
+  normalizedLevelCache.set(levels, { source, levels: normalized });
+  return normalized;
+}
+
+function samePressureLevelSource(source: readonly number[], levels: readonly number[]): boolean {
+  if (source.length !== levels.length) return false;
+  for (let index = 0; index < levels.length; index += 1) {
+    if (!Object.is(source[index], levels[index])) return false;
+  }
+  return true;
 }
 
 function clampToLevel(value: number, levels: readonly number[]): number {
