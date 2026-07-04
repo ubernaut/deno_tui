@@ -392,6 +392,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   uniform reads on raster-only frames while preserving ANSI and mixed output behavior.
 - Added caller-owned Three ASCII frame-selection resolution and routed the renderer through a retained selection record,
   removing a common per-frame output-selection object allocation.
+- Cached the deferred readback queue's last completed grid while resolving bootstrap/submission state, removing a
+  duplicate last-grid lookup in the no-completed-grid deferred path.
 - Split workbench styled-cell tokenization and row/slice assembly into `workbench_frame_rows.ts`, preserving the
   existing frame facade while keeping the terminal hot path independently testable and benchmarked.
 - Extracted ThreePanelFrameView graphics-image handle ownership into `ThreePanelGraphicsImageController` with direct
