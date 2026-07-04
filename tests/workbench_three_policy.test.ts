@@ -9,7 +9,7 @@ import {
   WORKBENCH_THREE_READBACK_STRATEGY,
   WORKBENCH_THREE_RESCUE_CELLS,
   WORKBENCH_THREE_RESCUE_DRAW_INTERVAL_MS,
-} from "../app/workbench_three_policy.ts";
+} from "../src/app/workbench_three_policy.ts";
 import {
   createWorkbenchThreeTerminalPressureState,
   resolveWorkbenchThreeTerminalPressureBudget,

@@ -3,7 +3,7 @@ import {
   setWorkbenchThreeRect,
   workbenchThreeContentGraphicsRect,
   workbenchThreeGraphicsRect,
-} from "../app/workbench_three_geometry.ts";
+} from "../src/app/workbench_three_geometry.ts";
 import type { Rectangle } from "../src/types.ts";
 
 Deno.test("setWorkbenchThreeRect skips unchanged rectangle writes", () => {

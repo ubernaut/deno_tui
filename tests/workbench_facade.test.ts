@@ -1,5 +1,6 @@
 import { assertEquals } from "./deps.ts";
 import {
+  apiWorkbenchThreeFrameIntervalForCells,
   buttonText,
   createWorkbenchShellSession,
   HitTargetStack,
@@ -8,11 +9,13 @@ import {
   layoutWorkbenchTitlebar,
   resolveWorkbenchShellBackend,
   resolveWorkbenchThreeTerminalPressureBudget,
+  setWorkbenchThreeRect,
   threeHeaderRows,
   translateHitTargets,
   workbenchContentViewport,
   workbenchFrameRenderCommandsInto,
   workbenchStyledRowsRenderCommandsInto,
+  WorkbenchThreeCadenceMeter,
   WorkbenchTopMenuController,
   workbenchWindowContentSize,
   workspaceMenuLabels,
@@ -54,6 +57,9 @@ Deno.test("workbench facade exposes renderer-neutral helpers", () => {
   assertEquals(typeof workbenchFrameRenderCommandsInto, "function");
   assertEquals(typeof workbenchStyledRowsRenderCommandsInto, "function");
   assertEquals(typeof threeHeaderRows, "function");
+  assertEquals(typeof apiWorkbenchThreeFrameIntervalForCells, "function");
+  assertEquals(typeof setWorkbenchThreeRect, "function");
+  assertEquals(typeof WorkbenchThreeCadenceMeter, "function");
   assertEquals(typeof workbenchWindowContentSize, "function");
   assertEquals(typeof workspaceMenuLabels, "function");
   assertEquals(typeof WorkbenchTopMenuController, "function");

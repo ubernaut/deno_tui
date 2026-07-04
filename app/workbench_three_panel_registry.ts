@@ -1,5 +1,5 @@
 import type { Rectangle } from "../src/types.ts";
-import { setWorkbenchThreeRect, type WorkbenchThreeRectTarget } from "./workbench_three_geometry.ts";
+import { setWorkbenchThreeRect, type WorkbenchThreeRectTarget } from "../src/app/workbench_three_geometry.ts";
 import {
   setWorkbenchThreeSceneSignal,
   type WorkbenchThreeScene,

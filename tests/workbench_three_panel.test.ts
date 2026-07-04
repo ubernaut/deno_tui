@@ -9,7 +9,7 @@ import type {
   ThreeAsciiRendererPerformance,
   ThreeAsciiRenderFrameOptions,
 } from "../src/three_ascii/renderer.ts";
-import { WORKBENCH_THREE_READBACK_STRATEGY, WORKBENCH_THREE_RESCUE_CELLS } from "../app/workbench_three_policy.ts";
+import { WORKBENCH_THREE_READBACK_STRATEGY, WORKBENCH_THREE_RESCUE_CELLS } from "../src/app/workbench_three_policy.ts";
 
 Deno.test("createWorkbenchThreePanelFrameView applies shared workbench Three defaults", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 48, height: 20 }, { deepObserve: true });

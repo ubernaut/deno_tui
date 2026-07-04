@@ -15,7 +15,7 @@ import {
   apiWorkbenchThreeFrameIntervalForCells,
   WORKBENCH_THREE_INITIAL_CELLS,
   WORKBENCH_THREE_READBACK_STRATEGY,
-} from "../app/workbench_three_policy.ts";
+} from "../src/app/workbench_three_policy.ts";
 import { delay } from "../src/three_ascii/probe_cli.ts";
 import {
   countWorkbenchThreeProbeChangedGridRows,

@@ -8,7 +8,7 @@ import {
 import {
   apiWorkbenchThreeFrameIntervalForCells,
   WORKBENCH_THREE_INITIAL_CELLS,
-} from "../app/workbench_three_policy.ts";
+} from "../src/app/workbench_three_policy.ts";
 
 Deno.test("ApiWorkbenchThreeRuntimeController owns live cadence signals", () => {
   let live = true;

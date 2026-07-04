@@ -10,7 +10,7 @@ import {
   API_WORKBENCH_THREE_PRESSURE_POLICY,
   apiWorkbenchThreeFrameIntervalForCells,
   WORKBENCH_THREE_INITIAL_CELLS,
-} from "./workbench_three_policy.ts";
+} from "../src/app/workbench_three_policy.ts";
 
 export interface ApiWorkbenchThreeFlushStats {
   changed: number;

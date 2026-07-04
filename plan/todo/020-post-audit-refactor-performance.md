@@ -219,6 +219,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   creation, hide/hideExcept, disposal, and clear behavior without constructing real WebGPU renderers in tests.
 - Extracted workbench Three viewport mouse drag and wheel routing into `WorkbenchThreeViewportInteractionController`,
   keeping model rotation/zoom focus behavior tested without starting a TUI session or renderer.
+- Moved workbench Three policy, geometry, and cadence helpers into shared `src/app` modules and exported them through
+  the workbench facade so app, scripts, and tests no longer import those pure helpers from `app/` internals.
 - Retuned the default API workbench Three block renderer startup path to 480 cells with blocking readback retained after
   live probes showed deferred readback regressing visible publication; dynamic Three visualization panes now feed the
   shared cadence meter so terminal-pressure adaptation sees all live Three windows instead of only the built-in pane.

@@ -1,5 +1,5 @@
-import type { Rectangle } from "../src/types.ts";
-import { clipRect } from "../src/app/hit_targets.ts";
+import type { Rectangle } from "../types.ts";
+import { clipRect } from "./hit_targets.ts";
 
 export interface WorkbenchThreeRectTarget {
   peek(): Rectangle;

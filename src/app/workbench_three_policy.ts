@@ -1,7 +1,7 @@
 import {
   workbenchThreeFrameIntervalForCells,
   type WorkbenchThreeTerminalPressureOptions,
-} from "../src/app/workbench_three_terminal_pressure.ts";
+} from "./workbench_three_terminal_pressure.ts";
 
 export const WORKBENCH_THREE_LIVE_MAX_CELLS = 960;
 export const WORKBENCH_THREE_RESCUE_CELLS = 30;

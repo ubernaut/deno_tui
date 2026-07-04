@@ -1,5 +1,5 @@
 import { ThreePanelFrameView } from "./three_panel.ts";
-import { WORKBENCH_THREE_READBACK_STRATEGY, WORKBENCH_THREE_RESCUE_CELLS } from "./workbench_three_policy.ts";
+import { WORKBENCH_THREE_READBACK_STRATEGY, WORKBENCH_THREE_RESCUE_CELLS } from "../src/app/workbench_three_policy.ts";
 
 export type WorkbenchThreePanelFrameViewOptions = ConstructorParameters<typeof ThreePanelFrameView>[0];
 

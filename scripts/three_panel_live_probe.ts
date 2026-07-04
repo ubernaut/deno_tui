@@ -3,7 +3,7 @@ import {
   apiWorkbenchThreeFrameIntervalForCells,
   WORKBENCH_THREE_INITIAL_CELLS,
   WORKBENCH_THREE_READBACK_STRATEGY,
-} from "../app/workbench_three_policy.ts";
+} from "../src/app/workbench_three_policy.ts";
 import { ThreePanelFrameView, type ThreeSceneState } from "../app/three_panel.ts";
 import { Signal } from "../src/signals/mod.ts";
 import {

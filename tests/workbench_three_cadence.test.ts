@@ -1,5 +1,5 @@
 import { assertEquals } from "./deps.ts";
-import { WorkbenchThreeCadenceMeter } from "../app/workbench_three_cadence.ts";
+import { WorkbenchThreeCadenceMeter } from "../src/app/workbench_three_cadence.ts";
 
 Deno.test("WorkbenchThreeCadenceMeter reports observed frame cadence after repeated updates", () => {
   const meter = new WorkbenchThreeCadenceMeter({ alpha: 0.5 });
