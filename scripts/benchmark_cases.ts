@@ -124,6 +124,7 @@ let ansiSinkBytes = 0;
 let ansiStyledSplitChecksum = 0;
 let plainAsciiSplitChecksum = 0;
 let plainWorkbenchRowChecksum = 0;
+let blankWorkbenchRowChecksum = 0;
 const ansiSink = new AnsiCanvasSink({
   stdout: {
     writeSync(data) {
@@ -1089,6 +1090,21 @@ function runPlainWorkbenchFrameRowAssemblyWorkload(): void {
   }
 }
 
+function runBlankWorkbenchFrameRowAssemblyWorkload(): void {
+  const row = renderFrameRow([], workbenchFrameWidth);
+  const slice = renderFrameSlice(plainWorkbenchFrameRow, plainWorkbenchFrameRow.length, workbenchFrameWidth);
+  blankWorkbenchRowChecksum = (blankWorkbenchRowChecksum + row.length + slice.length + row.charCodeAt(0)) % 1_000_000;
+  if (
+    row.length !== workbenchFrameWidth ||
+    slice.length !== workbenchFrameWidth ||
+    row.trim() !== "" ||
+    slice.trim() !== "" ||
+    !Number.isFinite(blankWorkbenchRowChecksum)
+  ) {
+    throw new Error("blank workbench frame row assembly checksum failed");
+  }
+}
+
 class BenchmarkMetricsProvider implements SystemMetricsProvider {
   step = 0;
   processStatReads = 0;
@@ -1364,6 +1380,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 2_000,
     maxAverageMs: 1,
     run: runPlainWorkbenchFrameRowAssemblyWorkload,
+  },
+  {
+    name: "render/workbench-blank-frame-row-168",
+    category: "render",
+    description: "Assemble blank and out-of-range workbench frame rows through the empty-row fast path.",
+    tags: ["render", "workbench", "frame", "text", "blank"],
+    iterations: 5_000,
+    maxAverageMs: 1,
+    run: runBlankWorkbenchFrameRowAssemblyWorkload,
   },
   {
     name: "render/workbench-string-frame-full-row",

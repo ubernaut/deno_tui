@@ -53,27 +53,31 @@ export function renderFrameSlice(cells: string[], start: number, width: number):
 }
 
 function renderFrameArrayCells(cells: string[], start: number, width: number): string {
+  const columns = Math.max(0, Math.floor(width));
+  if (columns <= 0) return "";
+  const offset = Math.floor(start);
+  if (cells.length === 0 || offset >= cells.length) return " ".repeat(columns);
   let row = "";
-  for (let column = 0; column < width;) {
-    const firstCell = cells[start + column] ?? " ";
+  for (let column = 0; column < columns;) {
+    const firstCell = cells[offset + column] ?? " ";
     const first = splitFrameCell(firstCell);
     if (isBackgroundStyledFrameCell(first)) {
-      const styled = renderBackgroundStyledRun(cells, start, column, width, firstCell, first);
+      const styled = renderBackgroundStyledRun(cells, offset, column, columns, firstCell, first);
       row += styled.value;
       column = styled.nextColumn;
       continue;
     }
     let next = column + 1;
-    while (next < width && (cells[start + next] ?? " ") === firstCell) {
+    while (next < columns && (cells[offset + next] ?? " ") === firstCell) {
       next += 1;
     }
     let text = next - column === 1 ? first.text : first.text.repeat(next - column);
-    while (next < width) {
-      const currentCell = cells[start + next] ?? " ";
+    while (next < columns) {
+      const currentCell = cells[offset + next] ?? " ";
       const current = splitFrameCell(currentCell);
       if (current.prefix !== first.prefix || current.suffix !== first.suffix) break;
       let repeatEnd = next + 1;
-      while (repeatEnd < width && (cells[start + repeatEnd] ?? " ") === currentCell) {
+      while (repeatEnd < columns && (cells[offset + repeatEnd] ?? " ") === currentCell) {
         repeatEnd += 1;
       }
       text += repeatEnd - next === 1 ? current.text : current.text.repeat(repeatEnd - next);

@@ -36,6 +36,13 @@ Deno.test("workbench frame helpers preserve ANSI styling per terminal cell", () 
   assertEquals(renderFrameSlice(frame[0]!, 1, 2), "\x1b[31mAB\x1b[0m");
 });
 
+Deno.test("workbench frame row assembly fast paths empty and out-of-range rows", () => {
+  assertEquals(renderFrameRow([], 5), "     ");
+  assertEquals(renderFrameRow([], 0), "");
+  assertEquals(renderFrameSlice(["A", "B"], 2, 4), "    ");
+  assertEquals(renderFrameSlice(["A", "B"], -1, 3), " AB");
+});
+
 Deno.test("workbench frame row assembly compresses adjacent truecolor background cells", () => {
   const frame: WorkbenchFrame = [[
     "\x1b[48;2;10;20;30m \x1b[0m",

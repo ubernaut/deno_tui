@@ -841,3 +841,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Omitted zero-byte GPU readback copy commands from Three ASCII readback plans so compact or empty payload shapes do not
   submit no-op buffer copies. Focused readback and renderer tests passed; readback-copy benchmarks stayed well under
   guardrails at roughly 0.009ms for full payloads and 0.004ms for compact block payloads.
+- Added an empty/out-of-range workbench frame row assembly fast path and benchmark guard so blank terminal rows avoid
+  per-column scans. Focused frame and benchmark tests passed; the new `workbench-blank-frame-row-168` benchmark runs at
+  roughly 0.001ms on this host.
