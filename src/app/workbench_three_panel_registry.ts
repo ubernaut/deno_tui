@@ -1,4 +1,4 @@
-import { setWorkbenchThreeRect, type WorkbenchThreeRectTarget } from "./workbench_three_geometry.ts";
+import { hideWorkbenchThreeRect, type WorkbenchThreeRectTarget } from "./workbench_three_geometry.ts";
 
 export interface WorkbenchThreePanelLifecycle {
   dispose(): void;
@@ -76,7 +76,7 @@ export class WorkbenchThreePanelRegistry<
 }
 
 function hideWorkbenchThreePanelRect(target: WorkbenchThreeRectTarget): void {
-  setWorkbenchThreeRect(target, { column: 0, row: 0, width: 0, height: 0 });
+  hideWorkbenchThreeRect(target);
 }
 
 function hideWorkbenchThreePanelScene<TScene>(target: WorkbenchThreeNullableSignal<TScene>): void {

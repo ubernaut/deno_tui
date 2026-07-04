@@ -276,7 +276,11 @@ import { workbenchExplorerRowsInto } from "./workbench_explorer.ts";
 import { workbenchInspectorRowsInto } from "./workbench_inspector.ts";
 import { workbenchLogRowsFromSourcesInto } from "./workbench_logs.ts";
 import { WorkbenchThreeGridProjectionCache, writeWorkbenchThreeGrid } from "../src/app/workbench_three_grid.ts";
-import { setWorkbenchThreeRect, workbenchThreeContentGraphicsRect } from "../src/app/workbench_three_geometry.ts";
+import {
+  hideWorkbenchThreeRect,
+  setWorkbenchThreeRect,
+  workbenchThreeContentGraphicsRect,
+} from "../src/app/workbench_three_geometry.ts";
 import { WorkbenchThreeCadenceMeter } from "../src/app/workbench_three_cadence.ts";
 import {
   setWorkbenchThreeSceneSignal,
@@ -1204,8 +1208,7 @@ function renderWorkspace(frame: Frame): void {
   fillRect(frame, bounds, theme().backgroundSoft);
   renderedVisualizationThreePanels.clear();
   if (bounds.width < 2 || bounds.height < 1) {
-    setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
-    setThreeGraphicsRect({ column: 0, row: 0, width: 0, height: 0 });
+    hideBuiltinThreeRects();
     hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
     return;
   }
@@ -1218,8 +1221,7 @@ function renderWorkspace(frame: Frame): void {
   if (max) {
     withWorkspacePlacement(bounds, offset, () => renderWindow(virtual, max, layout.bounds));
     if (max !== "three") {
-      setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
-      setThreeGraphicsRect({ column: 0, row: 0, width: 0, height: 0 });
+      hideBuiltinThreeRects();
     }
     hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
     translateHitTargets(hitTargets, { startIndex: hitStart, rowDelta: bounds.row - offset, clip: bounds });
@@ -1230,8 +1232,7 @@ function renderWorkspace(frame: Frame): void {
   }
 
   if (layout.rects.size === 0) {
-    setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
-    setThreeGraphicsRect({ column: 0, row: 0, width: 0, height: 0 });
+    hideBuiltinThreeRects();
     hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
     write(frame, bounds.row + 1, 2, paint(emptyWorkspaceMessage(), { fg: theme().warn }));
     renderShelf(frame);
@@ -1251,8 +1252,7 @@ function renderWorkspace(frame: Frame): void {
     }
   });
   if (!renderedThree) {
-    setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
-    setThreeGraphicsRect({ column: 0, row: 0, width: 0, height: 0 });
+    hideBuiltinThreeRects();
   }
   hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
   translateHitTargets(hitTargets, { startIndex: hitStart, rowDelta: bounds.row - offset, clip: bounds });
@@ -1468,8 +1468,7 @@ function renderThree(frame: Frame, rect: Rectangle): void {
     return;
   }
 
-  setThreeBodyRect({ column: 0, row: 0, width: 0, height: 0 });
-  setThreeGraphicsRect({ column: 0, row: 0, width: 0, height: 0 });
+  hideBuiltinThreeRects();
   const fallback = workbenchThreeFallbackRowsInto(threeFallbackRowsBuffer, {
     width: rect.width,
     height: rect.height,
@@ -2924,6 +2923,11 @@ function setThreeBodyRect(rect: Rectangle): void {
 
 function setThreeGraphicsRect(rect: Rectangle): void {
   setWorkbenchThreeRect(threeGraphicsRect, rect);
+}
+
+function hideBuiltinThreeRects(): void {
+  hideWorkbenchThreeRect(threeBodyRect);
+  hideWorkbenchThreeRect(threeGraphicsRect);
 }
 
 function screenDropdownOpen(): boolean {

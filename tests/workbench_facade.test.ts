@@ -5,6 +5,7 @@ import {
   applyWorkbenchThreePanelFrameDefaults,
   buttonText,
   createWorkbenchShellSession,
+  hideWorkbenchThreeRect,
   HitTargetStack,
   layoutWorkbenchButtonRow,
   layoutWorkbenchModal,
@@ -84,6 +85,7 @@ Deno.test("workbench facade exposes renderer-neutral helpers", () => {
   assertEquals(typeof apiWorkbenchThreeFrameIntervalForCells, "function");
   assertEquals(typeof applyWorkbenchThreePanelFrameDefaults, "function");
   assertEquals(typeof setWorkbenchThreeRect, "function");
+  assertEquals(typeof hideWorkbenchThreeRect, "function");
   assertEquals(typeof resolveWorkbenchThreeGridProjection, "function");
   assertEquals(typeof ApiWorkbenchThreeRuntimeController, "function");
   assertEquals(typeof WorkbenchThreeCadenceMeter, "function");

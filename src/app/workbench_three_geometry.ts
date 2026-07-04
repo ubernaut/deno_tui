@@ -28,6 +28,8 @@ export interface WorkbenchThreeContentGraphicsRectOptions {
   workspace?: WorkbenchPlacementContext | null;
 }
 
+export const WORKBENCH_THREE_HIDDEN_RECT: Rectangle = { column: 0, row: 0, width: 0, height: 0 };
+
 export function setWorkbenchThreeRect(target: WorkbenchThreeRectTarget, rect: Rectangle): boolean {
   const current = target.peek();
   if (
@@ -38,6 +40,10 @@ export function setWorkbenchThreeRect(target: WorkbenchThreeRectTarget, rect: Re
   }
   target.value = rect;
   return true;
+}
+
+export function hideWorkbenchThreeRect(target: WorkbenchThreeRectTarget): boolean {
+  return setWorkbenchThreeRect(target, WORKBENCH_THREE_HIDDEN_RECT);
 }
 
 export function workbenchThreeGraphicsRect(options: WorkbenchThreeGraphicsRectOptions): Rectangle {

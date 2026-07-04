@@ -1,6 +1,8 @@
 import { assertEquals } from "./deps.ts";
 import {
+  hideWorkbenchThreeRect,
   setWorkbenchThreeRect,
+  WORKBENCH_THREE_HIDDEN_RECT,
   workbenchThreeContentGraphicsRect,
   workbenchThreeGraphicsRect,
 } from "../src/app/workbench_three_geometry.ts";
@@ -15,6 +17,19 @@ Deno.test("setWorkbenchThreeRect skips unchanged rectangle writes", () => {
   assertEquals(setWorkbenchThreeRect(target, { column: 1, row: 2, width: 5, height: 4 }), true);
   assertEquals(target.writes, 1);
   assertEquals(target.peek(), { column: 1, row: 2, width: 5, height: 4 });
+});
+
+Deno.test("hideWorkbenchThreeRect skips unchanged hidden rectangle writes", () => {
+  const target = new FakeRectSignal(WORKBENCH_THREE_HIDDEN_RECT);
+
+  assertEquals(hideWorkbenchThreeRect(target), false);
+  assertEquals(target.writes, 0);
+
+  target.value = { column: 2, row: 3, width: 4, height: 5 };
+  target.writes = 0;
+  assertEquals(hideWorkbenchThreeRect(target), true);
+  assertEquals(target.writes, 1);
+  assertEquals(target.peek(), WORKBENCH_THREE_HIDDEN_RECT);
 });
 
 Deno.test("workbenchThreeGraphicsRect maps content through window and workspace offsets", () => {

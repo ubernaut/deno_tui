@@ -201,6 +201,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   terminal workbench render loop focused on frame composition and side effects.
 - Added a reusable `WorkbenchThreeGridProjectionCache` so workbench Three grid row and scale-index scratch buffers live
   with the projection helper instead of the oversized terminal workbench renderer.
+- Added a shared `hideWorkbenchThreeRect` geometry helper and routed built-in/dynamic Three panes through it so hidden
+  renderer surfaces reuse the same unchanged-write guard as visible rect updates.
 - Added sustained byte-rate context to workbench Three pressure change logs so adaptive downshifts show the same signal
   used by the policy.
 - Lowered the workbench Three sustained terminal byte-rate pressure threshold to make the default block renderer back
