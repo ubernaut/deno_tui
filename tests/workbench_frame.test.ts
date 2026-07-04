@@ -49,6 +49,17 @@ Deno.test("workbench frame row assembly compresses adjacent truecolor background
   );
 });
 
+Deno.test("workbench frame row assembly keeps block-mode truecolor cells compact", () => {
+  const frame: WorkbenchFrame = [[
+    "\x1b[48;2;1;2;3m \x1b[0m",
+    "\x1b[48;2;1;2;3m \x1b[0m",
+    "\x1b[48;2;4;5;6m \x1b[0m",
+    "\x1b[48;2;4;5;6m \x1b[0m",
+  ]];
+
+  assertEquals(renderFrameRow(frame[0]!, 4), "\x1b[48;2;1;2;3m  \x1b[48;2;4;5;6m  \x1b[0m");
+});
+
 Deno.test("workbench frame row assembly compresses background cells with shared style and different text", () => {
   const frame: WorkbenchFrame = [[]];
   writeFrame(frame, 5, 0, 0, "\x1b[1;38;2;9;4;15;48;2;156;255;79m API \x1b[0m");

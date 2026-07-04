@@ -458,17 +458,30 @@ function splitFrameCell(cell: string): FrameCellParts {
   if (cached) return cached;
 
   const body = cell.slice(0, -RESET.length);
-  const parts = Array.from(body);
-  const text = parts.pop();
-  if (!text || text.charCodeAt(0) === 0x1b) {
+  const split = splitFrameCellBody(body);
+  if (!split) {
     return { prefix: "", text: cell, suffix: "" };
   }
-  const split = { prefix: parts.join(""), text, suffix: RESET };
   if (frameCellPartsCache.size > MAX_FRAME_CELL_PARTS_CACHE_SIZE) {
     frameCellPartsCache.clear();
   }
   frameCellPartsCache.set(cell, split);
   return split;
+}
+
+function splitFrameCellBody(body: string): FrameCellParts | undefined {
+  if (body.length === 0) return undefined;
+  const lastCodeUnit = body.charCodeAt(body.length - 1);
+  if (lastCodeUnit < 0xdc00 || lastCodeUnit > 0xdfff) {
+    const text = body[body.length - 1]!;
+    if (text.charCodeAt(0) === 0x1b) return undefined;
+    return { prefix: body.slice(0, -1), text, suffix: RESET };
+  }
+
+  const parts = Array.from(body);
+  const text = parts.pop();
+  if (!text || text.charCodeAt(0) === 0x1b) return undefined;
+  return { prefix: parts.join(""), text, suffix: RESET };
 }
 
 /** Writes ANSI-styled text into a string-backed frame row. */

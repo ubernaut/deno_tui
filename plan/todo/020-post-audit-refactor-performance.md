@@ -465,3 +465,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   tight-loop runs to a one-tick cadence and completes short/default deferred block probes without crashing.
 - Lowered the API workbench's unsaved startup Three ASCII budget from 480 to 240 cells, kept 480 as a recovery step, and
   raised the small-budget live cadence so slow terminal transports start with less truecolor block payload pressure.
+- Optimized workbench frame styled-cell splitting for the common Three block-mode truecolor cell shape, avoiding
+  per-cell `Array.from()` parsing in large ANSI rows; the `workbench-three-block-span-flush-168x54` guard now averages
+  roughly 2.5ms on this host.
