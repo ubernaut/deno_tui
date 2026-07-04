@@ -658,7 +658,9 @@ const windowScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const workspaceScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const dropdownOverlayRenderCommands: WorkbenchDropdownOverlayRenderCommand[] = [];
 const workbenchThreeLiveMaxCells = new Signal(WORKBENCH_THREE_INITIAL_CELLS);
-const workbenchThreeFrameInterval = new Signal(frameIntervalForWorkbenchThreeCells(WORKBENCH_THREE_INITIAL_CELLS));
+const workbenchThreeFrameInterval = new Signal(
+  frameIntervalForWorkbenchThreeCells(WORKBENCH_THREE_INITIAL_CELLS, { live: hasLiveThreeRenderedWindow() }),
+);
 let dropdownOverlay: DropdownOverlay | null = null;
 let threeDragWindow: WindowId | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
@@ -2897,18 +2899,27 @@ function ensureVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
 
 function syncWorkbenchThreeFrameInterval(): void {
   const next = frameIntervalForWorkbenchThreeCells(workbenchThreeLiveMaxCells.peek(), {
-    focused: isThreeRenderedWindow(activeWindow.peek()),
+    live: hasLiveThreeRenderedWindow(),
   });
   if (workbenchThreeFrameInterval.peek() !== next) {
     workbenchThreeFrameInterval.value = next;
   }
 }
 
-function frameIntervalForWorkbenchThreeCells(cells: number, options: { focused?: boolean } = {}): number {
-  const intervals = options.focused
+function frameIntervalForWorkbenchThreeCells(cells: number, options: { live?: boolean } = {}): number {
+  const intervals = options.live
     ? WORKBENCH_THREE_FRAME_INTERVAL_BY_CELLS
     : WORKBENCH_THREE_IDLE_FRAME_INTERVAL_BY_CELLS;
-  return intervals.get(cells) ?? (options.focused ? 1000 / 10 : 1000 / 5);
+  return intervals.get(cells) ?? (options.live ? 1000 / 10 : 1000 / 5);
+}
+
+function hasLiveThreeRenderedWindow(): boolean {
+  const fullscreenId = windowManager.fullscreenId.peek() as WindowId | undefined;
+  if (fullscreenId) return isThreeRenderedWindow(fullscreenId);
+  for (const entry of windowManager.orderedWindows()) {
+    if ((entry.state ?? "normal") === "normal" && isThreeRenderedWindow(entry.id as WindowId)) return true;
+  }
+  return false;
 }
 
 function hideVisualizationThreePanel(id: VisualizationWindowId): void {

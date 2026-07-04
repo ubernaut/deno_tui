@@ -227,6 +227,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   terminal pressure rises, reducing truecolor block-mode bytes per second in SSH/tmux sessions.
 - Made the workbench Three ASCII cadence focus-aware so background Three panes idle at lower FPS while focused Three
   windows keep the normal pressure-adjusted cadence.
+- Corrected the workbench cadence gate to treat any visible Three-rendered window as live, so the default startup Three
+  pane no longer gets idle-throttled just because Inspector has keyboard focus.
 - Extracted API workbench Explorer row projection into a focused helper with direct tests for selection, icons, and
   caller-owned row reuse.
 - Extracted API workbench Data Table row projection and page-size calculation into a generic helper with direct tests
