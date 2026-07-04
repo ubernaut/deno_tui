@@ -653,3 +653,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   startup path.
 - Extracted API workbench Three pressure-change resolution out of the runtime controller into a directly tested helper,
   leaving the controller to apply signal mutations while pressure policy, cadence, and log projection stay inspectable.
+- Switched the API workbench Three startup renderer policy back to deferred readback after the bounded stale-grid
+  fallback made it safe for live panes; the default 240-cell startup pressure probe now uses `readback=deferred` and
+  measured roughly 9.8ms average renderer frames versus roughly 20.9ms with blocking readback on this host.
