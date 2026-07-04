@@ -23,6 +23,7 @@ import {
   threePanelGraphicsFallbackReason,
   threePanelSlowFrameDiagnostic,
 } from "./three_panel_diagnostics.ts";
+import { threePanelAsciiEffectOptionsEqual } from "./three_panel_effect.ts";
 import { fingerprintThreePanelGrid, threePanelBlankGrid } from "./three_panel_grid.ts";
 import type { AsciiOptions, Rect, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 
@@ -798,7 +799,7 @@ export class ThreePanelFrameView {
     }
 
     const effectOptions = asciiEffectOptions(ascii);
-    if (!threeAsciiEffectOptionsEqual(this.appliedEffectOptions, effectOptions)) {
+    if (!threePanelAsciiEffectOptionsEqual(this.appliedEffectOptions, effectOptions)) {
       renderer.setEffectOptions(effectOptions);
       this.appliedEffectOptions = effectOptions;
     }
@@ -946,22 +947,4 @@ export class ThreePanelFrameView {
       });
     }
   }
-}
-
-function threeAsciiEffectOptionsEqual(
-  left: ReturnType<typeof asciiEffectOptions> | undefined,
-  right: ReturnType<typeof asciiEffectOptions>,
-): boolean {
-  if (!left) return false;
-  return left.edgeThreshold === right.edgeThreshold &&
-    left.normalThreshold === right.normalThreshold &&
-    left.depthThreshold === right.depthThreshold &&
-    left.exposure === right.exposure &&
-    left.attenuation === right.attenuation &&
-    left.blendWithBase === right.blendWithBase &&
-    left.depthFalloff === right.depthFalloff &&
-    left.depthOffset === right.depthOffset &&
-    left.edges === right.edges &&
-    left.fill === right.fill &&
-    left.invertLuminance === right.invertLuminance;
 }

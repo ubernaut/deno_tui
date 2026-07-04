@@ -427,3 +427,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   a tested window catalog module, reducing static menu setup in the large interactive workbench file.
 - Added a shared tested terminal search modal body projector so console and future web workbench shells can reuse the
   same copy-mode search prompt text without embedding it in the large API workbench renderer.
+- Extracted the Three panel ASCII effect option comparator into a focused tested helper, keeping renderer state update
+  gating separate from the large frame lifecycle class.
