@@ -263,6 +263,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   while preserving manual recovery to higher detail when terminal output is quiet.
 - Routed terminal workspace viewport blitting through the structured frame-cell copier so virtual workspace rows are
   copied directly into the final frame instead of stringifying styled rows and parsing them back into cells.
+- Aligned the standalone Three ASCII live probe with the workbench's blocking readback default and added a
+  `--readback=blocking|deferred` switch so renderer readback performance can be compared without editing the script.
 - Added structured workbench frame viewport blitting so API Workbench windows copy styled cells directly instead of
   stringifying ANSI slices and reparsing them before the final terminal flush, with unit and benchmark coverage for the
   scrolled truecolor blit path.

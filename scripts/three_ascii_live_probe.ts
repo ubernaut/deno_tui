@@ -3,6 +3,7 @@ import { createNeonThreeScene } from "../app/neon_three.ts";
 import { type ThreeSceneMode, threeSceneModes, type ThreeSceneSignal } from "../app/types.ts";
 import { average, choiceArg, delay, formatFps, formatMs, numberArg, stringArg } from "../src/three_ascii/probe_cli.ts";
 import { ThreeAsciiRenderer } from "../src/three_ascii/renderer.ts";
+import type { ThreeAsciiReadbackStrategy } from "../src/three_ascii/renderer_options.ts";
 
 interface ProbeSample {
   index: number;
@@ -21,6 +22,15 @@ const columns = numberArg(Deno.args, "--columns", 31);
 const rows = numberArg(Deno.args, "--rows", 15);
 const intervalMs = numberArg(Deno.args, "--interval", 55);
 const mode = choiceArg(Deno.args, "--mode", "studio" as ThreeSceneMode, threeSceneModes);
+const readbackStrategy = choiceArg(
+  Deno.args,
+  "--readback",
+  "blocking" as ThreeAsciiReadbackStrategy,
+  [
+    "blocking",
+    "deferred",
+  ] as const,
+);
 
 const ascii = {
   ...createDefaultAsciiOptions("sharp"),
@@ -37,7 +47,7 @@ const renderer = new ThreeAsciiRenderer({
   effect: asciiEffectOptions(ascii),
   terminalGlyphStyle: ascii.terminalGlyphStyle,
   terminalEdgeBias: ascii.terminalEdgeBias,
-  readbackStrategy: "deferred",
+  readbackStrategy,
   deferredReadbackSlots: ascii.deferredReadbackSlots,
 });
 
@@ -84,7 +94,9 @@ const averageReadbackMs = average(steady.map((sample) => sample.readbackMs));
 const averageAssemblyMs = average(steady.map((sample) => sample.assemblyMs));
 
 console.log(`three-ascii live probe`);
-console.log(`scene=${mode} glyphs=${ascii.terminalGlyphStyle} size=${columns}x${rows} frames=${frames}`);
+console.log(
+  `scene=${mode} glyphs=${ascii.terminalGlyphStyle} readback=${readbackStrategy} size=${columns}x${rows} frames=${frames}`,
+);
 console.log(`warmup=${formatMs(warmup?.totalMs)} steady=${formatMs(averageTotalMs)} fps=${formatFps(averageTotalMs)}`);
 console.log(
   `init=${formatMs(averageInitMs)} scene=${formatMs(averageSceneMs)} readback=${formatMs(averageReadbackMs)} assembly=${
