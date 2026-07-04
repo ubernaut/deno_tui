@@ -624,6 +624,9 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Paused workbench-hosted Three scenes behind generic modal dialogs while preserving live rendering for the dedicated
   ASCII config overlay; manual PTY verification showed the quit modal stops the animated truecolor stream instead of
   continuing background renderer output under a blocking dialog.
+- Moved the default workbench Three startup cap to the 30-cell rescue tier so slow SSH/tmux terminals start on the
+  lowest-bandwidth live profile immediately; the default pressure probe now reports roughly 9x3 source grids at about
+  4.6KB/s steady terminal output after startup.
 - Cached the background-run classification inside split workbench frame cells, avoiding repeated ANSI-prefix scans while
   assembling animated Three block rows and preserving exact truecolor output.
 - Added a dedicated Three ASCII block-mode grid assembly path that skips glyph/edge selection for full-cell block
