@@ -17,6 +17,7 @@ import { formatTerminalOutputLine } from "../src/components/terminal_output.ts";
 import { TextBoxController, type TextBoxVisualLine } from "../src/components/textbox.ts";
 import {
   appendBoundedWorkbenchLogRow,
+  applyWorkbenchTextPromptInput,
   buttonText,
   centerCellText as centerText,
   clampWorkbenchTileDensity,
@@ -2202,27 +2203,25 @@ function closeTerminalShellSearchModal(): void {
 }
 
 function handleTerminalShellSearchKey(event: { key: string; ctrl?: boolean; meta?: boolean }): boolean {
-  if (event.ctrl || event.meta) return false;
-  if (event.key === "escape") {
+  const input = applyWorkbenchTextPromptInput({
+    event,
+    value: terminalShellSearchDraft.peek(),
+    maxLength: 80,
+    measureText: textWidth,
+  });
+  if (input.action === "ignore") return false;
+  if (input.action === "cancel") {
     closeTerminalShellSearchModal();
     pushLog("shell search cancelled");
     return true;
   }
-  if (event.key === "backspace") {
-    terminalShellSearchDraft.value = terminalShellSearchDraft.peek().slice(0, -1);
-    refreshTerminalShellSearchModal();
-    return true;
-  }
-  if (event.key === "return") {
+  if (input.action === "submit") {
     runTerminalShellSearch();
     return true;
   }
-  if (event.key.length === 1 && textWidth(event.key) === 1) {
-    terminalShellSearchDraft.value = `${terminalShellSearchDraft.peek()}${event.key}`.slice(0, 80);
-    refreshTerminalShellSearchModal();
-    return true;
-  }
-  return false;
+  terminalShellSearchDraft.value = input.value;
+  refreshTerminalShellSearchModal();
+  return true;
 }
 
 function runTerminalShellSearch(): void {
@@ -3272,28 +3271,26 @@ function refreshWorkspaceNameModal(): void {
 }
 
 function handleWorkspaceNameKey(event: { key: string; ctrl?: boolean; meta?: boolean }): boolean {
-  if (event.ctrl || event.meta) return false;
-  if (event.key === "escape") {
+  const input = applyWorkbenchTextPromptInput({
+    event,
+    value: workspaceNameDraft.peek(),
+    maxLength: 48,
+    measureText: textWidth,
+  });
+  if (input.action === "ignore") return false;
+  if (input.action === "cancel") {
     clearWorkspaceModalState();
     modal.close();
     return true;
   }
-  if (event.key === "backspace") {
-    workspaceNameDraft.value = workspaceNameDraft.peek().slice(0, -1);
-    refreshWorkspaceNameModal();
-    return true;
-  }
-  if (event.key === "return") {
+  if (input.action === "submit") {
     if (workspaceNameMode.peek() === "rename") void renameWorkspace();
     else void saveCurrentWorkspace();
     return true;
   }
-  if (event.key.length === 1 && textWidth(event.key) === 1) {
-    workspaceNameDraft.value = `${workspaceNameDraft.peek()}${event.key}`.slice(0, 48);
-    refreshWorkspaceNameModal();
-    return true;
-  }
-  return false;
+  workspaceNameDraft.value = input.value;
+  refreshWorkspaceNameModal();
+  return true;
 }
 
 async function saveCurrentWorkspace(): Promise<void> {
