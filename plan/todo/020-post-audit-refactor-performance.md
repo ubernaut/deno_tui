@@ -267,8 +267,10 @@ performance, shared terminal/web workbench projections, and oversized module red
   benchmark so renderer diagnostics stay covered by the performance catalog.
 - Reworked workbench Three pressure-probe summaries to compute steady samples, telemetry averages, and terminal
   byte-rate averages in one pass, with a focused benchmark guard for the report path.
-- Restored the terminal workbench Three policy to blocking readback with a conservative 240-cell startup cap after live
-  probes showed deferred readback could publish a stale visible grid while reporting low renderer timings.
+- Switched workbench Three panes back to deferred readback by default and limited live render cadence to focused or
+  fullscreen Three windows, reducing blocking GPU readback and background animation pressure in the startup workbench.
+- Earlier restored the terminal workbench Three policy to blocking readback after stale-grid probes; the current policy
+  now uses deferred readback again because stale-frame and startup-grid guards are covered by focused tests.
 - Extended Three panel frame-time adaptation to the internal 120/240/480 pressure tiers so slow blocking-readback
   sessions can downshift below the user-facing 960-cell render setting without mutating saved ASCII config.
 - Split Three ASCII renderer telemetry into scene update and WebGPU render phases so probes and slow-frame diagnostics
