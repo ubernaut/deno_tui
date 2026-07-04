@@ -5,8 +5,14 @@ export interface AcerolaAsciiLuts {
   fillTexture: Texture;
 }
 
+const bitmapCache = new Map<string, Promise<ImageBitmap>>();
+
+function imageSourceUrl(source: URL | string): URL {
+  return source instanceof URL ? source : new URL(source, import.meta.url);
+}
+
 async function loadImageBytes(source: URL | string): Promise<Uint8Array> {
-  const url = source instanceof URL ? source : new URL(source, import.meta.url);
+  const url = imageSourceUrl(source);
 
   if (url.protocol === "file:" && typeof Deno !== "undefined") {
     return await Deno.readFile(url);
@@ -20,7 +26,7 @@ async function loadImageBytes(source: URL | string): Promise<Uint8Array> {
   return new Uint8Array(await response.arrayBuffer());
 }
 
-async function loadBitmap(source: URL | string): Promise<ImageBitmap> {
+async function loadBitmapUncached(source: URL): Promise<ImageBitmap> {
   const bytes = await loadImageBytes(source);
   const arrayBuffer = new ArrayBuffer(bytes.byteLength);
   new Uint8Array(arrayBuffer).set(bytes);
@@ -28,6 +34,24 @@ async function loadBitmap(source: URL | string): Promise<ImageBitmap> {
     type: "image/png",
   });
   return await createImageBitmap(blob);
+}
+
+async function loadBitmap(source: URL | string): Promise<ImageBitmap> {
+  const url = imageSourceUrl(source);
+  const key = url.href;
+  let promise = bitmapCache.get(key);
+  if (!promise) {
+    promise = loadBitmapUncached(url);
+    bitmapCache.set(key, promise);
+  }
+  try {
+    return await promise;
+  } catch (error) {
+    if (bitmapCache.get(key) === promise) {
+      bitmapCache.delete(key);
+    }
+    throw error;
+  }
 }
 
 function createMaskTexture(bitmap: ImageBitmap): Texture {
