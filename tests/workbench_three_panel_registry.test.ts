@@ -3,7 +3,7 @@ import {
   type WorkbenchThreePanelEntry,
   WorkbenchThreePanelRegistry,
 } from "../src/app/workbench_three_panel_registry.ts";
-import type { WorkbenchThreeScene } from "../app/workbench_three_scene.ts";
+import type { WorkbenchThreeScene } from "../src/app/workbench_three_scene.ts";
 import type { Rectangle } from "../src/types.ts";
 
 Deno.test("WorkbenchThreePanelRegistry lazily creates and reuses panel entries", () => {

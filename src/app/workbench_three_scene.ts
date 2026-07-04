@@ -1,8 +1,17 @@
-import type { ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
+export interface WorkbenchThreeSceneSignal {
+  x: number;
+  y: number;
+  depth: number;
+  twist: number;
+  lift: number;
+  pulse: number;
+  active: boolean;
+  pressed: boolean;
+}
 
-export interface WorkbenchThreeScene {
-  mode: ThreeSceneMode;
-  signal: ThreeSceneSignal;
+export interface WorkbenchThreeScene<TMode extends string = string> {
+  mode: TMode;
+  signal: WorkbenchThreeSceneSignal;
 }
 
 export interface WorkbenchStudioSceneInput {
@@ -28,12 +37,12 @@ export interface WorkbenchVisualizationThreeSceneInput {
   minHeight?: number;
 }
 
-export interface WorkbenchThreeSceneSignalTarget {
-  peek(): WorkbenchThreeScene | null;
-  value: WorkbenchThreeScene | null;
+export interface WorkbenchThreeSceneSignalTarget<TMode extends string = string> {
+  peek(): WorkbenchThreeScene<TMode> | null;
+  value: WorkbenchThreeScene<TMode> | null;
 }
 
-export function workbenchStudioScene(input: WorkbenchStudioSceneInput): WorkbenchThreeScene | null {
+export function workbenchStudioScene(input: WorkbenchStudioSceneInput): WorkbenchThreeScene<"studio"> | null {
   if (input.blocked || input.minimized || input.available === false) return null;
   const density = input.density / 10;
   return {
@@ -51,9 +60,9 @@ export function workbenchStudioScene(input: WorkbenchStudioSceneInput): Workbenc
   };
 }
 
-export function workbenchVisualizationThreeScene(
-  input: WorkbenchVisualizationThreeSceneInput,
-): WorkbenchThreeScene | null {
+export function workbenchVisualizationThreeScene<TMode extends string>(
+  input: Omit<WorkbenchVisualizationThreeSceneInput, "scene"> & { scene?: WorkbenchThreeScene<TMode> | null },
+): WorkbenchThreeScene<TMode> | null {
   if (
     input.blocked ||
     input.available === false ||
@@ -73,16 +82,16 @@ export function setWorkbenchThreeSceneSignal(
   return true;
 }
 
-export function sameWorkbenchThreeScene(
-  left: WorkbenchThreeScene | null,
-  right: WorkbenchThreeScene | null,
+export function sameWorkbenchThreeScene<TMode extends string>(
+  left: WorkbenchThreeScene<TMode> | null,
+  right: WorkbenchThreeScene<TMode> | null,
 ): boolean {
   if (left === right) return true;
   if (!left || !right || left.mode !== right.mode) return false;
   return sameThreeSceneSignal(left.signal, right.signal);
 }
 
-export function sameThreeSceneSignal(left: ThreeSceneSignal, right: ThreeSceneSignal): boolean {
+export function sameThreeSceneSignal(left: WorkbenchThreeSceneSignal, right: WorkbenchThreeSceneSignal): boolean {
   return left.x === right.x &&
     left.y === right.y &&
     left.depth === right.depth &&

@@ -281,9 +281,9 @@ import { WorkbenchThreeCadenceMeter } from "../src/app/workbench_three_cadence.t
 import {
   setWorkbenchThreeSceneSignal,
   workbenchStudioScene,
-  type WorkbenchThreeScene,
+  type WorkbenchThreeScene as SharedWorkbenchThreeScene,
   workbenchVisualizationThreeScene,
-} from "./workbench_three_scene.ts";
+} from "../src/app/workbench_three_scene.ts";
 import {
   threeRendererModeLabel,
   visualizationTextContentSize,
@@ -358,6 +358,7 @@ import type {
   SlotConfig,
   SourceFrame,
   SystemSnapshot,
+  ThreeSceneMode,
 } from "./types.ts";
 import {
   cpuHexGridColumnCount,
@@ -383,6 +384,7 @@ import type { ComputedLayoutBox } from "../src/layout/mod.ts";
 type BuiltInWindowId = ApiWorkbenchBuiltInWindowId;
 type VisualizationWindowId = `viz:${string}`;
 type WindowId = BuiltInWindowId | VisualizationWindowId;
+type WorkbenchThreeScene = SharedWorkbenchThreeScene<ThreeSceneMode>;
 type ControlId = ApiWorkbenchControlId;
 type HitAction =
   | { type: "menu"; index: number }

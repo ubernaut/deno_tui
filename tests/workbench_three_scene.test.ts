@@ -6,7 +6,7 @@ import {
   workbenchStudioScene,
   type WorkbenchThreeScene,
   workbenchVisualizationThreeScene,
-} from "../app/workbench_three_scene.ts";
+} from "../src/app/workbench_three_scene.ts";
 
 const signal = {
   x: 0.1,

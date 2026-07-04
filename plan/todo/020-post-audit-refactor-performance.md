@@ -1055,3 +1055,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   interface, keeping zoom/rotate behavior reusable outside the Neon/workbench demo modules.
 - Moved dynamic workbench Three panel registry ownership into `src/app` with generic nullable scene signals, reducing
   API Workbench demo-local lifecycle code while preserving hide/dispose semantics for visualization panes.
+- Moved workbench Three scene signal projection/comparison into `src/app` with structural scene mode generics, keeping
+  API Workbench-specific scene modes out of shared lifecycle helpers.
