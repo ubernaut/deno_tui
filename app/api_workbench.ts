@@ -4277,7 +4277,7 @@ function toggleVisualizationWindow(
 ): void {
   if (!option) return;
   if (isVisualizationLoaded(option.id)) {
-    closeWindow(visualizationWindowId(option.id));
+    closeWindow(workbenchVisualizationWindowId(option.id) as VisualizationWindowId);
     if (!options.keepMenuOpen) closeTopMenus();
     else topMenus.focus();
     return;
@@ -4290,7 +4290,7 @@ function addVisualizationWindow(
   options: { keepMenuOpen?: boolean; ascii?: AsciiOptions } = {},
 ): void {
   if (!option) return;
-  const id = visualizationWindowId(option.id);
+  const id = workbenchVisualizationWindowId(option.id) as VisualizationWindowId;
   if (!options.keepMenuOpen) closeTopMenus();
   if (options.ascii) setAsciiForWindow(id, options.ascii);
   else asciiForWindow(id);
@@ -4302,7 +4302,7 @@ function addVisualizationWindow(
       {
         id,
         title: option.label,
-        ...visualizationWindowMinimums(option),
+        ...workbenchWindowOptionMinimums(option),
         closable: true,
         order: windowManager.windows.peek().length,
       },
@@ -4316,12 +4316,8 @@ function addVisualizationWindow(
 }
 
 function isVisualizationLoaded(visualizationId: string): boolean {
-  const id = visualizationWindowId(visualizationId);
+  const id = workbenchVisualizationWindowId(visualizationId);
   return windowManager.ids().includes(id);
-}
-
-function visualizationWindowMinimums(option: NewWindowOption): { minWidth: number; minHeight: number } {
-  return workbenchWindowOptionMinimums(option);
 }
 
 function applyControlHit(
@@ -4608,10 +4604,6 @@ function windowIds(): WindowId[] {
 
 function isVisualizationWindow(id: WindowId): id is VisualizationWindowId {
   return isWorkbenchVisualizationWindowId(id);
-}
-
-function visualizationWindowId(visualizationId: string): VisualizationWindowId {
-  return workbenchVisualizationWindowId(visualizationId) as VisualizationWindowId;
 }
 
 function visualizationOption(visualizationId: string | undefined): NewWindowOption | undefined {
