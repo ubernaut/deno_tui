@@ -5,6 +5,7 @@ import { Signal } from "../signals/mod.ts";
 import {
   insertBoundedRanked,
   normalizeSearchText,
+  scoreSearchField,
   scoreWeightedSearchFields,
   searchTerms,
   type WeightedSearchField,
@@ -42,6 +43,13 @@ export interface CommandSearchMatch {
   item: CommandSurfaceItem;
   score: number;
   matched: string[];
+}
+
+interface CommandSearchCandidate<TAction extends Action = Action> {
+  command: Command<TAction>;
+  score: number;
+  index: number;
+  disabled: boolean;
 }
 
 /** Options for configuring command Search. */
@@ -195,10 +203,45 @@ export function searchCommandSurfaceItems<TAction extends Action = Action>(
   registry: CommandRegistry<TAction>,
   options: CommandSearchOptions = {},
 ): CommandSurfaceItem[] {
-  const matches = rankCommandSurfaceItems(commandSurfaceItems(registry, options), options.query ?? "", options);
-  const items = new Array<CommandSurfaceItem>(matches.length);
-  for (let index = 0; index < matches.length; index += 1) {
-    items[index] = matches[index]!.item;
+  const includeDisabled = options.includeDisabled ?? true;
+  const includeBindingsInKeywords = options.includeBindingsInKeywords ?? true;
+  const terms = searchTerms(options.query ?? "");
+  const limit = options.limit === undefined ? undefined : Math.max(0, Math.floor(options.limit));
+  if (limit === 0) return [];
+
+  const commands = registry.list(options.group);
+  const ranked: Array<CommandSearchCandidate<TAction>> = [];
+  const normalizedFields: string[] = [];
+  const fieldWeights: number[] = [];
+  for (let index = 0; index < commands.length; index += 1) {
+    const command = commands[index]!;
+    const enabled = registry.enabled(command);
+    if (!includeDisabled && !enabled) continue;
+    const score = terms.length === 0 ? enabled ? 0 : -1 : scoreCommandForSurfaceSearch(
+      command,
+      terms,
+      includeBindingsInKeywords,
+      !enabled,
+      normalizedFields,
+      fieldWeights,
+    );
+    if (score === undefined) continue;
+    const candidate = { command, score, index, disabled: !enabled };
+    if (limit === undefined) {
+      ranked.push(candidate);
+    } else {
+      insertBoundedRanked(ranked, candidate, limit, compareCommandSearchCandidates);
+    }
+  }
+
+  if (limit === undefined) {
+    ranked.sort(compareCommandSearchCandidates);
+  }
+  const count = limit === undefined ? ranked.length : Math.min(limit, ranked.length);
+  const items = new Array<CommandSurfaceItem>(count);
+  for (let index = 0; index < count; index += 1) {
+    const candidate = ranked[index]!;
+    items[index] = commandSurfaceItemFromCommand(candidate.command, !candidate.disabled, includeBindingsInKeywords);
   }
   return items;
 }
@@ -421,6 +464,74 @@ function commandKeywords<TAction extends Action = Action>(
   return keywords;
 }
 
+function commandSurfaceItemFromCommand<TAction extends Action = Action>(
+  command: Command<TAction>,
+  enabled: boolean,
+  includeBindingsInKeywords: boolean,
+): CommandSurfaceItem {
+  return {
+    id: command.id,
+    label: command.label,
+    keywords: commandKeywords(command, includeBindingsInKeywords),
+    disabled: !enabled,
+  };
+}
+
+function scoreCommandForSurfaceSearch<TAction extends Action = Action>(
+  command: Command<TAction>,
+  terms: readonly string[],
+  includeBinding: boolean,
+  disabled: boolean,
+  normalizedFields: string[],
+  fieldWeights: number[],
+): number | undefined {
+  let fieldCount = 0;
+  fieldCount = writeCommandSearchField(normalizedFields, fieldWeights, fieldCount, command.label, 100);
+  fieldCount = writeCommandSearchField(normalizedFields, fieldWeights, fieldCount, command.id, 80);
+  if (command.group) {
+    fieldCount = writeCommandSearchField(normalizedFields, fieldWeights, fieldCount, command.group, 40);
+  }
+  if (command.description) {
+    fieldCount = writeCommandSearchField(normalizedFields, fieldWeights, fieldCount, command.description, 40);
+  }
+  if (command.keywords) {
+    for (let index = 0; index < command.keywords.length; index += 1) {
+      const keyword = command.keywords[index];
+      if (keyword) fieldCount = writeCommandSearchField(normalizedFields, fieldWeights, fieldCount, keyword, 40);
+    }
+  }
+  if (includeBinding && command.binding) {
+    fieldCount = writeCommandSearchField(normalizedFields, fieldWeights, fieldCount, bindingId(command.binding), 40);
+  }
+  normalizedFields.length = fieldCount;
+  fieldWeights.length = fieldCount;
+
+  let score = disabled ? -10 : 0;
+  for (let termIndex = 0; termIndex < terms.length; termIndex += 1) {
+    const term = terms[termIndex]!;
+    let best = 0;
+    for (let fieldIndex = 0; fieldIndex < fieldCount; fieldIndex += 1) {
+      const fieldScore = scoreSearchField(normalizedFields[fieldIndex]!, term, fieldWeights[fieldIndex]!);
+      if (fieldScore > best) best = fieldScore;
+    }
+    if (best <= 0) return undefined;
+    score += best;
+  }
+  return score;
+}
+
+function writeCommandSearchField(
+  normalizedFields: string[],
+  fieldWeights: number[],
+  index: number,
+  value: string,
+  weight: number,
+): number {
+  normalizedFields[index] = normalizeSearchText(value);
+  fieldWeights[index] = weight;
+  return index + 1;
+}
+
 function scoreCommandSurfaceItem(
   item: CommandSurfaceItem,
   terms: readonly string[],
@@ -448,6 +559,16 @@ function compareCommandSearchMatches(
   return right.score - left.score ||
     Number(left.item.disabled) - Number(right.item.disabled) ||
     left.item.label.localeCompare(right.item.label) ||
+    left.index - right.index;
+}
+
+function compareCommandSearchCandidates<TAction extends Action = Action>(
+  left: CommandSearchCandidate<TAction>,
+  right: CommandSearchCandidate<TAction>,
+): number {
+  return right.score - left.score ||
+    Number(left.disabled) - Number(right.disabled) ||
+    left.command.label.localeCompare(right.command.label) ||
     left.index - right.index;
 }
 
