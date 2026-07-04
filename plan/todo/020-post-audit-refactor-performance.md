@@ -456,3 +456,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   while separating performance downshift/recovery tuning from the frame lifecycle implementation.
 - Moved Three panel render-size capping and Kitty/ASCII frame policy into a focused tested module, keeping graphics
   transport decisions separate from the frame lifecycle implementation while preserving compatibility re-exports.
+- Extracted Three ASCII renderer option, render-size, and terminal-edge-bias normalization into a focused tested module,
+  reducing duplicate clamps in the renderer constructor and mutators without changing benchmarked frame paths.

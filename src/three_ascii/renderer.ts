@@ -42,6 +42,12 @@ import {
   ThreeAsciiReadbackViewCache,
 } from "./readback.ts";
 import {
+  normalizeThreeAsciiRendererOptions,
+  normalizeThreeAsciiRenderSize,
+  normalizeThreeAsciiTerminalEdgeBias,
+  type ThreeAsciiReadbackStrategy,
+} from "./renderer_options.ts";
+import {
   THREE_ASCII_COLOR_SHADER,
   THREE_ASCII_EDGE_SHADER,
   THREE_ASCII_FILL_SHADER,
@@ -52,9 +58,6 @@ import {
 import { THREE_ASCII_UNIFORM_FLOAT_COUNT, writeThreeAsciiUniformValues } from "./uniforms.ts";
 import { getCompatibleWebGPUDevice } from "./webgpu_compat.ts";
 
-const DEFAULT_PIXEL_ASPECT_RATIO = 0.5;
-const DEFAULT_TERMINAL_EDGE_BIAS = 1;
-const DEFAULT_DEFERRED_READBACK_SLOTS = 6;
 const GPU_MAP_READ = 1;
 
 type ThreeBackendRenderer = WebGPURenderer & {
@@ -77,8 +80,6 @@ export interface ThreeAsciiRendererOptions {
   deferredReadbackSlots?: number;
   effect?: AcerolaAsciiNodeOptions;
 }
-
-type ThreeAsciiReadbackStrategy = NonNullable<ThreeAsciiRendererOptions["readbackStrategy"]>;
 
 /** Raw image frame emitted by the Acerola three Ascii renderer. */
 export interface ThreeAsciiImageFrame {
@@ -175,18 +176,19 @@ export class ThreeAsciiRenderer {
   private gridRevision = 0;
 
   constructor(options: ThreeAsciiRendererOptions) {
+    const normalized = normalizeThreeAsciiRendererOptions(options);
     this.scene = options.scene;
     this.camera = options.camera;
-    this.columns = Math.max(1, Math.floor(options.columns));
-    this.rows = Math.max(1, Math.floor(options.rows));
-    this.pixelAspectRatio = options.pixelAspectRatio ?? DEFAULT_PIXEL_ASPECT_RATIO;
+    this.columns = normalized.columns;
+    this.rows = normalized.rows;
+    this.pixelAspectRatio = normalized.pixelAspectRatio;
     this.effectOptions = { ...options.effect };
-    this.terminalEdgeBias = Math.max(0.5, options.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS);
-    this.terminalGlyphStyle = options.terminalGlyphStyle ?? "blocks";
-    this.readbackStrategy = options.readbackStrategy ?? "blocking";
+    this.terminalEdgeBias = normalized.terminalEdgeBias;
+    this.terminalGlyphStyle = normalized.terminalGlyphStyle;
+    this.readbackStrategy = normalized.readbackStrategy;
     this.deferredReadbacks = new ThreeAsciiDeferredReadbackQueue<GPUBuffer>({
       mapModeRead: GPU_MAP_READ,
-      slotCount: options.deferredReadbackSlots ?? DEFAULT_DEFERRED_READBACK_SLOTS,
+      slotCount: normalized.deferredReadbackSlots,
     });
     this.canvas = new HeadlessCanvas(1, 1);
   }
@@ -197,15 +199,14 @@ export class ThreeAsciiRenderer {
   }
 
   setSize(columns: number, rows: number): void {
-    const nextColumns = Math.max(1, Math.floor(columns));
-    const nextRows = Math.max(1, Math.floor(rows));
+    const next = normalizeThreeAsciiRenderSize(columns, rows);
 
-    if (this.columns === nextColumns && this.rows === nextRows) {
+    if (this.columns === next.columns && this.rows === next.rows) {
       return;
     }
 
-    this.columns = nextColumns;
-    this.rows = nextRows;
+    this.columns = next.columns;
+    this.rows = next.rows;
     this.sizeDirty = true;
     this.computeDirty = true;
     this.uniformDirty = true;
@@ -224,7 +225,7 @@ export class ThreeAsciiRenderer {
   }
 
   setTerminalEdgeBias(value: number): void {
-    const next = Math.max(0.5, value);
+    const next = normalizeThreeAsciiTerminalEdgeBias(value);
     if (this.terminalEdgeBias === next) return;
     this.terminalEdgeBias = next;
     this.uniformDirty = true;
