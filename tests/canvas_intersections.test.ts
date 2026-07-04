@@ -1,6 +1,7 @@
 import { assertEquals } from "./deps.ts";
 import { Canvas, MemoryCanvasSink } from "../src/canvas/mod.ts";
 import { BoxObject } from "../src/canvas/box.ts";
+import { DrawObjectSpatialIndex } from "../src/canvas/spatial_index.ts";
 import { TextObject, type TextRectangle } from "../src/canvas/text.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { assertTerminalSnapshot, canvasRowText, canvasSnapshot, createTestCanvas } from "../src/testing/mod.ts";
@@ -347,6 +348,33 @@ Deno.test("canvas restores scrolled viewport content after modal overlay closes"
   assertEquals(canvasRowText(canvas, 1, 16), "GAMMA           ");
   assertEquals(canvasRowText(canvas, 2, 16), "DELTA           ");
   assertEquals(canvas.inspectRender().intersectionsDirty, true);
+});
+
+Deno.test("DrawObjectSpatialIndex reset reuses row storage without reporting inactive rows", () => {
+  const canvas = createTestCanvas({ size: { columns: 10, rows: 5 } });
+  const first = new BoxObject({
+    canvas,
+    rectangle: { column: 0, row: 1, width: 4, height: 2 },
+    style: (text: string) => text,
+    zIndex: 1,
+  });
+  const second = new BoxObject({
+    canvas,
+    rectangle: { column: 6, row: 4, width: 2, height: 1 },
+    style: (text: string) => text,
+    zIndex: 2,
+  });
+  const index = DrawObjectSpatialIndex.fromObjects([first, second]);
+
+  assertEquals(index.inspect(), { objects: 2, rows: 3, rowEntries: 3 });
+
+  index.resetFromObjects([second]);
+
+  assertEquals(index.inspect(), { objects: 1, rows: 1, rowEntries: 1 });
+
+  index.clear();
+
+  assertEquals(index.inspect(), { objects: 0, rows: 0, rowEntries: 0 });
 });
 
 function runInvalidationScenario(canvas: Canvas): void {

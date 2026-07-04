@@ -23,13 +23,18 @@ export class DrawObjectSpatialIndex {
   readonly #objects = new Set<DrawObject>();
   readonly #querySeen = new Set<DrawObject>();
   #rowEntries = 0;
+  #activeRows = 0;
 
   static fromObjects(objects: Iterable<DrawObject>): DrawObjectSpatialIndex {
     const index = new DrawObjectSpatialIndex();
-    for (const object of objects) {
-      index.add(object);
-    }
-    return index;
+    return index.resetFromObjects(objects);
+  }
+
+  /** Clears and rebuilds this index from a current draw-object collection. */
+  resetFromObjects(objects: Iterable<DrawObject>): DrawObjectSpatialIndex {
+    this.clearRetainingRows();
+    for (const object of objects) this.add(object);
+    return this;
   }
 
   add(object: DrawObject): void {
@@ -45,9 +50,11 @@ export class DrawObjectSpatialIndex {
     for (let row = startRow; row < endRow; row += 1) {
       const rowObjects = this.#rows.get(row);
       if (rowObjects) {
+        if (rowObjects.length === 0) this.#activeRows += 1;
         rowObjects.push(object);
       } else {
         this.#rows.set(row, [object]);
+        this.#activeRows += 1;
       }
       this.#rowEntries += 1;
     }
@@ -111,8 +118,24 @@ export class DrawObjectSpatialIndex {
   inspect(): DrawObjectSpatialIndexStats {
     return {
       objects: this.#objects.size,
-      rows: this.#rows.size,
+      rows: this.#activeRows,
       rowEntries: this.#rowEntries,
     };
+  }
+
+  clear(): void {
+    this.#rows.clear();
+    this.#objects.clear();
+    this.#querySeen.clear();
+    this.#rowEntries = 0;
+    this.#activeRows = 0;
+  }
+
+  private clearRetainingRows(): void {
+    for (const rowObjects of this.#rows.values()) rowObjects.length = 0;
+    this.#objects.clear();
+    this.#querySeen.clear();
+    this.#rowEntries = 0;
+    this.#activeRows = 0;
   }
 }
