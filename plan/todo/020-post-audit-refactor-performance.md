@@ -191,6 +191,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   duplicate probe-local math.
 - Added sustained byte-rate context to workbench Three pressure change logs so adaptive downshifts show the same signal
   used by the policy.
+- Lowered the workbench Three sustained terminal byte-rate pressure threshold to make the default block renderer back
+  off from 480 to 240 cells after measured ~104KB/s output repeats on slower terminal sessions.
 - Stabilized default Three ASCII block rendering by using ASCII-safe shared window controls and removing fog from the
   default block preset so truecolor block cells keep source color depth.
 - Extracted the workbench Three ASCII config modal geometry into a tested internal layout helper, reducing inline modal

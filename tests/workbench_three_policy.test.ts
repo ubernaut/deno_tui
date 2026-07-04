@@ -7,6 +7,10 @@ import {
   WORKBENCH_THREE_PRESSURE_LEVELS,
   WORKBENCH_THREE_READBACK_STRATEGY,
 } from "../app/workbench_three_policy.ts";
+import {
+  createWorkbenchThreeTerminalPressureState,
+  resolveWorkbenchThreeTerminalPressureBudget,
+} from "../src/app/workbench_three_terminal_pressure.ts";
 
 Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
   assertEquals(Array.from(new Set(WORKBENCH_THREE_PRESSURE_LEVELS)).sort((left, right) => left - right), [
@@ -18,7 +22,7 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
   assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 480);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 240_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 96_000);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 120_000);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 90_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerGrid, 18_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highFrameThreshold, 2);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowFrameThreshold, 180);
@@ -34,4 +38,23 @@ Deno.test("API workbench Three policy keeps live panes faster than idle panes", 
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: true }), 1000 / 10);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(240, { live: false }), 1000 / 8);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: false }), 1000 / 5);
+});
+
+Deno.test("API workbench Three policy backs off measured default block output", () => {
+  const state = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_INITIAL_CELLS);
+  const sample = {
+    ...API_WORKBENCH_THREE_PRESSURE_POLICY,
+    renderedThreeGrids: 1,
+    bytes: 4_353,
+    durationMs: 0.05,
+    sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
+  };
+
+  Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
+  assertEquals(state.currentCells, WORKBENCH_THREE_INITIAL_CELLS);
+  assertEquals(state.highFrames, 1);
+
+  Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
+  assertEquals(state.currentCells, 240);
+  assertEquals(state.highFrames, 0);
 });
