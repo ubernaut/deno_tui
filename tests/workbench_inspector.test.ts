@@ -4,7 +4,7 @@ import {
   workbenchInspectorRowsInto,
   type WorkbenchInspectorTheme,
 } from "../app/workbench_inspector.ts";
-import type { RowStyle } from "../app/workbench_rows.ts";
+import type { RowStyle } from "../src/app/workbench_rows.ts";
 
 const theme: WorkbenchInspectorTheme = {
   background: "#000000",

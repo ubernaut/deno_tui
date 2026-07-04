@@ -16,7 +16,7 @@ import {
   type WorkbenchVisualizationRowsTheme,
   type WorkbenchVisualizationWindowOption,
 } from "../app/workbench_visualization_window.ts";
-import type { RowStyle } from "../app/workbench_rows.ts";
+import type { RowStyle } from "../src/app/workbench_rows.ts";
 import type { PanelRender } from "../app/types.ts";
 
 const option: WorkbenchVisualizationWindowOption = {

@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import type { RowStyle } from "./workbench_rows.ts";
+import type { RowStyle } from "../src/app/workbench_rows.ts";
 
 /** Minimal theme tokens needed by the API workbench logs panel. */
 export interface WorkbenchLogsTheme {

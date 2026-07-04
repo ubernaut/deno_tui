@@ -1,6 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TreeRow } from "../src/components/tree.ts";
-import type { RowStyle } from "./workbench_rows.ts";
+import type { RowStyle } from "../src/app/workbench_rows.ts";
 
 /** Minimal theme tokens needed by the API workbench explorer panel. */
 export interface WorkbenchExplorerTheme {

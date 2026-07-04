@@ -325,9 +325,12 @@ import {
   type WorkbenchFrameRenderCommand,
   workbenchFrameRenderCommandsInto,
 } from "../src/app/workbench_frame_render.ts";
-import { type WorkbenchStyledRowRenderCommand, workbenchStyledRowsRenderCommandsInto } from "./workbench_row_render.ts";
-import { type RowStyle, type ThreeHeaderPerformance, threeHeaderRows } from "./workbench_rows.ts";
-import { writeThreeHeaderPerformance } from "./workbench_three_header.ts";
+import {
+  type WorkbenchStyledRowRenderCommand,
+  workbenchStyledRowsRenderCommandsInto,
+} from "../src/app/workbench_row_render.ts";
+import { type RowStyle, type ThreeHeaderPerformance, threeHeaderRows } from "../src/app/workbench_rows.ts";
+import { writeThreeHeaderPerformance } from "../src/app/workbench_three_header.ts";
 import {
   shouldCountWorkbenchThreeGridPressure,
   workbenchThreeShouldUseLiveCadence,

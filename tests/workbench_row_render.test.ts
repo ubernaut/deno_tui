@@ -1,6 +1,6 @@
 import { assertEquals } from "./deps.ts";
-import { workbenchStyledRowsRenderCommandsInto } from "../app/workbench_row_render.ts";
-import type { RowStyle } from "../app/workbench_rows.ts";
+import { workbenchStyledRowsRenderCommandsInto } from "../src/app/workbench_row_render.ts";
+import type { RowStyle } from "../src/app/workbench_rows.ts";
 
 const theme = { text: "#eee", surface: "#111" };
 const fit = (text: string, width: number) => text.slice(0, Math.max(0, width)).padEnd(Math.max(0, width));

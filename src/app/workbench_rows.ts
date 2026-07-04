@@ -1,6 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { compactSpaces, wrapPlainText } from "../src/app/workbench_text.ts";
-import { textWidth } from "../src/utils/strings.ts";
+import { textWidth } from "../utils/strings.ts";
+import { compactSpaces, wrapPlainText } from "./workbench_text.ts";
 import { type ThreeHeaderPerformance, threeHeaderPerformanceText } from "./workbench_three_header.ts";
 
 export type { ThreeHeaderPerformance } from "./workbench_three_header.ts";

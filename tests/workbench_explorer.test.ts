@@ -1,6 +1,6 @@
 import { assertEquals } from "./deps.ts";
 import { workbenchExplorerRowsInto, type WorkbenchExplorerTheme } from "../app/workbench_explorer.ts";
-import type { RowStyle } from "../app/workbench_rows.ts";
+import type { RowStyle } from "../src/app/workbench_rows.ts";
 import type { FileExplorerNode } from "../src/components/file_explorer.ts";
 import type { TreeRow } from "../src/components/tree.ts";
 

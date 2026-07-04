@@ -1,6 +1,6 @@
 import { assertEquals } from "./deps.ts";
 import { workbenchLogRowsFromSourcesInto, workbenchLogRowsInto } from "../app/workbench_logs.ts";
-import type { RowStyle } from "../app/workbench_rows.ts";
+import type { RowStyle } from "../src/app/workbench_rows.ts";
 
 Deno.test("workbench log rows project docs into themed rows", () => {
   const rows = workbenchLogRowsInto([], ["one", "two"], { text: "#eee", surface: "#111" });

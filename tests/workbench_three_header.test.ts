@@ -3,7 +3,7 @@ import {
   type ThreeHeaderPerformance,
   threeHeaderPerformanceText,
   writeThreeHeaderPerformance,
-} from "../app/workbench_three_header.ts";
+} from "../src/app/workbench_three_header.ts";
 
 Deno.test("threeHeaderPerformanceText formats detailed target measured queue and pressure telemetry", () => {
   assertEquals(

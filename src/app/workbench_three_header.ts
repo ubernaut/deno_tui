@@ -1,4 +1,4 @@
-import type { ThreeAsciiRendererPerformance } from "../src/three_ascii/renderer.ts";
+import type { ThreeAsciiRendererPerformance } from "../three_ascii/renderer.ts";
 
 export interface ThreeHeaderPerformance {
   totalMs: number;

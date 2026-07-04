@@ -184,8 +184,8 @@ import {
 import {
   type WorkbenchStyledRowRenderCommand,
   workbenchStyledRowsRenderCommandsInto,
-} from "../../app/workbench_row_render.ts";
-import type { RowStyle } from "../../app/workbench_rows.ts";
+} from "../../src/app/workbench_row_render.ts";
+import type { RowStyle } from "../../src/app/workbench_rows.ts";
 import { workbenchThreePreviewRowsInto } from "../../app/workbench_visualization_window.ts";
 import {
   type WorkbenchMobileCommandAction,

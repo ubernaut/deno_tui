@@ -6,7 +6,7 @@ import {
   renderDataTableHeader,
   renderDataTableRowsInto,
 } from "../src/components/data_table.ts";
-import { dataFooterRows, type RowStyle, type WorkbenchRowTheme } from "./workbench_rows.ts";
+import { dataFooterRows, type RowStyle, type WorkbenchRowTheme } from "../src/app/workbench_rows.ts";
 
 /** Minimal theme tokens needed by the API workbench data-table panel. */
 export interface WorkbenchDataTableTheme extends WorkbenchRowTheme {

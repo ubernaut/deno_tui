@@ -5,7 +5,7 @@ import {
   workbenchDataTableRowsInto,
   type WorkbenchDataTableTheme,
 } from "../app/workbench_data_table.ts";
-import type { RowStyle } from "../app/workbench_rows.ts";
+import type { RowStyle } from "../src/app/workbench_rows.ts";
 import type { DataColumn, DataTableView } from "../src/components/data_table.ts";
 
 interface Row extends Record<string, unknown> {

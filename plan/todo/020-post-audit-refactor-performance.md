@@ -1018,3 +1018,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   rename/delete tests.
 - Moved the renderer-neutral workbench frame render-command projector into `src/app` and exported it through the
   workbench facade, so terminal, browser, and benchmark frame chrome all share the same tested module path.
+- Moved shared workbench row projection, styled-row command rendering, and Three header telemetry formatting into
+  `src/app`, keeping data table footers, Three headers, terminal rows, browser rows, and benchmarks on the same tested
+  facade exports.

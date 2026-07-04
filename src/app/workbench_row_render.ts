@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import type { Rectangle } from "../src/types.ts";
+import type { Rectangle } from "../types.ts";
 import type { RowStyle } from "./workbench_rows.ts";
 
 export interface WorkbenchStyledRowRenderTheme {

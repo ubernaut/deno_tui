@@ -1,6 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { assertEquals } from "./deps.ts";
-import { dataFooterRows, threeHeaderRows, type WorkbenchRowTheme } from "../app/workbench_rows.ts";
+import { dataFooterRows, threeHeaderRows, type WorkbenchRowTheme } from "../src/app/workbench_rows.ts";
 
 const theme: WorkbenchRowTheme = {
   buttonActiveText: "#101010",
