@@ -143,18 +143,18 @@ export class ApiWorkbenchThreeRuntimeController {
     this.#pressure.currentCells = change.pressure.currentCells;
     this.#pressure.highFrames = change.pressure.highFrames;
     this.#pressure.lowFrames = change.pressure.lowFrames;
-    this.#lastPressureInspection = {
-      ...change.pressure,
-      lastBytes: Math.max(0, Math.floor(stats.bytes)),
-      lastByteRate: workbenchThreeTerminalBytesPerSecond({
-        bytes: stats.bytes,
-        sampleDurationMs: this.frameInterval.peek(),
-      }),
-      lastChangedRows: Math.max(0, Math.floor(stats.changed)),
-      lastRenderedGrids: Math.max(0, Math.floor(sample.renderedThreeGrids)),
-      lastRenderedRows: Math.max(0, Math.floor(sample.renderedThreeRows)),
-      lastScoped: change.scoped,
-    };
+    this.#lastPressureInspection.currentCells = change.pressure.currentCells;
+    this.#lastPressureInspection.highFrames = change.pressure.highFrames;
+    this.#lastPressureInspection.lowFrames = change.pressure.lowFrames;
+    this.#lastPressureInspection.lastBytes = Math.max(0, Math.floor(stats.bytes));
+    this.#lastPressureInspection.lastByteRate = workbenchThreeTerminalBytesPerSecond({
+      bytes: stats.bytes,
+      sampleDurationMs: this.frameInterval.peek(),
+    });
+    this.#lastPressureInspection.lastChangedRows = Math.max(0, Math.floor(stats.changed));
+    this.#lastPressureInspection.lastRenderedGrids = Math.max(0, Math.floor(sample.renderedThreeGrids));
+    this.#lastPressureInspection.lastRenderedRows = Math.max(0, Math.floor(sample.renderedThreeRows));
+    this.#lastPressureInspection.lastScoped = change.scoped;
     if (!change.changed) return;
 
     this.liveMaxCells.value = change.nextCells;
@@ -168,6 +168,10 @@ export class ApiWorkbenchThreeRuntimeController {
 
   inspectPressureDetails(): ApiWorkbenchThreePressureInspection {
     return { ...this.#lastPressureInspection };
+  }
+
+  inspectPressureDetailsInto(target: ApiWorkbenchThreePressureInspection): ApiWorkbenchThreePressureInspection {
+    return writePressureInspection(target, this.#lastPressureInspection);
   }
 
   dispose(): void {
@@ -197,4 +201,20 @@ function emptyPressureInspection(
     lastRenderedRows: 0,
     lastScoped: false,
   };
+}
+
+function writePressureInspection(
+  target: ApiWorkbenchThreePressureInspection,
+  source: ApiWorkbenchThreePressureInspection,
+): ApiWorkbenchThreePressureInspection {
+  target.currentCells = source.currentCells;
+  target.highFrames = source.highFrames;
+  target.lowFrames = source.lowFrames;
+  target.lastBytes = source.lastBytes;
+  target.lastByteRate = source.lastByteRate;
+  target.lastChangedRows = source.lastChangedRows;
+  target.lastRenderedGrids = source.lastRenderedGrids;
+  target.lastRenderedRows = source.lastRenderedRows;
+  target.lastScoped = source.lastScoped;
+  return target;
 }

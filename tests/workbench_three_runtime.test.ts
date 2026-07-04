@@ -1,4 +1,4 @@
-import { assertEquals, assertStringIncludes } from "./deps.ts";
+import { assertEquals, assertStrictEquals, assertStringIncludes } from "./deps.ts";
 import {
   ApiWorkbenchThreeRuntimeController,
   resolveApiWorkbenchThreePressureChange,
@@ -140,6 +140,35 @@ Deno.test("ApiWorkbenchThreeRuntimeController exposes last pressure diagnostics"
   );
 
   assertEquals(controller.inspectPressureDetails(), {
+    currentCells: 30,
+    highFrames: 0,
+    lowFrames: 0,
+    lastBytes: 2_000,
+    lastByteRate: 40_000,
+    lastChangedRows: 4,
+    lastRenderedGrids: 1,
+    lastRenderedRows: 4,
+    lastScoped: true,
+  });
+
+  controller.dispose();
+});
+
+Deno.test("ApiWorkbenchThreeRuntimeController can reuse pressure inspection targets", () => {
+  const controller = new ApiWorkbenchThreeRuntimeController({
+    hasLiveThreeWindow: () => true,
+  });
+  const target = controller.inspectPressureDetails();
+
+  controller.updatePressure(
+    { changed: 4, bytes: 2_000, durationMs: 0.1 },
+    { renderedThreeGrids: 1, renderedThreeRows: 4 },
+  );
+
+  const result = controller.inspectPressureDetailsInto(target);
+
+  assertStrictEquals(result, target);
+  assertEquals(target, {
     currentCells: 30,
     highFrames: 0,
     lowFrames: 0,

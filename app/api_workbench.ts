@@ -330,7 +330,10 @@ import {
 } from "./workbench_three_policy.ts";
 import { type WorkbenchThreePanelEntry, WorkbenchThreePanelRegistry } from "./workbench_three_panel_registry.ts";
 import { WorkbenchThreeViewportInteractionController } from "./workbench_three_interaction.ts";
-import { ApiWorkbenchThreeRuntimeController } from "./workbench_three_runtime.ts";
+import {
+  ApiWorkbenchThreeRuntimeController,
+  type ApiWorkbenchThreePressureInspection,
+} from "./workbench_three_runtime.ts";
 import type {
   Accent,
   AsciiOptions,
@@ -647,6 +650,7 @@ const workbenchThreeRuntime = new ApiWorkbenchThreeRuntimeController({
 });
 const workbenchThreeLiveMaxCells = workbenchThreeRuntime.liveMaxCells;
 const workbenchThreeFrameInterval = workbenchThreeRuntime.frameInterval;
+const workbenchThreePressureDetails: ApiWorkbenchThreePressureInspection = workbenchThreeRuntime.inspectPressureDetails();
 let dropdownOverlay: DropdownOverlay | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
 let workspacePlacementContext: WorkspacePlacementContext | null = null;
@@ -1402,7 +1406,7 @@ function renderThree(frame: Frame, rect: Rectangle): void {
   const mode = threeRendererModeLabel(ascii.peek()).toUpperCase();
   if (threeAsciiAvailable.peek()) {
     const performance = threePanel.inspectPerformance();
-    const pressure = workbenchThreeRuntime.inspectPressureDetails();
+    const pressure = workbenchThreeRuntime.inspectPressureDetailsInto(workbenchThreePressureDetails);
     writeRows(
       frame,
       rect,

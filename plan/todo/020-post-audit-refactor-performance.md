@@ -861,3 +861,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   benchmarked `workbench-three-header-telemetry` path.
 - Specialized the extracted Three telemetry formatter for its ASCII-only output so width checks use direct string length
   instead of the general Unicode text-width helper; focused formatter tests and the header telemetry benchmark passed.
+- Added a caller-owned workbench Three pressure inspection path and routed the API workbench Three header through it,
+  avoiding a render-loop allocation while keeping the snapshot API intact. Runtime tests, type checks, the full
+  `api-workbench-frame` benchmark, and the header telemetry benchmark passed.
