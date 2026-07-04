@@ -42,6 +42,7 @@ import {
   WindowManagerController,
   WorkbenchAnsiScreenPainter,
   type WorkbenchFrame,
+  type WorkbenchFrameBoxLine,
   workbenchTerminalCopyRowsInto,
   workbenchVisibleWindowRectsInto,
   wrapTextBoxLinesInto,
@@ -53,6 +54,7 @@ import { AudioRegistry } from "../app/audio.ts";
 import { createHtmlCssLayoutDemo } from "../app/html_css_layout_demo.ts";
 import { resolveSourceFramesInto } from "../app/sources.ts";
 import { type ThreeHeaderPerformance, threeHeaderRows, type WorkbenchRowTheme } from "../app/workbench_rows.ts";
+import { type WorkbenchFrameRenderCommand, workbenchFrameRenderCommandsInto } from "../app/workbench_frame_render.ts";
 import { currentWorkspaceVisualizationIdsInto, currentWorkspaceWindowsInto } from "../app/workbench_workspace_menu.ts";
 import {
   type ChangedSpan,
@@ -247,6 +249,16 @@ const workbenchCellBlitSourceFrame: WorkbenchFrame = [];
 const workbenchCellBlitTargetFrame: WorkbenchFrame = [];
 const workbenchFrameRows = 54;
 const workbenchFrameWidth = 168;
+const workbenchFrameRenderTheme = {
+  background: "#09040f",
+  panel: "#1a1027",
+  panelSoft: "#2f1b44",
+  border: "#6d4a8b",
+  borderStrong: "#9b78c8",
+  accent: "#9cff4f",
+};
+const workbenchFrameRenderLines: WorkbenchFrameBoxLine[] = [];
+const workbenchFrameRenderCommands: WorkbenchFrameRenderCommand[] = [];
 const workbenchSpanPrevious = Array.from({ length: workbenchFrameWidth }, (_, index) => `cell-${index % 17}`);
 const workbenchSpanNext = workbenchSpanPrevious.slice();
 const workbenchSpanSpans: ChangedSpan[] = [];
@@ -843,6 +855,36 @@ function runWorkbenchStringFrameFullRowWorkload(): void {
   workbenchFrameChecksum = (workbenchFrameChecksum + total) % 1_000_000;
   if (!Number.isFinite(workbenchFrameChecksum)) {
     throw new Error("workbench string frame checksum failed");
+  }
+}
+
+function runWorkbenchFrameRenderCommandWorkload(): void {
+  let checksum = 0;
+  for (let index = 0; index < 96; index += 1) {
+    const width = 28 + (index % 8) * 9;
+    const height = 6 + (index % 5);
+    const commands = workbenchFrameRenderCommandsInto(workbenchFrameRenderCommands, workbenchFrameRenderLines, {
+      rect: {
+        column: (index % 4) * 3,
+        row: index % 7,
+        width,
+        height,
+      },
+      title: `Panel ${index % 11}`,
+      active: index % 3 === 0,
+      theme: workbenchFrameRenderTheme,
+    });
+    checksum += commands.length;
+    for (let commandIndex = 0; commandIndex < commands.length; commandIndex += 1) {
+      const command = commands[commandIndex]!;
+      checksum += command.kind === "fill"
+        ? command.rect.width + command.rect.height + command.bg.length
+        : command.row + command.column + command.text.length + (command.style.bold ? 1 : 0);
+    }
+  }
+  workbenchFrameChecksum = (workbenchFrameChecksum + checksum) % 1_000_000;
+  if (checksum <= 0 || !Number.isFinite(workbenchFrameChecksum)) {
+    throw new Error("workbench frame render command workload failed");
   }
 }
 
@@ -1483,6 +1525,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 500,
     maxAverageMs: 5,
     run: runWorkbenchStringFrameFullRowWorkload,
+  },
+  {
+    name: "render/workbench-frame-render-commands-96",
+    category: "render",
+    description: "Project themed workbench frame fill, border, and title commands with caller-owned buffers.",
+    tags: ["render", "workbench", "frame", "projection"],
+    iterations: 2_000,
+    maxAverageMs: 1,
+    run: runWorkbenchFrameRenderCommandWorkload,
   },
   {
     name: "render/workbench-line-signal-diff-168x54",

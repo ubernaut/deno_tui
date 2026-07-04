@@ -937,4 +937,4 @@ performance, shared terminal/web workbench projections, and oversized module red
   tiers for slow terminals.
 - Extracted themed workbench frame fill/title/border rendering into renderer-neutral commands and routed both terminal
   and browser API workbench frame drawing through the shared projection. Focused frame/titlebar tests, terminal/web type
-  checks, and the `api-workbench-frame` benchmark passed.
+  checks, the direct `workbench-frame-render-commands-96` guard, and the `api-workbench-frame` benchmark passed.
