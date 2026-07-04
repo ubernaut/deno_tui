@@ -274,6 +274,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   close/add ids are tested outside the terminal workbench app.
 - Routed terminal workbench forward/backward focus cycling through the shared window manager controller and added direct
   wraparound coverage so the app no longer reimplements open-window traversal.
+- Extracted standard workbench window action log formatting into the shared controller module and routed terminal
+  focus/minimize/maximize/tab wrappers through one sync-and-log helper.
 - Retuned the default workbench Three ASCII pressure policy for slow terminal links: the default pane now starts at the
   120-cell emergency tier, 240-cell animated output downshifts on sustained byte rates above roughly 35KB/s, and low
   byte-rate recovery remains conservative so SSH/tmux sessions do not immediately climb back into expensive output.

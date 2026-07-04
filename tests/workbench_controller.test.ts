@@ -3,6 +3,7 @@ import {
   applyWorkbenchWindowSignalState,
   inspectWorkbenchWindowSignalState,
   WorkbenchController,
+  workbenchWindowActionLog,
 } from "../src/app/workbench/controller.ts";
 
 Deno.test("WorkbenchController coordinates menus and window state", () => {
@@ -77,6 +78,14 @@ Deno.test("WorkbenchController cycles focus forward and backward across open win
   assertEquals(controller.inspect().activeWindowId, "data");
 
   controller.dispose();
+});
+
+Deno.test("workbench window action log helper formats standard messages", () => {
+  assertEquals(workbenchWindowActionLog("focus", "Inspector"), "focus Inspector");
+  assertEquals(workbenchWindowActionLog("minimize", "Logs"), "minimize Logs");
+  assertEquals(workbenchWindowActionLog("maximize", "Three"), "maximize Three");
+  assertEquals(workbenchWindowActionLog("restore", "Three"), "restore Three");
+  assertEquals(workbenchWindowActionLog("fullscreenTab", "Data"), "fullscreen tab Data");
 });
 
 Deno.test("WorkbenchController supports matching terminal and web adapter flows", () => {

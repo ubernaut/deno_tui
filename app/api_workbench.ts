@@ -95,7 +95,12 @@ import {
   workbenchWorkspaceWindowEntries,
   writeFrame,
 } from "../src/app/workbench/mod.ts";
-import { inspectWorkbenchWindowSignalState, WorkbenchController } from "../src/app/workbench/controller.ts";
+import {
+  inspectWorkbenchWindowSignalState,
+  WorkbenchController,
+  workbenchWindowActionLog,
+  type WorkbenchWindowActionLogKind,
+} from "../src/app/workbench/controller.ts";
 import { WorkbenchShelfBufferCache } from "../src/app/workbench_shelf_cache.ts";
 import {
   applyWorkbenchAsciiConfigRowAction,
@@ -3100,48 +3105,44 @@ function windowAt(x: number, y: number): WindowId | undefined {
 
 function focus(id: WindowId): void {
   windowManager.focus(id);
-  syncWindowSignalsFromManager();
-  pushLog(`focus ${windowTitle(id)}`);
+  syncAndLogWindowAction("focus", id);
 }
 
 function focusNext(): void {
   const next = windowManager.focusNext(1)?.id as WindowId | undefined;
-  if (next) {
-    syncWindowSignalsFromManager();
-    pushLog(`focus ${windowTitle(next)}`);
-  }
+  if (next) syncAndLogWindowAction("focus", next);
 }
 
 function focusPrevious(): void {
   const next = windowManager.focusNext(-1)?.id as WindowId | undefined;
-  if (next) {
-    syncWindowSignalsFromManager();
-    pushLog(`focus ${windowTitle(next)}`);
-  }
+  if (next) syncAndLogWindowAction("focus", next);
 }
 
 function minimize(id: WindowId): void {
   windowManager.minimize(id);
-  syncWindowSignalsFromManager();
-  pushLog(`minimize ${windowTitle(id)}`);
+  syncAndLogWindowAction("minimize", id);
 }
 
 function toggleMaximize(id: WindowId): void {
   windowManager.fullscreen(id);
   syncWindowSignalsFromManager();
-  pushLog(`${maximized.peek() === id ? "maximize" : "restore"} ${windowTitle(id)}`);
+  pushLog(workbenchWindowActionLog(maximized.peek() === id ? "maximize" : "restore", windowTitle(id)));
 }
 
 function selectWindowTab(id: WindowId): void {
   windowManager.selectTab(id);
-  syncWindowSignalsFromManager();
-  pushLog(`fullscreen tab ${windowTitle(id)}`);
+  syncAndLogWindowAction("fullscreenTab", id);
 }
 
 function restoreAll(): void {
   windowManager.restore();
   syncWindowSignalsFromManager();
   pushLog("restore all windows");
+}
+
+function syncAndLogWindowAction(kind: WorkbenchWindowActionLogKind, id: WindowId): void {
+  syncWindowSignalsFromManager();
+  pushLog(workbenchWindowActionLog(kind, windowTitle(id)));
 }
 
 function syncWindowSignalsFromManager(): void {

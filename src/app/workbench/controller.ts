@@ -44,6 +44,14 @@ export interface ApplyWorkbenchWindowSignalStateOptions<TWindowId extends string
   createWindow: (id: TWindowId, order: number) => WindowManagerOptions["windows"][number];
 }
 
+/** Window actions with standard workbench log messages. */
+export type WorkbenchWindowActionLogKind =
+  | "focus"
+  | "minimize"
+  | "maximize"
+  | "restore"
+  | "fullscreenTab";
+
 /** Shared controller for workbench menus, launcher indices, and window-manager state. */
 export class WorkbenchController<MenuId extends string = string> {
   readonly menus: WorkbenchTopMenuController<MenuId>;
@@ -183,6 +191,22 @@ export function applyWorkbenchWindowSignalState<TWindowId extends string>(
     order,
     state: minimized[id] && id !== fullscreenId ? "minimized" : "normal",
   }));
+}
+
+/** Formats standard workbench window action log messages. */
+export function workbenchWindowActionLog(kind: WorkbenchWindowActionLogKind, title: string): string {
+  switch (kind) {
+    case "focus":
+      return `focus ${title}`;
+    case "minimize":
+      return `minimize ${title}`;
+    case "maximize":
+      return `maximize ${title}`;
+    case "restore":
+      return `restore ${title}`;
+    case "fullscreenTab":
+      return `fullscreen tab ${title}`;
+  }
 }
 
 function clampMenuIndex(index: number, itemCount: number): number {
