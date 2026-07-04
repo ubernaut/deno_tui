@@ -12,11 +12,11 @@ import {
   type TerminalGlyphMode,
   terminalGlyphModeForStyle,
 } from "./ansi_glyph_keys.ts";
+import { colorToBytes, colorValue, createLinearByteCache, rgbToAnsiBackground, rgbToAnsiForeground } from "./colors.ts";
 import type { TerminalGlyphStyle } from "./glyphs.ts";
 
 const DEFAULT_TERMINAL_EDGE_BIAS = 1;
 const RESET = "\x1b[0m";
-const MAX_LINEAR_BYTE_CACHE_SIZE = 65536;
 const MAX_FOREGROUND_ANSI_CACHE_SIZE = 4096;
 const MAX_CELL_CACHE_SIZE = 16384;
 const MIN_VISIBLE_FILL_GLYPH_INDEX = 6;
@@ -746,10 +746,6 @@ export function buildThreeAsciiAnsiGrid(input: ThreeAsciiAnsiGridInput): string[
 
 const sharedThreeAsciiAnsiGridAssembler = new ThreeAsciiAnsiGridAssembler();
 
-export function colorValue(input: Color | string | number | undefined, fallback: number): Color {
-  return input instanceof Color ? input : new Color(input ?? fallback);
-}
-
 function createStringGrid(rows: number, columns: number): string[][] {
   const grid = new Array<string[]>(rows);
   for (let row = 0; row < rows; row += 1) {
@@ -762,55 +758,4 @@ function createNaNFloat64Array(length: number): Float64Array<ArrayBuffer> {
   const values = new Float64Array(length);
   values.fill(Number.NaN);
   return values;
-}
-
-function linearToSrgb(value: number): number {
-  const clamped = Math.max(0, Math.min(1, value));
-  return clamped <= 0.0031308 ? clamped * 12.92 : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
-}
-
-function linearUnitToByte(value: number): number {
-  return Math.round(linearToSrgb(value) * 255);
-}
-
-interface LinearByteCache {
-  (value: number): number;
-  clear(): void;
-  prune(): void;
-}
-
-function createLinearByteCache(): LinearByteCache {
-  const cache = new Map<number, number>();
-  const read = ((value: number): number => {
-    if (value <= 0) return 0;
-    if (value >= 1) return 255;
-    const cached = cache.get(value);
-    if (cached !== undefined) return cached;
-    const byte = linearUnitToByte(value);
-    cache.set(value, byte);
-    return byte;
-  }) as LinearByteCache;
-  read.clear = () => cache.clear();
-  read.prune = () => {
-    if (cache.size > MAX_LINEAR_BYTE_CACHE_SIZE) {
-      cache.clear();
-    }
-  };
-  return read;
-}
-
-function colorToBytes(color: Color): [number, number, number] {
-  return [
-    linearUnitToByte(color.r),
-    linearUnitToByte(color.g),
-    linearUnitToByte(color.b),
-  ];
-}
-
-function rgbToAnsiForeground(red: number, green: number, blue: number): string {
-  return `\x1b[38;2;${red};${green};${blue}m`;
-}
-
-function rgbToAnsiBackground(red: number, green: number, blue: number): string {
-  return `\x1b[48;2;${red};${green};${blue}m`;
 }

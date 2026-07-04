@@ -1,6 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { AcerolaAsciiNodeOptions } from "./AcerolaAsciiNode.ts";
-import { colorValue } from "./ansi_grid.ts";
+import { colorValue } from "./colors.ts";
 
 const EFFECT_SCALAR_OPTION_KEYS = [
   "resolutionScale",

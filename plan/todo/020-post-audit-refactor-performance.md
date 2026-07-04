@@ -218,6 +218,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted API workbench Inspector row projection into a focused helper with direct tests, keeping the main renderer
   responsible only for writing projected rows.
 - Extracted API workbench Logs row projection into a focused helper that reuses row objects across draws.
+- Extracted Three ASCII color conversion, ANSI truecolor sequence, and linear-byte cache helpers into a focused internal
+  module so ANSI grid assembly stays concentrated on frame projection while preserving benchmarked block/glyph output.
 - Changed workbench Three cadence so any visible normal/fullscreen Three-backed pane uses the live interval instead of
   being throttled to idle just because focus is elsewhere.
 - Tightened API workbench Three terminal-pressure adaptation to step down on the first heavy terminal flush, improving

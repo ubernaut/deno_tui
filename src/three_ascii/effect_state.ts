@@ -2,7 +2,7 @@
 import { Color } from "npm:three@0.183.2";
 
 import type { AcerolaAsciiNodeOptions } from "./AcerolaAsciiNode.ts";
-import { colorValue } from "./ansi_grid.ts";
+import { colorValue } from "./colors.ts";
 import type { TerminalGlyphStyle } from "./glyphs.ts";
 import type { ThreeAsciiUniformEffectState } from "./uniforms.ts";
 

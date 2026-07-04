@@ -46,6 +46,8 @@ import {
   viewZToOrthographicDepth,
 } from "npm:three@0.183.2/tsl";
 
+import { colorValue } from "./colors.ts";
+
 const _quadMesh = /* @__PURE__ */ new QuadMesh();
 const _renderSize = /* @__PURE__ */ new Vector2();
 
@@ -89,10 +91,6 @@ function configureMaskRenderTarget(renderTarget: RenderTarget, name: string): vo
   renderTarget.texture.minFilter = LinearFilter;
   renderTarget.texture.magFilter = LinearFilter;
   renderTarget.depthBuffer = false;
-}
-
-function colorValue(input: Color | string | number | undefined, fallback: number): Color {
-  return input instanceof Color ? input.clone() : new Color(input ?? fallback);
 }
 
 function copyOffsetValue(target: Vector2, input: Vector2 | { x: number; y: number } | undefined): void {
