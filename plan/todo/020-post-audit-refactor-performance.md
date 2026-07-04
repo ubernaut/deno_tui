@@ -463,3 +463,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Hardened deferred Three ASCII readback demotion so failed deferred maps return the cached grid instead of immediately
   falling into a blocking map/rebuild path, and changed the real WebGPU probe default to yield one tick between deferred
   frames; the default 960-cell block probe now runs non-saturated at roughly 2.9ms frame-side work on this host.
+- Lowered the API workbench's unsaved startup Three ASCII budget from 480 to 240 cells, kept 480 as a recovery step, and
+  raised the small-budget live cadence so slow terminal transports start with less truecolor block payload pressure.
