@@ -179,14 +179,14 @@ Deno.test("ApiWorkbenchThreeRuntimeController backs off when observed cadence is
 
   controller.updatePressure(stats, sample, { observedFps: 3, targetFps: 24, observedFrameCount: 18 });
 
-  assertEquals(controller.liveMaxCells.peek(), 960);
+  assertEquals(controller.liveMaxCells.peek(), WORKBENCH_THREE_INITIAL_CELLS);
   controller.updatePressure(stats, sample, { observedFps: 3, targetFps: 24, observedFrameCount: 19 });
-  assertEquals(controller.liveMaxCells.peek(), 960);
+  assertEquals(controller.liveMaxCells.peek(), WORKBENCH_THREE_INITIAL_CELLS);
   controller.updatePressure(stats, sample, { observedFps: 3, targetFps: 24, observedFrameCount: 20 });
-  assertEquals(controller.liveMaxCells.peek(), 480);
+  assertEquals(controller.liveMaxCells.peek(), 240);
   assertEquals(controller.inspectPressure().highFrames, 0);
   assertEquals(logs.length, 1);
-  assertStringIncludes(logs[0]!, "three pressure down 480 cells");
+  assertStringIncludes(logs[0]!, "three pressure down 240 cells");
 
   controller.dispose();
 });
@@ -235,10 +235,10 @@ Deno.test("ApiWorkbenchThreeRuntimeController derives pressure telemetry from ca
     { renderedThreeGrids: 1, renderedThreeRows: 8 },
   );
 
-  assertEquals(controller.liveMaxCells.peek(), 480);
+  assertEquals(controller.liveMaxCells.peek(), 240);
   assertEquals(controller.inspectPressureDetails().lastScoped, true);
   assertEquals(logs.length, 1);
-  assertStringIncludes(logs[0]!, "three pressure down 480 cells");
+  assertStringIncludes(logs[0]!, "three pressure down 240 cells");
 
   controller.dispose();
 });
@@ -338,7 +338,7 @@ Deno.test("ApiWorkbenchThreeRuntimeController exposes last pressure diagnostics"
   assertEquals(controller.inspectPressureDetails(), {
     currentCells: WORKBENCH_THREE_INITIAL_CELLS,
     highFrames: 0,
-    lowFrames: 0,
+    lowFrames: 1,
     lastBytes: 300,
     lastByteRate: 6_000,
     lastChangedRows: 4,
@@ -367,7 +367,7 @@ Deno.test("ApiWorkbenchThreeRuntimeController can reuse pressure inspection targ
   assertEquals(target, {
     currentCells: WORKBENCH_THREE_INITIAL_CELLS,
     highFrames: 0,
-    lowFrames: 0,
+    lowFrames: 1,
     lastBytes: 300,
     lastByteRate: 6_000,
     lastChangedRows: 4,

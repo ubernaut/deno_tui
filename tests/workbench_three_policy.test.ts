@@ -27,7 +27,7 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
     480,
     960,
   ]);
-  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 960);
+  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 480);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 480_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 24_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 320_000);
@@ -56,8 +56,8 @@ Deno.test("API workbench Three policy keeps live panes faster than idle panes", 
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: false }), 1000 / 5);
 });
 
-Deno.test("API workbench Three policy starts at full live resolution but keeps rescue available", () => {
-  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 960);
+Deno.test("API workbench Three policy starts at the responsive tier but keeps rescue available", () => {
+  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 480);
   assertEquals(
     apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
     1000 / 20,
@@ -144,7 +144,7 @@ Deno.test("API workbench Three policy backs off when observed FPS collapses", ()
     Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
   }
 
-  assertEquals(state.currentCells, 480);
+  assertEquals(state.currentCells, 240);
   assertEquals(state.highFrames, 0);
 });
 
@@ -166,7 +166,7 @@ Deno.test("API workbench Three policy backs off when observed FPS is visibly bel
     Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
   }
 
-  assertEquals(state.currentCells, 480);
+  assertEquals(state.currentCells, 240);
   assertEquals(state.highFrames, 0);
 });
 
@@ -232,7 +232,7 @@ Deno.test("API workbench Three policy reacts to collapsed cadence after the star
     Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
   }
 
-  assertEquals(state.currentCells, 480);
+  assertEquals(state.currentCells, 240);
   assertEquals(state.highFrames, 0);
 });
 

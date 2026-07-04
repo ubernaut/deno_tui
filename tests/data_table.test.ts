@@ -6,6 +6,7 @@ import {
   createDataTableView,
   type DataColumn,
   DataTableController,
+  filterDataRows,
   nextSort,
   renderDataTableHeader,
   renderDataTableRows,
@@ -77,6 +78,12 @@ Deno.test("data table sorting handles numbers and numeric strings", () => {
   const unsorted = sortDataRows(rows);
   assertEquals(unsorted, rows);
   assertEquals(unsorted === rows, false);
+});
+
+Deno.test("filterDataRows matches every query term across any table column", () => {
+  assertEquals(filterDataRows(rows, columns, "renderer 55"), [{ pid: 101, name: "renderer", cpu: 55 }]);
+  assertEquals(filterDataRows(rows, columns, "SHELL 2"), [{ pid: 2, name: "shell", cpu: 3 }]);
+  assertEquals(filterDataRows(rows, columns, "shell 55"), []);
 });
 
 Deno.test("data table render helpers expose sorted headers and selected rows", () => {
