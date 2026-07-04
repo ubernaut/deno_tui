@@ -74,6 +74,28 @@ Deno.test("workbench three grid reuses caller-owned row buffers while scaling", 
   assertEquals(rowBuffer, ["A", "A", "B", "B"]);
 });
 
+Deno.test("workbench three grid reuses caller-owned scale index buffers", () => {
+  const frame: WorkbenchFrame = [];
+  const sourceRowIndexes: number[] = [];
+  const sourceColumnIndexes: number[] = [];
+  writeWorkbenchThreeGrid(
+    frame,
+    { column: 0, row: 0, width: 4, height: 4 },
+    [["A", "B"], ["C", "D"]],
+    ".",
+    { scale: true, sourceColumns: 2, sourceRowIndexes, sourceColumnIndexes },
+  );
+
+  assertEquals(frame, [
+    ["A", "A", "B", "B"],
+    ["A", "A", "B", "B"],
+    ["C", "C", "D", "D"],
+    ["C", "C", "D", "D"],
+  ]);
+  assertEquals(sourceRowIndexes, [0, 0, 1, 1]);
+  assertEquals(sourceColumnIndexes, [0, 0, 1, 1]);
+});
+
 Deno.test("workbench three grid source column hints avoid scanning wider hidden rows", () => {
   const frame: WorkbenchFrame = [];
   writeWorkbenchThreeGrid(

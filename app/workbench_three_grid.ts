@@ -10,7 +10,13 @@ export function writeWorkbenchThreeGrid(
   rect: Rectangle,
   grid: readonly (readonly string[] | undefined)[],
   fallbackCell: string,
-  options: { scale?: WorkbenchThreeGridScaleMode; rowBuffer?: string[]; sourceColumns?: number } = {},
+  options: {
+    scale?: WorkbenchThreeGridScaleMode;
+    rowBuffer?: string[];
+    sourceColumns?: number;
+    sourceRowIndexes?: number[];
+    sourceColumnIndexes?: number[];
+  } = {},
 ): void {
   if (rect.width <= 0 || rect.height <= 0) return;
   const sourceRows = grid.length;
@@ -26,11 +32,15 @@ export function writeWorkbenchThreeGrid(
   const rowOffset = capOutput ? Math.max(0, Math.floor((rect.height - targetHeight) / 2)) : 0;
   const columnOffset = capOutput ? Math.max(0, Math.floor((rect.width - targetWidth) / 2)) : 0;
   const rowBuffer = options.rowBuffer ?? [];
+  const sourceRowIndexes = shouldScale && sourceRows > 0
+    ? scaledIndexesInto(options.sourceRowIndexes ?? [], targetHeight, sourceRows)
+    : undefined;
+  const sourceColumnIndexes = shouldScale && sourceColumns > 0
+    ? scaledIndexesInto(options.sourceColumnIndexes ?? [], targetWidth, sourceColumns)
+    : undefined;
 
   for (let row = 0; row < targetHeight; row += 1) {
-    const sourceRow = shouldScale && sourceRows > 0
-      ? Math.min(sourceRows - 1, Math.floor((row * sourceRows) / targetHeight))
-      : row;
+    const sourceRow = sourceRowIndexes?.[row] ?? row;
     const source = grid[sourceRow];
     const sourceWidth = source?.length ?? 0;
     const target = frame[rect.row + rowOffset + row] ??= [];
@@ -42,9 +52,10 @@ export function writeWorkbenchThreeGrid(
 
     rowBuffer.length = targetWidth;
     for (let column = 0; column < targetWidth; column += 1) {
-      const sourceColumn = shouldScale && sourceWidth > 0
-        ? Math.min(sourceWidth - 1, Math.floor((column * sourceWidth) / targetWidth))
-        : column;
+      const sourceColumn = sourceColumnIndexes?.[column] ??
+        (shouldScale && sourceWidth > 0
+          ? Math.min(sourceWidth - 1, Math.floor((column * sourceWidth) / targetWidth))
+          : column);
       rowBuffer[column] = source?.[sourceColumn] ?? fallbackCell;
     }
     writeFrameCells(target, rect.column + columnOffset, rowBuffer, 0, targetWidth);
@@ -57,4 +68,12 @@ function maxGridColumns(grid: readonly (readonly string[] | undefined)[]): numbe
     columns = Math.max(columns, row?.length ?? 0);
   }
   return columns;
+}
+
+function scaledIndexesInto(target: number[], targetSize: number, sourceSize: number): number[] {
+  target.length = targetSize;
+  for (let index = 0; index < targetSize; index += 1) {
+    target[index] = Math.min(sourceSize - 1, Math.floor((index * sourceSize) / targetSize));
+  }
+  return target;
 }
