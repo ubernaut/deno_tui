@@ -1044,3 +1044,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   facade exports.
 - Moved Three panel adaptive render-cell budgeting into `src/app`, keeping startup pressure defaults and recovery logic
   independent of demo-only modules.
+- Gated workbench Three FPS-based pressure downshifts behind a minimum observed frame count so startup/stall noise does
+  not immediately force the default block renderer into a lower terminal budget.

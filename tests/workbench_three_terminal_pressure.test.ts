@@ -151,6 +151,34 @@ Deno.test("workbench Three terminal pressure can step down from sustained termin
   assertEquals(state.highFrames, 0);
 });
 
+Deno.test("workbench Three terminal pressure waits for enough cadence samples before fps downshift", () => {
+  const base = {
+    renderedThreeGrids: 1,
+    bytes: 1,
+    sampleDurationMs: 50,
+    levels: [120, 240, 480],
+    highBytes: 240_000,
+    lowBytes: 0,
+    highBytesPerGrid: 240_000,
+    highBytesPerSecond: 240_000,
+    observedFps: 3,
+    targetFps: 20,
+    lowFpsRatio: 0.5,
+    highFrameThreshold: 1,
+    minObservedFpsFrames: 6,
+  };
+  const state = createWorkbenchThreeTerminalPressureState(480);
+
+  assertEquals(
+    resolveWorkbenchThreeTerminalPressureBudget(state, { ...base, observedFrameCount: 5 }).currentCells,
+    480,
+  );
+  assertEquals(
+    resolveWorkbenchThreeTerminalPressureBudget(state, { ...base, observedFrameCount: 6 }).currentCells,
+    240,
+  );
+});
+
 Deno.test("workbench Three terminal pressure ignores byte rate without a sample duration", () => {
   const state = createWorkbenchThreeTerminalPressureState(960);
   const next = resolveWorkbenchThreeTerminalPressureBudget(state, {

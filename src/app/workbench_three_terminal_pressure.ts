@@ -25,6 +25,8 @@ export interface WorkbenchThreeTerminalPressureOptions {
   observedFps?: number;
   targetFps?: number;
   lowFpsRatio?: number;
+  observedFrameCount?: number;
+  minObservedFpsFrames?: number;
   highFrameThreshold?: number;
   lowFrameThreshold?: number;
 }
@@ -254,7 +256,10 @@ export function resolveWorkbenchThreeTerminalPressureBudget(
   const targetFps = Math.max(0, options.targetFps ?? 0);
   const observedFps = Math.max(0, options.observedFps ?? Number.POSITIVE_INFINITY);
   const lowFpsRatio = Math.max(0.05, options.lowFpsRatio ?? 0.5);
-  const lowObservedFps = targetFps > 0 && observedFps < targetFps * lowFpsRatio;
+  const observedFrameCount = Math.max(0, Math.floor(options.observedFrameCount ?? Number.POSITIVE_INFINITY));
+  const minObservedFpsFrames = Math.max(1, Math.floor(options.minObservedFpsFrames ?? 6));
+  const lowObservedFps = observedFrameCount >= minObservedFpsFrames && targetFps > 0 &&
+    observedFps < targetFps * lowFpsRatio;
   const highPressure = options.bytes >= options.highBytes || bytesPerGrid >= highBytesPerGrid ||
     (options.durationMs ?? 0) >= highDurationMs || bytesPerSecond >= highBytesPerSecond || lowObservedFps;
   if (highPressure && current > levels[0]!) {
