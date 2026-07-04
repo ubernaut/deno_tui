@@ -39,6 +39,15 @@ export interface WorkbenchThreeTerminalPressureUpdateResult extends WorkbenchThr
   scoped: boolean;
 }
 
+/** Inputs used to describe a terminal-pressure render-cell budget change. */
+export interface WorkbenchThreeTerminalPressureUpdateLogOptions {
+  direction: WorkbenchThreeTerminalPressureResult["direction"];
+  currentCells: number;
+  bytes: number;
+  durationMs: number;
+  renderedThreeGrids: number;
+}
+
 /** Inputs used to resolve the live render cadence for a workbench-hosted Three ASCII pane. */
 export interface WorkbenchThreeFrameIntervalOptions {
   live?: boolean;
@@ -142,6 +151,15 @@ export function resolveWorkbenchThreeTerminalPressureUpdate(
     renderedThreeGrids: scoped ? options.renderedThreeGrids : 0,
   });
   return { ...next, scoped };
+}
+
+/** Formats the user-visible log line for a Three terminal-pressure budget change. */
+export function formatWorkbenchThreeTerminalPressureUpdateLog(
+  options: WorkbenchThreeTerminalPressureUpdateLogOptions,
+): string {
+  return `three pressure ${options.direction} ${options.currentCells} cells; ${options.bytes} bytes/${
+    options.durationMs.toFixed(1)
+  }ms across ${options.renderedThreeGrids} grid(s)`;
 }
 
 /** Resolves the next render-cell budget for workbench Three panes from terminal flush byte pressure. */

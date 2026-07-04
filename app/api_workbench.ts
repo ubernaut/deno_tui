@@ -294,6 +294,7 @@ import { formatWorkbenchKittyGraphicsStatus, WorkbenchKittyGraphicsController } 
 import { type RowStyle, threeHeaderRows } from "./workbench_rows.ts";
 import {
   createWorkbenchThreeTerminalPressureState,
+  formatWorkbenchThreeTerminalPressureUpdateLog,
   resolveWorkbenchThreeTerminalPressureUpdate,
   shouldCountWorkbenchThreeGridPressure,
   workbenchThreeShouldUseLiveCadence,
@@ -1057,11 +1058,13 @@ function updateThreeTerminalPressure(stats: WorkbenchAnsiScreenFlushStats): void
   if (!next.changed) return;
   workbenchThreeLiveMaxCells.value = next.currentCells;
   syncWorkbenchThreeFrameInterval();
-  pushLog(
-    `three pressure ${next.direction} ${next.currentCells} cells; ${stats.bytes} bytes/${
-      stats.durationMs.toFixed(1)
-    }ms across ${renderedThreeGridCount} grid(s)`,
-  );
+  pushLog(formatWorkbenchThreeTerminalPressureUpdateLog({
+    direction: next.direction,
+    currentCells: next.currentCells,
+    bytes: stats.bytes,
+    durationMs: stats.durationMs,
+    renderedThreeGrids: renderedThreeGridCount,
+  }));
 }
 
 function scheduleDraw(): void {

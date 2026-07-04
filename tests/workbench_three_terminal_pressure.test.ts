@@ -1,6 +1,7 @@
 import { assertEquals } from "./deps.ts";
 import {
   createWorkbenchThreeTerminalPressureState,
+  formatWorkbenchThreeTerminalPressureUpdateLog,
   resolveWorkbenchThreeTerminalPressureBudget,
   resolveWorkbenchThreeTerminalPressureUpdate,
   shouldApplyWorkbenchThreeTerminalPressureSample,
@@ -217,6 +218,19 @@ Deno.test("workbench Three terminal pressure update starts from current live cap
   assertEquals(next.currentCells, 960);
   assertEquals(next.direction, "steady");
   assertEquals(next.changed, false);
+});
+
+Deno.test("workbench Three terminal pressure update log matches workbench presentation", () => {
+  assertEquals(
+    formatWorkbenchThreeTerminalPressureUpdateLog({
+      direction: "down",
+      currentCells: 480,
+      bytes: 12345,
+      durationMs: 6.789,
+      renderedThreeGrids: 2,
+    }),
+    "three pressure down 480 cells; 12345 bytes/6.8ms across 2 grid(s)",
+  );
 });
 
 Deno.test("workbench Three frame interval policy keeps smaller live budgets smoother", () => {

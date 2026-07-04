@@ -177,6 +177,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   orchestration separate from byte-level uniform layout.
 - Extracted Three ASCII readback copy planning and then cached unchanged copy plans so renderer frames do not allocate
   copy command arrays on stable output shapes.
+- Moved workbench Three terminal-pressure change log formatting into the shared pressure helper so the workbench render
+  loop only applies policy, state, and side effects.
 - Stabilized default Three ASCII block rendering by using ASCII-safe shared window controls and removing fog from the
   default block preset so truecolor block cells keep source color depth.
 - Extracted the workbench Three ASCII config modal geometry into a tested internal layout helper, reducing inline modal
