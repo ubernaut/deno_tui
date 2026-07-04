@@ -3,6 +3,7 @@ import {
   createThreeAsciiReadbackCopyPlan,
   createThreeAsciiReadbackLayout,
   createThreeAsciiReadbackViews,
+  executeThreeAsciiReadbackCopyPlan,
   ThreeAsciiReadbackCopyPlanCache,
   ThreeAsciiReadbackLayoutCache,
   ThreeAsciiReadbackViewCache,
@@ -120,6 +121,95 @@ Deno.test("three ascii readback copy plan rejects missing requested edge output"
       }),
     Error,
     "without an edge output",
+  );
+});
+
+Deno.test("executeThreeAsciiReadbackCopyPlan emits packed GPU copy commands", () => {
+  const layout = createThreeAsciiReadbackLayout({
+    fillByteLength: 8,
+    edgeByteLength: 16,
+    colorByteLength: 32,
+    includeEdges: true,
+  });
+  const plan = createThreeAsciiReadbackCopyPlan({
+    fill: { label: "fill", byteLength: 8 },
+    edge: { label: "edge", byteLength: 16 },
+    color: { label: "color", byteLength: 32 },
+    includeEdges: true,
+    layout,
+  });
+  const copies: unknown[][] = [];
+
+  executeThreeAsciiReadbackCopyPlan(
+    {
+      copyBufferToBuffer(source, sourceOffset, target, targetOffset, byteLength) {
+        copies.push([source, sourceOffset, target, targetOffset, byteLength]);
+      },
+    },
+    plan,
+    { fill: "fill-buffer", edge: "edge-buffer", color: "color-buffer" },
+    { gpu: "target-buffer" },
+  );
+
+  assertEquals(copies, [
+    ["fill-buffer", 0, "target-buffer", 0, 8],
+    ["edge-buffer", 0, "target-buffer", 8, 16],
+    ["color-buffer", 0, "target-buffer", 24, 32],
+  ]);
+});
+
+Deno.test("executeThreeAsciiReadbackCopyPlan rejects missing target buffer", () => {
+  const layout = createThreeAsciiReadbackLayout({
+    fillByteLength: 8,
+    edgeByteLength: 0,
+    colorByteLength: 32,
+    includeEdges: false,
+  });
+  const plan = createThreeAsciiReadbackCopyPlan({
+    fill: { label: "fill", byteLength: 8 },
+    color: { label: "color", byteLength: 32 },
+    includeEdges: false,
+    layout,
+  });
+
+  assertThrows(
+    () =>
+      executeThreeAsciiReadbackCopyPlan(
+        { copyBufferToBuffer() {} },
+        plan,
+        { fill: "fill-buffer", color: "color-buffer" },
+        undefined,
+      ),
+    Error,
+    "readback buffer has not been initialized",
+  );
+});
+
+Deno.test("executeThreeAsciiReadbackCopyPlan rejects missing requested source buffer", () => {
+  const layout = createThreeAsciiReadbackLayout({
+    fillByteLength: 8,
+    edgeByteLength: 16,
+    colorByteLength: 32,
+    includeEdges: true,
+  });
+  const plan = createThreeAsciiReadbackCopyPlan({
+    fill: { label: "fill", byteLength: 8 },
+    edge: { label: "edge", byteLength: 16 },
+    color: { label: "color", byteLength: 32 },
+    includeEdges: true,
+    layout,
+  });
+
+  assertThrows(
+    () =>
+      executeThreeAsciiReadbackCopyPlan(
+        { copyBufferToBuffer() {} },
+        plan,
+        { fill: "fill-buffer", color: "color-buffer" },
+        { gpu: "target-buffer" },
+      ),
+    Error,
+    "missing edge output buffer",
   );
 });
 

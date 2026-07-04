@@ -39,6 +39,26 @@ export interface ThreeAsciiReadbackCopyPlan {
   commands: ThreeAsciiReadbackCopyCommand[];
 }
 
+export interface ThreeAsciiReadbackCopySources<TBuffer> {
+  fill: TBuffer;
+  edge?: TBuffer;
+  color: TBuffer;
+}
+
+export interface ThreeAsciiReadbackCopyTarget<TBuffer> {
+  gpu: TBuffer;
+}
+
+export interface ThreeAsciiReadbackCommandEncoder<TBuffer> {
+  copyBufferToBuffer(
+    source: TBuffer,
+    sourceOffset: number,
+    target: TBuffer,
+    targetOffset: number,
+    byteLength: number,
+  ): void;
+}
+
 /** Reuses readback copy commands while the packed output shape is unchanged. */
 export class ThreeAsciiReadbackCopyPlanCache {
   private cached?: ThreeAsciiReadbackCopyPlan;
@@ -241,6 +261,30 @@ export function createThreeAsciiReadbackCopyPlan(options: {
   });
 
   return { layout: options.layout, commands };
+}
+
+export function executeThreeAsciiReadbackCopyPlan<TBuffer>(
+  commandEncoder: ThreeAsciiReadbackCommandEncoder<TBuffer>,
+  plan: ThreeAsciiReadbackCopyPlan,
+  sources: ThreeAsciiReadbackCopySources<TBuffer>,
+  target: ThreeAsciiReadbackCopyTarget<TBuffer> | undefined,
+): void {
+  if (!target) {
+    throw new Error("ThreeAsciiRenderer readback buffer has not been initialized.");
+  }
+  for (const command of plan.commands) {
+    const source = sources[command.label];
+    if (!source) {
+      throw new Error(`ThreeAsciiRenderer missing ${command.label} output buffer for readback.`);
+    }
+    commandEncoder.copyBufferToBuffer(
+      source,
+      0,
+      target.gpu,
+      command.targetOffset,
+      command.byteLength,
+    );
+  }
 }
 
 function validateByteLength(label: string, value: number): number {

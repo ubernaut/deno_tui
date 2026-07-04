@@ -35,6 +35,7 @@ import {
   type ThreeAsciiRendererPerformance,
 } from "./performance.ts";
 import {
+  executeThreeAsciiReadbackCopyPlan,
   ThreeAsciiReadbackCopyPlanCache,
   type ThreeAsciiReadbackLayout,
   ThreeAsciiReadbackLayoutCache,
@@ -681,27 +682,16 @@ export class ThreeAsciiRenderer {
     readbackCopyPlan: ReturnType<ThreeAsciiReadbackCopyPlanCache["resolve"]>,
     readback: ThreeAsciiGpuBufferSlot<GPUBuffer> | undefined,
   ): void {
-    if (!readback) {
-      throw new Error("ThreeAsciiRenderer readback buffer has not been initialized.");
-    }
-    const copySources = {
-      fill: this.fillOutput!.gpu,
-      edge: this.edgeOutput?.gpu,
-      color: this.colorOutput!.gpu,
-    };
-    for (const command of readbackCopyPlan.commands) {
-      const source = copySources[command.label];
-      if (!source) {
-        throw new Error(`ThreeAsciiRenderer missing ${command.label} output buffer for readback.`);
-      }
-      commandEncoder.copyBufferToBuffer(
-        source,
-        0,
-        readback.gpu,
-        command.targetOffset,
-        command.byteLength,
-      );
-    }
+    executeThreeAsciiReadbackCopyPlan(
+      commandEncoder,
+      readbackCopyPlan,
+      {
+        fill: this.fillOutput!.gpu,
+        edge: this.edgeOutput?.gpu,
+        color: this.colorOutput!.gpu,
+      },
+      readback,
+    );
   }
 
   private computePipelineForPass(kind: "fill" | "edge" | "color"): GPUComputePipeline {

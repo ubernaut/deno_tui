@@ -236,6 +236,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   pass plan instead of owning edge/no-edge workgroup sequencing inline.
 - Extracted Three ASCII compute resource sizing and edge-buffer transition decisions into a tested helper, keeping
   buffer byte lengths and dirty-resource classification outside the renderer allocation path.
+- Extracted readback copy-plan execution into the Three ASCII readback module with fake-command tests, leaving the
+  renderer to provide GPU buffers while the shared helper validates target/source availability and copy offsets.
 - Extracted CPU hex-grid selection map updates and selected-tile scroll targeting into the visualization module with
   direct tests, keeping API workbench CPU selection code focused on focus, scroll application, and logging side effects.
 - Reused workbench ANSI changed-span scratch buffers and span objects across flushes, keeping sparse terminal output
