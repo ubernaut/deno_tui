@@ -641,3 +641,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   scrollback/search match state projection out of renderer-specific toolbar loops.
 - Extracted ThreeAsciiObject range application into a focused helper with direct tests, keeping the range-copy hot loop
   independently covered while preserving frame-diff and rerender-range benchmark guardrails.
+- Added `render/three-ascii-range-apply-160` to the benchmark catalog so the extracted Three ASCII range-copy path is
+  measured directly; the guard currently runs around 0.001ms on this host.

@@ -73,6 +73,7 @@ import {
   queueRerenderRangeInto,
   queueRerenderRangeOnlyInto,
 } from "../src/canvas/rerender_queue.ts";
+import { applyThreeAsciiRerenderRanges } from "../src/canvas/three_ascii_ranges.ts";
 import { createTextObjectFullRowCanvasBenchmark } from "./benchmark_textobject_canvas.ts";
 import { threeAsciiBenchmarkCases } from "./benchmark_three_ascii.ts";
 import { createWorkbenchThreeBlockFlushBenchmark } from "./benchmark_workbench_three_block.ts";
@@ -635,6 +636,17 @@ const rerenderQueueBenchmarkSize = { columns: 160, rows: 50 };
 const rerenderQueueBenchmarkView = { column: 12, row: 4, width: 100, height: 32 };
 const rerenderQueueCellQueue: Array<Set<number> | undefined> = [];
 const rerenderQueueRangeQueue: Array<Array<{ row: number; startColumn: number; endColumn: number }> | undefined> = [];
+const threeAsciiRangeFrameRow: string[] = [];
+const threeAsciiRangeOutputRow = Array.from(
+  { length: 160 },
+  (_, column) => `\x1b[48;2;${column % 256};${(120 + column * 3) % 256};${(220 + column * 7) % 256}m \x1b[0m`,
+);
+const threeAsciiRangeDirectRanges: Array<{ row: number; startColumn: number; endColumn: number }> = [];
+const threeAsciiRangeSegments = [
+  { row: 8, startColumn: 12, endColumn: 84 },
+  { row: 8, startColumn: 90, endColumn: 148 },
+];
+let threeAsciiRangeChecksum = 0;
 
 function runDenseRerenderRangeQueueWorkload(): void {
   for (let step = 0; step < 50; step += 1) {
@@ -696,6 +708,26 @@ function clearRerenderRangeBenchmarkQueue(): void {
   for (let row = 0; row < rerenderQueueRangeQueue.length; row += 1) {
     const ranges = rerenderQueueRangeQueue[row];
     if (ranges) ranges.length = 0;
+  }
+}
+
+function runThreeAsciiRangeApplyWorkload(): void {
+  threeAsciiRangeDirectRanges.length = 0;
+  applyThreeAsciiRerenderRanges({
+    frameRow: threeAsciiRangeFrameRow,
+    outputRow: threeAsciiRangeOutputRow,
+    ranges: threeAsciiRangeSegments,
+    row: 8,
+    rectangleColumn: 4,
+    columnLimit: 154,
+    directRanges: threeAsciiRangeDirectRanges,
+  });
+  threeAsciiRangeChecksum = (threeAsciiRangeChecksum +
+    (threeAsciiRangeFrameRow[12]?.length ?? 0) +
+    (threeAsciiRangeFrameRow[147]?.length ?? 0) +
+    threeAsciiRangeDirectRanges.length) % 1_000_000;
+  if (threeAsciiRangeDirectRanges.length !== 2 || !Number.isFinite(threeAsciiRangeChecksum)) {
+    throw new Error("Three ASCII range apply workload failed");
   }
 }
 
@@ -1479,6 +1511,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 1_000,
     maxAverageMs: 2,
     run: runClippedRerenderRangeQueueWorkload,
+  },
+  {
+    name: "render/three-ascii-range-apply-160",
+    category: "render",
+    description: "Apply changed Three ASCII row ranges into a canvas frame row without expanding direct ranges.",
+    tags: ["render", "canvas", "three", "range", "blocks"],
+    iterations: 1_000,
+    maxAverageMs: 2,
+    run: runThreeAsciiRangeApplyWorkload,
   },
   {
     name: "render/rerender-cell-fractional-1k",
