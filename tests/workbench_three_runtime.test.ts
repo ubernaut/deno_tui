@@ -1,7 +1,9 @@
 import { assertEquals, assertStrictEquals, assertStringIncludes } from "./deps.ts";
 import {
+  type ApiWorkbenchThreePressureChange,
   ApiWorkbenchThreeRuntimeController,
   resolveApiWorkbenchThreePressureChange,
+  resolveApiWorkbenchThreePressureChangeInto,
 } from "../app/workbench_three_runtime.ts";
 import {
   WORKBENCH_THREE_DRAW_INTERVAL_MS,
@@ -96,12 +98,11 @@ Deno.test("resolveApiWorkbenchThreePressureChange reports steady pressure withou
     sample: { renderedThreeGrids: 1, renderedThreeRows: 6 },
   });
 
-  assertEquals(change, {
-    pressure: { currentCells: 120, highFrames: 0, lowFrames: 1 },
-    changed: false,
-    nextCells: 120,
-    scoped: true,
-  });
+  assertEquals(change.pressure, { currentCells: 120, highFrames: 0, lowFrames: 1 });
+  assertEquals(change.changed, false);
+  assertEquals(change.nextCells, 120);
+  assertEquals(change.scoped, true);
+  assertEquals(change.logMessage, undefined);
 });
 
 Deno.test("resolveApiWorkbenchThreePressureChange projects downshift and log message", () => {
@@ -118,6 +119,44 @@ Deno.test("resolveApiWorkbenchThreePressureChange projects downshift and log mes
   assertEquals(change.nextCells, 120);
   assertEquals(change.scoped, true);
   assertStringIncludes(change.logMessage ?? "", "three pressure down 120 cells");
+});
+
+Deno.test("resolveApiWorkbenchThreePressureChangeInto reuses target state", () => {
+  const target: ApiWorkbenchThreePressureChange = {
+    pressure: { currentCells: -1, highFrames: -1, lowFrames: -1 },
+    changed: true,
+    nextCells: -1,
+    scoped: true,
+    logMessage: "stale",
+  };
+  const pressure = target.pressure;
+
+  const changed = resolveApiWorkbenchThreePressureChangeInto(target, {
+    pressure: { currentCells: 240, highFrames: 3, lowFrames: 0 },
+    currentCells: 240,
+    frameIntervalMs: 1000 / 30,
+    stats: { changed: 12, bytes: 120_000, durationMs: 0.2 },
+    sample: { renderedThreeGrids: 1, renderedThreeRows: 8 },
+  });
+
+  assertStrictEquals(changed, target);
+  assertStrictEquals(changed.pressure, pressure);
+  assertEquals(changed.pressure, { currentCells: 120, highFrames: 0, lowFrames: 0 });
+  assertEquals(changed.changed, true);
+  assertStringIncludes(changed.logMessage ?? "", "three pressure down 120 cells");
+
+  const steady = resolveApiWorkbenchThreePressureChangeInto(target, {
+    pressure: target.pressure,
+    currentCells: 120,
+    frameIntervalMs: 1000 / 30,
+    stats: { changed: 1, bytes: 45, durationMs: 0.1 },
+    sample: { renderedThreeGrids: 1, renderedThreeRows: 6 },
+  });
+
+  assertStrictEquals(steady, target);
+  assertStrictEquals(steady.pressure, pressure);
+  assertEquals(steady.logMessage, undefined);
+  assertEquals(steady.changed, false);
 });
 
 Deno.test("ApiWorkbenchThreeRuntimeController exposes last pressure diagnostics", () => {
