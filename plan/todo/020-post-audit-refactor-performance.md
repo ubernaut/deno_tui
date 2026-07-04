@@ -621,6 +621,9 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added a 30-cell rescue render tier and shared Three panel render queue so multiple workbench-hosted Three panes do
   not compete for WebGPU/readback work; focused probes now show live deferred block frames at roughly 4.7KB/s for the
   30-cell tier and 9.6KB/s for the 60-cell tier after startup while keeping panel concurrency covered by direct tests.
+- Paused workbench-hosted Three scenes behind generic modal dialogs while preserving live rendering for the dedicated
+  ASCII config overlay; manual PTY verification showed the quit modal stops the animated truecolor stream instead of
+  continuing background renderer output under a blocking dialog.
 - Cached the background-run classification inside split workbench frame cells, avoiding repeated ANSI-prefix scans while
   assembling animated Three block rows and preserving exact truecolor output.
 - Added a dedicated Three ASCII block-mode grid assembly path that skips glyph/edge selection for full-cell block

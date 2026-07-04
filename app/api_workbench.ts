@@ -5,7 +5,7 @@ import { DataTableController } from "../src/components/data_table.ts";
 import { createFileExplorerTree, FileExplorerController } from "../src/components/file_explorer.ts";
 import { InputController } from "../src/components/input.ts";
 import { MenuBarController, renderMenuBar } from "../src/components/menu_bar.ts";
-import { modalContentHeight, ModalController } from "../src/components/modal.ts";
+import { modalContentHeight, ModalController, type ModalInspection } from "../src/components/modal.ts";
 import { ProgressBarController } from "../src/components/progressbar.ts";
 import { RadioGroupController } from "../src/components/radio_group.ts";
 import { ScrollAreaController, scrollbarOffsetForPointer } from "../src/components/scroll_area.ts";
@@ -569,6 +569,7 @@ const threeConfigOpen = new Signal(false);
 const threeConfigSelected = new Signal(0);
 const threeConfigWindow = new Signal<WindowId>("three");
 const threeConfigBaseline = new Signal<AsciiOptions | null>(null);
+const genericModalBlocksThree = new Signal(false);
 const activeWindow = new Signal<WindowId>("three");
 const activeControl = new Signal<ControlId>("button");
 const maximized = new Signal<WindowId | null>(null);
@@ -722,6 +723,7 @@ const modal = new ModalController({
     { id: "confirm", label: "Confirm", default: true },
   ],
   onAction: (action) => applyModalAction(action.id),
+  onOpenChange: (open, inspection) => setGenericModalBlocksThree(open, inspection),
 });
 const modeRadio = new RadioGroupController({
   options: [
@@ -800,7 +802,7 @@ const table = new DataTableController<ProcessRow>({
 const threeBodyRect = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
 const threeGraphicsRect = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
 const threeScene = new Computed<WorkbenchThreeScene | null>(() =>
-  minimized.value.three || !threeAsciiAvailable.value ? null : {
+  genericModalBlocksThree.value || minimized.value.three || !threeAsciiAvailable.value ? null : {
     mode: "studio",
     signal: {
       x: density.value.value / 10,
@@ -983,6 +985,7 @@ tui.on("destroy", () => {
   threeConfigSelected.dispose();
   threeConfigWindow.dispose();
   threeConfigBaseline.dispose();
+  genericModalBlocksThree.dispose();
   dynamicVisualizationWindows.dispose();
   selectedCpuHexTiles.dispose();
   commandInput.dispose();
@@ -1316,7 +1319,10 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
   const context = buildVisualizationContext(visualizationId, rect, { windowId: id });
   const rendered = renderVisualization(context);
   const accent = accentColor(rendered.accent);
-  const useThreeScene = Boolean(rendered.three && threeAsciiAvailable.peek() && rect.width >= 8 && rect.height >= 9);
+  const useThreeScene = Boolean(
+    rendered.three && threeAsciiAvailable.peek() && !genericModalBlocksThree.peek() && rect.width >= 8 &&
+      rect.height >= 9,
+  );
   if (useThreeScene) {
     writeRows(frame, rect, [
       {
@@ -2839,6 +2845,7 @@ function syncWorkbenchThreeFrameInterval(): void {
 }
 
 function hasLiveThreeRenderedWindow(): boolean {
+  if (genericModalBlocksThree.peek()) return false;
   return workbenchThreeShouldUseLiveCadence({
     activeId: activeWindow.peek(),
     fullscreenId: windowManager.fullscreenId.peek(),
@@ -2848,12 +2855,17 @@ function hasLiveThreeRenderedWindow(): boolean {
 }
 
 function isThreeWindowInteractive(id: WindowId): boolean {
+  if (genericModalBlocksThree.peek()) return false;
   return workbenchThreeWindowIsInteractive({
     id,
     activeId: activeWindow.peek(),
     fullscreenId: windowManager.fullscreenId.peek(),
     windows: windowManager.orderedWindows(),
   });
+}
+
+function setGenericModalBlocksThree(open: boolean, _inspection?: ModalInspection): void {
+  genericModalBlocksThree.value = open && !threeConfigOpen.peek();
 }
 
 function hideVisualizationThreePanel(id: VisualizationWindowId): void {
