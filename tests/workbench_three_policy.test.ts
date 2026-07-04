@@ -19,12 +19,12 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
     480,
     960,
   ]);
-  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 240);
+  assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 120);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 240_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 96_000);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 70_000);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 35_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerGrid, 1_500);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerSecond, 20_000);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerSecond, 12_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highFrameThreshold, 1);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowFrameThreshold, 60);
   assertEquals(WORKBENCH_THREE_READBACK_STRATEGY, "blocking");
@@ -63,13 +63,13 @@ Deno.test("API workbench Three policy backs off on the first high-pressure termi
 });
 
 Deno.test("API workbench Three policy does not recover from moderate animated output", () => {
-  const state = createWorkbenchThreeTerminalPressureState(240);
+  const state = createWorkbenchThreeTerminalPressureState(120);
   const sample = {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
     renderedThreeGrids: 1,
     bytes: 2_000,
     durationMs: 0.05,
-    sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(240, { live: true }),
+    sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(120, { live: true }),
   };
 
   const frames = (API_WORKBENCH_THREE_PRESSURE_POLICY.lowFrameThreshold ?? 1) + 5;
@@ -77,6 +77,22 @@ Deno.test("API workbench Three policy does not recover from moderate animated ou
     Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
   }
 
-  assertEquals(state.currentCells, 240);
+  assertEquals(state.currentCells, 120);
   assertEquals(state.lowFrames, 0);
+});
+
+Deno.test("API workbench Three policy downshifts sustained 240-cell terminal byte rate", () => {
+  const state = createWorkbenchThreeTerminalPressureState(240);
+  const sample = {
+    ...API_WORKBENCH_THREE_PRESSURE_POLICY,
+    renderedThreeGrids: 1,
+    bytes: 1_600,
+    durationMs: 0.05,
+    sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(240, { live: true }),
+  };
+
+  Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
+
+  assertEquals(state.currentCells, 120);
+  assertEquals(state.highFrames, 0);
 });

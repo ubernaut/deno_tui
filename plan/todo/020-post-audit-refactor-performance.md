@@ -258,6 +258,9 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Fixed a block-mode workbench performance regression caused by cumulative SGR style prefixes in styled text splitting;
   repeated truecolor background cells now keep only the active foreground/background state instead of replaying every
   previous color change.
+- Retuned the default workbench Three ASCII pressure policy for slow terminal links: the default pane now starts at the
+  120-cell emergency tier, 240-cell animated output downshifts on sustained byte rates above roughly 35KB/s, and low
+  byte-rate recovery remains conservative so SSH/tmux sessions do not immediately climb back into expensive output.
 - Restored the terminal workbench Three policy to blocking readback with a conservative 240-cell startup cap after live
   probes showed deferred readback could publish a stale visible grid while reporting low renderer timings.
 - Extended Three panel frame-time adaptation to the internal 120/240/480 pressure tiers so slow blocking-readback
