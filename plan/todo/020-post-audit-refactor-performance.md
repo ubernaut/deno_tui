@@ -90,6 +90,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   assembler's background/cache responsibility without changing benchmarked output.
 - Consolidated repeated Three ASCII ANSI blank-run scans into small helpers while keeping sparse, dense, block, and
   glyph paths benchmarked independently.
+- Extracted Three ASCII frame output-selection defaults and empty-frame projection into a focused helper with direct
+  tests, leaving `renderFrame` concentrated on render orchestration.
 - Added a standalone Three ASCII demo titlebar shell with mouse-enabled minimize, maximize, restore, and close controls
   so the default renderer launch has the same basic window affordances as the portfolio demos.
 - Extracted standalone Three ASCII demo window geometry and titlebar hit testing into a small tested helper instead of

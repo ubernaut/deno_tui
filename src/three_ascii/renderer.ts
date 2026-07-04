@@ -44,6 +44,11 @@ import {
 } from "./readback.ts";
 import { assembleThreeAsciiReadbackGrid } from "./readback_assembly.ts";
 import { handleThreeAsciiDeferredReadbackFailure } from "./readback_failure.ts";
+import {
+  emptyThreeAsciiRenderFrame,
+  resolveThreeAsciiRenderFrameSelection,
+  type ThreeAsciiRenderFrameOptions,
+} from "./frame_options.ts";
 import { readThreeAsciiImageFrame, type ThreeAsciiImageFrame } from "./image_frame.ts";
 import {
   normalizeThreeAsciiRendererOptions,
@@ -85,12 +90,6 @@ export interface ThreeAsciiRendererOptions {
   effect?: AcerolaAsciiNodeOptions;
 }
 
-/** Output selection for one three Ascii renderer pass. */
-export interface ThreeAsciiRenderFrameOptions {
-  ansi?: boolean;
-  image?: boolean;
-}
-
 /** Combined render output from one three Ascii renderer pass. */
 export interface ThreeAsciiRenderFrame {
   grid?: string[][];
@@ -98,6 +97,7 @@ export interface ThreeAsciiRenderFrame {
   image?: ThreeAsciiImageFrame;
 }
 
+export type { ThreeAsciiRenderFrameOptions } from "./frame_options.ts";
 export type { ThreeAsciiImageFrame } from "./image_frame.ts";
 export type { ThreeAsciiRendererPerformance } from "./performance.ts";
 
@@ -266,11 +266,10 @@ export class ThreeAsciiRenderer {
     options: ThreeAsciiRenderFrameOptions = { ansi: true },
   ): Promise<ThreeAsciiRenderFrame> {
     const frameStart = performance.now();
-    const renderAnsi = options.ansi ?? true;
-    const renderImage = options.image ?? false;
+    const { renderAnsi, renderImage } = resolveThreeAsciiRenderFrameSelection(options);
 
     if (this.columns <= 0 || this.rows <= 0) {
-      return { grid: renderAnsi ? [] : undefined };
+      return emptyThreeAsciiRenderFrame({ renderAnsi, renderImage });
     }
 
     let deferredAnsiGrid: ThreeAsciiDeferredReadbackConsumeResult | undefined;
