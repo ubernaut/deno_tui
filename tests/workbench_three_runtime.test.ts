@@ -91,6 +91,28 @@ Deno.test("ApiWorkbenchThreeRuntimeController backs off on scoped pressure and l
   controller.dispose();
 });
 
+Deno.test("ApiWorkbenchThreeRuntimeController backs off when observed cadence is too low", () => {
+  const logs: string[] = [];
+  const controller = new ApiWorkbenchThreeRuntimeController({
+    hasLiveThreeWindow: () => true,
+    onPressureChange: (message) => logs.push(message),
+  });
+
+  const stats = { changed: 6, bytes: 1_200, durationMs: 0.05 };
+  const sample = { renderedThreeGrids: 1, renderedThreeRows: 6 };
+
+  for (let index = 0; index < 2; index += 1) {
+    controller.updatePressure(stats, sample, { observedFps: 3, targetFps: 24 });
+  }
+
+  assertEquals(controller.liveMaxCells.peek(), 60);
+  assertEquals(controller.inspectPressure().highFrames, 0);
+  assertEquals(logs.length, 1);
+  assertStringIncludes(logs[0]!, "three pressure down 60 cells");
+
+  controller.dispose();
+});
+
 Deno.test("resolveApiWorkbenchThreePressureChange reports steady pressure without log text", () => {
   const change = resolveApiWorkbenchThreePressureChange({
     pressure: { currentCells: 120, highFrames: 0, lowFrames: 0 },

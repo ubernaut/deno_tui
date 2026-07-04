@@ -29,6 +29,8 @@ export interface ApiWorkbenchThreePressureChangeInput {
   frameIntervalMs: number;
   stats: ApiWorkbenchThreeFlushStats;
   sample: ApiWorkbenchThreePressureSample;
+  observedFps?: number;
+  targetFps?: number;
 }
 
 export interface ApiWorkbenchThreePressureChange {
@@ -74,6 +76,8 @@ export function resolveApiWorkbenchThreePressureChangeInto(
     bytes: input.stats.bytes,
     durationMs: input.stats.durationMs,
     sampleDurationMs: input.frameIntervalMs,
+    observedFps: input.observedFps,
+    targetFps: input.targetFps,
   });
   target.pressure.currentCells = next.currentCells;
   target.pressure.highFrames = next.highFrames;
@@ -149,11 +153,14 @@ export class ApiWorkbenchThreeRuntimeController {
   updatePressure(
     stats: ApiWorkbenchThreeFlushStats,
     sample: ApiWorkbenchThreePressureSample = this.#pressureSample,
+    telemetry: Pick<ApiWorkbenchThreePressureChangeInput, "observedFps" | "targetFps"> = {},
   ): void {
     this.#pressureChangeInput.currentCells = this.liveMaxCells.peek();
     this.#pressureChangeInput.frameIntervalMs = this.frameInterval.peek();
     this.#pressureChangeInput.stats = stats;
     this.#pressureChangeInput.sample = sample;
+    this.#pressureChangeInput.observedFps = telemetry.observedFps;
+    this.#pressureChangeInput.targetFps = telemetry.targetFps;
     const change = resolveApiWorkbenchThreePressureChangeInto(this.#pressureChange, this.#pressureChangeInput);
     this.#pressure.currentCells = change.pressure.currentCells;
     this.#pressure.highFrames = change.pressure.highFrames;

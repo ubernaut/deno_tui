@@ -1085,7 +1085,10 @@ function draw(): void {
 }
 
 function updateThreeTerminalPressure(stats: WorkbenchAnsiScreenFlushStats): void {
-  workbenchThreeRuntime.updatePressure(stats);
+  workbenchThreeRuntime.updatePressure(stats, undefined, {
+    observedFps: threeCadence.measuredFps(),
+    targetFps: 1000 / workbenchThreeFrameInterval.peek(),
+  });
 }
 
 function scheduleDraw(): void {

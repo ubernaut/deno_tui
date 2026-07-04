@@ -121,6 +121,27 @@ Deno.test("API workbench Three policy keeps ordinary startup block frames at the
   assertEquals(state.highFrames, 0);
 });
 
+Deno.test("API workbench Three policy backs off when observed FPS collapses", () => {
+  const state = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_INITIAL_CELLS);
+  const sample = {
+    ...API_WORKBENCH_THREE_PRESSURE_POLICY,
+    renderedThreeGrids: 1,
+    bytes: 1_200,
+    durationMs: 0.05,
+    sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
+    observedFps: 3,
+    targetFps: 24,
+  };
+
+  const frames = API_WORKBENCH_THREE_PRESSURE_POLICY.highFrameThreshold ?? 1;
+  for (let index = 0; index < frames; index += 1) {
+    Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
+  }
+
+  assertEquals(state.currentCells, 60);
+  assertEquals(state.highFrames, 0);
+});
+
 Deno.test("API workbench Three policy does not recover from moderate animated output", () => {
   const state = createWorkbenchThreeTerminalPressureState(60);
   const sample = {

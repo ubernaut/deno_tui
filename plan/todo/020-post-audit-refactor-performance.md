@@ -959,3 +959,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Made `ThreePanelFrameView` fingerprint revisioned renderer grids before publishing them to the workbench, so
   revision-only frames that quantize to identical terminal cells do not force a redraw. This keeps mutable-grid updates
   correct and removes wasted terminal flushes for low-resolution block frames that repeat visually.
+- Added observed-FPS pressure adaptation for workbench-hosted Three panes. The renderer already responds to byte and
+  blocking write pressure; it now also backs off when the UI cadence meter reports a sustained collapse below half the
+  target FPS, covering remote/tmux cases where the terminal renders slowly without making `writeSync` block.
