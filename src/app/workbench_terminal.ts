@@ -130,6 +130,14 @@ export type WorkbenchTerminalToolbarAction =
 /** Legacy process-output terminal toolbar actions used by the API Workbench command output pane. */
 export type WorkbenchTerminalOutputToolbarAction = "run" | "stop" | "restart" | "clear" | "follow" | "copy" | "raw";
 
+/** Minimal keyboard event used by shared terminal key resolvers. */
+export interface WorkbenchTerminalKey {
+  key: string;
+  ctrl?: boolean;
+  meta?: boolean;
+  shift?: boolean;
+}
+
 /** State snapshot used to project terminal toolbar actions without knowing the renderer. */
 export interface WorkbenchTerminalToolbarState {
   sessionCount: number;
@@ -304,6 +312,31 @@ export const WORKBENCH_TERMINAL_OUTPUT_TOOLBAR_ACTIONS: readonly WorkbenchTermin
   "raw",
   "copy",
 ] as const;
+
+/** Resolves process-output terminal workbench-mode shortcuts into toolbar actions. */
+export function resolveWorkbenchTerminalOutputKeyAction(
+  event: WorkbenchTerminalKey,
+): WorkbenchTerminalOutputToolbarAction | undefined {
+  if (event.ctrl || event.meta) return undefined;
+  switch (event.key.toLowerCase()) {
+    case "p":
+      return "run";
+    case "s":
+      return "stop";
+    case "u":
+      return "restart";
+    case "k":
+      return "clear";
+    case "v":
+      return "follow";
+    case "y":
+      return "copy";
+    case "i":
+      return "raw";
+    default:
+      return undefined;
+  }
+}
 
 /** Resolves the next terminal input mode without mutating UI state. */
 export function resolveWorkbenchTerminalInputModeToggle(

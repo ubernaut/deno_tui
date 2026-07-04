@@ -285,6 +285,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   to dispatch menu movement, active-item selection, close, and focus handoff side effects.
 - Extracted global workbench shortcut resolution into a focused keymap helper so the large terminal workbench app
   dispatches tested command actions instead of owning another long key-to-action chain inline.
+- Extracted process-output terminal shortcut resolution into the shared terminal helper so the workbench terminal pane
+  dispatches the same action ids used by its toolbar projection.
 - Retuned the default workbench Three ASCII pressure policy for slow terminal links: the default pane now starts at the
   120-cell emergency tier, 240-cell animated output downshifts on sustained byte rates above roughly 35KB/s, and low
   byte-rate recovery remains conservative so SSH/tmux sessions do not immediately climb back into expensive output.

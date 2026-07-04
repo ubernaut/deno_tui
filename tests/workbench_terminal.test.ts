@@ -15,6 +15,7 @@ import {
   createWorkbenchShellSession,
   nextWorkbenchTerminalSessionId,
   resolveWorkbenchShellBackend,
+  resolveWorkbenchTerminalOutputKeyAction,
   resolveWorkbenchTerminalProcessInputModeToggle,
   resolveWorkbenchTerminalShellInputModeToggle,
   workbenchTerminalCopyRowsInto,
@@ -598,6 +599,19 @@ Deno.test("workbenchTerminalOutputToolbarItemsInto supports subsets and reuse", 
   assertEquals(second[2] === raw, true);
   assertEquals(second.map((item) => item.disabled), [true, false, false]);
   assertEquals(second[2]?.active, true);
+});
+
+Deno.test("resolveWorkbenchTerminalOutputKeyAction maps process terminal shortcuts", () => {
+  assertEquals(resolveWorkbenchTerminalOutputKeyAction({ key: "p" }), "run");
+  assertEquals(resolveWorkbenchTerminalOutputKeyAction({ key: "S" }), "stop");
+  assertEquals(resolveWorkbenchTerminalOutputKeyAction({ key: "u" }), "restart");
+  assertEquals(resolveWorkbenchTerminalOutputKeyAction({ key: "k" }), "clear");
+  assertEquals(resolveWorkbenchTerminalOutputKeyAction({ key: "v" }), "follow");
+  assertEquals(resolveWorkbenchTerminalOutputKeyAction({ key: "y" }), "copy");
+  assertEquals(resolveWorkbenchTerminalOutputKeyAction({ key: "i" }), "raw");
+  assertEquals(resolveWorkbenchTerminalOutputKeyAction({ key: "p", ctrl: true }), undefined);
+  assertEquals(resolveWorkbenchTerminalOutputKeyAction({ key: "p", meta: true }), undefined);
+  assertEquals(resolveWorkbenchTerminalOutputKeyAction({ key: "x" }), undefined);
 });
 
 function fakeBackend(id: string, pty: boolean): TerminalBackend {

@@ -51,6 +51,7 @@ import {
   resolveWorkbenchGlobalKey,
   resolveWorkbenchMenuFocusKey,
   resolveWorkbenchScreenDropdownKey,
+  resolveWorkbenchTerminalOutputKeyAction,
   subscribeWorkbenchDiagnosticLog,
   translateHitTargets,
   workbenchAdaptiveWindowLayout,
@@ -3997,22 +3998,7 @@ function handleTerminalOutputKey(event: KeyPressEvent): boolean {
     return true;
   }
   if (event.ctrl || event.meta) return false;
-  const key = event.key.toLowerCase();
-  const action = key === "p"
-    ? "run"
-    : key === "s"
-    ? "stop"
-    : key === "u"
-    ? "restart"
-    : key === "k"
-    ? "clear"
-    : key === "v"
-    ? "follow"
-    : key === "y"
-    ? "copy"
-    : key === "i"
-    ? "raw"
-    : undefined;
+  const action = resolveWorkbenchTerminalOutputKeyAction(event);
   if (!action) return false;
   void applyTerminalOutputAction(action);
   return true;
