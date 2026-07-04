@@ -20,6 +20,7 @@ import {
 import { createThreeAsciiComputeBindGroups } from "./compute_bind_groups.ts";
 import { encodeThreeAsciiComputeDispatchCommands } from "./compute_commands.ts";
 import { createThreeAsciiComputeDispatchPlan } from "./compute_plan.ts";
+import { createThreeAsciiComputePipeline } from "./compute_pipeline.ts";
 import { applyThreeAsciiComputeResourcePlanState, createThreeAsciiComputeResourcePlan } from "./compute_resources.ts";
 import {
   shouldIncludeThreeAsciiTerminalEdges,
@@ -604,12 +605,24 @@ export class ThreeAsciiRenderer {
     }
 
     if (!this.fillPipeline) {
-      this.fillPipeline = this.createComputePipeline("deno_tui.three_ascii.fill", THREE_ASCII_FILL_SHADER);
-      this.colorPipeline = this.createComputePipeline("deno_tui.three_ascii.color", THREE_ASCII_COLOR_SHADER);
+      this.fillPipeline = createThreeAsciiComputePipeline({
+        device: this.device,
+        label: "deno_tui.three_ascii.fill",
+        code: THREE_ASCII_FILL_SHADER,
+      });
+      this.colorPipeline = createThreeAsciiComputePipeline({
+        device: this.device,
+        label: "deno_tui.three_ascii.color",
+        code: THREE_ASCII_COLOR_SHADER,
+      });
     }
 
     if (includeTerminalEdges && !this.edgePipeline) {
-      this.edgePipeline = this.createComputePipeline("deno_tui.three_ascii.edge", THREE_ASCII_EDGE_SHADER);
+      this.edgePipeline = createThreeAsciiComputePipeline({
+        device: this.device,
+        label: "deno_tui.three_ascii.edge",
+        code: THREE_ASCII_EDGE_SHADER,
+      });
     }
 
     if (!this.paramsBuffer) {
@@ -717,22 +730,6 @@ export class ThreeAsciiRenderer {
     }
 
     return textureData.texture;
-  }
-
-  private createComputePipeline(label: string, code: string): GPUComputePipeline {
-    const module = this.device!.createShaderModule({
-      label: `${label}.wgsl`,
-      code,
-    });
-
-    return this.device!.createComputePipeline({
-      label,
-      layout: "auto",
-      compute: {
-        module,
-        entryPoint: "main",
-      },
-    });
   }
 
   private ensureStorageBufferSlot(
