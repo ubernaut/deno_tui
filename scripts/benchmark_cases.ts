@@ -42,6 +42,7 @@ import {
   WorkbenchAnsiScreenPainter,
   type WorkbenchFrame,
   workbenchTerminalCopyRowsInto,
+  workbenchVisibleWindowRectsInto,
   wrapTextBoxLinesInto,
   writeFrame,
   writeFrameCells,
@@ -247,6 +248,16 @@ const workbenchSpanSpans: ChangedSpan[] = [];
 const workbenchSpanPool: ChangedSpan[] = [];
 const workbenchSpanSnapshot = snapshotFrameRow(workbenchSpanPrevious, workbenchFrameWidth);
 let workbenchChangedSpanCursor = 0;
+const workbenchVisibleWindowSource = new Map<string, { column: number; row: number; width: number; height: number }>();
+const workbenchVisibleWindowTarget = new Map<string, { column: number; row: number; width: number; height: number }>();
+for (let index = 0; index < 60; index += 1) {
+  workbenchVisibleWindowSource.set(`window-${index}`, {
+    column: (index % 3) * 56,
+    row: Math.floor(index / 3) * 18,
+    width: 54,
+    height: 16,
+  });
+}
 const workbenchLineSignals = Array.from(
   { length: workbenchFrameRows + 10 },
   () => new BenchmarkLineSignal(""),
@@ -992,6 +1003,17 @@ function runWorkbenchChangedSpanDetectionWorkload(): void {
   }
 }
 
+function runWorkbenchVisibleWindowRectsWorkload(): void {
+  const offset = (workbenchFrameChecksum % 18) * 2;
+  const result = workbenchVisibleWindowRectsInto(workbenchVisibleWindowTarget, workbenchVisibleWindowSource, {
+    viewport: { column: 0, row: offset, width: workbenchFrameWidth, height: workbenchFrameRows },
+  });
+  workbenchFrameChecksum = (workbenchFrameChecksum + result.size + offset) % 1_000_000;
+  if (result.size <= 0 || result.size >= workbenchVisibleWindowSource.size || result !== workbenchVisibleWindowTarget) {
+    throw new Error("workbench visible window rect workload failed");
+  }
+}
+
 function runWorkbenchThreeHeaderTelemetryWorkload(): void {
   let checksum = 0;
   for (const mode of workbenchThreeHeaderModes) {
@@ -1397,6 +1419,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 2_000,
     maxAverageMs: 1,
     run: runWorkbenchChangedSpanDetectionWorkload,
+  },
+  {
+    name: "render/workbench-visible-window-rects-60",
+    category: "render",
+    description: "Filter a scrolled virtual workbench layout to the visible window rectangles.",
+    tags: ["render", "workbench", "layout", "viewport"],
+    iterations: 5_000,
+    maxAverageMs: 1,
+    run: runWorkbenchVisibleWindowRectsWorkload,
   },
   {
     name: "render/workbench-three-block-span-flush-168x54",

@@ -759,3 +759,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   renderer availability, and minimum live-render dimensions are tested outside the main workbench renderer.
 - Added a shared visible-window-rectangle filter and routed the terminal workbench through it so scrolled-off workspace
   windows, including Three panes, are not rendered or kept live while outside the visible workspace viewport.
+- Added a `render/workbench-visible-window-rects-60` benchmark guard for the visible-window filter; it runs around
+  0.002ms average on this host.
