@@ -2,7 +2,7 @@ import { Camera, type Color, PerspectiveCamera, Scene } from "npm:three@0.183.2"
 import { RenderPipeline, WebGPURenderer } from "npm:three@0.183.2/webgpu";
 import { pass } from "npm:three@0.183.2/tsl";
 
-import { AcerolaAsciiNode, type AcerolaAsciiNodeOptions, type AcerolaAsciiRenderProfile } from "./AcerolaAsciiNode.ts";
+import { AcerolaAsciiNode, type AcerolaAsciiNodeOptions } from "./AcerolaAsciiNode.ts";
 import {
   buildThreeAsciiAnsiGrid as buildThreeAsciiAnsiGridInternal,
   ThreeAsciiAnsiGridAssembler as InternalThreeAsciiAnsiGridAssembler,
@@ -74,6 +74,7 @@ import {
   normalizeThreeAsciiTerminalEdgeBias,
   type ThreeAsciiReadbackStrategy,
 } from "./renderer_options.ts";
+import { resolveThreeAsciiRenderProfile } from "./render_profile.ts";
 import {
   THREE_ASCII_COLOR_SHADER,
   THREE_ASCII_EDGE_SHADER,
@@ -334,7 +335,8 @@ export class ThreeAsciiRenderer {
     options: ThreeAsciiRenderFrameOptions = THREE_ASCII_ANSI_FRAME_OPTIONS,
   ): Promise<ThreeAsciiRenderFrame> {
     const frameStart = performance.now();
-    const { renderAnsi, renderImage } = resolveThreeAsciiRenderFrameSelection(options);
+    const selection = resolveThreeAsciiRenderFrameSelection(options);
+    const { renderAnsi, renderImage } = selection;
 
     if (this.columns <= 0 || this.rows <= 0) {
       return emptyThreeAsciiRenderFrame({ renderAnsi, renderImage });
@@ -392,7 +394,7 @@ export class ThreeAsciiRenderer {
     }
 
     const effectState = renderAnsi ? this.getEffectState() : undefined;
-    const sceneTiming = await this.renderScene(deltaTime, onFrame, { renderAnsi, renderImage }, effectState) ??
+    const sceneTiming = await this.renderScene(deltaTime, onFrame, selection, effectState) ??
       { initMs: 0, updateMs: 0, renderMs: 0 };
     const sceneEnd = performance.now();
 
@@ -428,7 +430,7 @@ export class ThreeAsciiRenderer {
   private async renderScene(
     deltaTime: number,
     onFrame?: (deltaTime: number) => void | Promise<void>,
-    options: { renderAnsi: boolean; renderImage: boolean } = { renderAnsi: true, renderImage: false },
+    selection: { renderAnsi: boolean; renderImage: boolean } = { renderAnsi: true, renderImage: false },
     effectState?: ThreeAsciiEffectState,
   ): Promise<{ initMs: number; updateMs: number; renderMs: number }> {
     const initialized = this.renderer !== undefined;
@@ -443,25 +445,15 @@ export class ThreeAsciiRenderer {
     const renderStart = performance.now();
     this.applySize();
     this.updateCameraAspect();
-    this.asciiNode!.setRenderProfile(this.resolveRenderProfile(options, effectState));
+    this.asciiNode!.setRenderProfile(
+      resolveThreeAsciiRenderProfile({
+        selection,
+        effectState: effectState ?? this.getEffectState(),
+        terminalGlyphStyle: this.terminalGlyphStyle,
+      }),
+    );
     this.renderPipeline!.render();
     return { initMs, updateMs, renderMs: performance.now() - renderStart };
-  }
-
-  private resolveRenderProfile(
-    options: { renderAnsi: boolean; renderImage: boolean },
-    state?: ThreeAsciiEffectState,
-  ): AcerolaAsciiRenderProfile {
-    if (options.renderImage) {
-      return { image: true, terminalEdges: true, terminalDepthColor: true };
-    }
-    const effectState = state ?? this.getEffectState();
-    const computeMode = resolveThreeAsciiComputeMode(effectState, this.terminalGlyphStyle);
-    return {
-      image: false,
-      terminalEdges: options.renderAnsi && computeMode.includeEdges,
-      terminalDepthColor: options.renderAnsi && computeMode.includeDepthColor,
-    };
   }
 
   private async computeAnsiGrid(

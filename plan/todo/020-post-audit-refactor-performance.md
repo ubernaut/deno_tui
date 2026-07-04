@@ -364,8 +364,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   default 60-cell emergency startup tier and 20fps cadence cap. The workbench now starts the default Three pane at the
   120-cell normal live tier with 30fps scheduling, while retaining 60/30-cell downshift tiers for slow SSH/tmux output.
 - Added an already-clipped frame-cell writer for renderer projection hot paths and routed Workbench Three grid blits
-  through it with a safe fallback for negative columns. Focused grid benchmarks stayed under budget and repeated
-  samples improved scaled/capped/vertical projection modes while preserving clipped write behavior in tests.
+  through it with a safe fallback for negative columns. Focused grid benchmarks stayed under budget and repeated samples
+  improved scaled/capped/vertical projection modes while preserving clipped write behavior in tests.
 - Added a single-style ANSI write fast path for workbench frame rows, covering the common full-row
   `SGR + plain text + reset` shape used by workbench backgrounds and block panes while preserving mixed ANSI parsing.
   Repeated flush benchmarks improved `workbench-ansi-screen-flush`, `workbench-ansi-screen-span-flush`, and
@@ -378,6 +378,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   immediately collapse to rescue budgets while sustained heavy output still backs off.
 - Added caller-owned workspace snapshot projection helpers and routed the API workbench save/prompt/autosave path
   through retained current-window and visualization-id buffers, with a focused benchmark guard for the projection path.
+- Extracted Three ASCII Acerola render-profile selection into a pure helper with direct tests, keeping image/ANSI,
+  block/glyph, edge, and depth target decisions out of the WebGPU renderer orchestration.
 - Split workbench styled-cell tokenization and row/slice assembly into `workbench_frame_rows.ts`, preserving the
   existing frame facade while keeping the terminal hot path independently testable and benchmarked.
 - Extracted ThreePanelFrameView graphics-image handle ownership into `ThreePanelGraphicsImageController` with direct
@@ -866,9 +868,9 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added reusable workbench Three pressure-probe grid snapshots and routed the live probe through them, removing
   per-frame row-array allocation while preserving mutable renderer history comparisons. Focused probe tests, type
   checks, the pressure-probe summary benchmark, and an 8-frame blocking live probe passed.
-- Switched the API workbench Three default back to deferred readback after isolating the apparent 3fps regression to
-  GPU contention from concurrent WebGPU probes. Sequential default block-mode probes now show the panel path around
-  6-7ms steady renderer work at the 60-cell startup tier, versus roughly 14-17ms with blocking readback; focused policy,
+- Switched the API workbench Three default back to deferred readback after isolating the apparent 3fps regression to GPU
+  contention from concurrent WebGPU probes. Sequential default block-mode probes now show the panel path around 6-7ms
+  steady renderer work at the 60-cell startup tier, versus roughly 14-17ms with blocking readback; focused policy,
   runtime, frame, renderer-option, and pressure-probe tests passed.
 - Added a lightweight workbench Three cadence meter and surfaced observed grid-publication FPS in the built-in Three
   header alongside configured target FPS, making manual renderer profiling distinguish intended cadence from actual
