@@ -153,3 +153,25 @@ Deno.test("WorkbenchAnsiScreenPainter keeps retained span snapshots valid across
   assertEquals(stats.changed, 1);
   assertEquals(new TextDecoder().decode(chunks[0]), "\x1b[1;8HB");
 });
+
+Deno.test("WorkbenchAnsiScreenPainter emits separate spans for sparse same-row edits", () => {
+  const chunks: Uint8Array[] = [];
+  const painter = new WorkbenchAnsiScreenPainter({
+    writeSync(data) {
+      chunks.push(data);
+      return data.byteLength;
+    },
+  });
+  const frame: WorkbenchFrame = [[]];
+  writeFrame(frame, 16, 0, 0, "0123456789abcdef");
+  painter.flush(frame, 16, 1, renderFrameRow, renderFrameSlice);
+  chunks.length = 0;
+
+  writeFrame(frame, 16, 0, 1, "A");
+  writeFrame(frame, 16, 0, 12, "B");
+  const stats = painter.flush(frame, 16, 1, renderFrameRow, renderFrameSlice);
+
+  assertEquals(stats.changed, 1);
+  assertEquals(new TextDecoder().decode(chunks[0]), "\x1b[1;2HA\x1b[1;13HB");
+  assertEquals(stats.bytes < "\x1b[1;2HA23456789abB".length, true);
+});

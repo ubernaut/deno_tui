@@ -3,6 +3,8 @@ import type { CanvasStdout } from "../canvas/sink.ts";
 import { cleanWorkbenchFrameRowFingerprint, fitCellText, markWorkbenchFrameRowRendered } from "./workbench_frame.ts";
 
 const encoder = new TextEncoder();
+const MAX_CHANGED_SPANS_PER_ROW = 8;
+const MERGE_CHANGED_SPAN_GAP = 2;
 
 interface WorkbenchAnsiScreenRowCache {
   width: number;
@@ -106,32 +108,21 @@ export class WorkbenchAnsiScreenPainter {
       const previous = this.#cells[row];
       const previousWidth = this.#widths[row] ?? -1;
       const fullRow = !previous || previousWidth !== columns;
-      let start = fullRow ? 0 : -1;
-      let end = fullRow ? columns - 1 : -1;
-
-      if (!fullRow) {
-        for (let column = 0; column < columns; column += 1) {
-          const nextCell = frameRow[column] ?? " ";
-          if (previous[column] === nextCell) continue;
-          start = column;
-          break;
-        }
-        if (start < 0) continue;
-        for (let column = columns - 1; column >= start; column -= 1) {
-          const nextCell = frameRow[column] ?? " ";
-          if (previous[column] === nextCell) continue;
-          end = column;
-          break;
-        }
+      if (fullRow) {
+        output.push(moveCursor(row, 0), renderRow(frameRow, columns));
+        this.#cells[row] = snapshotFrameRow(frameRow, columns, previous, 0, columns - 1);
+        this.#widths[row] = columns;
+        this.#rows[row] = "";
+        changed += 1;
+        continue;
       }
 
-      const spanWidth = end - start + 1;
-      if (spanWidth <= 0) continue;
-      output.push(
-        moveCursor(row, start),
-        fullRow ? renderRow(frameRow, columns) : renderSlice(frameRow, start, spanWidth),
-      );
-      this.#cells[row] = snapshotFrameRow(frameRow, columns, previous, start, end);
+      const spans = changedSpans(previous, frameRow, columns);
+      if (spans.length === 0) continue;
+      for (const span of spans) {
+        output.push(moveCursor(row, span.start), renderSlice(frameRow, span.start, span.width));
+      }
+      this.#cells[row] = snapshotChangedSpans(frameRow, previous, spans);
       this.#widths[row] = columns;
       this.#rows[row] = "";
       changed += 1;
@@ -157,6 +148,61 @@ export class WorkbenchAnsiScreenPainter {
     this.stdout.writeSync(bytes);
     return { rows, changed, cleared, bytes: bytes.byteLength };
   }
+}
+
+interface ChangedSpan {
+  start: number;
+  end: number;
+  width: number;
+}
+
+function changedSpans(previous: readonly string[], next: readonly string[], width: number): ChangedSpan[] {
+  const spans: ChangedSpan[] = [];
+  let spanStart = -1;
+  let lastChanged = -1;
+
+  for (let column = 0; column < width; column += 1) {
+    const nextCell = next[column] ?? " ";
+    if (previous[column] === nextCell) continue;
+
+    if (spanStart < 0) {
+      spanStart = column;
+    } else if (column - lastChanged > MERGE_CHANGED_SPAN_GAP + 1) {
+      spans.push({ start: spanStart, end: lastChanged, width: lastChanged - spanStart + 1 });
+      if (spans.length >= MAX_CHANGED_SPANS_PER_ROW) {
+        spanStart = column;
+        lastChanged = column;
+        break;
+      }
+      spanStart = column;
+    }
+    lastChanged = column;
+  }
+
+  if (spanStart < 0) return spans;
+  if (spans.length >= MAX_CHANGED_SPANS_PER_ROW) {
+    spans[spans.length - 1] = {
+      start: spans[spans.length - 1]!.start,
+      end: width - 1,
+      width: width - spans[spans.length - 1]!.start,
+    };
+    return spans;
+  }
+  spans.push({ start: spanStart, end: lastChanged, width: lastChanged - spanStart + 1 });
+  return spans;
+}
+
+function snapshotChangedSpans(
+  row: readonly string[],
+  snapshot: string[],
+  spans: readonly ChangedSpan[],
+): string[] {
+  for (const span of spans) {
+    for (let column = span.start; column <= span.end; column += 1) {
+      snapshot[column] = row[column] ?? " ";
+    }
+  }
+  return snapshot;
 }
 
 function snapshotFrameRow(

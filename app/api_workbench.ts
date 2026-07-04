@@ -308,7 +308,7 @@ const TERMINAL_OUTPUT_WINDOW_ID = "terminalOutput";
 const TERMINAL_OUTPUT_OPTION_ID = "terminal-output";
 const TERMINAL_SHELL_WINDOW_ID = "terminalShell";
 const TERMINAL_SHELL_OPTION_ID = "terminal-shell";
-const WORKBENCH_THREE_LIVE_MAX_CELLS = 1_920;
+const WORKBENCH_THREE_LIVE_MAX_CELLS = 960;
 
 type BuiltInWindowId =
   | "explorer"

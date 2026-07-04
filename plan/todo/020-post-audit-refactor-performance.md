@@ -359,5 +359,10 @@ performance, shared terminal/web workbench projections, and oversized module red
   unchanged full-screen rows skip both signal propagation and canvas object churn while keeping a benchmark guard for
   the 168x54 workbench flush path.
 - Routed API workbench terminal draws through changed-span flushing so animated Three ASCII windows update only the
-  modified row intervals instead of repainting every full terminal row; added benchmark and regression coverage for
-  span bytes, span/full-mode transitions, and disjoint retained edits.
+  modified row intervals instead of repainting every full terminal row; added benchmark and regression coverage for span
+  bytes, span/full-mode transitions, and disjoint retained edits.
+- Split changed ANSI screen rows into bounded sparse spans instead of one wide bounding span, reducing terminal bytes
+  for sparse same-row animation while preserving full-row fallback and retained snapshot correctness.
+- Lowered the API workbench-hosted live Three ASCII render cap to 960 cells for unsaved defaults, reducing SSH/tmux
+  truecolor block payload pressure while keeping standalone/package renderer defaults and saved per-widget overrides
+  unchanged.
