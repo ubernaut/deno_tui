@@ -1,10 +1,19 @@
 import * as THREE from "npm:three@0.183.2";
-import type { NeonThreeSceneBundle } from "./neon_three.ts";
 
 export interface ThreePanelInteractionState {
   rotationX: number;
   rotationY: number;
   zoom: number;
+}
+
+export interface ThreePanelTransformBundle {
+  camera: {
+    position: THREE.Vector3;
+    quaternion: THREE.Quaternion;
+  };
+  scene: {
+    rotation: THREE.Euler;
+  };
 }
 
 const minInteractionZoom = 0.35;
@@ -61,13 +70,13 @@ export class ThreePanelInteractionController {
     return { ...this.state };
   }
 
-  captureBaseTransform(bundle: NeonThreeSceneBundle): void {
+  captureBaseTransform(bundle: ThreePanelTransformBundle): void {
     this.baseCameraPosition = bundle.camera.position.clone();
     this.baseCameraQuaternion = bundle.camera.quaternion.clone();
     this.baseSceneRotation = bundle.scene.rotation.clone();
   }
 
-  apply(bundle: NeonThreeSceneBundle | undefined): void {
+  apply(bundle: ThreePanelTransformBundle | undefined): void {
     if (!bundle || !this.baseCameraPosition || !this.baseCameraQuaternion || !this.baseSceneRotation) return;
     const cameraDistanceScale = 1 / this.state.zoom;
     bundle.camera.position.copy(this.baseCameraPosition).multiplyScalar(cameraDistanceScale);

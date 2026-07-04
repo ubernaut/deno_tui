@@ -17,6 +17,7 @@ import {
   threeHeaderRows,
   threePanelBlankGrid,
   ThreePanelGraphicsImageController,
+  ThreePanelInteractionController,
   threePanelRendererStateMatches,
   ThreePanelRenderQueue,
   threePanelSlowFrameDiagnostic,
@@ -65,6 +66,7 @@ Deno.test("workbench facade exposes renderer-neutral helpers", () => {
   assertEquals(typeof createWorkbenchShellSession, "function");
   assertEquals(typeof threePanelBlankGrid, "function");
   assertEquals(typeof ThreePanelGraphicsImageController, "function");
+  assertEquals(typeof ThreePanelInteractionController, "function");
   assertEquals(typeof resolveThreePanelAdaptiveRenderBudget, "function");
   assertEquals(typeof resolveThreePanelRenderPolicy, "function");
   assertEquals(typeof threePanelSlowFrameDiagnostic, "function");

@@ -16,7 +16,10 @@ import type { ThreeAsciiReadbackStrategy } from "../src/three_ascii/renderer_opt
 import { asciiEffectOptions } from "./ascii_options.ts";
 import { createNeonThreeScene, type NeonThreeSceneBundle } from "./neon_three.ts";
 import { ThreePanelGraphicsImageController } from "../src/app/three_panel_graphics.ts";
-import { ThreePanelInteractionController, type ThreePanelInteractionState } from "./three_panel_interaction.ts";
+import {
+  ThreePanelInteractionController,
+  type ThreePanelInteractionState,
+} from "../src/app/three_panel_interaction.ts";
 import { resolveThreePanelLifecycleState, type ThreePanelLifecycleState } from "../src/app/three_panel_lifecycle.ts";
 import {
   threePanelAdaptiveRenderCellsDiagnostic,
@@ -41,7 +44,7 @@ import {
 import { defaultThreePanelRenderQueue, ThreePanelRenderQueue } from "../src/app/three_panel_render_queue.ts";
 import type { AsciiOptions, Rect, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 
-export type { ThreePanelInteractionState } from "./three_panel_interaction.ts";
+export type { ThreePanelInteractionState } from "../src/app/three_panel_interaction.ts";
 export {
   resolveThreePanelAdaptiveRenderBudget,
   ThreePanelAdaptiveRenderBudgetController,

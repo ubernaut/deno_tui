@@ -1,6 +1,9 @@
 import { assert, assertEquals } from "./deps.ts";
 import { createNeonThreeScene } from "../app/neon_three.ts";
-import { defaultThreePanelInteractionState, ThreePanelInteractionController } from "../app/three_panel_interaction.ts";
+import {
+  defaultThreePanelInteractionState,
+  ThreePanelInteractionController,
+} from "../src/app/three_panel_interaction.ts";
 
 Deno.test("ThreePanelInteractionController tracks bounded rotation zoom and reset state", () => {
   const interaction = new ThreePanelInteractionController();
