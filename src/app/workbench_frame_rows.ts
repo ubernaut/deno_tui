@@ -229,10 +229,13 @@ function splitBackgroundSpaceFrameCell(cell: string): FrameCellParts | undefined
 }
 
 function frameCellBackgroundSpacePrefix(cell: string): string | undefined {
-  if (cell.charCodeAt(0) !== 0x1b || !cell.endsWith("m \x1b[0m")) return undefined;
+  if (cell.charCodeAt(0) !== 0x1b || cell.length < RESET.length + 2) return undefined;
   const resetStart = cell.length - RESET.length;
   const textIndex = resetStart - 1;
-  if (cell.charCodeAt(textIndex) !== 0x20) return undefined;
+  if (cell.charCodeAt(textIndex) !== 0x20 || cell.charCodeAt(textIndex - 1) !== 0x6d) return undefined;
+  for (let index = 0; index < RESET.length; index += 1) {
+    if (cell.charCodeAt(resetStart + index) !== RESET.charCodeAt(index)) return undefined;
+  }
   const prefix = cell.slice(0, textIndex);
   if (!hasBackgroundSgr(prefix)) return undefined;
   return prefix;

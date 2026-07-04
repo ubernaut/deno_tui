@@ -224,6 +224,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   scoping collapsed-cadence samples even when non-Three rows changed in the same flush.
 - Previously tightened workbench Three pressure scoping to avoid non-Three redraw false positives; later slow-terminal
   testing showed collapsed visible Three cadence still needs to downshift even when other rows changed too.
+- Optimized workbench frame-row background-space detection with direct suffix checks, keeping Three block-mode span
+  flushes benchmarked without adding per-cell cache overhead.
 - Added an intermediate compact Three header telemetry format so narrow workbench panes keep showing measured/target FPS
   before falling back to the bare frame-time and cell-count label.
 - Added an optional observed-FPS gate to the workbench Three pressure probe so default and narrow workbench-shaped
