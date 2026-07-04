@@ -223,6 +223,26 @@ Deno.test("workbench frame cell blit preserves styled cells through viewport off
   assertEquals(target[2]?.slice(2, 4), ["E", "F"]);
 });
 
+Deno.test("workbench frame cell blit keeps clipped fallback for negative target columns", () => {
+  const target: WorkbenchFrame = [[], []];
+  const source: WorkbenchFrame = [
+    ["A", "B", "C"],
+    ["\x1b[31mD\x1b[0m", "E", "F"],
+  ];
+
+  blitWorkbenchFrameCells(
+    target,
+    source,
+    { column: -1, row: 0, width: 3, height: 2 },
+    { columns: 0, rows: 0 },
+  );
+
+  assertEquals(target[0]?.slice(0, 2), ["B", "C"]);
+  assertEquals(target[1]?.slice(0, 2), ["E", "F"]);
+  assertEquals(Object.hasOwn(target[0]!, -1), false);
+  assertEquals(Object.hasOwn(target[1]!, -1), false);
+});
+
 Deno.test("workbench frame line signal updates skip unchanged rows and clear stale rows", () => {
   const frame: WorkbenchFrame = [[], []];
   writeFrame(frame, 5, 0, 0, "hello");

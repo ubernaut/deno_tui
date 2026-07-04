@@ -319,6 +319,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added a terminal render profile to the Acerola ASCII node so terminal-only frames can skip edge-analysis passes that
   are not consumed by block/no-edge output; the default workbench pressure probe dropped from roughly 11-12ms steady
   renderer time to roughly 6-7ms while preserving real grid updates.
+- Added an already-clipped fast path for structured workbench frame-cell viewport blits, reducing the focused
+  `workbench-cell-blit-viewport` benchmark from roughly 3.83ms to 3.62ms on this host while preserving clipped blits.
 - Added `--check` validation to the workbench Three pressure probe so future renderer pass-graph optimizations fail fast
   when they return cached/static grids without real renderer telemetry or source-row changes.
 - Earlier restored the terminal workbench Three policy to blocking readback after stale-grid probes; the current policy

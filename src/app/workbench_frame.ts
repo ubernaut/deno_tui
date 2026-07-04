@@ -72,10 +72,22 @@ export function blitWorkbenchFrameCells(
   viewport: Rectangle,
   offset: { columns: number; rows: number },
 ): void {
-  for (let row = 0; row < viewport.height; row += 1) {
-    const sourceRow = source[offset.rows + row] ?? [];
-    const targetRow = target[viewport.row + row] ??= [];
-    writeFrameCells(targetRow, viewport.column, sourceRow, offset.columns, viewport.width);
+  const viewportColumn = Math.floor(viewport.column);
+  const viewportRow = Math.floor(viewport.row);
+  const viewportWidth = Math.max(0, Math.floor(viewport.width));
+  const viewportHeight = Math.max(0, Math.floor(viewport.height));
+  const offsetColumns = Math.floor(offset.columns);
+  const offsetRows = Math.floor(offset.rows);
+  if (viewportWidth <= 0 || viewportHeight <= 0) return;
+
+  for (let row = 0; row < viewportHeight; row += 1) {
+    const sourceRow = source[offsetRows + row] ?? [];
+    const targetRow = target[viewportRow + row] ??= [];
+    if (viewportColumn >= 0 && offsetColumns >= 0 && offsetColumns + viewportWidth <= sourceRow.length) {
+      writeFrameCellsUncheckedRange(targetRow, viewportColumn, sourceRow, offsetColumns, viewportWidth);
+    } else {
+      writeFrameCells(targetRow, viewportColumn, sourceRow, offsetColumns, viewportWidth);
+    }
   }
 }
 
@@ -214,6 +226,19 @@ export function writeFrameCellsUnchecked(
   if (sourceCount <= 0) return;
   for (let index = 0; index < sourceCount; index += 1) {
     cells[writeColumn + index] = values[index]!;
+  }
+  updateFrameRowMetadata(cells);
+}
+
+function writeFrameCellsUncheckedRange(
+  cells: string[],
+  column: number,
+  values: readonly string[],
+  start: number,
+  count: number,
+): void {
+  for (let index = 0; index < count; index += 1) {
+    cells[column + index] = values[start + index]!;
   }
   updateFrameRowMetadata(cells);
 }
