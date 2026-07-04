@@ -1,7 +1,13 @@
-import type { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
-import type { GraphicsHandle, GraphicsSurface } from "../src/runtime/graphics_surface.ts";
-import type { ThreeAsciiImageFrame } from "../src/three_ascii/renderer.ts";
-import type { Rect } from "./types.ts";
+import type { DiagnosticsCollector } from "../runtime/diagnostics.ts";
+import type { GraphicsHandle, GraphicsSurface } from "../runtime/graphics_surface.ts";
+import type { ThreeAsciiImageFrame } from "../three_ascii/renderer.ts";
+
+export interface ThreePanelGraphicsRect {
+  column: number;
+  row: number;
+  width: number;
+  height: number;
+}
 
 /** Owns the active raster graphics image handle for a workbench-hosted Three panel. */
 export class ThreePanelGraphicsImageController {
@@ -23,7 +29,7 @@ export class ThreePanelGraphicsImageController {
   async put(
     surface: GraphicsSurface,
     image: ThreeAsciiImageFrame,
-    rect: Rect,
+    rect: ThreePanelGraphicsRect,
     frameGeneration: number,
   ): Promise<void> {
     if (this.options.disposed() || rect.width <= 0 || rect.height <= 0) return;

@@ -1,5 +1,5 @@
 import { assertEquals } from "./deps.ts";
-import { ThreePanelGraphicsImageController } from "../app/three_panel_graphics.ts";
+import { ThreePanelGraphicsImageController } from "../src/app/three_panel_graphics.ts";
 import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import type {
   GraphicsDeleteMode,

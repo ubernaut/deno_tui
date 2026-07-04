@@ -8,6 +8,7 @@
 export * from "../hit_targets.ts";
 export * from "../three_panel_diagnostics.ts";
 export * from "../three_panel_effect.ts";
+export * from "../three_panel_graphics.ts";
 export * from "../three_panel_grid.ts";
 export * from "../three_panel_lifecycle.ts";
 export * from "../three_panel_policy.ts";

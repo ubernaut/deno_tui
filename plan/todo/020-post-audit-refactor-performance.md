@@ -241,6 +241,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   renderer telemetry formatting available as shared tested helpers.
 - Moved Three panel renderer-state/effect comparison into `src/app` using structural effect types, so renderer rebuild
   decisions no longer depend on demo-local ASCII option factories.
+- Moved Three panel graphics image ownership into `src/app` with a structural rect type, making Kitty/raster image
+  handle lifecycle reusable outside the workbench demo layer.
 - Extracted API workbench touch-hit expansion and compact/coarse layout detection into shared hit helpers, so terminal
   and browser workbench adapters use the same enlarged pointer targets on mobile-sized layouts.
 - Routed the browser API workbench background canvas through the shared `parseHexColor` helper instead of carrying a

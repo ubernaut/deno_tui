@@ -15,7 +15,7 @@ import {
 import type { ThreeAsciiReadbackStrategy } from "../src/three_ascii/renderer_options.ts";
 import { asciiEffectOptions } from "./ascii_options.ts";
 import { createNeonThreeScene, type NeonThreeSceneBundle } from "./neon_three.ts";
-import { ThreePanelGraphicsImageController } from "./three_panel_graphics.ts";
+import { ThreePanelGraphicsImageController } from "../src/app/three_panel_graphics.ts";
 import { ThreePanelInteractionController, type ThreePanelInteractionState } from "./three_panel_interaction.ts";
 import { resolveThreePanelLifecycleState, type ThreePanelLifecycleState } from "../src/app/three_panel_lifecycle.ts";
 import {
