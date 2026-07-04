@@ -195,6 +195,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   off from 480 to 240 cells after measured ~104KB/s output repeats on slower terminal sessions.
 - Added an adaptive mode to the workbench Three pressure probe so it can run the same closed-loop terminal pressure
   controller as the workbench and report per-frame render-cell caps.
+- Moved the workbench Three startup budget to 240 cells so the default pane opens in the lower-byte mode immediately
+  instead of spending two high-pressure frames at 480 cells before adapting down.
 - Stabilized default Three ASCII block rendering by using ASCII-safe shared window controls and removing fog from the
   default block preset so truecolor block cells keep source color depth.
 - Extracted the workbench Three ASCII config modal geometry into a tested internal layout helper, reducing inline modal
