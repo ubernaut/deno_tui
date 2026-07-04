@@ -218,6 +218,9 @@ performance, shared terminal/web workbench projections, and oversized module red
   for selected rows, wrapped footers, and body-row reuse.
 - Extracted text-rendered visualization row styling into the visualization window helper with tests for severity mapping
   and caller-owned row reuse.
+- Replaced instrumented workbench row fingerprints with revision metadata so retained terminal line flushing avoids
+  pre-render scans; focused line-signal diff now runs around 1.7ms while scaled/capped Three grid blits remain near
+  1.2ms/0.5ms.
 - Extracted Three ASCII config modal row render command projection into the shared modal helper with tests for command
   ordering, selected-state propagation, and caller-owned command reuse.
 - Extracted API workbench scrollable content-size decisions into a renderer-neutral helper with tests for built-ins,

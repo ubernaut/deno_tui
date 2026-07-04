@@ -36,8 +36,7 @@ interface WorkbenchLineSignalRowCache {
 
 interface WorkbenchFrameRowMetadata {
   dirty: boolean;
-  fingerprint?: string;
-  width?: number;
+  revision: number;
 }
 
 /** One drawable text segment for a framed workbench window. */
@@ -187,9 +186,14 @@ export function updateWorkbenchLineSignals(
   for (let row = 0; row < rows; row += 1) {
     const frameRow = frame[row] ?? [];
     const signal = signals[row]!;
-    const fingerprint = fingerprintFrameRow(frameRow, columns);
+    const metadata = frameRowMetadata.get(frameRow);
+    const fingerprint = metadata && !metadata.dirty
+      ? revisionFrameRowFingerprint(metadata, columns)
+      : metadata
+      ? undefined
+      : fingerprintFrameRow(frameRow, columns);
     const cached = lineSignalRowCache.get(signal);
-    if (cached?.width === columns && cached.fingerprint === fingerprint) {
+    if (fingerprint !== undefined && cached?.width === columns && cached.fingerprint === fingerprint) {
       if (signal.peek() !== cached.line) {
         signal.value = cached.line;
         changed += 1;
@@ -198,7 +202,10 @@ export function updateWorkbenchLineSignals(
     }
 
     const nextLine = renderFrameRow(frameRow, columns);
-    lineSignalRowCache.set(signal, { width: columns, fingerprint, line: nextLine });
+    const nextFingerprint = metadata
+      ? revisionFrameRowFingerprint(markFrameRowClean(metadata), columns)
+      : fingerprint ?? fallbackLineFingerprint(nextLine, columns);
+    lineSignalRowCache.set(signal, { width: columns, fingerprint: nextFingerprint, line: nextLine });
     if (signal.peek() !== nextLine) {
       signal.value = nextLine;
       changed += 1;
@@ -218,11 +225,6 @@ export function updateWorkbenchLineSignals(
 }
 
 function fingerprintFrameRow(cells: string[], width: number): string {
-  const metadata = frameRowMetadata.get(cells);
-  if (metadata && !metadata.dirty && metadata.width === width && metadata.fingerprint !== undefined) {
-    return metadata.fingerprint;
-  }
-
   let hash = 2166136261;
   const mix = (value: number) => {
     hash ^= value;
@@ -241,22 +243,35 @@ function fingerprintFrameRow(cells: string[], width: number): string {
       mix(cell.charCodeAt(index));
     }
   }
-  const fingerprint = `${width}:${hash.toString(36)}`;
-  if (metadata) {
-    metadata.width = width;
-    metadata.fingerprint = fingerprint;
-    metadata.dirty = false;
+  return `${width}:scan:${hash.toString(36)}`;
+}
+
+function fallbackLineFingerprint(line: string, width: number): string {
+  let hash = 2166136261;
+  for (let index = 0; index < line.length; index += 1) {
+    hash ^= line.charCodeAt(index);
+    hash = Math.imul(hash, 16777619) >>> 0;
   }
-  return fingerprint;
+  return `${width}:line:${hash.toString(36)}`;
+}
+
+function revisionFrameRowFingerprint(metadata: WorkbenchFrameRowMetadata, width: number): string {
+  return `${width}:rev:${metadata.revision}`;
+}
+
+function markFrameRowClean(metadata: WorkbenchFrameRowMetadata): WorkbenchFrameRowMetadata {
+  metadata.dirty = false;
+  return metadata;
 }
 
 function updateFrameRowMetadata(cells: string[]): void {
   let metadata = frameRowMetadata.get(cells);
   if (!metadata) {
-    metadata = { dirty: true };
+    metadata = { dirty: true, revision: 1 };
     frameRowMetadata.set(cells, metadata);
     return;
   }
+  metadata.revision += 1;
   metadata.dirty = true;
 }
 
