@@ -460,9 +460,9 @@ performance, shared terminal/web workbench projections, and oversized module red
   reducing duplicate clamps in the renderer constructor and mutators without changing benchmarked frame paths.
 - Extracted Three ASCII perspective-camera aspect math into a focused tested helper, preserving resize behavior while
   making terminal pixel-ratio aspect decisions independently testable.
-- Hardened deferred Three ASCII readback failure handling so failed deferred maps return the cached grid, discard the bad
-  queue, and retry deferred mode instead of falling into a blocking map/rebuild path; the real WebGPU probe now clamps
-  tight-loop runs to a one-tick cadence and completes short/default deferred block probes without crashing.
+- Hardened deferred Three ASCII readback failure handling so failed deferred maps return the cached grid, discard the
+  bad queue, and retry deferred mode instead of falling into a blocking map/rebuild path; the real WebGPU probe now
+  clamps tight-loop runs to a one-tick cadence and completes short/default deferred block probes without crashing.
 - Lowered the API workbench's unsaved startup Three ASCII budget from 480 to 240 cells, kept 480 as a recovery step, and
   raised the small-budget live cadence so slow terminal transports start with less truecolor block payload pressure.
 - Optimized workbench frame styled-cell splitting for the common Three block-mode truecolor cell shape, avoiding
@@ -476,8 +476,10 @@ performance, shared terminal/web workbench projections, and oversized module red
   giving the extracted span detector a tight performance guard before further terminal-output tuning.
 - Extracted Three ASCII deferred readback failure handling into a focused tested helper, preserving cached-grid retry
   behavior while keeping the renderer catch path small and the real WebGPU probe non-saturated.
-- Extracted Three ASCII readback grid assembly into a focused tested helper so blocking and deferred readback paths share
-  the same view-resolution, assembler wiring, and timing logic without duplicating renderer code.
-- Retuned the API workbench startup Three ASCII policy to start at the 120-cell emergency tier, recover much more slowly,
-  and reduce high-detail live cadences so SSH/tmux truecolor block rendering favors smooth motion by default while
-  retaining higher-detail per-widget configuration.
+- Extracted Three ASCII readback grid assembly into a focused tested helper so blocking and deferred readback paths
+  share the same view-resolution, assembler wiring, and timing logic without duplicating renderer code.
+- Retuned the API workbench startup Three ASCII policy to start at the 120-cell emergency tier, recover much more
+  slowly, and reduce high-detail live cadences so SSH/tmux truecolor block rendering favors smooth motion by default
+  while retaining higher-detail per-widget configuration.
+- Cached the background-run classification inside split workbench frame cells, avoiding repeated ANSI-prefix scans while
+  assembling animated Three block rows and preserving exact truecolor output.

@@ -440,19 +440,19 @@ function renderBackgroundStyledRun(
 }
 
 function isBackgroundStyledFrameCell(cell: FrameCellParts): boolean {
-  return cell.suffix === RESET && cell.prefix.length > 0 &&
-    (cell.prefix.includes("[48;") || cell.prefix.includes(";48;"));
+  return cell.backgroundStyled;
 }
 
 interface FrameCellParts {
   prefix: string;
   text: string;
   suffix: string;
+  backgroundStyled: boolean;
 }
 
 function splitFrameCell(cell: string): FrameCellParts {
   if (!cell.includes("\x1b[") || !cell.endsWith("\x1b[0m")) {
-    return { prefix: "", text: cell, suffix: "" };
+    return plainFrameCellParts(cell);
   }
   const cached = frameCellPartsCache.get(cell);
   if (cached) return cached;
@@ -460,7 +460,7 @@ function splitFrameCell(cell: string): FrameCellParts {
   const body = cell.slice(0, -RESET.length);
   const split = splitFrameCellBody(body);
   if (!split) {
-    return { prefix: "", text: cell, suffix: "" };
+    return plainFrameCellParts(cell);
   }
   if (frameCellPartsCache.size > MAX_FRAME_CELL_PARTS_CACHE_SIZE) {
     frameCellPartsCache.clear();
@@ -475,13 +475,26 @@ function splitFrameCellBody(body: string): FrameCellParts | undefined {
   if (lastCodeUnit < 0xdc00 || lastCodeUnit > 0xdfff) {
     const text = body[body.length - 1]!;
     if (text.charCodeAt(0) === 0x1b) return undefined;
-    return { prefix: body.slice(0, -1), text, suffix: RESET };
+    return styledFrameCellParts(body.slice(0, -1), text);
   }
 
   const parts = Array.from(body);
   const text = parts.pop();
   if (!text || text.charCodeAt(0) === 0x1b) return undefined;
-  return { prefix: parts.join(""), text, suffix: RESET };
+  return styledFrameCellParts(parts.join(""), text);
+}
+
+function plainFrameCellParts(text: string): FrameCellParts {
+  return { prefix: "", text, suffix: "", backgroundStyled: false };
+}
+
+function styledFrameCellParts(prefix: string, text: string): FrameCellParts {
+  return {
+    prefix,
+    text,
+    suffix: RESET,
+    backgroundStyled: prefix.length > 0 && (prefix.includes("[48;") || prefix.includes(";48;")),
+  };
 }
 
 /** Writes ANSI-styled text into a string-backed frame row. */
