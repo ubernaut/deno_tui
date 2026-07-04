@@ -8,7 +8,7 @@ import type { TerminalGlyphStyle } from "./glyphs.ts";
 /** Inputs for selecting which Acerola render targets a renderer frame needs. */
 export interface ThreeAsciiRenderProfileInput {
   selection: Pick<ThreeAsciiRenderFrameSelection, "renderAnsi" | "renderImage">;
-  effectState: Pick<ThreeAsciiEffectState, "edges" | "depthFalloff">;
+  effectState?: Pick<ThreeAsciiEffectState, "edges" | "depthFalloff">;
   terminalGlyphStyle: TerminalGlyphStyle;
 }
 
@@ -18,6 +18,10 @@ export function resolveThreeAsciiRenderProfile(
 ): AcerolaAsciiRenderProfile {
   if (input.selection.renderImage) {
     return { image: true, terminalEdges: true, terminalDepthColor: true };
+  }
+
+  if (!input.effectState) {
+    return { image: false, terminalEdges: false, terminalDepthColor: false };
   }
 
   const computeMode = resolveThreeAsciiComputeMode(input.effectState, input.terminalGlyphStyle);

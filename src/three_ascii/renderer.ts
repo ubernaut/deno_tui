@@ -465,7 +465,7 @@ export class ThreeAsciiRenderer {
     this.asciiNode!.setRenderProfile(
       resolveThreeAsciiRenderProfile({
         selection,
-        effectState: effectState ?? this.getEffectState(),
+        effectState,
         terminalGlyphStyle: this.terminalGlyphStyle,
       }),
     );

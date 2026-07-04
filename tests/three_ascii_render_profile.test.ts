@@ -5,8 +5,17 @@ Deno.test("resolveThreeAsciiRenderProfile enables full Acerola targets for image
   assertEquals(
     resolveThreeAsciiRenderProfile({
       selection: { renderAnsi: false, renderImage: true },
-      effectState: { edges: false, depthFalloff: 0 },
       terminalGlyphStyle: "blocks",
+    }),
+    { image: true, terminalEdges: true, terminalDepthColor: true },
+  );
+});
+
+Deno.test("resolveThreeAsciiRenderProfile does not require effect state for image frames", () => {
+  assertEquals(
+    resolveThreeAsciiRenderProfile({
+      selection: { renderAnsi: true, renderImage: true },
+      terminalGlyphStyle: "glyphs",
     }),
     { image: true, terminalEdges: true, terminalDepthColor: true },
   );
@@ -46,7 +55,6 @@ Deno.test("resolveThreeAsciiRenderProfile suppresses terminal targets when ANSI 
   assertEquals(
     resolveThreeAsciiRenderProfile({
       selection: { renderAnsi: false, renderImage: false },
-      effectState: { edges: true, depthFalloff: 0.5 },
       terminalGlyphStyle: "glyphs",
     }),
     { image: false, terminalEdges: false, terminalDepthColor: false },
