@@ -24,6 +24,7 @@ Deno.test("summarizeWorkbenchThreePressureProbe excludes placeholder and startup
   assertEquals(summary.averageRendererMs, 1);
   assertEquals(summary.averageFlushMs, 0.04);
   assertEquals(summary.averageBytes, 50);
+  assertEquals(summary.averageByteRate, 1000);
   assertEquals(summary.averageChangedRows, 2);
   assertEquals(summary.averageSourceChangedRows, 6);
 });
@@ -39,6 +40,7 @@ Deno.test("summarizeWorkbenchThreePressureProbe reports empty steady metrics wit
   assertEquals(summary.averageRendererMs, 0);
   assertEquals(summary.averageFlushMs, 0);
   assertEquals(summary.averageBytes, 0);
+  assertEquals(summary.averageByteRate, 0);
   assertEquals(summary.averageChangedRows, 0);
   assertEquals(summary.averageSourceChangedRows, 0);
 });

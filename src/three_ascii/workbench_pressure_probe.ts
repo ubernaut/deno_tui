@@ -1,4 +1,4 @@
-import { average, choiceArg, formatFps, formatMs, numberArg } from "./probe_cli.ts";
+import { choiceArg, formatFps, formatMs, numberArg } from "./probe_cli.ts";
 import { workbenchThreeTerminalBytesPerSecond } from "../app/workbench_three_terminal_pressure.ts";
 import type { TerminalGlyphStyle } from "./glyphs.ts";
 import type { ThreeAsciiReadbackStrategy } from "./renderer_options.ts";
@@ -31,6 +31,7 @@ export interface WorkbenchThreePressureProbeSummary {
   averageRendererMs: number;
   averageFlushMs: number;
   averageBytes: number;
+  averageByteRate: number;
   averageChangedRows: number;
   averageSourceChangedRows: number;
 }
@@ -122,19 +123,40 @@ export function countWorkbenchThreeProbeChangedGridRows(
 export function summarizeWorkbenchThreePressureProbe(
   samples: readonly WorkbenchThreePressureProbeSample[],
 ): WorkbenchThreePressureProbeSummary {
-  const valid = samples.filter((sample) =>
-    sample.rows > 0 && sample.columns > 0 && sample.cells > 0 && sample.rendererMs > 0
-  );
-  const steady = valid.slice(1);
+  let warmup: WorkbenchThreePressureProbeSample | undefined;
+  const steady: WorkbenchThreePressureProbeSample[] = [];
+  let totalRendererMs = 0;
+  let totalFlushMs = 0;
+  let totalBytes = 0;
+  let totalByteRate = 0;
+  let totalChangedRows = 0;
+  let totalSourceChangedRows = 0;
+  for (let index = 0; index < samples.length; index += 1) {
+    const sample = samples[index]!;
+    if (sample.rows <= 0 || sample.columns <= 0 || sample.cells <= 0 || sample.rendererMs <= 0) continue;
+    if (!warmup) {
+      warmup = sample;
+      continue;
+    }
+    steady.push(sample);
+    totalRendererMs += sample.rendererMs;
+    totalFlushMs += sample.flushMs;
+    totalBytes += sample.bytes;
+    totalByteRate += workbenchThreeTerminalBytesPerSecond(sample);
+    totalChangedRows += sample.changedRows;
+    totalSourceChangedRows += sample.sourceChangedRows;
+  }
+  const steadyCount = steady.length;
   return {
-    warmup: valid[0],
+    warmup,
     latest: samples.at(-1),
     steady,
-    averageRendererMs: average(steady.map((sample) => sample.rendererMs)),
-    averageFlushMs: average(steady.map((sample) => sample.flushMs)),
-    averageBytes: average(steady.map((sample) => sample.bytes)),
-    averageChangedRows: average(steady.map((sample) => sample.changedRows)),
-    averageSourceChangedRows: average(steady.map((sample) => sample.sourceChangedRows)),
+    averageRendererMs: steadyCount > 0 ? totalRendererMs / steadyCount : 0,
+    averageFlushMs: steadyCount > 0 ? totalFlushMs / steadyCount : 0,
+    averageBytes: steadyCount > 0 ? totalBytes / steadyCount : 0,
+    averageByteRate: steadyCount > 0 ? totalByteRate / steadyCount : 0,
+    averageChangedRows: steadyCount > 0 ? totalChangedRows / steadyCount : 0,
+    averageSourceChangedRows: steadyCount > 0 ? totalSourceChangedRows / steadyCount : 0,
   };
 }
 
@@ -154,7 +176,7 @@ export function formatWorkbenchThreePressureProbeLines(
     `warmup=${formatMs(summary.warmup?.rendererMs)} renderer=${formatMs(summary.averageRendererMs)} fps=${
       formatFps(summary.averageRendererMs)
     } flush=${formatMs(summary.averageFlushMs)} bytes=${Math.round(summary.averageBytes)} rate=${
-      Math.round(average(pressureByteRates(summary.steady)))
+      Math.round(summary.averageByteRate)
     }B/s changedRows=${summary.averageChangedRows.toFixed(1)} sourceRows=${
       summary.averageSourceChangedRows.toFixed(1)
     } updates=${latest?.gridUpdates ?? 0} latest=${
@@ -180,10 +202,6 @@ export function formatWorkbenchThreePressureProbeLines(
 function formatScenePhases(sample: WorkbenchThreePressureProbeSample): string {
   if (sample.sceneUpdateMs === undefined && sample.sceneRenderMs === undefined) return "";
   return ` update=${formatMs(sample.sceneUpdateMs ?? 0)} render=${formatMs(sample.sceneRenderMs ?? 0)}`;
-}
-
-function pressureByteRates(samples: readonly WorkbenchThreePressureProbeSample[]): number[] {
-  return samples.map((sample) => workbenchThreeTerminalBytesPerSecond(sample));
 }
 
 function workbenchThreeProbeGridRowsEqual(

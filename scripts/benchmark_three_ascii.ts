@@ -16,6 +16,10 @@ import { defaultThreeAsciiProbeOptions, threeAsciiProbeReport } from "../src/thr
 import type { ThreeAsciiRendererPerformance } from "../src/three_ascii/performance.ts";
 import { createThreeAsciiReadbackLayout, ThreeAsciiReadbackViewCache } from "../src/three_ascii/readback.ts";
 import { createThreeAsciiGridDiffState, queueChangedThreeAsciiGridCells } from "../src/canvas/three_ascii_diff.ts";
+import {
+  summarizeWorkbenchThreePressureProbe,
+  type WorkbenchThreePressureProbeSample,
+} from "../src/three_ascii/workbench_pressure_probe.ts";
 
 const threeAsciiColumns = 96;
 const threeAsciiRows = 40;
@@ -229,6 +233,30 @@ const threeAsciiProbeSamples: ThreeAsciiRendererPerformance[] = Array.from({ len
   deferredReadbackSaturated: index % 19 === 0,
 }));
 let threeAsciiProbeReportChecksum = 0;
+const workbenchThreePressureProbeSamples: WorkbenchThreePressureProbeSample[] = Array.from(
+  { length: 180 },
+  (_, index) => ({
+    index,
+    maxCells: index < 12 ? 120 : 240,
+    sampleDurationMs: 1000 / 30,
+    rendererMs: index % 9 === 0 ? 0 : 12 + (index % 17) * 0.3,
+    initMs: index === 1 ? 160 : 0,
+    sceneMs: 8 + (index % 11) * 0.25,
+    sceneUpdateMs: 0.08 + (index % 5) * 0.02,
+    sceneRenderMs: 7 + (index % 7) * 0.2,
+    readbackMs: 3 + (index % 6) * 0.2,
+    assemblyMs: 0.3 + (index % 8) * 0.05,
+    flushMs: 0.02 + (index % 4) * 0.01,
+    bytes: index % 9 === 0 ? 45 : 1_200 + (index % 13) * 80,
+    changedRows: index % 9 === 0 ? 1 : 7 + (index % 5),
+    sourceChangedRows: index % 9 === 0 ? 0 : 6 + (index % 4),
+    gridUpdates: index,
+    columns: index % 9 === 0 ? 0 : 26,
+    rows: index % 9 === 0 ? 0 : 8,
+    cells: index % 9 === 0 ? 0 : 208,
+  }),
+);
+let workbenchThreePressureProbeChecksum = 0;
 
 function assertThreeAsciiGridDimensions(grid: string[][], errorMessage: string): void {
   if (grid.length !== threeAsciiRows || grid[0]?.length !== threeAsciiColumns) {
@@ -301,6 +329,21 @@ function runThreeAsciiProbeReportWorkload(): void {
     !Number.isFinite(threeAsciiProbeReportChecksum)
   ) {
     throw new Error("three Ascii probe report workload failed");
+  }
+}
+
+function runWorkbenchThreePressureProbeSummaryWorkload(): void {
+  const summary = summarizeWorkbenchThreePressureProbe(workbenchThreePressureProbeSamples);
+  workbenchThreePressureProbeChecksum = (
+    workbenchThreePressureProbeChecksum +
+    (summary.warmup?.index ?? 0) +
+    summary.steady.length +
+    summary.averageBytes +
+    summary.averageByteRate +
+    summary.averageRendererMs
+  ) % 1_000_000;
+  if (!summary.warmup || summary.steady.length === 0 || !Number.isFinite(workbenchThreePressureProbeChecksum)) {
+    throw new Error("workbench Three pressure probe summary workload failed");
   }
 }
 
@@ -639,6 +682,15 @@ export const threeAsciiBenchmarkCases: BenchmarkCase[] = [
     iterations: 1_000,
     maxAverageMs: 2,
     run: runThreeAsciiProbeReportWorkload,
+  },
+  {
+    name: "render/workbench-three-pressure-probe-summary-180",
+    category: "render",
+    description: "Summarize workbench Three pressure-probe samples without repeated filter/map passes.",
+    tags: ["render", "three", "workbench", "probe", "pressure", "telemetry"],
+    iterations: 1_000,
+    maxAverageMs: 2,
+    run: runWorkbenchThreePressureProbeSummaryWorkload,
   },
   {
     name: "render/three-ascii-direct-frame-diff-96x40",

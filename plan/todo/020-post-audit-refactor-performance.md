@@ -265,6 +265,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   `workbench-three-pressure-policy` benchmark so the adaptive controller stays measured alongside frame flushing.
 - Reused a timing scratch buffer while projecting Three ASCII probe reports and added a `three-ascii-probe-report-180`
   benchmark so renderer diagnostics stay covered by the performance catalog.
+- Reworked workbench Three pressure-probe summaries to compute steady samples, telemetry averages, and terminal
+  byte-rate averages in one pass, with a focused benchmark guard for the report path.
 - Restored the terminal workbench Three policy to blocking readback with a conservative 240-cell startup cap after live
   probes showed deferred readback could publish a stale visible grid while reporting low renderer timings.
 - Extended Three panel frame-time adaptation to the internal 120/240/480 pressure tiers so slow blocking-readback
