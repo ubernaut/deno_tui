@@ -221,6 +221,64 @@ Deno.test("ThreeAsciiRenderer skips scene submission when deferred readbacks are
   assertEquals(renderer.inspectPerformance()?.deferredReadbackUnresolved, 6);
 });
 
+Deno.test("ThreeAsciiRenderer forces a blocking deferred readback after stale cached frames", async () => {
+  const renderer = new ThreeAsciiRenderer({
+    scene: new Scene(),
+    camera: new PerspectiveCamera(),
+    columns: 1,
+    rows: 1,
+    readbackStrategy: "deferred",
+    deferredReadbackMaxStaleFrames: 2,
+  });
+  const cachedGrid = [["cached"]];
+  const forcedFlags: boolean[] = [];
+  const internals = renderer as unknown as {
+    deferredReadbacks: {
+      consumeCompleted: () => { grid?: string[][]; readbackMs?: number };
+      isSaturated: () => boolean;
+      inspect: () => {
+        slotCount: number;
+        pending: number;
+        unresolved: number;
+        resolved: number;
+        saturated: boolean;
+        generation: number;
+      };
+      lastCompletedGrid: () => string[][];
+    };
+    renderScene: () => Promise<void>;
+    computeAnsiGrid: (
+      completed?: { grid?: string[][]; readbackMs?: number },
+      forceBlockingDeferredReadback?: boolean,
+    ) => Promise<string[][]>;
+  };
+  internals.deferredReadbacks = {
+    consumeCompleted: () => ({}),
+    isSaturated: () => false,
+    inspect: () => ({
+      slotCount: 6,
+      pending: 1,
+      unresolved: 1,
+      resolved: 0,
+      saturated: false,
+      generation: 0,
+    }),
+    lastCompletedGrid: () => cachedGrid,
+  };
+  internals.renderScene = () => Promise.resolve();
+  internals.computeAnsiGrid = (_completed, forceBlockingDeferredReadback = false) => {
+    forcedFlags.push(forceBlockingDeferredReadback);
+    return Promise.resolve(forceBlockingDeferredReadback ? [["fresh"]] : cachedGrid);
+  };
+
+  const first = await renderer.renderFrame(0, undefined, { ansi: true });
+  const second = await renderer.renderFrame(0, undefined, { ansi: true });
+
+  assertEquals(first.grid, cachedGrid);
+  assertEquals(second.grid, [["fresh"]]);
+  assertEquals(forcedFlags, [false, true]);
+});
+
 Deno.test("ThreeAsciiRenderer isolates deferred readback failures without demoting", () => {
   const renderer = new ThreeAsciiRenderer({
     scene: new Scene(),

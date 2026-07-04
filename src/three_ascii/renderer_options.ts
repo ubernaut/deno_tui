@@ -15,6 +15,7 @@ export interface ThreeAsciiRendererOptionSource {
   terminalGlyphStyle?: TerminalGlyphStyle;
   readbackStrategy?: ThreeAsciiReadbackStrategy;
   deferredReadbackSlots?: number;
+  deferredReadbackMaxStaleFrames?: number;
 }
 
 export interface NormalizedThreeAsciiRendererOptions extends ThreeAsciiRenderSize {
@@ -23,11 +24,13 @@ export interface NormalizedThreeAsciiRendererOptions extends ThreeAsciiRenderSiz
   terminalGlyphStyle: TerminalGlyphStyle;
   readbackStrategy: ThreeAsciiReadbackStrategy;
   deferredReadbackSlots: number;
+  deferredReadbackMaxStaleFrames: number;
 }
 
 export const DEFAULT_THREE_ASCII_PIXEL_ASPECT_RATIO = 0.5;
 export const DEFAULT_THREE_ASCII_TERMINAL_EDGE_BIAS = 1;
 export const DEFAULT_THREE_ASCII_DEFERRED_READBACK_SLOTS = 6;
+export const DEFAULT_THREE_ASCII_DEFERRED_READBACK_MAX_STALE_FRAMES = 3;
 
 export function normalizeThreeAsciiRenderSize(columns: number, rows: number): ThreeAsciiRenderSize {
   return {
@@ -51,5 +54,9 @@ export function normalizeThreeAsciiRendererOptions(
     terminalGlyphStyle: options.terminalGlyphStyle ?? "blocks",
     readbackStrategy: options.readbackStrategy ?? "blocking",
     deferredReadbackSlots: options.deferredReadbackSlots ?? DEFAULT_THREE_ASCII_DEFERRED_READBACK_SLOTS,
+    deferredReadbackMaxStaleFrames: Math.max(
+      0,
+      Math.floor(options.deferredReadbackMaxStaleFrames ?? DEFAULT_THREE_ASCII_DEFERRED_READBACK_MAX_STALE_FRAMES),
+    ),
   };
 }

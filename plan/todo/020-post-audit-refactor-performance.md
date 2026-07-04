@@ -20,7 +20,7 @@ performance, shared terminal/web workbench projections, and oversized module red
 - [x] Re-run focused and full health checks after each retained milestone.
 - [ ] Continue reducing oversized app/demo modules only at clean abstraction points.
 - [ ] Keep Three ASCII performance changes benchmark-gated; revert any micro-optimization that loses on focused cases.
-- [ ] Investigate deferred WebGPU readback latency separately from workbench policy; current probes show deferred
+- [x] Investigate deferred WebGPU readback latency separately from workbench policy; current probes show deferred
   readback can publish stale grids for many frames at 480/960 cells even when the queue is not saturated.
 
 ## Progress
@@ -552,3 +552,7 @@ performance, shared terminal/web workbench projections, and oversized module red
   use explicit blocking readback, and updated the pressure probe to match that policy. The default 240-cell probe now
   publishes changed Three rows every frame at roughly 20ms renderer time against a 33ms target, while 480/960-cell
   probes publish every frame around 23-24ms instead of returning stale deferred grids for many frames.
+- Added a bounded stale-grid fallback to deferred Three ASCII readback: after a configurable number of cached-grid
+  frames, the renderer performs one blocking readback, replaces the deferred queue's displayed grid, invalidates older
+  pending maps, and resumes deferred mode. The workbench pressure probe now accepts `--readback`, and the 960-cell
+  deferred probe publishes changed rows every frame at roughly 12.7ms renderer time versus roughly 24ms blocking.

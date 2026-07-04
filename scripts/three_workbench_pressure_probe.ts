@@ -30,6 +30,10 @@ const panelHeight = numberArg(Deno.args, "--panel-height", 32);
 const maxCells = numberArg(Deno.args, "--max-cells", WORKBENCH_THREE_INITIAL_CELLS);
 const mode = choiceArg(Deno.args, "--mode", "studio" as ThreeSceneMode, threeSceneModes);
 const glyphs = choiceArg(Deno.args, "--glyphs", "blocks", ["blocks", "glyphs", "mixed"] as const);
+const readbackStrategy = choiceArg(Deno.args, "--readback", WORKBENCH_THREE_READBACK_STRATEGY, [
+  "blocking",
+  "deferred",
+] as const);
 const intervalMs = numberArg(Deno.args, "--interval", apiWorkbenchThreeFrameIntervalForCells(maxCells, { live: true }));
 
 let bytesWritten = 0;
@@ -60,7 +64,7 @@ const panel = new ThreePanelFrameView({
   ascii,
   maxRenderCells,
   frameInterval: intervalMs,
-  readbackStrategy: WORKBENCH_THREE_READBACK_STRATEGY,
+  readbackStrategy,
 });
 
 const samples: WorkbenchThreePressureProbeSample[] = [];
@@ -96,7 +100,7 @@ const latest = summary.latest;
 
 console.log("three-workbench pressure probe");
 console.log(
-  `mode=${mode} glyphs=${glyphs} frame=${frameWidth}x${frameHeight} panel=${panelWidth}x${panelHeight} maxCells=${maxCells} interval=${
+  `mode=${mode} glyphs=${glyphs} readback=${readbackStrategy} frame=${frameWidth}x${frameHeight} panel=${panelWidth}x${panelHeight} maxCells=${maxCells} interval=${
     formatMs(intervalMs)
   }`,
 );

@@ -75,6 +75,11 @@ export class ThreeAsciiDeferredReadbackQueue<TBuffer extends ThreeAsciiDeferredR
     return this.lastGrid;
   }
 
+  replaceLastCompletedGrid(grid: string[][]): void {
+    this.generation += 1;
+    this.lastGrid = grid;
+  }
+
   inspect(): ThreeAsciiDeferredReadbackInspection {
     let unresolved = 0;
     let resolved = 0;

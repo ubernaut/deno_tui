@@ -95,6 +95,7 @@ export interface ThreeAsciiRendererOptions {
   terminalGlyphStyle?: TerminalGlyphStyle;
   readbackStrategy?: "blocking" | "deferred";
   deferredReadbackSlots?: number;
+  deferredReadbackMaxStaleFrames?: number;
   effect?: AcerolaAsciiNodeOptions;
 }
 
@@ -182,6 +183,8 @@ export class ThreeAsciiRenderer {
   private lastReadbackMs = 0;
   private lastAssemblyMs = 0;
   private gridRevision = 0;
+  private readonly deferredReadbackMaxStaleFrames: number;
+  private deferredReadbackStaleFrames = 0;
 
   constructor(options: ThreeAsciiRendererOptions) {
     const normalized = normalizeThreeAsciiRendererOptions(options);
@@ -194,6 +197,7 @@ export class ThreeAsciiRenderer {
     this.terminalEdgeBias = normalized.terminalEdgeBias;
     this.terminalGlyphStyle = normalized.terminalGlyphStyle;
     this.readbackStrategy = normalized.readbackStrategy;
+    this.deferredReadbackMaxStaleFrames = normalized.deferredReadbackMaxStaleFrames;
     this.deferredReadbacks = new ThreeAsciiDeferredReadbackQueue<GPUBuffer>({
       mapModeRead: GPU_MAP_READ,
       slotCount: normalized.deferredReadbackSlots,
@@ -285,6 +289,7 @@ export class ThreeAsciiRenderer {
     }
 
     let deferredAnsiGrid: ThreeAsciiDeferredReadbackConsumeResult | undefined;
+    let forceBlockingDeferredReadback = false;
     if (renderAnsi && !renderImage && this.readbackStrategy === "deferred") {
       deferredAnsiGrid = this.consumeDeferredAnsiGrid();
       if (deferredAnsiGrid.readbackUnavailable) {
@@ -301,6 +306,7 @@ export class ThreeAsciiRenderer {
         });
         return { grid: deferredAnsiGrid.grid ?? [], gridRevision: this.gridRevision };
       }
+      forceBlockingDeferredReadback = this.updateDeferredReadbackStaleness(deferredAnsiGrid);
       if (!deferredAnsiGrid.grid && this.deferredReadbacks.isSaturated()) {
         const frameEnd = performance.now();
         const previous = this.lastPerformance;
@@ -327,7 +333,7 @@ export class ThreeAsciiRenderer {
     }
 
     if (renderAnsi) {
-      frame.grid = await this.computeAnsiGrid(deferredAnsiGrid);
+      frame.grid = await this.computeAnsiGrid(deferredAnsiGrid, forceBlockingDeferredReadback);
       frame.gridRevision = this.gridRevision;
     }
     const frameEnd = performance.now();
@@ -362,6 +368,7 @@ export class ThreeAsciiRenderer {
 
   private async computeAnsiGrid(
     deferredCompleted?: ThreeAsciiDeferredReadbackConsumeResult,
+    forceBlockingDeferredReadback = false,
   ): Promise<string[][]> {
     const effectState = this.getEffectState();
     const includeTerminalEdges = shouldIncludeThreeAsciiTerminalEdges(effectState, this.terminalGlyphStyle);
@@ -396,7 +403,7 @@ export class ThreeAsciiRenderer {
       layout: readbackLayout,
     });
 
-    if (this.readbackStrategy === "deferred") {
+    if (this.readbackStrategy === "deferred" && !forceBlockingDeferredReadback) {
       return this.deferAnsiGridReadback(
         commandEncoder,
         readbackLayout,
@@ -410,7 +417,12 @@ export class ThreeAsciiRenderer {
     this.copyReadbackCommands(commandEncoder, readbackCopyPlan, this.outputReadback);
     this.device!.queue.submit([commandEncoder.finish()]);
 
-    return await this.buildAnsiGridFromReadback(readbackLayout, effectState.backgroundColor);
+    const grid = await this.buildAnsiGridFromReadback(readbackLayout, effectState.backgroundColor);
+    if (forceBlockingDeferredReadback) {
+      this.deferredReadbackStaleFrames = 0;
+      this.deferredReadbacks.replaceLastCompletedGrid(grid);
+    }
+    return grid;
   }
 
   private async deferAnsiGridReadback(
@@ -467,6 +479,21 @@ export class ThreeAsciiRenderer {
     if (completed.readbackUnavailable || completed.grid) return false;
     if (this.deferredReadbacks.lastCompletedGrid().length > 0) return false;
     return this.deferredReadbacks.inspect().pending === 0;
+  }
+
+  private updateDeferredReadbackStaleness(completed: ThreeAsciiDeferredReadbackConsumeResult): boolean {
+    if (completed.grid) {
+      this.deferredReadbackStaleFrames = 0;
+      return false;
+    }
+    if (this.deferredReadbackMaxStaleFrames <= 0 || this.deferredReadbacks.lastCompletedGrid().length === 0) {
+      return false;
+    }
+    this.deferredReadbackStaleFrames += 1;
+    if (this.deferredReadbackStaleFrames < this.deferredReadbackMaxStaleFrames) {
+      return false;
+    }
+    return true;
   }
 
   private consumeDeferredAnsiGrid(): ThreeAsciiDeferredReadbackConsumeResult {
