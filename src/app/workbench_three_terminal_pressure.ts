@@ -13,6 +13,8 @@ export interface WorkbenchThreeTerminalPressureOptions {
   levels: readonly number[];
   highBytes: number;
   lowBytes: number;
+  highBytesPerGrid?: number;
+  lowBytesPerGrid?: number;
   highDurationMs?: number;
   highFrameThreshold?: number;
   lowFrameThreshold?: number;
@@ -99,7 +101,11 @@ export function resolveWorkbenchThreeTerminalPressureBudget(
   }
 
   const highDurationMs = Math.max(1, options.highDurationMs ?? Number.POSITIVE_INFINITY);
-  const highPressure = options.bytes >= options.highBytes || (options.durationMs ?? 0) >= highDurationMs;
+  const bytesPerGrid = options.bytes / Math.max(1, options.renderedThreeGrids);
+  const highBytesPerGrid = options.highBytesPerGrid ?? Number.POSITIVE_INFINITY;
+  const lowBytesPerGrid = options.lowBytesPerGrid ?? Number.POSITIVE_INFINITY;
+  const highPressure = options.bytes >= options.highBytes || bytesPerGrid >= highBytesPerGrid ||
+    (options.durationMs ?? 0) >= highDurationMs;
   if (highPressure && current > levels[0]!) {
     const highFrames = state.highFrames + 1;
     if (highFrames >= highFrameThreshold) {
@@ -121,7 +127,7 @@ export function resolveWorkbenchThreeTerminalPressureBudget(
     };
   }
 
-  if (options.bytes <= options.lowBytes && current < levels[levels.length - 1]!) {
+  if (options.bytes <= options.lowBytes && bytesPerGrid <= lowBytesPerGrid && current < levels[levels.length - 1]!) {
     const lowFrames = state.lowFrames + 1;
     if (lowFrames >= lowFrameThreshold) {
       const next = nextHigherLevel(current, levels);

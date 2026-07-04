@@ -413,3 +413,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   window, and prevented terminal-pressure downshifts from warm-up placeholder frames.
 - Added a real WebGPU `three-ascii:probe` timing task and hardened deferred readback failures so unsupported or rejected
   deferred maps demote to blocking readback instead of forcing ThreePanelFrameView into fallback/rebuild loops.
+- Added per-Three-grid terminal byte thresholds to the workbench pressure policy so SSH/tmux sessions can downshift
+  medium-but-expensive ASCII panes before whole-screen flushes become visibly slow.
