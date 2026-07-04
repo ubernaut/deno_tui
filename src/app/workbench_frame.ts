@@ -11,6 +11,7 @@ import {
 
 const lineSignalRowCache = new WeakMap<WorkbenchLineSignal, WorkbenchLineSignalRowCache>();
 const frameRowMetadata = new WeakMap<string[], WorkbenchFrameRowMetadata>();
+const RESET = "\x1b[0m";
 
 /** Cell matrix used by immediate-mode workbench renderers before row assembly. */
 export type WorkbenchFrame = string[][];
@@ -40,6 +41,10 @@ interface WorkbenchLineSignalRowCache {
 interface WorkbenchFrameRowMetadata {
   dirty: boolean;
   revision: number;
+  renderedHint?: {
+    width: number;
+    line: string;
+  };
 }
 
 /** One drawable text segment for a framed workbench window. */
@@ -52,6 +57,9 @@ export interface WorkbenchFrameBoxLine {
 
 /** Assembles one frame row from sparse styled cells. */
 export function renderFrameRow(cells: string[], width: number): string {
+  const columns = Math.max(0, Math.floor(width));
+  const hint = frameRowMetadata.get(cells)?.renderedHint;
+  if (hint?.width === columns) return hint.line;
   return renderFrameRowCells(cells, width);
 }
 
@@ -169,7 +177,13 @@ function writeSingleStyleFrameText(
     targetColumn += 1;
     index += char.length;
   }
-  if (wrote) updateFrameRowMetadata(cells);
+  if (!wrote) return;
+
+  const metadata = updateFrameRowMetadata(cells);
+  const renderedLine = fullRowSingleStyleLine(style, text, width, column);
+  if (renderedLine !== undefined) {
+    metadata.renderedHint = { width: Math.max(0, Math.floor(width)), line: renderedLine };
+  }
 }
 
 function singleSgrStyledText(value: string): { style: string; text: string } | undefined {
@@ -423,17 +437,34 @@ function markFrameRowCleared(cells: string[]): void {
   if (!metadata) return;
   metadata.revision += 1;
   metadata.dirty = true;
+  metadata.renderedHint = undefined;
 }
 
-function updateFrameRowMetadata(cells: string[]): void {
+function updateFrameRowMetadata(cells: string[]): WorkbenchFrameRowMetadata {
   let metadata = frameRowMetadata.get(cells);
   if (!metadata) {
     metadata = { dirty: true, revision: 1 };
     frameRowMetadata.set(cells, metadata);
-    return;
+    return metadata;
   }
   metadata.revision += 1;
   metadata.dirty = true;
+  metadata.renderedHint = undefined;
+  return metadata;
+}
+
+function fullRowSingleStyleLine(
+  style: string,
+  text: string,
+  width: number,
+  column: number,
+): string | undefined {
+  const columns = Math.max(0, Math.floor(width));
+  if (columns <= 0 || column > 0 || column + text.length < columns) return undefined;
+  const start = Math.max(0, -Math.floor(column));
+  const body = text.slice(start, start + columns);
+  if (body.length !== columns) return undefined;
+  return style ? `${style}${body}${RESET}` : body;
 }
 
 /** Writes ANSI-styled text into a string-backed frame row. */

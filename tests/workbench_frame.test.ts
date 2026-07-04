@@ -116,6 +116,19 @@ Deno.test("workbench frame writes single-style ANSI rows through the fast path",
   );
 });
 
+Deno.test("workbench frame reuses full-row single-style render hints safely", () => {
+  const frame: WorkbenchFrame = [[]];
+  writeFrame(frame, 4, 0, -1, "\x1b[32mABCDE\x1b[0m");
+
+  assertEquals(renderFrameRow(frame[0]!, 4), "\x1b[32mBCDE\x1b[0m");
+  assertEquals(renderFrameRow(frame[0]!, 3), "\x1b[32mBCD\x1b[0m");
+
+  prepareWorkbenchFrame(frame, 1);
+  writeFrame(frame, 4, 0, 0, "\x1b[35mWXYZ\x1b[0m");
+
+  assertEquals(renderFrameRow(frame[0]!, 4), "\x1b[35mWXYZ\x1b[0m");
+});
+
 Deno.test("workbench frame keeps mixed ANSI sequences on the general parser", () => {
   const frame: WorkbenchFrame = [[]];
   writeFrame(frame, 3, 0, 0, "\x1b[31mA\x1b[32mB\x1b[0m");

@@ -976,3 +976,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   roughly 2.0ms to 1.35ms on this host.
 - Reused DirtyRegion row buckets across canvas reset batches without changing public `clear()` behavior, keeping the
   dirty-region microbenchmark in its prior range while trimming modal overlap churn to roughly 15ms on this host.
+- Added full-row single-style render hints to workbench frame rows so screen flushes can reuse the original assembled
+  ANSI line instead of splitting and recombining every cell. The focused full-screen flush benchmark dropped from
+  roughly 3.4ms to 0.48ms on this host while neighboring span and Three block flush guards stayed within range.
