@@ -36,6 +36,17 @@ export interface WorkbenchThreePressureProbeSummary {
   averageSourceChangedRows: number;
 }
 
+export interface WorkbenchThreePressureProbeValidationOptions {
+  minSteadyFrames: number;
+  minGridUpdates: number;
+  minAverageSourceChangedRows: number;
+}
+
+export interface WorkbenchThreePressureProbeValidationResult {
+  ok: boolean;
+  errors: string[];
+}
+
 export interface WorkbenchThreePressureProbeOptions {
   mode: string;
   glyphs: string;
@@ -71,6 +82,10 @@ export interface WorkbenchThreePressureProbeCliOptions<Mode extends string> {
   glyphs: TerminalGlyphStyle;
   readbackStrategy: ThreeAsciiReadbackStrategy;
   adaptive: boolean;
+  check: boolean;
+  minSteadyFrames: number;
+  minGridUpdates: number;
+  minAverageSourceChangedRows: number;
   intervalMs: number;
 }
 
@@ -91,6 +106,10 @@ export function parseWorkbenchThreePressureProbeCliOptions<Mode extends string>(
     glyphs: choiceArg(args, "--glyphs", "blocks" as TerminalGlyphStyle, ["blocks", "glyphs", "mixed"] as const),
     readbackStrategy: choiceArg(args, "--readback", defaults.readbackStrategy, ["blocking", "deferred"] as const),
     adaptive: args.includes("--adaptive"),
+    check: args.includes("--check"),
+    minSteadyFrames: numberArg(args, "--min-steady-frames", 3),
+    minGridUpdates: numberArg(args, "--min-grid-updates", 2),
+    minAverageSourceChangedRows: numberArg(args, "--min-source-rows", 1),
     intervalMs: numberArg(args, "--interval", defaults.frameIntervalForCells(maxCells)),
   };
 }
@@ -158,6 +177,33 @@ export function summarizeWorkbenchThreePressureProbe(
     averageChangedRows: steadyCount > 0 ? totalChangedRows / steadyCount : 0,
     averageSourceChangedRows: steadyCount > 0 ? totalSourceChangedRows / steadyCount : 0,
   };
+}
+
+/** Validates that a workbench Three pressure probe observed real renderer frames and changing source grids. */
+export function validateWorkbenchThreePressureProbe(
+  samples: readonly WorkbenchThreePressureProbeSample[],
+  options: WorkbenchThreePressureProbeValidationOptions,
+): WorkbenchThreePressureProbeValidationResult {
+  const summary = summarizeWorkbenchThreePressureProbe(samples);
+  const latest = summary.latest;
+  const errors: string[] = [];
+  if (!summary.warmup) {
+    errors.push("no valid renderer frame was observed");
+  }
+  if (summary.steady.length < options.minSteadyFrames) {
+    errors.push(`steady renderer frames ${summary.steady.length} < ${options.minSteadyFrames}`);
+  }
+  if ((latest?.gridUpdates ?? 0) < options.minGridUpdates) {
+    errors.push(`grid updates ${latest?.gridUpdates ?? 0} < ${options.minGridUpdates}`);
+  }
+  if (summary.averageSourceChangedRows < options.minAverageSourceChangedRows) {
+    errors.push(
+      `average source-changed rows ${
+        summary.averageSourceChangedRows.toFixed(1)
+      } < ${options.minAverageSourceChangedRows}`,
+    );
+  }
+  return { ok: errors.length === 0, errors };
 }
 
 export function formatWorkbenchThreePressureProbeLines(

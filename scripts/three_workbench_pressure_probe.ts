@@ -22,6 +22,7 @@ import {
   formatWorkbenchThreePressureProbeLines,
   parseWorkbenchThreePressureProbeCliOptions,
   snapshotWorkbenchThreeProbeGridRows,
+  validateWorkbenchThreePressureProbe,
   type WorkbenchThreePressureProbeSample,
 } from "../src/three_ascii/workbench_pressure_probe.ts";
 import { type ThreeSceneMode, threeSceneModes } from "../app/types.ts";
@@ -49,6 +50,10 @@ const {
   glyphs,
   readbackStrategy,
   adaptive,
+  check,
+  minSteadyFrames,
+  minGridUpdates,
+  minAverageSourceChangedRows,
   intervalMs,
 } = options;
 
@@ -134,6 +139,18 @@ console.log(
     totalBytes: bytesWritten,
   }, samples).join("\n"),
 );
+
+if (check) {
+  const validation = validateWorkbenchThreePressureProbe(samples, {
+    minSteadyFrames,
+    minGridUpdates,
+    minAverageSourceChangedRows,
+  });
+  if (!validation.ok) {
+    console.error(`three-workbench pressure probe check failed: ${validation.errors.join("; ")}`);
+    Deno.exit(1);
+  }
+}
 
 function drawSample(index: number): WorkbenchThreePressureProbeSample {
   const prepared = prepareWorkbenchFrame(frame, frameHeight);

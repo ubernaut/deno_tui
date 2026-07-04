@@ -272,6 +272,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added a terminal render profile to the Acerola ASCII node so terminal-only frames can skip edge-analysis passes that
   are not consumed by block/no-edge output; the default workbench pressure probe dropped from roughly 11-12ms steady
   renderer time to roughly 6-7ms while preserving real grid updates.
+- Added `--check` validation to the workbench Three pressure probe so future renderer pass-graph optimizations fail fast
+  when they return cached/static grids without real renderer telemetry or source-row changes.
 - Earlier restored the terminal workbench Three policy to blocking readback after stale-grid probes; the current policy
   now uses deferred readback again because stale-frame and startup-grid guards are covered by focused tests.
 - Extended Three panel frame-time adaptation to the internal 120/240/480 pressure tiers so slow blocking-readback

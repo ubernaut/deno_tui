@@ -5,6 +5,7 @@ import {
   parseWorkbenchThreePressureProbeCliOptions,
   snapshotWorkbenchThreeProbeGridRows,
   summarizeWorkbenchThreePressureProbe,
+  validateWorkbenchThreePressureProbe,
   type WorkbenchThreePressureProbeSample,
 } from "../src/three_ascii/workbench_pressure_probe.ts";
 
@@ -69,6 +70,39 @@ Deno.test("workbench Three probe changed-row counter handles equal sparse and re
   );
 });
 
+Deno.test("validateWorkbenchThreePressureProbe accepts real changing renderer frames", () => {
+  const result = validateWorkbenchThreePressureProbe([
+    sample({ index: 1, rendererMs: 0, rows: 8, columns: 26, cells: 208, gridUpdates: 1 }),
+    sample({ index: 2, rendererMs: 5, rows: 8, columns: 26, cells: 208, gridUpdates: 2 }),
+    sample({ index: 3, rendererMs: 4, rows: 8, columns: 26, cells: 208, sourceChangedRows: 5, gridUpdates: 3 }),
+    sample({ index: 4, rendererMs: 4, rows: 8, columns: 26, cells: 208, sourceChangedRows: 3, gridUpdates: 4 }),
+  ], {
+    minSteadyFrames: 2,
+    minGridUpdates: 3,
+    minAverageSourceChangedRows: 1,
+  });
+
+  assertEquals(result, { ok: true, errors: [] });
+});
+
+Deno.test("validateWorkbenchThreePressureProbe rejects cached grids without renderer telemetry", () => {
+  const result = validateWorkbenchThreePressureProbe([
+    sample({ index: 1, rendererMs: 0, rows: 8, columns: 26, cells: 208, sourceChangedRows: 2, gridUpdates: 1 }),
+    sample({ index: 2, rendererMs: 0, rows: 8, columns: 26, cells: 208, sourceChangedRows: 0, gridUpdates: 4 }),
+  ], {
+    minSteadyFrames: 2,
+    minGridUpdates: 2,
+    minAverageSourceChangedRows: 1,
+  });
+
+  assertEquals(result.ok, false);
+  assertEquals(result.errors, [
+    "no valid renderer frame was observed",
+    "steady renderer frames 0 < 2",
+    "average source-changed rows 0.0 < 1",
+  ]);
+});
+
 Deno.test("formatWorkbenchThreePressureProbeLines reports source changes and update counts", () => {
   const lines = formatWorkbenchThreePressureProbeLines({
     mode: "studio",
@@ -130,6 +164,12 @@ Deno.test("parseWorkbenchThreePressureProbeCliOptions separates pressure and sav
       "--readback",
       "deferred",
       "--adaptive",
+      "--check",
+      "--min-steady-frames",
+      "5",
+      "--min-grid-updates=7",
+      "--min-source-rows",
+      "2",
     ],
     probeDefaults(),
   );
@@ -141,6 +181,10 @@ Deno.test("parseWorkbenchThreePressureProbeCliOptions separates pressure and sav
   assertEquals(options.glyphs, "mixed");
   assertEquals(options.readbackStrategy, "deferred");
   assertEquals(options.adaptive, true);
+  assertEquals(options.check, true);
+  assertEquals(options.minSteadyFrames, 5);
+  assertEquals(options.minGridUpdates, 7);
+  assertEquals(options.minAverageSourceChangedRows, 2);
   assertEquals(options.intervalMs, 33);
 });
 
