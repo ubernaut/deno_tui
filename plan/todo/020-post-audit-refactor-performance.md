@@ -308,3 +308,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added an opt-in deferred WebGPU readback strategy for Three ASCII renderer frames and enabled it for workbench-hosted
   Three panels, decoupling terminal frame cadence from same-frame `mapAsync()` stalls while preserving blocking readback
   as the package default.
+- Extracted deferred Three ASCII readback queueing into a focused internal helper with direct tests for slot
+  backpressure, stale-frame invalidation, mapped-frame consumption, mapped errors, and cleanup.

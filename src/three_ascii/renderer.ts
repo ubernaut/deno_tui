@@ -12,6 +12,7 @@ import {
 import type { TerminalGlyphStyle } from "./glyphs.ts";
 import { HeadlessCanvas } from "./headless_canvas.ts";
 import { loadAsciiLutTextures } from "./loadAsciiLuts.ts";
+import { type ThreeAsciiDeferredReadbackFrame, ThreeAsciiDeferredReadbackQueue } from "./deferred_readback.ts";
 import {
   destroyThreeAsciiGpuBufferSlot,
   ensureThreeAsciiGpuBufferSlot,
@@ -37,6 +38,7 @@ const DEFAULT_PIXEL_ASPECT_RATIO = 0.5;
 const DEFAULT_TERMINAL_EDGE_BIAS = 1;
 const TERMINAL_EDGE_THRESHOLD_SCALE = 2;
 const MIN_VISIBLE_LUMINANCE = 0.015;
+const GPU_MAP_READ = 1;
 
 const FILL_SHADER = /* wgsl */ `
 struct Params {
@@ -262,21 +264,6 @@ interface EffectState extends ThreeAsciiUniformEffectState {
   backgroundColor: Color;
 }
 
-interface DeferredReadbackFrame {
-  slot: ThreeAsciiGpuBufferSlot<GPUBuffer>;
-  layout: ThreeAsciiReadbackLayout;
-  columns: number;
-  rows: number;
-  terminalGlyphStyle: TerminalGlyphStyle;
-  terminalEdgeBias: number;
-  backgroundColor: Color;
-  generation: number;
-  resolved: boolean;
-  error?: unknown;
-  readbackStart: number;
-  readbackMs: number;
-}
-
 type ThreeBackendRenderer = WebGPURenderer & {
   backend: {
     device: GPUDevice;
@@ -388,11 +375,9 @@ export class ThreeAsciiRenderer {
   private edgeOutput?: ThreeAsciiGpuBufferSlot<GPUBuffer>;
   private colorOutput?: ThreeAsciiGpuBufferSlot<GPUBuffer>;
   private outputReadback?: ThreeAsciiGpuBufferSlot<GPUBuffer>;
-  private deferredReadbacks: Array<ThreeAsciiGpuBufferSlot<GPUBuffer> | undefined> = [];
-  private pendingDeferredReadbacks: DeferredReadbackFrame[] = [];
-  private nextDeferredReadbackIndex = 0;
-  private lastDeferredGrid: string[][] = [];
-  private deferredReadbackGeneration = 0;
+  private readonly deferredReadbacks = new ThreeAsciiDeferredReadbackQueue<GPUBuffer>({
+    mapModeRead: GPU_MAP_READ,
+  });
   private uniformValues = new Float32Array(THREE_ASCII_UNIFORM_FLOAT_COUNT);
   private readonly ansiGridAssembler = new ThreeAsciiAnsiGridAssembler({ reuseGrid: true });
   private readonly readbackLayoutCache = new ThreeAsciiReadbackLayoutCache();
@@ -437,8 +422,7 @@ export class ThreeAsciiRenderer {
     this.sizeDirty = true;
     this.computeDirty = true;
     this.uniformDirty = true;
-    this.deferredReadbackGeneration += 1;
-    this.lastDeferredGrid = [];
+    this.deferredReadbacks.invalidate();
   }
 
   setEffectOptions(options: Partial<AcerolaAsciiNodeOptions>): void {
@@ -658,16 +642,33 @@ export class ThreeAsciiRenderer {
     readbackCopyPlan: ReturnType<ThreeAsciiReadbackCopyPlanCache["resolve"]>,
     backgroundColor: Color,
   ): string[][] {
-    const completedGrid = this.consumeCompletedDeferredReadbacks();
-    const readback = this.nextDeferredReadbackBuffer(readbackLayout.byteLength);
+    const completed = this.deferredReadbacks.consumeCompleted(
+      (pending) => this.buildAnsiGridFromMappedReadback(pending),
+      (error) => new ThreeAsciiReadbackError(error),
+    );
+    if (completed.readbackMs !== undefined) {
+      this.lastReadbackMs = completed.readbackMs;
+    }
+
+    const readback = this.deferredReadbacks.nextBuffer(
+      readbackLayout.byteLength,
+      (current, byteLength) => this.ensureReadbackBuffer(current, byteLength),
+    );
     if (!readback) {
-      return completedGrid ?? this.lastDeferredGrid;
+      return completed.grid ?? this.deferredReadbacks.lastCompletedGrid();
     }
 
     this.copyReadbackCommands(commandEncoder, readbackCopyPlan, readback);
     this.device!.queue.submit([commandEncoder.finish()]);
-    this.queueDeferredReadback(readback, readbackLayout, backgroundColor);
-    return completedGrid ?? this.lastDeferredGrid;
+    this.deferredReadbacks.queue(readback, {
+      layout: readbackLayout,
+      columns: this.columns,
+      rows: this.rows,
+      terminalGlyphStyle: this.terminalGlyphStyle,
+      terminalEdgeBias: this.terminalEdgeBias,
+      backgroundColor: backgroundColor.clone(),
+    });
+    return completed.grid ?? this.deferredReadbacks.lastCompletedGrid();
   }
 
   private copyReadbackCommands(
@@ -703,7 +704,7 @@ export class ThreeAsciiRenderer {
     this.edgeOutput = destroyThreeAsciiGpuBufferSlot(this.edgeOutput);
     this.colorOutput = destroyThreeAsciiGpuBufferSlot(this.colorOutput);
     this.outputReadback = destroyThreeAsciiGpuBufferSlot(this.outputReadback);
-    this.destroyDeferredReadbacks();
+    this.deferredReadbacks.destroy();
     this.paramsBuffer?.destroy();
     this.paramsBuffer = undefined;
     this.readbackLayoutCache.clear();
@@ -986,81 +987,7 @@ export class ThreeAsciiRenderer {
     });
   }
 
-  private nextDeferredReadbackBuffer(byteLength: number): ThreeAsciiGpuBufferSlot<GPUBuffer> | undefined {
-    const slotCount = 2;
-    for (let attempt = 0; attempt < slotCount; attempt += 1) {
-      const index = (this.nextDeferredReadbackIndex + attempt) % slotCount;
-      const current = this.deferredReadbacks[index];
-      if (current && this.pendingDeferredReadbacks.some((pending) => pending.slot === current)) {
-        continue;
-      }
-      const next = this.ensureReadbackBuffer(current, byteLength);
-      this.deferredReadbacks[index] = next;
-      this.nextDeferredReadbackIndex = (index + 1) % slotCount;
-      return next;
-    }
-    return undefined;
-  }
-
-  private queueDeferredReadback(
-    slot: ThreeAsciiGpuBufferSlot<GPUBuffer>,
-    layout: ThreeAsciiReadbackLayout,
-    backgroundColor: Color,
-  ): void {
-    const pending: DeferredReadbackFrame = {
-      slot,
-      layout,
-      columns: this.columns,
-      rows: this.rows,
-      terminalGlyphStyle: this.terminalGlyphStyle,
-      terminalEdgeBias: this.terminalEdgeBias,
-      backgroundColor: backgroundColor.clone(),
-      generation: this.deferredReadbackGeneration,
-      resolved: false,
-      readbackStart: performance.now(),
-      readbackMs: 0,
-    };
-    this.pendingDeferredReadbacks.push(pending);
-    slot.gpu.mapAsync(GPUMapMode.READ).then(
-      () => {
-        pending.readbackMs = performance.now() - pending.readbackStart;
-        pending.resolved = true;
-      },
-      (error) => {
-        pending.error = error;
-        pending.resolved = true;
-      },
-    );
-  }
-
-  private consumeCompletedDeferredReadbacks(): string[][] | undefined {
-    let grid: string[][] | undefined;
-    for (let index = 0; index < this.pendingDeferredReadbacks.length;) {
-      const pending = this.pendingDeferredReadbacks[index]!;
-      if (!pending.resolved) {
-        index += 1;
-        continue;
-      }
-
-      this.pendingDeferredReadbacks.splice(index, 1);
-      if (pending.error !== undefined) {
-        throw new ThreeAsciiReadbackError(pending.error);
-      }
-
-      try {
-        if (pending.generation === this.deferredReadbackGeneration) {
-          grid = this.buildAnsiGridFromMappedReadback(pending);
-          this.lastDeferredGrid = grid;
-          this.lastReadbackMs = pending.readbackMs;
-        }
-      } finally {
-        pending.slot.gpu.unmap();
-      }
-    }
-    return grid;
-  }
-
-  private buildAnsiGridFromMappedReadback(pending: DeferredReadbackFrame): string[][] {
+  private buildAnsiGridFromMappedReadback(pending: ThreeAsciiDeferredReadbackFrame<GPUBuffer>): string[][] {
     const assemblyStart = performance.now();
     const source = pending.slot.gpu.getMappedRange();
     const views = this.readbackViewCache.resolve(source, pending.layout);
@@ -1076,17 +1003,6 @@ export class ThreeAsciiRenderer {
     });
     this.lastAssemblyMs = performance.now() - assemblyStart;
     return grid;
-  }
-
-  private destroyDeferredReadbacks(): void {
-    this.pendingDeferredReadbacks.length = 0;
-    for (let index = 0; index < this.deferredReadbacks.length; index += 1) {
-      this.deferredReadbacks[index] = destroyThreeAsciiGpuBufferSlot(this.deferredReadbacks[index]);
-    }
-    this.deferredReadbacks.length = 0;
-    this.nextDeferredReadbackIndex = 0;
-    this.lastDeferredGrid = [];
-    this.deferredReadbackGeneration += 1;
   }
 
   private dispatchComputePass(
