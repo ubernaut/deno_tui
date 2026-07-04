@@ -97,9 +97,11 @@ export function formatWorkbenchThreePressureProbeLines(
     }`,
     `warmup=${formatMs(summary.warmup?.rendererMs)} renderer=${formatMs(summary.averageRendererMs)} fps=${
       formatFps(summary.averageRendererMs)
-    } flush=${formatMs(summary.averageFlushMs)} bytes=${Math.round(summary.averageBytes)} changedRows=${
-      summary.averageChangedRows.toFixed(1)
-    } sourceRows=${summary.averageSourceChangedRows.toFixed(1)} updates=${latest?.gridUpdates ?? 0} latest=${
+    } flush=${formatMs(summary.averageFlushMs)} bytes=${Math.round(summary.averageBytes)} rate=${
+      Math.round(workbenchThreeProbeBytesPerSecond(summary.averageBytes, options.intervalMs))
+    }B/s changedRows=${summary.averageChangedRows.toFixed(1)} sourceRows=${
+      summary.averageSourceChangedRows.toFixed(1)
+    } updates=${latest?.gridUpdates ?? 0} latest=${
       latest ? `${latest.columns}x${latest.rows}/${latest.cells}c` : "none"
     } totalBytes=${options.totalBytes}`,
   ];
@@ -115,6 +117,11 @@ export function formatWorkbenchThreePressureProbeLines(
     );
   }
   return lines;
+}
+
+export function workbenchThreeProbeBytesPerSecond(bytes: number, intervalMs: number): number {
+  if (intervalMs <= 0) return 0;
+  return bytes / (intervalMs / 1000);
 }
 
 function workbenchThreeProbeGridRowsEqual(

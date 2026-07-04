@@ -183,6 +183,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   SSH/tmux sessions are not immediately saturated by the default block renderer pane.
 - Added sustained terminal byte-rate pressure to the workbench Three policy so continuous moderate-sized frames can
   downshift renderer detail before they overwhelm SSH/tmux links.
+- Added terminal byte-rate reporting to the workbench Three pressure probe so renderer tuning can compare output
+  pressure against adaptive policy thresholds directly.
 - Stabilized default Three ASCII block rendering by using ASCII-safe shared window controls and removing fog from the
   default block preset so truecolor block cells keep source color depth.
 - Extracted the workbench Three ASCII config modal geometry into a tested internal layout helper, reducing inline modal

@@ -5,6 +5,7 @@ import {
   snapshotWorkbenchThreeProbeGridRows,
   summarizeWorkbenchThreePressureProbe,
   type WorkbenchThreePressureProbeSample,
+  workbenchThreeProbeBytesPerSecond,
 } from "../src/three_ascii/workbench_pressure_probe.ts";
 
 Deno.test("summarizeWorkbenchThreePressureProbe excludes placeholder and startup samples", () => {
@@ -40,6 +41,11 @@ Deno.test("summarizeWorkbenchThreePressureProbe reports empty steady metrics wit
   assertEquals(summary.averageBytes, 0);
   assertEquals(summary.averageChangedRows, 0);
   assertEquals(summary.averageSourceChangedRows, 0);
+});
+
+Deno.test("workbench Three probe byte rate uses the configured frame interval", () => {
+  assertEquals(workbenchThreeProbeBytesPerSecond(4_000, 40), 100_000);
+  assertEquals(workbenchThreeProbeBytesPerSecond(4_000, 0), 0);
 });
 
 Deno.test("workbench Three probe grid snapshots preserve mutable renderer frame history", () => {
@@ -88,6 +94,7 @@ Deno.test("formatWorkbenchThreePressureProbeLines reports source changes and upd
   assertStringIncludes(lines[1], "mode=studio glyphs=blocks readback=deferred");
   assertStringIncludes(lines[1], "frame=168x54 panel=96x32 maxCells=960 interval=50.00ms");
   assertStringIncludes(lines[2], "renderer=12.00ms");
+  assertStringIncludes(lines[2], "rate=200B/s");
   assertStringIncludes(lines[2], "sourceRows=16.0");
   assertStringIncludes(lines[2], "updates=2");
   assertStringIncludes(lines[2], "latest=53x17/901c");
