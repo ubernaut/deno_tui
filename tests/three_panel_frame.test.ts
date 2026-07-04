@@ -5,6 +5,7 @@ import {
   resolveThreePanelAdaptiveRenderBudget,
   resolveThreePanelRenderPolicy,
   resolveThreePanelRenderSize,
+  ThreePanelAdaptiveRenderBudgetController,
   ThreePanelFrameView,
   type ThreePanelGridRenderer,
   type ThreeSceneState,
@@ -139,6 +140,35 @@ Deno.test("resolveThreePanelAdaptiveRenderBudget steps down on sustained slow fr
   });
   assertEquals(recovered.direction, "up");
   assertEquals(recovered.maxCells, undefined);
+});
+
+Deno.test("ThreePanelAdaptiveRenderBudgetController owns warmup and requested-size state", () => {
+  const controller = new ThreePanelAdaptiveRenderBudgetController();
+
+  const initial = controller.renderSize({ width: 160, height: 60 }, 3_840);
+  assert(initial.columns * initial.rows <= 3_840);
+  assertEquals(
+    controller.update({ requestedMaxCells: 3_840, frameMs: 1_000, targetMs: 1000 / 18 }),
+    { maxCells: undefined, slowFrames: 0, fastFrames: 0, direction: "steady", changed: false },
+  );
+  assertEquals(
+    controller.update({ requestedMaxCells: 3_840, frameMs: 220, targetMs: 1000 / 18 }).direction,
+    "steady",
+  );
+  const reduced = controller.update({ requestedMaxCells: 3_840, frameMs: 220, targetMs: 1000 / 18 });
+  assertEquals(reduced.direction, "down");
+  assertEquals(reduced.maxCells, 1_920);
+  assertEquals(reduced.changed, true);
+  const reducedSize = controller.renderSize({ width: 160, height: 60 }, 3_840);
+  assert(reducedSize.columns * reducedSize.rows <= 1_920);
+
+  const resetSize = controller.renderSize({ width: 160, height: 60 }, 7_680);
+  assert(resetSize.columns * resetSize.rows > reducedSize.columns * reducedSize.rows);
+  assert(resetSize.columns * resetSize.rows <= 7_680);
+  assertEquals(
+    controller.update({ requestedMaxCells: 7_680, frameMs: 1_000, targetMs: 1000 / 18 }).direction,
+    "steady",
+  );
 });
 
 Deno.test("resolveThreePanelLifecycleState reports explicit transition phases", () => {

@@ -23,7 +23,10 @@ import {
   threePanelGraphicsFallbackReason,
   threePanelSlowFrameDiagnostic,
 } from "./three_panel_diagnostics.ts";
-import { resolveThreePanelAdaptiveRenderBudget } from "./three_panel_adaptive.ts";
+import {
+  resolveThreePanelAdaptiveRenderBudget,
+  ThreePanelAdaptiveRenderBudgetController,
+} from "./three_panel_adaptive.ts";
 import { threePanelAsciiEffectOptionsEqual } from "./three_panel_effect.ts";
 import { fingerprintThreePanelGrid, threePanelBlankGrid } from "./three_panel_grid.ts";
 import {
@@ -37,8 +40,11 @@ import type { AsciiOptions, Rect, ThreeSceneMode, ThreeSceneSignal } from "./typ
 export type { ThreePanelInteractionState } from "./three_panel_interaction.ts";
 export {
   resolveThreePanelAdaptiveRenderBudget,
+  ThreePanelAdaptiveRenderBudgetController,
   type ThreePanelAdaptiveRenderBudgetInput,
   type ThreePanelAdaptiveRenderBudgetResult,
+  type ThreePanelAdaptiveRenderBudgetUpdateInput,
+  type ThreePanelAdaptiveRenderBudgetUpdateResult,
 } from "./three_panel_adaptive.ts";
 export {
   resolveThreePanelRenderPolicy,
@@ -236,11 +242,7 @@ export class ThreePanelFrameView {
   private blankGridColumns = -1;
   private blankGridRows = -1;
   private lastSlowFrameReportTime = 0;
-  private adaptiveRenderMaxCells?: number;
-  private adaptiveRequestedMaxCells = 0;
-  private adaptiveSlowFrames = 0;
-  private adaptiveFastFrames = 0;
-  private adaptiveSampleFrames = 0;
+  private readonly adaptiveBudget = new ThreePanelAdaptiveRenderBudgetController();
   private gridFingerprint = "";
   private gridRevision?: number;
 
@@ -520,22 +522,13 @@ export class ThreePanelFrameView {
     if (!performanceInfo) return;
     const requestedMaxCells = this.requestedRenderMaxCells(ascii);
     const targetMs = this.currentFrameInterval();
-    const next = resolveThreePanelAdaptiveRenderBudget({
+    const next = this.adaptiveBudget.update({
       requestedMaxCells,
-      currentMaxCells: this.adaptiveRenderMaxCells,
       frameMs: performanceInfo.totalMs,
       targetMs,
-      slowFrames: this.adaptiveSlowFrames,
-      fastFrames: this.adaptiveFastFrames,
-      sampleFrames: this.adaptiveSampleFrames,
     });
-    this.adaptiveSampleFrames += 1;
+    if (!next.changed) return;
 
-    this.adaptiveSlowFrames = next.slowFrames;
-    this.adaptiveFastFrames = next.fastFrames;
-    if (next.maxCells === this.adaptiveRenderMaxCells) return;
-
-    this.adaptiveRenderMaxCells = next.maxCells;
     this.invalidateFrame();
     this.running = false;
     this.syncPending = true;
@@ -656,7 +649,7 @@ export class ThreePanelFrameView {
     this.activeWireframeThickness = undefined;
     this.activeDeferredReadbackSlots = undefined;
     this.interaction.clearBaseTransform();
-    this.adaptiveSampleFrames = 0;
+    this.adaptiveBudget.reset();
   }
 
   private resetAppliedRendererState(): void {
@@ -713,15 +706,7 @@ export class ThreePanelFrameView {
     rect: Pick<Rect, "width" | "height">,
     ascii: Pick<AsciiOptions, "renderMaxCells">,
   ): ThreePanelRenderSize {
-    const requested = this.requestedRenderMaxCells(ascii);
-    if (requested !== this.adaptiveRequestedMaxCells) {
-      this.adaptiveRequestedMaxCells = requested;
-      this.adaptiveRenderMaxCells = undefined;
-      this.adaptiveSlowFrames = 0;
-      this.adaptiveFastFrames = 0;
-      this.adaptiveSampleFrames = 0;
-    }
-    return resolveThreePanelRenderSize(rect, this.adaptiveRenderMaxCells ?? requested);
+    return this.adaptiveBudget.renderSize(rect, this.requestedRenderMaxCells(ascii));
   }
 
   private requestedRenderMaxCells(ascii: Pick<AsciiOptions, "renderMaxCells">): number {
