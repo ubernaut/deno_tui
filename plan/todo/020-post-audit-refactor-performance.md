@@ -429,3 +429,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   same copy-mode search prompt text without embedding it in the large API workbench renderer.
 - Extracted the Three panel ASCII effect option comparator into a focused tested helper, keeping renderer state update
   gating separate from the large frame lifecycle class.
+- Moved Three panel adaptive render-cell budget policy into a focused tested module, preserving the existing re-export
+  while separating performance downshift/recovery tuning from the frame lifecycle implementation.
