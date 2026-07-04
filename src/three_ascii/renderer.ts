@@ -45,6 +45,8 @@ import {
 import {
   executeThreeAsciiReadbackCopyPlan,
   ThreeAsciiReadbackCopyPlanCache,
+  type ThreeAsciiReadbackCopySource,
+  type ThreeAsciiReadbackCopySources,
   type ThreeAsciiReadbackLayout,
   ThreeAsciiReadbackLayoutCache,
   ThreeAsciiReadbackViewCache,
@@ -175,6 +177,12 @@ export class ThreeAsciiRenderer {
   private readonly readbackLayoutCache = new ThreeAsciiReadbackLayoutCache();
   private readonly readbackCopyPlanCache = new ThreeAsciiReadbackCopyPlanCache();
   private readonly readbackViewCache = new ThreeAsciiReadbackViewCache();
+  private readonly readbackCopyFillSource: ThreeAsciiReadbackCopySource = { label: "fill", byteLength: 0 };
+  private readonly readbackCopyEdgeSource: ThreeAsciiReadbackCopySource = { label: "edge", byteLength: 0 };
+  private readonly readbackCopyColorSource: ThreeAsciiReadbackCopySource = { label: "color", byteLength: 0 };
+  private readonly readbackCopySources: ThreeAsciiReadbackCopySources<GPUBuffer> = {} as ThreeAsciiReadbackCopySources<
+    GPUBuffer
+  >;
   private readonly dispatchPlanCache = new ThreeAsciiComputeDispatchPlanCache();
   private readonly dispatchResources: ThreeAsciiComputeDispatchResources = {
     pipelineForPass: (kind) => this.computePipelineForPass(kind),
@@ -422,10 +430,13 @@ export class ThreeAsciiRenderer {
       colorByteLength: this.colorOutput!.byteLength,
       includeEdges: includeTerminalEdges,
     });
+    this.readbackCopyFillSource.byteLength = this.fillOutput!.byteLength;
+    this.readbackCopyEdgeSource.byteLength = this.edgeOutput?.byteLength ?? 0;
+    this.readbackCopyColorSource.byteLength = this.colorOutput!.byteLength;
     const readbackCopyPlan = this.readbackCopyPlanCache.resolve({
-      fill: { label: "fill", byteLength: this.fillOutput!.byteLength },
-      edge: this.edgeOutput ? { label: "edge", byteLength: this.edgeOutput.byteLength } : undefined,
-      color: { label: "color", byteLength: this.colorOutput!.byteLength },
+      fill: this.readbackCopyFillSource,
+      edge: this.edgeOutput ? this.readbackCopyEdgeSource : undefined,
+      color: this.readbackCopyColorSource,
       includeEdges: includeTerminalEdges,
       layout: readbackLayout,
     });
@@ -534,14 +545,13 @@ export class ThreeAsciiRenderer {
     readbackCopyPlan: ReturnType<ThreeAsciiReadbackCopyPlanCache["resolve"]>,
     readback: ThreeAsciiGpuBufferSlot<GPUBuffer> | undefined,
   ): void {
+    this.readbackCopySources.fill = this.fillOutput!.gpu;
+    this.readbackCopySources.edge = this.edgeOutput?.gpu;
+    this.readbackCopySources.color = this.colorOutput!.gpu;
     executeThreeAsciiReadbackCopyPlan(
       commandEncoder,
       readbackCopyPlan,
-      {
-        fill: this.fillOutput!.gpu,
-        edge: this.edgeOutput?.gpu,
-        color: this.colorOutput!.gpu,
-      },
+      this.readbackCopySources,
       readback,
     );
   }
