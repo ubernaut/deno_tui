@@ -18,7 +18,6 @@ import {
   createTerminalWorkspaceController,
   createWebTui,
   createWorkbenchShelfLayoutBuffers,
-  createWorkbenchTitlebarLayout,
   DataTableController,
   defaultWorkbenchMinimizedState,
   FileExplorerController,
@@ -108,9 +107,7 @@ import {
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
   type WorkbenchTitlebarButtonKind,
-  type WorkbenchTitlebarButtonRenderCommand,
   workbenchTitlebarButtonRenderCommandsInto,
-  type WorkbenchTitlebarLayout,
   workbenchWorkspaceScrollbarRenderCommandsInto,
   WorkbenchWorkspaceViewportController,
   wrappedControlOptionRowCount,
@@ -187,6 +184,7 @@ import {
   type WorkbenchMobileCommandAction,
   workbenchMobileCommandStripItemsInto,
 } from "../../src/app/workbench_mobile.ts";
+import { WorkbenchTitlebarBufferCache } from "../../src/app/workbench_titlebar_cache.ts";
 import {
   applyWorkbenchAsciiConfigRowAction,
   createDefaultWorkbenchAsciiOptions,
@@ -362,8 +360,7 @@ const webTerminalScreenKeys = new Map<string, string>();
 const webTerminalPaneProjections: WorkbenchTerminalPaneProjection[] = [];
 const webTerminalCopyRows: WorkbenchTerminalCopyRowProjection[] = [];
 const hitTargets = new HitTargetStack<Hit>();
-const titlebarLayouts = new Map<PanelId, WorkbenchTitlebarLayout>();
-const titlebarRenderCommands = new Map<PanelId, WorkbenchTitlebarButtonRenderCommand[]>();
+const titlebarBuffers = new WorkbenchTitlebarBufferCache<PanelId>();
 const screenRows: string[] = [];
 const workspaceVirtualRows: string[] = [];
 const threePreviewRows: string[] = [];
@@ -938,12 +935,12 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
   const selected = active.peek() === id;
   fillRect(frame, rect, selected ? theme().panelSoft : theme().panel);
   drawFrame(frame, rect, panelTitle(id), selected);
-  const titlebar = layoutWorkbenchTitlebarInto(titlebarLayout(id), {
+  const titlebar = layoutWorkbenchTitlebarInto(titlebarBuffers.layout(id), {
     rect,
     title: panelTitle(id),
     showConfig: id === "three",
   });
-  const titlebarCommands = workbenchTitlebarButtonRenderCommandsInto(titlebarRenderCommandBuffer(id), titlebar);
+  const titlebarCommands = workbenchTitlebarButtonRenderCommandsInto(titlebarBuffers.renderCommands(id), titlebar);
   for (const command of titlebarCommands) {
     writeButton(frame, command.rect.row, command.rect.column, command.label, {
       compact: command.compact,
@@ -978,24 +975,6 @@ function panelTitlebarHit(id: PanelId, kind: WorkbenchTitlebarButtonKind): Hit {
 
 function panelTitle(id: PanelId): string {
   return apiWorkbenchPanelTitle(id, id[0]!.toUpperCase() + id.slice(1));
-}
-
-function titlebarLayout(id: PanelId): WorkbenchTitlebarLayout {
-  let layout = titlebarLayouts.get(id);
-  if (!layout) {
-    layout = createWorkbenchTitlebarLayout();
-    titlebarLayouts.set(id, layout);
-  }
-  return layout;
-}
-
-function titlebarRenderCommandBuffer(id: PanelId): WorkbenchTitlebarButtonRenderCommand[] {
-  let commands = titlebarRenderCommands.get(id);
-  if (!commands) {
-    commands = [];
-    titlebarRenderCommands.set(id, commands);
-  }
-  return commands;
 }
 
 function shortPanelTitle(id: PanelId): string {

@@ -24,7 +24,6 @@ import {
   clipRect,
   contrastText,
   createWorkbenchShelfLayoutBuffers,
-  createWorkbenchTitlebarLayout,
   createWorkbenchVisualizationWindowOptions,
   createWorkbenchWorkspaceStore,
   deleteWorkbenchWorkspace,
@@ -83,9 +82,7 @@ import {
   type WorkbenchTerminalOutputToolbarAction,
   workbenchTerminalOutputToolbarItemsInto,
   type WorkbenchTitlebarButtonKind,
-  type WorkbenchTitlebarButtonRenderCommand,
   workbenchTitlebarButtonRenderCommandsInto,
-  type WorkbenchTitlebarLayout,
   workbenchVisualizationIdFromWindowId,
   workbenchVisualizationWindowId,
   type WorkbenchWindowOption,
@@ -163,6 +160,7 @@ import {
   workbenchButtonRowRenderCommandsInto,
   wrappedControlOptionRowCount,
 } from "../src/app/workbench_control_layout.ts";
+import { WorkbenchTitlebarBufferCache } from "../src/app/workbench_titlebar_cache.ts";
 import { maxTextWidth, type VisibleMenuSlice, visibleMenuSliceInto } from "../src/app/workbench_text.ts";
 import {
   nextWorkbenchTerminalSessionId,
@@ -637,8 +635,7 @@ const hitTargets = new HitTargetStack<HitAction>();
 const screenFrame: Frame = [];
 const workspaceVirtualFrame: Frame = [];
 const windowContentFrames = new Map<WindowId, Frame>();
-const titlebarLayouts = new Map<WindowId, WorkbenchTitlebarLayout>();
-const titlebarRenderCommands = new Map<WindowId, WorkbenchTitlebarButtonRenderCommand[]>();
+const titlebarBuffers = new WorkbenchTitlebarBufferCache<WindowId>();
 const newWindowMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
 const newWindowMenuLabels: string[] = [];
 const workspaceMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
@@ -1282,12 +1279,12 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
   const active = activeWindow.peek() === id;
   addHit(rect, { type: "focus", id });
   drawFrame(frame, rect, windowTitle(id), active);
-  const titlebar = layoutWorkbenchTitlebarInto(titlebarLayout(id), {
+  const titlebar = layoutWorkbenchTitlebarInto(titlebarBuffers.layout(id), {
     rect,
     title: windowTitle(id),
     showConfig: isThreeRenderedWindow(id),
   });
-  const titlebarCommands = workbenchTitlebarButtonRenderCommandsInto(titlebarRenderCommandBuffer(id), titlebar);
+  const titlebarCommands = workbenchTitlebarButtonRenderCommandsInto(titlebarBuffers.renderCommands(id), titlebar);
   for (const command of titlebarCommands) {
     writeButton(frame, command.rect.row, command.rect.column, command.label, {
       compact: command.compact,
@@ -4629,24 +4626,6 @@ function windowTitle(id: WindowId): string {
     : id === TERMINAL_SHELL_WINDOW_ID
     ? terminalShellWindowTitle()
     : apiWorkbenchPanelTitle(id, "Three ASCII");
-}
-
-function titlebarLayout(id: WindowId): WorkbenchTitlebarLayout {
-  let layout = titlebarLayouts.get(id);
-  if (!layout) {
-    layout = createWorkbenchTitlebarLayout();
-    titlebarLayouts.set(id, layout);
-  }
-  return layout;
-}
-
-function titlebarRenderCommandBuffer(id: WindowId): WorkbenchTitlebarButtonRenderCommand[] {
-  let commands = titlebarRenderCommands.get(id);
-  if (!commands) {
-    commands = [];
-    titlebarRenderCommands.set(id, commands);
-  }
-  return commands;
 }
 
 function terminalOutputWindowTitle(): string {

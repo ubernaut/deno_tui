@@ -17379,6 +17379,47 @@ function workbenchMobileCommandStripItemsInto(target, options) {
   return target;
 }
 
+// src/app/workbench_titlebar_cache.ts
+var WorkbenchTitlebarBufferCache = class {
+  #layouts = /* @__PURE__ */ new Map();
+  #renderCommands = /* @__PURE__ */ new Map();
+  /** Returns the retained titlebar layout buffer for a window id. */
+  layout(id2) {
+    let layout = this.#layouts.get(id2);
+    if (!layout) {
+      layout = createWorkbenchTitlebarLayout();
+      this.#layouts.set(id2, layout);
+    }
+    return layout;
+  }
+  /** Returns the retained titlebar button render-command buffer for a window id. */
+  renderCommands(id2) {
+    let commands = this.#renderCommands.get(id2);
+    if (!commands) {
+      commands = [];
+      this.#renderCommands.set(id2, commands);
+    }
+    return commands;
+  }
+  /** Drops retained buffers for one window id. */
+  delete(id2) {
+    this.#layouts.delete(id2);
+    this.#renderCommands.delete(id2);
+  }
+  /** Drops all retained buffers. */
+  clear() {
+    this.#layouts.clear();
+    this.#renderCommands.clear();
+  }
+  /** Reports retained cache sizes for diagnostics and tests. */
+  inspect() {
+    return {
+      layouts: this.#layouts.size,
+      renderCommands: this.#renderCommands.size
+    };
+  }
+};
+
 // src/app/workbench_ascii_modal.ts
 function layoutWorkbenchAsciiConfigModal(options) {
   const bounds = normalizeRect4(options.bounds);
@@ -17733,8 +17774,7 @@ var webTerminalScreenKeys = /* @__PURE__ */ new Map();
 var webTerminalPaneProjections = [];
 var webTerminalCopyRows = [];
 var hitTargets = new HitTargetStack();
-var titlebarLayouts = /* @__PURE__ */ new Map();
-var titlebarRenderCommands = /* @__PURE__ */ new Map();
+var titlebarBuffers = new WorkbenchTitlebarBufferCache();
 var screenRows = [];
 var workspaceVirtualRows = [];
 var threePreviewRows = [];
@@ -18287,12 +18327,12 @@ function renderPanel(frame, id2, rect) {
   const selected = active.peek() === id2;
   fillRect(frame, rect, selected ? theme().panelSoft : theme().panel);
   drawFrame(frame, rect, panelTitle(id2), selected);
-  const titlebar = layoutWorkbenchTitlebarInto(titlebarLayout(id2), {
+  const titlebar = layoutWorkbenchTitlebarInto(titlebarBuffers.layout(id2), {
     rect,
     title: panelTitle(id2),
     showConfig: id2 === "three"
   });
-  const titlebarCommands = workbenchTitlebarButtonRenderCommandsInto(titlebarRenderCommandBuffer(id2), titlebar);
+  const titlebarCommands = workbenchTitlebarButtonRenderCommandsInto(titlebarBuffers.renderCommands(id2), titlebar);
   for (const command of titlebarCommands) {
     writeButton(frame, command.rect.row, command.rect.column, command.label, {
       compact: command.compact,
@@ -18325,22 +18365,6 @@ function panelTitlebarHit(id2, kind) {
 }
 function panelTitle(id2) {
   return apiWorkbenchPanelTitle(id2, id2[0].toUpperCase() + id2.slice(1));
-}
-function titlebarLayout(id2) {
-  let layout = titlebarLayouts.get(id2);
-  if (!layout) {
-    layout = createWorkbenchTitlebarLayout();
-    titlebarLayouts.set(id2, layout);
-  }
-  return layout;
-}
-function titlebarRenderCommandBuffer(id2) {
-  let commands = titlebarRenderCommands.get(id2);
-  if (!commands) {
-    commands = [];
-    titlebarRenderCommands.set(id2, commands);
-  }
-  return commands;
 }
 function shortPanelTitle(id2) {
   return apiWorkbenchShortPanelTitle(id2, panelTitle(id2));
