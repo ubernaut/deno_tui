@@ -149,6 +149,8 @@ function splitFrameCell(cell: string): FrameCellParts {
       return plainAsciiCellPartsCache[code] ??= plainFrameCellParts(cell);
     }
   }
+  const backgroundSpace = splitBackgroundSpaceFrameCell(cell);
+  if (backgroundSpace) return backgroundSpace;
   if (!cell.includes("\x1b[") || !cell.endsWith("\x1b[0m")) {
     return plainFrameCellParts(cell);
   }
@@ -165,6 +167,25 @@ function splitFrameCell(cell: string): FrameCellParts {
   }
   frameCellPartsCache.set(cell, split);
   return split;
+}
+
+function splitBackgroundSpaceFrameCell(cell: string): FrameCellParts | undefined {
+  if (cell.charCodeAt(0) !== 0x1b || !cell.endsWith("m \x1b[0m")) return undefined;
+  const resetStart = cell.length - RESET.length;
+  const textIndex = resetStart - 1;
+  if (cell.charCodeAt(textIndex) !== 0x20) return undefined;
+  const prefix = cell.slice(0, textIndex);
+  if (!hasBackgroundSgr(prefix)) return undefined;
+  return {
+    prefix,
+    text: " ",
+    suffix: RESET,
+    backgroundStyled: true,
+  };
+}
+
+function hasBackgroundSgr(prefix: string): boolean {
+  return prefix.includes("[48;") || prefix.includes(";48;");
 }
 
 function splitFrameCellBody(body: string): FrameCellParts | undefined {
@@ -191,6 +212,6 @@ function styledFrameCellParts(prefix: string, text: string): FrameCellParts {
     prefix,
     text,
     suffix: RESET,
-    backgroundStyled: prefix.length > 0 && (prefix.includes("[48;") || prefix.includes(";48;")),
+    backgroundStyled: prefix.length > 0 && hasBackgroundSgr(prefix),
   };
 }

@@ -962,3 +962,7 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Added observed-FPS pressure adaptation for workbench-hosted Three panes. The renderer already responds to byte and
   blocking write pressure; it now also backs off when the UI cadence meter reports a sustained collapse below half the
   target FPS, covering remote/tmux cases where the terminal renders slowly without making `writeSync` block.
+- Added a fast parser path for the common truecolor background-space cell shape emitted by block-mode Three ASCII
+  frames and themed workbench fills. This keeps foreground-only styled spaces on the general path while cutting the
+  `workbench-cell-blit-viewport` benchmark from roughly 3.7ms to 1.7ms and the Three block span flush benchmark from
+  roughly 2.0ms to 1.35ms on this host.
