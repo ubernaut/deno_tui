@@ -542,3 +542,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   sync policy reusable and easier to reason about outside the large frame lifecycle class.
 - Extracted the workbench Three pressure-probe summary into a tested helper and separated placeholder/startup renderer
   samples from steady-state averages, so warm WebGPU frames are not misreported as 3-13 FPS renderer regressions.
+- Cached retained ANSI painter blank rows per terminal width so resize/shrink clears do not rebuild identical blank
+  strings for every stale row; added coverage for width changes and reset behavior.

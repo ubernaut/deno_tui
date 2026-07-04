@@ -20,6 +20,8 @@ export class WorkbenchAnsiScreenPainter {
   #changedSpans: ChangedSpan[] = [];
   #changedSpanPool: ChangedSpan[] = [];
   #rowCache = new WeakMap<string[], WorkbenchAnsiScreenRowCache>();
+  #blankWidth = -1;
+  #blankLine = "";
 
   constructor(private readonly stdout: CanvasStdout) {}
 
@@ -58,7 +60,7 @@ export class WorkbenchAnsiScreenPainter {
 
     for (let row = rows; row < this.#rows.length; row += 1) {
       if (this.#rows[row] === "") continue;
-      const blank = fitCellText("", columns);
+      const blank = this.blankLine(columns);
       this.#rows[row] = "";
       output.push(moveCursor(row, 0), blank);
       cleared += 1;
@@ -73,6 +75,8 @@ export class WorkbenchAnsiScreenPainter {
     this.#cells.length = 0;
     this.#widths.length = 0;
     this.#changedSpans.length = 0;
+    this.#blankWidth = -1;
+    this.#blankLine = "";
     this.#rowCache = new WeakMap();
   }
 
@@ -126,7 +130,7 @@ export class WorkbenchAnsiScreenPainter {
 
     for (let row = rows; row < this.#cells.length; row += 1) {
       if (!this.#cells[row] && this.#rows[row] === "") continue;
-      const blank = fitCellText("", columns);
+      const blank = this.blankLine(columns);
       output.push(moveCursor(row, 0), blank);
       this.#cells[row] = [];
       this.#widths[row] = columns;
@@ -138,5 +142,12 @@ export class WorkbenchAnsiScreenPainter {
     this.#rows.length = rows;
 
     return writeWorkbenchAnsiScreenOutput(this.stdout, output, { rows, changed, cleared });
+  }
+
+  private blankLine(columns: number): string {
+    if (this.#blankWidth === columns) return this.#blankLine;
+    this.#blankWidth = columns;
+    this.#blankLine = fitCellText("", columns);
+    return this.#blankLine;
   }
 }
