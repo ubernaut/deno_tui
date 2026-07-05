@@ -4666,8 +4666,7 @@ function syncTerminalSize(): boolean {
     const { columns, rows } = Deno.consoleSize();
     const size = tui.canvas.size.peek();
     if (size.columns === columns && size.rows === rows) return false;
-    size.columns = columns;
-    size.rows = rows;
+    tui.canvas.size.value = { columns, rows };
     screenPainter.reset();
     return true;
   } catch {
