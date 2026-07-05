@@ -10,8 +10,8 @@ import {
   WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
   WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS,
   WORKBENCH_THREE_FULLSCREEN_PRESSURE_HIGH_BYTES_PER_SECOND,
-  WORKBENCH_THREE_FULLSCREEN_PRESSURE_LOW_BYTES_PER_SECOND,
   WORKBENCH_THREE_FULLSCREEN_PRESSURE_LEVELS,
+  WORKBENCH_THREE_FULLSCREEN_PRESSURE_LOW_BYTES_PER_SECOND,
   WORKBENCH_THREE_INITIAL_CELLS,
   WORKBENCH_THREE_LIVE_MAX_CELLS,
   WORKBENCH_THREE_PRESSURE_LEVELS,
@@ -69,18 +69,12 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
   assertEquals(WORKBENCH_THREE_READBACK_STRATEGY, "deferred");
 });
 
-Deno.test("API workbench Three policy raises effective cap only for fullscreen Three panes", () => {
+Deno.test("API workbench Three policy keeps effective caps pressure-controlled in fullscreen", () => {
   assertEquals(apiWorkbenchThreeEffectiveMaxCells(120), 120);
   assertEquals(apiWorkbenchThreeEffectiveMaxCells(120, { fullscreenThree: false }), 120);
-  assertEquals(
-    apiWorkbenchThreeEffectiveMaxCells(120, { fullscreenThree: true }),
-    WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
-  );
-  assertEquals(
-    apiWorkbenchThreeEffectiveMaxCells(WORKBENCH_THREE_LIVE_MAX_CELLS, { fullscreenThree: true }),
-    WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
-  );
-  assertEquals(apiWorkbenchThreeEffectiveMaxCells(120, { fullscreenThree: true, fullscreenMinCells: 240 }), 240);
+  assertEquals(apiWorkbenchThreeEffectiveMaxCells(120, { fullscreenThree: true }), 120);
+  assertEquals(apiWorkbenchThreeEffectiveMaxCells(WORKBENCH_THREE_LIVE_MAX_CELLS, { fullscreenThree: true }), 960);
+  assertEquals(apiWorkbenchThreeEffectiveMaxCells(120, { fullscreenThree: true, fullscreenMinCells: 240 }), 120);
 });
 
 Deno.test("API workbench Three policy keeps live panes faster than idle panes", () => {

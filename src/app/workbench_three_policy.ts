@@ -108,14 +108,13 @@ export function apiWorkbenchThreeFrameIntervalForCells(cells: number, options: {
   });
 }
 
-/** Raises the active render-cell cap while a Three pane owns fullscreen. */
+/** Resolves the active render-cell cap while a Three pane owns fullscreen. */
 export function apiWorkbenchThreeEffectiveMaxCells(
   currentCells: number,
-  options: { fullscreenThree?: boolean; fullscreenMinCells?: number } = {},
+  _options: { fullscreenThree?: boolean; fullscreenMinCells?: number } = {},
 ): number {
   const current = Math.max(1, Math.floor(currentCells));
-  if (!options.fullscreenThree) return current;
-  return Math.max(current, Math.max(1, Math.floor(options.fullscreenMinCells ?? WORKBENCH_THREE_FULLSCREEN_MIN_CELLS)));
+  return current;
 }
 
 /** Returns the runtime render-cell target for a fullscreen Three pane at the current terminal viewport size. */
