@@ -1,4 +1,4 @@
-import { assertEquals } from "./deps.ts";
+import { assertEquals, assertInstanceOf } from "./deps.ts";
 import { mergeThemeCatalogComponents } from "../src/theme_catalog.ts";
 import {
   createAnsiStyle as createAnsiStyleFromModule,
@@ -12,9 +12,12 @@ import {
 import {
   createAnsiStyle,
   createStandardComponentThemeDefinitions,
+  createThemeLayerStack,
   emptyStyle,
   standardThemeComponentNames,
+  ThemeLayerStack,
 } from "../src/theme.ts";
+import { ThemeLayerStackImplementation } from "../src/theme_layer_stack.ts";
 import {
   type CompiledThemeManifestStyleReferenceCore,
   compileThemeManifestStateDefinitionCore,
@@ -56,6 +59,63 @@ Deno.test("theme standard component module matches theme public re-exports", () 
     createStandardComponentThemeDefinitions({ components: ["Button", "CustomPanel"] }),
     createStandardComponentThemeDefinitionsFromModule({ components: ["Button", "CustomPanel"] }),
   );
+});
+
+Deno.test("theme layer stack module backs the public facade class", () => {
+  assertEquals(ThemeLayerStack.prototype instanceof ThemeLayerStackImplementation, true);
+
+  const layers = createThemeLayerStack([
+    {
+      id: "accent",
+      label: "Accent",
+      options: { tokens: { accent: (text) => `!${text}!` } },
+    },
+    {
+      id: "buttons",
+      enabled: false,
+      options: {
+        components: {
+          button: { base: { active: "accent" } },
+        },
+      },
+    },
+  ]);
+
+  assertInstanceOf(layers, ThemeLayerStack);
+  assertInstanceOf(layers, ThemeLayerStackImplementation);
+  assertEquals(layers.ids(), ["accent", "buttons"]);
+  assertEquals(layers.activeIds(), ["accent"]);
+  assertEquals(layers.enable("buttons"), true);
+  assertEquals(layers.activeIds(), ["accent", "buttons"]);
+  assertEquals(layers.inspect().map((layer) => [layer.id, layer.enabled]), [
+    ["accent", true],
+    ["buttons", true],
+  ]);
+  assertEquals(layers.inspect()[1].components, [{ name: "button", variants: [] }]);
+
+  layers.dispose();
+});
+
+Deno.test("theme layer stack implementation composes enabled layers only", () => {
+  const layers = new ThemeLayerStackImplementation([
+    {
+      id: "base",
+      options: { tokens: { foreground: (text) => `a${text}` } },
+    },
+    {
+      id: "muted",
+      enabled: false,
+      options: { tokens: { muted: (text) => `b${text}` } },
+    },
+  ]);
+
+  assertEquals(Object.keys(layers.compose().tokens ?? {}), ["foreground"]);
+  layers.enable("muted");
+  assertEquals(Object.keys(layers.compose().tokens ?? {}), ["foreground", "muted"]);
+  layers.disable("base");
+  assertEquals(Object.keys(layers.compose().tokens ?? {}), ["muted"]);
+
+  layers.dispose();
 });
 
 Deno.test("theme manifest core compiles token names ansi specs and pipelines", () => {
