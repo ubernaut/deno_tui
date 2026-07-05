@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `581`
+- Tracked files after the current consolidation passes: `580`
 - Tracked top-level file counts:
   - `src`: `296`
-  - `tests`: `85`
+  - `tests`: `84`
   - `app`: `29`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,000` lines across `25` files
   - `app`: `20,381` lines across `29` files
   - `examples`: `8,814` lines across `42` files
-  - `tests`: `49,563` lines across `85` files
+  - `tests`: `49,565` lines across `84` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -220,6 +220,8 @@ The library core is real and valuable, but it needs clearer boundaries:
   - generic visual smoke assertions are now bundled into `tests/workbench_visual_smoke.test.ts`
   - terminal status presentation tests are now bundled into `tests/terminal_process.test.ts`, keeping process/session
     behavior and presentation assertions in one terminal suite
+  - HTML/CSS layout fixtures and generated simple/Yoga parity checks are now bundled into
+    `tests/html_css_layout.test.ts`, keeping markup/CSS solver coverage with the owning layout suite
   - Workbench Three pressure-probe summary, validation, CLI, and grid snapshot assertions are bundled into
     `tests/workbench_three_terminal_pressure.test.ts`
   - Terminal scrollback controller and command assertions are now bundled into `tests/terminal_screen.test.ts`, keeping
