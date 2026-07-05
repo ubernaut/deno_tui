@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `712`
+- Tracked files after the current consolidation passes: `711`
 - Tracked top-level file counts:
   - `src`: `349`
-  - `tests`: `145`
+  - `tests`: `144`
   - `app`: `47`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,188` lines across `37` files
   - `app`: `20,426` lines across `47` files
   - `examples`: `8,732` lines across `41` files
-  - `tests`: `49,090` lines across `145` files
+  - `tests`: `49,080` lines across `144` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `24MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -132,6 +132,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Three ASCII mapped-readback helper assertions are now bundled into `tests/three_ascii_renderer.test.ts`
   - Three ASCII compute dispatch and resource-plan assertions are now bundled into `tests/three_ascii_core.test.ts`
   - Three ASCII compute command and bind-group assertions are now bundled into `tests/three_ascii_core.test.ts`
+  - Three ASCII readback assembly adapter assertions are now bundled into `tests/three_ascii_readback.test.ts`
   - Public flex layout export assertions are now bundled into `tests/flex_layout.test.ts`
   - Visualization panel defaults are now bundled into `tests/visualization_launcher.test.ts`
 - Prefer subsystem-level runtime smoke coverage for workbench, Three ASCII, terminal shell, and web interaction.
