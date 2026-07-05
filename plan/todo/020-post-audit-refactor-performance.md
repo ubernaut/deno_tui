@@ -187,6 +187,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   pressure against adaptive policy thresholds directly.
 - Routed unobstructed `BoxObject` repaint ranges into the canvas range queue instead of expanding every dirty column
   through a per-row `Set`, keeping overlap/modal churn on the range-aware path.
+- Cached normalized command search fields per command object with source-change checks, bringing repeated direct
+  command-surface searches in line with the indexed command-search benchmark while preserving mutation refresh.
 - Extracted workbench Three terminal byte-rate calculation into a shared pure helper with direct tests so pressure
   policy, probes, and future diagnostics can stay aligned.
 - Routed workbench Three pressure probe byte-rate reporting through the shared pressure helper instead of carrying
@@ -1123,9 +1125,9 @@ performance, shared terminal/web workbench projections, and oversized module red
   holding roughly 20fps at the 960-cell default, while the adaptive policy could still downshift during startup cadence
   ramp. Healthy 960-cell block output now survives warmup; slow terminal flush duration, sustained heavier byte output,
   or collapsed cadence after the startup window still back off.
-- Added a post-overlay pressure cooldown for the API Workbench Three pane. Modal/dropdown/config frames reset cadence and
-  pressure counters while they are active and for a short window after closing, preventing quit/config/menu overlays from
-  poisoning measured FPS and shrinking a healthy renderer after the overlay disappears.
+- Added a post-overlay pressure cooldown for the API Workbench Three pane. Modal/dropdown/config frames reset cadence
+  and pressure counters while they are active and for a short window after closing, preventing quit/config/menu overlays
+  from poisoning measured FPS and shrinking a healthy renderer after the overlay disappears.
 - Extracted the workbench Three overlay pressure gate into `src/app` with focused tests, keeping modal/dropdown/config
   cooldown behavior renderer-neutral and reducing pressure-policy state in the large API Workbench demo file.
 - Split Three panel renderer-frame cadence from grid-publication redraws. Startup/fallback grids no longer count as live
@@ -1138,10 +1140,10 @@ performance, shared terminal/web workbench projections, and oversized module red
   adapter.
 - Moved Three panel live/idle runtime budget selection into the shared `three_panel_policy` module, so frame cadence and
   render-cell cap decisions are pure, tested, and reusable outside the demo adapter.
-- Moved Three panel frame ownership/current-frame checks into the shared lifecycle module, preserving renderer and bundle
-  identity semantics while making stale-frame drop behavior testable outside the large demo adapter.
-- Consolidated Three panel applied renderer state into a shared snapshot/update planner, reducing per-field adapter state
-  while keeping resize/effect/glyph setter decisions pure and tested.
+- Moved Three panel frame ownership/current-frame checks into the shared lifecycle module, preserving renderer and
+  bundle identity semantics while making stale-frame drop behavior testable outside the large demo adapter.
+- Consolidated Three panel applied renderer state into a shared snapshot/update planner, reducing per-field adapter
+  state while keeping resize/effect/glyph setter decisions pure and tested.
 - Reused a scratch result object in workbench frame row background-run assembly, removing per-run result allocation on
   ANSI/background-heavy workbench and Three span flush paths while preserving existing row compaction behavior.
 - Added changed/rendered row counts to the workbench Three header pressure telemetry so renderer FPS, terminal byte

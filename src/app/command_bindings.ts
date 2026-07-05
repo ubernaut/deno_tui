@@ -52,6 +52,20 @@ interface CommandSearchCandidate<TAction extends Action = Action> {
   disabled: boolean;
 }
 
+interface CachedCommandSearchFields {
+  label: string;
+  id: string;
+  group?: string;
+  description?: string;
+  keywords?: readonly string[];
+  binding?: string;
+  normalized: string[];
+  weights: number[];
+}
+
+const commandSearchFieldsWithBinding = new WeakMap<object, CachedCommandSearchFields>();
+const commandSearchFieldsWithoutBinding = new WeakMap<object, CachedCommandSearchFields>();
+
 /** Options for configuring command Search. */
 export interface CommandSearchOptions extends CommandSurfaceOptions {
   query?: string;
@@ -211,8 +225,6 @@ export function searchCommandSurfaceItems<TAction extends Action = Action>(
 
   const commands = registry.list(options.group);
   const ranked: Array<CommandSearchCandidate<TAction>> = [];
-  const normalizedFields: string[] = [];
-  const fieldWeights: number[] = [];
   for (let index = 0; index < commands.length; index += 1) {
     const command = commands[index]!;
     const enabled = registry.enabled(command);
@@ -222,8 +234,6 @@ export function searchCommandSurfaceItems<TAction extends Action = Action>(
       terms,
       includeBindingsInKeywords,
       !enabled,
-      normalizedFields,
-      fieldWeights,
     );
     if (score === undefined) continue;
     const candidate = { command, score, index, disabled: !enabled };
@@ -482,35 +492,16 @@ function scoreCommandForSurfaceSearch<TAction extends Action = Action>(
   terms: readonly string[],
   includeBinding: boolean,
   disabled: boolean,
-  normalizedFields: string[],
-  fieldWeights: number[],
 ): number | undefined {
-  let fieldCount = 0;
-  fieldCount = writeCommandSearchField(normalizedFields, fieldWeights, fieldCount, command.label, 100);
-  fieldCount = writeCommandSearchField(normalizedFields, fieldWeights, fieldCount, command.id, 80);
-  if (command.group) {
-    fieldCount = writeCommandSearchField(normalizedFields, fieldWeights, fieldCount, command.group, 40);
-  }
-  if (command.description) {
-    fieldCount = writeCommandSearchField(normalizedFields, fieldWeights, fieldCount, command.description, 40);
-  }
-  if (command.keywords) {
-    for (let index = 0; index < command.keywords.length; index += 1) {
-      const keyword = command.keywords[index];
-      if (keyword) fieldCount = writeCommandSearchField(normalizedFields, fieldWeights, fieldCount, keyword, 40);
-    }
-  }
-  if (includeBinding && command.binding) {
-    fieldCount = writeCommandSearchField(normalizedFields, fieldWeights, fieldCount, bindingId(command.binding), 40);
-  }
-  normalizedFields.length = fieldCount;
-  fieldWeights.length = fieldCount;
+  const fields = cachedCommandSearchFields(command, includeBinding);
+  const normalizedFields = fields.normalized;
+  const fieldWeights = fields.weights;
 
   let score = disabled ? -10 : 0;
   for (let termIndex = 0; termIndex < terms.length; termIndex += 1) {
     const term = terms[termIndex]!;
     let best = 0;
-    for (let fieldIndex = 0; fieldIndex < fieldCount; fieldIndex += 1) {
+    for (let fieldIndex = 0; fieldIndex < normalizedFields.length; fieldIndex += 1) {
       const fieldScore = scoreSearchField(normalizedFields[fieldIndex]!, term, fieldWeights[fieldIndex]!);
       if (fieldScore > best) best = fieldScore;
     }
@@ -518,6 +509,62 @@ function scoreCommandForSurfaceSearch<TAction extends Action = Action>(
     score += best;
   }
   return score;
+}
+
+function cachedCommandSearchFields<TAction extends Action = Action>(
+  command: Command<TAction>,
+  includeBinding: boolean,
+): CachedCommandSearchFields {
+  const cache = includeBinding ? commandSearchFieldsWithBinding : commandSearchFieldsWithoutBinding;
+  const binding = includeBinding && command.binding ? bindingId(command.binding) : undefined;
+  const cached = cache.get(command);
+  if (
+    cached &&
+    cached.label === command.label &&
+    cached.id === command.id &&
+    cached.group === command.group &&
+    cached.description === command.description &&
+    cached.keywords === command.keywords &&
+    cached.binding === binding
+  ) {
+    return cached;
+  }
+
+  const normalized: string[] = [];
+  const weights: number[] = [];
+  let fieldCount = 0;
+  fieldCount = writeCommandSearchField(normalized, weights, fieldCount, command.label, 100);
+  fieldCount = writeCommandSearchField(normalized, weights, fieldCount, command.id, 80);
+  if (command.group) {
+    fieldCount = writeCommandSearchField(normalized, weights, fieldCount, command.group, 40);
+  }
+  if (command.description) {
+    fieldCount = writeCommandSearchField(normalized, weights, fieldCount, command.description, 40);
+  }
+  if (command.keywords) {
+    for (let index = 0; index < command.keywords.length; index += 1) {
+      const keyword = command.keywords[index];
+      if (keyword) fieldCount = writeCommandSearchField(normalized, weights, fieldCount, keyword, 40);
+    }
+  }
+  if (binding) {
+    fieldCount = writeCommandSearchField(normalized, weights, fieldCount, binding, 40);
+  }
+  normalized.length = fieldCount;
+  weights.length = fieldCount;
+
+  const next = {
+    label: command.label,
+    id: command.id,
+    group: command.group,
+    description: command.description,
+    keywords: command.keywords,
+    binding,
+    normalized,
+    weights,
+  };
+  cache.set(command, next);
+  return next;
 }
 
 function writeCommandSearchField(

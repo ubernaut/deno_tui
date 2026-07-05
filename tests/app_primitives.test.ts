@@ -879,6 +879,25 @@ Deno.test("command surface search ranks labels ids keywords and key bindings", (
   ]);
 });
 
+Deno.test("command surface search refreshes cached fields when commands mutate", () => {
+  const registry = new CommandRegistry();
+  const command = {
+    id: "route.dynamic",
+    label: "Original Label",
+    keywords: ["alpha"],
+  };
+  registry.register(command);
+
+  assertEquals(searchCommandSurfaceItems(registry, { query: "alpha" }).map((item) => item.id), ["route.dynamic"]);
+
+  command.label = "Updated Label";
+  command.keywords = ["omega"];
+
+  assertEquals(searchCommandSurfaceItems(registry, { query: "omega" }).map((item) => item.id), ["route.dynamic"]);
+  assertEquals(searchCommandSurfaceItems(registry, { query: "updated" }).map((item) => item.id), ["route.dynamic"]);
+  assertEquals(searchCommandSurfaceItems(registry, { query: "alpha" }), []);
+});
+
 Deno.test("command search indexes rank precomputed command surface fields", () => {
   const items = [
     { id: "route.system-monitor", label: "System Monitor", keywords: ["runtime", "metrics"] },
