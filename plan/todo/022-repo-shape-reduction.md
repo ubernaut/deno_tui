@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `583`
+- Tracked files after the current consolidation passes: `582`
 - Tracked top-level file counts:
   - `src`: `296`
-  - `tests`: `87`
+  - `tests`: `86`
   - `app`: `29`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,000` lines across `25` files
   - `app`: `20,381` lines across `29` files
   - `examples`: `8,814` lines across `42` files
-  - `tests`: `49,492` lines across `87` files
+  - `tests`: `49,521` lines across `86` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -258,6 +258,9 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Three ASCII readback assembly adapter assertions are now bundled into `tests/three_ascii_readback.test.ts`
   - Three ASCII canvas rerender range assertions are now bundled into `tests/three_ascii_diff.test.ts`
   - Three ASCII deferred readback queue assertions are now bundled into `tests/three_ascii_core.test.ts`
+  - layout recipe, breakpoint markdown, slot inspection, and signal-backed recipe controller assertions are now bundled
+    into `tests/responsive_layout.test.ts`, keeping responsive layout recipe coverage with the layout primitives and
+    window-manager suite.
   - Three ASCII WebGPU compatibility retry/lost-device assertions are now bundled into `tests/three_ascii_core.test.ts`
   - Three ASCII preset/default option assertions are now bundled into `tests/workbench_ascii.test.ts`
   - Standalone Three ASCII demo window geometry assertions are now bundled into `tests/three_ascii_glyphs.test.ts`
