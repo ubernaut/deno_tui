@@ -26,9 +26,33 @@ export interface WorkbenchThreeWindowState<Id extends string = string> {
 export function resolveWorkbenchThreeWindowState<Id extends string = string>(
   input: WorkbenchThreeWindowStateInput<Id>,
 ): WorkbenchThreeWindowState<Id> {
+  return resolveWorkbenchThreeWindowStateInto(createWorkbenchThreeWindowState(input.activeId), input);
+}
+
+/** Creates a reusable Three-window runtime state object for per-frame updates. */
+export function createWorkbenchThreeWindowState<Id extends string = string>(
+  activeId: Id,
+): WorkbenchThreeWindowState<Id> {
+  return {
+    activeId,
+    fullscreenId: null,
+    fullscreenThree: false,
+    live: false,
+    blocked: false,
+    threeWindowCount: 0,
+    interactiveIds: new Set<Id>(),
+  };
+}
+
+/** Resolves Three-window runtime state into caller-owned storage without per-frame object allocation. */
+export function resolveWorkbenchThreeWindowStateInto<Id extends string = string>(
+  target: WorkbenchThreeWindowState<Id>,
+  input: WorkbenchThreeWindowStateInput<Id>,
+): WorkbenchThreeWindowState<Id> {
   const fullscreenId = input.fullscreenId ?? null;
   const blocked = input.blocked ?? false;
-  const interactiveIds = new Set<Id>();
+  const interactiveIds = mutableInteractiveIds(target.interactiveIds);
+  interactiveIds.clear();
   let threeWindowCount = 0;
   let fullscreenThree = false;
 
@@ -47,15 +71,13 @@ export function resolveWorkbenchThreeWindowState<Id extends string = string>(
     }
   }
 
-  return {
-    activeId: input.activeId,
-    fullscreenId,
-    fullscreenThree,
-    live: !blocked && (fullscreenThree || threeWindowCount > 0),
-    blocked,
-    threeWindowCount,
-    interactiveIds,
-  };
+  target.activeId = input.activeId;
+  target.fullscreenId = fullscreenId;
+  target.fullscreenThree = fullscreenThree;
+  target.live = !blocked && (fullscreenThree || threeWindowCount > 0);
+  target.blocked = blocked;
+  target.threeWindowCount = threeWindowCount;
+  return target;
 }
 
 function workbenchThreeWindowStateSourceId<Id extends string>(source: WorkbenchThreeWindowStateSource<Id>): Id {
@@ -67,4 +89,8 @@ export function workbenchThreeWindowStateIsInteractive<Id extends string>(
   id: Id,
 ): boolean {
   return state.interactiveIds.has(id);
+}
+
+function mutableInteractiveIds<Id extends string>(ids: ReadonlySet<Id>): Set<Id> {
+  return ids as Set<Id>;
 }

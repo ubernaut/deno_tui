@@ -22,6 +22,7 @@ import {
   clampWorkbenchTileDensity,
   contrastText,
   createApiWorkbenchWorkspaceStore,
+  createWorkbenchThreeWindowState,
   dispatchWorkbenchTextPromptInput,
   fillFrameRect,
   fillFrameRow,
@@ -53,7 +54,7 @@ import {
   resolveWorkbenchScreenDropdownKey,
   resolveWorkbenchTerminalOutputKeyAction,
   resolveWorkbenchTerminalShellKeyAction,
-  resolveWorkbenchThreeWindowState,
+  resolveWorkbenchThreeWindowStateInto,
   subscribeWorkbenchDiagnosticLog,
   syncWorkbenchTerminalSize,
   translateHitTargets,
@@ -685,7 +686,7 @@ const visibleWindowRects = new Map<WindowId, Rectangle>();
 const frameWidthHints = new WeakMap<Frame, number>();
 const currentWorkspaceWindowBuffer: SavedWorkspaceWindow[] = [];
 const currentWorkspaceVisualizationIdBuffer: string[] = [];
-let workbenchThreeWindowState = currentWorkbenchThreeWindowState();
+const workbenchThreeWindowState = createWorkbenchThreeWindowState<WindowId>("three");
 const workbenchThreeRuntime = new ApiWorkbenchThreeRuntimeController({
   hasLiveThreeWindow: hasLiveThreeRenderedWindow,
   hasFullscreenThreeWindow,
@@ -1137,7 +1138,7 @@ function draw(): void {
   const height = currentHeight();
   hitTargets.clear();
   dropdownOverlay = null;
-  workbenchThreeWindowState = currentWorkbenchThreeWindowState();
+  syncWorkbenchThreeWindowState();
   workbenchThreeRuntime.resetPressureSample();
   syncWorkbenchThreeFrameInterval();
   const frame = prepareWorkbenchFrame(screenFrame, height);
@@ -2945,8 +2946,8 @@ function hasLiveThreeRenderedWindow(): boolean {
   return workbenchThreeWindowState.live;
 }
 
-function currentWorkbenchThreeWindowState(): WorkbenchThreeWindowState<WindowId> {
-  return resolveWorkbenchThreeWindowState<WindowId>({
+function syncWorkbenchThreeWindowState(): WorkbenchThreeWindowState<WindowId> {
+  return resolveWorkbenchThreeWindowStateInto(workbenchThreeWindowState, {
     activeId: activeWindow.peek(),
     fullscreenId: windowManager.fullscreenId.peek() as WindowId | undefined,
     windows: windowManager.orderedWindows(),

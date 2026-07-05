@@ -1,6 +1,8 @@
 import { assertEquals } from "./deps.ts";
 import {
+  createWorkbenchThreeWindowState,
   resolveWorkbenchThreeWindowState,
+  resolveWorkbenchThreeWindowStateInto,
   workbenchThreeWindowStateIsInteractive,
 } from "../src/app/workbench_three_window_state.ts";
 
@@ -57,4 +59,26 @@ Deno.test("resolveWorkbenchThreeWindowState reports no live state without Three 
   assertEquals(state.live, false);
   assertEquals(state.threeWindowCount, 0);
   assertEquals(state.fullscreenThree, false);
+});
+
+Deno.test("resolveWorkbenchThreeWindowStateInto reuses target storage and clears stale interactivity", () => {
+  const target = createWorkbenchThreeWindowState<Id>("inspector");
+  const interactiveIds = target.interactiveIds;
+
+  const first = resolveWorkbenchThreeWindowStateInto(target, { activeId: "three", windows, isThreeWindow });
+  assertEquals(first, target);
+  assertEquals(first.interactiveIds, interactiveIds);
+  assertEquals(workbenchThreeWindowStateIsInteractive(first, "three"), true);
+
+  const second = resolveWorkbenchThreeWindowStateInto(target, {
+    activeId: "logs",
+    fullscreenId: "viz",
+    windows,
+    isThreeWindow,
+  });
+
+  assertEquals(second, target);
+  assertEquals(second.interactiveIds, interactiveIds);
+  assertEquals(workbenchThreeWindowStateIsInteractive(second, "three"), false);
+  assertEquals(workbenchThreeWindowStateIsInteractive(second, "viz"), true);
 });
