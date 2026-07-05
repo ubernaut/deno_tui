@@ -104,9 +104,9 @@ import {
   apiWorkbenchWorkspaceStorageOptions,
   createApiWorkbenchWorkspaceStore,
 } from "../src/app/workbench_workspace_menu.ts";
-import { WorkbenchFullRepaintPolicy } from "../src/app/workbench_repaint_policy.ts";
 import {
   syncWorkbenchTerminalSize,
+  WorkbenchFullRepaintPolicy,
   workbenchScreenHeight,
   workbenchScreenWidth,
 } from "../src/app/workbench_repaint_policy.ts";
@@ -288,8 +288,7 @@ import { resolveSourceFramesInto } from "./sources.ts";
 import { makeStyle } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
-import { ThreePanelFrameView } from "./three_panel.ts";
-import { createWorkbenchThreePanelFrameView } from "./three_panel.ts";
+import { createWorkbenchThreePanelFrameView, ThreePanelFrameView } from "./three_panel.ts";
 import { workbenchDataTablePageSize, workbenchDataTableRowsInto } from "./workbench_data_table.ts";
 import {
   explorerTextRowsInto,

@@ -129,6 +129,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     frame ownership, grid publishing, and raster-image lifecycle logic in one Three panel core module
   - API workbench terminal paint helpers are now private to `app/api_workbench.ts`, avoiding a reusable `src/app` shard
     for renderer-specific color mapping that is not part of the public terminal API
+  - the unused allocating `resolveSourceFrames` app wrapper was removed; runtime paths use the reusable
+    `resolveSourceFramesInto` buffer API directly
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

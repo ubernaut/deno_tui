@@ -138,15 +138,6 @@ export function buildSourceCatalog(audioCatalog: AudioCatalogEntry[]) {
   return sources;
 }
 
-export function resolveSourceFrames(
-  sourceIds: string[],
-  system: SystemSnapshot,
-  audio: AudioRegistry,
-  phase: number,
-) {
-  return resolveSourceFramesInto([], sourceIds, system, audio, phase);
-}
-
 export function resolveSourceFramesInto(
   target: SourceFrame[],
   sourceIds: readonly string[],
