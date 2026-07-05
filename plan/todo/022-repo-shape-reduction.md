@@ -227,6 +227,8 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Workbench Three panel registry assertions are now bundled into `tests/workbench_three_panel.test.ts`
   - Workbench Three geometry/rectangle projection assertions are now bundled into `tests/workbench_three_panel.test.ts`
   - Workbench Three scene projection and equality assertions are now bundled into `tests/workbench_three_panel.test.ts`
+  - Three panel adaptive render-cell budgeting is folded into `src/app/three_panel_policy.ts`, with its assertions now
+    bundled into `tests/three_panel_policy.test.ts`
   - Workbench frame render-command assertions are now bundled into `tests/workbench_frame.test.ts`
   - Workbench content-size assertions are now bundled into `tests/workbench_panels.test.ts`
   - Workbench button style assertions are now bundled into `tests/workbench_control_layout.test.ts`

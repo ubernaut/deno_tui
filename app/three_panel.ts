@@ -37,10 +37,6 @@ import {
   threePanelSlowFrameDiagnostic,
 } from "../src/app/three_panel_diagnostics.ts";
 import {
-  resolveThreePanelAdaptiveRenderBudget,
-  ThreePanelAdaptiveRenderBudgetController,
-} from "../src/app/three_panel_adaptive.ts";
-import {
   emptyThreePanelRendererState,
   resolveThreePanelRendererStateUpdate,
   threePanelRendererStateMatches,
@@ -48,9 +44,11 @@ import {
 } from "../src/app/three_panel_effect.ts";
 import { type ThreePanelFrameUpdate, threePanelFrameUpdate } from "../src/app/three_panel_core.ts";
 import {
+  resolveThreePanelAdaptiveRenderBudget,
   resolveThreePanelRenderPolicy,
   resolveThreePanelRenderSize,
   resolveThreePanelRuntimeBudget,
+  ThreePanelAdaptiveRenderBudgetController,
   type ThreePanelRenderPolicy,
   type ThreePanelRenderSize,
 } from "../src/app/three_panel_policy.ts";
@@ -71,7 +69,7 @@ export {
   type ThreePanelAdaptiveRenderBudgetResult,
   type ThreePanelAdaptiveRenderBudgetUpdateInput,
   type ThreePanelAdaptiveRenderBudgetUpdateResult,
-} from "../src/app/three_panel_adaptive.ts";
+} from "../src/app/three_panel_policy.ts";
 export {
   resolveThreePanelFrameInterval,
   resolveThreePanelRenderPolicy,
