@@ -37,9 +37,8 @@ import {
 } from "../src/app/plugins.ts";
 import { bindRouteCommands, bindRouteIndex, bindRouteSignal, routeCommands } from "../src/app/route_bindings.ts";
 import { RouteManager } from "../src/app/router.ts";
-import { SettingsController } from "../src/app/settings.ts";
-import { bindSettingsCommands, settingsCommands } from "../src/app/settings_commands.ts";
-import type { SettingsCommandAction } from "../src/app/settings_commands.ts";
+import { bindSettingsCommands, settingsCommands, SettingsController } from "../src/app/settings.ts";
+import type { SettingsCommandAction } from "../src/app/settings.ts";
 import { bindSplitPaneCommands, splitPaneCommands } from "../src/app/split_pane_commands.ts";
 import type { SplitPaneCommandAction } from "../src/app/split_pane_commands.ts";
 import { createRuntimeProfilePlugin } from "../src/app/runtime_profile_plugin.ts";

@@ -2159,41 +2159,6 @@
       "documented": true
     },
     {
-      "module": "src/app/settings_commands.ts",
-      "name": "bindSettingsCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/settings_commands.ts",
-      "name": "SettingsCommandAction",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/settings_commands.ts",
-      "name": "SettingsCommandKind",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/settings_commands.ts",
-      "name": "SettingsCommandOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/settings_commands.ts",
-      "name": "settingsCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
       "module": "src/app/settings.ts",
       "name": "AppSettingDefinition",
       "kind": "interface",
@@ -2202,7 +2167,42 @@
     },
     {
       "module": "src/app/settings.ts",
+      "name": "bindSettingsCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/settings.ts",
       "name": "createSettingsController",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/settings.ts",
+      "name": "SettingsCommandAction",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/settings.ts",
+      "name": "SettingsCommandKind",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/settings.ts",
+      "name": "SettingsCommandOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/settings.ts",
+      "name": "settingsCommands",
       "kind": "function",
       "typeOnly": false,
       "documented": true
