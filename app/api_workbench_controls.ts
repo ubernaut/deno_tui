@@ -11,25 +11,17 @@ import {
 import { buttonText, fitCellText } from "../src/app/workbench_frame.ts";
 import type { Rectangle } from "../src/types.ts";
 import { textWidth } from "../src/utils/strings.ts";
+import {
+  type ApiWorkbenchControlHitAction,
+  type ApiWorkbenchControlId,
+  apiWorkbenchControlIds,
+} from "./api_workbench_control_base.ts";
 
-export const apiWorkbenchControlIds = [
-  "button",
-  "genericButton",
-  "modal",
-  "slider",
-  "checkbox",
-  "radio",
-  "combo",
-  "dropdown",
-  "input",
-  "stepper",
-  "textbox",
-] as const;
-
-export type ApiWorkbenchControlId = typeof apiWorkbenchControlIds[number];
-
-export type ApiWorkbenchControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
-
+export {
+  type ApiWorkbenchControlHitAction,
+  type ApiWorkbenchControlId,
+  apiWorkbenchControlIds,
+} from "./api_workbench_control_base.ts";
 export {
   type ApiWorkbenchControlKeyEvent,
   type ApiWorkbenchControlKeyResolution,

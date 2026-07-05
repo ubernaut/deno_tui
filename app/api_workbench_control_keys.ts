@@ -1,4 +1,4 @@
-import type { ApiWorkbenchControlHitAction, ApiWorkbenchControlId } from "./api_workbench_controls.ts";
+import type { ApiWorkbenchControlHitAction, ApiWorkbenchControlId } from "./api_workbench_control_base.ts";
 
 export interface ApiWorkbenchControlKeyEvent {
   key: string;

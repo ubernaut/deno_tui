@@ -1228,3 +1228,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted API Workbench control keyboard resolution into a focused helper module behind the existing controls facade,
   preserving terminal/browser imports while trimming the oversized controls projection module. Focused control tests and
   terminal/web type checks passed after the split.
+- Moved shared API Workbench control ids and hit-action types into a tiny acyclic base module so the key resolver no
+  longer imports back from the controls facade. Existing facade exports remain stable for terminal, browser, and tests.
