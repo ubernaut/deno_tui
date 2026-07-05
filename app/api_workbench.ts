@@ -357,14 +357,12 @@ import {
 } from "../src/app/workbench_row_render.ts";
 import { type RowStyle, type ThreeHeaderPerformance, threeHeaderRows } from "../src/app/workbench_rows.ts";
 import { writeThreeHeaderRuntimePerformance } from "../src/app/workbench_three_header.ts";
-import {
-  resolveWorkbenchThreeFullscreenAsciiOptions,
-  resolveWorkbenchThreeRuntimeBudgetSnapshot,
-  sameWorkbenchThreeAsciiOptions,
-} from "../src/app/workbench_three_fullscreen.ts";
 import { shouldCountWorkbenchThreeGridPressure } from "../src/app/workbench_three_terminal_pressure.ts";
 import {
   apiWorkbenchThreeFrameIntervalForCells,
+  resolveWorkbenchThreeFullscreenAsciiOptions,
+  resolveWorkbenchThreeRuntimeBudgetSnapshot,
+  sameWorkbenchThreeAsciiOptions,
   WORKBENCH_THREE_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
   WORKBENCH_THREE_INITIAL_CELLS,
