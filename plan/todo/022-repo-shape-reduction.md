@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `578`
+- Tracked files after the current consolidation passes: `577`
 - Tracked top-level file counts:
   - `src`: `296`
-  - `tests`: `82`
+  - `tests`: `81`
   - `app`: `29`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,000` lines across `25` files
   - `app`: `20,381` lines across `29` files
   - `examples`: `8,814` lines across `42` files
-  - `tests`: `49,632` lines across `82` files
+  - `tests`: `49,636` lines across `81` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -218,6 +218,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Three panel cadence and render-queue helper tests are now bundled into `tests/three_panel_core.test.ts`
   - Three ASCII probe CLI helper tests are now bundled into `tests/three_ascii_probe.test.ts`
   - generic visual smoke assertions are now bundled into `tests/workbench_visual_smoke.test.ts`
+  - system metrics source/parser assertions are now bundled into `tests/system_metrics_core.test.ts`
   - terminal status presentation tests are now bundled into `tests/terminal_process.test.ts`, keeping process/session
     behavior and presentation assertions in one terminal suite
   - HTML/CSS layout fixtures and generated simple/Yoga parity checks are now bundled into
