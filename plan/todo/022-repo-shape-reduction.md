@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `730`
+- Tracked files after the current consolidation passes: `729`
 - Tracked top-level file counts:
   - `src`: `349`
-  - `tests`: `163`
+  - `tests`: `162`
   - `app`: `47`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,188` lines across `37` files
   - `app`: `20,426` lines across `47` files
   - `examples`: `8,732` lines across `41` files
-  - `tests`: `49,147` lines across `163` files
+  - `tests`: `49,146` lines across `162` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `24MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -124,6 +124,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Three ASCII deferred readback staleness, submission, and failure assertions are now bundled into
     `tests/three_ascii_core.test.ts`
   - Three ASCII effect option and effect state assertions are now bundled into `tests/three_ascii_core.test.ts`
+  - Three ASCII compute pipeline assertions are now bundled into `tests/three_ascii_core.test.ts`
 - Prefer subsystem-level runtime smoke coverage for workbench, Three ASCII, terminal shell, and web interaction.
 
 ### P1: Keep Three ASCII Performance Gated By Real Probes
@@ -131,9 +132,9 @@ The library core is real and valuable, but it needs clearer boundaries:
 - Continue using benchmark cases for hot helpers, but treat live probes as required evidence:
   - `deno task three-workbench:startup-probe`
   - `deno task three-ascii:live-probe -- --frames 45 --glyphs blocks --max-cells 960 --check --max-average-ms 40`
-- Latest workbench block-mode startup probe after the visualization Three fallback test consolidation: `6.93ms` steady
-  average, about `144.3 fps` at `53x17` cells with the capped default-workbench probe. Latest standalone block-mode live
-  probe: `18.58ms` steady average, about `53.8 fps` at `31x15` cells.
+- Latest workbench block-mode startup probe after the Three ASCII compute-pipeline test consolidation: `6.34ms` steady
+  average, about `157.7 fps` at `53x17` cells with the capped default-workbench probe. Latest standalone block-mode live
+  probe: `18.17ms` steady average, about `55.0 fps` at `31x15` cells.
 - Avoid speculative micro-optimizations unless they improve measured workbench/default-demo behavior.
 
 ### P2: Split Demo Framework From Library Framework
