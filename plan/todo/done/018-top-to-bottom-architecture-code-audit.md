@@ -131,7 +131,7 @@ Work:
         browser adapters no longer maintain duplicate demo model fixtures.
   - [x] Reused the web API Workbench's long-lived `WorkbenchController.windows` for workspace layout instead of
         constructing and disposing a `WindowManagerController` during every draw.
-  - [x] Promoted immutable bounded log-row append into `workbench_diagnostics.ts` and moved terminal/web workbench
+  - [x] Promoted immutable bounded log-row append into `workbench_status.ts` and moved terminal/web workbench
         command logs off local spread/slice trimming.
   - [x] Extracted per-window content scrollbar rectangle projection into the shared workbench layout module so terminal
         and future browser window adapters use one geometry contract for vertical and horizontal overflow chrome.
