@@ -20,6 +20,8 @@ interface WorkbenchAnsiScreenRowCache {
   line: string;
 }
 
+const CLEAR_TO_END_OF_LINE = "\x1b[K";
+
 export type { WorkbenchAnsiScreenFlushStats } from "./workbench_ansi_output.ts";
 
 /** Retained ANSI-row painter for full-screen workbench frames. */
@@ -27,6 +29,7 @@ export class WorkbenchAnsiScreenPainter {
   #rows: string[] = [];
   #cells: string[][] = [];
   #widths: number[] = [];
+  #rowWidths: number[] = [];
   #changedSpans: ChangedSpan[] = [];
   #changedSpanPool: ChangedSpan[] = [];
   #output: string[] = [];
@@ -58,6 +61,7 @@ export class WorkbenchAnsiScreenPainter {
 
     for (let row = 0; row < rows; row += 1) {
       const frameRow = frame[row] ?? [];
+      const previousWidth = this.#rowWidths[row] ?? -1;
       const fingerprint = cleanWorkbenchFrameRowFingerprint(frameRow, columns);
       const cached = this.#rowCache.get(frameRow);
       const next = fingerprint !== undefined && cached?.width === columns && cached.fingerprint === fingerprint
@@ -67,9 +71,18 @@ export class WorkbenchAnsiScreenPainter {
       if (!cached || cached.line !== next || cached.width !== columns || cached.fingerprint !== nextFingerprint) {
         this.#rowCache.set(frameRow, { width: columns, fingerprint: nextFingerprint, line: next });
       }
-      if (this.#rows[row] === next) continue;
+      if (this.#rows[row] === next) {
+        if (previousWidth > columns) {
+          this.#rowWidths[row] = columns;
+          output.push(this.#cursorCache.move(row, 0), next, CLEAR_TO_END_OF_LINE);
+          changed += 1;
+        }
+        continue;
+      }
       this.#rows[row] = next;
+      this.#rowWidths[row] = columns;
       output.push(this.#cursorCache.move(row, 0), next);
+      if (previousWidth > columns) output.push(CLEAR_TO_END_OF_LINE);
       changed += 1;
     }
 
@@ -81,6 +94,7 @@ export class WorkbenchAnsiScreenPainter {
       cleared += 1;
     }
     this.#rows.length = rows;
+    this.#rowWidths.length = rows;
 
     return writeWorkbenchAnsiScreenOutput(this.stdout, output, { rows, changed, cleared });
   }
@@ -89,6 +103,7 @@ export class WorkbenchAnsiScreenPainter {
     this.#rows.length = 0;
     this.#cells.length = 0;
     this.#widths.length = 0;
+    this.#rowWidths.length = 0;
     this.#changedSpans.length = 0;
     this.#output.length = 0;
     this.#blankWidth = -1;
@@ -123,6 +138,7 @@ export class WorkbenchAnsiScreenPainter {
       const fullRow = !previous || previousWidth !== columns;
       if (fullRow) {
         output.push(this.#cursorCache.move(row, 0), renderRow(frameRow, columns));
+        if (previousWidth > columns) output.push(CLEAR_TO_END_OF_LINE);
         this.#cells[row] = snapshotFrameRow(frameRow, columns, previous, 0, columns - 1);
         this.#widths[row] = columns;
         this.markSpanRowRendered(frameRow, columns);

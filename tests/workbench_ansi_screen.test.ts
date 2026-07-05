@@ -133,6 +133,43 @@ Deno.test("WorkbenchAnsiScreenPainter can flush only changed row spans", () => {
   assertEquals(stats.bytes < "\x1b[1;1Hhello World!".length, true);
 });
 
+Deno.test("WorkbenchAnsiScreenPainter clears stale row tails after span width shrink", () => {
+  const chunks: Uint8Array[] = [];
+  const painter = new WorkbenchAnsiScreenPainter({
+    writeSync(data) {
+      chunks.push(data);
+      return data.byteLength;
+    },
+  });
+  const frame: WorkbenchFrame = [[]];
+  writeFrame(frame, 12, 0, 0, "hello world!");
+  painter.flush(frame, 12, 1, renderFrameRow, renderFrameSlice);
+  chunks.length = 0;
+
+  const stats = painter.flush(frame, 5, 1, renderFrameRow, renderFrameSlice);
+
+  assertEquals(stats.changed, 1);
+  assertEquals(new TextDecoder().decode(chunks[0]), "\x1b[1;1Hhello\x1b[K");
+});
+
+Deno.test("WorkbenchAnsiScreenPainter clears stale row tails after full-row width shrink", () => {
+  const chunks: Uint8Array[] = [];
+  const painter = new WorkbenchAnsiScreenPainter({
+    writeSync(data) {
+      chunks.push(data);
+      return data.byteLength;
+    },
+  });
+  const renderRow = (cells: string[], width: number) => cells.join("").padEnd(width, " ").slice(0, width);
+
+  painter.flush([["hello world!"]], 12, 1, renderRow);
+  chunks.length = 0;
+  const stats = painter.flush([["hello"]], 5, 1, renderRow);
+
+  assertEquals(stats.changed, 1);
+  assertEquals(new TextDecoder().decode(chunks[0]), "\x1b[1;1Hhello\x1b[K");
+});
+
 Deno.test("WorkbenchAnsiScreenPainter skips span detection for clean unchanged rows", () => {
   const painter = new WorkbenchAnsiScreenPainter({
     writeSync(data) {
