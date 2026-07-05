@@ -238,6 +238,26 @@ Deno.test("ThreePanelAdaptiveRenderBudgetController resets reduced caps when the
   assert(expandedSize.columns * expandedSize.rows <= 7_680);
 });
 
+Deno.test("ThreePanelAdaptiveRenderBudgetController resets reduced caps when viewport shape changes", () => {
+  const controller = new ThreePanelAdaptiveRenderBudgetController();
+  const tallRect = { width: 80, height: 48 };
+  const wideRect = { width: 120, height: 32 };
+
+  controller.renderSize(tallRect, 3_840);
+  controller.update({ requestedMaxCells: 3_840, frameMs: 1_000, targetMs: 1000 / 18 });
+  controller.update({ requestedMaxCells: 3_840, frameMs: 220, targetMs: 1000 / 18 });
+  const reduced = controller.update({ requestedMaxCells: 3_840, frameMs: 220, targetMs: 1000 / 18 });
+  assertEquals(reduced.direction, "down");
+
+  const reducedSize = controller.renderSize(tallRect, 3_840);
+  assert(reducedSize.columns * reducedSize.rows <= reduced.maxCells!);
+
+  const reshapedSize = controller.renderSize(wideRect, 3_840);
+  assertEquals(wideRect.width * wideRect.height, tallRect.width * tallRect.height);
+  assert(reshapedSize.columns > reducedSize.columns);
+  assertEquals(reshapedSize, { columns: wideRect.width, rows: wideRect.height });
+});
+
 Deno.test("resolveThreePanelAdaptiveRenderBudget waits for sustained slow frames before stepping down", () => {
   const first = resolveThreePanelAdaptiveRenderBudget({
     requestedMaxCells: 3_840,

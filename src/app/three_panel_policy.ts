@@ -101,7 +101,8 @@ export function resolveThreePanelRenderSize(
 export class ThreePanelAdaptiveRenderBudgetController {
   #maxCells?: number;
   #requestedMaxCells = 0;
-  #rectArea = 0;
+  #rectColumns = 0;
+  #rectRows = 0;
   #slowFrames = 0;
   #fastFrames = 0;
   #sampleFrames = 0;
@@ -112,7 +113,7 @@ export class ThreePanelAdaptiveRenderBudgetController {
   ): ThreePanelRenderSize {
     const requested = normalizeRequestedMaxCells(requestedMaxCells);
     this.#resetForRequestedCells(requested);
-    this.#resetForExpandedViewport(rect);
+    this.#resetForViewportShape(rect);
     return resolveThreePanelRenderSize(rect, this.#maxCells ?? requested);
   }
 
@@ -139,7 +140,8 @@ export class ThreePanelAdaptiveRenderBudgetController {
   reset(): void {
     this.#maxCells = undefined;
     this.#requestedMaxCells = 0;
-    this.#rectArea = 0;
+    this.#rectColumns = 0;
+    this.#rectRows = 0;
     this.#slowFrames = 0;
     this.#fastFrames = 0;
     this.#sampleFrames = 0;
@@ -154,13 +156,12 @@ export class ThreePanelAdaptiveRenderBudgetController {
     this.#sampleFrames = 0;
   }
 
-  #resetForExpandedViewport(rect: Pick<{ width: number; height: number }, "width" | "height">): void {
-    const area = Math.max(1, Math.floor(rect.width)) * Math.max(1, Math.floor(rect.height));
-    if (area <= this.#rectArea) {
-      this.#rectArea = area;
-      return;
-    }
-    this.#rectArea = area;
+  #resetForViewportShape(rect: Pick<{ width: number; height: number }, "width" | "height">): void {
+    const columns = Math.max(1, Math.floor(rect.width));
+    const rows = Math.max(1, Math.floor(rect.height));
+    if (columns === this.#rectColumns && rows === this.#rectRows) return;
+    this.#rectColumns = columns;
+    this.#rectRows = rows;
     this.#maxCells = undefined;
     this.#slowFrames = 0;
     this.#fastFrames = 0;
