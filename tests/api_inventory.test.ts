@@ -1,5 +1,6 @@
 import { assertEquals } from "./deps.ts";
 import {
+  type ApiInventory,
   createApiInventory,
   createApiInventoryBaseline,
   diffApiInventories,
@@ -11,6 +12,11 @@ import {
   parseApiInventoryCliArgs,
   parseApiSymbols,
 } from "../scripts/api_inventory.ts";
+import {
+  formatApiReferenceMarkdown,
+  formatPackageApiReferenceMarkdown,
+  type PackageApiReferenceSection,
+} from "../scripts/api_reference.ts";
 
 Deno.test("parseApiExports extracts star named and type re-exports", () => {
   assertEquals(
@@ -271,6 +277,73 @@ Deno.test("api inventory cli parser validates flags before choosing an entrypoin
 Deno.test("api inventory cli parser rejects unknown flags and extra positionals", () => {
   assertEquals(captureCliParseError(["--format", "markdown"]), "Unknown api-inventory option: --format");
   assertEquals(captureCliParseError(["mod.ts", "markdown"]), "Unexpected api-inventory argument: markdown");
+});
+
+function referenceInventory(entrypoint: string, symbolName: string): ApiInventory {
+  return {
+    entrypoint,
+    modules: [
+      {
+        module: entrypoint,
+        exports: [],
+        symbols: [
+          {
+            module: entrypoint,
+            name: symbolName,
+            kind: "function",
+            typeOnly: false,
+            documented: true,
+          },
+        ],
+        missingTargets: [],
+      },
+    ],
+    exportCount: 0,
+    symbolCount: 1,
+    documentedSymbolCount: 1,
+    undocumentedSymbolCount: 0,
+    documentationCoverage: 1,
+    duplicateSymbols: {},
+    missingTargets: [],
+  };
+}
+
+Deno.test("formatApiReferenceMarkdown preserves the single-entrypoint report", () => {
+  const markdown = formatApiReferenceMarkdown(referenceInventory("mod.ts", "Tui"));
+  assertEquals(markdown.includes("Entrypoint: `mod.ts`"), true);
+  assertEquals(markdown.includes("`Tui`"), true);
+});
+
+Deno.test("formatPackageApiReferenceMarkdown groups public entrypoints by stability", () => {
+  const sections: PackageApiReferenceSection[] = [
+    {
+      specifier: ".",
+      path: "./mod.ts",
+      runtime: "terminal",
+      stability: "stable",
+      description: "Terminal package.",
+      inventory: referenceInventory("mod.ts", "Tui"),
+    },
+    {
+      specifier: "./web",
+      path: "./mod.web.ts",
+      runtime: "browser",
+      stability: "beta",
+      description: "Browser package.",
+      inventory: referenceInventory("mod.web.ts", "createWebTui"),
+    },
+  ];
+
+  const markdown = formatPackageApiReferenceMarkdown(sections);
+  assertEquals(markdown.includes("Entrypoints: 2"), true);
+  assertEquals(markdown.includes("`./mod.ts`"), true);
+  assertEquals(markdown.includes("terminal"), true);
+  assertEquals(markdown.includes("stable"), true);
+  assertEquals(markdown.includes("`./mod.web.ts`"), true);
+  assertEquals(markdown.includes("browser"), true);
+  assertEquals(markdown.includes("beta"), true);
+  assertEquals(markdown.includes("## Entrypoint ./web"), true);
+  assertEquals(markdown.includes("`createWebTui`"), true);
 });
 
 function captureCliParseError(args: readonly string[]): string {
