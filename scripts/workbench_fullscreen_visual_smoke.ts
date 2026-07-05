@@ -39,6 +39,7 @@ export function parseWorkbenchFullscreenVisualSmokeArgs(
   const options: WorkbenchFullscreenVisualSmokeOptions = {};
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index]!;
+    if (arg === "--") continue;
     const [name, inlineValue] = arg.split("=", 2);
     if (name === "--dump-screen") {
       options.dumpScreen = inlineValue === undefined ? true : inlineValue !== "false";
@@ -103,13 +104,31 @@ export async function captureWorkbenchFullscreenPty(
   const resizeRows = pythonOptionalNumber(options.resizeRows);
   const resizeColumns = pythonOptionalNumber(options.resizeColumns);
   const python = `
-import pexpect, sys, time
+import os, pexpect, signal, subprocess, sys, time
 path = sys.argv[1]
 command = ${command}
 child = pexpect.spawn(command[0], command[1:], encoding=None, timeout=${
     Math.ceil(options.timeoutMs / 1000)
   }, dimensions=(${options.rows}, ${options.columns}))
 chunks = []
+def child_pids(pid):
+    try:
+        output = subprocess.check_output(["pgrep", "-P", str(pid)], stderr=subprocess.DEVNULL)
+    except Exception:
+        return []
+    return [int(value) for value in output.decode().split() if value.strip().isdigit()]
+def process_tree(pid):
+    children = []
+    for child_pid in child_pids(pid):
+        children.extend(process_tree(child_pid))
+        children.append(child_pid)
+    return children
+def signal_tree(pid, sig):
+    for target in process_tree(pid) + [pid]:
+        try:
+            os.kill(target, sig)
+        except Exception:
+            pass
 def drain(duration):
     deadline = time.time() + duration
     while time.time() < deadline:
@@ -132,10 +151,9 @@ finally:
     except Exception:
         pass
     time.sleep(0.2)
-    try:
-        child.terminate(force=True)
-    except Exception:
-        pass
+    signal_tree(child.pid, signal.SIGTERM)
+    time.sleep(0.2)
+    signal_tree(child.pid, signal.SIGKILL)
     try:
         child.close(force=True)
     except Exception:

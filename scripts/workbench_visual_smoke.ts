@@ -46,6 +46,7 @@ export function parseWorkbenchVisualSmokeArgs(args: readonly string[]): Workbenc
   const options: WorkbenchVisualSmokeOptions = {};
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index]!;
+    if (arg === "--") continue;
     const [name, inlineValue] = arg.split("=", 2);
     const value = inlineValue ?? args[index + 1];
     if (inlineValue === undefined && name.startsWith("--")) index += 1;
@@ -76,7 +77,7 @@ export async function runWorkbenchVisualSmoke(
 export async function captureWorkbenchPty(options: Required<WorkbenchVisualSmokeOptions>): Promise<string> {
   const shellCommand = [
     `stty cols ${options.columns} rows ${options.rows}`,
-    `timeout ${Math.max(0.1, options.timeoutMs / 1000)}s ${quoteCommand(options.command)}`,
+    `timeout -k 1s ${Math.max(0.1, options.timeoutMs / 1000)}s ${quoteCommand(options.command)}`,
   ].join("; ");
   const output = await new Deno.Command("script", {
     args: ["-q", "-c", shellCommand, "/dev/null"],

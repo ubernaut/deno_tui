@@ -81,6 +81,7 @@ Deno.test("workbench fullscreen visual smoke inspector verifies scale and trueco
 Deno.test("workbench fullscreen visual smoke parser accepts resize flags", () => {
   assertEquals(
     parseWorkbenchFullscreenVisualSmokeArgs([
+      "--",
       "--columns",
       "112",
       "--rows=34",
@@ -104,7 +105,7 @@ Deno.test("workbench fullscreen visual smoke parser accepts resize flags", () =>
 
 Deno.test("workbench visual smoke parser accepts viewport flags", () => {
   assertEquals(
-    parseWorkbenchVisualSmokeArgs(["--columns", "160", "--rows=48", "--timeout-ms", "9000"]),
+    parseWorkbenchVisualSmokeArgs(["--", "--columns", "160", "--rows=48", "--timeout-ms", "9000"]),
     { columns: 160, rows: 48, timeoutMs: 9000 },
   );
 });

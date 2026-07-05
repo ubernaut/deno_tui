@@ -323,6 +323,17 @@ const workbenchAnsiSpanPainter = new WorkbenchAnsiScreenPainter({
 let workbenchFrameChecksum = 0;
 let workbenchLineSignalFrameIndex = 0;
 let workbenchCellBlitWave = 0;
+const workbenchPrefilledBlitSource = prepareWorkbenchFrame([], workbenchFrameRows);
+const workbenchPrefilledBlitTarget = prepareWorkbenchFrame([], workbenchFrameRows);
+for (let row = 0; row < workbenchFrameRows; row += 1) {
+  const line = workbenchPrefilledBlitSource[row]!;
+  for (let column = 0; column < workbenchFrameWidth + 40; column += 1) {
+    const red = (row * 7 + column * 5) % 256;
+    const green = (40 + row * 11 + column * 2) % 256;
+    const blue = (120 + row * 3 + column * 13) % 256;
+    line[column] = `\x1b[48;2;${red};${green};${blue}m \x1b[0m`;
+  }
+}
 const largeListItems = Array.from({ length: 50_000 }, (_, index) => `process-${index.toString().padStart(5, "0")}`);
 const largeTable = new TableController({ rowCount: 100_000, viewportHeight: 44 });
 const largeDataRows = Array.from({ length: 25_000 }, (_, index) => ({
@@ -1096,6 +1107,29 @@ function runWorkbenchCellBlitWorkload(): void {
   }
 }
 
+function runWorkbenchPrefilledCellBlitWorkload(): void {
+  const target = prepareWorkbenchFrame(workbenchPrefilledBlitTarget, workbenchFrameRows);
+  const columnOffset = (workbenchCellBlitWave % 20) * 2;
+  const rowOffset = workbenchCellBlitWave % 8;
+  workbenchCellBlitWave = (workbenchCellBlitWave + 1) % 96;
+
+  blitWorkbenchFrameCells(
+    target,
+    workbenchPrefilledBlitSource,
+    { column: 36, row: 11, width: 96, height: 32 },
+    { columns: columnOffset, rows: rowOffset },
+  );
+
+  let total = 0;
+  for (let row = 11; row < 43; row += 1) {
+    total += renderFrameRow(target[row] ?? [], workbenchFrameWidth).length;
+  }
+  workbenchFrameChecksum = (workbenchFrameChecksum + total) % 1_000_000;
+  if (!Number.isFinite(workbenchFrameChecksum)) {
+    throw new Error("prefilled workbench cell blit checksum failed");
+  }
+}
+
 function runWorkbenchChangedSpanDetectionWorkload(): void {
   const base = workbenchChangedSpanCursor++ % workbenchFrameWidth;
   for (let index = 0; index < workbenchFrameWidth; index += 1) {
@@ -1553,6 +1587,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 250,
     maxAverageMs: 5,
     run: runWorkbenchCellBlitWorkload,
+  },
+  {
+    name: "render/workbench-prefilled-cell-blit-viewport",
+    category: "render",
+    description: "Copy a prefilled truecolor virtual viewport into retained workbench rows.",
+    tags: ["render", "workbench", "frame", "ansi", "viewport"],
+    iterations: 500,
+    maxAverageMs: 3,
+    run: runWorkbenchPrefilledCellBlitWorkload,
   },
   {
     name: "render/workbench-plain-frame-row-168",
