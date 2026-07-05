@@ -221,6 +221,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   used by policy decisions.
 - Added a driven fullscreen visual smoke for the API Workbench default Three pane so future checks verify fullscreen
   render-cell scale and truecolor body repainting instead of relying on text-only ANSI replay.
+- Added exact repeated `--name` benchmark selectors so Three/workbench hot-path runs can target only the intended cases
+  instead of accidentally running the full catalog.
   used by the policy.
 - Lowered the workbench Three sustained terminal byte-rate pressure threshold to make the default block renderer back
   off from 480 to 240 cells after measured ~104KB/s output repeats on slower terminal sessions.

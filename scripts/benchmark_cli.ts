@@ -29,6 +29,14 @@ export function parseBenchmarkCliOptions(args: readonly string[]): BenchmarkCliO
       }
     } else if (arg.startsWith("--repeat=")) {
       repeat = parseRepeatCount(arg.slice("--repeat=".length));
+    } else if (arg === "--name") {
+      const value = args[index + 1];
+      if (value !== undefined) {
+        appendBenchmarkName(query, value);
+        index += 1;
+      }
+    } else if (arg.startsWith("--name=")) {
+      appendBenchmarkName(query, arg.slice("--name=".length));
     } else if (arg === "--filter" || arg === "--search" || arg === "--query") {
       const value = args[index + 1];
       if (value !== undefined) {
@@ -79,6 +87,7 @@ export function selectBenchmarkCases(
 /** Formats a benchmark selector miss so targeted performance runs cannot pass without running cases. */
 export function formatEmptyBenchmarkSelectionError(query: BenchmarkCatalogQuery = {}): string {
   const selectors: string[] = [];
+  if (query.name) selectors.push(`name=${JSON.stringify(query.name)}`);
   if (query.search) selectors.push(`query=${JSON.stringify(query.search)}`);
   if (query.category) selectors.push(`category=${JSON.stringify(query.category)}`);
   if (query.tag) selectors.push(`tag=${JSON.stringify(query.tag)}`);
@@ -86,6 +95,14 @@ export function formatEmptyBenchmarkSelectionError(query: BenchmarkCatalogQuery 
   return selectors.length === 0
     ? "No benchmark cases are available."
     : `No benchmark cases matched ${selectors.join(", ")}. Use --list with the same selector to inspect the catalog.`;
+}
+
+function appendBenchmarkName(query: BenchmarkCatalogQuery, name: string): void {
+  if (query.name === undefined) {
+    query.name = name;
+    return;
+  }
+  query.name = Array.isArray(query.name) ? [...query.name, name] : [query.name, name];
 }
 
 function parseRepeatCount(value: string): number {

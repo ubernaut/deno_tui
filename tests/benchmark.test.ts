@@ -182,8 +182,8 @@ Deno.test("benchmark CLI catalog covers high-volume TUI workloads", () => {
   const report = createBenchmarkCatalogReport({ cases: benchmarkCases });
   const names = report.cases.map((entry) => entry.name);
 
-  assertEquals(report.inspection.count, 80);
-  assertEquals(report.inspection.thresholded, 80);
+  assertEquals(report.inspection.count, 81);
+  assertEquals(report.inspection.thresholded, 81);
   assertEquals(report.inspection.categories, ["data", "input", "layout", "render", "runtime", "widgets"]);
   assertEquals(names.includes("data/table-select-100k"), true);
   assertEquals(names.includes("data/table-filter-25k"), true);
@@ -293,6 +293,31 @@ Deno.test("benchmark CLI selectors filter executable cases", () => {
   assertEquals(selected.map((entry) => entry.name), ["runtime/terminal-screen-replay"]);
 });
 
+Deno.test("benchmark CLI accepts exact repeated name selectors", () => {
+  const separated = parseBenchmarkCliOptions([
+    "--name",
+    "render/workbench-three-block-span-flush-168x54",
+    "--name",
+    "render/three-ascii-ansi-grid-block-runs-96x40",
+  ]);
+  const assigned = parseBenchmarkCliOptions(["--name=render/workbench-three-header-telemetry"]);
+
+  assertEquals(separated.query, {
+    name: [
+      "render/workbench-three-block-span-flush-168x54",
+      "render/three-ascii-ansi-grid-block-runs-96x40",
+    ],
+  });
+  assertEquals(selectBenchmarkCases(benchmarkCases, separated.query).map((entry) => entry.name), [
+    "render/workbench-three-block-span-flush-168x54",
+    "render/three-ascii-ansi-grid-block-runs-96x40",
+  ]);
+  assertEquals(assigned.query, { name: "render/workbench-three-header-telemetry" });
+  assertEquals(selectBenchmarkCases(benchmarkCases, assigned.query).map((entry) => entry.name), [
+    "render/workbench-three-header-telemetry",
+  ]);
+});
+
 Deno.test("benchmark CLI accepts query as a search alias", () => {
   const separated = parseBenchmarkCliOptions(["--query", "three-ascii-ansi-grid", "--category", "render"]);
   const assigned = parseBenchmarkCliOptions(["--query=workbench frame"]);
@@ -326,8 +351,12 @@ Deno.test("benchmark CLI repeat count is opt-in and bounded", () => {
 
 Deno.test("benchmark CLI formats empty selector errors", () => {
   assertEquals(
-    formatEmptyBenchmarkSelectionError({ search: "three-ascii-deferred", category: "render" }),
-    'No benchmark cases matched query="three-ascii-deferred", category="render". Use --list with the same selector to inspect the catalog.',
+    formatEmptyBenchmarkSelectionError({
+      name: "render/missing",
+      search: "three-ascii-deferred",
+      category: "render",
+    }),
+    'No benchmark cases matched name="render/missing", query="three-ascii-deferred", category="render". Use --list with the same selector to inspect the catalog.',
   );
   assertEquals(formatEmptyBenchmarkSelectionError(), "No benchmark cases are available.");
 });

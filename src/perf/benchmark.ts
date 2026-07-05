@@ -27,6 +27,7 @@ export interface BenchmarkCaseInspection {
 
 /** Query fields for selecting benchmark cases by name, metadata, or threshold status. */
 export interface BenchmarkCatalogQuery {
+  name?: string | readonly string[];
   search?: string;
   category?: string;
   tag?: string;
@@ -304,11 +305,17 @@ function formatBenchmarkCaseThresholds(benchmark: BenchmarkCaseInspection): stri
 }
 
 function matchesBenchmarkQuery(benchmark: BenchmarkCaseInspection, query: BenchmarkCatalogQuery): boolean {
+  if (query.name !== undefined && !benchmarkMatchesName(benchmark.name, query.name)) return false;
   if (query.category && benchmark.category !== query.category) return false;
   if (query.tag && !benchmark.tags.includes(query.tag)) return false;
   if (query.thresholded !== undefined && benchmark.thresholded !== query.thresholded) return false;
   if (!query.search) return true;
   return benchmarkMatchesSearch(benchmark, query.search);
+}
+
+function benchmarkMatchesName(name: string, queryName: string | readonly string[]): boolean {
+  if (Array.isArray(queryName)) return queryName.includes(name);
+  return name === queryName;
 }
 
 function sortedSetValues<T extends string>(values: Set<T>): T[] {
