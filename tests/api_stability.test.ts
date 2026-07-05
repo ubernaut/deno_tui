@@ -12,6 +12,7 @@ import {
   formatPackageExportValidation,
   formatStableAppExportValidation,
   formatStableDemoExportValidation,
+  parseStableAppExportPolicy,
   validatePackageExports,
   validateStableAppExports,
   validateStableDemoExports,
@@ -205,6 +206,12 @@ Deno.test("package check guards stable entrypoint against new app and workbench 
       { module: "src/app/workbench_terminal.ts" },
       { module: "src/components/button.ts" },
     ],
+  }, {
+    legacyAllowedModules: [
+      "src/app/actions.ts",
+      "src/app/workbench/mod.ts",
+      "src/app/workbench_terminal.ts",
+    ],
   });
 
   assertEquals(current.ok, true);
@@ -212,7 +219,7 @@ Deno.test("package check guards stable entrypoint against new app and workbench 
     formatStableAppExportValidation(current),
     [
       "ok stable exports contain no new app/workbench modules",
-      "legacy app modules allowed: 61",
+      "legacy app modules allowed: 3",
     ].join("\n"),
   );
 
@@ -223,6 +230,11 @@ Deno.test("package check guards stable entrypoint against new app and workbench 
       { module: "src/app/workbench/new_internal_helper.ts" },
       { module: "src/app/workbench_terminal.ts" },
       { module: "src/app/workbench_z_layer_experiment.ts" },
+    ],
+  }, {
+    legacyAllowedModules: [
+      "src/app/actions.ts",
+      "src/app/workbench_terminal.ts",
     ],
   });
 
@@ -237,4 +249,20 @@ Deno.test("package check guards stable entrypoint against new app and workbench 
     ),
     true,
   );
+});
+
+Deno.test("stable app export policy parses reviewable JSON allowlists", () => {
+  const policy = parseStableAppExportPolicy(JSON.stringify({
+    description: "compat",
+    legacyAllowedModules: [
+      "src/app/workbench_terminal.ts",
+      "src/app/actions.ts",
+    ],
+  }));
+
+  assertEquals(policy.description, "compat");
+  assertEquals(policy.legacyAllowedModules, [
+    "src/app/actions.ts",
+    "src/app/workbench_terminal.ts",
+  ]);
 });

@@ -136,8 +136,8 @@ deno task health
 It checks formatting, public API exports, API inventory uniqueness, package export-map drift, documentation coverage,
 examples, apps, the full test suite, and worker-enabled runtime tests. `deno task package-check -- --quiet` also
 prevents new `src/app/*` and Workbench implementation modules from being added to the stable root export graph by
-accident. Existing app helpers are grandfathered for compatibility, but new app/demo internals should use focused
-entrypoints or direct local imports until they are intentionally promoted.
+accident. Existing app helpers are grandfathered in `docs/api-stable-app-modules.json` for compatibility, but new
+app/demo internals should use focused entrypoints or direct local imports until they are intentionally promoted.
 
 The API inventory gate currently enforces duplicate-free public exports and 100% JSDoc coverage:
 
