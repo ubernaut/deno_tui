@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `608`
+- Tracked files after the current consolidation passes: `607`
 - Tracked top-level file counts:
   - `src`: `298`
-  - `tests`: `106`
+  - `tests`: `105`
   - `app`: `30`
   - `docs`: `50`
   - `examples`: `41`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `6,968` lines across `23` files
   - `app`: `20,341` lines across `30` files
   - `examples`: `8,729` lines across `41` files
-  - `tests`: `49,120` lines across `106` top-level test files
+  - `tests`: `49,119` lines across `105` top-level test files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -296,6 +296,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     synthetic monitor fixture behavior with the source-frame and visualization dynamic coverage that consumes it.
   - API reference markdown formatter assertions are now bundled into `tests/api_inventory.test.ts`, keeping generated
     package reference coverage with the inventory script behavior that feeds it.
+  - terminal sequence parser assertions are now bundled into `tests/terminal_screen.test.ts`, keeping low-level
+    CSI/OSC/ESC parser coverage with the terminal screen replay behavior that consumes it.
 - Prefer subsystem-level runtime smoke coverage for workbench, Three ASCII, terminal shell, and web interaction.
 
 ### P1: Keep Three ASCII Performance Gated By Real Probes
