@@ -16,7 +16,7 @@ import {
   bindRuntimeProfileCommands,
   type RuntimeProfileCommandAction,
   type RuntimeProfileCommandOptions,
-} from "./runtime_profile_commands.ts";
+} from "./runtime_commands.ts";
 
 /** Options for configuring runtime Profile Plugin. */
 export interface RuntimeProfilePluginOptions {

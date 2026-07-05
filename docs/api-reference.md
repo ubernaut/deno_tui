@@ -6,8 +6,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 ## Summary
 
 - Entrypoints: 9
-- Module visits: 529
-- Re-export declarations: 520
+- Module visits: 525
+- Re-export declarations: 516
 - Exported symbols: 5331
 - Documented symbols: 5331
 - Documentation coverage: 100.00%
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     237 |    2291 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     216 |    2143 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     235 |    2291 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     214 |    2143 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      87 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -39,8 +39,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 ### Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 237
-- Re-export declarations: 236
+- Modules: 235
+- Re-export declarations: 234
 - Exported symbols: 2291
 - Documented symbols: 2291
 - Documentation coverage: 100.00%
@@ -75,17 +75,15 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                             |          0 |       6 |          6 |
 | [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                       |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         52 |       0 |          0 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         50 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                       |          0 |      10 |         10 |
 | [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                           |          0 |       6 |          6 |
 | [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     |          0 |      17 |         17 |
 | [`src/app/route_bindings.ts`](#src-app-route-bindings-ts)                                       |          0 |       9 |          9 |
 | [`src/app/router.ts`](#src-app-router-ts)                                                       |          0 |       5 |          5 |
-| [`src/app/runtime_profile_commands.ts`](#src-app-runtime-profile-commands-ts)                   |          0 |       5 |          5 |
+| [`src/app/runtime_commands.ts`](#src-app-runtime-commands-ts)                                   |          0 |      15 |         15 |
 | [`src/app/runtime_profile_plugin.ts`](#src-app-runtime-profile-plugin-ts)                       |          0 |       5 |          5 |
-| [`src/app/runtime_renderer_commands.ts`](#src-app-runtime-renderer-commands-ts)                 |          0 |       5 |          5 |
 | [`src/app/runtime_renderer_plugin.ts`](#src-app-runtime-renderer-plugin-ts)                     |          0 |       5 |          5 |
-| [`src/app/runtime_workload_commands.ts`](#src-app-runtime-workload-commands-ts)                 |          0 |       5 |          5 |
 | [`src/app/scroll_area_commands.ts`](#src-app-scroll-area-commands-ts)                           |          0 |       6 |          6 |
 | [`src/app/selection_bindings.ts`](#src-app-selection-bindings-ts)                               |          0 |       8 |          8 |
 | [`src/app/settings_bindings.ts`](#src-app-settings-bindings-ts)                                 |          0 |      21 |         21 |
@@ -649,60 +647,58 @@ _No direct exported symbols._
 
 #### src/app/mod.ts
 
-| Re-export Target                       | Kind | Names |
-| -------------------------------------- | ---- | ----- |
-| `src/app/actions.ts`                   | star | -     |
-| `src/app/app.ts`                       | star | -     |
-| `src/app/component_commands.ts`        | star | -     |
-| `src/app/command_bindings.ts`          | star | -     |
-| `src/app/command_search_index.ts`      | star | -     |
-| `src/app/commands.ts`                  | star | -     |
-| `src/app/data_query_bindings.ts`       | star | -     |
-| `src/app/data_query_commands.ts`       | star | -     |
-| `src/app/data_query_plugin.ts`         | star | -     |
-| `src/app/data_table_commands.ts`       | star | -     |
-| `src/app/disposables.ts`               | star | -     |
-| `src/app/form_commands.ts`             | star | -     |
-| `src/app/focus_commands.ts`            | star | -     |
-| `src/app/forms.ts`                     | star | -     |
-| `src/app/history_bindings.ts`          | star | -     |
-| `src/app/history.ts`                   | star | -     |
-| `src/app/input_commands.ts`            | star | -     |
-| `src/app/list_commands.ts`             | star | -     |
-| `src/app/log_viewer_commands.ts`       | star | -     |
-| `src/app/menu_bar_commands.ts`         | star | -     |
-| `src/app/metric_series_commands.ts`    | star | -     |
-| `src/app/mouse_bindings.ts`            | star | -     |
-| `src/app/pad_commands.ts`              | star | -     |
-| `src/app/plugins.ts`                   | star | -     |
-| `src/app/route_bindings.ts`            | star | -     |
-| `src/app/router.ts`                    | star | -     |
-| `src/app/runtime_profile_commands.ts`  | star | -     |
-| `src/app/runtime_profile_plugin.ts`    | star | -     |
-| `src/app/runtime_renderer_commands.ts` | star | -     |
-| `src/app/runtime_renderer_plugin.ts`   | star | -     |
-| `src/app/runtime_workload_commands.ts` | star | -     |
-| `src/app/scroll_area_commands.ts`      | star | -     |
-| `src/app/selection_bindings.ts`        | star | -     |
-| `src/app/settings_commands.ts`         | star | -     |
-| `src/app/settings_bindings.ts`         | star | -     |
-| `src/app/settings.ts`                  | star | -     |
-| `src/app/split_pane_commands.ts`       | star | -     |
-| `src/app/table_commands.ts`            | star | -     |
-| `src/app/tabs_commands.ts`             | star | -     |
-| `src/app/terminal_commands.ts`         | star | -     |
-| `src/app/terminal_input.ts`            | star | -     |
-| `src/app/terminal_window_bindings.ts`  | star | -     |
-| `src/app/theme_commands.ts`            | star | -     |
-| `src/app/theme_engine_commands.ts`     | star | -     |
-| `src/app/theme_pipeline_commands.ts`   | star | -     |
-| `src/app/theme_plugin.ts`              | star | -     |
-| `src/app/theme_workspace_plugin.ts`    | star | -     |
-| `src/app/toast_commands.ts`            | star | -     |
-| `src/app/tree_commands.ts`             | star | -     |
-| `src/app/window_manager_commands.ts`   | star | -     |
-| `src/app/widget_commands.ts`           | star | -     |
-| `src/app/workbench/mod.ts`             | star | -     |
+| Re-export Target                      | Kind | Names |
+| ------------------------------------- | ---- | ----- |
+| `src/app/actions.ts`                  | star | -     |
+| `src/app/app.ts`                      | star | -     |
+| `src/app/component_commands.ts`       | star | -     |
+| `src/app/command_bindings.ts`         | star | -     |
+| `src/app/command_search_index.ts`     | star | -     |
+| `src/app/commands.ts`                 | star | -     |
+| `src/app/data_query_bindings.ts`      | star | -     |
+| `src/app/data_query_commands.ts`      | star | -     |
+| `src/app/data_query_plugin.ts`        | star | -     |
+| `src/app/data_table_commands.ts`      | star | -     |
+| `src/app/disposables.ts`              | star | -     |
+| `src/app/form_commands.ts`            | star | -     |
+| `src/app/focus_commands.ts`           | star | -     |
+| `src/app/forms.ts`                    | star | -     |
+| `src/app/history_bindings.ts`         | star | -     |
+| `src/app/history.ts`                  | star | -     |
+| `src/app/input_commands.ts`           | star | -     |
+| `src/app/list_commands.ts`            | star | -     |
+| `src/app/log_viewer_commands.ts`      | star | -     |
+| `src/app/menu_bar_commands.ts`        | star | -     |
+| `src/app/metric_series_commands.ts`   | star | -     |
+| `src/app/mouse_bindings.ts`           | star | -     |
+| `src/app/pad_commands.ts`             | star | -     |
+| `src/app/plugins.ts`                  | star | -     |
+| `src/app/route_bindings.ts`           | star | -     |
+| `src/app/router.ts`                   | star | -     |
+| `src/app/runtime_commands.ts`         | star | -     |
+| `src/app/runtime_profile_plugin.ts`   | star | -     |
+| `src/app/runtime_renderer_plugin.ts`  | star | -     |
+| `src/app/scroll_area_commands.ts`     | star | -     |
+| `src/app/selection_bindings.ts`       | star | -     |
+| `src/app/settings_commands.ts`        | star | -     |
+| `src/app/settings_bindings.ts`        | star | -     |
+| `src/app/settings.ts`                 | star | -     |
+| `src/app/split_pane_commands.ts`      | star | -     |
+| `src/app/table_commands.ts`           | star | -     |
+| `src/app/tabs_commands.ts`            | star | -     |
+| `src/app/terminal_commands.ts`        | star | -     |
+| `src/app/terminal_input.ts`           | star | -     |
+| `src/app/terminal_window_bindings.ts` | star | -     |
+| `src/app/theme_commands.ts`           | star | -     |
+| `src/app/theme_engine_commands.ts`    | star | -     |
+| `src/app/theme_pipeline_commands.ts`  | star | -     |
+| `src/app/theme_plugin.ts`             | star | -     |
+| `src/app/theme_workspace_plugin.ts`   | star | -     |
+| `src/app/toast_commands.ts`           | star | -     |
+| `src/app/tree_commands.ts`            | star | -     |
+| `src/app/window_manager_commands.ts`  | star | -     |
+| `src/app/widget_commands.ts`          | star | -     |
+| `src/app/workbench/mod.ts`            | star | -     |
 
 _No direct exported symbols._
 
@@ -778,15 +774,25 @@ _No direct exported symbols._
 | `RouteRegisterOptions`   | interface | yes       | yes   |
 | `RouteUnregisterOptions` | interface | yes       | yes   |
 
-#### src/app/runtime_profile_commands.ts
+#### src/app/runtime_commands.ts
 
-| Symbol                         | Kind      | Type Only | JSDoc |
-| ------------------------------ | --------- | --------- | ----- |
-| `bindRuntimeProfileCommands`   | function  | no        | yes   |
-| `RuntimeProfileChangedPayload` | interface | yes       | yes   |
-| `RuntimeProfileCommandAction`  | type      | yes       | yes   |
-| `RuntimeProfileCommandOptions` | interface | yes       | yes   |
-| `runtimeProfileCommands`       | function  | no        | yes   |
+| Symbol                                 | Kind      | Type Only | JSDoc |
+| -------------------------------------- | --------- | --------- | ----- |
+| `bindRuntimeProfileCommands`           | function  | no        | yes   |
+| `bindRuntimeRendererBackendCommands`   | function  | no        | yes   |
+| `bindRuntimeWorkloadCommands`          | function  | no        | yes   |
+| `RuntimeProfileChangedPayload`         | interface | yes       | yes   |
+| `RuntimeProfileCommandAction`          | type      | yes       | yes   |
+| `RuntimeProfileCommandOptions`         | interface | yes       | yes   |
+| `runtimeProfileCommands`               | function  | no        | yes   |
+| `RuntimeRendererBackendChangedPayload` | interface | yes       | yes   |
+| `RuntimeRendererBackendCommandAction`  | type      | yes       | yes   |
+| `RuntimeRendererBackendCommandOptions` | interface | yes       | yes   |
+| `runtimeRendererBackendCommands`       | function  | no        | yes   |
+| `RuntimeWorkloadCommandAction`         | type      | yes       | yes   |
+| `RuntimeWorkloadCommandOptions`        | interface | yes       | yes   |
+| `runtimeWorkloadCommands`              | function  | no        | yes   |
+| `RuntimeWorkloadReportedPayload`       | interface | yes       | yes   |
 
 #### src/app/runtime_profile_plugin.ts
 
@@ -798,16 +804,6 @@ _No direct exported symbols._
 | `RuntimeProfilePluginInstallContext` | interface | yes       | yes   |
 | `RuntimeProfilePluginOptions`        | interface | yes       | yes   |
 
-#### src/app/runtime_renderer_commands.ts
-
-| Symbol                                 | Kind      | Type Only | JSDoc |
-| -------------------------------------- | --------- | --------- | ----- |
-| `bindRuntimeRendererBackendCommands`   | function  | no        | yes   |
-| `RuntimeRendererBackendChangedPayload` | interface | yes       | yes   |
-| `RuntimeRendererBackendCommandAction`  | type      | yes       | yes   |
-| `RuntimeRendererBackendCommandOptions` | interface | yes       | yes   |
-| `runtimeRendererBackendCommands`       | function  | no        | yes   |
-
 #### src/app/runtime_renderer_plugin.ts
 
 | Symbol                                       | Kind      | Type Only | JSDoc |
@@ -817,16 +813,6 @@ _No direct exported symbols._
 | `RuntimeRendererBackendPluginInspection`     | interface | yes       | yes   |
 | `RuntimeRendererBackendPluginInstallContext` | interface | yes       | yes   |
 | `RuntimeRendererBackendPluginOptions`        | interface | yes       | yes   |
-
-#### src/app/runtime_workload_commands.ts
-
-| Symbol                           | Kind      | Type Only | JSDoc |
-| -------------------------------- | --------- | --------- | ----- |
-| `bindRuntimeWorkloadCommands`    | function  | no        | yes   |
-| `RuntimeWorkloadCommandAction`   | type      | yes       | yes   |
-| `RuntimeWorkloadCommandOptions`  | interface | yes       | yes   |
-| `runtimeWorkloadCommands`        | function  | no        | yes   |
-| `RuntimeWorkloadReportedPayload` | interface | yes       | yes   |
 
 #### src/app/scroll_area_commands.ts
 
@@ -4043,8 +4029,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 ### Summary
 
 - Entrypoint: `mod.web.ts`
-- Modules: 216
-- Re-export declarations: 215
+- Modules: 214
+- Re-export declarations: 213
 - Exported symbols: 2143
 - Documented symbols: 2143
 - Documentation coverage: 100.00%
@@ -4079,17 +4065,15 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                             |          0 |       6 |          6 |
 | [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                       |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         52 |       0 |          0 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         50 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                       |          0 |      10 |         10 |
 | [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                           |          0 |       6 |          6 |
 | [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     |          0 |      17 |         17 |
 | [`src/app/route_bindings.ts`](#src-app-route-bindings-ts)                                       |          0 |       9 |          9 |
 | [`src/app/router.ts`](#src-app-router-ts)                                                       |          0 |       5 |          5 |
-| [`src/app/runtime_profile_commands.ts`](#src-app-runtime-profile-commands-ts)                   |          0 |       5 |          5 |
+| [`src/app/runtime_commands.ts`](#src-app-runtime-commands-ts)                                   |          0 |      15 |         15 |
 | [`src/app/runtime_profile_plugin.ts`](#src-app-runtime-profile-plugin-ts)                       |          0 |       5 |          5 |
-| [`src/app/runtime_renderer_commands.ts`](#src-app-runtime-renderer-commands-ts)                 |          0 |       5 |          5 |
 | [`src/app/runtime_renderer_plugin.ts`](#src-app-runtime-renderer-plugin-ts)                     |          0 |       5 |          5 |
-| [`src/app/runtime_workload_commands.ts`](#src-app-runtime-workload-commands-ts)                 |          0 |       5 |          5 |
 | [`src/app/scroll_area_commands.ts`](#src-app-scroll-area-commands-ts)                           |          0 |       6 |          6 |
 | [`src/app/selection_bindings.ts`](#src-app-selection-bindings-ts)                               |          0 |       8 |          8 |
 | [`src/app/settings_bindings.ts`](#src-app-settings-bindings-ts)                                 |          0 |      21 |         21 |
@@ -4651,60 +4635,58 @@ _No direct exported symbols._
 
 #### src/app/mod.ts
 
-| Re-export Target                       | Kind | Names |
-| -------------------------------------- | ---- | ----- |
-| `src/app/actions.ts`                   | star | -     |
-| `src/app/app.ts`                       | star | -     |
-| `src/app/component_commands.ts`        | star | -     |
-| `src/app/command_bindings.ts`          | star | -     |
-| `src/app/command_search_index.ts`      | star | -     |
-| `src/app/commands.ts`                  | star | -     |
-| `src/app/data_query_bindings.ts`       | star | -     |
-| `src/app/data_query_commands.ts`       | star | -     |
-| `src/app/data_query_plugin.ts`         | star | -     |
-| `src/app/data_table_commands.ts`       | star | -     |
-| `src/app/disposables.ts`               | star | -     |
-| `src/app/form_commands.ts`             | star | -     |
-| `src/app/focus_commands.ts`            | star | -     |
-| `src/app/forms.ts`                     | star | -     |
-| `src/app/history_bindings.ts`          | star | -     |
-| `src/app/history.ts`                   | star | -     |
-| `src/app/input_commands.ts`            | star | -     |
-| `src/app/list_commands.ts`             | star | -     |
-| `src/app/log_viewer_commands.ts`       | star | -     |
-| `src/app/menu_bar_commands.ts`         | star | -     |
-| `src/app/metric_series_commands.ts`    | star | -     |
-| `src/app/mouse_bindings.ts`            | star | -     |
-| `src/app/pad_commands.ts`              | star | -     |
-| `src/app/plugins.ts`                   | star | -     |
-| `src/app/route_bindings.ts`            | star | -     |
-| `src/app/router.ts`                    | star | -     |
-| `src/app/runtime_profile_commands.ts`  | star | -     |
-| `src/app/runtime_profile_plugin.ts`    | star | -     |
-| `src/app/runtime_renderer_commands.ts` | star | -     |
-| `src/app/runtime_renderer_plugin.ts`   | star | -     |
-| `src/app/runtime_workload_commands.ts` | star | -     |
-| `src/app/scroll_area_commands.ts`      | star | -     |
-| `src/app/selection_bindings.ts`        | star | -     |
-| `src/app/settings_commands.ts`         | star | -     |
-| `src/app/settings_bindings.ts`         | star | -     |
-| `src/app/settings.ts`                  | star | -     |
-| `src/app/split_pane_commands.ts`       | star | -     |
-| `src/app/table_commands.ts`            | star | -     |
-| `src/app/tabs_commands.ts`             | star | -     |
-| `src/app/terminal_commands.ts`         | star | -     |
-| `src/app/terminal_input.ts`            | star | -     |
-| `src/app/terminal_window_bindings.ts`  | star | -     |
-| `src/app/theme_commands.ts`            | star | -     |
-| `src/app/theme_engine_commands.ts`     | star | -     |
-| `src/app/theme_pipeline_commands.ts`   | star | -     |
-| `src/app/theme_plugin.ts`              | star | -     |
-| `src/app/theme_workspace_plugin.ts`    | star | -     |
-| `src/app/toast_commands.ts`            | star | -     |
-| `src/app/tree_commands.ts`             | star | -     |
-| `src/app/window_manager_commands.ts`   | star | -     |
-| `src/app/widget_commands.ts`           | star | -     |
-| `src/app/workbench/mod.ts`             | star | -     |
+| Re-export Target                      | Kind | Names |
+| ------------------------------------- | ---- | ----- |
+| `src/app/actions.ts`                  | star | -     |
+| `src/app/app.ts`                      | star | -     |
+| `src/app/component_commands.ts`       | star | -     |
+| `src/app/command_bindings.ts`         | star | -     |
+| `src/app/command_search_index.ts`     | star | -     |
+| `src/app/commands.ts`                 | star | -     |
+| `src/app/data_query_bindings.ts`      | star | -     |
+| `src/app/data_query_commands.ts`      | star | -     |
+| `src/app/data_query_plugin.ts`        | star | -     |
+| `src/app/data_table_commands.ts`      | star | -     |
+| `src/app/disposables.ts`              | star | -     |
+| `src/app/form_commands.ts`            | star | -     |
+| `src/app/focus_commands.ts`           | star | -     |
+| `src/app/forms.ts`                    | star | -     |
+| `src/app/history_bindings.ts`         | star | -     |
+| `src/app/history.ts`                  | star | -     |
+| `src/app/input_commands.ts`           | star | -     |
+| `src/app/list_commands.ts`            | star | -     |
+| `src/app/log_viewer_commands.ts`      | star | -     |
+| `src/app/menu_bar_commands.ts`        | star | -     |
+| `src/app/metric_series_commands.ts`   | star | -     |
+| `src/app/mouse_bindings.ts`           | star | -     |
+| `src/app/pad_commands.ts`             | star | -     |
+| `src/app/plugins.ts`                  | star | -     |
+| `src/app/route_bindings.ts`           | star | -     |
+| `src/app/router.ts`                   | star | -     |
+| `src/app/runtime_commands.ts`         | star | -     |
+| `src/app/runtime_profile_plugin.ts`   | star | -     |
+| `src/app/runtime_renderer_plugin.ts`  | star | -     |
+| `src/app/scroll_area_commands.ts`     | star | -     |
+| `src/app/selection_bindings.ts`       | star | -     |
+| `src/app/settings_commands.ts`        | star | -     |
+| `src/app/settings_bindings.ts`        | star | -     |
+| `src/app/settings.ts`                 | star | -     |
+| `src/app/split_pane_commands.ts`      | star | -     |
+| `src/app/table_commands.ts`           | star | -     |
+| `src/app/tabs_commands.ts`            | star | -     |
+| `src/app/terminal_commands.ts`        | star | -     |
+| `src/app/terminal_input.ts`           | star | -     |
+| `src/app/terminal_window_bindings.ts` | star | -     |
+| `src/app/theme_commands.ts`           | star | -     |
+| `src/app/theme_engine_commands.ts`    | star | -     |
+| `src/app/theme_pipeline_commands.ts`  | star | -     |
+| `src/app/theme_plugin.ts`             | star | -     |
+| `src/app/theme_workspace_plugin.ts`   | star | -     |
+| `src/app/toast_commands.ts`           | star | -     |
+| `src/app/tree_commands.ts`            | star | -     |
+| `src/app/window_manager_commands.ts`  | star | -     |
+| `src/app/widget_commands.ts`          | star | -     |
+| `src/app/workbench/mod.ts`            | star | -     |
 
 _No direct exported symbols._
 
@@ -4780,15 +4762,25 @@ _No direct exported symbols._
 | `RouteRegisterOptions`   | interface | yes       | yes   |
 | `RouteUnregisterOptions` | interface | yes       | yes   |
 
-#### src/app/runtime_profile_commands.ts
+#### src/app/runtime_commands.ts
 
-| Symbol                         | Kind      | Type Only | JSDoc |
-| ------------------------------ | --------- | --------- | ----- |
-| `bindRuntimeProfileCommands`   | function  | no        | yes   |
-| `RuntimeProfileChangedPayload` | interface | yes       | yes   |
-| `RuntimeProfileCommandAction`  | type      | yes       | yes   |
-| `RuntimeProfileCommandOptions` | interface | yes       | yes   |
-| `runtimeProfileCommands`       | function  | no        | yes   |
+| Symbol                                 | Kind      | Type Only | JSDoc |
+| -------------------------------------- | --------- | --------- | ----- |
+| `bindRuntimeProfileCommands`           | function  | no        | yes   |
+| `bindRuntimeRendererBackendCommands`   | function  | no        | yes   |
+| `bindRuntimeWorkloadCommands`          | function  | no        | yes   |
+| `RuntimeProfileChangedPayload`         | interface | yes       | yes   |
+| `RuntimeProfileCommandAction`          | type      | yes       | yes   |
+| `RuntimeProfileCommandOptions`         | interface | yes       | yes   |
+| `runtimeProfileCommands`               | function  | no        | yes   |
+| `RuntimeRendererBackendChangedPayload` | interface | yes       | yes   |
+| `RuntimeRendererBackendCommandAction`  | type      | yes       | yes   |
+| `RuntimeRendererBackendCommandOptions` | interface | yes       | yes   |
+| `runtimeRendererBackendCommands`       | function  | no        | yes   |
+| `RuntimeWorkloadCommandAction`         | type      | yes       | yes   |
+| `RuntimeWorkloadCommandOptions`        | interface | yes       | yes   |
+| `runtimeWorkloadCommands`              | function  | no        | yes   |
+| `RuntimeWorkloadReportedPayload`       | interface | yes       | yes   |
 
 #### src/app/runtime_profile_plugin.ts
 
@@ -4800,16 +4792,6 @@ _No direct exported symbols._
 | `RuntimeProfilePluginInstallContext` | interface | yes       | yes   |
 | `RuntimeProfilePluginOptions`        | interface | yes       | yes   |
 
-#### src/app/runtime_renderer_commands.ts
-
-| Symbol                                 | Kind      | Type Only | JSDoc |
-| -------------------------------------- | --------- | --------- | ----- |
-| `bindRuntimeRendererBackendCommands`   | function  | no        | yes   |
-| `RuntimeRendererBackendChangedPayload` | interface | yes       | yes   |
-| `RuntimeRendererBackendCommandAction`  | type      | yes       | yes   |
-| `RuntimeRendererBackendCommandOptions` | interface | yes       | yes   |
-| `runtimeRendererBackendCommands`       | function  | no        | yes   |
-
 #### src/app/runtime_renderer_plugin.ts
 
 | Symbol                                       | Kind      | Type Only | JSDoc |
@@ -4819,16 +4801,6 @@ _No direct exported symbols._
 | `RuntimeRendererBackendPluginInspection`     | interface | yes       | yes   |
 | `RuntimeRendererBackendPluginInstallContext` | interface | yes       | yes   |
 | `RuntimeRendererBackendPluginOptions`        | interface | yes       | yes   |
-
-#### src/app/runtime_workload_commands.ts
-
-| Symbol                           | Kind      | Type Only | JSDoc |
-| -------------------------------- | --------- | --------- | ----- |
-| `bindRuntimeWorkloadCommands`    | function  | no        | yes   |
-| `RuntimeWorkloadCommandAction`   | type      | yes       | yes   |
-| `RuntimeWorkloadCommandOptions`  | interface | yes       | yes   |
-| `runtimeWorkloadCommands`        | function  | no        | yes   |
-| `RuntimeWorkloadReportedPayload` | interface | yes       | yes   |
 
 #### src/app/scroll_area_commands.ts
 

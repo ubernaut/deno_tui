@@ -42,17 +42,21 @@ import { bindSettingsCommands, settingsCommands } from "../src/app/settings_comm
 import type { SettingsCommandAction } from "../src/app/settings_commands.ts";
 import { bindSplitPaneCommands, splitPaneCommands } from "../src/app/split_pane_commands.ts";
 import type { SplitPaneCommandAction } from "../src/app/split_pane_commands.ts";
-import { bindRuntimeProfileCommands, runtimeProfileCommands } from "../src/app/runtime_profile_commands.ts";
-import type { RuntimeProfileCommandAction } from "../src/app/runtime_profile_commands.ts";
 import { createRuntimeProfilePlugin } from "../src/app/runtime_profile_plugin.ts";
 import {
+  bindRuntimeProfileCommands,
   bindRuntimeRendererBackendCommands,
+  bindRuntimeWorkloadCommands,
+  runtimeProfileCommands,
   runtimeRendererBackendCommands,
-} from "../src/app/runtime_renderer_commands.ts";
-import type { RuntimeRendererBackendCommandAction } from "../src/app/runtime_renderer_commands.ts";
+  runtimeWorkloadCommands,
+} from "../src/app/runtime_commands.ts";
+import type {
+  RuntimeProfileCommandAction,
+  RuntimeRendererBackendCommandAction,
+  RuntimeWorkloadCommandAction,
+} from "../src/app/runtime_commands.ts";
 import { createRuntimeRendererBackendPlugin } from "../src/app/runtime_renderer_plugin.ts";
-import { bindRuntimeWorkloadCommands, runtimeWorkloadCommands } from "../src/app/runtime_workload_commands.ts";
-import type { RuntimeWorkloadCommandAction } from "../src/app/runtime_workload_commands.ts";
 import {
   bindDataTableSetting,
   bindRouteSetting,

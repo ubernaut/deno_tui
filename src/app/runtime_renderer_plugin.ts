@@ -19,7 +19,7 @@ import {
   bindRuntimeRendererBackendCommands,
   type RuntimeRendererBackendCommandAction,
   type RuntimeRendererBackendCommandOptions,
-} from "./runtime_renderer_commands.ts";
+} from "./runtime_commands.ts";
 
 /** Options for configuring runtime Renderer Backend Plugin. */
 export interface RuntimeRendererBackendPluginOptions {
