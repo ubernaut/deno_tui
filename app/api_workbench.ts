@@ -53,6 +53,7 @@ import {
   resolveWorkbenchScreenDropdownKey,
   resolveWorkbenchTerminalOutputKeyAction,
   resolveWorkbenchTerminalShellKeyAction,
+  resolveWorkbenchThreeWindowState,
   subscribeWorkbenchDiagnosticLog,
   syncWorkbenchTerminalSize,
   translateHitTargets,
@@ -90,6 +91,8 @@ import {
   type WorkbenchTerminalOutputWindowRow,
   workbenchTerminalOutputWindowRowsInto,
   WorkbenchThreeOverlayPressureGate,
+  type WorkbenchThreeWindowState,
+  workbenchThreeWindowStateIsInteractive,
   workbenchTitlebarButtonRenderCommandsInto,
   workbenchVisibleWindowRectsInto,
   workbenchVisualizationIdFromWindowId,
@@ -345,11 +348,7 @@ import {
 import { type RowStyle, type ThreeHeaderPerformance, threeHeaderRows } from "../src/app/workbench_rows.ts";
 import { writeThreeHeaderRuntimePerformance } from "../src/app/workbench_three_header.ts";
 import { resolveWorkbenchThreeFullscreenAsciiOptions } from "../src/app/workbench_three_fullscreen.ts";
-import {
-  shouldCountWorkbenchThreeGridPressure,
-  workbenchThreeShouldUseLiveCadence,
-  workbenchThreeWindowIsInteractive,
-} from "../src/app/workbench_three_terminal_pressure.ts";
+import { shouldCountWorkbenchThreeGridPressure } from "../src/app/workbench_three_terminal_pressure.ts";
 import {
   apiWorkbenchThreeEffectiveMaxCells,
   apiWorkbenchThreeFrameIntervalForCells,
@@ -686,6 +685,7 @@ const visibleWindowRects = new Map<WindowId, Rectangle>();
 const frameWidthHints = new WeakMap<Frame, number>();
 const currentWorkspaceWindowBuffer: SavedWorkspaceWindow[] = [];
 const currentWorkspaceVisualizationIdBuffer: string[] = [];
+let workbenchThreeWindowState = currentWorkbenchThreeWindowState();
 const workbenchThreeRuntime = new ApiWorkbenchThreeRuntimeController({
   hasLiveThreeWindow: hasLiveThreeRenderedWindow,
   hasFullscreenThreeWindow,
@@ -1137,6 +1137,7 @@ function draw(): void {
   const height = currentHeight();
   hitTargets.clear();
   dropdownOverlay = null;
+  workbenchThreeWindowState = currentWorkbenchThreeWindowState();
   workbenchThreeRuntime.resetPressureSample();
   syncWorkbenchThreeFrameInterval();
   const frame = prepareWorkbenchFrame(screenFrame, height);
@@ -1177,8 +1178,7 @@ function updateThreeTerminalPressure(
 }
 
 function hasFullscreenThreeWindow(): boolean {
-  const fullscreenId = maximized.peek();
-  return fullscreenId ? isThreeRenderedWindow(fullscreenId) : false;
+  return workbenchThreeWindowState.fullscreenThree;
 }
 
 function scheduleDraw(): void {
@@ -2942,9 +2942,13 @@ function syncWorkbenchThreeFrameInterval(): void {
 }
 
 function hasLiveThreeRenderedWindow(): boolean {
-  return workbenchThreeShouldUseLiveCadence({
+  return workbenchThreeWindowState.live;
+}
+
+function currentWorkbenchThreeWindowState(): WorkbenchThreeWindowState<WindowId> {
+  return resolveWorkbenchThreeWindowState<WindowId>({
     activeId: activeWindow.peek(),
-    fullscreenId: windowManager.fullscreenId.peek(),
+    fullscreenId: windowManager.fullscreenId.peek() as WindowId | undefined,
     windows: windowManager.orderedWindows(),
     isThreeWindow: (id) => isThreeRenderedWindow(id as WindowId),
     blocked: genericModalBlocksThree.peek(),
@@ -2952,14 +2956,7 @@ function hasLiveThreeRenderedWindow(): boolean {
 }
 
 function isThreeWindowInteractive(id: WindowId): boolean {
-  return workbenchThreeWindowIsInteractive({
-    id,
-    activeId: activeWindow.peek(),
-    fullscreenId: windowManager.fullscreenId.peek(),
-    windows: windowManager.orderedWindows(),
-    isThreeWindow: (windowId) => isThreeRenderedWindow(windowId as WindowId),
-    blocked: genericModalBlocksThree.peek(),
-  });
+  return workbenchThreeWindowStateIsInteractive(workbenchThreeWindowState, id);
 }
 
 function setGenericModalBlocksThree(open: boolean, _inspection?: ModalInspection): void {
