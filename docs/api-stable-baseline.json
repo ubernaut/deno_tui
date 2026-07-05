@@ -3839,27 +3839,6 @@
       "documented": true
     },
     {
-      "module": "src/app/workbench_help.ts",
-      "name": "WorkbenchHelpProfile",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/workbench_help.ts",
-      "name": "workbenchHelpRows",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/workbench_help.ts",
-      "name": "WorkbenchHelpRowsOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
       "module": "src/app/workbench_keymap.ts",
       "name": "resolveWorkbenchGlobalKey",
       "kind": "function",
@@ -4786,6 +4765,27 @@
     {
       "module": "src/app/workbench_status.ts",
       "name": "WorkbenchHeaderHelpOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "WorkbenchHelpProfile",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "workbenchHelpRows",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "WorkbenchHelpRowsOptions",
       "kind": "interface",
       "typeOnly": true,
       "documented": true

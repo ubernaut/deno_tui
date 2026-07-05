@@ -10,7 +10,7 @@ import {
 } from "../src/components/data_table.ts";
 import type { ModalContent } from "../src/components/modal.ts";
 import type { TreeRow } from "../src/components/tree.ts";
-import { workbenchHelpRows, type WorkbenchHelpRowsOptions } from "../src/app/workbench_help.ts";
+import { workbenchHelpRows, type WorkbenchHelpRowsOptions } from "../src/app/workbench_status.ts";
 import type { Rectangle } from "../src/types.ts";
 
 /** Minimal column metadata needed to estimate API workbench data-table width. */

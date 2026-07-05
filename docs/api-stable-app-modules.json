@@ -46,7 +46,6 @@
     "src/app/workbench_button_style.ts",
     "src/app/workbench_control_layout.ts",
     "src/app/workbench_frame.ts",
-    "src/app/workbench_help.ts",
     "src/app/workbench_keymap.ts",
     "src/app/workbench_layout.ts",
     "src/app/workbench_menu.ts",

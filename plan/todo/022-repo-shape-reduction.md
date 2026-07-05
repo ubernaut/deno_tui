@@ -179,6 +179,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     duplicated resize/draw growth code without adding another app module
   - Neon Three colors now derive from the shared app palette, removing a duplicated app-only color table while
     preserving the existing Neon scene facade
+  - Workbench navigation help rows are folded into `src/app/workbench_status.ts`, keeping shortcut/help copy with the
+    status presentation helpers while preserving the public workbench facade export
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
