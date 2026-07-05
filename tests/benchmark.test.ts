@@ -12,8 +12,10 @@ import {
 } from "../src/perf/mod.ts";
 import {
   formatEmptyBenchmarkSelectionError,
+  formatUnmatchedBenchmarkNamesError,
   parseBenchmarkCliOptions,
   selectBenchmarkCases,
+  unmatchedBenchmarkNames,
 } from "../scripts/benchmark_cli.ts";
 import { benchmarkCases } from "../scripts/benchmark_cases.ts";
 
@@ -319,6 +321,23 @@ Deno.test("benchmark CLI accepts exact repeated name selectors", () => {
   assertEquals(selectBenchmarkCases(benchmarkCases, assigned.query).map((entry) => entry.name), [
     "render/workbench-three-header-telemetry",
   ]);
+});
+
+Deno.test("benchmark CLI reports unmatched exact name selectors", () => {
+  const options = parseBenchmarkCliOptions([
+    "--name",
+    "render/workbench-three-block-span-flush-168x54",
+    "--name",
+    "render/three-ascii-ansi-grid-blocks-96x40",
+  ]);
+
+  assertEquals(unmatchedBenchmarkNames(benchmarkCases, options.query), [
+    "render/three-ascii-ansi-grid-blocks-96x40",
+  ]);
+  assertEquals(
+    formatUnmatchedBenchmarkNamesError(unmatchedBenchmarkNames(benchmarkCases, options.query)),
+    'Unknown benchmark name: "render/three-ascii-ansi-grid-blocks-96x40". Use --list --query <term> to find exact names.',
+  );
 });
 
 Deno.test("benchmark CLI accepts query as a search alias", () => {

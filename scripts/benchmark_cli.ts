@@ -84,6 +84,21 @@ export function selectBenchmarkCases(
   return cases.filter((benchmark) => matchedNames.has(benchmark.name));
 }
 
+/** Reports exact --name selectors that do not exist in the benchmark catalog. */
+export function unmatchedBenchmarkNames(
+  cases: readonly BenchmarkCase[],
+  query: BenchmarkCatalogQuery = {},
+): string[] {
+  if (query.name === undefined) return [];
+  const available = new Set(cases.map((benchmark) => benchmark.name));
+  const requested = Array.isArray(query.name) ? query.name : [query.name];
+  const missing: string[] = [];
+  for (const name of requested) {
+    if (!available.has(name)) missing.push(name);
+  }
+  return missing;
+}
+
 /** Formats a benchmark selector miss so targeted performance runs cannot pass without running cases. */
 export function formatEmptyBenchmarkSelectionError(query: BenchmarkCatalogQuery = {}): string {
   const selectors: string[] = [];
@@ -95,6 +110,14 @@ export function formatEmptyBenchmarkSelectionError(query: BenchmarkCatalogQuery 
   return selectors.length === 0
     ? "No benchmark cases are available."
     : `No benchmark cases matched ${selectors.join(", ")}. Use --list with the same selector to inspect the catalog.`;
+}
+
+/** Formats missing exact benchmark names before a partial targeted run can pass. */
+export function formatUnmatchedBenchmarkNamesError(names: readonly string[]): string {
+  const joined = names.map((name) => JSON.stringify(name)).join(", ");
+  return `Unknown benchmark name${
+    names.length === 1 ? "" : "s"
+  }: ${joined}. Use --list --query <term> to find exact names.`;
 }
 
 function appendBenchmarkName(query: BenchmarkCatalogQuery, name: string): void {

@@ -1253,3 +1253,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   terminal/web type checks passed after the split.
 - Moved shared API Workbench control ids and hit-action types into a tiny acyclic base module so the key resolver no
   longer imports back from the controls facade. Existing facade exports remain stable for terminal, browser, and tests.
+- Made exact benchmark `--name` selectors fail fast when any requested case is missing, preventing partial
+  Three/workbench hot-path benchmark runs from looking green after a typo. The CLI still supports broad
+  query/category/tag discovery, while repeated exact names now report unknown selectors before executing any subset.

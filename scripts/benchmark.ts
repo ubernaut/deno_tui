@@ -7,8 +7,13 @@ import {
   summarizeBenchmarkResults,
   summarizeBestBenchmarkSummaries,
 } from "../mod.ts";
-import { parseBenchmarkCliOptions, selectBenchmarkCases } from "./benchmark_cli.ts";
-import { formatEmptyBenchmarkSelectionError } from "./benchmark_cli.ts";
+import {
+  formatEmptyBenchmarkSelectionError,
+  formatUnmatchedBenchmarkNamesError,
+  parseBenchmarkCliOptions,
+  selectBenchmarkCases,
+  unmatchedBenchmarkNames,
+} from "./benchmark_cli.ts";
 import { benchmarkCases } from "./benchmark_cases.ts";
 
 const options = parseBenchmarkCliOptions(Deno.args);
@@ -21,6 +26,12 @@ if (options.list) {
     console.log(formatBenchmarkCatalogMarkdown({ cases: benchmarkCases, query: options.query }));
   }
   Deno.exit(0);
+}
+
+const unmatchedNames = unmatchedBenchmarkNames(benchmarkCases, options.query);
+if (unmatchedNames.length > 0) {
+  console.error(formatUnmatchedBenchmarkNamesError(unmatchedNames));
+  Deno.exit(1);
 }
 
 if (selectedCases.length === 0) {
