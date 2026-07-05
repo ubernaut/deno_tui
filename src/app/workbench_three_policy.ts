@@ -5,6 +5,7 @@ import {
 
 export const WORKBENCH_THREE_LIVE_MAX_CELLS = 960;
 export const WORKBENCH_THREE_FULLSCREEN_MIN_CELLS = 3_840;
+export const WORKBENCH_THREE_FULLSCREEN_MAX_CELLS = 7_680;
 export const WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS = 1_920;
 export const WORKBENCH_THREE_RESCUE_CELLS = 30;
 export const WORKBENCH_THREE_EMERGENCY_CELLS = 60;
@@ -21,6 +22,7 @@ export const WORKBENCH_THREE_PRESSURE_LEVELS = [
 export const WORKBENCH_THREE_FULLSCREEN_PRESSURE_LEVELS = [
   WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS,
   WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
+  WORKBENCH_THREE_FULLSCREEN_MAX_CELLS,
 ] as const;
 
 export const WORKBENCH_THREE_PRESSURE_HIGH_BYTES = 480_000;
@@ -52,6 +54,7 @@ export const WORKBENCH_THREE_FRAME_INTERVAL_BY_CELLS = new Map<number, number>([
   [WORKBENCH_THREE_LIVE_MAX_CELLS, 1000 / 20],
   [1_920, 1000 / 14],
   [3_840, 1000 / 10],
+  [WORKBENCH_THREE_FULLSCREEN_MAX_CELLS, 1000 / 8],
 ]);
 
 export const WORKBENCH_THREE_IDLE_FRAME_INTERVAL_BY_CELLS = new Map<number, number>([
@@ -63,6 +66,7 @@ export const WORKBENCH_THREE_IDLE_FRAME_INTERVAL_BY_CELLS = new Map<number, numb
   [WORKBENCH_THREE_LIVE_MAX_CELLS, 1000 / 8],
   [1_920, 1000 / 6],
   [3_840, 1000 / 5],
+  [WORKBENCH_THREE_FULLSCREEN_MAX_CELLS, 1000 / 4],
 ]);
 
 export type ApiWorkbenchThreePressurePolicy = Omit<
@@ -112,4 +116,15 @@ export function apiWorkbenchThreeEffectiveMaxCells(
   const current = Math.max(1, Math.floor(currentCells));
   if (!options.fullscreenThree) return current;
   return Math.max(current, Math.max(1, Math.floor(options.fullscreenMinCells ?? WORKBENCH_THREE_FULLSCREEN_MIN_CELLS)));
+}
+
+/** Returns the runtime render-cell target for a fullscreen Three pane at the current terminal viewport size. */
+export function workbenchThreeFullscreenRenderCells(
+  rect: { width: number; height: number },
+  options: { minCells?: number; maxCells?: number } = {},
+): number {
+  const minCells = Math.max(1, Math.floor(options.minCells ?? WORKBENCH_THREE_FULLSCREEN_MIN_CELLS));
+  const maxCells = Math.max(minCells, Math.floor(options.maxCells ?? WORKBENCH_THREE_FULLSCREEN_MAX_CELLS));
+  const area = Math.max(1, Math.floor(rect.width) * Math.floor(rect.height));
+  return Math.max(minCells, Math.min(maxCells, area));
 }

@@ -39,3 +39,16 @@ Deno.test("resolveWorkbenchThreeFullscreenAsciiOptions preserves higher explicit
 
   assertStrictEquals(resolved, ascii);
 });
+
+Deno.test("resolveWorkbenchThreeFullscreenAsciiOptions raises to viewport-derived fullscreen caps", () => {
+  const ascii = createDefaultWorkbenchAsciiOptions();
+  const resolved = resolveWorkbenchThreeFullscreenAsciiOptions({
+    id: "three",
+    fullscreenId: "three",
+    ascii,
+    fullscreenMinCells: 6_600,
+  });
+
+  assertEquals(resolved.renderMaxCells, 6_600);
+  assertEquals(ascii.renderMaxCells, 960);
+});

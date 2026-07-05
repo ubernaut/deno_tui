@@ -6,6 +6,7 @@ import {
   apiWorkbenchThreeFrameIntervalForCells,
   WORKBENCH_THREE_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_EMERGENCY_DRAW_INTERVAL_MS,
+  WORKBENCH_THREE_FULLSCREEN_MAX_CELLS,
   WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
   WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS,
   WORKBENCH_THREE_FULLSCREEN_PRESSURE_HIGH_BYTES_PER_SECOND,
@@ -18,6 +19,7 @@ import {
   WORKBENCH_THREE_READBACK_STRATEGY,
   WORKBENCH_THREE_RESCUE_CELLS,
   WORKBENCH_THREE_RESCUE_DRAW_INTERVAL_MS,
+  workbenchThreeFullscreenRenderCells,
 } from "../src/app/workbench_three_policy.ts";
 import {
   createWorkbenchThreeTerminalPressureState,
@@ -37,9 +39,11 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
   assertEquals(Array.from(WORKBENCH_THREE_FULLSCREEN_PRESSURE_LEVELS), [
     1920,
     3840,
+    7680,
   ]);
   assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 480);
   assertEquals(WORKBENCH_THREE_FULLSCREEN_MIN_CELLS, 3_840);
+  assertEquals(WORKBENCH_THREE_FULLSCREEN_MAX_CELLS, 7_680);
   assertEquals(WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS, 1_920);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 480_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 24_000);
@@ -84,8 +88,23 @@ Deno.test("API workbench Three policy keeps live panes faster than idle panes", 
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(960, { live: true }), 1000 / 20);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(1_920, { live: true }), 1000 / 14);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: true }), 1000 / 10);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(7_680, { live: true }), 1000 / 8);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(240, { live: false }), 1000 / 8);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: false }), 1000 / 5);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(7_680, { live: false }), 1000 / 4);
+});
+
+Deno.test("API workbench Three fullscreen render target follows viewport within policy bounds", () => {
+  assertEquals(workbenchThreeFullscreenRenderCells({ width: 20, height: 10 }), WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
+  assertEquals(workbenchThreeFullscreenRenderCells({ width: 100, height: 50 }), 5_000);
+  assertEquals(workbenchThreeFullscreenRenderCells({ width: 240, height: 90 }), WORKBENCH_THREE_FULLSCREEN_MAX_CELLS);
+  assertEquals(
+    workbenchThreeFullscreenRenderCells(
+      { width: 100, height: 50 },
+      { minCells: 120, maxCells: 960 },
+    ),
+    960,
+  );
 });
 
 Deno.test("API workbench Three policy starts at the responsive tier but keeps rescue available", () => {
@@ -156,6 +175,25 @@ Deno.test("API workbench Three fullscreen pressure keeps a useful visual floor",
 
   assertEquals(state.currentCells, WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS);
   assertEquals(state.highFrames, 0);
+});
+
+Deno.test("API workbench Three fullscreen pressure can recover to the large-pane tier", () => {
+  const state = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
+  const sample = {
+    ...API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY,
+    renderedThreeGrids: 1,
+    bytes: 4_000,
+    durationMs: 0.05,
+    sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_FULLSCREEN_MIN_CELLS, { live: true }),
+  };
+
+  const frames = API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY.lowFrameThreshold ?? 1;
+  for (let index = 0; index < frames; index += 1) {
+    Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
+  }
+
+  assertEquals(state.currentCells, WORKBENCH_THREE_FULLSCREEN_MAX_CELLS);
+  assertEquals(state.lowFrames, 0);
 });
 
 Deno.test("API workbench Three policy backs off ordinary startup block frames over the byte-rate ceiling", () => {
