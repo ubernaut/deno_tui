@@ -1157,11 +1157,17 @@ function syncWorkbenchThreeRuntimeBudget(width: number, height: number): void {
     fullscreenViewportPadding: { columns: 6, rows: 10 },
     isThreeWindow: (id) => isThreeRenderedWindow(id),
   });
+  const fullscreenThree = hasFullscreenThreeWindow();
+  const syncedFullscreenMaxCells = workbenchThreeRuntime.syncFullscreenTargetCells(
+    snapshot.fullscreenTargetCells,
+    fullscreenThree,
+  );
   if (workbenchThreeFullscreenTargetCells.peek() !== snapshot.fullscreenTargetCells) {
     workbenchThreeFullscreenTargetCells.value = snapshot.fullscreenTargetCells;
   }
-  if (workbenchThreeEffectiveMaxCells.peek() !== snapshot.effectiveMaxCells) {
-    workbenchThreeEffectiveMaxCells.value = snapshot.effectiveMaxCells;
+  const effectiveMaxCells = fullscreenThree ? syncedFullscreenMaxCells : snapshot.effectiveMaxCells;
+  if (workbenchThreeEffectiveMaxCells.peek() !== effectiveMaxCells) {
+    workbenchThreeEffectiveMaxCells.value = effectiveMaxCells;
   }
   if (!sameWorkbenchThreeAsciiOptions(threeRuntimeAscii.peek(), snapshot.runtimeAscii)) {
     threeRuntimeAscii.value = snapshot.runtimeAscii;

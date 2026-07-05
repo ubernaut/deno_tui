@@ -10,6 +10,7 @@ import {
   API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY,
   API_WORKBENCH_THREE_PRESSURE_POLICY,
   apiWorkbenchThreeFrameIntervalForCells,
+  WORKBENCH_THREE_FULLSCREEN_MAX_CELLS,
   WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
   WORKBENCH_THREE_INITIAL_CELLS,
 } from "./workbench_three_policy.ts";
@@ -137,6 +138,8 @@ export class ApiWorkbenchThreeRuntimeController {
   #lastPressureInspection: ApiWorkbenchThreePressureInspection;
   #pressureChange = emptyPressureChange();
   #pressureChangeInput: ApiWorkbenchThreePressureChangeInput;
+  #lastFullscreenTargetCells = 0;
+  #fullscreenTargetActive = false;
 
   constructor(private readonly options: ApiWorkbenchThreeRuntimeOptions) {
     this.frameInterval = new Signal(
@@ -177,6 +180,34 @@ export class ApiWorkbenchThreeRuntimeController {
     this.#fullscreenPressure.lowFrames = 0;
     this.#lastPressureInspection.highFrames = 0;
     this.#lastPressureInspection.lowFrames = 0;
+  }
+
+  /** Promotes fullscreen render pressure to a new viewport target without fighting later pressure downshifts. */
+  syncFullscreenTargetCells(targetCells: number, active = this.hasFullscreenThreeWindow()): number {
+    const target = Math.max(
+      WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
+      Math.min(WORKBENCH_THREE_FULLSCREEN_MAX_CELLS, Math.floor(targetCells)),
+    );
+    if (!active) {
+      this.#fullscreenTargetActive = false;
+      this.#lastFullscreenTargetCells = 0;
+      return this.fullscreenMaxCells.peek();
+    }
+
+    const enteringFullscreen = !this.#fullscreenTargetActive;
+    this.#fullscreenTargetActive = true;
+    if ((enteringFullscreen || target !== this.#lastFullscreenTargetCells) && target > this.fullscreenMaxCells.peek()) {
+      this.fullscreenMaxCells.value = target;
+      this.#fullscreenPressure.currentCells = target;
+      this.#fullscreenPressure.highFrames = 0;
+      this.#fullscreenPressure.lowFrames = 0;
+      this.#lastPressureInspection.currentCells = target;
+      this.#lastPressureInspection.highFrames = 0;
+      this.#lastPressureInspection.lowFrames = 0;
+      this.syncFrameInterval();
+    }
+    this.#lastFullscreenTargetCells = target;
+    return this.fullscreenMaxCells.peek();
   }
 
   inspectPressureSample(): ApiWorkbenchThreePressureSample {

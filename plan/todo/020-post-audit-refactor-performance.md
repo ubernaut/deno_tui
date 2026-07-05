@@ -1187,3 +1187,7 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted API Workbench workspace storage defaults and storage-option projection into a small shared helper, keeping
   persistence policy out of the oversized terminal workbench module. Focused workspace tests now pin the storage key,
   fallback store config, storage labels, normalization policy, and facade export path.
+- Promoted the API Workbench fullscreen Three render-cell pressure cap on fullscreen entry and viewport growth, while
+  preserving later terminal-pressure downshifts for the same target. The resized fullscreen PTY smoke now reports
+  roughly `6825/6960` rendered cells at `180x50`, with matching header tier telemetry and truecolor rows across the
+  resized surface.

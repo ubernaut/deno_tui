@@ -8,6 +8,7 @@ import {
 } from "../src/app/workbench_three_runtime.ts";
 import {
   apiWorkbenchThreeFrameIntervalForCells,
+  WORKBENCH_THREE_FULLSCREEN_MAX_CELLS,
   WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
   WORKBENCH_THREE_INITIAL_CELLS,
 } from "../src/app/workbench_three_policy.ts";
@@ -92,6 +93,51 @@ Deno.test("ApiWorkbenchThreeRuntimeController keeps fullscreen pressure separate
     controller.frameInterval.peek(),
     apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
   );
+
+  controller.dispose();
+});
+
+Deno.test("ApiWorkbenchThreeRuntimeController promotes fullscreen budget on entry and viewport growth", () => {
+  let fullscreen = false;
+  const controller = new ApiWorkbenchThreeRuntimeController({
+    hasLiveThreeWindow: () => true,
+    hasFullscreenThreeWindow: () => fullscreen,
+  });
+
+  assertEquals(controller.syncFullscreenTargetCells(6_200, fullscreen), WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
+
+  fullscreen = true;
+  assertEquals(controller.syncFullscreenTargetCells(6_200, fullscreen), 6_200);
+  assertEquals(controller.fullscreenMaxCells.peek(), 6_200);
+  assertEquals(controller.inspectPressure().currentCells, 6_200);
+  assertEquals(controller.inspectPressureDetails().currentCells, 6_200);
+  assertEquals(
+    controller.frameInterval.peek(),
+    apiWorkbenchThreeFrameIntervalForCells(6_200, { live: true }),
+  );
+
+  assertEquals(controller.syncFullscreenTargetCells(8_800, fullscreen), WORKBENCH_THREE_FULLSCREEN_MAX_CELLS);
+  assertEquals(controller.fullscreenMaxCells.peek(), WORKBENCH_THREE_FULLSCREEN_MAX_CELLS);
+
+  controller.dispose();
+});
+
+Deno.test("ApiWorkbenchThreeRuntimeController does not undo fullscreen pressure downshift for the same target", () => {
+  let fullscreen = true;
+  const controller = new ApiWorkbenchThreeRuntimeController({
+    hasLiveThreeWindow: () => true,
+    hasFullscreenThreeWindow: () => fullscreen,
+  });
+
+  controller.syncFullscreenTargetCells(6_200, fullscreen);
+  controller.fullscreenMaxCells.value = 1_920;
+
+  assertEquals(controller.syncFullscreenTargetCells(6_200, fullscreen), 1_920);
+
+  fullscreen = false;
+  controller.syncFullscreenTargetCells(6_200, fullscreen);
+  fullscreen = true;
+  assertEquals(controller.syncFullscreenTargetCells(6_200, fullscreen), 6_200);
 
   controller.dispose();
 });
