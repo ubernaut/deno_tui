@@ -53,7 +53,7 @@ import {
   writeStringFrameRow,
 } from "../mod.ts";
 import { AudioRegistry } from "../app/audio.ts";
-import { createHtmlCssLayoutDemo } from "../app/html_css_layout_demo.ts";
+import { createHtmlCssLayoutDemo } from "../src/markup/demo_fixtures.ts";
 import { resolveSourceFramesInto } from "../app/sources.ts";
 import { type ThreeHeaderPerformance, threeHeaderRows, type WorkbenchRowTheme } from "../src/app/workbench_rows.ts";
 import {

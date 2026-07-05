@@ -1,5 +1,5 @@
 import { assertEquals } from "./deps.ts";
-import { flexRects } from "../app/flex.ts";
+import { flexRects } from "../src/layout/flex_layout.ts";
 import type { Rect } from "../app/types.ts";
 
 const bounds: Rect = {
