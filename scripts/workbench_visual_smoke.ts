@@ -27,6 +27,8 @@ export interface WorkbenchFullscreenVisualSmokeResult extends WorkbenchVisualSmo
   fullscreenCap: number;
   truecolorBackgroundRows: number;
   truecolorBackgroundMaxColumns: number;
+  bodyTruecolorBackgroundRows: number;
+  bodyTruecolorBackgroundMaxColumns: number;
 }
 
 interface ReplayState {
@@ -45,7 +47,7 @@ export interface WorkbenchStyledScreenReplay {
 const DEFAULT_COMMAND = ["deno", "task", "api-workbench"] as const;
 const REQUIRED_TOKENS: readonly string[] = ["API WORKBENCH", "THREE ASCII", "live", "fps"];
 const FORBIDDEN_TOKENS: readonly string[] = ["ReferenceError", "RangeError", "Maximum call stack", ")F10"];
-const FULLSCREEN_THREE_CELL_PATTERN = /(\d+)c cap (\d+)c/;
+const FULLSCREEN_THREE_CELL_PATTERN = /(\d+)c(?: cap (\d+)c)?/;
 
 if (import.meta.main) {
   const result = await runWorkbenchVisualSmoke(parseWorkbenchVisualSmokeArgs(Deno.args));
@@ -147,11 +149,13 @@ export function inspectWorkbenchFullscreenVisualSmokeOutput(
   },
 ): WorkbenchFullscreenVisualSmokeResult {
   const base = inspectWorkbenchVisualSmokeOutput(output, options);
+  const replay = replayWorkbenchStyledScreen(output, options);
   const cellMatch = base.threeLine.match(FULLSCREEN_THREE_CELL_PATTERN);
   const fullscreenCells = cellMatch ? Number.parseInt(cellMatch[1]!, 10) : 0;
-  const fullscreenCap = cellMatch ? Number.parseInt(cellMatch[2]!, 10) : 0;
+  const fullscreenCap = cellMatch && cellMatch[2] ? Number.parseInt(cellMatch[2], 10) : fullscreenCells;
   const truecolorBackgroundRows = base.finalTruecolorBackgroundRows;
   const truecolorBackgroundMaxColumns = base.finalTruecolorBackgroundMaxColumns;
+  const bodyTruecolor = threeBodyTruecolorCoverage(base.screenLines, replay.truecolorBackground);
   const missing = [...base.missing];
   const minCells = Math.max(1, Math.floor(options.minCells ?? 1_800));
   const minTruecolorRows = Math.max(1, Math.floor(options.minTruecolorRows ?? Math.min(12, options.rows)));
@@ -161,8 +165,13 @@ export function inspectWorkbenchFullscreenVisualSmokeOutput(
   if (truecolorBackgroundMaxColumns < minTruecolorColumns) {
     missing.push(`truecolor columns >= ${minTruecolorColumns}`);
   }
+  if (bodyTruecolor.rows < minTruecolorRows) missing.push(`three body truecolor rows >= ${minTruecolorRows}`);
+  if (bodyTruecolor.maxColumns < minTruecolorColumns) {
+    missing.push(`three body truecolor columns >= ${minTruecolorColumns}`);
+  }
   const fullscreen = fullscreenCells >= minCells && truecolorBackgroundRows >= minTruecolorRows &&
-    truecolorBackgroundMaxColumns >= minTruecolorColumns;
+    truecolorBackgroundMaxColumns >= minTruecolorColumns && bodyTruecolor.rows >= minTruecolorRows &&
+    bodyTruecolor.maxColumns >= minTruecolorColumns;
   return {
     ...base,
     passed: base.forbidden.length === 0 && missing.length === 0,
@@ -172,7 +181,43 @@ export function inspectWorkbenchFullscreenVisualSmokeOutput(
     fullscreenCap,
     truecolorBackgroundRows,
     truecolorBackgroundMaxColumns,
+    bodyTruecolorBackgroundRows: bodyTruecolor.rows,
+    bodyTruecolorBackgroundMaxColumns: bodyTruecolor.maxColumns,
   };
+}
+
+function threeBodyTruecolorCoverage(
+  lines: readonly string[],
+  truecolorBackground: readonly (readonly boolean[])[],
+): { rows: number; maxColumns: number } {
+  const telemetryRow = lines.findIndex((line) => line.includes("fps") && line.includes("live"));
+  if (telemetryRow < 0) return { rows: 0, maxColumns: 0 };
+  const endRow = findThreeBodyEndRow(lines, telemetryRow + 1);
+  let rows = 0;
+  let maxColumns = 0;
+  for (let row = telemetryRow + 1; row < endRow; row += 1) {
+    const line = lines[row] ?? "";
+    const rowMask = truecolorBackground[row] ?? [];
+    const leftBorder = line.indexOf("│");
+    const rightBorder = line.lastIndexOf("│");
+    const start = leftBorder >= 0 ? leftBorder + 1 : 0;
+    const end = rightBorder > start ? rightBorder : rowMask.length;
+    let count = 0;
+    for (let column = start; column < end; column += 1) {
+      if (rowMask[column]) count += 1;
+    }
+    if (count > 0) rows += 1;
+    if (count > maxColumns) maxColumns = count;
+  }
+  return { rows, maxColumns };
+}
+
+function findThreeBodyEndRow(lines: readonly string[], startRow: number): number {
+  for (let row = startRow; row < lines.length; row += 1) {
+    const line = lines[row] ?? "";
+    if (line.includes("└") || line.trimStart().startsWith("windows [")) return row;
+  }
+  return lines.length;
 }
 
 export function formatWorkbenchVisualSmokeResult(result: WorkbenchVisualSmokeResult): string {

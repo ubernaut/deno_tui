@@ -189,6 +189,8 @@ export function formatWorkbenchFullscreenVisualSmokeResult(result: WorkbenchFull
     `Fullscreen cells: ${result.fullscreenCells}/${result.fullscreenCap}`,
     `Truecolor rows: ${result.truecolorBackgroundRows}`,
     `Truecolor max columns: ${result.truecolorBackgroundMaxColumns}`,
+    `Three body truecolor rows: ${result.bodyTruecolorBackgroundRows}`,
+    `Three body truecolor max columns: ${result.bodyTruecolorBackgroundMaxColumns}`,
     `Final truecolor rows: ${result.finalTruecolorBackgroundRows}`,
     `Truecolor backgrounds: ${result.truecolorBackgroundWrites}`,
     `Nonblank rows: ${result.nonBlankRows}`,

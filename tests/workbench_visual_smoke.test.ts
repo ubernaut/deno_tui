@@ -159,7 +159,37 @@ Deno.test("workbench fullscreen visual smoke inspector verifies scale and trueco
   assertEquals(result.finalTruecolorBackgroundRows, 3);
   assertEquals(result.truecolorBackgroundMaxColumns, 2);
   assertEquals(result.finalTruecolorBackgroundMaxColumns, 2);
+  assertEquals(result.bodyTruecolorBackgroundRows, 3);
+  assertEquals(result.bodyTruecolorBackgroundMaxColumns, 2);
   assertEquals(countTruecolorBackgroundRows(output), 3);
+});
+
+Deno.test("workbench fullscreen visual smoke accepts compact telemetry after shrink resize", () => {
+  const output = [
+    "\x1b[2J",
+    "\x1b[1;1HAPI WORKBENCH",
+    "\x1b[4;1H┌─ THREE ASCII ─┐",
+    "\x1b[5;1H│ ACEROLA THREE │",
+    "\x1b[6;1H│5ms 1602c live 20fps q1/2 rows 33/38 tier 3840c│",
+    "\x1b[7;2H\x1b[48;2;1;2;3m                                                            \x1b[0m",
+    "\x1b[8;2H\x1b[48;2;4;5;6m                                                            \x1b[0m",
+    "\x1b[9;2H\x1b[48;2;7;8;9m                                                            \x1b[0m",
+    "\x1b[10;1H└────────────────┘",
+    "\x1b[12;1Hfocus Three ASCII | Unit-01  F10 menu",
+  ].join("");
+  const result = inspectWorkbenchFullscreenVisualSmokeOutput(output, {
+    columns: 80,
+    rows: 12,
+    minCells: 900,
+    minTruecolorRows: 3,
+    minTruecolorColumns: 60,
+  });
+
+  assertEquals(result.passed, true);
+  assertEquals(result.fullscreenCells, 1602);
+  assertEquals(result.fullscreenCap, 1602);
+  assertEquals(result.bodyTruecolorBackgroundRows, 3);
+  assertEquals(result.bodyTruecolorBackgroundMaxColumns, 60);
 });
 
 Deno.test("workbench fullscreen visual smoke rejects narrow truecolor surfaces after resize", () => {
@@ -181,8 +211,9 @@ Deno.test("workbench fullscreen visual smoke rejects narrow truecolor surfaces a
   });
 
   assertEquals(result.passed, false);
-  assertEquals(result.missing, ["truecolor columns >= 60"]);
+  assertEquals(result.missing, ["truecolor columns >= 60", "three body truecolor columns >= 60"]);
   assertEquals(result.truecolorBackgroundMaxColumns, 10);
+  assertEquals(result.bodyTruecolorBackgroundMaxColumns, 10);
 });
 
 Deno.test("workbench fullscreen visual smoke parser accepts resize flags", () => {
