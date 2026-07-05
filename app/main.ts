@@ -19,7 +19,6 @@ import {
 } from "./ascii_options.ts";
 import { AudioRegistry, discoverAudioSources } from "./audio.ts";
 import { detectViewportMode } from "./layout.ts";
-import { type MultiPaneLayoutId, shiftVisualizationForSlot } from "./navigation.ts";
 import { defaultVisualizationForSlot, orderVisualizationsForSlot } from "./panel_defaults.ts";
 import { buildSourceCatalog, resolveSourceFramesInto } from "./sources.ts";
 import { accentColor, formatDuration, makeStyle, palette, severityAccent } from "./styles.ts";
@@ -52,6 +51,7 @@ import {
 import { renderVisualization, visualizations } from "./visualizations.ts";
 
 const PANEL_SCROLLBAR_LINE_LIMIT = 256;
+type MultiPaneLayoutId = Exclude<LayoutId, "single">;
 type MonitorHit =
   | { type: "focus"; id: SlotId }
   | { type: "minimize"; id: SlotId }
@@ -1609,6 +1609,21 @@ function decorateMenu(
 
 function nextVisualization(currentId: string, slotId: SlotId) {
   return shiftVisualizationForSlot(slotId, currentId, 1, visualizations);
+}
+
+function shiftVisualizationForSlot<T extends { id: string }>(
+  slotId: SlotId,
+  currentId: string,
+  step: number,
+  entries: readonly T[],
+): string {
+  const ordered = orderVisualizationsForSlot(slotId, entries);
+  if (ordered.length === 0) return currentId;
+
+  const currentIndex = ordered.findIndex((entry) => entry.id === currentId);
+  const baseIndex = currentIndex === -1 ? 0 : currentIndex;
+  const normalizedStep = ((step % ordered.length) + ordered.length) % ordered.length;
+  return ordered[(baseIndex + normalizedStep) % ordered.length]!.id;
 }
 
 function slotLabel(slotId: SlotId) {
