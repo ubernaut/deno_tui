@@ -293,9 +293,11 @@ import { ThreePanelFrameView } from "./three_panel.ts";
 import { createWorkbenchThreePanelFrameView } from "./three_panel.ts";
 import { workbenchDataTablePageSize, workbenchDataTableRowsInto } from "./workbench_data_table.ts";
 import { explorerTextRowsInto, workbenchWindowContentSize } from "../src/app/workbench_content_size.ts";
-import { workbenchExplorerRowsInto } from "./workbench_explorer.ts";
-import { workbenchInspectorRowsInto } from "./workbench_inspector.ts";
-import { workbenchLogRowsFromSourcesInto } from "./workbench_logs.ts";
+import {
+  workbenchExplorerRowsInto,
+  workbenchInspectorRowsInto,
+  workbenchLogRowsFromSourcesInto,
+} from "./workbench_panels.ts";
 import { WorkbenchThreeGridProjectionCache, writeWorkbenchThreeGrid } from "../src/app/workbench_three_grid.ts";
 import {
   hideWorkbenchThreeRect,

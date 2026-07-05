@@ -180,9 +180,11 @@ import {
   workbenchQuitModalContent,
 } from "../../app/workbench_modal_content.ts";
 import { workbenchDataTablePageSize, workbenchDataTableRowsInto } from "../../app/workbench_data_table.ts";
-import { workbenchExplorerRowsInto } from "../../app/workbench_explorer.ts";
-import { workbenchInspectorRowsInto } from "../../app/workbench_inspector.ts";
-import { workbenchLogRowsFromSourcesInto } from "../../app/workbench_logs.ts";
+import {
+  workbenchExplorerRowsInto,
+  workbenchInspectorRowsInto,
+  workbenchLogRowsFromSourcesInto,
+} from "../../app/workbench_panels.ts";
 import {
   type WorkbenchFrameRenderCommand,
   workbenchFrameRenderCommandsInto,
