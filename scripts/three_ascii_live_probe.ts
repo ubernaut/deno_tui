@@ -1,15 +1,7 @@
 import { asciiEffectOptions, createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import { createNeonThreeScene } from "../app/neon_three.ts";
 import { type ThreeSceneMode, threeSceneModes, type ThreeSceneSignal } from "../app/types.ts";
-import {
-  averageWhere,
-  choiceArg,
-  delay,
-  formatFps,
-  formatMs,
-  numberArg,
-  stringArg,
-} from "../src/three_ascii/probe_cli.ts";
+import { averageWhere, choiceArg, delay, formatFps, formatMs, numberArg, stringArg } from "../src/three_ascii/probe.ts";
 import { ThreeAsciiRenderer } from "../src/three_ascii/renderer.ts";
 import type { ThreeAsciiReadbackStrategy } from "../src/three_ascii/renderer_options.ts";
 

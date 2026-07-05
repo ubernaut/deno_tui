@@ -12,7 +12,7 @@ import {
   type ThreePanelProbeSample,
   validateThreePanelProbeSummary,
 } from "../src/three_ascii/panel_probe.ts";
-import { choiceArg, delay, numberArg, stringArg } from "../src/three_ascii/probe_cli.ts";
+import { choiceArg, delay, numberArg, stringArg } from "../src/three_ascii/probe.ts";
 import type { ThreeAsciiRendererPerformance } from "../src/three_ascii/renderer.ts";
 import type { ThreeAsciiReadbackStrategy } from "../src/three_ascii/renderer_options.ts";
 import { type ThreeSceneMode, threeSceneModes, type ThreeSceneSignal } from "../app/types.ts";

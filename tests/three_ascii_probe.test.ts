@@ -8,7 +8,7 @@ import {
   formatMs,
   numberArg,
   stringArg,
-} from "../src/three_ascii/probe_cli.ts";
+} from "../src/three_ascii/probe.ts";
 import {
   defaultThreeAsciiProbeOptions,
   parseThreeAsciiProbeOptions,

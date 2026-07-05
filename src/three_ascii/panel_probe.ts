@@ -1,4 +1,4 @@
-import { formatFps, formatMs } from "./probe_cli.ts";
+import { formatFps, formatMs } from "./probe.ts";
 
 export interface ThreePanelProbeSample {
   index: number;
