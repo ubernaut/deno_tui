@@ -1130,10 +1130,14 @@ Deno.test("MouseInteractionRouter respects disabled targets dynamic bounds and s
   const router = createMouseInteractionRouter();
   let disabled = true;
   let column = 0;
+  let boundsCalls = 0;
   const seen: string[] = [];
   router.register({
     id: "scroll",
-    bounds: () => ({ column, row: 0, width: 4, height: 4 }),
+    bounds: () => {
+      boundsCalls += 1;
+      return { column, row: 0, width: 4, height: 4 };
+    },
     disabled: () => disabled,
     onScroll: (event, context) => {
       seen.push(`${context.id}:${event.scroll}:${context.localX}`);
@@ -1145,6 +1149,7 @@ Deno.test("MouseInteractionRouter respects disabled targets dynamic bounds and s
     kind: "scroll",
     captured: false,
   });
+  assertEquals(boundsCalls, 0);
   disabled = false;
   assertEquals(await router.dispatch(createTestMouseScroll(-1, { x: 1, y: 1 })), {
     handled: true,
@@ -1152,6 +1157,7 @@ Deno.test("MouseInteractionRouter respects disabled targets dynamic bounds and s
     kind: "scroll",
     captured: false,
   });
+  assertEquals(boundsCalls, 1);
   column = 4;
   assertEquals(await router.dispatch(createTestMouseScroll(1, { x: 5, y: 1 })), {
     handled: true,
@@ -1159,8 +1165,10 @@ Deno.test("MouseInteractionRouter respects disabled targets dynamic bounds and s
     kind: "scroll",
     captured: false,
   });
+  assertEquals(boundsCalls, 2);
   assertEquals(seen, ["scroll:-1:1", "scroll:1:1"]);
   assertEquals(router.inspect()[0].bounds, { column: 4, row: 0, width: 4, height: 4 });
+  assertEquals(boundsCalls, 3);
 });
 
 Deno.test("bindMouseInteractions routes target mouse events and unsubscribes", async () => {

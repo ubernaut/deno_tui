@@ -7,23 +7,23 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `654`
+- Tracked files after the current consolidation passes: `613`
 - Tracked top-level file counts:
-  - `src`: `316`
-  - `tests`: `130`
-  - `app`: `38`
-  - `docs`: `49`
-  - `examples`: `42`
+  - `src`: `298`
+  - `tests`: `111`
+  - `app`: `30`
+  - `docs`: `50`
+  - `examples`: `41`
   - `scripts`: `27`
   - `plan`: `26`
 - Handwritten/code-heavy line counts:
-  - `src/app`: `24,133` lines across `84` files
-  - `src/runtime`: `11,119` lines across `35` files
+  - `src/app`: `24,631` lines across `79` files
+  - `src/runtime`: `11,118` lines across `34` files
   - `src/components`: `10,261` lines across `43` files
-  - `src/three_ascii`: `7,201` lines across `35` files
-  - `app`: `20,371` lines across `38` files
-  - `examples`: `8,732` lines across `41` files
-  - `tests`: `48,983` lines across `127` top-level test files
+  - `src/three_ascii`: `6,968` lines across `23` files
+  - `app`: `20,341` lines across `30` files
+  - `examples`: `8,729` lines across `41` files
+  - `tests`: `49,117` lines across `111` top-level test files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -275,6 +275,8 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Canvas spatial-index assertions are now bundled into `tests/canvas_intersections.test.ts`
   - Canvas rerender-queue assertions are now bundled into `tests/canvas_dirty_region.test.ts`, keeping dirty-region and
     rerender invalidation helper coverage together
+  - duplicate mouse interaction router assertions were removed from `tests/mouse_bindings.test.ts`; the remaining
+    dynamic-bounds assertion now lives with the existing app interaction coverage in `tests/app_primitives.test.ts`
   - duplicate Three panel lifecycle-state assertions were removed from `tests/three_panel_frame.test.ts`; the pure
     helper behavior remains covered in `tests/three_panel_core.test.ts`, keeping frame tests focused on live view
     behavior.
