@@ -111,7 +111,7 @@ import {
   resolveWorkbenchThreeWindowStateInto,
   type WorkbenchThreeWindowState,
   workbenchThreeWindowStateIsInteractive,
-} from "../src/app/workbench_three_window_state.ts";
+} from "../src/app/workbench_three_policy.ts";
 import {
   API_WORKBENCH_WORKSPACE_STORE_KEY,
   apiWorkbenchWorkspaceStorageOptions,

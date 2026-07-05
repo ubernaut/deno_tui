@@ -4,6 +4,9 @@ import {
   API_WORKBENCH_THREE_PRESSURE_POLICY,
   apiWorkbenchThreeEffectiveMaxCells,
   apiWorkbenchThreeFrameIntervalForCells,
+  createWorkbenchThreeWindowState,
+  resolveWorkbenchThreeWindowState,
+  resolveWorkbenchThreeWindowStateInto,
   WORKBENCH_THREE_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_EMERGENCY_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_FULLSCREEN_MAX_CELLS,
@@ -21,6 +24,7 @@ import {
   WORKBENCH_THREE_RESCUE_CELLS,
   WORKBENCH_THREE_RESCUE_DRAW_INTERVAL_MS,
   workbenchThreeFullscreenRenderCells,
+  workbenchThreeWindowStateIsInteractive,
 } from "../src/app/workbench_three_policy.ts";
 import {
   createWorkbenchThreeTerminalPressureState,
@@ -455,4 +459,89 @@ Deno.test("API workbench Three policy reaches a 30-cell rescue tier under termin
 
   assertEquals(state.currentCells, WORKBENCH_THREE_RESCUE_CELLS);
   assertEquals(state.highFrames, 0);
+});
+
+type WorkbenchThreePolicyTestId = "inspector" | "three" | "viz" | "logs";
+
+const isThreePolicyTestWindow = (id: WorkbenchThreePolicyTestId) => id === "three" || id === "viz";
+const threePolicyTestWindows: WorkbenchThreePolicyTestId[] = ["inspector", "three", "viz", "logs"];
+
+Deno.test("API workbench Three policy makes the active Three window interactive", () => {
+  const state = resolveWorkbenchThreeWindowState({
+    activeId: "three",
+    windows: threePolicyTestWindows,
+    isThreeWindow: isThreePolicyTestWindow,
+  });
+
+  assertEquals(state.live, true);
+  assertEquals(state.fullscreenThree, false);
+  assertEquals(state.threeWindowCount, 2);
+  assertEquals(workbenchThreeWindowStateIsInteractive(state, "three"), true);
+  assertEquals(workbenchThreeWindowStateIsInteractive(state, "viz"), false);
+});
+
+Deno.test("API workbench Three policy makes fullscreen Three window interactive", () => {
+  const state = resolveWorkbenchThreeWindowState({
+    activeId: "inspector",
+    fullscreenId: "viz",
+    windows: threePolicyTestWindows,
+    isThreeWindow: isThreePolicyTestWindow,
+  });
+
+  assertEquals(state.live, true);
+  assertEquals(state.fullscreenThree, true);
+  assertEquals(workbenchThreeWindowStateIsInteractive(state, "viz"), true);
+  assertEquals(workbenchThreeWindowStateIsInteractive(state, "three"), false);
+});
+
+Deno.test("API workbench Three policy blocks live and interactive state behind modal overlays", () => {
+  const state = resolveWorkbenchThreeWindowState({
+    activeId: "three",
+    fullscreenId: "three",
+    windows: threePolicyTestWindows,
+    isThreeWindow: isThreePolicyTestWindow,
+    blocked: true,
+  });
+
+  assertEquals(state.live, false);
+  assertEquals(state.fullscreenThree, true);
+  assertEquals(workbenchThreeWindowStateIsInteractive(state, "three"), false);
+});
+
+Deno.test("API workbench Three policy reports no live state without Three windows", () => {
+  const state = resolveWorkbenchThreeWindowState<"inspector" | "logs">({
+    activeId: "inspector",
+    windows: ["inspector", "logs"],
+    isThreeWindow: () => false,
+  });
+
+  assertEquals(state.live, false);
+  assertEquals(state.threeWindowCount, 0);
+  assertEquals(state.fullscreenThree, false);
+});
+
+Deno.test("API workbench Three policy reuses window-state storage and clears stale interactivity", () => {
+  const target = createWorkbenchThreeWindowState<WorkbenchThreePolicyTestId>("inspector");
+  const interactiveIds = target.interactiveIds;
+
+  const first = resolveWorkbenchThreeWindowStateInto(target, {
+    activeId: "three",
+    windows: threePolicyTestWindows,
+    isThreeWindow: isThreePolicyTestWindow,
+  });
+  assertEquals(first, target);
+  assertEquals(first.interactiveIds, interactiveIds);
+  assertEquals(workbenchThreeWindowStateIsInteractive(first, "three"), true);
+
+  const second = resolveWorkbenchThreeWindowStateInto(target, {
+    activeId: "logs",
+    fullscreenId: "viz",
+    windows: threePolicyTestWindows,
+    isThreeWindow: isThreePolicyTestWindow,
+  });
+
+  assertEquals(second, target);
+  assertEquals(second.interactiveIds, interactiveIds);
+  assertEquals(workbenchThreeWindowStateIsInteractive(second, "three"), false);
+  assertEquals(workbenchThreeWindowStateIsInteractive(second, "viz"), true);
 });
