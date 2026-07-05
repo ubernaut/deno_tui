@@ -6,7 +6,7 @@ import {
   type ThreePanelGridRenderer,
   type ThreeSceneState,
 } from "../app/three_panel.ts";
-import { applyWorkbenchThreePanelFrameDefaults } from "../src/app/workbench_three_panel_defaults.ts";
+import { applyWorkbenchThreePanelFrameDefaults } from "../src/app/workbench_three_policy.ts";
 import type { TerminalGlyphStyle } from "../src/three_ascii/glyphs.ts";
 import type {
   ThreeAsciiRendererOptions,

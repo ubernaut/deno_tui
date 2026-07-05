@@ -2,6 +2,7 @@ import {
   workbenchThreeFrameIntervalForCells,
   type WorkbenchThreeTerminalPressureOptions,
 } from "./workbench_three_terminal_pressure.ts";
+import type { ThreeAsciiReadbackStrategy } from "../three_ascii/renderer_options.ts";
 
 export const WORKBENCH_THREE_LIVE_MAX_CELLS = 960;
 export const WORKBENCH_THREE_FULLSCREEN_MIN_CELLS = 3_840;
@@ -45,6 +46,42 @@ export const WORKBENCH_THREE_DRAW_INTERVAL_MS = 1000 / 30;
 export const WORKBENCH_THREE_RESCUE_DRAW_INTERVAL_MS = 1000 / 10;
 export const WORKBENCH_THREE_EMERGENCY_DRAW_INTERVAL_MS = 1000 / 12;
 export const WORKBENCH_THREE_READBACK_STRATEGY = "deferred" as const;
+
+/** Minimal Three panel option shape that can receive workbench runtime defaults. */
+export interface WorkbenchThreePanelDefaultableOptions {
+  idleMaxRenderCells?: unknown;
+  readbackStrategy?: ThreeAsciiReadbackStrategy;
+}
+
+/** Default values applied to workbench-hosted Three panels. */
+export interface WorkbenchThreePanelDefaults {
+  idleMaxRenderCells: number;
+  readbackStrategy: ThreeAsciiReadbackStrategy;
+}
+
+export const DEFAULT_WORKBENCH_THREE_PANEL_DEFAULTS: WorkbenchThreePanelDefaults = {
+  idleMaxRenderCells: WORKBENCH_THREE_RESCUE_CELLS,
+  readbackStrategy: WORKBENCH_THREE_READBACK_STRATEGY,
+};
+
+export type WorkbenchThreePanelDefaultedOptions<TOptions extends WorkbenchThreePanelDefaultableOptions> =
+  & Omit<TOptions, "idleMaxRenderCells" | "readbackStrategy">
+  & {
+    idleMaxRenderCells: Exclude<TOptions["idleMaxRenderCells"], undefined> | number;
+    readbackStrategy: ThreeAsciiReadbackStrategy;
+  };
+
+/** Applies shared workbench Three panel defaults while preserving explicit per-panel overrides. */
+export function applyWorkbenchThreePanelFrameDefaults<TOptions extends WorkbenchThreePanelDefaultableOptions>(
+  options: TOptions,
+  defaults: WorkbenchThreePanelDefaults = DEFAULT_WORKBENCH_THREE_PANEL_DEFAULTS,
+): WorkbenchThreePanelDefaultedOptions<TOptions> {
+  return {
+    ...options,
+    idleMaxRenderCells: options.idleMaxRenderCells ?? defaults.idleMaxRenderCells,
+    readbackStrategy: options.readbackStrategy ?? defaults.readbackStrategy,
+  } as WorkbenchThreePanelDefaultedOptions<TOptions>;
+}
 
 export const WORKBENCH_THREE_FRAME_INTERVAL_BY_CELLS = new Map<number, number>([
   [WORKBENCH_THREE_RESCUE_CELLS, WORKBENCH_THREE_RESCUE_DRAW_INTERVAL_MS],

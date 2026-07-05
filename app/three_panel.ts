@@ -51,7 +51,7 @@ import {
   type ThreePanelRenderPolicy,
   type ThreePanelRenderSize,
 } from "../src/app/three_panel_policy.ts";
-import { applyWorkbenchThreePanelFrameDefaults } from "../src/app/workbench_three_panel_defaults.ts";
+import { applyWorkbenchThreePanelFrameDefaults } from "../src/app/workbench_three_policy.ts";
 import { defaultThreePanelRenderQueue, ThreePanelRenderQueue } from "../src/app/three_panel_render_queue.ts";
 import {
   resolveOptionalThreePanelValue,
