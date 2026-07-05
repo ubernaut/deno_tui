@@ -423,6 +423,7 @@ export class ThreePanelFrameView {
       ) {
         return;
       }
+      this.publishTransitionGrid(renderSize.columns, renderSize.rows, "RESIZING", "ASCII RENDERER RESIZING");
       this.invalidateFrame();
       this.running = false;
       this.syncPending = true;
@@ -776,6 +777,13 @@ export class ThreePanelFrameView {
       renderer.setTerminalGlyphStyle(ascii.terminalGlyphStyle);
     }
     this.appliedRendererState = update.next;
+    if (update.resize) {
+      this.publishTransitionGrid(update.next.columns, update.next.rows, "RESIZING", "ASCII RENDERER RESIZING");
+    }
+  }
+
+  private publishTransitionGrid(columns: number, rows: number, title: string, detail: string): void {
+    this.setGrid(buildFallbackGrid(columns, rows, title, detail));
   }
 
   private renderSizeFor(

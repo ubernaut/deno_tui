@@ -979,6 +979,9 @@ Deno.test("ThreePanelFrameView defers resize while a frame is rendering", async 
     assertEquals(panel.inspectLifecycle().state, "resizing");
     assertEquals(panel.inspectLifecycle().syncPending, true);
     assertEquals(renderer?.setSizeDuringRender, 0);
+    await waitFor(() => panel.grid.peek().length === 8);
+    assertEquals(panel.grid.peek()[0]?.length, 20);
+    assertEquals(panel.grid.peek().flat().join("").includes("RESIZING"), true);
     renderer?.completeFrame();
 
     await waitFor(() => (renderer?.startCount ?? 0) >= 2);
@@ -1236,7 +1239,7 @@ Deno.test("ThreePanelFrameView tolerates repeated hide restore reconfigure resiz
     await waitFor(() => (renderers[2]?.startCount ?? 0) >= 2);
     assertEquals(renderers[2]?.setSizeDuringRender, 0);
     renderers[2]?.completeFrame();
-    await waitFor(() => panel.grid.peek().length === 8);
+    await waitFor(() => panel.grid.peek()[0]?.[0] === "2");
 
     const updatesBeforeDispose = panel.grid.peek();
     await waitFor(() => (renderers[2]?.startCount ?? 0) >= 3);
