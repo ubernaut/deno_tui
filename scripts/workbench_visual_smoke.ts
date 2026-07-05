@@ -9,6 +9,7 @@ export interface WorkbenchVisualSmokeResult {
   passed: boolean;
   columns: number;
   rows: number;
+  screenLines: readonly string[];
   missing: string[];
   forbidden: string[];
   statusLine: string;
@@ -92,6 +93,7 @@ export function inspectWorkbenchVisualSmokeOutput(
     passed: missing.length === 0 && forbidden.length === 0 && nonBlankRows >= Math.min(4, options.rows),
     columns: options.columns,
     rows: options.rows,
+    screenLines: lines,
     missing,
     forbidden,
     statusLine,

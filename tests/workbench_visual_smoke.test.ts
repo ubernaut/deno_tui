@@ -6,6 +6,7 @@ import {
   inspectWorkbenchVisualSmokeOutput,
   replayWorkbenchScreen,
 } from "../scripts/workbench_visual_smoke.ts";
+import { parseWorkbenchFullscreenVisualSmokeArgs } from "../scripts/workbench_fullscreen_visual_smoke.ts";
 
 Deno.test("workbench visual smoke replay applies cursor movement and row clearing", () => {
   const screen = replayWorkbenchScreen(
@@ -74,4 +75,28 @@ Deno.test("workbench fullscreen visual smoke inspector verifies scale and trueco
   assertEquals(result.fullscreenCap, 3840);
   assertEquals(result.truecolorBackgroundRows, 3);
   assertEquals(countTruecolorBackgroundRows(output), 3);
+});
+
+Deno.test("workbench fullscreen visual smoke parser accepts resize flags", () => {
+  assertEquals(
+    parseWorkbenchFullscreenVisualSmokeArgs([
+      "--columns",
+      "112",
+      "--rows=34",
+      "--resize-columns",
+      "154",
+      "--resize-rows=48",
+      "--min-cells",
+      "1800",
+      "--min-truecolor-rows=24",
+    ]),
+    {
+      columns: 112,
+      rows: 34,
+      resizeColumns: 154,
+      resizeRows: 48,
+      minCells: 1800,
+      minTruecolorRows: 24,
+    },
+  );
 });

@@ -656,6 +656,7 @@ const selectedCpuHexTiles = new Signal<Record<VisualizationWindowId, string>>({}
 const screenPainter = new WorkbenchAnsiScreenPainter(tui.stdout);
 const WORKBENCH_FULL_REPAINT_INTERVAL_MS = 5_000;
 let lastWorkbenchFullRepaintAt = performance.now();
+let lastWorkbenchObservedScreenSize = { columns: 0, rows: 0 };
 const hitTargets = new HitTargetStack<HitAction>();
 const screenFrame: Frame = [];
 const workspaceVirtualFrame: Frame = [];
@@ -4677,7 +4678,11 @@ function currentHeight(): number {
 
 function syncTerminalSize(): boolean {
   const result = syncWorkbenchTerminalSize(tui.canvas.size);
-  if (!result.changed) return false;
+  const size = tui.canvas.size.peek();
+  const observedChanged = lastWorkbenchObservedScreenSize.columns !== size.columns ||
+    lastWorkbenchObservedScreenSize.rows !== size.rows;
+  if (!result.changed && !observedChanged) return false;
+  lastWorkbenchObservedScreenSize = { columns: size.columns, rows: size.rows };
   screenPainter.reset();
   return true;
 }
