@@ -221,6 +221,28 @@ Deno.test("WorkbenchAnsiScreenPainter skips span detection for unchanged full-ro
   assertEquals(sliceCalls, 0);
 });
 
+Deno.test("WorkbenchAnsiScreenPainter redraws background-only space changes", () => {
+  const chunks: Uint8Array[] = [];
+  const painter = new WorkbenchAnsiScreenPainter({
+    writeSync(data) {
+      chunks.push(data);
+      return data.byteLength;
+    },
+  });
+  const frame: WorkbenchFrame = [[]];
+
+  writeFrame(frame, 6, 0, 0, "\x1b[48;2;1;2;3m      \x1b[0m");
+  painter.flush(frame, 6, 1, renderFrameRow, renderFrameSlice);
+  chunks.length = 0;
+
+  frame[0]!.length = 0;
+  writeFrame(frame, 6, 0, 0, "\x1b[48;2;4;5;6m      \x1b[0m");
+  const stats = painter.flush(frame, 6, 1, renderFrameRow, renderFrameSlice);
+
+  assertEquals(stats.changed, 1);
+  assertEquals(new TextDecoder().decode(chunks[0]), "\x1b[1;1H\x1b[48;2;4;5;6m      \x1b[0m");
+});
+
 Deno.test("WorkbenchAnsiScreenPainter redraws safely after switching from span to full-row mode", () => {
   const chunks: Uint8Array[] = [];
   const painter = new WorkbenchAnsiScreenPainter({

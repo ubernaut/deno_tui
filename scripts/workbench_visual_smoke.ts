@@ -15,6 +15,7 @@ export interface WorkbenchVisualSmokeResult {
   threeLine: string;
   nonBlankRows: number;
   outputBytes: number;
+  truecolorBackgroundWrites: number;
 }
 
 interface ReplayState {
@@ -76,6 +77,7 @@ export function inspectWorkbenchVisualSmokeOutput(
   const missing = REQUIRED_TOKENS.filter((token) => !text.includes(token));
   const forbidden = FORBIDDEN_TOKENS.filter((token) => text.includes(token));
   const nonBlankRows = lines.filter((line) => line.trim().length > 0).length;
+  const truecolorBackgroundWrites = countOccurrences(output, "\x1b[48;2;");
   if (threeLine.length === 0) missing.push("three telemetry line");
   if (statusLine.trim().length === 0) missing.push("status line");
   return {
@@ -88,6 +90,7 @@ export function inspectWorkbenchVisualSmokeOutput(
     threeLine,
     nonBlankRows,
     outputBytes: new TextEncoder().encode(output).byteLength,
+    truecolorBackgroundWrites,
   };
 }
 
@@ -98,6 +101,7 @@ export function formatWorkbenchVisualSmokeResult(result: WorkbenchVisualSmokeRes
     `Status: ${result.passed ? "pass" : "fail"}`,
     `Size: ${result.columns}x${result.rows}`,
     `Output: ${result.outputBytes} bytes`,
+    `Truecolor backgrounds: ${result.truecolorBackgroundWrites}`,
     `Nonblank rows: ${result.nonBlankRows}`,
     `Missing: ${result.missing.join(", ") || "-"}`,
     `Forbidden: ${result.forbidden.join(", ") || "-"}`,
@@ -250,4 +254,15 @@ function numberParam(value: string | undefined, fallback: number): number {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function countOccurrences(value: string, needle: string): number {
+  let count = 0;
+  let index = 0;
+  while (true) {
+    index = value.indexOf(needle, index);
+    if (index < 0) return count;
+    count += 1;
+    index += needle.length;
+  }
 }

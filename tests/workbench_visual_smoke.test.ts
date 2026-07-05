@@ -24,6 +24,7 @@ Deno.test("workbench visual smoke inspector finds workbench telemetry and collis
     "\x1b[2J",
     "\x1b[1;1HAPI WORKBENCH",
     "\x1b[4;1HTHREE ASCII",
+    "\x1b[48;2;1;2;3m \x1b[0m",
     "\x1b[5;1H6ms 333c live 20fps",
     "\x1b[8;1Hfocus Three ASCII | Unit-01  F10 menu",
   ].join("");
@@ -32,6 +33,7 @@ Deno.test("workbench visual smoke inspector finds workbench telemetry and collis
   assertEquals(result.passed, true);
   assertEquals(result.missing, []);
   assertEquals(result.forbidden, []);
+  assertEquals(result.truecolorBackgroundWrites, 1);
   assertStringIncludes(result.threeLine, "20fps");
 });
 
