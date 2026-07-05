@@ -206,9 +206,9 @@ The library core is real and valuable, but it needs clearer boundaries:
 - Continue using benchmark cases for hot helpers, but treat live probes as required evidence:
   - `deno task three-workbench:startup-probe`
   - `deno task three-ascii:live-probe -- --frames 45 --glyphs blocks --max-cells 960 --check --max-average-ms 40`
-- Latest workbench block-mode startup probe after defaulting panel/object demos to deferred readback: `6.76ms` steady
-  average, about `147.9 fps` at `53x17` cells with the capped default-workbench probe. Latest standalone block-mode live
-  probe now defaults to deferred readback and reports `7.23ms` steady average, about `138.2 fps` at `31x15` cells;
+- Latest workbench block-mode startup probe after defaulting panel/object demos to deferred readback: `6.93ms` steady
+  average, about `144.3 fps` at `53x17` cells with the capped default-workbench probe. Latest standalone block-mode live
+  probe now defaults to deferred readback and reports `7.18ms` steady average, about `139.3 fps` at `31x15` cells;
   explicit blocking readback on the same probe reports `18.71ms` steady average, about `53.5 fps`.
 - Avoid speculative micro-optimizations unless they improve measured workbench/default-demo behavior.
 
@@ -231,6 +231,11 @@ The library core is real and valuable, but it needs clearer boundaries:
 
 - Review tiny `mod.ts` and compatibility facade files.
 - Keep public package entrypoints stable, but collapse internal-only barrels that merely forward one or two helpers.
+- The largest API-shape problem is the default stable `mod.ts` path exporting `src/app/mod.ts`, which in turn exports
+  the renderer-neutral Workbench facade and many command helper modules. Removing those exports directly would be a
+  breaking package change, so the next safe cleanup should introduce a focused migration path: keep stable imports
+  working, add clearer package docs around focused entrypoints, and stop promoting new Workbench implementation helpers
+  through `src/app/workbench/mod.ts` unless they are intentionally public.
 
 ## Acceptance Checks
 
