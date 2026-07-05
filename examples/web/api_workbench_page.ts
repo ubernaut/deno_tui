@@ -180,8 +180,9 @@ import {
   workbenchModalDetailsContent,
   workbenchQuitModalContent,
 } from "../../app/workbench_modal_content.ts";
-import { workbenchDataTablePageSize, workbenchDataTableRowsInto } from "../../app/workbench_data_table.ts";
 import {
+  workbenchDataTablePageSize,
+  workbenchDataTableRowsInto,
   workbenchExplorerRowsInto,
   workbenchInspectorRowsInto,
   workbenchLogRowsFromSourcesInto,

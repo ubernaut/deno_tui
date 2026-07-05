@@ -288,9 +288,10 @@ import { resolveSourceFramesInto } from "./sources.ts";
 import { makeStyle, requireInteractiveTerminal } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
 import { createWorkbenchThreePanelFrameView, ThreePanelFrameView } from "./three_panel.ts";
-import { workbenchDataTablePageSize, workbenchDataTableRowsInto } from "./workbench_data_table.ts";
 import {
   explorerTextRowsInto,
+  workbenchDataTablePageSize,
+  workbenchDataTableRowsInto,
   workbenchExplorerRowsInto,
   workbenchInspectorRowsInto,
   workbenchLogRowsFromSourcesInto,

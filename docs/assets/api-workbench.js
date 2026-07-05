@@ -18121,7 +18121,7 @@ function dataFooterRows(options) {
   return rows2;
 }
 
-// app/workbench_data_table.ts
+// app/workbench_panels.ts
 function workbenchDataTableRowsInto(target, options) {
   const { view, columns: columns2, width, theme: t, fit: fit2, contrast, buffers } = options;
   const textRows = renderDataTableRowsInto(buffers.textRows, view.rows, columns2, view.selectedIndex);
@@ -18170,8 +18170,6 @@ function workbenchDataTablePageSize(options) {
   });
   return Math.max(1, Math.floor(options.height) - 2 - footerRows.length);
 }
-
-// app/workbench_panels.ts
 function workbenchExplorerRowsInto(target, options) {
   const { rows: rows2, selectedIndex, theme: t, contrast } = options;
   target.length = rows2.length;

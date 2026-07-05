@@ -4,7 +4,7 @@ import {
   workbenchDataTablePageSize,
   workbenchDataTableRowsInto,
   type WorkbenchDataTableTheme,
-} from "../app/workbench_data_table.ts";
+} from "../app/workbench_panels.ts";
 import type { RowStyle } from "../src/app/workbench_rows.ts";
 import type { DataColumn, DataTableView } from "../src/components/data_table.ts";
 

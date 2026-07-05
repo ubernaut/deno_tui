@@ -159,6 +159,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     keeping app-only OS sampling sources together and removing a standalone provider shard without public API drift
   - System snapshot history, alert, and empty-snapshot helpers are folded into `app/system_metrics.ts`, keeping monitor
     state projection with the monitor controller and removing another app-only helper shard
+  - API workbench data-table row projection is folded into `app/workbench_panels.ts`, keeping panel content projection
+    together and removing a single-purpose app helper used only by the console and browser workbench demos
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
