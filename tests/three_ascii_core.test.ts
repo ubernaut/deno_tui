@@ -3,7 +3,6 @@ import { Color } from "npm:three@0.183.2";
 
 import { assertEquals, assertNotStrictEquals, assertStrictEquals, assertStringIncludes, assertThrows } from "./deps.ts";
 import { ThreeAsciiAnsiBackgroundState } from "../src/three_ascii/ansi_background.ts";
-import { ThreeAsciiAnsiColorKeyCache } from "../src/three_ascii/ansi_color_cache.ts";
 import {
   fillGlyphKeyForIndex,
   GLYPH_MODE_BLOCKS,
@@ -20,6 +19,7 @@ import {
   linearUnitToByte,
   rgbToAnsiBackground,
   rgbToAnsiForeground,
+  ThreeAsciiAnsiColorKeyCache,
 } from "../src/three_ascii/colors.ts";
 import {
   createThreeAsciiComputeDispatchPlan,

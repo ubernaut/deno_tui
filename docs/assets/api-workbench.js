@@ -3841,6 +3841,44 @@ function createLinearByteCache() {
   };
   return read;
 }
+var ThreeAsciiAnsiColorKeyCache = class {
+  toByte = createLinearByteCache();
+  rawRed = new Float64Array(0);
+  rawGreen = new Float64Array(0);
+  rawBlue = new Float64Array(0);
+  byteKeys = new Uint32Array(0);
+  prepare(cellCount) {
+    if (this.byteKeys.length === cellCount) return;
+    this.rawRed = createNaNFloat64Array(cellCount);
+    this.rawGreen = createNaNFloat64Array(cellCount);
+    this.rawBlue = createNaNFloat64Array(cellCount);
+    this.byteKeys = new Uint32Array(cellCount);
+  }
+  keyForIndex(index, rawRed, rawGreen, rawBlue) {
+    if (this.rawRed[index] === rawRed && this.rawGreen[index] === rawGreen && this.rawBlue[index] === rawBlue) {
+      return this.byteKeys[index];
+    }
+    const foregroundRed = this.toByte(rawRed);
+    const foregroundGreen = this.toByte(rawGreen);
+    const foregroundBlue = this.toByte(rawBlue);
+    const key = foregroundRed << 16 | foregroundGreen << 8 | foregroundBlue;
+    this.rawRed[index] = rawRed;
+    this.rawGreen[index] = rawGreen;
+    this.rawBlue[index] = rawBlue;
+    this.byteKeys[index] = key;
+    return key;
+  }
+  prune() {
+    this.toByte.prune();
+  }
+  clear() {
+    this.toByte.clear();
+    this.rawRed = new Float64Array(0);
+    this.rawGreen = new Float64Array(0);
+    this.rawBlue = new Float64Array(0);
+    this.byteKeys = new Uint32Array(0);
+  }
+};
 function linearUnitToByte(value) {
   return Math.round(linearToSrgb(value) * 255);
 }
@@ -3853,6 +3891,11 @@ function rgbToAnsiBackground(red, green, blue) {
 function linearToSrgb(value) {
   const clamped = Math.max(0, Math.min(1, value));
   return clamped <= 31308e-7 ? clamped * 12.92 : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
+}
+function createNaNFloat64Array(length) {
+  const values = new Float64Array(length);
+  values.fill(Number.NaN);
+  return values;
 }
 
 // src/three_ascii/glyphs.ts
@@ -4089,51 +4132,6 @@ var ThreeAsciiAnsiBackgroundState = class {
     return true;
   }
 };
-
-// src/three_ascii/ansi_color_cache.ts
-var ThreeAsciiAnsiColorKeyCache = class {
-  toByte = createLinearByteCache();
-  rawRed = new Float64Array(0);
-  rawGreen = new Float64Array(0);
-  rawBlue = new Float64Array(0);
-  byteKeys = new Uint32Array(0);
-  prepare(cellCount) {
-    if (this.byteKeys.length === cellCount) return;
-    this.rawRed = createNaNFloat64Array(cellCount);
-    this.rawGreen = createNaNFloat64Array(cellCount);
-    this.rawBlue = createNaNFloat64Array(cellCount);
-    this.byteKeys = new Uint32Array(cellCount);
-  }
-  keyForIndex(index, rawRed, rawGreen, rawBlue) {
-    if (this.rawRed[index] === rawRed && this.rawGreen[index] === rawGreen && this.rawBlue[index] === rawBlue) {
-      return this.byteKeys[index];
-    }
-    const foregroundRed = this.toByte(rawRed);
-    const foregroundGreen = this.toByte(rawGreen);
-    const foregroundBlue = this.toByte(rawBlue);
-    const key = foregroundRed << 16 | foregroundGreen << 8 | foregroundBlue;
-    this.rawRed[index] = rawRed;
-    this.rawGreen[index] = rawGreen;
-    this.rawBlue[index] = rawBlue;
-    this.byteKeys[index] = key;
-    return key;
-  }
-  prune() {
-    this.toByte.prune();
-  }
-  clear() {
-    this.toByte.clear();
-    this.rawRed = new Float64Array(0);
-    this.rawGreen = new Float64Array(0);
-    this.rawBlue = new Float64Array(0);
-    this.byteKeys = new Uint32Array(0);
-  }
-};
-function createNaNFloat64Array(length) {
-  const values = new Float64Array(length);
-  values.fill(Number.NaN);
-  return values;
-}
 
 // src/three_ascii/ansi_grid.ts
 var DEFAULT_TERMINAL_EDGE_BIAS2 = 1;
