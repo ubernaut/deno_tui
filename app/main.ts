@@ -20,9 +20,15 @@ import {
 import { AudioRegistry, discoverAudioSources } from "./audio.ts";
 import { detectViewportMode } from "./layout.ts";
 import { buildSourceCatalog, resolveSourceFramesInto } from "./sources.ts";
-import { accentColor, formatDuration, makeStyle, palette, severityAccent } from "./styles.ts";
+import {
+  accentColor,
+  formatDuration,
+  makeStyle,
+  palette,
+  requireInteractiveTerminal,
+  severityAccent,
+} from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
-import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelView } from "./three_panel.ts";
 import { centeredRect, fitTextWidth, FrameView, ListView, MultilineTextView, PanelView } from "./ui.ts";
 import {

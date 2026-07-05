@@ -5,7 +5,7 @@ import {
   WindowManagerController,
   type WindowManagerWindowInspection,
 } from "../mod.ts";
-import { requireInteractiveTerminal } from "../app/terminal_guard.ts";
+import { requireInteractiveTerminal } from "../app/styles.ts";
 
 export type WorkspaceDemoKind = "app" | "renderer" | "widget" | "report" | "runtime";
 

@@ -285,9 +285,8 @@ import {
 import { ASCII_DEMO_PRESETS, asciiDemoPresetIds } from "../src/three_ascii/demo_presets.ts";
 import { cloneAsciiOptions, normalizeAsciiOptions } from "../src/three_ascii/options.ts";
 import { resolveSourceFramesInto } from "./sources.ts";
-import { makeStyle } from "./styles.ts";
+import { makeStyle, requireInteractiveTerminal } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
-import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { createWorkbenchThreePanelFrameView, ThreePanelFrameView } from "./three_panel.ts";
 import { workbenchDataTablePageSize, workbenchDataTableRowsInto } from "./workbench_data_table.ts";
 import {
