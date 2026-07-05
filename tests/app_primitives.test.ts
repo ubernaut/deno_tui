@@ -2,7 +2,9 @@ import { assertEquals } from "./deps.ts";
 import { createApp } from "../src/app/app.ts";
 import { ActionBus } from "../src/app/actions.ts";
 import type { Action } from "../src/app/actions.ts";
+import { bindFocusCommands, focusCommands } from "../src/app/focus_commands.ts";
 import { type EmitterEvent, EventEmitter } from "../src/event_emitter.ts";
+import { bindFocusNavigation, bindModalFocus, type Focusable, FocusManager, FocusScope } from "../src/focus.ts";
 import {
   bindCommandKeymap,
   bindCommandKeys,
@@ -92,6 +94,8 @@ import { createRuntimeRendererBackendController } from "../src/runtime/renderer_
 import { AsyncScheduler } from "../src/runtime/scheduler.ts";
 import { MemoryStore } from "../src/runtime/storage.ts";
 import { Signal } from "../src/signals/mod.ts";
+import type { ComponentState } from "../src/component.ts";
+import type { KeyPressEvent } from "../src/input_reader/types.ts";
 import {
   createTestKeyPress,
   createTestMousePress,
@@ -118,6 +122,187 @@ Deno.test("makeStyle expands short hex colors without changing ANSI output", () 
 
 Deno.test("makeStyle returns identity style when no options are set", () => {
   assertEquals(makeStyle()("plain"), "plain");
+});
+
+Deno.test("FocusScope traps focus and restores the previous item", () => {
+  const manager = new FocusManager();
+  const outside = focusTarget();
+  const insideA = focusTarget();
+  const insideB = focusTarget();
+
+  manager.focus(outside);
+  const scope = new FocusScope(manager, [insideA, insideB]);
+  scope.enter(1);
+
+  assertEquals(outside.state.peek(), "base");
+  assertEquals(insideB.state.peek(), "focused");
+  assertEquals(manager.next(), insideA);
+  assertEquals(manager.previous(), insideB);
+
+  scope.exit();
+
+  assertEquals(insideA.state.peek(), "base");
+  assertEquals(insideB.state.peek(), "base");
+  assertEquals(outside.state.peek(), "focused");
+});
+
+Deno.test("bindFocusNavigation cycles focus with tab and unsubscribes cleanly", () => {
+  let listener: ((event: KeyPressEvent) => void | Promise<void>) | undefined;
+  const target = {
+    on(type: "keyPress", next: (event: KeyPressEvent) => void | Promise<void>) {
+      assertEquals(type, "keyPress");
+      listener = next;
+      return () => {
+        listener = undefined;
+      };
+    },
+  };
+  const manager = new FocusManager();
+  const first = focusTarget();
+  const second = focusTarget();
+  const unsubscribe = bindFocusNavigation(target, manager, { items: [first, second] });
+
+  listener?.(focusKeyPress("tab"));
+  assertEquals(first.state.peek(), "focused");
+  assertEquals(second.state.peek(), "base");
+
+  listener?.(focusKeyPress("tab"));
+  assertEquals(first.state.peek(), "base");
+  assertEquals(second.state.peek(), "focused");
+
+  listener?.(focusKeyPress("tab", true));
+  assertEquals(first.state.peek(), "focused");
+  assertEquals(second.state.peek(), "base");
+
+  unsubscribe();
+  assertEquals(listener, undefined);
+});
+
+Deno.test("FocusManager registration disposers keep focus state normalized", () => {
+  const manager = new FocusManager();
+  const first = focusTarget();
+  const second = focusTarget();
+  const third = focusTarget();
+  const dispose = manager.registerAll([first, second, third]);
+
+  manager.focus(third);
+  assertEquals(manager.inspect(), { count: 3, index: 2, hasFocus: true });
+
+  manager.unregister(first);
+  assertEquals(manager.current(), third);
+  assertEquals(manager.inspect(), { count: 2, index: 1, hasFocus: true });
+  assertEquals(third.state.peek(), "focused");
+
+  manager.unregister(third);
+  assertEquals(manager.current(), second);
+  assertEquals(manager.inspect(), { count: 1, index: 0, hasFocus: true });
+  assertEquals(third.state.peek(), "base");
+  assertEquals(second.state.peek(), "focused");
+
+  dispose();
+  assertEquals(manager.inspect(), { count: 0, index: -1, hasFocus: false });
+  assertEquals(second.state.peek(), "base");
+});
+
+Deno.test("FocusManager clear resets registered item state", () => {
+  const manager = new FocusManager();
+  const first = focusTarget();
+  const second = focusTarget();
+  const disposeFirst = manager.register(first);
+  manager.register(second);
+
+  manager.focus(first);
+  manager.clear();
+
+  assertEquals(manager.inspect(), { count: 0, index: -1, hasFocus: false });
+  assertEquals(first.state.peek(), "base");
+  assertEquals(second.state.peek(), "base");
+
+  disposeFirst();
+  assertEquals(manager.inspect(), { count: 0, index: -1, hasFocus: false });
+});
+
+Deno.test("focusCommands navigate clear and target focus items", async () => {
+  const manager = new FocusManager();
+  const first = focusTarget();
+  const second = focusTarget();
+  const registry = new CommandRegistry();
+  manager.registerAll([first, second]);
+  const actions: unknown[] = [];
+  const dispose = bindFocusCommands(registry, manager, {
+    id: "main",
+    idPrefix: "focus.main",
+    group: "focus",
+    includeTargetCommands: true,
+    targets: [
+      { id: "first", label: "First", item: first },
+      { id: "second", label: "Second", item: second, keywords: ["details"] },
+    ],
+  });
+
+  assertEquals(focusCommands(new FocusManager()).map((command) => [command.id, commandDisabled(command)]), [
+    ["focus.previous", true],
+    ["focus.next", true],
+    ["focus.clear", true],
+  ]);
+  assertEquals(registry.keyBindings("focus").map((binding) => [binding.key, binding.shift ?? false]), [
+    ["tab", false],
+    ["tab", true],
+  ]);
+  assertEquals(registry.list("focus").map((command) => command.id), [
+    "focus.main.clear",
+    "focus.main.target.first",
+    "focus.main.target.second",
+    "focus.main.next",
+    "focus.main.previous",
+  ]);
+
+  assertEquals(await registry.execute("focus.main.next", (action) => void actions.push(action)), true);
+  assertEquals(first.state.peek(), "focused");
+  assertEquals(actions[0], {
+    type: "focus.changed",
+    payload: { id: "main", index: 0, inspection: manager.inspect() },
+  });
+
+  assertEquals(await registry.execute("focus.main.target.second", (action) => void actions.push(action)), true);
+  assertEquals(second.state.peek(), "focused");
+  assertEquals(registry.enabled(registry.get("focus.main.target.second")!), false);
+  assertEquals(await registry.execute("focus.main.clear", (action) => void actions.push(action)), true);
+  assertEquals(manager.inspect(), { count: 0, index: -1, hasFocus: false });
+  assertEquals(actions.at(-1), {
+    type: "focus.cleared",
+    payload: { id: "main", index: -1, inspection: manager.inspect() },
+  });
+
+  dispose();
+  assertEquals(registry.list("focus"), []);
+});
+
+Deno.test("bindModalFocus enters restores and closes on escape", () => {
+  const target = new TestKeyPressTarget();
+  const manager = new FocusManager();
+  const visible = new Signal(false);
+  const outside = focusTarget();
+  const insideA = focusTarget();
+  const insideB = focusTarget();
+  manager.focus(outside);
+
+  const dispose = bindModalFocus(target, visible, manager, [insideA, insideB], { initialIndex: 1 });
+
+  visible.value = true;
+  assertEquals(outside.state.peek(), "base");
+  assertEquals(insideB.state.peek(), "focused");
+
+  target.key("escape");
+  assertEquals(visible.peek(), false);
+  assertEquals(insideA.state.peek(), "base");
+  assertEquals(insideB.state.peek(), "base");
+  assertEquals(outside.state.peek(), "focused");
+
+  visible.value = true;
+  dispose();
+  assertEquals(outside.state.peek(), "focused");
+  assertEquals(target.listenerCount(), 0);
 });
 
 Deno.test("app byte and optional-number formatters cover spaced and compact display", () => {
@@ -3701,6 +3886,14 @@ Deno.test("bindSplitPaneSetting restores and persists layout state", async () =>
 
 function commandDisabled<TAction extends Action>(command: Command<TAction>): boolean | undefined {
   return typeof command.disabled === "function" ? command.disabled() : command.disabled;
+}
+
+function focusTarget(): Focusable {
+  return { state: new Signal<ComponentState>("base") };
+}
+
+function focusKeyPress(key: KeyPressEvent["key"], shift = false): KeyPressEvent {
+  return { key, shift, ctrl: false, meta: false, buffer: new Uint8Array() };
 }
 
 async function runCommandFactory<TAction extends Action>(command: Command<TAction>): Promise<void> {

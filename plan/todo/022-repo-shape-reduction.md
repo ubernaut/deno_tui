@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `571`
+- Tracked files after the current consolidation passes: `570`
 - Tracked top-level file counts:
   - `src`: `296`
-  - `tests`: `75`
+  - `tests`: `74`
   - `app`: `29`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,000` lines across `25` files
   - `app`: `20,381` lines across `29` files
   - `examples`: `8,814` lines across `42` files
-  - `tests`: `49,634` lines across `75` files
+  - `tests`: `49,603` lines across `74` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -233,6 +233,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     creation, clone/prune, replace/remove/resize, title projection, and rect projection with workspace behavior.
   - EventEmitter behavior tests are now bundled into `tests/app_primitives.test.ts`, removing the standalone root
     primitive test shard without adding narrower coverage.
+  - Focus manager, focus-scope, modal-focus, and focus-command assertions are now bundled into
+    `tests/app_primitives.test.ts`, keeping focus behavior with the app primitive and command binding suite.
   - HitTargetStack and rectangle-helper behavior tests are now bundled into `tests/app_primitives.test.ts`, removing
     another standalone app-primitive shard without changing the covered assertions.
   - system metrics GPU, network, process, and snapshot helper tests are now `tests/system_metrics_core.test.ts`
