@@ -213,6 +213,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Workbench help and shared modal-content assertions are now bundled into `tests/workbench_facade.test.ts`
   - Web API workbench terminal workspace assertions are now bundled into `tests/web_remote_terminal.test.ts`
   - GPU probe lock assertions are now bundled into `tests/three_ascii_probe.test.ts`
+  - Three panel live-probe summary and validation assertions are now bundled into `tests/three_ascii_probe.test.ts`
   - Workbench global keymap assertions are now bundled into `tests/workbench_facade.test.ts`
   - Three panel interaction assertions are now bundled into `tests/three_panel_core.test.ts`
   - Workbench Three viewport interaction assertions are now bundled into `tests/workbench_three_panel.test.ts`

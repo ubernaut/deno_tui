@@ -1,4 +1,4 @@
-import { assertEquals, assertRejects, assertThrows } from "./deps.ts";
+import { assertEquals, assertRejects, assertStringIncludes, assertThrows } from "./deps.ts";
 import { acquireGpuProbeLock, withGpuProbeLock } from "../scripts/gpu_probe_lock.ts";
 import {
   average,
@@ -6,8 +6,12 @@ import {
   choiceArg,
   formatFps,
   formatMs,
+  formatThreePanelProbeLines,
   numberArg,
   stringArg,
+  summarizeThreePanelProbe,
+  type ThreePanelProbeSample,
+  validateThreePanelProbeSummary,
 } from "../src/three_ascii/probe.ts";
 import {
   defaultThreeAsciiProbeOptions,
@@ -166,6 +170,136 @@ Deno.test("threeAsciiProbeReport projects renderer performance samples", () => {
     saturated: false,
   });
 });
+
+Deno.test("summarizeThreePanelProbe skips startup samples for steady timing", () => {
+  const summary = summarizeThreePanelProbe(threePanelProbeSamples);
+
+  assertEquals(summary.first?.index, 1);
+  assertEquals(summary.latest?.index, 3);
+  assertEquals(summary.steady.map((sample) => sample.index), [2, 3]);
+  assertEquals(summary.averageTotalMs, 12);
+  assertEquals(summary.averageInitMs, 2);
+  assertEquals(summary.averageSceneMs, 10);
+  assertEquals(summary.averageSceneUpdateMs, 3);
+  assertEquals(summary.averageSceneRenderMs, 7);
+  assertEquals(summary.averageReadbackMs, 12);
+  assertEquals(summary.averageAssemblyMs, 0.6);
+});
+
+Deno.test("formatThreePanelProbeLines includes first-grid latency and frame rows", () => {
+  const lines = formatThreePanelProbeLines(
+    {
+      mode: "studio",
+      glyphs: "blocks",
+      readback: "blocking",
+      width: 80,
+      height: 24,
+      maxCells: 480,
+      intervalMs: 1000 / 18,
+    },
+    threePanelProbeSamples,
+    420.25,
+  );
+
+  assertEquals(lines[0], "three-panel live probe");
+  assertStringIncludes(lines[1], "readback=blocking");
+  assertStringIncludes(lines[1], "rect=80x24");
+  assertStringIncludes(lines[2], "steady=12.00ms");
+  assertStringIncludes(lines[2], "latest=40x12/480c");
+  assertStringIncludes(lines[2], "firstGrid=420.25ms");
+  assertStringIncludes(lines[3], "updates=4");
+  assertStringIncludes(lines[3], "init=2.00ms");
+  assertStringIncludes(lines[3], "update=3.00ms");
+  assertStringIncludes(lines[3], "render=7.00ms");
+  assertStringIncludes(lines[3], "queue=2/1/1");
+  assertStringIncludes(lines.at(-1)!, "03 total=14.00ms init=3.00ms");
+  assertStringIncludes(lines[4], "queue=2/2/0 saturated");
+  assertStringIncludes(lines.at(-1)!, "state=idle");
+});
+
+Deno.test("validateThreePanelProbeSummary accepts live renderer samples", () => {
+  const result = validateThreePanelProbeSummary(summarizeThreePanelProbe(threePanelProbeSamples), {
+    minSteadyFrames: 2,
+    minGridUpdates: 4,
+    maxAverageTotalMs: 20,
+  });
+
+  assertEquals(result, { ok: true, errors: [] });
+});
+
+Deno.test("validateThreePanelProbeSummary rejects stale or slow probes", () => {
+  const result = validateThreePanelProbeSummary(summarizeThreePanelProbe(threePanelProbeSamples), {
+    minSteadyFrames: 3,
+    minGridUpdates: 5,
+    maxAverageTotalMs: 10,
+  });
+
+  assertEquals(result.ok, false);
+  assertStringIncludes(result.errors.join("\n"), "steady renderer frames 2 < 3");
+  assertStringIncludes(result.errors.join("\n"), "grid updates 4 < 5");
+  assertStringIncludes(result.errors.join("\n"), "average renderer frame 12.00ms > 10.00ms");
+});
+
+const threePanelProbeSamples: ThreePanelProbeSample[] = [
+  {
+    index: 1,
+    elapsedMs: 500,
+    totalMs: 2,
+    initMs: 0,
+    sceneMs: 0,
+    readbackMs: 0,
+    assemblyMs: 0,
+    columns: 0,
+    rows: 0,
+    cells: 480,
+    updates: 2,
+    deferredPending: 2,
+    deferredUnresolved: 2,
+    deferredResolved: 0,
+    deferredSaturated: true,
+    lifecycle: "initializing",
+  },
+  {
+    index: 2,
+    elapsedMs: 56,
+    totalMs: 10,
+    initMs: 1,
+    sceneMs: 8,
+    sceneUpdateMs: 2,
+    sceneRenderMs: 6,
+    readbackMs: 11,
+    assemblyMs: 0.5,
+    columns: 40,
+    rows: 12,
+    cells: 480,
+    updates: 3,
+    deferredPending: 1,
+    deferredUnresolved: 1,
+    deferredResolved: 0,
+    deferredSaturated: false,
+    lifecycle: "idle",
+  },
+  {
+    index: 3,
+    elapsedMs: 56,
+    totalMs: 14,
+    initMs: 3,
+    sceneMs: 12,
+    sceneUpdateMs: 4,
+    sceneRenderMs: 8,
+    readbackMs: 13,
+    assemblyMs: 0.7,
+    columns: 40,
+    rows: 12,
+    cells: 480,
+    updates: 4,
+    deferredPending: 2,
+    deferredUnresolved: 1,
+    deferredResolved: 1,
+    deferredSaturated: false,
+    lifecycle: "idle",
+  },
+];
 
 async function exists(path: string): Promise<boolean> {
   try {
