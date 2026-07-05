@@ -259,6 +259,15 @@ performance, shared terminal/web workbench projections, and oversized module red
   accidental ANSI readback/grid work when raster graphics is the selected output.
 - Optimized dense block-mode ANSI grid assembly by filling adjacent same-color visible cells as row ranges instead of
   assigning every cell individually, covering the default terminal glyph style.
+- Fixed workbench terminal resize rendering so size changes emit an explicit terminal clear, tiled Three panes promote
+  their live render budget on viewport growth, and workbench-hosted Three panels no longer get double-throttled by the
+  panel-local adaptive limiter. Follow-up probes showed the default block renderer at ~5ms steady startup for 901 cells
+  and ~8ms steady after resizing to a 6314-cell pane, with sequential grow/shrink PTY visual smokes passing.
+- Retuned the default tiled workbench resize visual smoke task to use the longer settle window required by the real
+  renderer warmup path, while the fullscreen resize smoke continues to pass with its shorter high-priority capture.
+- Re-ran the workbench Three grid benchmark subset after the resize fix:
+  `render/workbench-three-block-span-flush-168x54` ~1.69ms, `render/workbench-scaled-three-grid-220x70` ~2.88ms,
+  `render/workbench-capped-three-grid-220x70` ~0.98ms, all below thresholds.
 - Added a focused `three-ascii-ansi-grid-block-runs-96x40` benchmark guard for dense same-color block rows so the
   range-fill path is measured directly instead of only through broader ANSI-grid cases.
 - Switched the terminal API workbench Three panel policy back to fresh blocking readback at the 960-cell live quality

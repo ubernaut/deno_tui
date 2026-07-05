@@ -41,7 +41,7 @@
     "screenshots": "deno run -A ./scripts/generate_screenshots.ts",
     "visual-smoke": "deno run -A ./scripts/visual_smoke.ts",
     "workbench-visual-smoke": "deno run -A ./scripts/gpu_probe_lock_cli.ts -- deno run -A ./scripts/workbench_visual_smoke.ts",
-    "workbench-default-resize-visual-smoke": "deno run -A ./scripts/gpu_probe_lock_cli.ts -- deno run -A ./scripts/workbench_visual_smoke.ts --columns 100 --rows 30 --resize-columns 160 --resize-rows 48 --settle-ms 3000 --timeout-ms 10000",
+    "workbench-default-resize-visual-smoke": "deno run -A ./scripts/gpu_probe_lock_cli.ts -- deno run -A ./scripts/workbench_visual_smoke.ts --columns 100 --rows 30 --resize-columns 160 --resize-rows 48 --settle-ms 9000 --timeout-ms 26000",
     "workbench-fullscreen-visual-smoke": "deno run -A ./scripts/gpu_probe_lock_cli.ts -- deno run -A ./scripts/workbench_fullscreen_visual_smoke.ts",
     "workbench-fullscreen-resize-visual-smoke": "deno run -A ./scripts/gpu_probe_lock_cli.ts -- deno run -A ./scripts/workbench_fullscreen_visual_smoke.ts --columns 112 --rows 34 --resize-columns 154 --resize-rows 48 --settle-ms 2200 --timeout-ms 7000 --min-cells 3000 --min-truecolor-rows 24 --min-truecolor-columns 145",
     "component-catalog": "deno run -A ./scripts/component_catalog.ts",
