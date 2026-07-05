@@ -14,6 +14,42 @@ export interface ThreePanelGraphicsRect {
   height: number;
 }
 
+export interface ThreePanelInteractionState {
+  rotationX: number;
+  rotationY: number;
+  zoom: number;
+}
+
+interface ThreePanelVectorLike {
+  clone(): ThreePanelVectorLike;
+  copy(value: ThreePanelVectorLike): this;
+  multiplyScalar(value: number): this;
+}
+
+interface ThreePanelQuaternionLike {
+  clone(): ThreePanelQuaternionLike;
+  copy(value: ThreePanelQuaternionLike): this;
+}
+
+interface ThreePanelEulerLike {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly order: string;
+  clone(): ThreePanelEulerLike;
+  set(x: number, y: number, z: number, order?: string): this;
+}
+
+export interface ThreePanelTransformBundle {
+  camera: {
+    position: ThreePanelVectorLike;
+    quaternion: ThreePanelQuaternionLike;
+  };
+  scene: {
+    rotation: ThreePanelEulerLike;
+  };
+}
+
 export type ThreePanelResolvableValue<T> = T | ThreePanelValueSignal<T>;
 export type ThreePanelResolvableLiveValue = boolean | ThreePanelValueSignal<boolean> | (() => boolean);
 
@@ -187,6 +223,80 @@ export class ThreePanelRenderQueue {
 }
 
 export const defaultThreePanelRenderQueue = new ThreePanelRenderQueue();
+
+const minThreePanelInteractionZoom = 0.35;
+const maxThreePanelInteractionZoom = 3.25;
+const threePanelInteractionZoomStep = 1.14;
+const threePanelInteractionRotationSensitivity = 0.035;
+
+export function defaultThreePanelInteractionState(): ThreePanelInteractionState {
+  return { rotationX: 0, rotationY: 0, zoom: 1 };
+}
+
+/** Tracks user-driven Three panel rotation and zoom independently from a concrete renderer implementation. */
+export class ThreePanelInteractionController {
+  readonly state = defaultThreePanelInteractionState();
+  private baseCameraPosition?: ThreePanelVectorLike;
+  private baseCameraQuaternion?: ThreePanelQuaternionLike;
+  private baseSceneRotation?: ThreePanelEulerLike;
+
+  rotateBy(deltaColumns: number, deltaRows: number): ThreePanelInteractionState {
+    if (deltaColumns === 0 && deltaRows === 0) return this.inspect();
+    this.state.rotationY = normalizeThreePanelRadians(
+      this.state.rotationY + deltaColumns * threePanelInteractionRotationSensitivity,
+    );
+    this.state.rotationX = clampThreePanelNumber(
+      this.state.rotationX + deltaRows * threePanelInteractionRotationSensitivity,
+      -Math.PI,
+      Math.PI,
+    );
+    return this.inspect();
+  }
+
+  zoomBy(scrollSteps: number): ThreePanelInteractionState {
+    if (scrollSteps === 0) return this.inspect();
+    this.state.zoom = clampThreePanelNumber(
+      this.state.zoom * Math.pow(threePanelInteractionZoomStep, -scrollSteps),
+      minThreePanelInteractionZoom,
+      maxThreePanelInteractionZoom,
+    );
+    return this.inspect();
+  }
+
+  reset(): ThreePanelInteractionState {
+    Object.assign(this.state, defaultThreePanelInteractionState());
+    return this.inspect();
+  }
+
+  inspect(): ThreePanelInteractionState {
+    return { ...this.state };
+  }
+
+  captureBaseTransform(bundle: ThreePanelTransformBundle): void {
+    this.baseCameraPosition = bundle.camera.position.clone();
+    this.baseCameraQuaternion = bundle.camera.quaternion.clone();
+    this.baseSceneRotation = bundle.scene.rotation.clone();
+  }
+
+  apply(bundle: ThreePanelTransformBundle | undefined): void {
+    if (!bundle || !this.baseCameraPosition || !this.baseCameraQuaternion || !this.baseSceneRotation) return;
+    const cameraDistanceScale = 1 / this.state.zoom;
+    bundle.camera.position.copy(this.baseCameraPosition).multiplyScalar(cameraDistanceScale);
+    bundle.camera.quaternion.copy(this.baseCameraQuaternion);
+    bundle.scene.rotation.set(
+      this.baseSceneRotation.x + this.state.rotationX,
+      this.baseSceneRotation.y + this.state.rotationY,
+      this.baseSceneRotation.z,
+      this.baseSceneRotation.order,
+    );
+  }
+
+  clearBaseTransform(): void {
+    this.baseCameraPosition = undefined;
+    this.baseCameraQuaternion = undefined;
+    this.baseSceneRotation = undefined;
+  }
+}
 
 /** Owns the active raster graphics image handle for a workbench-hosted Three panel. */
 export class ThreePanelGraphicsImageController {
@@ -555,6 +665,15 @@ function isThreePanelValueSignal<T>(value: unknown): value is ThreePanelValueSig
 
 function mixThreePanelGridHash(hash: number, value: number): number {
   return Math.imul((hash ^ value) >>> 0, 16777619) >>> 0;
+}
+
+function clampThreePanelNumber(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function normalizeThreePanelRadians(value: number): number {
+  const full = Math.PI * 2;
+  return ((value + Math.PI) % full + full) % full - Math.PI;
 }
 
 function threePanelPerformanceContext(performance: ThreeAsciiRendererPerformance): Record<string, unknown> {

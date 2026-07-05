@@ -16,10 +16,6 @@ import type { ThreeAsciiReadbackStrategy } from "../src/three_ascii/renderer_opt
 import { asciiEffectOptions } from "../src/three_ascii/options.ts";
 import { createNeonThreeScene, type NeonThreeSceneBundle } from "./neon_three.ts";
 import {
-  ThreePanelInteractionController,
-  type ThreePanelInteractionState,
-} from "../src/app/three_panel_interaction.ts";
-import {
   defaultThreePanelRenderQueue,
   emptyThreePanelRendererState,
   hasThreePanelGridCells,
@@ -37,6 +33,8 @@ import {
   threePanelGraphicsFallbackReason,
   ThreePanelGraphicsImageController,
   ThreePanelGridPublisher,
+  ThreePanelInteractionController,
+  type ThreePanelInteractionState,
   type ThreePanelLifecycleState,
   threePanelRendererStateMatches,
   type ThreePanelRendererStateSnapshot,
@@ -55,8 +53,7 @@ import {
 import { applyWorkbenchThreePanelFrameDefaults } from "../src/app/workbench_three_policy.ts";
 import type { AsciiOptions, Rect, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 
-export type { ThreePanelInteractionState } from "../src/app/three_panel_interaction.ts";
-export type { ThreePanelFrameUpdate } from "../src/app/three_panel_core.ts";
+export type { ThreePanelFrameUpdate, ThreePanelInteractionState } from "../src/app/three_panel_core.ts";
 
 export interface ThreeSceneState {
   mode: ThreeSceneMode;

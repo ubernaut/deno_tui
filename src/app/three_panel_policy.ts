@@ -3,6 +3,7 @@ import type { ThreeAsciiRenderFrameOptions } from "../three_ascii/renderer.ts";
 
 const ADAPTIVE_RENDER_CELLS_MIN = 30;
 const ADAPTIVE_PRESSURE_RENDER_CELL_STEPS = [30, 60, 120, 240, 480] as const;
+const ADAPTIVE_RENDER_CELLS_LIVE_FLOOR = 480;
 const ADAPTIVE_RENDER_CELLS_SLOW_FRAMES = 2;
 const ADAPTIVE_RENDER_CELLS_FAST_FRAMES = 120;
 export const THREE_PANEL_ADAPTIVE_WARMUP_FRAMES = 1;
@@ -155,12 +156,13 @@ export class ThreePanelAdaptiveRenderBudgetController {
 export function resolveThreePanelAdaptiveRenderBudget(
   input: ThreePanelAdaptiveRenderBudgetInput,
 ): ThreePanelAdaptiveRenderBudgetResult {
-  const requestedMaxCells = Math.max(ADAPTIVE_RENDER_CELLS_MIN, Math.floor(input.requestedMaxCells));
+  const adaptiveFloor = adaptiveRenderCellFloorForRequest(input.requestedMaxCells);
+  const requestedMaxCells = Math.max(adaptiveFloor, Math.floor(input.requestedMaxCells));
   const currentMaxCells = Math.max(
-    ADAPTIVE_RENDER_CELLS_MIN,
+    adaptiveFloor,
     Math.min(requestedMaxCells, Math.floor(input.currentMaxCells ?? requestedMaxCells)),
   );
-  const steps = adaptiveRenderCellStepsForRequest(requestedMaxCells);
+  const steps = adaptiveRenderCellStepsForRequest(requestedMaxCells, adaptiveFloor);
   const slowThreshold = Math.max(50, input.targetMs * 1.8);
   const fastThreshold = Math.max(1, input.targetMs * 0.7);
   const sampleFrames = Math.max(0, Math.floor(input.sampleFrames ?? Number.POSITIVE_INFINITY));
@@ -249,23 +251,34 @@ function normalizeRequestedMaxCells(value: number): number {
   return Math.max(1, Math.floor(value));
 }
 
-function adaptiveRenderCellStepsForRequest(requestedMaxCells: number): readonly number[] {
-  const cached = adaptiveRenderCellStepCache.get(requestedMaxCells);
+function adaptiveRenderCellFloorForRequest(requestedMaxCells: number): number {
+  const requested = Math.max(1, Math.floor(requestedMaxCells));
+  return requested >= ADAPTIVE_RENDER_CELLS_LIVE_FLOOR * 2
+    ? ADAPTIVE_RENDER_CELLS_LIVE_FLOOR
+    : ADAPTIVE_RENDER_CELLS_MIN;
+}
+
+function adaptiveRenderCellStepsForRequest(
+  requestedMaxCells: number,
+  floor = ADAPTIVE_RENDER_CELLS_MIN,
+): readonly number[] {
+  const cacheKey = requestedMaxCells * 10_000 + floor;
+  const cached = adaptiveRenderCellStepCache.get(cacheKey);
   if (cached) return cached;
 
   const source = asciiControlValues("renderMaxCells");
   const steps: number[] = [];
   for (let index = 0; index < ADAPTIVE_PRESSURE_RENDER_CELL_STEPS.length; index += 1) {
     const value = ADAPTIVE_PRESSURE_RENDER_CELL_STEPS[index]!;
-    if (value >= ADAPTIVE_RENDER_CELLS_MIN && value <= requestedMaxCells) steps.push(value);
+    if (value >= floor && value <= requestedMaxCells) steps.push(value);
   }
   for (let index = 0; index < source.length; index += 1) {
     const value = source[index]!;
-    if (value >= ADAPTIVE_RENDER_CELLS_MIN && value <= requestedMaxCells) steps.push(value);
+    if (value >= floor && value <= requestedMaxCells) steps.push(value);
   }
   steps.sort((a, b) => a - b);
   const resolved = steps.length ? steps : [requestedMaxCells];
-  adaptiveRenderCellStepCache.set(requestedMaxCells, resolved);
+  adaptiveRenderCellStepCache.set(cacheKey, resolved);
   return resolved;
 }
 

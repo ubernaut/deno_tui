@@ -16,9 +16,6 @@ import {
 } from "../src/app/three_panel_core.ts";
 import {
   defaultThreePanelInteractionState,
-  ThreePanelInteractionController,
-} from "../src/app/three_panel_interaction.ts";
-import {
   emptyThreePanelRendererState,
   fingerprintThreePanelGrid,
   hasThreePanelGridCells,
@@ -31,6 +28,7 @@ import {
   ThreePanelGraphicsImageController,
   ThreePanelGridPublicationCache,
   ThreePanelGridPublisher,
+  ThreePanelInteractionController,
   threePanelRendererStateMatches,
   threePanelSlowFrameDiagnostic,
 } from "../src/app/three_panel_core.ts";

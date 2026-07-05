@@ -443,8 +443,8 @@ export function buildFallbackGrid(
   detail: string,
   heading = "ASCII RENDERER OFFLINE",
 ): string[][] {
-  const columns = Math.max(1, width);
-  const rows = Math.max(1, height);
+  const columns = Math.max(1, Math.floor(width));
+  const rows = Math.max(1, Math.floor(height));
   const grid = new Array<string[]>(rows);
   for (let row = 0; row < rows; row += 1) {
     const gridRow = new Array<string>(columns);

@@ -95,8 +95,9 @@ Work:
         to reuse exported text-fit, ANSI-cell, contrast, and geometry helpers.
   - [x] Migrated web API Workbench tiling through `WindowManagerController` so terminal and web layouts share the same
         fullscreen/minimized/adaptive tile engine.
-  - [x] Extracted shared Three panel mouse interaction and transform state into `app/three_panel_interaction.ts`, so
-        terminal canvas rendering and frame-rendered workbench windows use the same rotate/zoom/reset behavior.
+  - [x] Shared Three panel mouse interaction and transform state now lives in `src/app/three_panel_core.ts`, so terminal
+        canvas rendering and frame-rendered workbench windows use the same rotate/zoom/reset behavior without a
+        standalone internal helper shard.
   - [x] Added focused tests for the internal `WorkbenchController` covering top-menu focus/disclosure, bounded menu
         indices, focus cycling, fullscreen, minimize, restore, and close state transitions.
   - [x] Replaced terminal new-window/workspace menu index clamps with shared controller helpers and verified browser
