@@ -33,6 +33,7 @@ export * from "../workbench_panel_workspace_store.ts";
 export * from "../workbench_prompt_input.ts";
 export * from "../workbench_row_render.ts";
 export * from "../workbench_rows.ts";
+export * from "../workbench_repaint_policy.ts";
 export * from "../workbench_screen_size.ts";
 export * from "../workbench_shelf.ts";
 export * from "../workbench_status.ts";

@@ -68,6 +68,7 @@ import {
   workbenchEmptyWorkspaceMessage,
   type WorkbenchFrame,
   type WorkbenchFrameBoxLine,
+  WorkbenchFullRepaintPolicy,
   workbenchFullscreenWindowRect,
   workbenchHeaderHelp,
   type WorkbenchHeaderLayout,
@@ -654,9 +655,8 @@ const unsubscribeWorkbenchDiagnostics = subscribeWorkbenchDiagnosticLog(workbenc
 const dynamicVisualizationWindows = new Signal<Record<VisualizationWindowId, string>>({}, { deepObserve: true });
 const selectedCpuHexTiles = new Signal<Record<VisualizationWindowId, string>>({}, { deepObserve: true });
 const screenPainter = new WorkbenchAnsiScreenPainter(tui.stdout);
-const WORKBENCH_FULL_REPAINT_INTERVAL_MS = 5_000;
-let lastWorkbenchFullRepaintAt = performance.now();
-let lastWorkbenchObservedScreenSize = { columns: 0, rows: 0 };
+const repaintPolicy = new WorkbenchFullRepaintPolicy();
+let workbenchScreenSizeObserved = false;
 const hitTargets = new HitTargetStack<HitAction>();
 const screenFrame: Frame = [];
 const workspaceVirtualFrame: Frame = [];
@@ -949,9 +949,12 @@ const threeViewportInteraction = new WorkbenchThreeViewportInteractionController
   focusWindow: focusWindowSilently,
 });
 
-tui.rectangle.subscribe(() => {
+tui.canvas.size.subscribe(() => {
+  repaintPolicy.inspectScreenSize(tui.canvas.size.peek());
   screenPainter.reset();
-  draw();
+  repaintPolicy.resetFullRepaintClock();
+  requestResizeFullRepaintWindowAfterInitialObservation();
+  scheduleDraw();
 });
 
 tui.on("keyPress", (event) => {
@@ -1148,9 +1151,7 @@ function draw(): void {
 }
 
 function shouldForceWorkbenchFullRepaint(now: number): boolean {
-  if (now - lastWorkbenchFullRepaintAt < WORKBENCH_FULL_REPAINT_INTERVAL_MS) return false;
-  lastWorkbenchFullRepaintAt = now;
-  return true;
+  return repaintPolicy.shouldForceFullRepaint(now);
 }
 
 function updateThreeTerminalPressure(
@@ -4678,11 +4679,18 @@ function currentHeight(): number {
 
 function syncTerminalSize(): boolean {
   const result = syncWorkbenchTerminalSize(tui.canvas.size);
-  const size = tui.canvas.size.peek();
-  const observedChanged = lastWorkbenchObservedScreenSize.columns !== size.columns ||
-    lastWorkbenchObservedScreenSize.rows !== size.rows;
-  if (!result.changed && !observedChanged) return false;
-  lastWorkbenchObservedScreenSize = { columns: size.columns, rows: size.rows };
+  const observed = repaintPolicy.inspectScreenSize(tui.canvas.size.peek());
+  if (!result.changed && !observed.changed) return false;
   screenPainter.reset();
+  repaintPolicy.resetFullRepaintClock();
+  requestResizeFullRepaintWindowAfterInitialObservation();
   return true;
+}
+
+function requestResizeFullRepaintWindowAfterInitialObservation(): void {
+  if (!workbenchScreenSizeObserved) {
+    workbenchScreenSizeObserved = true;
+    return;
+  }
+  repaintPolicy.requestFullRepaintWindow();
 }
