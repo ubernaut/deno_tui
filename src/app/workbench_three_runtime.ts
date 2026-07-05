@@ -362,12 +362,22 @@ export class ApiWorkbenchThreeRuntimeController {
     const enteringLive = !this.#liveTargetActive;
     this.#liveTargetActive = true;
     const viewportGrew = viewport > this.#lastLiveViewportCells;
+    const viewportShrank = this.#lastLiveViewportCells > 0 && viewport < this.#lastLiveViewportCells;
     if ((enteringLive || target !== this.#lastLiveTargetCells || viewportGrew) && target > this.liveMaxCells.peek()) {
       this.liveMaxCells.value = target;
       this.#pressure.currentCells = target;
       this.#pressure.highFrames = 0;
       this.#pressure.lowFrames = 0;
       this.#lastPressureInspection.currentCells = target;
+      this.#lastPressureInspection.highFrames = 0;
+      this.#lastPressureInspection.lowFrames = 0;
+      this.syncFrameInterval();
+    } else if ((viewportShrank || target < this.#lastLiveTargetCells) && target < this.liveMaxCells.peek()) {
+      this.liveMaxCells.value = target;
+      this.#pressure.currentCells = Math.min(this.#pressure.currentCells, target);
+      this.#pressure.highFrames = 0;
+      this.#pressure.lowFrames = 0;
+      this.#lastPressureInspection.currentCells = Math.min(this.#lastPressureInspection.currentCells, target);
       this.#lastPressureInspection.highFrames = 0;
       this.#lastPressureInspection.lowFrames = 0;
       this.syncFrameInterval();
@@ -398,6 +408,7 @@ export class ApiWorkbenchThreeRuntimeController {
     const enteringFullscreen = !this.#fullscreenTargetActive;
     this.#fullscreenTargetActive = true;
     const viewportGrew = viewport > this.#lastFullscreenViewportCells;
+    const viewportShrank = this.#lastFullscreenViewportCells > 0 && viewport < this.#lastFullscreenViewportCells;
     if (
       (enteringFullscreen || target !== this.#lastFullscreenTargetCells || viewportGrew) &&
       target > this.fullscreenMaxCells.peek()
@@ -407,6 +418,18 @@ export class ApiWorkbenchThreeRuntimeController {
       this.#fullscreenPressure.highFrames = 0;
       this.#fullscreenPressure.lowFrames = 0;
       this.#lastPressureInspection.currentCells = target;
+      this.#lastPressureInspection.highFrames = 0;
+      this.#lastPressureInspection.lowFrames = 0;
+      this.syncFrameInterval();
+    } else if (
+      (viewportShrank || target < this.#lastFullscreenTargetCells) &&
+      target < this.fullscreenMaxCells.peek()
+    ) {
+      this.fullscreenMaxCells.value = target;
+      this.#fullscreenPressure.currentCells = Math.min(this.#fullscreenPressure.currentCells, target);
+      this.#fullscreenPressure.highFrames = 0;
+      this.#fullscreenPressure.lowFrames = 0;
+      this.#lastPressureInspection.currentCells = Math.min(this.#lastPressureInspection.currentCells, target);
       this.#lastPressureInspection.highFrames = 0;
       this.#lastPressureInspection.lowFrames = 0;
       this.syncFrameInterval();

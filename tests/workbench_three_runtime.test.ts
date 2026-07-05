@@ -219,6 +219,25 @@ Deno.test("ApiWorkbenchThreeRuntimeController promotes live budget on pane growt
   controller.dispose();
 });
 
+Deno.test("ApiWorkbenchThreeRuntimeController clamps live budget when pane shrinks", () => {
+  const controller = new ApiWorkbenchThreeRuntimeController({
+    hasLiveThreeWindow: () => true,
+  });
+
+  controller.syncLiveTargetCells(1_900, true, 2_000);
+  assertEquals(controller.syncLiveTargetCells(900, true, 1_000), 900);
+  assertEquals(controller.liveMaxCells.peek(), 900);
+  assertEquals(controller.inspectPressure().currentCells, 900);
+  assertEquals(controller.inspectPressure().highFrames, 0);
+  assertEquals(controller.inspectPressure().lowFrames, 0);
+  assertEquals(
+    controller.frameInterval.peek(),
+    apiWorkbenchThreeFrameIntervalForCells(900, { live: true }),
+  );
+
+  controller.dispose();
+});
+
 Deno.test("ApiWorkbenchThreeRuntimeController does not undo fullscreen pressure downshift for the same target", () => {
   let fullscreen = true;
   const controller = new ApiWorkbenchThreeRuntimeController({
@@ -255,6 +274,26 @@ Deno.test("ApiWorkbenchThreeRuntimeController promotes downshifted fullscreen bu
     WORKBENCH_THREE_FULLSCREEN_MAX_CELLS,
   );
   assertEquals(controller.inspectPressure().currentCells, WORKBENCH_THREE_FULLSCREEN_MAX_CELLS);
+
+  controller.dispose();
+});
+
+Deno.test("ApiWorkbenchThreeRuntimeController clamps fullscreen budget when viewport shrinks", () => {
+  const controller = new ApiWorkbenchThreeRuntimeController({
+    hasLiveThreeWindow: () => true,
+    hasFullscreenThreeWindow: () => true,
+  });
+
+  controller.syncFullscreenTargetCells(8_800, true, 9_200);
+  assertEquals(controller.syncFullscreenTargetCells(4_386, true, 4_515), 4_386);
+  assertEquals(controller.fullscreenMaxCells.peek(), 4_386);
+  assertEquals(controller.inspectPressure().currentCells, 4_386);
+  assertEquals(controller.inspectPressure().highFrames, 0);
+  assertEquals(controller.inspectPressure().lowFrames, 0);
+  assertEquals(
+    controller.frameInterval.peek(),
+    apiWorkbenchThreeFrameIntervalForCells(4_386, { live: true }),
+  );
 
   controller.dispose();
 });
