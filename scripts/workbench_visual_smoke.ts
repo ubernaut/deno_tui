@@ -232,13 +232,13 @@ export function inspectWorkbenchVisualSmokeOutput(
   const lines = screen.map((row) => row.join("").trimEnd());
   const text = lines.join("\n");
   const statusLine = lines.at(-1) ?? "";
-  const threeLine = lines.find((line) => line.includes("fps") && line.includes("live")) ?? "";
+  const threePane = inspectWorkbenchThreePaneCoverage(lines, replay.truecolorStyled);
+  const threeLine = findWorkbenchThreePaneTelemetryLine(lines, threePane) ?? "";
   const rendererUnavailable = /unavailable/i.test(text) && text.includes("ASCII");
   const missing = REQUIRED_TOKENS.filter((token) => !text.includes(token));
   const forbidden = FORBIDDEN_TOKENS.filter((token) => text.includes(token));
   const nonBlankRows = lines.filter((line) => line.trim().length > 0).length;
   const truecolorBackgroundWrites = countOccurrences(output, "\x1b[48;2;");
-  const threePane = inspectWorkbenchThreePaneCoverage(lines, replay.truecolorStyled);
   const threeRenderedCells = parseThreeRenderedCells(threeLine);
   if (threeLine.length === 0 && !rendererUnavailable) missing.push("three telemetry line");
   if (statusLine.trim().length === 0) missing.push("status line");
@@ -253,6 +253,12 @@ export function inspectWorkbenchVisualSmokeOutput(
     if (threePane.visibleRows < minPaneRows) missing.push(`three pane visible rows >= ${minPaneRows}`);
     if (threePane.visibleMaxColumns < minVisibleColumns) {
       missing.push(`three pane visible columns >= ${minVisibleColumns}`);
+    }
+    if (!rendererUnavailable && threeRenderedCells > 0) {
+      const minRenderedCells = Math.max(1, Math.floor(threePane.bodyRows * threePane.bodyColumns * 0.75));
+      if (threeRenderedCells < minRenderedCells) {
+        missing.push(`three rendered cells >= ${minRenderedCells}`);
+      }
     }
   }
   return {
@@ -425,6 +431,19 @@ export function formatWorkbenchVisualSmokeResult(result: WorkbenchVisualSmokeRes
 function parseThreeRenderedCells(line: string): number {
   const match = line.match(THREE_RENDERED_CELL_PATTERN);
   return match ? Number.parseInt(match[1]!, 10) : 0;
+}
+
+function findWorkbenchThreePaneTelemetryLine(
+  lines: readonly string[],
+  pane: WorkbenchThreePaneCoverage | undefined,
+): string | undefined {
+  if (!pane?.found) return undefined;
+  for (let row = pane.top + 1; row < pane.bottom; row += 1) {
+    const line = lines[row] ?? "";
+    const segment = line.slice(pane.left, pane.right + 1);
+    if (segment.includes("fps") && segment.includes("live")) return segment;
+  }
+  return undefined;
 }
 
 export function replayWorkbenchScreen(
