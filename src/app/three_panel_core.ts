@@ -1,5 +1,16 @@
+import type { DiagnosticsCollector } from "../runtime/diagnostics.ts";
+import type { GraphicsHandle, GraphicsSurface } from "../runtime/graphics_surface.ts";
+import type { ThreeAsciiImageFrame } from "../three_ascii/renderer.ts";
+
 export interface ThreePanelValueSignal<T> {
   peek(): T;
+}
+
+export interface ThreePanelGraphicsRect {
+  column: number;
+  row: number;
+  width: number;
+  height: number;
 }
 
 export type ThreePanelResolvableValue<T> = T | ThreePanelValueSignal<T>;
@@ -46,6 +57,26 @@ export interface ThreePanelFrameUpdate {
   rendererBacked: boolean;
   rows: number;
   columns: number;
+}
+
+export interface ThreePanelGridPublicationInput {
+  grid: readonly (readonly string[] | undefined)[];
+  currentGrid?: readonly (readonly string[] | undefined)[];
+  forceUpdate?: boolean;
+  revision?: number;
+}
+
+export interface ThreePanelGridPublishRequest {
+  grid: string[][];
+  currentGrid?: readonly (readonly string[] | undefined)[];
+  rendererBacked?: boolean;
+  revision?: number;
+}
+
+export interface ThreePanelGridPublishDecision {
+  publish: boolean;
+  grid: string[][];
+  rendererBacked: boolean;
 }
 
 export interface ThreePanelRenderQueueInspection {
@@ -107,6 +138,154 @@ export class ThreePanelRenderQueue {
 
 export const defaultThreePanelRenderQueue = new ThreePanelRenderQueue();
 
+/** Owns the active raster graphics image handle for a workbench-hosted Three panel. */
+export class ThreePanelGraphicsImageController {
+  private handle?: GraphicsHandle;
+
+  constructor(
+    private readonly options: {
+      diagnostics?: DiagnosticsCollector;
+      currentGeneration: () => number;
+      disposed: () => boolean;
+    },
+  ) {}
+
+  get hasHandle(): boolean {
+    return this.handle !== undefined;
+  }
+
+  /** Replaces the current image and deletes stale handles if the owning panel generation changes mid-publish. */
+  async put(
+    surface: GraphicsSurface,
+    image: ThreeAsciiImageFrame,
+    rect: ThreePanelGraphicsRect,
+    frameGeneration: number,
+  ): Promise<void> {
+    if (this.options.disposed() || rect.width <= 0 || rect.height <= 0) return;
+    if (this.handle) {
+      await this.delete(surface, this.handle, "replace");
+      this.handle = undefined;
+    }
+    const handle = await surface.putImage({
+      data: image.data,
+      encoding: image.encoding,
+      format: image.format,
+      pixelWidth: image.pixelWidth,
+      pixelHeight: image.pixelHeight,
+    }, {
+      column: rect.column,
+      row: rect.row,
+      width: rect.width,
+      height: rect.height,
+      zIndex: 1,
+    });
+    if (this.options.disposed() || this.options.currentGeneration() !== frameGeneration) {
+      await this.delete(surface, handle, "stale-frame");
+      return;
+    }
+    this.handle = handle;
+  }
+
+  /** Deletes the current image handle if a graphics surface is available. */
+  async clear(surface: GraphicsSurface | undefined): Promise<void> {
+    const handle = this.handle;
+    if (!handle) return;
+    this.handle = undefined;
+    if (!surface) return;
+    await this.delete(surface, handle, "clear");
+  }
+
+  private async delete(
+    surface: GraphicsSurface,
+    handle: GraphicsHandle,
+    reason: "replace" | "stale-frame" | "clear",
+  ): Promise<void> {
+    try {
+      await surface.deleteImage(handle, "image");
+    } catch (error) {
+      this.options.diagnostics?.report({
+        source: "three-panel",
+        code: "graphics-delete-failed",
+        severity: "debug",
+        message: "Three panel graphics image cleanup failed",
+        detail: error instanceof Error ? error.message : String(error),
+        context: {
+          reason,
+          handleId: handle.id,
+          surface: surface.kind,
+        },
+      });
+    }
+  }
+}
+
+/** Tracks published Three panel grid identity so unchanged renderer frames do not trigger terminal redraws. */
+export class ThreePanelGridPublicationCache {
+  #fingerprint = "";
+  #revision?: number;
+
+  shouldPublish(input: ThreePanelGridPublicationInput): boolean {
+    const { grid, currentGrid, forceUpdate = false, revision } = input;
+    if (revision !== undefined) {
+      if (this.#revision === revision) return false;
+      const fingerprint = fingerprintThreePanelGrid(grid);
+      this.#revision = revision;
+      if (this.#fingerprint === fingerprint) return false;
+      this.#fingerprint = fingerprint;
+      return true;
+    }
+
+    this.#revision = undefined;
+    const fingerprint = fingerprintThreePanelGrid(grid);
+    if (!forceUpdate && currentGrid === grid) return false;
+    if (this.#fingerprint === fingerprint) return false;
+    this.#fingerprint = fingerprint;
+    return true;
+  }
+
+  reset(): void {
+    this.#fingerprint = "";
+    this.#revision = undefined;
+  }
+}
+
+/** Owns reusable Three panel grid buffers and publication filtering. */
+export class ThreePanelGridPublisher {
+  readonly publication = new ThreePanelGridPublicationCache();
+  #blankGridCache: string[][] = [];
+  #blankGridColumns = -1;
+  #blankGridRows = -1;
+
+  blankGridFor(columns: number, rows: number): string[][] {
+    if (this.#blankGridColumns === columns && this.#blankGridRows === rows) return this.#blankGridCache;
+    this.#blankGridColumns = columns;
+    this.#blankGridRows = rows;
+    this.#blankGridCache = threePanelBlankGrid(columns, rows);
+    return this.#blankGridCache;
+  }
+
+  shouldPublish(input: ThreePanelGridPublishRequest): ThreePanelGridPublishDecision {
+    const rendererBacked = input.rendererBacked ?? false;
+    return {
+      publish: this.publication.shouldPublish({
+        grid: input.grid,
+        currentGrid: input.currentGrid,
+        forceUpdate: rendererBacked,
+        revision: input.revision,
+      }),
+      grid: input.grid,
+      rendererBacked,
+    };
+  }
+
+  reset(): void {
+    this.publication.reset();
+    this.#blankGridCache = [];
+    this.#blankGridColumns = -1;
+    this.#blankGridRows = -1;
+  }
+}
+
 export function resolveThreePanelValue<T>(value: ThreePanelResolvableValue<T>): T {
   return isThreePanelValueSignal(value) ? value.peek() : value;
 }
@@ -160,6 +339,44 @@ export function threePanelFrameUpdate(
   };
 }
 
+export function threePanelBlankGrid(width: number, height: number): string[][] {
+  const columns = Math.max(0, width);
+  const rows = Math.max(0, height);
+  const grid = new Array<string[]>(rows);
+  for (let row = 0; row < rows; row += 1) {
+    const gridRow = new Array<string>(columns);
+    for (let column = 0; column < columns; column += 1) {
+      gridRow[column] = " ";
+    }
+    grid[row] = gridRow;
+  }
+  return grid;
+}
+
+export function fingerprintThreePanelGrid(grid: readonly (readonly string[] | undefined)[]): string {
+  let hash = mixThreePanelGridHash(2166136261, grid.length);
+  for (const row of grid) {
+    const columns = row?.length ?? 0;
+    hash = mixThreePanelGridHash(hash, columns);
+    if (!row) continue;
+    for (const cell of row) {
+      hash = mixThreePanelGridHash(hash, cell.length);
+      for (let index = 0; index < cell.length; index += 1) {
+        hash = mixThreePanelGridHash(hash, cell.charCodeAt(index));
+      }
+    }
+  }
+  return `${grid.length}:${hash.toString(36)}`;
+}
+
+export function hasThreePanelGridCells(grid: readonly (readonly string[] | undefined)[]): boolean {
+  return grid.length > 0 && (grid[0]?.length ?? 0) > 0;
+}
+
 function isThreePanelValueSignal<T>(value: unknown): value is ThreePanelValueSignal<T> {
   return typeof value === "object" && value !== null && typeof (value as { peek?: unknown }).peek === "function";
+}
+
+function mixThreePanelGridHash(hash: number, value: number): number {
+  return Math.imul((hash ^ value) >>> 0, 16777619) >>> 0;
 }

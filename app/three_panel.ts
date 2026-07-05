@@ -15,16 +15,18 @@ import {
 import type { ThreeAsciiReadbackStrategy } from "../src/three_ascii/renderer_options.ts";
 import { asciiEffectOptions } from "../src/three_ascii/options.ts";
 import { createNeonThreeScene, type NeonThreeSceneBundle } from "./neon_three.ts";
-import { ThreePanelGraphicsImageController } from "../src/app/three_panel_graphics.ts";
 import {
   ThreePanelInteractionController,
   type ThreePanelInteractionState,
 } from "../src/app/three_panel_interaction.ts";
 import {
   defaultThreePanelRenderQueue,
+  hasThreePanelGridCells,
   isCurrentThreePanelFrame,
   ownsThreePanelFrame,
   resolveThreePanelLifecycleState,
+  ThreePanelGraphicsImageController,
+  ThreePanelGridPublisher,
   type ThreePanelLifecycleState,
   ThreePanelRenderQueue,
 } from "../src/app/three_panel_core.ts";
@@ -45,7 +47,6 @@ import {
   type ThreePanelRendererStateSnapshot,
 } from "../src/app/three_panel_effect.ts";
 import { type ThreePanelFrameUpdate, threePanelFrameUpdate } from "../src/app/three_panel_core.ts";
-import { hasThreePanelGridCells, ThreePanelGridPublisher } from "../src/app/three_panel_grid.ts";
 import {
   resolveThreePanelRenderPolicy,
   resolveThreePanelRenderSize,

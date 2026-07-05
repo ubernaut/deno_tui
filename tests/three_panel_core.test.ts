@@ -28,10 +28,10 @@ import {
   fingerprintThreePanelGrid,
   hasThreePanelGridCells,
   threePanelBlankGrid,
+  ThreePanelGraphicsImageController,
   ThreePanelGridPublicationCache,
   ThreePanelGridPublisher,
-} from "../src/app/three_panel_grid.ts";
-import { ThreePanelGraphicsImageController } from "../src/app/three_panel_graphics.ts";
+} from "../src/app/three_panel_core.ts";
 import {
   threePanelAdaptiveRenderCellsDiagnostic,
   threePanelGraphicsFallbackDiagnostic,
