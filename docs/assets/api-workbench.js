@@ -11140,8 +11140,9 @@ var ProgressBarController = class {
 };
 
 // src/components/statusbar.ts
-function renderStatusBar(left, right, width) {
+function renderStatusBar(left, right, width, priority = "left") {
   const safeWidth = Math.max(0, width);
+  if (priority === "right") return renderRightPriorityStatusBar(left, right, safeWidth);
   let leftText = left.slice(0, safeWidth);
   const remaining = safeWidth - leftText.length;
   if (remaining <= 0) return leftText;
@@ -11154,6 +11155,15 @@ function renderStatusBar(left, right, width) {
     rightText = right.slice(0, Math.max(0, safeWidth - leftText.length - minGap));
     gap = rightText.length > 0 ? Math.max(minGap, safeWidth - leftText.length - rightText.length) : 0;
   }
+  return `${leftText}${" ".repeat(gap)}${rightText}`;
+}
+function renderRightPriorityStatusBar(left, right, width) {
+  const rightText = right.slice(0, width);
+  if (rightText.length >= width) return rightText;
+  const minGap = left.length > 0 && rightText.length > 0 ? Math.min(2, width) : 0;
+  const leftWidth = Math.max(0, width - rightText.length - minGap);
+  const leftText = left.slice(0, leftWidth);
+  const gap = rightText.length > 0 ? Math.max(0, width - leftText.length - rightText.length) : 0;
   return `${leftText}${" ".repeat(gap)}${rightText}`;
 }
 
@@ -12372,7 +12382,7 @@ function linearRgbChannel(channel) {
   return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
 }
 
-// src/app/workbench_ansi_output.ts
+// src/app/workbench_ansi_screen.ts
 var encoder = new TextEncoder();
 
 // src/app/workbench_help.ts
@@ -12569,185 +12579,6 @@ function setRect(target, column, row, width, height) {
   target.height = height;
 }
 
-// src/runtime/diagnostics.ts
-var DiagnosticsCollector = class {
-  constructor(maxEntries = 200) {
-    this.maxEntries = maxEntries;
-  }
-  #entries = [];
-  #listeners = /* @__PURE__ */ new Set();
-  #nextId = 1;
-  report(input2) {
-    const entry = {
-      id: this.#nextId++,
-      time: Math.max(0, Math.floor(input2.time ?? Date.now())),
-      source: input2.source,
-      code: input2.code,
-      severity: input2.severity,
-      message: input2.message,
-      detail: input2.detail,
-      context: input2.context ? { ...input2.context } : void 0
-    };
-    this.#entries.push(entry);
-    const overflow = this.#entries.length - Math.max(1, this.maxEntries);
-    if (overflow > 0) this.#entries.splice(0, overflow);
-    this.#emit(entry);
-    return cloneDiagnosticEntry(entry);
-  }
-  clear() {
-    if (this.#entries.length === 0) return;
-    this.#entries = [];
-    this.#emit(void 0);
-  }
-  entries() {
-    return cloneDiagnosticEntries(this.#entries);
-  }
-  inspect() {
-    const bySeverity = {
-      debug: 0,
-      info: 0,
-      warning: 0,
-      error: 0
-    };
-    for (const entry of this.#entries) bySeverity[entry.severity] += 1;
-    return {
-      count: this.#entries.length,
-      bySeverity,
-      entries: this.entries()
-    };
-  }
-  subscribe(listener) {
-    this.#listeners.add(listener);
-    return () => this.#listeners.delete(listener);
-  }
-  #emit(entry) {
-    for (const listener of this.#listeners) listener(entry);
-  }
-};
-function summarizeDiagnostics(entries) {
-  const bySeverity = {
-    debug: 0,
-    info: 0,
-    warning: 0,
-    error: 0
-  };
-  let highestSeverity;
-  for (const entry of entries) {
-    bySeverity[entry.severity] += 1;
-    if (!highestSeverity || severityWeight(entry.severity) > severityWeight(highestSeverity)) {
-      highestSeverity = entry.severity;
-    }
-  }
-  return {
-    count: entries.length,
-    ok: entries.length === 0,
-    highestSeverity,
-    bySeverity,
-    latest: cloneDiagnosticEntry(entries.at(-1))
-  };
-}
-function formatDiagnosticStatus(entries, options = {}) {
-  const label = options.label ?? "diagnostics";
-  const summary = summarizeDiagnostics(entries);
-  if (summary.ok) return `${label} ok`;
-  const counts = formatSeverityCounts(summary.bySeverity);
-  const latest = options.includeLatest !== false && summary.latest ? ` latest ${summary.latest.source}/${summary.latest.code}` : "";
-  return `${label} ${summary.count} ${summary.highestSeverity}${counts ? ` (${counts})` : ""}${latest}`;
-}
-function cloneDiagnosticEntry(entry) {
-  return entry ? { ...entry, context: entry.context ? { ...entry.context } : void 0 } : void 0;
-}
-function cloneDiagnosticEntries(entries) {
-  const output = new Array(entries.length);
-  for (let index = 0; index < entries.length; index += 1) {
-    output[index] = cloneDiagnosticEntry(entries[index]);
-  }
-  return output;
-}
-function formatSeverityCounts(bySeverity) {
-  const severities = ["error", "warning", "info", "debug"];
-  let output = "";
-  for (const severity of severities) {
-    const count = bySeverity[severity];
-    if (count <= 0) continue;
-    output += `${output ? ", " : ""}${count} ${severity}`;
-  }
-  return output;
-}
-function severityWeight(severity) {
-  switch (severity) {
-    case "error":
-      return 4;
-    case "warning":
-      return 3;
-    case "info":
-      return 2;
-    case "debug":
-      return 1;
-  }
-}
-
-// src/app/workbench_diagnostics.ts
-function formatWorkbenchDiagnosticLogEntry(entry, options = {}) {
-  return formatDiagnosticStatus([entry], { label: options.logLabel ?? "diagnostic", includeLatest: true });
-}
-function formatWorkbenchDiagnosticStatus(diagnostics, options = {}) {
-  return formatDiagnosticStatus(diagnostics.entries(), {
-    label: options.statusLabel ?? "diag",
-    includeLatest: false
-  });
-}
-function initialWorkbenchDiagnosticLogRows(diagnostics, rows2, options = {}) {
-  const maxLogEntries = Math.max(1, Math.floor(options.maxLogEntries ?? 40));
-  const output = [];
-  appendBoundedRows(output, rows2, maxLogEntries);
-  const entries = diagnostics.entries();
-  for (let index = 0; index < entries.length; index += 1) {
-    appendBoundedRow(output, formatWorkbenchDiagnosticLogEntry(entries[index], options), maxLogEntries);
-  }
-  return output;
-}
-function subscribeWorkbenchDiagnosticLog(diagnostics, onLog, options = {}) {
-  return diagnostics.subscribe((entry) => {
-    if (!entry) return;
-    onLog(formatWorkbenchDiagnosticLogEntry(entry, options));
-  });
-}
-function appendBoundedWorkbenchLogRow(rows2, row, limit = 40) {
-  const maxLogEntries = Math.max(1, Math.floor(limit));
-  const retained = Math.min(rows2.length, maxLogEntries - 1);
-  const output = new Array(retained + 1);
-  const start = Math.max(0, rows2.length - retained);
-  for (let index = 0; index < retained; index += 1) {
-    output[index] = rows2[start + index];
-  }
-  output[retained] = row;
-  return output;
-}
-function appendBoundedRows(target, rows2, limit) {
-  const start = Math.max(0, rows2.length - limit);
-  for (let index = start; index < rows2.length; index += 1) appendBoundedRow(target, rows2[index], limit);
-}
-function appendBoundedRow(target, row, limit) {
-  if (target.length >= limit) target.shift();
-  target.push(row);
-}
-
-// src/app/workbench_viewport.ts
-function workbenchRevealActiveRowOffset(options) {
-  if (!options.activeRect) return void 0;
-  if (options.contentHeight <= options.viewportHeight) return 0;
-  const maxOffset = Math.max(0, options.contentHeight - Math.max(0, options.viewportHeight));
-  const offset = Math.max(0, Math.min(maxOffset, options.offsetRows));
-  const top = options.activeRect.row;
-  const bottom = options.activeRect.row + options.activeRect.height;
-  if (top < offset) return Math.max(0, Math.min(maxOffset, top));
-  if (bottom > offset + options.viewportHeight) {
-    return Math.max(0, Math.min(maxOffset, bottom - options.viewportHeight));
-  }
-  return void 0;
-}
-
 // src/app/workbench_layout.ts
 var WorkbenchWorkspaceViewportController = class {
   scroll;
@@ -12831,6 +12662,19 @@ function workbenchAdaptiveWindowLayout(manager, options) {
     tileOptions: workbenchAdaptiveTileOptions(options)
   });
   return workbenchWindowLayout(bounds, layout);
+}
+function workbenchRevealActiveRowOffset(options) {
+  if (!options.activeRect) return void 0;
+  if (options.contentHeight <= options.viewportHeight) return 0;
+  const maxOffset = Math.max(0, options.contentHeight - Math.max(0, options.viewportHeight));
+  const offset = Math.max(0, Math.min(maxOffset, options.offsetRows));
+  const top = options.activeRect.row;
+  const bottom = options.activeRect.row + options.activeRect.height;
+  if (top < offset) return Math.max(0, Math.min(maxOffset, top));
+  if (bottom > offset + options.viewportHeight) {
+    return Math.max(0, Math.min(maxOffset, bottom - options.viewportHeight));
+  }
+  return void 0;
 }
 function workbenchVisibleWindowRectsInto(target, rects, options) {
   target.clear();
@@ -13580,6 +13424,124 @@ function setRect2(rect, column, row, width, height) {
   rect.height = height;
 }
 
+// src/runtime/diagnostics.ts
+var DiagnosticsCollector = class {
+  constructor(maxEntries = 200) {
+    this.maxEntries = maxEntries;
+  }
+  #entries = [];
+  #listeners = /* @__PURE__ */ new Set();
+  #nextId = 1;
+  report(input2) {
+    const entry = {
+      id: this.#nextId++,
+      time: Math.max(0, Math.floor(input2.time ?? Date.now())),
+      source: input2.source,
+      code: input2.code,
+      severity: input2.severity,
+      message: input2.message,
+      detail: input2.detail,
+      context: input2.context ? { ...input2.context } : void 0
+    };
+    this.#entries.push(entry);
+    const overflow = this.#entries.length - Math.max(1, this.maxEntries);
+    if (overflow > 0) this.#entries.splice(0, overflow);
+    this.#emit(entry);
+    return cloneDiagnosticEntry(entry);
+  }
+  clear() {
+    if (this.#entries.length === 0) return;
+    this.#entries = [];
+    this.#emit(void 0);
+  }
+  entries() {
+    return cloneDiagnosticEntries(this.#entries);
+  }
+  inspect() {
+    const bySeverity = {
+      debug: 0,
+      info: 0,
+      warning: 0,
+      error: 0
+    };
+    for (const entry of this.#entries) bySeverity[entry.severity] += 1;
+    return {
+      count: this.#entries.length,
+      bySeverity,
+      entries: this.entries()
+    };
+  }
+  subscribe(listener) {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  }
+  #emit(entry) {
+    for (const listener of this.#listeners) listener(entry);
+  }
+};
+function summarizeDiagnostics(entries) {
+  const bySeverity = {
+    debug: 0,
+    info: 0,
+    warning: 0,
+    error: 0
+  };
+  let highestSeverity;
+  for (const entry of entries) {
+    bySeverity[entry.severity] += 1;
+    if (!highestSeverity || severityWeight(entry.severity) > severityWeight(highestSeverity)) {
+      highestSeverity = entry.severity;
+    }
+  }
+  return {
+    count: entries.length,
+    ok: entries.length === 0,
+    highestSeverity,
+    bySeverity,
+    latest: cloneDiagnosticEntry(entries.at(-1))
+  };
+}
+function formatDiagnosticStatus(entries, options = {}) {
+  const label = options.label ?? "diagnostics";
+  const summary = summarizeDiagnostics(entries);
+  if (summary.ok) return `${label} ok`;
+  const counts = formatSeverityCounts(summary.bySeverity);
+  const latest = options.includeLatest !== false && summary.latest ? ` latest ${summary.latest.source}/${summary.latest.code}` : "";
+  return `${label} ${summary.count} ${summary.highestSeverity}${counts ? ` (${counts})` : ""}${latest}`;
+}
+function cloneDiagnosticEntry(entry) {
+  return entry ? { ...entry, context: entry.context ? { ...entry.context } : void 0 } : void 0;
+}
+function cloneDiagnosticEntries(entries) {
+  const output = new Array(entries.length);
+  for (let index = 0; index < entries.length; index += 1) {
+    output[index] = cloneDiagnosticEntry(entries[index]);
+  }
+  return output;
+}
+function formatSeverityCounts(bySeverity) {
+  const severities = ["error", "warning", "info", "debug"];
+  let output = "";
+  for (const severity of severities) {
+    const count = bySeverity[severity];
+    if (count <= 0) continue;
+    output += `${output ? ", " : ""}${count} ${severity}`;
+  }
+  return output;
+}
+function severityWeight(severity) {
+  switch (severity) {
+    case "error":
+      return 4;
+    case "warning":
+      return 3;
+    case "info":
+      return 2;
+    case "debug":
+      return 1;
+  }
+}
+
 // src/app/workbench_status.ts
 function workbenchTileDensityLabel(value) {
   if (value === 0 || !Number.isFinite(value)) return "balanced";
@@ -13595,14 +13557,39 @@ function workbenchStatusLeft(options) {
   if (diagnostics) parts.push(diagnostics);
   return parts.join(" | ");
 }
-function workbenchStatusShortcuts(profile = "terminal") {
-  return profile === "web" ? "1-8 focus  T theme  H help  Q quit  click controls" : "F10 menu  N new  Shift+T themes  G config  0 restore minimized";
+function workbenchCompactStatusDiagnostics(diagnostics) {
+  const text = diagnostics?.trim();
+  if (!text) return void 0;
+  return text.replace(/\s+\([^)]*\)\s*$/, "").trim() || text;
+}
+function workbenchStatusShortcuts(profile = "terminal", width = Number.POSITIVE_INFINITY) {
+  if (profile === "web") {
+    if (width < 40) return "";
+    if (width < 72) return "T theme  H help  Q quit";
+    if (width < 112) return "1-8 focus  T theme  H help  Q quit";
+    return "1-8 focus  T theme  H help  Q quit  click controls";
+  }
+  if (width < 40) return "";
+  if (width < 72) return "F10 menu  G config  Q quit";
+  if (width < 132) return "F10 menu  N new  G config  M/F/R  Q quit";
+  return "F10 menu  N new  Shift+T themes  G config  0 restore minimized";
 }
 function workbenchStatusLine(options) {
+  const right = workbenchStatusShortcuts(options.shortcutProfile, options.width);
+  const fullLeft = workbenchStatusLeft(options);
+  if (fullLeft.length + right.length + (fullLeft && right ? 2 : 0) <= Math.max(0, options.width)) {
+    return renderStatusBar(fullLeft, right, options.width, "right");
+  }
+  const compactDiagnostics = workbenchCompactStatusDiagnostics(options.diagnostics);
+  const compactLeft = compactDiagnostics === options.diagnostics ? fullLeft : workbenchStatusLeft({ ...options, diagnostics: compactDiagnostics });
+  if (compactLeft.length + right.length + (compactLeft && right ? 2 : 0) <= Math.max(0, options.width)) {
+    return renderStatusBar(compactLeft, right, options.width, "right");
+  }
   return renderStatusBar(
-    workbenchStatusLeft(options),
-    workbenchStatusShortcuts(options.shortcutProfile),
-    options.width
+    compactLeft,
+    right,
+    options.width,
+    "right"
   );
 }
 function workbenchStatusSnapshotLine(options) {
@@ -13630,6 +13617,50 @@ function workbenchEmptyWorkspaceMessage(options) {
     return options.labels?.minimized ?? "All open windows minimized. Press R or use the shelf to restore.";
   }
   return options.labels?.empty ?? "No visible windows. Use New to add a widget window.";
+}
+function formatWorkbenchDiagnosticLogEntry(entry, options = {}) {
+  return formatDiagnosticStatus([entry], { label: options.logLabel ?? "diagnostic", includeLatest: true });
+}
+function formatWorkbenchDiagnosticStatus(diagnostics, options = {}) {
+  return formatDiagnosticStatus(diagnostics.entries(), {
+    label: options.statusLabel ?? "diag",
+    includeLatest: false
+  });
+}
+function initialWorkbenchDiagnosticLogRows(diagnostics, rows2, options = {}) {
+  const maxLogEntries = Math.max(1, Math.floor(options.maxLogEntries ?? 40));
+  const output = [];
+  appendBoundedRows(output, rows2, maxLogEntries);
+  const entries = diagnostics.entries();
+  for (let index = 0; index < entries.length; index += 1) {
+    appendBoundedRow(output, formatWorkbenchDiagnosticLogEntry(entries[index], options), maxLogEntries);
+  }
+  return output;
+}
+function subscribeWorkbenchDiagnosticLog(diagnostics, onLog, options = {}) {
+  return diagnostics.subscribe((entry) => {
+    if (!entry) return;
+    onLog(formatWorkbenchDiagnosticLogEntry(entry, options));
+  });
+}
+function appendBoundedWorkbenchLogRow(rows2, row, limit = 40) {
+  const maxLogEntries = Math.max(1, Math.floor(limit));
+  const retained = Math.min(rows2.length, maxLogEntries - 1);
+  const output = new Array(retained + 1);
+  const start = Math.max(0, rows2.length - retained);
+  for (let index = 0; index < retained; index += 1) {
+    output[index] = rows2[start + index];
+  }
+  output[retained] = row;
+  return output;
+}
+function appendBoundedRows(target, rows2, limit) {
+  const start = Math.max(0, rows2.length - limit);
+  for (let index = start; index < rows2.length; index += 1) appendBoundedRow(target, rows2[index], limit);
+}
+function appendBoundedRow(target, row, limit) {
+  if (target.length >= limit) target.shift();
+  target.push(row);
 }
 
 // src/runtime/pty_backend.ts
@@ -17075,7 +17106,7 @@ var apiWorkbenchDocs = [
   "Use Tab or 1-8 to focus built-in windows; use M, F, R for window controls."
 ];
 
-// app/api_workbench_control_types.ts
+// app/api_workbench_control_line.ts
 var apiWorkbenchControlIds = [
   "button",
   "genericButton",
@@ -17089,8 +17120,6 @@ var apiWorkbenchControlIds = [
   "stepper",
   "textbox"
 ];
-
-// app/api_workbench_control_line.ts
 function apiWorkbenchControlLineInto(segments, hits, id2, value, rect, row, activeId, options = {}) {
   let segmentCount = 0;
   let hitCount = 0;
@@ -17269,168 +17298,7 @@ function writeControlHit(target, index, source) {
   target[index] = hit;
 }
 
-// app/api_workbench_control_rows.ts
-function apiWorkbenchButtonRowInto(target, options) {
-  const detail = options.detail ? ` ${options.detail}` : "";
-  return writeProjectedControlRow(
-    target,
-    options.id,
-    `${buttonText(options.label, { compact: options.compact })}${detail}`,
-    { button: true, action: options.action }
-  );
-}
-function apiWorkbenchDropdownHeaderRowInto(target, options) {
-  const expandedGlyph = options.expandedGlyph ?? "\u25BE";
-  const collapsedGlyph = options.collapsedGlyph ?? "\u25B8";
-  return writeProjectedControlRow(
-    target,
-    "dropdown",
-    `${options.title}  ${options.expanded ? expandedGlyph : collapsedGlyph} ${options.label}`,
-    { action: "toggle" }
-  );
-}
-function apiWorkbenchInputRowInto(target, options) {
-  return writeProjectedControlRow(
-    target,
-    "input",
-    `${options.title}     ${options.text}${options.active ? options.cursorGlyph ?? "\u258C" : ""}`,
-    { action: "focus" }
-  );
-}
-function apiWorkbenchSliderRowInto(target, options) {
-  return writeProjectedControlRow(
-    target,
-    "slider",
-    `${options.title ?? "Slider"}    ${options.track.text} ${options.value}/${options.max}`,
-    { previous: true, next: true }
-  );
-}
-function apiWorkbenchStepperRowInto(target, options) {
-  const reserve = Math.max(0, Math.floor(options.columnReserveWidth ?? 12));
-  const stepWidth = Math.max(8, Math.floor(options.rectWidth) - reserve);
-  return writeProjectedControlRow(
-    target,
-    "stepper",
-    `${options.title ?? "Stepper"}   ${renderStepper(options.steps, options.activeIndex, "horizontal", stepWidth)[0] ?? ""}`,
-    { previous: true, next: true }
-  );
-}
-function apiWorkbenchProgressRowInto(target, options) {
-  const suffix = options.suffix ?? "%";
-  return writeProjectedControlRow(
-    target,
-    "slider",
-    `${options.title ?? "Progress"}  ${options.track.text} ${options.value}${suffix}`
-  );
-}
-function apiWorkbenchControlsRowsInto(target, options) {
-  let written = 0;
-  target[written] = apiWorkbenchButtonRowInto(target[written], {
-    id: "button",
-    label: "Run Action",
-    detail: `presses=${options.buttonPressCount}`
-  });
-  written += 1;
-  target[written] = apiWorkbenchButtonRowInto(target[written], {
-    id: "genericButton",
-    label: "Generic Button",
-    detail: `presses=${options.genericButtonPressCount}`
-  });
-  written += 1;
-  target[written] = apiWorkbenchButtonRowInto(target[written], {
-    id: "modal",
-    label: "Open Modal",
-    detail: `state=${options.modalOpen ? "open" : "closed"}`
-  });
-  written += 1;
-  target[written] = apiWorkbenchSliderRowInto(target[written], options.slider);
-  written += 1;
-  written = appendCheckboxRows(target, written, options.checkboxes, "Checkboxes", writeProjectedControlRow);
-  written = appendRadioRows(
-    target,
-    written,
-    options.radio.items,
-    options.radio.activeIndex,
-    "Radio",
-    writeProjectedControlRow
-  );
-  written = appendComboHeaderRows(target, written, options.combo);
-  target[written] = apiWorkbenchDropdownHeaderRowInto(target[written], options.dropdown);
-  written += 1;
-  target[written] = apiWorkbenchInputRowInto(target[written], options.input);
-  written += 1;
-  target[written] = apiWorkbenchStepperRowInto(target[written], options.stepper);
-  written += 1;
-  target[written] = writeProjectedControlRow(target[written], "textbox", "TextBox", { action: "focus" });
-  written += 1;
-  target[written] = apiWorkbenchProgressRowInto(target[written], options.progress);
-  written += 1;
-  target.length = written;
-  return target;
-}
-function appendCheckboxRows(target, start, items, header, writeRow) {
-  let written = start;
-  target[written] = writeRow(target[written], "checkbox", header);
-  written += 1;
-  for (let index = 0; index < items.length; index += 1) {
-    const item = items[index];
-    target[written] = writeRow(
-      target[written],
-      "checkbox",
-      `${renderCheckBoxMark(item.checked)} ${item.label}`,
-      { indent: true, index }
-    );
-    written += 1;
-  }
-  return written;
-}
-function appendRadioRows(target, start, items, activeIndex, header, writeRow) {
-  let written = start;
-  target[written] = writeRow(target[written], "radio", header, { previous: true, next: true });
-  written += 1;
-  for (let index = 0; index < items.length; index += 1) {
-    const item = items[index];
-    const mark = item.selected ? "\u25CF" : "\u25CB";
-    const cursor = index === activeIndex ? ">" : " ";
-    target[written] = writeRow(
-      target[written],
-      "radio",
-      `${cursor} ${mark} ${item.label}`,
-      { indent: true, index }
-    );
-    written += 1;
-  }
-  return written;
-}
-function appendComboHeaderRows(target, start, options) {
-  const expandedGlyph = options.expandedGlyph ?? "\u25BE";
-  const collapsedGlyph = options.collapsedGlyph ?? "\u25B8";
-  const glyph = options.expanded ? expandedGlyph : collapsedGlyph;
-  const title = `${options.title}  ${glyph}`;
-  const header = `${title} ${options.label}`;
-  const shouldSplit = textWidth(`> ${header}`) > options.rectWidth && options.rectWidth > Math.max(0, Math.floor(options.splitMinWidth ?? 16));
-  let written = start;
-  target[written] = writeProjectedControlRow(target[written], "combo", shouldSplit ? title : header, {
-    action: "activate",
-    previous: options.previous,
-    next: options.next
-  });
-  written += 1;
-  if (shouldSplit) {
-    target[written] = writeProjectedControlRow(target[written], "combo", options.label, { indent: true });
-    written += 1;
-  }
-  return written;
-}
-function writeProjectedControlRow(target, id2, value, options) {
-  const row = target ?? { id: id2, value };
-  row.id = id2;
-  row.value = value;
-  row.options = options;
-  return row;
-}
-
-// app/api_workbench_control_style.ts
+// app/api_workbench_controls.ts
 function apiWorkbenchControlBaseStyle(theme2, active2) {
   return {
     fg: active2 ? theme2.background : theme2.text,
@@ -17456,8 +17324,6 @@ function apiWorkbenchTextboxCommandStyle(theme2, command, active2) {
 function apiWorkbenchWrappedOptionStyle(theme2, active2) {
   return apiWorkbenchControlBaseStyle(theme2, active2);
 }
-
-// app/api_workbench_textbox.ts
 function apiWorkbenchTextboxProjectionInto(rows2, options) {
   const rect = options.rect;
   const bottom = rect.row + Math.max(0, rect.height);
@@ -17573,27 +17439,104 @@ function apiWorkbenchTextboxRenderCommandsInto(target, rows2, options = {}) {
   target.length = written;
   return target;
 }
-function writeTextboxRenderCommand(target, index, options) {
-  const command = target[index] ?? {
-    role: "body",
-    text: "",
-    column: 0,
-    row: 0,
-    width: 0,
-    active: false,
-    header: false
-  };
-  command.role = options.role;
-  command.text = options.text;
-  command.column = options.column;
-  command.row = options.row;
-  command.width = options.width;
-  command.active = options.active;
-  command.header = options.header;
-  target[index] = command;
+function apiWorkbenchButtonRowInto(target, options) {
+  const detail = options.detail ? ` ${options.detail}` : "";
+  return writeProjectedControlRow(
+    target,
+    options.id,
+    `${buttonText(options.label, { compact: options.compact })}${detail}`,
+    { button: true, action: options.action }
+  );
 }
-
-// app/api_workbench_wrapped_options.ts
+function apiWorkbenchDropdownHeaderRowInto(target, options) {
+  const expandedGlyph = options.expandedGlyph ?? "\u25BE";
+  const collapsedGlyph = options.collapsedGlyph ?? "\u25B8";
+  return writeProjectedControlRow(
+    target,
+    "dropdown",
+    `${options.title}  ${options.expanded ? expandedGlyph : collapsedGlyph} ${options.label}`,
+    { action: "toggle" }
+  );
+}
+function apiWorkbenchInputRowInto(target, options) {
+  return writeProjectedControlRow(
+    target,
+    "input",
+    `${options.title}     ${options.text}${options.active ? options.cursorGlyph ?? "\u258C" : ""}`,
+    { action: "focus" }
+  );
+}
+function apiWorkbenchSliderRowInto(target, options) {
+  return writeProjectedControlRow(
+    target,
+    "slider",
+    `${options.title ?? "Slider"}    ${options.track.text} ${options.value}/${options.max}`,
+    { previous: true, next: true }
+  );
+}
+function apiWorkbenchStepperRowInto(target, options) {
+  const reserve = Math.max(0, Math.floor(options.columnReserveWidth ?? 12));
+  const stepWidth = Math.max(8, Math.floor(options.rectWidth) - reserve);
+  return writeProjectedControlRow(
+    target,
+    "stepper",
+    `${options.title ?? "Stepper"}   ${renderStepper(options.steps, options.activeIndex, "horizontal", stepWidth)[0] ?? ""}`,
+    { previous: true, next: true }
+  );
+}
+function apiWorkbenchProgressRowInto(target, options) {
+  const suffix = options.suffix ?? "%";
+  return writeProjectedControlRow(
+    target,
+    "slider",
+    `${options.title ?? "Progress"}  ${options.track.text} ${options.value}${suffix}`
+  );
+}
+function apiWorkbenchControlsRowsInto(target, options) {
+  let written = 0;
+  target[written] = apiWorkbenchButtonRowInto(target[written], {
+    id: "button",
+    label: "Run Action",
+    detail: `presses=${options.buttonPressCount}`
+  });
+  written += 1;
+  target[written] = apiWorkbenchButtonRowInto(target[written], {
+    id: "genericButton",
+    label: "Generic Button",
+    detail: `presses=${options.genericButtonPressCount}`
+  });
+  written += 1;
+  target[written] = apiWorkbenchButtonRowInto(target[written], {
+    id: "modal",
+    label: "Open Modal",
+    detail: `state=${options.modalOpen ? "open" : "closed"}`
+  });
+  written += 1;
+  target[written] = apiWorkbenchSliderRowInto(target[written], options.slider);
+  written += 1;
+  written = appendCheckboxRows(target, written, options.checkboxes, "Checkboxes", writeProjectedControlRow);
+  written = appendRadioRows(
+    target,
+    written,
+    options.radio.items,
+    options.radio.activeIndex,
+    "Radio",
+    writeProjectedControlRow
+  );
+  written = appendComboHeaderRows(target, written, options.combo);
+  target[written] = apiWorkbenchDropdownHeaderRowInto(target[written], options.dropdown);
+  written += 1;
+  target[written] = apiWorkbenchInputRowInto(target[written], options.input);
+  written += 1;
+  target[written] = apiWorkbenchStepperRowInto(target[written], options.stepper);
+  written += 1;
+  target[written] = writeProjectedControlRow(target[written], "textbox", "TextBox", { action: "focus" });
+  written += 1;
+  target[written] = apiWorkbenchProgressRowInto(target[written], options.progress);
+  written += 1;
+  target.length = written;
+  return target;
+}
 function apiWorkbenchWrappedOptionsRenderCommandsInto(target, hits, options) {
   const inset2 = Math.max(0, Math.floor(options.horizontalInset ?? 2));
   const width = Math.max(Math.max(1, Math.floor(options.minWidth ?? 8)), Math.floor(options.rect.width) - inset2 * 2);
@@ -17631,41 +17574,6 @@ function apiWorkbenchWrappedOptionsRenderCommandsInto(target, hits, options) {
   hits.length = hitCount;
   return target;
 }
-function writeWrappedOptionRenderCommand(target, index, options) {
-  const command = target[index] ?? {
-    text: "",
-    column: 0,
-    row: 0,
-    width: 0,
-    active: false
-  };
-  command.text = options.text;
-  command.column = options.column;
-  command.row = options.row;
-  command.width = options.width;
-  command.active = options.active;
-  target[index] = command;
-}
-function writeControlHit2(target, index, source) {
-  const hit = target[index] ?? {
-    column: 0,
-    row: 0,
-    width: 0,
-    height: 1,
-    id: source.id,
-    action: source.action
-  };
-  hit.column = source.column;
-  hit.row = source.row;
-  hit.width = source.width;
-  hit.height = source.height;
-  hit.id = source.id;
-  hit.action = source.action;
-  hit.index = source.index;
-  target[index] = hit;
-}
-
-// app/api_workbench_controls.ts
 function nextApiWorkbenchControlId(current, delta, options = {}) {
   const index = apiWorkbenchControlIds.indexOf(current);
   if (index < 0) return options.wrap ? apiWorkbenchControlIds[0] : void 0;
@@ -17718,6 +17626,58 @@ function maxItemTextWidth(items) {
   for (const item of items) width = Math.max(width, textWidth(item));
   return width;
 }
+function writeWrappedOptionRenderCommand(target, index, options) {
+  const command = target[index] ?? {
+    text: "",
+    column: 0,
+    row: 0,
+    width: 0,
+    active: false
+  };
+  command.text = options.text;
+  command.column = options.column;
+  command.row = options.row;
+  command.width = options.width;
+  command.active = options.active;
+  target[index] = command;
+}
+function writeControlHit2(target, index, source) {
+  const hit = target[index] ?? {
+    column: 0,
+    row: 0,
+    width: 0,
+    height: 1,
+    id: source.id,
+    action: source.action
+  };
+  hit.column = source.column;
+  hit.row = source.row;
+  hit.width = source.width;
+  hit.height = source.height;
+  hit.id = source.id;
+  hit.action = source.action;
+  hit.index = source.index;
+  target[index] = hit;
+}
+function writeTextboxRenderCommand(target, index, options) {
+  const command = target[index] ?? {
+    role: "body",
+    text: "",
+    column: 0,
+    row: 0,
+    width: 0,
+    active: false,
+    header: false
+  };
+  command.role = options.role;
+  command.text = options.text;
+  command.column = options.column;
+  command.row = options.row;
+  command.width = options.width;
+  command.active = options.active;
+  command.header = options.header;
+  target[index] = command;
+}
 function apiWorkbenchStepperHitPlacementsInto(target, steps, activeIndex, rect, row, options = {}) {
   const columnOffset = Math.max(0, Math.floor(options.columnOffset ?? 12));
   const gap = Math.max(0, Math.floor(options.gap ?? 3));
@@ -17751,6 +17711,67 @@ function apiWorkbenchStepperHitPlacementsInto(target, steps, activeIndex, rect, 
   }
   target.length = written;
   return target;
+}
+function appendCheckboxRows(target, start, items, header, writeRow) {
+  let written = start;
+  target[written] = writeRow(target[written], "checkbox", header);
+  written += 1;
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    target[written] = writeRow(
+      target[written],
+      "checkbox",
+      `${renderCheckBoxMark(item.checked)} ${item.label}`,
+      { indent: true, index }
+    );
+    written += 1;
+  }
+  return written;
+}
+function appendRadioRows(target, start, items, activeIndex, header, writeRow) {
+  let written = start;
+  target[written] = writeRow(target[written], "radio", header, { previous: true, next: true });
+  written += 1;
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    const mark = item.selected ? "\u25CF" : "\u25CB";
+    const cursor = index === activeIndex ? ">" : " ";
+    target[written] = writeRow(
+      target[written],
+      "radio",
+      `${cursor} ${mark} ${item.label}`,
+      { indent: true, index }
+    );
+    written += 1;
+  }
+  return written;
+}
+function appendComboHeaderRows(target, start, options) {
+  const expandedGlyph = options.expandedGlyph ?? "\u25BE";
+  const collapsedGlyph = options.collapsedGlyph ?? "\u25B8";
+  const glyph = options.expanded ? expandedGlyph : collapsedGlyph;
+  const title = `${options.title}  ${glyph}`;
+  const header = `${title} ${options.label}`;
+  const shouldSplit = textWidth(`> ${header}`) > options.rectWidth && options.rectWidth > Math.max(0, Math.floor(options.splitMinWidth ?? 16));
+  let written = start;
+  target[written] = writeProjectedControlRow(target[written], "combo", shouldSplit ? title : header, {
+    action: "activate",
+    previous: options.previous,
+    next: options.next
+  });
+  written += 1;
+  if (shouldSplit) {
+    target[written] = writeProjectedControlRow(target[written], "combo", options.label, { indent: true });
+    written += 1;
+  }
+  return written;
+}
+function writeProjectedControlRow(target, id2, value, options) {
+  const row = target ?? { id: id2, value };
+  row.id = id2;
+  row.value = value;
+  row.options = options;
+  return row;
 }
 
 // app/api_workbench_hit.ts
@@ -18140,7 +18161,7 @@ function workbenchDataTablePageSize(options) {
   return Math.max(1, Math.floor(options.height) - 2 - footerRows.length);
 }
 
-// app/workbench_explorer.ts
+// app/workbench_panels.ts
 function workbenchExplorerRowsInto(target, options) {
   const { rows: rows2, selectedIndex, theme: t, contrast } = options;
   target.length = rows2.length;
@@ -18158,8 +18179,6 @@ function workbenchExplorerRowsInto(target, options) {
   }
   return target;
 }
-
-// app/workbench_inspector.ts
 function workbenchInspectorRowsInto(target, options) {
   const t = options.theme;
   target.length = 0;
@@ -18198,8 +18217,6 @@ function workbenchInspectorRowsInto(target, options) {
   }
   return target;
 }
-
-// app/workbench_logs.ts
 function workbenchLogRowsFromSourcesInto(target, sources, theme2) {
   let rowCount = 0;
   for (let sourceIndex = 0; sourceIndex < sources.length; sourceIndex += 1) {

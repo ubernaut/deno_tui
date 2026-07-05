@@ -7,9 +7,9 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `710`
+- Tracked files after the current consolidation passes: `708`
 - Tracked top-level file counts:
-  - `src`: `349`
+  - `src`: `347`
   - `tests`: `143`
   - `app`: `47`
   - `docs`: `50`
@@ -20,7 +20,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/app`: `24,497` lines across `115` files
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,261` lines across `43` files
-  - `src/three_ascii`: `7,188` lines across `37` files
+  - `src/three_ascii`: `7,189` lines across `35` files
   - `app`: `20,426` lines across `47` files
   - `examples`: `8,732` lines across `41` files
   - `tests`: `49,081` lines across `143` files
@@ -75,6 +75,8 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Three ASCII deferred readback staleness now lives in `src/three_ascii/deferred_frame.ts`
   - Three ASCII deferred readback submission and failure handling now live in `src/three_ascii/renderer.ts`
   - Three ASCII camera-aspect, image-frame, and mapped-readback helpers now live in `src/three_ascii/renderer.ts`
+  - Three ASCII compute dispatch command encoding now lives in `src/three_ascii/compute_plan.ts`
+  - Three ASCII compute bind-group assembly now lives in `src/three_ascii/compute_resources.ts`
   - Workbench viewport sizing and active-window reveal scroll math now live in `src/app/workbench_layout.ts`
   - Workbench ANSI output flushing now lives in `src/app/workbench_ansi_screen.ts`
   - Workbench diagnostic status/log formatting now lives in `src/app/workbench_status.ts`

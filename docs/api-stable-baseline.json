@@ -682,6 +682,13 @@
       "documented": true
     },
     {
+      "module": "src/app/commands.ts",
+      "name": "insertUniqueSortedString",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
       "module": "src/app/component_commands.ts",
       "name": "bindComponentCatalogCommands",
       "kind": "function",
@@ -3426,23 +3433,23 @@
       "documented": true
     },
     {
-      "module": "src/app/workbench_ansi_output.ts",
+      "module": "src/app/workbench_ansi_screen.ts",
       "name": "WorkbenchAnsiScreenFlushStats",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
     },
     {
-      "module": "src/app/workbench_ansi_output.ts",
-      "name": "writeWorkbenchAnsiScreenOutput",
-      "kind": "function",
+      "module": "src/app/workbench_ansi_screen.ts",
+      "name": "WorkbenchAnsiScreenPainter",
+      "kind": "class",
       "typeOnly": false,
       "documented": true
     },
     {
       "module": "src/app/workbench_ansi_screen.ts",
-      "name": "WorkbenchAnsiScreenPainter",
-      "kind": "class",
+      "name": "writeWorkbenchAnsiScreenOutput",
+      "kind": "function",
       "typeOnly": false,
       "documented": true
     },
@@ -3612,48 +3619,6 @@
       "name": "wrappedControlOptionRowCount",
       "kind": "function",
       "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/workbench_diagnostics.ts",
-      "name": "appendBoundedWorkbenchLogRow",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/workbench_diagnostics.ts",
-      "name": "formatWorkbenchDiagnosticLogEntry",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/workbench_diagnostics.ts",
-      "name": "formatWorkbenchDiagnosticStatus",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/workbench_diagnostics.ts",
-      "name": "initialWorkbenchDiagnosticLogRows",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/workbench_diagnostics.ts",
-      "name": "subscribeWorkbenchDiagnosticLog",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/workbench_diagnostics.ts",
-      "name": "WorkbenchDiagnosticFormatOptions",
-      "kind": "interface",
-      "typeOnly": true,
       "documented": true
     },
     {
@@ -3966,6 +3931,20 @@
     },
     {
       "module": "src/app/workbench_layout.ts",
+      "name": "workbenchContentViewport",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
+      "name": "WorkbenchContentViewportOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
       "name": "workbenchFullscreenWindowRect",
       "kind": "function",
       "typeOnly": false,
@@ -3988,6 +3967,20 @@
     {
       "module": "src/app/workbench_layout.ts",
       "name": "WorkbenchLayoutShape",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
+      "name": "workbenchRevealActiveRowOffset",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
+      "name": "WorkbenchRevealActiveRowOptions",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
@@ -4702,6 +4695,55 @@
     {
       "module": "src/app/workbench_shelf.ts",
       "name": "WorkbenchTabSource",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "appendBoundedWorkbenchLogRow",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "formatWorkbenchDiagnosticLogEntry",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "formatWorkbenchDiagnosticStatus",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "initialWorkbenchDiagnosticLogRows",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "subscribeWorkbenchDiagnosticLog",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "workbenchCompactStatusDiagnostics",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "WorkbenchDiagnosticFormatOptions",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
@@ -5577,34 +5619,6 @@
     {
       "module": "src/app/workbench_titlebar.ts",
       "name": "WorkbenchTitlebarLayoutOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/workbench_viewport.ts",
-      "name": "workbenchContentViewport",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/workbench_viewport.ts",
-      "name": "WorkbenchContentViewportOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/workbench_viewport.ts",
-      "name": "workbenchRevealActiveRowOffset",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/workbench_viewport.ts",
-      "name": "WorkbenchRevealActiveRowOptions",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
@@ -7951,6 +7965,13 @@
       "module": "src/components/statusbar.ts",
       "name": "StatusBarOptions",
       "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/components/statusbar.ts",
+      "name": "StatusBarPriority",
+      "kind": "type",
       "typeOnly": true,
       "documented": true
     },
@@ -15221,27 +15242,6 @@
       "documented": true
     },
     {
-      "module": "src/three_ascii/image_frame.ts",
-      "name": "readThreeAsciiImageFrame",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/three_ascii/image_frame.ts",
-      "name": "ThreeAsciiImageFrame",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/three_ascii/image_frame.ts",
-      "name": "ThreeAsciiImageFrameSource",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
       "module": "src/three_ascii/options.ts",
       "name": "applyAsciiPreset",
       "kind": "function",
@@ -15418,6 +15418,48 @@
     },
     {
       "module": "src/three_ascii/renderer.ts",
+      "name": "computeThreeAsciiCameraAspect",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": false
+    },
+    {
+      "module": "src/three_ascii/renderer.ts",
+      "name": "handleThreeAsciiDeferredReadbackFailure",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": false
+    },
+    {
+      "module": "src/three_ascii/renderer.ts",
+      "name": "readThreeAsciiImageFrame",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/three_ascii/renderer.ts",
+      "name": "resolveThreeAsciiDeferredReadbackSubmission",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": false
+    },
+    {
+      "module": "src/three_ascii/renderer.ts",
+      "name": "shouldUpdateThreeAsciiCameraAspect",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": false
+    },
+    {
+      "module": "src/three_ascii/renderer.ts",
+      "name": "THREE_ASCII_CAMERA_ASPECT_EPSILON",
+      "kind": "const",
+      "typeOnly": false,
+      "documented": false
+    },
+    {
+      "module": "src/three_ascii/renderer.ts",
       "name": "ThreeAsciiAnsiGridAssembler",
       "kind": "class",
       "typeOnly": false,
@@ -15429,6 +15471,62 @@
       "kind": "interface",
       "typeOnly": true,
       "documented": true
+    },
+    {
+      "module": "src/three_ascii/renderer.ts",
+      "name": "ThreeAsciiCameraAspectInput",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": false
+    },
+    {
+      "module": "src/three_ascii/renderer.ts",
+      "name": "ThreeAsciiDeferredReadbackFailureQueue",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": false
+    },
+    {
+      "module": "src/three_ascii/renderer.ts",
+      "name": "ThreeAsciiDeferredReadbackFailureResult",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": false
+    },
+    {
+      "module": "src/three_ascii/renderer.ts",
+      "name": "ThreeAsciiDeferredReadbackSubmission",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": false
+    },
+    {
+      "module": "src/three_ascii/renderer.ts",
+      "name": "ThreeAsciiImageFrame",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/three_ascii/renderer.ts",
+      "name": "ThreeAsciiImageFrameSource",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/three_ascii/renderer.ts",
+      "name": "ThreeAsciiMappedReadbackBuffer",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": false
+    },
+    {
+      "module": "src/three_ascii/renderer.ts",
+      "name": "ThreeAsciiMappedReadbackOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": false
     },
     {
       "module": "src/three_ascii/renderer.ts",
@@ -15457,6 +15555,13 @@
       "kind": "interface",
       "typeOnly": true,
       "documented": true
+    },
+    {
+      "module": "src/three_ascii/renderer.ts",
+      "name": "withThreeAsciiMappedReadback",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": false
     },
     {
       "module": "src/three_ascii/webgpu_compat.ts",

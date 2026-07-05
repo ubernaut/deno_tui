@@ -17,15 +17,16 @@ import {
   ThreeAsciiDeferredReadbackQueue,
 } from "./deferred_readback.ts";
 import { resolveThreeAsciiDeferredPreSceneFrame } from "./deferred_frame.ts";
-import { createThreeAsciiComputeBindGroups } from "./compute_bind_groups.ts";
 import {
   encodeThreeAsciiComputeDispatchCommands,
+  ThreeAsciiComputeDispatchPlanCache,
+  type ThreeAsciiComputeDispatchPlanInput,
   type ThreeAsciiComputeDispatchResources,
-} from "./compute_commands.ts";
-import { ThreeAsciiComputeDispatchPlanCache, type ThreeAsciiComputeDispatchPlanInput } from "./compute_plan.ts";
+} from "./compute_plan.ts";
 import { createThreeAsciiComputePipeline } from "./compute_pipeline.ts";
 import {
   applyThreeAsciiComputeResourcePlanState,
+  createThreeAsciiComputeBindGroups,
   createThreeAsciiComputeResourcePlan,
   type ThreeAsciiComputeResourcePlanInput,
 } from "./compute_resources.ts";
@@ -122,18 +123,22 @@ export interface ThreeAsciiRenderFrame {
 export type { ThreeAsciiRenderFrameOptions } from "./frame_options.ts";
 export type { ThreeAsciiRendererPerformance } from "./performance.ts";
 
+/** Camera aspect inputs normalized from terminal cell geometry. */
 export interface ThreeAsciiCameraAspectInput {
   columns: number;
   rows: number;
   pixelAspectRatio: number;
 }
 
+/** Minimum aspect delta before the renderer updates a perspective camera. */
 export const THREE_ASCII_CAMERA_ASPECT_EPSILON = 0.000001;
 
+/** Computes a camera aspect ratio that accounts for terminal cell pixel shape. */
 export function computeThreeAsciiCameraAspect(input: ThreeAsciiCameraAspectInput): number {
   return (input.columns * input.pixelAspectRatio) / Math.max(1, input.rows);
 }
 
+/** Reports whether a perspective camera aspect differs enough to update. */
 export function shouldUpdateThreeAsciiCameraAspect(
   current: number,
   next: number,
@@ -173,12 +178,14 @@ export async function readThreeAsciiImageFrame(
   };
 }
 
+/** Minimal mapped GPU readback buffer contract used by the renderer. */
 export interface ThreeAsciiMappedReadbackBuffer {
   mapAsync(mode: number): Promise<void>;
   getMappedRange(): ArrayBuffer;
   unmap(): void;
 }
 
+/** Options for mapping a GPU readback buffer and decoding its contents. */
 export interface ThreeAsciiMappedReadbackOptions<T> {
   mapModeRead: number;
   now?: () => number;
@@ -186,6 +193,7 @@ export interface ThreeAsciiMappedReadbackOptions<T> {
   read: (source: ArrayBuffer, readbackMs: number) => T;
 }
 
+/** Maps a GPU readback buffer, measures readback latency, reads it, and always unmaps after successful mapping. */
 export async function withThreeAsciiMappedReadback<T>(
   buffer: ThreeAsciiMappedReadbackBuffer,
   options: ThreeAsciiMappedReadbackOptions<T>,
@@ -221,6 +229,7 @@ export class ThreeAsciiReadbackError extends Error {
   }
 }
 
+/** Decision for whether a deferred readback should submit, queue, or reuse a cached grid. */
 export interface ThreeAsciiDeferredReadbackSubmission<TReadback> {
   readback?: TReadback;
   grid: string[][];
@@ -228,6 +237,7 @@ export interface ThreeAsciiDeferredReadbackSubmission<TReadback> {
   queue: boolean;
 }
 
+/** Resolves deferred readback submission state from completed queue output and an available readback slot. */
 export function resolveThreeAsciiDeferredReadbackSubmission<TReadback>(
   completed: ThreeAsciiDeferredReadbackConsumeResult,
   readback: TReadback | undefined,
@@ -258,16 +268,19 @@ export function resolveThreeAsciiDeferredReadbackSubmission<TReadback>(
   };
 }
 
+/** Deferred readback queue operations needed when handling readback failure. */
 export interface ThreeAsciiDeferredReadbackFailureQueue {
   lastCompletedGrid(): string[][];
   destroy(): void;
 }
 
+/** Result of classifying and handling a deferred readback failure. */
 export interface ThreeAsciiDeferredReadbackFailureResult {
   handled: boolean;
   result?: ThreeAsciiDeferredReadbackConsumeResult;
 }
 
+/** Converts expected readback errors into an unavailable-readback result while preserving cached output. */
 export function handleThreeAsciiDeferredReadbackFailure(
   error: unknown,
   expectedError: new (...args: unknown[]) => Error,

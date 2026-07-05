@@ -22,15 +22,15 @@ import {
   rgbToAnsiForeground,
 } from "../src/three_ascii/colors.ts";
 import { resolveThreeAsciiComputeMode } from "../src/three_ascii/compute_mode.ts";
-import { createThreeAsciiComputeBindGroups } from "../src/three_ascii/compute_bind_groups.ts";
-import { encodeThreeAsciiComputeDispatchCommands } from "../src/three_ascii/compute_commands.ts";
 import {
   createThreeAsciiComputeDispatchPlan,
+  encodeThreeAsciiComputeDispatchCommands,
   ThreeAsciiComputeDispatchPlanCache,
 } from "../src/three_ascii/compute_plan.ts";
 import { createThreeAsciiComputePipeline } from "../src/three_ascii/compute_pipeline.ts";
 import {
   applyThreeAsciiComputeResourcePlanState,
+  createThreeAsciiComputeBindGroups,
   createThreeAsciiComputeResourcePlan,
 } from "../src/three_ascii/compute_resources.ts";
 import {
