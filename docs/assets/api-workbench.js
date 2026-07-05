@@ -3134,7 +3134,10 @@ var DrawObjectSpatialIndex = class _DrawObjectSpatialIndex {
 var textEncoder2 = new TextEncoder();
 var textDecoder3 = new TextDecoder();
 var MAX_ANSI_CELL_PARTS_CACHE_SIZE = 32768;
+var MAX_ANSI_PREFIX_STATE_CACHE_SIZE = 8192;
 var ansiCellPartsCache = /* @__PURE__ */ new Map();
+var emptyAnsiPrefixState = { foreground: false, background: false, other: false };
+var ansiPrefixStateCache = /* @__PURE__ */ new Map();
 var AnsiCanvasSink = class {
   requiresCellUpdates = false;
   #stdout;
@@ -3254,11 +3257,19 @@ function compactAnsiCellRange(values) {
   return output;
 }
 function ansiPrefixState(prefix) {
-  return {
+  if (!prefix) return emptyAnsiPrefixState;
+  const cached = ansiPrefixStateCache.get(prefix);
+  if (cached) return cached;
+  const state = {
     foreground: prefix.includes("[38;") || prefix.includes(";38;"),
     background: prefix.includes("[48;") || prefix.includes(";48;"),
     other: prefix.includes("[0m") || prefix.includes("[1m") || prefix.includes(";1m")
   };
+  if (ansiPrefixStateCache.size > MAX_ANSI_PREFIX_STATE_CACHE_SIZE) {
+    ansiPrefixStateCache.clear();
+  }
+  ansiPrefixStateCache.set(prefix, state);
+  return state;
 }
 function ansiPrefixCanOverrideActive(active2, next) {
   if (active2.other) return false;
