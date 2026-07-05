@@ -49,6 +49,7 @@ export interface WorkbenchFullscreenVisualSmokeResult extends WorkbenchVisualSmo
   fullscreen: boolean;
   fullscreenCells: number;
   fullscreenCap: number;
+  fullscreenBodyMinCells: number;
   truecolorBackgroundRows: number;
   truecolorBackgroundMaxColumns: number;
   bodyTruecolorBackgroundRows: number;
@@ -331,7 +332,8 @@ export function inspectWorkbenchFullscreenVisualSmokeOutput(
   const truecolorBackgroundMaxColumns = base.finalTruecolorBackgroundMaxColumns;
   const bodyTruecolor = threeBodyTruecolorCoverage(base.screenLines, replay.truecolorStyled);
   const missing = [...base.missing];
-  const minCells = Math.max(1, Math.floor(options.minCells ?? 3_000));
+  const fullscreenBodyMinCells = fullscreenBodyRenderCellMinimum(base.threePane);
+  const minCells = Math.max(1, Math.floor(options.minCells ?? 3_000), fullscreenBodyMinCells);
   const minTruecolorRows = Math.max(1, Math.floor(options.minTruecolorRows ?? Math.min(12, options.rows)));
   const minTruecolorColumns = Math.max(1, Math.floor(options.minTruecolorColumns ?? options.columns * 0.75));
   const rendererUnavailable = base.screenLines.join("\n").includes("UNAVAILABLE");
@@ -362,6 +364,7 @@ export function inspectWorkbenchFullscreenVisualSmokeOutput(
     fullscreen,
     fullscreenCells,
     fullscreenCap,
+    fullscreenBodyMinCells,
     truecolorBackgroundRows,
     truecolorBackgroundMaxColumns,
     bodyTruecolorBackgroundRows: bodyTruecolor.rows,
@@ -369,6 +372,12 @@ export function inspectWorkbenchFullscreenVisualSmokeOutput(
     bodyVisibleRows: bodyVisible.rows,
     bodyVisibleMaxColumns: bodyVisible.maxColumns,
   };
+}
+
+function fullscreenBodyRenderCellMinimum(coverage: WorkbenchThreePaneCoverage | undefined): number {
+  if (!coverage?.found || coverage.bodyRows <= 0 || coverage.bodyColumns <= 0) return 0;
+  const sceneRows = Math.max(1, coverage.bodyRows - 1);
+  return sceneRows * coverage.bodyColumns;
 }
 
 export function isTransientWorkbenchThreeResizeResult(

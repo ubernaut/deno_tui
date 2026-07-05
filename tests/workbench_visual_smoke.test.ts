@@ -256,6 +256,39 @@ Deno.test("workbench fullscreen visual smoke inspector verifies scale and trueco
   assertEquals(countTruecolorBackgroundRows(output), 3);
 });
 
+Deno.test("workbench fullscreen visual smoke rejects renderer grids below measured body size", () => {
+  const top = `┌─ THREE ASCII ${"─".repeat(36)}┐`;
+  const innerWidth = top.length - 2;
+  const line = (text: string) => `│${text.padEnd(innerWidth)}│`;
+  const minBodyCells = innerWidth * 4;
+  const output = [
+    "\x1b[2J",
+    "\x1b[1;1HAPI WORKBENCH",
+    `\x1b[4;1H${top}`,
+    `\x1b[5;1H${line(" ACEROLA THREE.JS ASCII · BLOCKS")}`,
+    `\x1b[6;1H${line(`frame 7ms scene 5 read 13 asm 0 ${minBodyCells - 1}c @10fps live 10fps`)}`,
+    `\x1b[7;2H\x1b[48;2;1;2;3m\x1b[38;2;1;2;3m${"█".repeat(innerWidth)}\x1b[0m`,
+    `\x1b[8;2H\x1b[48;2;4;5;6m\x1b[38;2;4;5;6m${"█".repeat(innerWidth)}\x1b[0m`,
+    `\x1b[9;2H\x1b[48;2;7;8;9m\x1b[38;2;7;8;9m${"█".repeat(innerWidth)}\x1b[0m`,
+    `\x1b[10;2H\x1b[48;2;9;8;7m\x1b[38;2;9;8;7m${"█".repeat(innerWidth)}\x1b[0m`,
+    `\x1b[11;2H\x1b[48;2;6;5;4m\x1b[38;2;6;5;4m${"█".repeat(innerWidth)}\x1b[0m`,
+    `\x1b[12;1H└${"─".repeat(innerWidth)}┘`,
+    "\x1b[14;1Hfocus Three ASCII | Unit-01  F10 menu",
+  ].join("");
+  const result = inspectWorkbenchFullscreenVisualSmokeOutput(output, {
+    columns: 80,
+    rows: 14,
+    minCells: 1,
+    minTruecolorRows: 5,
+    minTruecolorColumns: innerWidth,
+  });
+
+  assertEquals(result.passed, false);
+  assertEquals(result.fullscreenBodyMinCells, minBodyCells);
+  assertEquals(result.fullscreenCells, minBodyCells - 1);
+  assertEquals(result.missing, [`fullscreen three cells >= ${minBodyCells}`]);
+});
+
 Deno.test("workbench fullscreen visual smoke accepts compact telemetry after shrink resize", () => {
   const output = [
     "\x1b[2J",
