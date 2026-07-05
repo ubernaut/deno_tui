@@ -6,12 +6,15 @@ import type { Signal } from "../signals/mod.ts";
 import type { Action } from "./actions.ts";
 import type { AppPlugin, AppPluginDisposer, TuiApp } from "./app.ts";
 import { bindCommandKeymap, type CommandKeymapBindingOptions } from "./command_bindings.ts";
-import type { DataQueryParamsBindingHandle, DataQueryTableBindingHandle } from "./data_query_bindings.ts";
-import { bindDataQueryParams, bindDataQueryTable, type DataQueryTableBindingOptions } from "./data_query_bindings.ts";
 import {
   bindDataQueryCommands,
+  bindDataQueryParams,
+  bindDataQueryTable,
   type DataQueryCommandAction,
   type DataQueryCommandOptions,
+  type DataQueryParamsBindingHandle,
+  type DataQueryTableBindingHandle,
+  type DataQueryTableBindingOptions,
 } from "./data_query_commands.ts";
 import { DisposableStack } from "./disposables.ts";
 import type { Route } from "./router.ts";

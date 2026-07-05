@@ -598,92 +598,29 @@
       "documented": true
     },
     {
-      "module": "src/app/data_query_bindings.ts",
+      "module": "src/app/data_query_commands.ts",
+      "name": "bindDataQueryCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/data_query_commands.ts",
       "name": "bindDataQueryParams",
       "kind": "function",
       "typeOnly": false,
       "documented": true
     },
     {
-      "module": "src/app/data_query_bindings.ts",
+      "module": "src/app/data_query_commands.ts",
       "name": "bindDataQueryResult",
       "kind": "function",
       "typeOnly": false,
       "documented": true
     },
     {
-      "module": "src/app/data_query_bindings.ts",
-      "name": "bindDataQueryTable",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/data_query_bindings.ts",
-      "name": "DataQueryParamsBindingHandle",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/data_query_bindings.ts",
-      "name": "DataQueryParamsBindingInspection",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/data_query_bindings.ts",
-      "name": "DataQueryParamsBindingOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/data_query_bindings.ts",
-      "name": "DataQueryResultBindingHandle",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/data_query_bindings.ts",
-      "name": "DataQueryResultBindingInspection",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/data_query_bindings.ts",
-      "name": "DataQueryResultBindingOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/data_query_bindings.ts",
-      "name": "DataQueryTableBindingHandle",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/data_query_bindings.ts",
-      "name": "DataQueryTableBindingInspection",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/data_query_bindings.ts",
-      "name": "DataQueryTableBindingOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
       "module": "src/app/data_query_commands.ts",
-      "name": "bindDataQueryCommands",
+      "name": "bindDataQueryTable",
       "kind": "function",
       "typeOnly": false,
       "documented": true
@@ -725,7 +662,70 @@
     },
     {
       "module": "src/app/data_query_commands.ts",
+      "name": "DataQueryParamsBindingHandle",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/data_query_commands.ts",
+      "name": "DataQueryParamsBindingInspection",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/data_query_commands.ts",
+      "name": "DataQueryParamsBindingOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/data_query_commands.ts",
+      "name": "DataQueryResultBindingHandle",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/data_query_commands.ts",
+      "name": "DataQueryResultBindingInspection",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/data_query_commands.ts",
+      "name": "DataQueryResultBindingOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/data_query_commands.ts",
       "name": "DataQuerySortCommand",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/data_query_commands.ts",
+      "name": "DataQueryTableBindingHandle",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/data_query_commands.ts",
+      "name": "DataQueryTableBindingInspection",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/data_query_commands.ts",
+      "name": "DataQueryTableBindingOptions",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
