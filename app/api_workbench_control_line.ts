@@ -6,11 +6,33 @@ import { fitCellText } from "../src/app/workbench_frame.ts";
 import type { Rectangle } from "../src/types.ts";
 import { textWidth } from "../src/utils/strings.ts";
 
-import type {
-  ApiWorkbenchControlHitAction,
-  ApiWorkbenchControlHitPlacement,
-  ApiWorkbenchControlId,
-} from "./api_workbench_control_types.ts";
+export const apiWorkbenchControlIds = [
+  "button",
+  "genericButton",
+  "modal",
+  "slider",
+  "checkbox",
+  "radio",
+  "combo",
+  "dropdown",
+  "input",
+  "stepper",
+  "textbox",
+] as const;
+
+export type ApiWorkbenchControlId = typeof apiWorkbenchControlIds[number];
+
+export type ApiWorkbenchControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
+
+export interface ApiWorkbenchControlHitPlacement {
+  column: number;
+  row: number;
+  width: number;
+  height: number;
+  id: ApiWorkbenchControlId;
+  action: ApiWorkbenchControlHitAction;
+  index?: number;
+}
 
 export type ApiWorkbenchControlLineSegmentKind = "line" | WorkbenchControlButtonLineSegmentKind;
 

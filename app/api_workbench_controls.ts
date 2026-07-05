@@ -3,14 +3,16 @@ import { layoutWrappedControlOptions } from "../src/app/workbench_control_layout
 import { fitCellText } from "../src/app/workbench_frame.ts";
 import type { Rectangle } from "../src/types.ts";
 import { textWidth } from "../src/utils/strings.ts";
-import type { ApiWorkbenchControlLineRenderRole } from "./api_workbench_control_line.ts";
-import { type ApiWorkbenchControlId, apiWorkbenchControlIds } from "./api_workbench_control_types.ts";
-import type { ApiWorkbenchControlHitPlacement } from "./api_workbench_control_types.ts";
+import {
+  type ApiWorkbenchControlHitPlacement,
+  type ApiWorkbenchControlId,
+  apiWorkbenchControlIds,
+  type ApiWorkbenchControlLineRenderRole,
+} from "./api_workbench_control_line.ts";
 import type { ApiWorkbenchTextboxRenderCommand } from "./api_workbench_textbox.ts";
 
 export * from "./api_workbench_control_line.ts";
 export * from "./api_workbench_control_rows.ts";
-export * from "./api_workbench_control_types.ts";
 export * from "./api_workbench_textbox.ts";
 
 /** Minimal theme tokens needed to style API workbench controls. */

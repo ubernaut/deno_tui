@@ -3,7 +3,7 @@ import { wrapTextBoxLinesInto } from "../src/components/textbox.ts";
 import { fitCellText } from "../src/app/workbench_frame.ts";
 import type { Rectangle } from "../src/types.ts";
 
-import type { ApiWorkbenchControlHitPlacement } from "./api_workbench_control_types.ts";
+import type { ApiWorkbenchControlHitPlacement } from "./api_workbench_control_line.ts";
 
 export interface ApiWorkbenchTextboxProjectionOptions {
   rect: Rectangle;
