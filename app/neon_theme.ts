@@ -1,12 +1,13 @@
 import type { Accent } from "./types.ts";
+import { palette } from "./styles.ts";
 
 export const colors = {
-  void: "#05070d",
-  alarm: "#ff4231",
-  amber: "#ff9f24",
-  phosphor: "#7dffba",
-  signal: "#5bb0ff",
-  violet: "#b17cff",
+  void: palette.void,
+  alarm: palette.alarm,
+  amber: palette.amber,
+  phosphor: palette.phosphor,
+  signal: palette.signal,
+  violet: palette.violet,
 };
 
 export type NeonSection = "overview" | "signals" | "control" | "three";

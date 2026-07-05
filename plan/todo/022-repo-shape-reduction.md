@@ -175,6 +175,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     lookup, ordering, and render dispatch behind one stable visualization facade
   - app multiline text and list views now share one private retained-line lifecycle helper in `app/ui.ts`, removing
     duplicated resize/draw growth code without adding another app module
+  - Neon Three colors now derive from the shared app palette, removing a duplicated app-only color table while
+    preserving the existing Neon scene facade
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

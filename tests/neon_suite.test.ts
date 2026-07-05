@@ -37,6 +37,7 @@ import {
   neonWebDemoIds,
   renderNeonSuiteDemo,
 } from "../app/neon_suite.ts";
+import { palette } from "../app/styles.ts";
 import { threeSceneModes, type ThreeSceneSignal } from "../app/types.ts";
 
 const signal: ThreeSceneSignal = {
@@ -60,6 +61,17 @@ Deno.test("neon suite exposes OpenTUI parity web ordering and extended counts", 
   assertEquals(formatNeonSuiteAlert(neonSuiteSummary("opentui"), 80), "24 DEMOS / 6 THREE.JS SCENES");
   assertEquals(formatNeonSuiteAlert(neonSuiteSummary("opentui"), 32), "24 demos / 6 3D");
   assertEquals(formatNeonSuiteAlert(neonSuiteSummary("opentui"), 14), "24/6 3D");
+});
+
+Deno.test("neon theme colors derive from shared app palette", () => {
+  assertEquals(colors, {
+    void: palette.void,
+    alarm: palette.alarm,
+    amber: palette.amber,
+    phosphor: palette.phosphor,
+    signal: palette.signal,
+    violet: palette.violet,
+  });
 });
 
 Deno.test("neon suite all view can use the web dense ordering", () => {
