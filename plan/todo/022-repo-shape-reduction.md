@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `729`
+- Tracked files after the current consolidation passes: `728`
 - Tracked top-level file counts:
   - `src`: `349`
-  - `tests`: `162`
+  - `tests`: `161`
   - `app`: `47`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,188` lines across `37` files
   - `app`: `20,426` lines across `47` files
   - `examples`: `8,732` lines across `41` files
-  - `tests`: `49,146` lines across `162` files
+  - `tests`: `49,145` lines across `161` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `24MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -111,6 +111,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Three ASCII GPU buffer, uniform, performance, and headless canvas helper assertions are now bundled into
     `tests/three_ascii_core.test.ts`
   - Three panel effect, grid, and graphics helper assertions are now bundled into `tests/three_panel_core.test.ts`
+  - Three panel diagnostic assertions are now bundled into `tests/three_panel_core.test.ts`
   - Workbench terminal-size sync assertions are now bundled into `tests/workbench_repaint_policy.test.ts`
   - Workbench diagnostics formatting assertions are now bundled into `tests/workbench_status.test.ts`
   - Workbench prompt-input assertions are now bundled into `tests/workbench_text.test.ts`
@@ -132,9 +133,9 @@ The library core is real and valuable, but it needs clearer boundaries:
 - Continue using benchmark cases for hot helpers, but treat live probes as required evidence:
   - `deno task three-workbench:startup-probe`
   - `deno task three-ascii:live-probe -- --frames 45 --glyphs blocks --max-cells 960 --check --max-average-ms 40`
-- Latest workbench block-mode startup probe after the Three ASCII compute-pipeline test consolidation: `6.34ms` steady
-  average, about `157.7 fps` at `53x17` cells with the capped default-workbench probe. Latest standalone block-mode live
-  probe: `18.17ms` steady average, about `55.0 fps` at `31x15` cells.
+- Latest workbench block-mode startup probe after the Three panel diagnostics test consolidation: `6.88ms` steady
+  average, about `145.4 fps` at `53x17` cells with the capped default-workbench probe. Latest standalone block-mode live
+  probe: `18.41ms` steady average, about `54.3 fps` at `31x15` cells.
 - Avoid speculative micro-optimizations unless they improve measured workbench/default-demo behavior.
 
 ### P2: Split Demo Framework From Library Framework
