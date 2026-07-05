@@ -7,11 +7,11 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the first consolidation passes: `779`
+- Tracked files after the current consolidation passes: `813`
 - Tracked top-level file counts:
   - `src`: `368`
-  - `tests`: `222`
-  - `app`: `64`
+  - `tests`: `215`
+  - `app`: `59`
   - `docs`: `50`
   - `examples`: `42`
   - `scripts`: `27`
@@ -21,9 +21,9 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,241` lines across `43` files
   - `src/three_ascii`: `7,195` lines across `45` files
-  - `app`: `20,504` lines across `64` files
+  - `app`: `20,470` lines across `59` files
   - `examples`: `8,773` lines across `42` files
-  - `tests`: `49,495` lines across `222` files
+  - `tests`: `49,408` lines across `215` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `24MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -53,16 +53,21 @@ The library core is real and valuable, but it needs clearer boundaries:
   - system metrics parser shards are now in `app/system_metrics_sources.ts`
   - workbench buffer caches are now in `src/app/workbench_buffers.ts`
   - workbench ANSI cursor/span caches are now private helpers inside `src/app/workbench_ansi_screen.ts`
+  - standalone visualization app navigation and monitor-window helpers are local to `app/main.ts`
+  - API workbench explorer, inspector, and log row projectors are bundled in `app/workbench_panels.ts`
 - Next app-layer candidates:
-  - small app-only wrappers such as `app/workbench_three_panel.ts`
   - tiny control/window constants that are only consumed by workbench demos
-  - app navigation helpers that are not public package APIs
+  - app-only visualization fallback helpers with a single consumer
+  - narrow tests that only defend one private app helper file
 - Keep monitor behavior and tests intact, but reduce file count and import surface.
 
 ### P1: Replace Test Shard Proliferation With Behavioral Bundles
 
 - Merge tiny tests when they cover the same subsystem and do not need separate fixtures.
 - Preserve meaningful assertions, but stop creating one test file per one tiny helper.
+- Completed first passes:
+  - `tests/utils/*` are now `tests/utils.test.ts`
+  - API workbench explorer, inspector, and log projector tests are now `tests/workbench_panels.test.ts`
 - Prefer subsystem-level runtime smoke coverage for workbench, Three ASCII, terminal shell, and web interaction.
 
 ### P1: Keep Three ASCII Performance Gated By Real Probes
