@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `580`
+- Tracked files after the current consolidation passes: `579`
 - Tracked top-level file counts:
   - `src`: `296`
-  - `tests`: `84`
+  - `tests`: `83`
   - `app`: `29`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,000` lines across `25` files
   - `app`: `20,381` lines across `29` files
   - `examples`: `8,814` lines across `42` files
-  - `tests`: `49,565` lines across `84` files
+  - `tests`: `49,580` lines across `83` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -304,7 +304,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Workbench Three geometry/rectangle projection assertions are now bundled into `tests/workbench_three_panel.test.ts`
   - Workbench Three scene projection and equality assertions are now bundled into `tests/workbench_three_panel.test.ts`
   - Three panel adaptive render-cell budgeting is folded into `src/app/three_panel_policy.ts`, with its assertions now
-    bundled into `tests/three_panel_policy.test.ts`
+    bundled into `tests/three_panel_core.test.ts`
   - Three panel diagnostics are folded into `src/app/three_panel_core.ts`, keeping slow-frame, adaptive-budget, and
     Kitty fallback reporting with the panel runtime helpers instead of a standalone module
   - Three panel renderer-state/effect comparison helpers are folded into `src/app/three_panel_core.ts`, keeping renderer
@@ -323,8 +323,9 @@ The library core is real and valuable, but it needs clearer boundaries:
     helper behavior remains covered in `tests/three_panel_core.test.ts`, keeping frame tests focused on live view
     behavior.
   - duplicate Three panel render-policy, render-size, and adaptive-budget assertions were removed from
-    `tests/three_panel_frame.test.ts`; those pure policy behaviors remain covered in `tests/three_panel_policy.test.ts`,
-    leaving the frame suite focused on live panel behavior and renderer lifecycle scenarios.
+    `tests/three_panel_frame.test.ts`, then the standalone policy test shard was folded into
+    `tests/three_panel_core.test.ts`; the frame suite stays focused on live panel behavior and renderer lifecycle
+    scenarios.
   - terminal status tone color mapping is now resolved by the shared API Workbench catalog and covered in
     `tests/api_workbench_catalog.test.ts`, removing another renderer-local presentation switch without widening the
     stable package surface.
