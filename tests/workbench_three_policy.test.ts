@@ -31,7 +31,7 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
     960,
   ]);
   assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 480);
-  assertEquals(WORKBENCH_THREE_FULLSCREEN_MIN_CELLS, WORKBENCH_THREE_LIVE_MAX_CELLS);
+  assertEquals(WORKBENCH_THREE_FULLSCREEN_MIN_CELLS, 3_840);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 480_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 24_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 100_000);
@@ -51,7 +51,10 @@ Deno.test("API workbench Three policy raises effective cap only for fullscreen T
     apiWorkbenchThreeEffectiveMaxCells(120, { fullscreenThree: true }),
     WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
   );
-  assertEquals(apiWorkbenchThreeEffectiveMaxCells(960, { fullscreenThree: true }), 960);
+  assertEquals(
+    apiWorkbenchThreeEffectiveMaxCells(WORKBENCH_THREE_LIVE_MAX_CELLS, { fullscreenThree: true }),
+    WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
+  );
   assertEquals(apiWorkbenchThreeEffectiveMaxCells(120, { fullscreenThree: true, fullscreenMinCells: 240 }), 240);
 });
 

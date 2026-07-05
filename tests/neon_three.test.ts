@@ -37,14 +37,17 @@ Deno.test("wireframe thickness adds real geometry for ASCII sampling", () => {
   const thick = createNeonThreeScene("lattice", { wireframeThickness: 4 });
   let thinMeshes = 0;
   let thickMeshes = 0;
+  let thickInstancedMeshes = 0;
   thin.scene.traverse((object: Object3D) => {
     if (object.type === "Mesh") thinMeshes += 1;
   });
   thick.scene.traverse((object: Object3D) => {
     if (object.type === "Mesh") thickMeshes += 1;
+    if ((object as Object3D & { isInstancedMesh?: boolean }).isInstancedMesh) thickInstancedMeshes += 1;
   });
   thin.dispose();
   thick.dispose();
 
   assert(thickMeshes > thinMeshes);
+  assert(thickInstancedMeshes > 0);
 });

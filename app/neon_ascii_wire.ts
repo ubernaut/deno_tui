@@ -19,23 +19,6 @@ function isWireframeMaterial(material: THREE.Material | THREE.Material[] | undef
   return Boolean((selected as { wireframe?: boolean } | undefined)?.wireframe);
 }
 
-function createThickSegment(
-  start: THREE.Vector3,
-  end: THREE.Vector3,
-  radius: number,
-  material: THREE.Material,
-): THREE.Mesh | undefined {
-  const direction = new THREE.Vector3().subVectors(end, start);
-  const length = direction.length();
-  if (length <= 0.0001) return undefined;
-
-  const geometry = new THREE.CylinderGeometry(radius, radius, length, 6, 1, false);
-  const segment = new THREE.Mesh(geometry, material);
-  segment.position.copy(start).add(end).multiplyScalar(0.5);
-  segment.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
-  return segment;
-}
-
 function createThickSegmentsFromGeometry(
   geometry: THREE.BufferGeometry,
   segmented: boolean,
@@ -49,19 +32,45 @@ function createThickSegmentsFromGeometry(
   overlay.userData[asciiWireOverlay] = true;
   const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.92 });
   const maxSegments = Math.min(segmented ? positions.count / 2 : positions.count - 1, 520);
+  const segmentGeometry = new THREE.CylinderGeometry(radius, radius, 1, 6, 1, false);
+  const segments = new THREE.InstancedMesh(segmentGeometry, material, maxSegments);
+  segments.userData[asciiWireOverlay] = true;
+  const start = new THREE.Vector3();
+  const end = new THREE.Vector3();
+  const midpoint = new THREE.Vector3();
+  const direction = new THREE.Vector3();
+  const quaternion = new THREE.Quaternion();
+  const up = new THREE.Vector3(0, 1, 0);
+  const scale = new THREE.Vector3(1, 1, 1);
+  const matrix = new THREE.Matrix4();
+  let segmentCount = 0;
+
   for (let index = 0; index < maxSegments; index += 1) {
     const startIndex = segmented ? index * 2 : index;
     const endIndex = segmented ? startIndex + 1 : index + 1;
-    const start = new THREE.Vector3().fromBufferAttribute(positions, startIndex);
-    const end = new THREE.Vector3().fromBufferAttribute(positions, endIndex);
-    const segment = createThickSegment(start, end, radius, material.clone());
-    if (segment) overlay.add(segment);
+    start.fromBufferAttribute(positions, startIndex);
+    end.fromBufferAttribute(positions, endIndex);
+    direction.subVectors(end, start);
+    const length = direction.length();
+    if (length <= 0.0001) continue;
+
+    midpoint.copy(start).add(end).multiplyScalar(0.5);
+    quaternion.setFromUnitVectors(up, direction.normalize());
+    scale.set(1, length, 1);
+    matrix.compose(midpoint, quaternion, scale);
+    segments.setMatrixAt(segmentCount, matrix);
+    segmentCount += 1;
   }
 
-  if (overlay.children.length === 0) {
+  if (segmentCount === 0) {
+    segmentGeometry.dispose();
     material.dispose();
     return undefined;
   }
+
+  segments.count = segmentCount;
+  segments.instanceMatrix.needsUpdate = true;
+  overlay.add(segments);
   return overlay;
 }
 

@@ -18,6 +18,7 @@ export interface WorkbenchThreePanelEntry<TPanel extends WorkbenchThreePanelLife
   graphicsRectangle: WorkbenchThreeRectTarget & WorkbenchThreeDisposableSignal;
   scene: WorkbenchThreeNullableSignal<TScene> & WorkbenchThreeDisposableSignal;
   panel: TPanel;
+  resources?: readonly WorkbenchThreeDisposableSignal[];
 }
 
 export type WorkbenchThreePanelFactory<TId extends string, TPanel extends WorkbenchThreePanelLifecycle, TScene> = (
@@ -90,4 +91,5 @@ function disposeWorkbenchThreePanelEntry<TPanel extends WorkbenchThreePanelLifec
   entry.scene.dispose();
   entry.rectangle.dispose();
   entry.graphicsRectangle.dispose();
+  for (const resource of entry.resources ?? []) resource.dispose();
 }

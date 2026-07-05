@@ -1,4 +1,4 @@
-import { PerspectiveCamera, Scene } from "npm:three@0.183.2";
+import { Color, PerspectiveCamera, Scene } from "npm:three@0.183.2";
 import { assertEquals, assertRejects } from "./deps.ts";
 import { ThreeAsciiReadbackError, ThreeAsciiRenderer } from "../src/three_ascii/renderer.ts";
 
@@ -406,6 +406,67 @@ Deno.test("ThreeAsciiRenderer reuses last completed grid while resolving deferre
 
   assertEquals(grid, cachedGrid);
   assertEquals(lastCompletedGridCalls, 1);
+});
+
+Deno.test("ThreeAsciiRenderer cold deferred submission returns without blocking for bootstrap", async () => {
+  const renderer = new ThreeAsciiRenderer({
+    scene: new Scene(),
+    camera: new PerspectiveCamera(),
+    columns: 1,
+    rows: 1,
+    readbackStrategy: "deferred",
+  });
+  const cachedGrid: string[][] = [];
+  let queued = 0;
+  let submitted = 0;
+  let copied = 0;
+  const internals = renderer as unknown as {
+    device: { queue: { submit: (_commands: unknown[]) => void } };
+    deferredReadbacks: {
+      lastCompletedGrid: () => string[][];
+      nextBuffer: (_byteLength: number, _ensure: unknown) => string;
+      queue: (_slot: string, _options: unknown) => { mapPromise: Promise<void> };
+    };
+    copyReadbackCommands: (_commandEncoder: unknown, _readbackCopyPlan: unknown, _readback: string) => void;
+    deferAnsiGridReadback(
+      commandEncoder: { finish: () => unknown },
+      readbackLayout: { byteLength: number },
+      readbackCopyPlan: unknown,
+      backgroundColor: Color,
+      deferredCompleted: { grid?: string[][]; readbackUnavailable?: boolean },
+    ): Promise<string[][]>;
+  };
+  internals.device = {
+    queue: {
+      submit: () => {
+        submitted += 1;
+      },
+    },
+  };
+  internals.deferredReadbacks = {
+    lastCompletedGrid: () => cachedGrid,
+    nextBuffer: () => "slot",
+    queue: () => {
+      queued += 1;
+      return { mapPromise: new Promise(() => {}) };
+    },
+  };
+  internals.copyReadbackCommands = () => {
+    copied += 1;
+  };
+
+  const grid = await internals.deferAnsiGridReadback(
+    { finish: () => ({}) },
+    { byteLength: 4 },
+    {},
+    new Color("#000000"),
+    {},
+  );
+
+  assertEquals(grid, cachedGrid);
+  assertEquals(copied, 1);
+  assertEquals(submitted, 1);
+  assertEquals(queued, 1);
 });
 
 Deno.test("ThreeAsciiRenderer forces a blocking deferred readback after stale cached frames with no pending readback", async () => {

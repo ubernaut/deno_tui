@@ -339,6 +339,7 @@ import {
 } from "../src/app/workbench_row_render.ts";
 import { type RowStyle, type ThreeHeaderPerformance, threeHeaderRows } from "../src/app/workbench_rows.ts";
 import { writeThreeHeaderRuntimePerformance } from "../src/app/workbench_three_header.ts";
+import { resolveWorkbenchThreeFullscreenAsciiOptions } from "../src/app/workbench_three_fullscreen.ts";
 import {
   shouldCountWorkbenchThreeGridPressure,
   workbenchThreeShouldUseLiveCadence,
@@ -348,6 +349,7 @@ import {
   apiWorkbenchThreeEffectiveMaxCells,
   apiWorkbenchThreeFrameIntervalForCells,
   WORKBENCH_THREE_DRAW_INTERVAL_MS,
+  WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
   WORKBENCH_THREE_INITIAL_CELLS,
 } from "../src/app/workbench_three_policy.ts";
 import {
@@ -881,6 +883,14 @@ const table = new DataTableController<ProcessRow>({
 const threeBodyRect = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
 const threeGraphicsRect = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
 const threeCadence = new WorkbenchThreeCadenceMeter();
+const threeRuntimeAscii = new Computed<AsciiOptions>(() =>
+  resolveWorkbenchThreeFullscreenAsciiOptions({
+    id: "three",
+    fullscreenId: maximized.value,
+    ascii: ascii.value,
+    fullscreenMinCells: WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
+  })
+);
 const threeScene = new Computed<WorkbenchThreeScene | null>(() =>
   workbenchStudioScene({
     blocked: false,
@@ -899,7 +909,7 @@ const threePanel = createWorkbenchThreePanelFrameView({
   rectangle: threeBodyRect,
   graphicsRectangle: threeGraphicsRect,
   scene: threeScene,
-  ascii,
+  ascii: threeRuntimeAscii,
   enabled: threeAsciiAvailable,
   graphicsSurface: () => kittyGraphics.surfaceFor(ascii.peek()),
   frameInterval: workbenchThreeFrameInterval,
@@ -1066,6 +1076,7 @@ tui.on("destroy", () => {
   savedWorkspaces.dispose();
   menuFocused.dispose();
   threeConfigOpen.dispose();
+  threeRuntimeAscii.dispose();
   workbenchThreeEffectiveMaxCells.dispose();
   threeConfigSelected.dispose();
   threeConfigWindow.dispose();
@@ -2862,11 +2873,19 @@ function createVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
   const rectangle = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
   const graphicsRectangle = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
   const scene = new Signal<WorkbenchThreeScene | null>(null);
+  const runtimeAscii = new Computed<AsciiOptions>(() =>
+    resolveWorkbenchThreeFullscreenAsciiOptions({
+      id,
+      fullscreenId: maximized.value,
+      ascii: asciiForWindow(id).value,
+      fullscreenMinCells: WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
+    })
+  );
   const panel = createWorkbenchThreePanelFrameView({
     rectangle,
     graphicsRectangle,
     scene,
-    ascii: asciiForWindow(id),
+    ascii: runtimeAscii,
     enabled: threeAsciiAvailable,
     graphicsSurface: () => kittyGraphics.surfaceFor(asciiForWindow(id).peek()),
     frameInterval: workbenchThreeFrameInterval,
@@ -2880,7 +2899,7 @@ function createVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
     },
     onUpdate: scheduleDraw,
   });
-  return { rectangle, graphicsRectangle, scene, panel };
+  return { rectangle, graphicsRectangle, scene, panel, resources: [runtimeAscii] };
 }
 
 function syncWorkbenchThreeFrameInterval(): void {

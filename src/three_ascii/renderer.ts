@@ -594,7 +594,6 @@ export class ThreeAsciiRenderer {
     }
 
     const lastCompletedGrid = this.deferredReadbacks.lastCompletedGrid();
-    const awaitBootstrap = this.shouldBootstrapDeferredAnsiReadback(completed, lastCompletedGrid);
 
     const readback = this.deferredReadbacks.nextBuffer(
       readbackLayout.byteLength,
@@ -609,7 +608,7 @@ export class ThreeAsciiRenderer {
 
     this.copyReadbackCommands(commandEncoder, readbackCopyPlan, submission.readback);
     this.device!.queue.submit([commandEncoder.finish()]);
-    const pending = this.deferredReadbacks.queue(submission.readback, {
+    this.deferredReadbacks.queue(submission.readback, {
       layout: readbackLayout,
       columns: this.columns,
       rows: this.rows,
@@ -617,22 +616,7 @@ export class ThreeAsciiRenderer {
       terminalEdgeBias: this.terminalEdgeBias,
       backgroundColor: backgroundColor.clone(),
     });
-    if (awaitBootstrap) {
-      await pending.mapPromise;
-      const bootstrapped = this.consumeDeferredAnsiGrid();
-      if (bootstrapped.readbackUnavailable) return bootstrapped.grid ?? [];
-      return bootstrapped.grid ?? this.deferredReadbacks.lastCompletedGrid();
-    }
     return submission.grid;
-  }
-
-  private shouldBootstrapDeferredAnsiReadback(
-    completed: ThreeAsciiDeferredReadbackConsumeResult,
-    lastCompletedGrid: readonly unknown[],
-  ): boolean {
-    if (completed.readbackUnavailable || completed.grid) return false;
-    if (lastCompletedGrid.length > 0) return false;
-    return this.deferredReadbacks.inspect().pending === 0;
   }
 
   private consumeDeferredAnsiGrid(): ThreeAsciiDeferredReadbackConsumeResult {
