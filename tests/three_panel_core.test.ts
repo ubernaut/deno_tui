@@ -1,5 +1,6 @@
-import { assertEquals, assertNotEquals, assertNotStrictEquals } from "./deps.ts";
+import { assert, assertEquals, assertNotEquals, assertNotStrictEquals } from "./deps.ts";
 import { assertRejects } from "./deps.ts";
+import { createNeonThreeScene } from "../app/neon_three.ts";
 import { nextFrameDelay } from "../src/runtime/frame_timing.ts";
 import { threePanelFrameUpdate } from "../src/app/three_panel_core.ts";
 import {
@@ -13,6 +14,10 @@ import {
   resolveThreePanelValue,
   ThreePanelRenderQueue,
 } from "../src/app/three_panel_core.ts";
+import {
+  defaultThreePanelInteractionState,
+  ThreePanelInteractionController,
+} from "../src/app/three_panel_interaction.ts";
 import {
   emptyThreePanelRendererState,
   resolveThreePanelRendererStateUpdate,
@@ -52,6 +57,54 @@ Deno.test("nextFrameDelay compensates for current frame render time", () => {
   assertEquals(nextFrameDelay(100, 1_000, 1_125), 0);
   assertEquals(nextFrameDelay(100, 1_000, 950), 100);
   assertEquals(nextFrameDelay(-1, 1_000, 1_025), 0);
+});
+
+Deno.test("ThreePanelInteractionController tracks bounded rotation zoom and reset state", () => {
+  const interaction = new ThreePanelInteractionController();
+
+  assertEquals(defaultThreePanelInteractionState(), { rotationX: 0, rotationY: 0, zoom: 1 });
+  assertEquals(interaction.inspect(), { rotationX: 0, rotationY: 0, zoom: 1 });
+  assertEquals(interaction.rotateBy(0, 0), { rotationX: 0, rotationY: 0, zoom: 1 });
+  assertEquals(interaction.zoomBy(0), { rotationX: 0, rotationY: 0, zoom: 1 });
+
+  const rotated = interaction.rotateBy(1000, 1000);
+  assert(rotated.rotationY >= -Math.PI && rotated.rotationY <= Math.PI);
+  assertEquals(rotated.rotationX, Math.PI);
+
+  const zoomedIn = interaction.zoomBy(-200);
+  assertEquals(zoomedIn.zoom, 3.25);
+  const zoomedOut = interaction.zoomBy(400);
+  assertEquals(zoomedOut.zoom, 0.35);
+
+  assertEquals(interaction.reset(), { rotationX: 0, rotationY: 0, zoom: 1 });
+});
+
+Deno.test("ThreePanelInteractionController applies captured three scene transforms", () => {
+  const bundle = createNeonThreeScene("studio", { wireframeThickness: 8 });
+  const interaction = new ThreePanelInteractionController();
+  try {
+    const baseDistance = bundle.camera.position.length();
+    const baseRotationX = bundle.scene.rotation.x;
+    const baseRotationY = bundle.scene.rotation.y;
+
+    interaction.captureBaseTransform(bundle);
+    interaction.zoomBy(-1);
+    interaction.rotateBy(4, -2);
+    interaction.apply(bundle);
+
+    assert(bundle.camera.position.length() < baseDistance);
+    assert(bundle.scene.rotation.x < baseRotationX);
+    assert(bundle.scene.rotation.y > baseRotationY);
+
+    const appliedDistance = bundle.camera.position.length();
+    interaction.clearBaseTransform();
+    interaction.zoomBy(-1);
+    interaction.rotateBy(4, -2);
+    interaction.apply(bundle);
+    assertEquals(bundle.camera.position.length(), appliedDistance);
+  } finally {
+    bundle.dispose();
+  }
 });
 
 Deno.test("three panel value resolver reads literals and signal-like values", () => {
@@ -199,10 +252,10 @@ Deno.test("WorkbenchThreeCadenceMeter resets stale gaps without retaining old ca
 
   meter.record(0);
   meter.record(50);
-  assertEquals(meter.inspect().averageFrameMs, 50);
+  assertEquals(meter.inspectAt(50).averageFrameMs, 50);
 
   meter.record(500);
-  assertEquals(meter.inspect().averageFrameMs, 450);
+  assertEquals(meter.inspectAt(500).averageFrameMs, 450);
 
   meter.reset();
   assertEquals(meter.inspect(), { updates: 0, averageFrameMs: undefined, measuredFps: undefined });
