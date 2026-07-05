@@ -101,6 +101,28 @@ Deno.test("WorkbenchAnsiScreenPainter clears stale rows after shrink", () => {
   assertEquals(new TextDecoder().decode(chunks[0]), "\x1b[2;1H     \x1b[3;1H     ");
 });
 
+Deno.test("WorkbenchAnsiScreenPainter clears the terminal and retained caches on resize reset", () => {
+  const chunks: Uint8Array[] = [];
+  const painter = new WorkbenchAnsiScreenPainter({
+    writeSync(data) {
+      chunks.push(data);
+      return data.byteLength;
+    },
+  });
+  const renderRow = (cells: string[], width: number) => cells.join("").padEnd(width, " ");
+
+  painter.flush([["one"], ["two"]], 5, 2, renderRow);
+  chunks.length = 0;
+
+  const stats = painter.clearScreen();
+
+  assertEquals(new TextDecoder().decode(chunks[0]), "\x1b[2J\x1b[1;1H");
+  assertEquals(stats.rows, 0);
+  assertEquals(stats.changed, 0);
+  assertEquals(stats.cleared, 0);
+  assertEquals(painter.inspectRows(), []);
+});
+
 Deno.test("WorkbenchAnsiScreenPainter clears stale rows with the current width after resize", () => {
   const chunks: Uint8Array[] = [];
   const painter = new WorkbenchAnsiScreenPainter({

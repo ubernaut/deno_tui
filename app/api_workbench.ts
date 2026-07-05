@@ -358,6 +358,7 @@ import {
   WORKBENCH_THREE_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
   WORKBENCH_THREE_INITIAL_CELLS,
+  workbenchThreeLiveRenderCells,
 } from "../src/app/workbench_three_policy.ts";
 import {
   type WorkbenchThreePanelEntry,
@@ -1221,10 +1222,18 @@ function syncWorkbenchThreeRuntimeBudgetForViewport(
     fullscreenThree,
     snapshot.fullscreenViewportCells,
   );
+  const liveViewportCells = Math.max(1, Math.floor(liveViewport.width) * Math.floor(liveViewport.height));
+  const syncedLiveMaxCells = workbenchThreeRuntime.syncLiveTargetCells(
+    workbenchThreeLiveRenderCells(liveViewport),
+    hasLiveThreeRenderedWindow() && !fullscreenThree,
+    liveViewportCells,
+  );
   if (workbenchThreeFullscreenTargetCells.peek() !== snapshot.fullscreenTargetCells) {
     workbenchThreeFullscreenTargetCells.value = snapshot.fullscreenTargetCells;
   }
-  const effectiveMaxCells = fullscreenThree ? syncedFullscreenMaxCells : snapshot.effectiveMaxCells;
+  const effectiveMaxCells = fullscreenThree
+    ? syncedFullscreenMaxCells
+    : Math.max(syncedLiveMaxCells, snapshot.effectiveMaxCells);
   if (workbenchThreeEffectiveMaxCells.peek() !== effectiveMaxCells) {
     workbenchThreeEffectiveMaxCells.value = effectiveMaxCells;
   }
@@ -4721,7 +4730,7 @@ function syncTerminalSize(): boolean {
   const result = syncWorkbenchTerminalSize(tui.canvas.size);
   const observed = repaintPolicy.inspectScreenSize(tui.canvas.size.peek());
   if (!result.changed && !observed.changed) return false;
-  screenPainter.reset();
+  screenPainter.clearScreen();
   repaintPolicy.resetFullRepaintClock();
   requestResizeFullRepaintWindowAfterInitialObservation();
   return true;

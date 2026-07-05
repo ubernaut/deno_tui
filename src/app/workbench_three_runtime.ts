@@ -280,6 +280,9 @@ export class ApiWorkbenchThreeRuntimeController {
   #lastPressureInspection: ApiWorkbenchThreePressureInspection;
   #pressureChange = emptyPressureChange();
   #pressureChangeInput: ApiWorkbenchThreePressureChangeInput;
+  #lastLiveTargetCells = 0;
+  #lastLiveViewportCells = 0;
+  #liveTargetActive = false;
   #lastFullscreenTargetCells = 0;
   #lastFullscreenViewportCells = 0;
   #fullscreenTargetActive = false;
@@ -323,6 +326,39 @@ export class ApiWorkbenchThreeRuntimeController {
     this.#fullscreenPressure.lowFrames = 0;
     this.#lastPressureInspection.highFrames = 0;
     this.#lastPressureInspection.lowFrames = 0;
+  }
+
+  /** Promotes tiled render pressure when an active Three pane grows. */
+  syncLiveTargetCells(
+    targetCells: number,
+    active = this.options.hasLiveThreeWindow() && !this.hasFullscreenThreeWindow(),
+    viewportCells = targetCells,
+  ): number {
+    const target = Math.max(1, Math.floor(targetCells));
+    const viewport = Math.max(1, Math.floor(viewportCells));
+    if (!active) {
+      this.#liveTargetActive = false;
+      this.#lastLiveTargetCells = 0;
+      this.#lastLiveViewportCells = 0;
+      return this.liveMaxCells.peek();
+    }
+
+    const enteringLive = !this.#liveTargetActive;
+    this.#liveTargetActive = true;
+    const viewportGrew = viewport > this.#lastLiveViewportCells;
+    if ((enteringLive || target !== this.#lastLiveTargetCells || viewportGrew) && target > this.liveMaxCells.peek()) {
+      this.liveMaxCells.value = target;
+      this.#pressure.currentCells = target;
+      this.#pressure.highFrames = 0;
+      this.#pressure.lowFrames = 0;
+      this.#lastPressureInspection.currentCells = target;
+      this.#lastPressureInspection.highFrames = 0;
+      this.#lastPressureInspection.lowFrames = 0;
+      this.syncFrameInterval();
+    }
+    this.#lastLiveTargetCells = target;
+    this.#lastLiveViewportCells = viewport;
+    return this.liveMaxCells.peek();
   }
 
   /** Promotes fullscreen render pressure to a new viewport target without fighting later pressure downshifts. */

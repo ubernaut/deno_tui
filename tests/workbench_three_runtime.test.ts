@@ -196,6 +196,29 @@ Deno.test("ApiWorkbenchThreeRuntimeController promotes fullscreen budget on entr
   controller.dispose();
 });
 
+Deno.test("ApiWorkbenchThreeRuntimeController promotes live budget on pane growth", () => {
+  let live = true;
+  const controller = new ApiWorkbenchThreeRuntimeController({
+    hasLiveThreeWindow: () => live,
+  });
+
+  assertEquals(controller.syncLiveTargetCells(1_900, live, 2_000), 1_900);
+  controller.liveMaxCells.value = 480;
+
+  assertEquals(controller.syncLiveTargetCells(1_900, live, 2_000), 480);
+  assertEquals(controller.syncLiveTargetCells(2_800, live, 3_200), 2_800);
+  assertEquals(controller.inspectPressure().currentCells, 2_800);
+  assertEquals(controller.inspectPressure().highFrames, 0);
+  assertEquals(controller.inspectPressure().lowFrames, 0);
+
+  live = false;
+  assertEquals(controller.syncLiveTargetCells(3_200, live, 4_000), 2_800);
+  live = true;
+  assertEquals(controller.syncLiveTargetCells(3_200, live, 4_000), 3_200);
+
+  controller.dispose();
+});
+
 Deno.test("ApiWorkbenchThreeRuntimeController does not undo fullscreen pressure downshift for the same target", () => {
   let fullscreen = true;
   const controller = new ApiWorkbenchThreeRuntimeController({

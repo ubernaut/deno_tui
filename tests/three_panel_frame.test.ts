@@ -780,6 +780,47 @@ Deno.test("ThreePanelFrameView lowers render cells after slow renderer telemetry
   }
 });
 
+Deno.test("ThreePanelFrameView leaves external pressure caps authoritative", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 160, height: 60 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal({ ...createDefaultAsciiOptions("sharp"), renderMaxCells: 3_840 });
+  const enabled = new Signal(true);
+  const maxRenderCells = new Signal(1_920);
+  const diagnostics = new DiagnosticsCollector();
+  let renderer: TelemetryGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    enabled,
+    maxRenderCells,
+    frameInterval: 1,
+    diagnostics,
+    rendererFactory: (options) => renderer = new TelemetryGridRenderer(options.columns, options.rows, 220),
+  });
+
+  try {
+    await waitFor(() => (renderer?.renderCount ?? 0) >= 3);
+
+    assert(renderer);
+    assert(renderer.sizes.every(([columns, rows]) => columns * rows <= 1_920));
+    assert(renderer.sizes.every(([columns, rows]) => columns * rows > 960));
+    assertEquals(
+      diagnostics.entries().some((entry) =>
+        entry.source === "three-panel" && entry.code === "three-ascii-adaptive-render-cells"
+      ),
+      false,
+    );
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+    enabled.dispose();
+    maxRenderCells.dispose();
+  }
+});
+
 Deno.test("ThreePanelFrameView does not lower render cells from a startup outlier", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 160, height: 60 }, { deepObserve: true });
   const scene = new Signal<ThreeSceneState | null>(sceneState());

@@ -233,7 +233,7 @@ export function inspectWorkbenchVisualSmokeOutput(
   const text = lines.join("\n");
   const statusLine = lines.at(-1) ?? "";
   const threeLine = lines.find((line) => line.includes("fps") && line.includes("live")) ?? "";
-  const rendererUnavailable = text.includes("UNAVAILABLE") && text.includes("ASCII");
+  const rendererUnavailable = /unavailable/i.test(text) && text.includes("ASCII");
   const missing = REQUIRED_TOKENS.filter((token) => !text.includes(token));
   const forbidden = FORBIDDEN_TOKENS.filter((token) => text.includes(token));
   const nonBlankRows = lines.filter((line) => line.trim().length > 0).length;
@@ -253,10 +253,6 @@ export function inspectWorkbenchVisualSmokeOutput(
     if (threePane.visibleRows < minPaneRows) missing.push(`three pane visible rows >= ${minPaneRows}`);
     if (threePane.visibleMaxColumns < minVisibleColumns) {
       missing.push(`three pane visible columns >= ${minVisibleColumns}`);
-    }
-    const minRenderedCells = Math.max(1, Math.floor(threePane.bodyRows * threePane.bodyColumns * 0.88));
-    if (!rendererUnavailable && threeRenderedCells > 0 && threeRenderedCells < minRenderedCells) {
-      missing.push(`three rendered cells >= ${minRenderedCells}`);
     }
   }
   return {

@@ -1,5 +1,5 @@
 import type { CanvasStdout } from "../canvas/sink.ts";
-import { moveCursor } from "../utils/ansi_codes.ts";
+import { CLEAR_SCREEN, moveCursor } from "../utils/ansi_codes.ts";
 import {
   cleanWorkbenchFrameRowFingerprint,
   fitCellText,
@@ -260,6 +260,15 @@ export class WorkbenchAnsiScreenPainter {
     this.#rowCache = new WeakMap();
     this.#spanRowCache = new WeakMap();
     this.#cursorCache.clear();
+  }
+
+  clearScreen(): WorkbenchAnsiScreenFlushStats {
+    this.reset();
+    return writeWorkbenchAnsiScreenOutput(this.stdout, [CLEAR_SCREEN, moveCursor(0, 0)], {
+      rows: 0,
+      changed: 0,
+      cleared: 0,
+    });
   }
 
   inspectRows(): readonly string[] {

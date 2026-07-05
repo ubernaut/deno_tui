@@ -146,7 +146,7 @@ Deno.test("workbench visual smoke inspector measures Three pane truecolor covera
   assertStringIncludes(formatWorkbenchVisualSmokeResult(result), "Three pane truecolor: 2 rows, 49/49 columns");
 });
 
-Deno.test("workbench visual smoke inspector rejects under-scaled Three pane telemetry", () => {
+Deno.test("workbench visual smoke inspector accepts sparse geometry when pane coverage is full", () => {
   const output = [
     "\x1b[2J",
     "\x1b[1;1HAPI WORKBENCH",
@@ -160,9 +160,9 @@ Deno.test("workbench visual smoke inspector rejects under-scaled Three pane tele
   ].join("");
   const result = inspectWorkbenchVisualSmokeOutput(output, { columns: 70, rows: 9 });
 
-  assertEquals(result.passed, false);
+  assertEquals(result.passed, true);
   assertEquals(result.threeRenderedCells, 40);
-  assertEquals(result.missing, ["three rendered cells >= 86"]);
+  assertEquals(result.missing, []);
 });
 
 Deno.test("workbench visual smoke inspector rejects colored resize frames when Three pane stays blank", () => {

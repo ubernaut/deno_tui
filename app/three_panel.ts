@@ -566,6 +566,7 @@ export class ThreePanelFrameView {
     renderer: ThreePanelGridRenderer,
     ascii: Pick<AsciiOptions, "renderMaxCells">,
   ): void {
+    if (this.options.maxRenderCells !== undefined) return;
     const performanceInfo = renderer.inspectPerformance?.();
     if (!performanceInfo) return;
     const requestedMaxCells = this.requestedRenderMaxCells(ascii);
