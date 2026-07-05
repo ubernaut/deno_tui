@@ -83,6 +83,8 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   private pendingTerminalEdgeBias?: number;
   private pendingTerminalGlyphStyle?: TerminalGlyphStyle;
   private readonly previousGrid = createThreeAsciiGridDiffState();
+  private lastQueuedGridRevision: number | undefined;
+  private lastQueuedGridKey = "";
 
   constructor(options: ThreeAsciiObjectOptions) {
     super("three_ascii", { ...options, style: emptyStyle });
@@ -268,14 +270,17 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
 
         this.flushPendingRendererOptions();
         renderer.setSize(rectangle.width, rectangle.height);
-        const grid = await renderer.renderToAnsiGrid(deltaTime, this.onFrame);
+        const frame = renderer.renderFrame
+          ? await renderer.renderFrame(deltaTime, this.onFrame, { ansi: true })
+          : { grid: await renderer.renderToAnsiGrid(deltaTime, this.onFrame) };
+        const grid = frame.grid ?? [];
 
         if (!this.isCurrentFrame(frameGeneration, renderer)) {
           return;
         }
 
         this.grid = grid;
-        if (this.queueChangedGridCells(grid, rectangle)) {
+        if (this.queueChangedGridCells(grid, rectangle, frame.gridRevision)) {
           this.updated = false;
           this.canvas.updateObjects.push(this);
         }
@@ -343,8 +348,12 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
     }
   }
 
-  private queueChangedGridCells(grid: string[][], rectangle: Rectangle): boolean {
-    return queueChangedThreeAsciiGridCells(
+  private queueChangedGridCells(grid: string[][], rectangle: Rectangle, gridRevision?: number): boolean {
+    const key = this.gridDiffKey(rectangle);
+    if (gridRevision !== undefined && this.lastQueuedGridRevision === gridRevision && this.lastQueuedGridKey === key) {
+      return false;
+    }
+    const changed = queueChangedThreeAsciiGridCells(
       grid,
       rectangle,
       this.canvas.size.peek(),
@@ -353,10 +362,25 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
       this.view.peek()?.rectangle?.peek(),
       this.rerenderRanges,
     );
+    if (gridRevision !== undefined) {
+      this.lastQueuedGridRevision = gridRevision;
+      this.lastQueuedGridKey = key;
+    }
+    return changed;
   }
 
   private clearPreviousGridCells(): void {
     clearThreeAsciiGridDiffState(this.previousGrid);
+    this.lastQueuedGridRevision = undefined;
+    this.lastQueuedGridKey = "";
+  }
+
+  private gridDiffKey(rectangle: Rectangle): string {
+    const canvas = this.canvas.size.peek();
+    const view = this.view.peek()?.rectangle?.peek();
+    return `${rectangle.column},${rectangle.row},${rectangle.width},${rectangle.height}|${canvas.columns},${canvas.rows}|${
+      view ? `${view.column},${view.row},${view.width},${view.height}` : "-"
+    }`;
   }
 
   private showStatusGrid(detail: string, heading = "ASCII RENDERER OFFLINE"): void {

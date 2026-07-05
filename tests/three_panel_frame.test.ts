@@ -1538,6 +1538,36 @@ Deno.test("ThreeAsciiObject queues rerender cells only for changed ASCII grid ce
   }
 });
 
+Deno.test("ThreeAsciiObject skips grid diffing for unchanged renderer revisions", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 4, height: 2 }, { deepObserve: true });
+  const sink = new MemoryCanvasSink();
+  const canvas = new Canvas({ sink, size: { columns: 8, rows: 8 } });
+  let renderer: StableRevisionGridRenderer | undefined;
+  const object = new ThreeAsciiObject({
+    canvas,
+    rectangle,
+    scene: {} as Scene,
+    camera: {} as Camera,
+    style: emptyStyle,
+    zIndex: 1,
+    frameInterval: 5,
+    rendererFactory: (options) => renderer = new StableRevisionGridRenderer(options.columns, options.rows),
+  });
+
+  object.draw();
+
+  try {
+    await waitFor(() => (renderer?.renderCount ?? 0) >= 2);
+    clearQueuedCells(object);
+
+    await waitFor(() => (renderer?.renderCount ?? 0) >= 5);
+    assertEquals(queuedCellCount(object), 0);
+  } finally {
+    object.erase();
+    rectangle.dispose();
+  }
+});
+
 Deno.test("ThreeAsciiObject changed-cell queue respects view clipping", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 3, height: 2 }, { deepObserve: true });
   const view = new View({ rectangle: { column: 1, row: 0, width: 1, height: 1 } });

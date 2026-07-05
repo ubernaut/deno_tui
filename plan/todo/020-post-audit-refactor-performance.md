@@ -1174,3 +1174,7 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Raised the API Workbench fullscreen Three pressure floor to `1_920` cells and tightened the fullscreen probe to
   require a large rendered grid. The fullscreen pressure check now holds around `85x22/1870c` instead of collapsing back
   to the small embedded-pane grid, while regular embedded panes still keep the lower rescue tiers.
+- Carried Three renderer `gridRevision` through `ThreeAsciiObject` so Canvas-backed Three ASCII components can skip the
+  expensive retained-grid diff when deferred/saturated renderer frames return the same completed grid for the same
+  rectangle, canvas, and view. Focused Canvas object tests now prove unchanged revisions enqueue no rerender ranges;
+  raw diff benchmarks are unchanged because they intentionally exercise changing grid content.
