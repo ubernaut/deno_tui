@@ -224,6 +224,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   benchmark slice stayed well below thresholds.
 - Split API workbench control traversal/focus helpers into `api_workbench_control_traversal.ts` while preserving the
   existing `api_workbench_controls.ts` facade export surface for terminal and browser callers.
+- Split API workbench sortable table-column traversal into `api_workbench_table_navigation.ts`, removing the data-table
+  type dependency from the controls facade while preserving existing terminal/browser imports.
 - Added a driven fullscreen visual smoke for the API Workbench default Three pane so future checks verify fullscreen
   render-cell scale and truecolor body repainting instead of relying on text-only ANSI replay.
 - Added exact repeated `--name` benchmark selectors so Three/workbench hot-path runs can target only the intended cases
