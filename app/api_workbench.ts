@@ -290,7 +290,7 @@ import { makeStyle } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelFrameView } from "./three_panel.ts";
-import { createWorkbenchThreePanelFrameView } from "./workbench_three_panel.ts";
+import { createWorkbenchThreePanelFrameView } from "./three_panel.ts";
 import { workbenchDataTablePageSize, workbenchDataTableRowsInto } from "./workbench_data_table.ts";
 import { explorerTextRowsInto, workbenchWindowContentSize } from "../src/app/workbench_content_size.ts";
 import { workbenchExplorerRowsInto } from "./workbench_explorer.ts";

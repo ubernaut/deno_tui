@@ -51,6 +51,7 @@ import {
   type ThreePanelRenderPolicy,
   type ThreePanelRenderSize,
 } from "../src/app/three_panel_policy.ts";
+import { applyWorkbenchThreePanelFrameDefaults } from "../src/app/workbench_three_panel_defaults.ts";
 import { defaultThreePanelRenderQueue, ThreePanelRenderQueue } from "../src/app/three_panel_render_queue.ts";
 import {
   resolveOptionalThreePanelValue,
@@ -130,6 +131,15 @@ export interface ThreePanelGridRenderer {
 }
 
 export type ThreePanelRendererFactory = (options: ThreeAsciiRendererOptions) => ThreePanelGridRenderer;
+
+export type WorkbenchThreePanelFrameViewOptions = ConstructorParameters<typeof ThreePanelFrameView>[0];
+
+/** Creates API workbench Three panels with the shared terminal-pressure defaults. */
+export function createWorkbenchThreePanelFrameView(
+  options: WorkbenchThreePanelFrameViewOptions,
+): ThreePanelFrameView {
+  return new ThreePanelFrameView(applyWorkbenchThreePanelFrameDefaults(options));
+}
 
 export class ThreePanelView {
   private object?: ThreeAsciiObject;

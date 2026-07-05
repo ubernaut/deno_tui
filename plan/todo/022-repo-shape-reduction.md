@@ -7,23 +7,23 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files: `836`
+- Tracked files after the first consolidation passes: `779`
 - Tracked top-level file counts:
-  - `src`: `370`
-  - `tests`: `227`
-  - `app`: `69`
+  - `src`: `368`
+  - `tests`: `222`
+  - `app`: `64`
   - `docs`: `50`
   - `examples`: `42`
   - `scripts`: `27`
-  - `plan`: `25`
+  - `plan`: `26`
 - Handwritten/code-heavy line counts:
-  - `src/app`: `24,495` lines across `130` files
+  - `src/app`: `24,490` lines across `128` files
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,241` lines across `43` files
   - `src/three_ascii`: `7,195` lines across `45` files
-  - `app`: `20,508` lines across `69` files
+  - `app`: `20,504` lines across `64` files
   - `examples`: `8,773` lines across `42` files
-  - `tests`: `49,556` lines across `227` files
+  - `tests`: `49,495` lines across `222` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `24MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -49,10 +49,14 @@ The library core is real and valuable, but it needs clearer boundaries:
 ### P1: Collapse App-Only Helper Shards
 
 - Consolidate small app-only parser/helper modules that have one runtime caller and direct tests.
-- Start with system metrics parser shards:
-  - `app/system_metrics_cpu.ts`
-  - `app/system_metrics_disk.ts`
-  - `app/system_metrics_temperature.ts`
+- Completed first passes:
+  - system metrics parser shards are now in `app/system_metrics_sources.ts`
+  - workbench buffer caches are now in `src/app/workbench_buffers.ts`
+  - workbench ANSI cursor/span caches are now private helpers inside `src/app/workbench_ansi_screen.ts`
+- Next app-layer candidates:
+  - small app-only wrappers such as `app/workbench_three_panel.ts`
+  - tiny control/window constants that are only consumed by workbench demos
+  - app navigation helpers that are not public package APIs
 - Keep monitor behavior and tests intact, but reduce file count and import surface.
 
 ### P1: Replace Test Shard Proliferation With Behavioral Bundles
