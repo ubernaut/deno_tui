@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `577`
+- Tracked files after the current consolidation passes: `576`
 - Tracked top-level file counts:
   - `src`: `296`
-  - `tests`: `81`
+  - `tests`: `80`
   - `app`: `29`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,000` lines across `25` files
   - `app`: `20,381` lines across `29` files
   - `examples`: `8,814` lines across `42` files
-  - `tests`: `49,636` lines across `81` files
+  - `tests`: `49,632` lines across `80` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -244,7 +244,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Three panel diagnostic assertions are now bundled into `tests/three_panel_core.test.ts`
   - Workbench terminal-size sync assertions are now bundled into `tests/workbench_repaint_policy.test.ts`
   - Workbench diagnostics formatting assertions are now bundled into `tests/workbench_status.test.ts`
-  - Workbench prompt-input assertions are now bundled into `tests/workbench_text.test.ts`
+  - Workbench text helper and prompt-input assertions are now bundled into `tests/workbench_facade.test.ts`
   - Workbench styled-row render assertions are now bundled into `tests/workbench_rows.test.ts`
   - Workbench terminal style assertions are now bundled into `tests/workbench_terminal.test.ts`
   - Workbench viewport helper assertions are now bundled into `tests/workbench_layout.test.ts`
