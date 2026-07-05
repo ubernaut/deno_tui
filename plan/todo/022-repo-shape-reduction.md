@@ -145,6 +145,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     layout and compute resource lifecycle in the same internal renderer module
   - Three ASCII effect option patching is folded into `src/three_ascii/effect_state.ts`, keeping effect defaults, option
     mutation, uniform dirtiness, and compute-mode decisions in one internal effect module
+  - Three ASCII deferred pre-scene and stale-frame policy is folded into `src/three_ascii/deferred_readback.ts`, keeping
+    deferred queue ownership and readback freshness decisions in one internal module
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

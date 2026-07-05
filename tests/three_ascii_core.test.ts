@@ -74,6 +74,10 @@ import {
   normalizeThreeAsciiTerminalEdgeBias,
 } from "../src/three_ascii/renderer_options.ts";
 import {
+  resolveThreeAsciiDeferredPreSceneFrame,
+  resolveThreeAsciiDeferredReadbackStaleness,
+} from "../src/three_ascii/deferred_readback.ts";
+import {
   computeThreeAsciiCameraAspect,
   handleThreeAsciiDeferredReadbackFailure,
   readThreeAsciiImageFrame,
@@ -82,10 +86,6 @@ import {
   THREE_ASCII_CAMERA_ASPECT_EPSILON,
   ThreeAsciiReadbackError,
 } from "../src/three_ascii/renderer.ts";
-import {
-  resolveThreeAsciiDeferredPreSceneFrame,
-  resolveThreeAsciiDeferredReadbackStaleness,
-} from "../src/three_ascii/deferred_frame.ts";
 import {
   THREE_ASCII_COLOR_SHADER,
   THREE_ASCII_EDGE_SHADER,

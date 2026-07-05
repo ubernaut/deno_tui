@@ -12,11 +12,11 @@ import type { TerminalGlyphStyle } from "./glyphs.ts";
 import { HeadlessCanvas } from "./headless_canvas.ts";
 import { loadAsciiLutTextures } from "./loadAsciiLuts.ts";
 import {
+  resolveThreeAsciiDeferredPreSceneFrame,
   type ThreeAsciiDeferredReadbackConsumeResult,
   type ThreeAsciiDeferredReadbackFrame,
   ThreeAsciiDeferredReadbackQueue,
 } from "./deferred_readback.ts";
-import { resolveThreeAsciiDeferredPreSceneFrame } from "./deferred_frame.ts";
 import {
   encodeThreeAsciiComputeDispatchCommands,
   ThreeAsciiComputeDispatchPlanCache,
