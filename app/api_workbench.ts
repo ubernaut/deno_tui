@@ -875,7 +875,7 @@ const threeGraphicsRect = new Signal<Rectangle>({ column: 0, row: 0, width: 0, h
 const threeCadence = new WorkbenchThreeCadenceMeter();
 const threeScene = new Computed<WorkbenchThreeScene | null>(() =>
   workbenchStudioScene({
-    blocked: genericModalBlocksThree.value,
+    blocked: false,
     minimized: minimized.value.three,
     available: threeAsciiAvailable.value,
     density: density.value.value,
@@ -1365,7 +1365,7 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
   const threeScene = workbenchVisualizationThreeScene({
     scene: rendered.three ?? null,
     available: threeAsciiAvailable.peek(),
-    blocked: genericModalBlocksThree.peek(),
+    blocked: false,
     width: rect.width,
     height: rect.height,
   });
@@ -1407,6 +1407,7 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
     renderedVisualizationThreePanels.add(id);
     const grid = entry.panel.grid.peek();
     renderThreeGrid(frame, sceneRect, grid, t, {
+      scale: threeGridScaleModeForWindow(id),
       countForPressure: shouldCountWorkbenchThreeGridPressure(grid, entry.panel.inspectPerformance()),
     });
     return;
@@ -1470,6 +1471,7 @@ function renderThree(frame: Frame, rect: Rectangle): void {
     setThreeGraphicsRect(contentRectToGraphicsRect(sceneRect));
     const grid = threePanel.grid.peek();
     renderThreeGrid(frame, sceneRect, grid, t, {
+      scale: threeGridScaleModeForWindow("three"),
       countForPressure: shouldCountWorkbenchThreeGridPressure(grid, performance),
     });
     return;
@@ -1492,7 +1494,7 @@ function renderThreeGrid(
   rect: Rectangle,
   grid: string[][],
   t: ThemeSpec,
-  options: { countForPressure?: boolean } = {},
+  options: { countForPressure?: boolean; scale?: boolean | "down" } = {},
 ): void {
   if (rect.width <= 0 || rect.height <= 0) return;
 
@@ -1512,11 +1514,15 @@ function renderThreeGrid(
     rect,
     grid,
     paint(" ", { bg: t.surface }),
-    threeGridProjectionCache.options(grid, "down"),
+    threeGridProjectionCache.options(grid, options.scale ?? "down"),
   );
   if ((options.countForPressure ?? true) && projection) {
     workbenchThreeRuntime.recordRenderedGridForPressure(projection.targetHeight);
   }
+}
+
+function threeGridScaleModeForWindow(id: WindowId): boolean | "down" {
+  return maximized.peek() === id ? true : "down";
 }
 
 function renderExplorer(frame: Frame, rect: Rectangle): void {

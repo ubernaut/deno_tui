@@ -189,6 +189,9 @@ performance, shared terminal/web workbench projections, and oversized module red
   through a per-row `Set`, keeping overlap/modal churn on the range-aware path.
 - Cached normalized command search fields per command object with source-change checks, bringing repeated direct
   command-surface searches in line with the indexed command-search benchmark while preserving mutation refresh.
+- Kept API Workbench Three scenes alive behind generic modals and changed fullscreen Three panes to fill-scale their
+  current grid into the available content rectangle. Manual PTY checks at 160x48 showed the fullscreen pane now expands
+  across the surface, while terminal pressure correctly drops the render-cell tier under high fullscreen byte output.
 - Extracted workbench Three terminal byte-rate calculation into a shared pure helper with direct tests so pressure
   policy, probes, and future diagnostics can stay aligned.
 - Routed workbench Three pressure probe byte-rate reporting through the shared pressure helper instead of carrying
