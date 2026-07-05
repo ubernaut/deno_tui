@@ -15,12 +15,14 @@ import {
   type ThemePipelineSettingBindingOptions,
   type ThemeSettingBindingOptions,
 } from "./settings_bindings.ts";
-import { type ThemeCommandAction, type ThemeCommandOptions, themeCommands } from "./theme_commands.ts";
 import {
   bindThemePipelineCommands,
+  type ThemeCommandAction,
+  type ThemeCommandOptions,
+  themeCommands,
   type ThemePipelineCommandAction,
   type ThemePipelineCommandOptions,
-} from "./theme_pipeline_commands.ts";
+} from "./theme_commands.ts";
 import { createThemeProvider, type ThemeProvider, type ThemeProviderOptions } from "../theme.ts";
 import type { ThemeEnginePipeline } from "../theme_engine_pipeline.ts";
 

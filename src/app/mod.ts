@@ -38,7 +38,6 @@ export * from "./terminal_commands.ts";
 export * from "./terminal_input.ts";
 export * from "./theme_commands.ts";
 export * from "./theme_engine_commands.ts";
-export * from "./theme_pipeline_commands.ts";
 export * from "./theme_plugin.ts";
 export * from "./theme_workspace_plugin.ts";
 export * from "./toast_commands.ts";

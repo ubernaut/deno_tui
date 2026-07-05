@@ -69,12 +69,15 @@ import {
 import { type DataColumn, DataTableController } from "../src/components/data_table.ts";
 import {
   bindThemeCommands,
+  bindThemePipelineCommands,
+  type ThemeCommandAction,
   themeCommands,
   themeLayerCommands,
+  type ThemePipelineCommandAction,
+  themePipelineCommands,
   themePreviewCommands,
   themeSelectionCommands,
 } from "../src/app/theme_commands.ts";
-import type { ThemeCommandAction } from "../src/app/theme_commands.ts";
 import {
   bindThemeEngineCommands,
   themeEngineCatalogCommands,
@@ -82,8 +85,6 @@ import {
   themeEngineFactoryCommands,
 } from "../src/app/theme_engine_commands.ts";
 import type { ThemeEngineCommandAction } from "../src/app/theme_engine_commands.ts";
-import { bindThemePipelineCommands, themePipelineCommands } from "../src/app/theme_pipeline_commands.ts";
-import type { ThemePipelineCommandAction } from "../src/app/theme_pipeline_commands.ts";
 import { createThemePlugin } from "../src/app/theme_plugin.ts";
 import { createThemeWorkspacePlugin } from "../src/app/theme_workspace_plugin.ts";
 import { KeymapRegistry } from "../src/keymap.ts";

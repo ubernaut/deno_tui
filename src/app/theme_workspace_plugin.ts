@@ -6,13 +6,12 @@ import type { CommandKeymapBindingOptions } from "./command_bindings.ts";
 import { DisposableStack } from "./disposables.ts";
 import type { SettingsController } from "./settings.ts";
 import type { ThemeLayerSettingBindingOptions, ThemeSettingBindingOptions } from "./settings_bindings.ts";
-import type { ThemeCommandAction, ThemeCommandOptions } from "./theme_commands.ts";
+import type { ThemeCommandAction, ThemeCommandOptions, ThemePipelineCommandAction } from "./theme_commands.ts";
 import {
   bindThemeEngineCommands,
   type ThemeEngineCommandAction,
   type ThemeEngineCommandOptions,
 } from "./theme_engine_commands.ts";
-import type { ThemePipelineCommandAction } from "./theme_pipeline_commands.ts";
 import {
   createThemePlugin,
   type ThemePluginInspection,

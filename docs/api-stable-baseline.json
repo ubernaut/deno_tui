@@ -2692,6 +2692,13 @@
     },
     {
       "module": "src/app/theme_commands.ts",
+      "name": "bindThemePipelineCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/theme_commands.ts",
       "name": "ThemeChangedPayload",
       "kind": "interface",
       "typeOnly": true,
@@ -2730,6 +2737,34 @@
       "name": "themeLayerCommands",
       "kind": "function",
       "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/theme_commands.ts",
+      "name": "ThemePipelineCommandAction",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/theme_commands.ts",
+      "name": "ThemePipelineCommandOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/theme_commands.ts",
+      "name": "themePipelineCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/theme_commands.ts",
+      "name": "ThemePipelineStepChangedPayload",
+      "kind": "interface",
+      "typeOnly": true,
       "documented": true
     },
     {
@@ -2812,41 +2847,6 @@
     {
       "module": "src/app/theme_engine_commands.ts",
       "name": "ThemeEnginePreviewPayload",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/theme_pipeline_commands.ts",
-      "name": "bindThemePipelineCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/theme_pipeline_commands.ts",
-      "name": "ThemePipelineCommandAction",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/theme_pipeline_commands.ts",
-      "name": "ThemePipelineCommandOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/theme_pipeline_commands.ts",
-      "name": "themePipelineCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/theme_pipeline_commands.ts",
-      "name": "ThemePipelineStepChangedPayload",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
