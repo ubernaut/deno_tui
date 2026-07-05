@@ -1,9 +1,91 @@
 import { assertEquals } from "./deps.ts";
+import { nextFrameDelay } from "../src/runtime/frame_timing.ts";
+import { threePanelFrameUpdate } from "../src/app/three_panel_frame_update.ts";
 import {
   isCurrentThreePanelFrame,
   ownsThreePanelFrame,
   resolveThreePanelLifecycleState,
 } from "../src/app/three_panel_lifecycle.ts";
+import {
+  resolveOptionalThreePanelValue,
+  resolveThreePanelLiveValue,
+  resolveThreePanelValue,
+} from "../src/app/three_panel_values.ts";
+import { Signal } from "../src/signals/mod.ts";
+
+Deno.test("nextFrameDelay compensates for current frame render time", () => {
+  assertEquals(nextFrameDelay(100, 1_000, 1_025), 75);
+  assertEquals(nextFrameDelay(100, 1_000, 1_125), 0);
+  assertEquals(nextFrameDelay(100, 1_000, 950), 100);
+  assertEquals(nextFrameDelay(-1, 1_000, 1_025), 0);
+});
+
+Deno.test("three panel value resolver reads literals and signal-like values", () => {
+  const signal = new Signal(42);
+
+  assertEquals(resolveThreePanelValue(7), 7);
+  assertEquals(resolveThreePanelValue(signal), 42);
+
+  signal.value = 64;
+  assertEquals(resolveThreePanelValue(signal), 64);
+
+  signal.dispose();
+});
+
+Deno.test("three panel optional value resolver preserves undefined", () => {
+  const signal = new Signal(12);
+
+  assertEquals(resolveOptionalThreePanelValue<number>(undefined), undefined);
+  assertEquals(resolveOptionalThreePanelValue(5), 5);
+  assertEquals(resolveOptionalThreePanelValue(signal), 12);
+
+  signal.dispose();
+});
+
+Deno.test("three panel live value resolver defaults true and supports callbacks", () => {
+  let active = false;
+  const signal = new Signal(false);
+
+  assertEquals(resolveThreePanelLiveValue(undefined), true);
+  assertEquals(resolveThreePanelLiveValue(true), true);
+  assertEquals(resolveThreePanelLiveValue(signal), false);
+  signal.value = true;
+  assertEquals(resolveThreePanelLiveValue(signal), true);
+  assertEquals(resolveThreePanelLiveValue(() => active), false);
+  active = true;
+  assertEquals(resolveThreePanelLiveValue(() => active), true);
+
+  signal.dispose();
+});
+
+Deno.test("threePanelFrameUpdate describes empty unpublished grids", () => {
+  assertEquals(threePanelFrameUpdate(undefined, false), {
+    rendererBacked: false,
+    rows: 0,
+    columns: 0,
+  });
+  assertEquals(threePanelFrameUpdate([], true), {
+    rendererBacked: true,
+    rows: 0,
+    columns: 0,
+  });
+});
+
+Deno.test("threePanelFrameUpdate counts rows and first row columns", () => {
+  assertEquals(threePanelFrameUpdate([["A", "B"], ["C"]], true), {
+    rendererBacked: true,
+    rows: 2,
+    columns: 2,
+  });
+});
+
+Deno.test("threePanelFrameUpdate tolerates sparse first rows", () => {
+  assertEquals(threePanelFrameUpdate([undefined, ["A", "B", "C"]], false), {
+    rendererBacked: false,
+    rows: 2,
+    columns: 0,
+  });
+});
 
 Deno.test("resolveThreePanelLifecycleState reports explicit transition phases", () => {
   const base = {
