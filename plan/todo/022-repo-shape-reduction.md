@@ -7,23 +7,23 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `800`
+- Tracked files after the current consolidation passes: `798`
 - Tracked top-level file counts:
   - `src`: `368`
   - `tests`: `205`
-  - `app`: `56`
+  - `app`: `54`
   - `docs`: `50`
   - `examples`: `42`
   - `scripts`: `27`
   - `plan`: `26`
 - Handwritten/code-heavy line counts:
-  - `src/app`: `24,490` lines across `128` files
+  - `src/app`: `24,501` lines across `128` files
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,241` lines across `43` files
   - `src/three_ascii`: `7,195` lines across `45` files
-  - `app`: `20,451` lines across `56` files
+  - `app`: `20,445` lines across `54` files
   - `examples`: `8,732` lines across `42` files
-  - `tests`: `49,388` lines across `205` files
+  - `tests`: `49,398` lines across `205` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `24MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -58,6 +58,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - visualization Three fallback/signal helpers are bundled in `app/visualization_three.ts`
   - the app ASCII options shim was removed in favor of direct `src/three_ascii/*` imports
   - system metric diagnostics are folded into `app/system_metrics.ts`
+  - API workbench control styles and wrapped-option projection are folded into `app/api_workbench_controls.ts`
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
