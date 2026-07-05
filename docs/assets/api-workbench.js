@@ -16819,7 +16819,50 @@ function createWebTui(options) {
 // src/web/remote_terminal.ts
 var textDecoder5 = new TextDecoder();
 
-// src/app/workbench_shelf_cache.ts
+// src/app/workbench_buffers.ts
+var WorkbenchButtonRowBufferCache = class {
+  items = [];
+  placements = [];
+  commands = [];
+  clear() {
+    this.items.length = 0;
+    this.placements.length = 0;
+    this.commands.length = 0;
+  }
+  inspect() {
+    return {
+      items: this.items.length,
+      placements: this.placements.length,
+      commands: this.commands.length
+    };
+  }
+};
+var WorkbenchModalBufferCache = class {
+  /** Reusable row render-command buffer for modal title/body/action rows. */
+  rowCommands = [];
+  /** Reusable modal action button descriptors. */
+  actionItems = [];
+  /** Reusable modal action button placements. */
+  actionPlacements = [];
+  /** Reusable modal action button paint commands. */
+  actionCommands = [];
+  /** Clears retained buffers without replacing their array identities. */
+  clear() {
+    this.rowCommands.length = 0;
+    this.actionItems.length = 0;
+    this.actionPlacements.length = 0;
+    this.actionCommands.length = 0;
+  }
+  /** Reports retained buffer sizes for diagnostics and tests. */
+  inspect() {
+    return {
+      rowCommands: this.rowCommands.length,
+      actionItems: this.actionItems.length,
+      actionPlacements: this.actionPlacements.length,
+      actionCommands: this.actionCommands.length
+    };
+  }
+};
 var WorkbenchShelfBufferCache = class {
   entries = [];
   tabs = [];
@@ -16854,8 +16897,6 @@ var WorkbenchShelfBufferCache = class {
     };
   }
 };
-
-// src/app/workbench_terminal_cache.ts
 var WorkbenchTerminalBufferCache = class {
   paneProjections = [];
   paneTitleCommands = [];
@@ -16873,8 +16914,6 @@ var WorkbenchTerminalBufferCache = class {
     };
   }
 };
-
-// src/app/workbench_terminal_tab_cache.ts
 var WorkbenchTerminalSessionTabBufferCache = class {
   sources = [];
   placements = [];
@@ -16889,6 +16928,45 @@ var WorkbenchTerminalSessionTabBufferCache = class {
       sources: this.sources.length,
       placements: this.placements.length,
       commands: this.commands.length
+    };
+  }
+};
+var WorkbenchTitlebarBufferCache = class {
+  #layouts = /* @__PURE__ */ new Map();
+  #renderCommands = /* @__PURE__ */ new Map();
+  /** Returns the retained titlebar layout buffer for a window id. */
+  layout(id2) {
+    let layout = this.#layouts.get(id2);
+    if (!layout) {
+      layout = createWorkbenchTitlebarLayout();
+      this.#layouts.set(id2, layout);
+    }
+    return layout;
+  }
+  /** Returns the retained titlebar button render-command buffer for a window id. */
+  renderCommands(id2) {
+    let commands = this.#renderCommands.get(id2);
+    if (!commands) {
+      commands = [];
+      this.#renderCommands.set(id2, commands);
+    }
+    return commands;
+  }
+  /** Drops retained buffers for one window id. */
+  delete(id2) {
+    this.#layouts.delete(id2);
+    this.#renderCommands.delete(id2);
+  }
+  /** Drops all retained buffers. */
+  clear() {
+    this.#layouts.clear();
+    this.#renderCommands.clear();
+  }
+  /** Reports retained cache sizes for diagnostics and tests. */
+  inspect() {
+    return {
+      layouts: this.#layouts.size,
+      renderCommands: this.#renderCommands.size
     };
   }
 };
@@ -18538,94 +18616,6 @@ function normalizeWebTerminalWorkspaceSnapshot(value, options = {}) {
     return void 0;
   }
 }
-
-// src/app/workbench_modal_cache.ts
-var WorkbenchModalBufferCache = class {
-  /** Reusable row render-command buffer for modal title/body/action rows. */
-  rowCommands = [];
-  /** Reusable modal action button descriptors. */
-  actionItems = [];
-  /** Reusable modal action button placements. */
-  actionPlacements = [];
-  /** Reusable modal action button paint commands. */
-  actionCommands = [];
-  /** Clears retained buffers without replacing their array identities. */
-  clear() {
-    this.rowCommands.length = 0;
-    this.actionItems.length = 0;
-    this.actionPlacements.length = 0;
-    this.actionCommands.length = 0;
-  }
-  /** Reports retained buffer sizes for diagnostics and tests. */
-  inspect() {
-    return {
-      rowCommands: this.rowCommands.length,
-      actionItems: this.actionItems.length,
-      actionPlacements: this.actionPlacements.length,
-      actionCommands: this.actionCommands.length
-    };
-  }
-};
-
-// src/app/workbench_button_row_cache.ts
-var WorkbenchButtonRowBufferCache = class {
-  items = [];
-  placements = [];
-  commands = [];
-  clear() {
-    this.items.length = 0;
-    this.placements.length = 0;
-    this.commands.length = 0;
-  }
-  inspect() {
-    return {
-      items: this.items.length,
-      placements: this.placements.length,
-      commands: this.commands.length
-    };
-  }
-};
-
-// src/app/workbench_titlebar_cache.ts
-var WorkbenchTitlebarBufferCache = class {
-  #layouts = /* @__PURE__ */ new Map();
-  #renderCommands = /* @__PURE__ */ new Map();
-  /** Returns the retained titlebar layout buffer for a window id. */
-  layout(id2) {
-    let layout = this.#layouts.get(id2);
-    if (!layout) {
-      layout = createWorkbenchTitlebarLayout();
-      this.#layouts.set(id2, layout);
-    }
-    return layout;
-  }
-  /** Returns the retained titlebar button render-command buffer for a window id. */
-  renderCommands(id2) {
-    let commands = this.#renderCommands.get(id2);
-    if (!commands) {
-      commands = [];
-      this.#renderCommands.set(id2, commands);
-    }
-    return commands;
-  }
-  /** Drops retained buffers for one window id. */
-  delete(id2) {
-    this.#layouts.delete(id2);
-    this.#renderCommands.delete(id2);
-  }
-  /** Drops all retained buffers. */
-  clear() {
-    this.#layouts.clear();
-    this.#renderCommands.clear();
-  }
-  /** Reports retained cache sizes for diagnostics and tests. */
-  inspect() {
-    return {
-      layouts: this.#layouts.size,
-      renderCommands: this.#renderCommands.size
-    };
-  }
-};
 
 // src/app/workbench_ascii_modal.ts
 var WorkbenchAsciiConfigModalBufferCache = class {

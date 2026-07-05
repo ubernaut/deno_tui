@@ -109,9 +109,14 @@ import {
   wrappedControlOptionRowCount,
   writeStringFrameRow,
 } from "../../mod.web.ts";
-import { WorkbenchShelfBufferCache } from "../../src/app/workbench_shelf_cache.ts";
-import { WorkbenchTerminalBufferCache } from "../../src/app/workbench_terminal_cache.ts";
-import { WorkbenchTerminalSessionTabBufferCache } from "../../src/app/workbench_terminal_tab_cache.ts";
+import {
+  WorkbenchButtonRowBufferCache,
+  WorkbenchModalBufferCache,
+  WorkbenchShelfBufferCache,
+  WorkbenchTerminalBufferCache,
+  WorkbenchTerminalSessionTabBufferCache,
+  WorkbenchTitlebarBufferCache,
+} from "../../src/app/workbench_buffers.ts";
 import {
   apiWorkbenchColumns,
   apiWorkbenchDocs,
@@ -196,9 +201,6 @@ import {
   defaultWebTerminalWorkspaceSnapshot,
   normalizeWebTerminalWorkspaceSnapshot as normalizeWebTerminalWorkspaceSnapshotSource,
 } from "./api_workbench_terminal_workspace.ts";
-import { WorkbenchModalBufferCache } from "../../src/app/workbench_modal_cache.ts";
-import { WorkbenchButtonRowBufferCache } from "../../src/app/workbench_button_row_cache.ts";
-import { WorkbenchTitlebarBufferCache } from "../../src/app/workbench_titlebar_cache.ts";
 import {
   applyWorkbenchAsciiConfigRowAction,
   createDefaultWorkbenchAsciiOptions,

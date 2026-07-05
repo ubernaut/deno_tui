@@ -123,7 +123,7 @@ import {
   workbenchWindowActionLog,
   type WorkbenchWindowActionLogKind,
 } from "../src/app/workbench/controller.ts";
-import { WorkbenchShelfBufferCache } from "../src/app/workbench_shelf_cache.ts";
+import { WorkbenchShelfBufferCache } from "../src/app/workbench_buffers.ts";
 import {
   applyWorkbenchAsciiConfigRowAction,
   createDefaultWorkbenchAsciiOptions,
@@ -181,9 +181,13 @@ import {
   workbenchButtonRowRenderCommandsInto,
   wrappedControlOptionRowCount,
 } from "../src/app/workbench_control_layout.ts";
-import { WorkbenchButtonRowBufferCache } from "../src/app/workbench_button_row_cache.ts";
-import { WorkbenchModalBufferCache } from "../src/app/workbench_modal_cache.ts";
-import { WorkbenchTitlebarBufferCache } from "../src/app/workbench_titlebar_cache.ts";
+import {
+  WorkbenchButtonRowBufferCache,
+  WorkbenchModalBufferCache,
+  WorkbenchTerminalBufferCache,
+  WorkbenchTerminalSessionTabBufferCache,
+  WorkbenchTitlebarBufferCache,
+} from "../src/app/workbench_buffers.ts";
 import { maxTextWidth, type VisibleMenuSlice } from "../src/app/workbench_text.ts";
 import {
   applyWorkbenchTerminalSearchPromptInput,
@@ -207,8 +211,6 @@ import {
   workbenchTerminalToolbarItemsInto,
   workbenchTerminalToolbarStateFromSnapshot,
 } from "../src/app/workbench_terminal.ts";
-import { WorkbenchTerminalBufferCache } from "../src/app/workbench_terminal_cache.ts";
-import { WorkbenchTerminalSessionTabBufferCache } from "../src/app/workbench_terminal_tab_cache.ts";
 import { AudioRegistry } from "./audio.ts";
 import {
   apiWorkbenchColumns,
