@@ -345,6 +345,7 @@ import {
   workbenchThreeWindowIsInteractive,
 } from "../src/app/workbench_three_terminal_pressure.ts";
 import {
+  apiWorkbenchThreeEffectiveMaxCells,
   apiWorkbenchThreeFrameIntervalForCells,
   WORKBENCH_THREE_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_INITIAL_CELLS,
@@ -679,6 +680,12 @@ const workbenchThreeRuntime = new ApiWorkbenchThreeRuntimeController({
   onPressureChange: pushLog,
 });
 const workbenchThreeLiveMaxCells = workbenchThreeRuntime.liveMaxCells;
+const workbenchThreeEffectiveMaxCells = new Computed(() => {
+  const fullscreenId = maximized.value;
+  return apiWorkbenchThreeEffectiveMaxCells(workbenchThreeLiveMaxCells.value, {
+    fullscreenThree: fullscreenId ? isThreeRenderedWindow(fullscreenId) : false,
+  });
+});
 const workbenchThreeFrameInterval = workbenchThreeRuntime.frameInterval;
 const workbenchThreePressureDetails: ApiWorkbenchThreePressureInspection = workbenchThreeRuntime
   .inspectPressureDetails();
@@ -897,7 +904,7 @@ const threePanel = createWorkbenchThreePanelFrameView({
   frameInterval: workbenchThreeFrameInterval,
   idleFrameInterval: workbenchThreeIdleFrameInterval,
   interactive: () => isThreeWindowInteractive("three"),
-  maxRenderCells: workbenchThreeLiveMaxCells,
+  maxRenderCells: workbenchThreeEffectiveMaxCells,
   diagnostics: workbenchDiagnostics,
   onFrame: () => {
     threeCadence.record();
@@ -1058,6 +1065,7 @@ tui.on("destroy", () => {
   savedWorkspaces.dispose();
   menuFocused.dispose();
   threeConfigOpen.dispose();
+  workbenchThreeEffectiveMaxCells.dispose();
   threeConfigSelected.dispose();
   threeConfigWindow.dispose();
   threeConfigBaseline.dispose();
@@ -1457,7 +1465,7 @@ function renderThree(frame: Frame, rect: Rectangle): void {
         t,
         performance
           ? writeThreeHeaderRuntimePerformance(workbenchThreeHeaderPerformance, performance, {
-            sourceMaxCells: workbenchThreeLiveMaxCells.peek(),
+            sourceMaxCells: workbenchThreeEffectiveMaxCells.peek(),
             frameIntervalMs: workbenchThreeFrameInterval.peek(),
             measuredFps: threeCadence.measuredFps(),
             pressure,
@@ -2861,7 +2869,7 @@ function createVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
     frameInterval: workbenchThreeFrameInterval,
     idleFrameInterval: workbenchThreeIdleFrameInterval,
     interactive: () => isThreeWindowInteractive(id),
-    maxRenderCells: workbenchThreeLiveMaxCells,
+    maxRenderCells: workbenchThreeEffectiveMaxCells,
     diagnostics: workbenchDiagnostics,
     onFrame: () => {
       threeCadence.record();

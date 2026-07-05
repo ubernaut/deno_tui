@@ -7,6 +7,7 @@ export const WORKBENCH_THREE_LIVE_MAX_CELLS = 960;
 export const WORKBENCH_THREE_RESCUE_CELLS = 30;
 export const WORKBENCH_THREE_EMERGENCY_CELLS = 60;
 export const WORKBENCH_THREE_INITIAL_CELLS = 480;
+export const WORKBENCH_THREE_FULLSCREEN_MIN_CELLS = WORKBENCH_THREE_LIVE_MAX_CELLS;
 
 export const WORKBENCH_THREE_PRESSURE_LEVELS = [
   WORKBENCH_THREE_RESCUE_CELLS,
@@ -83,4 +84,14 @@ export function apiWorkbenchThreeFrameIntervalForCells(cells: number, options: {
     liveDefaultMs: WORKBENCH_THREE_DRAW_INTERVAL_MS,
     idleDefaultMs: 1000 / 8,
   });
+}
+
+/** Raises the active render-cell cap while a Three pane owns fullscreen. */
+export function apiWorkbenchThreeEffectiveMaxCells(
+  currentCells: number,
+  options: { fullscreenThree?: boolean; fullscreenMinCells?: number } = {},
+): number {
+  const current = Math.max(1, Math.floor(currentCells));
+  if (!options.fullscreenThree) return current;
+  return Math.max(current, Math.max(1, Math.floor(options.fullscreenMinCells ?? WORKBENCH_THREE_FULLSCREEN_MIN_CELLS)));
 }
