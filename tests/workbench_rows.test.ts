@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { assertEquals } from "./deps.ts";
-import { dataFooterRows, threeHeaderRows, type WorkbenchRowTheme } from "../src/app/workbench_rows.ts";
+import { workbenchStyledRowsRenderCommandsInto } from "../src/app/workbench_row_render.ts";
+import { dataFooterRows, type RowStyle, threeHeaderRows, type WorkbenchRowTheme } from "../src/app/workbench_rows.ts";
 
 const theme: WorkbenchRowTheme = {
   buttonActiveText: "#101010",
@@ -10,6 +11,8 @@ const theme: WorkbenchRowTheme = {
   soft: "#999999",
   surface: "#000000",
 };
+const renderTheme = { text: "#eee", surface: "#111" };
+const fit = (text: string, width: number) => text.slice(0, Math.max(0, width)).padEnd(Math.max(0, width));
 
 Deno.test("threeHeaderRows adapts title and geometry labels to width", () => {
   assertEquals(threeHeaderRows("studio", 80, theme), [
@@ -92,3 +95,52 @@ Deno.test("dataFooterRows returns styled footer rows and wraps narrow widths", (
 function crop(text: string, width: number): string {
   return text.slice(0, Math.max(0, width));
 }
+
+Deno.test("workbenchStyledRowsRenderCommandsInto clips rows and applies theme fallbacks", () => {
+  const rows: RowStyle[] = [
+    { text: "alpha" },
+    { text: "beta", fg: "#f00", bg: "#00f", bold: true },
+    { text: "gamma" },
+  ];
+
+  const commands = workbenchStyledRowsRenderCommandsInto([], {
+    rect: { column: 2, row: 3, width: 4, height: 2 },
+    rows,
+    theme: renderTheme,
+    fit,
+  });
+
+  assertEquals(commands, [
+    { row: 3, column: 2, text: "alph", fg: "#eee", bg: "#111", bold: false },
+    { row: 4, column: 2, text: "beta", fg: "#f00", bg: "#00f", bold: true },
+  ]);
+});
+
+Deno.test("workbenchStyledRowsRenderCommandsInto supports source offsets for scrolled panels", () => {
+  const target = [{ row: 99, column: 99, text: "stale", fg: "x", bg: "y", bold: true }];
+  const commands = workbenchStyledRowsRenderCommandsInto(target, {
+    rect: { column: 0, row: 10, width: 8, height: 3 },
+    rows: [{ text: "hidden" }, { text: "visible" }],
+    sourceStart: 1,
+    theme: renderTheme,
+    fit,
+  });
+
+  assertEquals(commands, [
+    { row: 10, column: 0, text: "visible ", fg: "#eee", bg: "#111", bold: false },
+  ]);
+  assertEquals(commands, target);
+});
+
+Deno.test("workbenchStyledRowsRenderCommandsInto clears target for empty bounds", () => {
+  const target = [{ row: 1, column: 1, text: "stale", fg: "x", bg: "y", bold: true }];
+  const commands = workbenchStyledRowsRenderCommandsInto(target, {
+    rect: { column: 0, row: 0, width: 0, height: 1 },
+    rows: [{ text: "hidden" }],
+    theme: renderTheme,
+    fit,
+  });
+
+  assertEquals(commands, []);
+  assertEquals(commands, target);
+});
