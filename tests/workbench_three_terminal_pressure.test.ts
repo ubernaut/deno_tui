@@ -1,10 +1,11 @@
-import { assertEquals } from "./deps.ts";
+import { assertEquals, assertStrictEquals } from "./deps.ts";
 import {
   createWorkbenchThreeTerminalPressureState,
   formatWorkbenchThreeTerminalPressureUpdateLog,
   resolveWorkbenchThreeTerminalPressureBudget,
   resolveWorkbenchThreeTerminalPressureBudgetInto,
   resolveWorkbenchThreeTerminalPressureUpdate,
+  resolveWorkbenchThreeTerminalPressureUpdateInto,
   shouldApplyWorkbenchThreeTerminalPressureSample,
   shouldCountWorkbenchThreeGridPressure,
   workbenchThreeFrameIntervalForCells,
@@ -56,7 +57,7 @@ Deno.test("workbench Three terminal pressure budget can reuse caller-owned resul
     highFrameThreshold: 1,
   });
 
-  assertEquals(result, target);
+  assertStrictEquals(result, target);
   assertEquals(target.currentCells, 480);
   assertEquals(target.direction, "down");
 });
@@ -339,6 +340,34 @@ Deno.test("workbench Three terminal pressure update scopes flush samples before 
   assertEquals(scoped.scoped, true);
   assertEquals(scoped.currentCells, 480);
   assertEquals(scoped.direction, "down");
+});
+
+Deno.test("workbench Three terminal pressure update can reuse caller-owned results", () => {
+  const state = createWorkbenchThreeTerminalPressureState(960);
+  const target = {
+    currentCells: 0,
+    highFrames: 0,
+    lowFrames: 0,
+    changed: false,
+    direction: "steady" as const,
+    scoped: false,
+  };
+  const result = resolveWorkbenchThreeTerminalPressureUpdateInto(target, state, {
+    currentCells: 960,
+    renderedThreeGrids: 1,
+    renderedThreeRows: 36,
+    changedRows: 40,
+    bytes: 100_000,
+    levels: [240, 480, 960],
+    highBytes: 80_000,
+    lowBytes: 35_000,
+    highFrameThreshold: 1,
+  });
+
+  assertStrictEquals(result, target);
+  assertEquals(target.scoped, true);
+  assertEquals(target.currentCells, 480);
+  assertEquals(target.direction, "down");
 });
 
 Deno.test("workbench Three terminal pressure update ignores slow full-screen redraws outside Three rows", () => {

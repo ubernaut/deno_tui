@@ -2,9 +2,10 @@ import { Signal } from "../signals/mod.ts";
 import {
   createWorkbenchThreeTerminalPressureState,
   formatWorkbenchThreeTerminalPressureUpdateLog,
-  resolveWorkbenchThreeTerminalPressureUpdate,
+  resolveWorkbenchThreeTerminalPressureUpdateInto,
   workbenchThreeTerminalBytesPerSecond,
   type WorkbenchThreeTerminalPressureState,
+  type WorkbenchThreeTerminalPressureUpdateResult,
 } from "./workbench_three_terminal_pressure.ts";
 import {
   API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY,
@@ -14,6 +15,11 @@ import {
   WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
   WORKBENCH_THREE_INITIAL_CELLS,
 } from "./workbench_three_policy.ts";
+
+const pressureChangeUpdateTargets = new WeakMap<
+  ApiWorkbenchThreePressureChange,
+  WorkbenchThreeTerminalPressureUpdateResult
+>();
 
 export interface ApiWorkbenchThreeFlushStats {
   changed: number;
@@ -99,7 +105,7 @@ export function resolveApiWorkbenchThreePressureChangeInto(
   const policy = input.fullscreenThree
     ? API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY
     : API_WORKBENCH_THREE_PRESSURE_POLICY;
-  const next = resolveWorkbenchThreeTerminalPressureUpdate(input.pressure, {
+  const next = resolveWorkbenchThreeTerminalPressureUpdateInto(pressureChangeUpdateTarget(target), input.pressure, {
     ...policy,
     currentCells: input.currentCells,
     renderedThreeGrids: input.sample.renderedThreeGrids,
@@ -457,6 +463,27 @@ function emptyPressureChange(): ApiWorkbenchThreePressureChange {
     nextCells: 0,
     scoped: false,
   };
+}
+
+function emptyTerminalPressureUpdate(): WorkbenchThreeTerminalPressureUpdateResult {
+  return {
+    currentCells: 0,
+    highFrames: 0,
+    lowFrames: 0,
+    changed: false,
+    direction: "steady",
+    scoped: false,
+  };
+}
+
+function pressureChangeUpdateTarget(
+  target: ApiWorkbenchThreePressureChange,
+): WorkbenchThreeTerminalPressureUpdateResult {
+  let update = pressureChangeUpdateTargets.get(target);
+  if (update) return update;
+  update = emptyTerminalPressureUpdate();
+  pressureChangeUpdateTargets.set(target, update);
+  return update;
 }
 
 function emptyPressureInspection(

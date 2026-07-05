@@ -5436,6 +5436,13 @@
     },
     {
       "module": "src/app/workbench_three_terminal_pressure.ts",
+      "name": "resolveWorkbenchThreeTerminalPressureUpdateInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_three_terminal_pressure.ts",
       "name": "shouldApplyWorkbenchThreeTerminalPressureSample",
       "kind": "function",
       "typeOnly": false,

@@ -199,11 +199,15 @@ export function resolveWorkbenchThreeTerminalPressureUpdate(
   state: WorkbenchThreeTerminalPressureState,
   options: WorkbenchThreeTerminalPressureUpdateOptions,
 ): WorkbenchThreeTerminalPressureUpdateResult {
-  const currentState = {
-    currentCells: Math.max(1, Math.floor(options.currentCells)),
-    highFrames: state.highFrames,
-    lowFrames: state.lowFrames,
-  };
+  return resolveWorkbenchThreeTerminalPressureUpdateInto(emptyTerminalPressureUpdateResult(), state, options);
+}
+
+/** Applies scoping and budget adaptation into a caller-owned result to avoid per-frame allocations. */
+export function resolveWorkbenchThreeTerminalPressureUpdateInto(
+  target: WorkbenchThreeTerminalPressureUpdateResult,
+  state: WorkbenchThreeTerminalPressureState,
+  options: WorkbenchThreeTerminalPressureUpdateOptions,
+): WorkbenchThreeTerminalPressureUpdateResult {
   const rowScoped = shouldApplyWorkbenchThreeTerminalPressureSample({
     renderedThreeGrids: options.renderedThreeGrids,
     renderedThreeRows: options.renderedThreeRows,
@@ -215,12 +219,22 @@ export function resolveWorkbenchThreeTerminalPressureUpdate(
     observedFrameCount: options.observedFrameCount,
     minObservedFpsFrames: options.minObservedFpsFrames,
   });
-  const scoped = rowScoped;
-  const next = resolveWorkbenchThreeTerminalPressureBudget(currentState, {
-    ...options,
-    renderedThreeGrids: scoped ? options.renderedThreeGrids : 0,
-  });
-  return { ...next, scoped };
+
+  target.currentCells = Math.max(1, Math.floor(options.currentCells));
+  target.highFrames = state.highFrames;
+  target.lowFrames = state.lowFrames;
+
+  if (!rowScoped) {
+    const levels = normalizedLevels(options.levels);
+    const current = clampToLevel(target.currentCells, levels);
+    writeTerminalPressureResult(target, current, 0, 0, current !== target.currentCells, "steady");
+    target.scoped = false;
+    return target;
+  }
+
+  resolveWorkbenchThreeTerminalPressureBudgetInto(target, target, options);
+  target.scoped = true;
+  return target;
 }
 
 /** Formats the user-visible log line for a Three terminal-pressure budget change. */
@@ -381,6 +395,17 @@ function emptyTerminalPressureResult(): WorkbenchThreeTerminalPressureResult {
     lowFrames: 0,
     changed: false,
     direction: "steady",
+  };
+}
+
+function emptyTerminalPressureUpdateResult(): WorkbenchThreeTerminalPressureUpdateResult {
+  return {
+    currentCells: 0,
+    highFrames: 0,
+    lowFrames: 0,
+    changed: false,
+    direction: "steady",
+    scoped: false,
   };
 }
 
