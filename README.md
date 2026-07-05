@@ -2762,8 +2762,9 @@ and verify that the final screen contains the Three telemetry row, bottom status
 collision text. Use the Three workbench probes when tuning the default API Workbench renderer. The startup probe
 exercises the workbench-sized block-mode Three panel and fails if average renderer time drifts above the guard. The
 narrow probe mirrors an 80x24 terminal where the pane collapses to a small 37x5 region, which is useful for separating
-renderer cost from terminal/layout constraints. Run GPU-backed visual smoke and Three probe tasks serially; concurrent
-WebGPU probes can contend for the same device and produce false device-loss or slow-frame failures.
+renderer cost from terminal/layout constraints. GPU-backed visual smoke and Three probe tasks use a local probe lock so
+overlapping task runs serialize before touching WebGPU; raw probe commands should follow the same pattern because
+concurrent WebGPU probes can contend for the same device and produce false device-loss or slow-frame failures.
 
 ```sh
 deno run --watch --allow-hrtime examples/demo.ts

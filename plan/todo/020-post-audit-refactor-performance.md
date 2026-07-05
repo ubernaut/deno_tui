@@ -1168,3 +1168,9 @@ performance, shared terminal/web workbench projections, and oversized module red
   a repeatable visual gate instead of relying only on ad hoc terminal captures. Serial runs passed with the default
   Three pane around `6ms 333c live 20fps`; concurrent GPU probe/smoke runs can still induce device-loss noise, so
   GPU-backed visual/probe checks should be sequenced rather than parallelized.
+- Added a local file lock wrapper for GPU-backed visual/probe tasks so accidentally concurrent `deno task` runs
+  serialize instead of racing WebGPU device access. The previously failing parallel workbench-smoke/startup-probe run
+  now passes with no device loss and the startup probe holds roughly `6.7ms` steady renderer time.
+- Raised the API Workbench fullscreen Three pressure floor to `1_920` cells and tightened the fullscreen probe to
+  require a large rendered grid. The fullscreen pressure check now holds around `85x22/1870c` instead of collapsing back
+  to the small embedded-pane grid, while regular embedded panes still keep the lower rescue tiers.

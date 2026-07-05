@@ -7,6 +7,7 @@ import {
   WORKBENCH_THREE_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_EMERGENCY_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
+  WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS,
   WORKBENCH_THREE_FULLSCREEN_PRESSURE_HIGH_BYTES_PER_SECOND,
   WORKBENCH_THREE_FULLSCREEN_PRESSURE_LEVELS,
   WORKBENCH_THREE_INITIAL_CELLS,
@@ -34,13 +35,12 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
     960,
   ]);
   assertEquals(Array.from(WORKBENCH_THREE_FULLSCREEN_PRESSURE_LEVELS), [
-    480,
-    960,
     1920,
     3840,
   ]);
   assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 480);
   assertEquals(WORKBENCH_THREE_FULLSCREEN_MIN_CELLS, 3_840);
+  assertEquals(WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS, 1_920);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 480_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 24_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 60_000);
@@ -154,7 +154,7 @@ Deno.test("API workbench Three fullscreen pressure keeps a useful visual floor",
     Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
   }
 
-  assertEquals(state.currentCells, WORKBENCH_THREE_INITIAL_CELLS);
+  assertEquals(state.currentCells, WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS);
   assertEquals(state.highFrames, 0);
 });
 
