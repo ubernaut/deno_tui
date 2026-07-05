@@ -7,6 +7,7 @@ import {
   resolveThreePanelRenderSize,
   resolveThreePanelRequestedMaxCells,
   resolveThreePanelRuntimeBudget,
+  ThreePanelAdaptiveRenderBudgetController,
 } from "../src/app/three_panel_policy.ts";
 
 Deno.test("resolveThreePanelRenderPolicy selects ASCII-only rendering by default", () => {
@@ -135,6 +136,54 @@ Deno.test("resolveThreePanelRuntimeBudget falls back to live values without idle
     }),
     { requestedMaxCells: 240, frameInterval: 1 },
   );
+});
+
+Deno.test("ThreePanelAdaptiveRenderBudgetController owns warmup and requested-size state", () => {
+  const controller = new ThreePanelAdaptiveRenderBudgetController();
+
+  const initial = controller.renderSize({ width: 160, height: 60 }, 3_840);
+  assert(initial.columns * initial.rows <= 3_840);
+  assertEquals(
+    controller.update({ requestedMaxCells: 3_840, frameMs: 1_000, targetMs: 1000 / 18 }),
+    { maxCells: undefined, slowFrames: 0, fastFrames: 0, direction: "steady", changed: false },
+  );
+  assertEquals(
+    controller.update({ requestedMaxCells: 3_840, frameMs: 220, targetMs: 1000 / 18 }).direction,
+    "steady",
+  );
+  const reduced = controller.update({ requestedMaxCells: 3_840, frameMs: 220, targetMs: 1000 / 18 });
+  assertEquals(reduced.direction, "down");
+  assertEquals(reduced.maxCells, 1_920);
+  assertEquals(reduced.changed, true);
+  const reducedSize = controller.renderSize({ width: 160, height: 60 }, 3_840);
+  assert(reducedSize.columns * reducedSize.rows <= 1_920);
+
+  const resetSize = controller.renderSize({ width: 160, height: 60 }, 7_680);
+  assert(resetSize.columns * resetSize.rows > reducedSize.columns * reducedSize.rows);
+  assert(resetSize.columns * resetSize.rows <= 7_680);
+  assertEquals(
+    controller.update({ requestedMaxCells: 7_680, frameMs: 1_000, targetMs: 1000 / 18 }).direction,
+    "steady",
+  );
+});
+
+Deno.test("ThreePanelAdaptiveRenderBudgetController resets reduced caps when the viewport expands", () => {
+  const controller = new ThreePanelAdaptiveRenderBudgetController();
+  const smallRect = { width: 96, height: 32 };
+  const largeRect = { width: 180, height: 50 };
+
+  controller.renderSize(smallRect, 7_680);
+  controller.update({ requestedMaxCells: 7_680, frameMs: 1_000, targetMs: 1000 / 18 });
+  controller.update({ requestedMaxCells: 7_680, frameMs: 220, targetMs: 1000 / 18 });
+  const reduced = controller.update({ requestedMaxCells: 7_680, frameMs: 220, targetMs: 1000 / 18 });
+  assertEquals(reduced.direction, "down");
+
+  const reducedSize = controller.renderSize(smallRect, 7_680);
+  assert(reducedSize.columns * reducedSize.rows <= reduced.maxCells!);
+
+  const expandedSize = controller.renderSize(largeRect, 7_680);
+  assert(expandedSize.columns * expandedSize.rows > reducedSize.columns * reducedSize.rows);
+  assert(expandedSize.columns * expandedSize.rows <= 7_680);
 });
 
 Deno.test("resolveThreePanelAdaptiveRenderBudget waits for sustained slow frames before stepping down", () => {
