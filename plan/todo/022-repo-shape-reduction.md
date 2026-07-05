@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `576`
+- Tracked files after the current consolidation passes: `575`
 - Tracked top-level file counts:
   - `src`: `296`
-  - `tests`: `80`
+  - `tests`: `79`
   - `app`: `29`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,000` lines across `25` files
   - `app`: `20,381` lines across `29` files
   - `examples`: `8,814` lines across `42` files
-  - `tests`: `49,632` lines across `80` files
+  - `tests`: `49,631` lines across `79` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -236,7 +236,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - system metrics GPU, network, process, and snapshot helper tests are now `tests/system_metrics_core.test.ts`
   - small Three ASCII renderer option/profile/frame/cache helper shards are now bundled into
     `tests/three_ascii_core.test.ts`
-  - API workbench window catalog assertions are now bundled into `tests/api_workbench_catalog.test.ts`
+  - API workbench window catalog assertions are now bundled into `tests/workbench_panels.test.ts`
   - visualization panel helper assertions are now bundled into `tests/visualization_primitives.test.ts`
   - Three ASCII GPU buffer, uniform, performance, and headless canvas helper assertions are now bundled into
     `tests/three_ascii_core.test.ts`
@@ -329,8 +329,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     `tests/three_panel_core.test.ts`; the frame suite stays focused on live panel behavior and renderer lifecycle
     scenarios.
   - terminal status tone color mapping is now resolved by the shared API Workbench catalog and covered in
-    `tests/api_workbench_catalog.test.ts`, removing another renderer-local presentation switch without widening the
-    stable package surface.
+    `tests/workbench_panels.test.ts`, removing another renderer-local presentation switch without widening the stable
+    package surface.
   - `app/three_panel.ts` no longer re-exports pure Three panel policy/core helpers for test convenience; tests import
     those helpers from `src/app/*` directly, keeping the app facade focused on the view classes and factory.
   - app audio discovery and meter-failure assertions are now bundled into `tests/visualizations_dynamic.test.ts`,
