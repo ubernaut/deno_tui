@@ -673,6 +673,7 @@ const windowScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const workspaceScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const dropdownOverlayRenderCommands: WorkbenchDropdownOverlayRenderCommand[] = [];
 const visibleWindowRects = new Map<WindowId, Rectangle>();
+const frameWidthHints = new WeakMap<Frame, number>();
 const currentWorkspaceWindowBuffer: SavedWorkspaceWindow[] = [];
 const currentWorkspaceVisualizationIdBuffer: string[] = [];
 const workbenchThreeRuntime = new ApiWorkbenchThreeRuntimeController({
@@ -1244,6 +1245,7 @@ function renderWorkspace(frame: Frame): void {
   const layout = workspaceLayout({ column: 0, row: 0, width: Math.max(1, bounds.width - 1), height: bounds.height });
   const offset = workspaceViewport.update({ layout, viewportHeight: bounds.height, activeId: activeWindow.peek() });
   const virtual = prepareWorkbenchFrame(workspaceVirtualFrame, Math.max(bounds.height, layout.contentHeight));
+  frameWidthHints.set(virtual, layout.bounds.width);
   fillRect(virtual, layout.bounds, theme().backgroundSoft);
   const hitStart = hitTargets.length;
   const max = maximized.peek();
@@ -1322,6 +1324,7 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
   scroll.setContentSize(contentSize.width, contentSize.height);
   fillRect(frame, inner, t.surface);
   const contentFrame = windowContentFrame(id, contentSize.height);
+  frameWidthHints.set(contentFrame, contentSize.width);
   fillRect(contentFrame, { column: 0, row: 0, width: contentSize.width, height: contentSize.height }, t.surface);
   const contentHitStart = hitTargets.length;
   const previousWindowRenderContext = windowRenderContext;
@@ -4500,15 +4503,19 @@ function writeRows(frame: Frame, rect: Rectangle, rows: RowStyle[]): void {
 }
 
 function write(frame: Frame, row: number, column: number, value: string): void {
-  writeFrame(frame, currentWidth(), row, column, value);
+  writeFrame(frame, workbenchFrameWidth(frame), row, column, value);
 }
 
 function fillRow(frame: Frame, row: number, bg: string): void {
-  fillFrameRow(frame, currentWidth(), row, makeStyle({ bg }));
+  fillFrameRow(frame, workbenchFrameWidth(frame), row, makeStyle({ bg }));
 }
 
 function fillRect(frame: Frame, rect: Rectangle, bg: string): void {
-  fillFrameRect(frame, currentWidth(), rect, makeStyle({ bg }));
+  fillFrameRect(frame, workbenchFrameWidth(frame), rect, makeStyle({ bg }));
+}
+
+function workbenchFrameWidth(frame: Frame): number {
+  return frameWidthHints.get(frame) ?? currentWidth();
 }
 
 function paint(text: string, options: { fg?: string; bg?: string; bold?: boolean } = {}): string {
