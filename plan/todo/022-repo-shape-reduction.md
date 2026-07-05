@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `574`
+- Tracked files after the current consolidation passes: `573`
 - Tracked top-level file counts:
   - `src`: `296`
-  - `tests`: `78`
+  - `tests`: `77`
   - `app`: `29`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,000` lines across `25` files
   - `app`: `20,381` lines across `29` files
   - `examples`: `8,814` lines across `42` files
-  - `tests`: `49,629` lines across `78` files
+  - `tests`: `49,646` lines across `77` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -242,10 +242,10 @@ The library core is real and valuable, but it needs clearer boundaries:
     `tests/three_ascii_core.test.ts`
   - Three panel effect, grid, and graphics helper assertions are now bundled into `tests/three_panel_core.test.ts`
   - Three panel diagnostic assertions are now bundled into `tests/three_panel_core.test.ts`
-  - Workbench terminal-size sync assertions are now bundled into `tests/workbench_repaint_policy.test.ts`
+  - Workbench terminal-size sync assertions are now bundled into `tests/workbench_layout.test.ts`
   - Workbench diagnostics formatting assertions are now bundled into `tests/workbench_status.test.ts`
   - Workbench text helper and prompt-input assertions are now bundled into `tests/workbench_facade.test.ts`
-  - Workbench styled-row render assertions are now bundled into `tests/workbench_rows.test.ts`
+  - Workbench styled-row render assertions are now bundled into `tests/workbench_status.test.ts`
   - Workbench terminal style assertions are now bundled into `tests/workbench_terminal.test.ts`
   - Workbench viewport helper assertions are now bundled into `tests/workbench_layout.test.ts`
   - Workbench Three window-state assertions are now bundled into `tests/workbench_three_policy.test.ts`
@@ -305,6 +305,8 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Workbench Three panel registry assertions are now bundled into `tests/workbench_three_panel.test.ts`
   - Workbench Three geometry/rectangle projection assertions are now bundled into `tests/workbench_three_panel.test.ts`
   - Workbench Three scene projection and equality assertions are now bundled into `tests/workbench_three_panel.test.ts`
+  - Workbench visualization-window row, Three fallback, and browser-preview assertions are now bundled into
+    `tests/visualization_three.test.ts`, keeping Three visualization behavior with the owning fallback/signal suite.
   - Three panel adaptive render-cell budgeting is folded into `src/app/three_panel_policy.ts`, with its assertions now
     bundled into `tests/three_panel_core.test.ts`
   - Three panel diagnostics are folded into `src/app/three_panel_core.ts`, keeping slow-frame, adaptive-budget, and
