@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `671`
+- Tracked files after the current consolidation passes: `670`
 - Tracked top-level file counts:
   - `src`: `321`
-  - `tests`: `142`
+  - `tests`: `141`
   - `app`: `38`
   - `docs`: `49`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,201` lines across `35` files
   - `app`: `20,302` lines across `38` files
   - `examples`: `8,732` lines across `41` files
-  - `tests`: `49,107` lines across `142` files
+  - `tests`: `49,143` lines across `141` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -56,7 +56,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - workbench ANSI cursor/span caches are now private helpers inside `src/app/workbench_ansi_screen.ts`
   - standalone visualization app navigation and monitor-window helpers are local to `app/main.ts`
   - API workbench explorer, inspector, and log row projectors are bundled in `app/workbench_panels.ts`
-  - visualization Three fallback/signal helpers are bundled in `app/visualization_three.ts`
+  - visualization Three fallback/signal helpers are bundled behind `app/visualizations.ts`
   - the app ASCII options shim was removed in favor of direct `src/three_ascii/*` imports
   - system metric diagnostics are folded into `app/system_metrics.ts`
   - system metrics network parsing is folded into `app/system_metrics_sources.ts`
@@ -176,6 +176,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Public flex layout export assertions are now bundled into `tests/flex_layout.test.ts`
   - Visualization panel defaults are now bundled into `tests/visualization_launcher.test.ts`
   - Workbench mobile command strip assertions are now bundled into `tests/workbench_control_layout.test.ts`
+  - Workbench help and shared modal-content assertions are now bundled into `tests/workbench_facade.test.ts`
 - Prefer subsystem-level runtime smoke coverage for workbench, Three ASCII, terminal shell, and web interaction.
 
 ### P1: Keep Three ASCII Performance Gated By Real Probes
