@@ -36,11 +36,11 @@ import {
   writeThreeAsciiUniformValues,
 } from "./compute_resources.ts";
 import {
+  patchThreeAsciiEffectOptions,
   resolveThreeAsciiComputeMode,
   type ThreeAsciiEffectState,
   threeAsciiEffectStateFromSource,
 } from "./effect_state.ts";
-import { patchThreeAsciiEffectOptions } from "./effect_options.ts";
 import {
   createThreeAsciiRendererPerformance,
   createThreeAsciiRendererSaturatedPerformance,

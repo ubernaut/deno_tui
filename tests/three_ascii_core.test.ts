@@ -39,13 +39,11 @@ import {
   writeThreeAsciiUniformValues,
 } from "../src/three_ascii/compute_resources.ts";
 import {
-  patchThreeAsciiEffectOptions,
-  threeAsciiEffectOptionsAffectComputeUniforms,
-} from "../src/three_ascii/effect_options.ts";
-import {
   defaultThreeAsciiEffectState,
+  patchThreeAsciiEffectOptions,
   resolveThreeAsciiComputeMode,
   shouldIncludeThreeAsciiTerminalEdges,
+  threeAsciiEffectOptionsAffectComputeUniforms,
   threeAsciiEffectStateFromSource,
   type ThreeAsciiEffectStateSource,
 } from "../src/three_ascii/effect_state.ts";
