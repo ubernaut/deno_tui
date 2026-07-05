@@ -10,6 +10,45 @@ import type { BorderMode, MenuLine, Rect } from "./types.ts";
 const PANEL_BODY_LINE_LIMIT = 1024;
 const LIST_VIEW_LINE_LIMIT = 512;
 
+class RetainedTextLines {
+  readonly lines: TextObject[] = [];
+  private drawn = false;
+
+  private readonly handleRectangle = (rect: Rect) => {
+    const previousCount = this.lines.length;
+    this.ensureLineCount(Math.min(this.lineLimit, Math.max(0, rect.height)));
+
+    if (!this.drawn) {
+      return;
+    }
+
+    for (let index = previousCount; index < this.lines.length; index += 1) {
+      this.lines[index]?.draw();
+    }
+  };
+
+  constructor(
+    private readonly rectangle: SignalOfObject<Rect>,
+    private readonly lineLimit: number,
+    private readonly createLine: (index: number) => TextObject,
+  ) {}
+
+  draw(): void {
+    this.ensureLineCount(Math.min(this.lineLimit, Math.max(0, this.rectangle.peek().height)));
+    for (const line of this.lines) {
+      line.draw();
+    }
+    this.drawn = true;
+    this.rectangle.subscribe(this.handleRectangle);
+  }
+
+  private ensureLineCount(targetCount: number): void {
+    while (this.lines.length < targetCount) {
+      this.lines.push(this.createLine(this.lines.length));
+    }
+  }
+}
+
 export function inset(rect: Rect, amountX: number, amountY = amountX): Rect {
   return {
     column: rect.column + amountX,
@@ -118,23 +157,7 @@ export class FrameView {
 
 export class MultilineTextView {
   lines: TextObject[];
-  private readonly rectangle: SignalOfObject<Rect>;
-  private readonly lineLimit: number;
-  private readonly createLine: (index: number) => TextObject;
-  private drawn = false;
-
-  private readonly handleRectangle = (rect: Rect) => {
-    const previousCount = this.lines.length;
-    this.ensureLineCount(Math.min(this.lineLimit, Math.max(0, rect.height)));
-
-    if (!this.drawn) {
-      return;
-    }
-
-    for (let index = previousCount; index < this.lines.length; index += 1) {
-      this.lines[index]?.draw();
-    }
-  };
+  private readonly retainedLines: RetainedTextLines;
 
   constructor(options: {
     canvas: Canvas;
@@ -154,10 +177,7 @@ export class MultilineTextView {
     const lineLimit = options.lineLimit ?? 40;
     const lines = new Computed(() => textSignal.value.split("\n"));
 
-    this.lines = [];
-    this.rectangle = options.rectangle;
-    this.lineLimit = lineLimit;
-    this.createLine = (index) =>
+    this.retainedLines = new RetainedTextLines(options.rectangle, lineLimit, (index) =>
       new TextObject({
         canvas: options.canvas,
         style: options.style,
@@ -190,44 +210,18 @@ export class MultilineTextView {
           const cropped = cropToWidth(source, rect.width);
           return padToWidth.value ? cropped.padEnd(rect.width, " ") : cropped;
         }),
-      });
+      }));
+    this.lines = this.retainedLines.lines;
   }
 
   draw() {
-    this.ensureLineCount(Math.min(this.lineLimit, Math.max(0, this.rectangle.peek().height)));
-    for (const line of this.lines) {
-      line.draw();
-    }
-    this.drawn = true;
-    this.rectangle.subscribe(this.handleRectangle);
-  }
-
-  private ensureLineCount(targetCount: number) {
-    while (this.lines.length < targetCount) {
-      this.lines.push(this.createLine(this.lines.length));
-    }
+    this.retainedLines.draw();
   }
 }
 
 export class ListView {
   lines: TextObject[];
-  private readonly rectangle: SignalOfObject<Rect>;
-  private readonly lineLimit: number;
-  private readonly createLine: (index: number) => TextObject;
-  private drawn = false;
-
-  private readonly handleRectangle = (rect: Rect) => {
-    const previousCount = this.lines.length;
-    this.ensureLineCount(Math.min(this.lineLimit, Math.max(0, rect.height)));
-
-    if (!this.drawn) {
-      return;
-    }
-
-    for (let index = previousCount; index < this.lines.length; index += 1) {
-      this.lines[index]?.draw();
-    }
-  };
+  private readonly retainedLines: RetainedTextLines;
 
   constructor(options: {
     canvas: Canvas;
@@ -240,10 +234,7 @@ export class ListView {
     const emptyStyle = options.emptyStyle instanceof Signal
       ? options.emptyStyle
       : new Signal<Style>(options.emptyStyle ?? ((text: string) => text));
-    this.lines = [];
-    this.rectangle = options.rectangle;
-    this.lineLimit = limit;
-    this.createLine = (index) =>
+    this.retainedLines = new RetainedTextLines(options.rectangle, limit, (index) =>
       new TextObject({
         canvas: options.canvas,
         style: new Computed(() => options.lines.value[index]?.style ?? emptyStyle.value),
@@ -272,22 +263,12 @@ export class ListView {
           const text = options.lines.value[index]?.text ?? "";
           return cropToWidth(text, rect.width).padEnd(rect.width, " ");
         }),
-      });
+      }));
+    this.lines = this.retainedLines.lines;
   }
 
   draw() {
-    this.ensureLineCount(Math.min(this.lineLimit, Math.max(0, this.rectangle.peek().height)));
-    for (const line of this.lines) {
-      line.draw();
-    }
-    this.drawn = true;
-    this.rectangle.subscribe(this.handleRectangle);
-  }
-
-  private ensureLineCount(targetCount: number) {
-    while (this.lines.length < targetCount) {
-      this.lines.push(this.createLine(this.lines.length));
-    }
+    this.retainedLines.draw();
   }
 }
 

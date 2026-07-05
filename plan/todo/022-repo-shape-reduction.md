@@ -173,6 +173,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     factory that owns them and removing a standalone app-only geometry shard
   - Visualization catalog metadata and slot ordering are folded into `app/visualizations.ts`, keeping catalog, family
     lookup, ordering, and render dispatch behind one stable visualization facade
+  - app multiline text and list views now share one private retained-line lifecycle helper in `app/ui.ts`, removing
+    duplicated resize/draw growth code without adding another app module
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
