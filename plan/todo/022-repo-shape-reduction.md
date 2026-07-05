@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `772`
+- Tracked files after the current consolidation passes: `768`
 - Tracked top-level file counts:
   - `src`: `368`
-  - `tests`: `185`
+  - `tests`: `181`
   - `app`: `48`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,195` lines across `45` files
   - `app`: `20,428` lines across `48` files
   - `examples`: `8,732` lines across `42` files
-  - `tests`: `49,297` lines across `185` files
+  - `tests`: `49,296` lines across `181` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `24MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -92,6 +92,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     `tests/three_ascii_core.test.ts`
   - API workbench window catalog assertions are now bundled into `tests/api_workbench_catalog.test.ts`
   - visualization panel helper assertions are now bundled into `tests/visualization_primitives.test.ts`
+  - Three ASCII GPU buffer, uniform, performance, and headless canvas helper assertions are now bundled into
+    `tests/three_ascii_core.test.ts`
 - Prefer subsystem-level runtime smoke coverage for workbench, Three ASCII, terminal shell, and web interaction.
 
 ### P1: Keep Three ASCII Performance Gated By Real Probes
@@ -99,6 +101,8 @@ The library core is real and valuable, but it needs clearer boundaries:
 - Continue using benchmark cases for hot helpers, but treat live probes as required evidence:
   - `deno task three-workbench:startup-probe`
   - `deno task three-ascii:live-probe -- --frames 45 --glyphs blocks --max-cells 960 --check --max-average-ms 40`
+- Latest block-mode live probe after the Three ASCII core test consolidation: `18.48ms` steady average, about `54.1 fps`
+  at `31x15` cells with the capped probe.
 - Avoid speculative micro-optimizations unless they improve measured workbench/default-demo behavior.
 
 ### P2: Split Demo Framework From Library Framework

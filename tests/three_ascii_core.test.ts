@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Color } from "npm:three@0.183.2";
 
-import { assertEquals, assertNotStrictEquals, assertStrictEquals, assertStringIncludes } from "./deps.ts";
+import { assertEquals, assertNotStrictEquals, assertStrictEquals, assertStringIncludes, assertThrows } from "./deps.ts";
 import { ThreeAsciiAnsiBackgroundState } from "../src/three_ascii/ansi_background.ts";
 import { ThreeAsciiAnsiColorKeyCache } from "../src/three_ascii/ansi_color_cache.ts";
 import {
@@ -34,8 +34,19 @@ import {
   THREE_ASCII_ANSI_FRAME_OPTIONS,
   THREE_ASCII_IMAGE_FRAME_OPTIONS,
 } from "../src/three_ascii/frame_options.ts";
+import {
+  destroyThreeAsciiGpuBufferSlot,
+  ensureThreeAsciiGpuBufferSlot,
+  type ThreeAsciiGpuBuffer,
+  type ThreeAsciiGpuBufferDevice,
+} from "../src/three_ascii/gpu_buffers.ts";
+import { compactMappedRgbaRows } from "../src/three_ascii/headless_canvas.ts";
 import { readThreeAsciiImageFrame } from "../src/three_ascii/image_frame.ts";
 import { loadAsciiLutTextures } from "../src/three_ascii/loadAsciiLuts.ts";
+import {
+  createThreeAsciiRendererPerformance,
+  createThreeAsciiRendererSaturatedPerformance,
+} from "../src/three_ascii/performance.ts";
 import {
   resolveThreeAsciiRenderProfile,
   resolveThreeAsciiRenderProfileInto,
@@ -58,6 +69,7 @@ import {
   THREE_ASCII_TILE_SIZE,
   THREE_ASCII_WORKGROUP_SIZE,
 } from "../src/three_ascii/shaders.ts";
+import { THREE_ASCII_UNIFORM_FLOAT_COUNT, writeThreeAsciiUniformValues } from "../src/three_ascii/uniforms.ts";
 
 Deno.test("three ascii shader constants preserve renderer dimensions", () => {
   assertEquals(THREE_ASCII_TILE_SIZE, 8);
@@ -443,3 +455,289 @@ Deno.test("three ascii renderer options preserve explicit choices and clamp stal
     0,
   );
 });
+
+Deno.test("three ascii GPU buffer slots reuse same-sized buffers", () => {
+  const device = new FakeGpuBufferDevice();
+  const first = ensureThreeAsciiGpuBufferSlot(device, undefined, {
+    label: "first",
+    byteLength: 64,
+    usage: 3,
+  });
+  const second = ensureThreeAsciiGpuBufferSlot(device, first, {
+    label: "second",
+    byteLength: 64,
+    usage: 7,
+  });
+
+  assertStrictEquals(second, first);
+  assertEquals(device.buffers.length, 1);
+  assertEquals(first.gpu.destroyed, false);
+  assertEquals(first.gpu.label, "first");
+  assertEquals(first.gpu.usage, 3);
+});
+
+Deno.test("three ascii GPU buffer slots replace resized buffers and destroy optional slots", () => {
+  const device = new FakeGpuBufferDevice();
+  const first = ensureThreeAsciiGpuBufferSlot(device, undefined, {
+    label: "small",
+    byteLength: 16,
+    usage: 1,
+  });
+  const second = ensureThreeAsciiGpuBufferSlot(device, first, {
+    label: "large",
+    byteLength: 32,
+    usage: 5,
+  });
+
+  assertEquals(first.gpu.destroyed, true);
+  assertEquals(second === first, false);
+  assertEquals(second.byteLength, 32);
+  assertEquals(second.gpu.label, "large");
+  assertEquals(second.gpu.usage, 5);
+  assertEquals(device.buffers.length, 2);
+  assertEquals(destroyThreeAsciiGpuBufferSlot(second), undefined);
+  assertEquals(second.gpu.destroyed, true);
+  assertEquals(destroyThreeAsciiGpuBufferSlot(undefined), undefined);
+});
+
+Deno.test("three ascii uniforms pack dimensions flags effects and colors", () => {
+  const target = new Float32Array(THREE_ASCII_UNIFORM_FLOAT_COUNT);
+  const result = writeThreeAsciiUniformValues(target, {
+    columns: 12,
+    rows: 5,
+    tileSize: 8,
+    terminalEdgeBias: 1.5,
+    terminalEdgeThresholdScale: 2,
+    effectState: {
+      edges: true,
+      fill: false,
+      invertLuminance: true,
+      exposure: 1.25,
+      attenuation: 0.75,
+      blendWithBase: 0.5,
+      depthFalloff: 3,
+      depthOffset: 4,
+      edgeThreshold: 6,
+      asciiColor: { r: 0.1, g: 0.2, b: 0.3 },
+      backgroundColor: { r: 0.4, g: 0.5, b: 0.6 },
+    },
+  });
+
+  assertEquals(result, target);
+  assertEquals(Array.from(target), [
+    12,
+    5,
+    96,
+    40,
+    1,
+    0,
+    1,
+    18,
+    1.25,
+    0.75,
+    0.5,
+    3,
+    4,
+    0,
+    0,
+    0,
+    0.10000000149011612,
+    0.20000000298023224,
+    0.30000001192092896,
+    1,
+    0.4000000059604645,
+    0.5,
+    0.6000000238418579,
+    1,
+  ]);
+});
+
+Deno.test("three ascii uniforms reject short target buffers", () => {
+  assertThrows(
+    () =>
+      writeThreeAsciiUniformValues(new Float32Array(4), {
+        columns: 1,
+        rows: 1,
+        tileSize: 8,
+        terminalEdgeBias: 1,
+        terminalEdgeThresholdScale: 2,
+        effectState: {
+          edges: true,
+          fill: true,
+          invertLuminance: false,
+          exposure: 1,
+          attenuation: 1,
+          blendWithBase: 0,
+          depthFalloff: 0,
+          depthOffset: 0,
+          edgeThreshold: 8,
+          asciiColor: { r: 1, g: 1, b: 1 },
+          backgroundColor: { r: 0, g: 0, b: 0 },
+        },
+      }),
+    RangeError,
+    "requires 24 floats",
+  );
+});
+
+Deno.test("three ascii renderer performance projects frame and queue timings", () => {
+  assertEquals(
+    createThreeAsciiRendererPerformance({
+      columns: 12,
+      rows: 8,
+      terminalGlyphStyle: "blocks",
+      frameMs: 16,
+      initMs: 5,
+      sceneMs: 9,
+      ansiMs: 7,
+      readbackMs: 4,
+      assemblyMs: 2,
+      queue: {
+        slotCount: 6,
+        pending: 1,
+        unresolved: 2,
+        resolved: 3,
+        saturated: false,
+      },
+    }),
+    {
+      columns: 12,
+      rows: 8,
+      cells: 96,
+      terminalGlyphStyle: "blocks",
+      totalMs: 16,
+      initMs: 5,
+      sceneMs: 9,
+      sceneUpdateMs: undefined,
+      sceneRenderMs: undefined,
+      ansiMs: 7,
+      readbackMs: 4,
+      assemblyMs: 2,
+      deferredReadbackSlots: 6,
+      deferredReadbackPending: 1,
+      deferredReadbackUnresolved: 2,
+      deferredReadbackResolved: 3,
+      deferredReadbackSaturated: false,
+    },
+  );
+});
+
+Deno.test("three ascii saturated performance preserves previous frame timing", () => {
+  assertEquals(
+    createThreeAsciiRendererSaturatedPerformance({
+      columns: 10,
+      rows: 5,
+      terminalGlyphStyle: "mixed",
+      frameMs: 3,
+      previousFrameMs: 22,
+      readbackMs: 6,
+      queue: {
+        slotCount: 4,
+        pending: 4,
+        unresolved: 4,
+        resolved: 0,
+      },
+    }),
+    {
+      columns: 10,
+      rows: 5,
+      cells: 50,
+      terminalGlyphStyle: "mixed",
+      totalMs: 22,
+      initMs: 0,
+      sceneMs: 0,
+      sceneUpdateMs: 0,
+      sceneRenderMs: 0,
+      ansiMs: 0,
+      readbackMs: 6,
+      assemblyMs: 0,
+      deferredReadbackSlots: 4,
+      deferredReadbackPending: 4,
+      deferredReadbackUnresolved: 4,
+      deferredReadbackResolved: 0,
+      deferredReadbackSaturated: true,
+    },
+  );
+});
+
+Deno.test("three ascii headless canvas compacts tightly packed and padded mapped rows", () => {
+  const tightSource = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
+  const tightTarget = new Uint8Array(8);
+  const tightResult = compactMappedRgbaRows(tightSource, 1, 2, 4, tightTarget);
+
+  assertEquals(tightResult === tightTarget, true);
+  assertEquals(Array.from(tightResult), [1, 2, 3, 4, 5, 6, 7, 8]);
+
+  const padded = new Uint8Array([
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    99,
+    99,
+    99,
+    99,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    88,
+    88,
+    88,
+    88,
+  ]);
+  assertEquals(Array.from(compactMappedRgbaRows(padded, 2, 2, 12)), [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+  ]);
+});
+
+Deno.test("three ascii headless canvas handles empty dimensions without touching target", () => {
+  const target = new Uint8Array([7, 8]);
+  const result = compactMappedRgbaRows(new Uint8Array([1, 2, 3, 4]), 0, 2, 4, target);
+
+  assertEquals(result === target, true);
+  assertEquals(Array.from(result), [7, 8]);
+});
+
+class FakeGpuBuffer implements ThreeAsciiGpuBuffer {
+  destroyed = false;
+
+  constructor(readonly label: string, readonly size: number, readonly usage: number) {}
+
+  destroy(): void {
+    this.destroyed = true;
+  }
+}
+
+class FakeGpuBufferDevice implements ThreeAsciiGpuBufferDevice<FakeGpuBuffer> {
+  readonly buffers: FakeGpuBuffer[] = [];
+
+  createBuffer(options: { label: string; size: number; usage: number }): FakeGpuBuffer {
+    const buffer = new FakeGpuBuffer(options.label, options.size, options.usage);
+    this.buffers.push(buffer);
+    return buffer;
+  }
+}
