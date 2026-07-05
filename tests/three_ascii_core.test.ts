@@ -60,6 +60,10 @@ import {
   normalizeThreeAsciiRenderSize,
   normalizeThreeAsciiTerminalEdgeBias,
 } from "../src/three_ascii/renderer_options.ts";
+import { ThreeAsciiReadbackError } from "../src/three_ascii/renderer.ts";
+import { resolveThreeAsciiDeferredReadbackStaleness } from "../src/three_ascii/deferred_readback_staleness.ts";
+import { handleThreeAsciiDeferredReadbackFailure } from "../src/three_ascii/readback_failure.ts";
+import { resolveThreeAsciiDeferredReadbackSubmission } from "../src/three_ascii/readback_submission.ts";
 import {
   THREE_ASCII_COLOR_SHADER,
   THREE_ASCII_EDGE_SHADER,
@@ -720,6 +724,132 @@ Deno.test("three ascii headless canvas handles empty dimensions without touching
 
   assertEquals(result === target, true);
   assertEquals(Array.from(result), [7, 8]);
+});
+
+Deno.test("three ascii deferred readback staleness resets and gates blocking recovery", () => {
+  assertEquals(
+    resolveThreeAsciiDeferredReadbackStaleness({
+      staleFrames: 3,
+      maxStaleFrames: 2,
+      completedGrid: true,
+      hasCachedGrid: true,
+    }),
+    { staleFrames: 0, forceBlockingReadback: false },
+  );
+  assertEquals(
+    resolveThreeAsciiDeferredReadbackStaleness({
+      staleFrames: 1,
+      maxStaleFrames: 0,
+      completedGrid: false,
+      hasCachedGrid: true,
+    }),
+    { staleFrames: 1, forceBlockingReadback: false },
+  );
+  assertEquals(
+    resolveThreeAsciiDeferredReadbackStaleness({
+      staleFrames: 1,
+      maxStaleFrames: 2,
+      completedGrid: false,
+      hasCachedGrid: false,
+    }),
+    { staleFrames: 2, forceBlockingReadback: true },
+  );
+  assertEquals(
+    resolveThreeAsciiDeferredReadbackStaleness({
+      staleFrames: 1,
+      maxStaleFrames: 3,
+      completedGrid: false,
+      hasCachedGrid: true,
+    }),
+    { staleFrames: 2, forceBlockingReadback: false },
+  );
+  assertEquals(
+    resolveThreeAsciiDeferredReadbackStaleness({
+      staleFrames: 2,
+      maxStaleFrames: 3,
+      completedGrid: false,
+      hasCachedGrid: true,
+    }),
+    { staleFrames: 3, forceBlockingReadback: true },
+  );
+});
+
+Deno.test("three ascii deferred readback submission uses cached grids while queuing available slots", () => {
+  const cached = [["cached"]];
+  const completed = [["completed"]];
+  const readback = { id: 1 };
+
+  assertEquals(
+    resolveThreeAsciiDeferredReadbackSubmission({ grid: cached, readbackUnavailable: true }, "slot", [["last"]]),
+    { grid: cached, submit: false, queue: false },
+  );
+  assertEquals(
+    resolveThreeAsciiDeferredReadbackSubmission({ readbackUnavailable: true }, "slot", [["last"]]),
+    { grid: [], submit: false, queue: false },
+  );
+  assertEquals(
+    resolveThreeAsciiDeferredReadbackSubmission({ grid: completed }, undefined, [["last"]]),
+    { grid: completed, submit: false, queue: false },
+  );
+  assertEquals(
+    resolveThreeAsciiDeferredReadbackSubmission({}, undefined, [["last"]]),
+    { grid: [["last"]], submit: false, queue: false },
+  );
+  assertEquals(
+    resolveThreeAsciiDeferredReadbackSubmission({}, readback, [["last"]]),
+    { readback, grid: [["last"]], submit: true, queue: true },
+  );
+  assertEquals(
+    resolveThreeAsciiDeferredReadbackSubmission({ grid: completed }, readback, [["last"]]),
+    { readback, grid: completed, submit: true, queue: true },
+  );
+});
+
+Deno.test("three ascii deferred readback failure preserves cached grids and surfaces cleanup errors", () => {
+  const cachedGrid = [["cached"]];
+  let destroyed = 0;
+  const handled = handleThreeAsciiDeferredReadbackFailure(
+    new ThreeAsciiReadbackError(new Error("map rejected")),
+    ThreeAsciiReadbackError,
+    {
+      lastCompletedGrid: () => cachedGrid,
+      destroy: () => {
+        destroyed += 1;
+      },
+    },
+  );
+
+  assertEquals(handled, {
+    handled: true,
+    result: { grid: cachedGrid, readbackUnavailable: true },
+  });
+  assertEquals(destroyed, 1);
+  assertEquals(
+    handleThreeAsciiDeferredReadbackFailure(new Error("boom"), ThreeAsciiReadbackError, {
+      lastCompletedGrid: () => {
+        throw new Error("should not read cached grid");
+      },
+      destroy: () => {
+        throw new Error("should not destroy queue");
+      },
+    }),
+    { handled: false },
+  );
+  assertThrows(
+    () =>
+      handleThreeAsciiDeferredReadbackFailure(
+        new ThreeAsciiReadbackError(new Error("map rejected")),
+        ThreeAsciiReadbackError,
+        {
+          lastCompletedGrid: () => [["cached"]],
+          destroy: () => {
+            throw new Error("destroy failed");
+          },
+        },
+      ),
+    Error,
+    "destroy failed",
+  );
 });
 
 class FakeGpuBuffer implements ThreeAsciiGpuBuffer {
