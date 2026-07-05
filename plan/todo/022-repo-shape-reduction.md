@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `575`
+- Tracked files after the current consolidation passes: `574`
 - Tracked top-level file counts:
   - `src`: `296`
-  - `tests`: `79`
+  - `tests`: `78`
   - `app`: `29`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,000` lines across `25` files
   - `app`: `20,381` lines across `29` files
   - `examples`: `8,814` lines across `42` files
-  - `tests`: `49,631` lines across `79` files
+  - `tests`: `49,629` lines across `78` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -317,8 +317,8 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Workbench ANSI span-diff assertions are now covered through `tests/workbench_ansi_screen.test.ts`, and the redundant
     private-helper microbenchmark was removed in favor of the retained screen-painter span flush benchmark
   - Canvas spatial-index assertions are now bundled into `tests/canvas_intersections.test.ts`
-  - Canvas rerender-queue assertions are now bundled into `tests/canvas_dirty_region.test.ts`, keeping dirty-region and
-    rerender invalidation helper coverage together
+  - Canvas dirty-region and rerender-queue assertions are now bundled into `tests/canvas_intersections.test.ts`, keeping
+    dirty-region, spatial-index, and rerender invalidation coverage together
   - duplicate mouse interaction router assertions were removed from `tests/mouse_bindings.test.ts`; the remaining
     dynamic-bounds assertion now lives with the existing app interaction coverage in `tests/app_primitives.test.ts`
   - duplicate Three panel lifecycle-state assertions were removed from `tests/three_panel_frame.test.ts`; the pure
