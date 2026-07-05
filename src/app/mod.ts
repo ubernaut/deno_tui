@@ -6,7 +6,6 @@ export * from "./command_bindings.ts";
 export * from "./command_search_index.ts";
 export * from "./commands.ts";
 export * from "./data_query_commands.ts";
-export * from "./data_query_plugin.ts";
 export * from "./data_table_commands.ts";
 export * from "./disposables.ts";
 export * from "./form_commands.ts";
