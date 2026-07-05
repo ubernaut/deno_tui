@@ -1,7 +1,7 @@
 import type { ConsoleSize, Rectangle } from "../types.ts";
 
 export const DEFAULT_WORKBENCH_FULL_REPAINT_INTERVAL_MS = 15_000;
-export const DEFAULT_WORKBENCH_RESIZE_REPAINT_WINDOW_MS = 2_500;
+export const DEFAULT_WORKBENCH_RESIZE_REPAINT_WINDOW_MS = 5_000;
 
 export interface WorkbenchFullRepaintPolicyOptions {
   intervalMs?: number;
@@ -44,11 +44,15 @@ export class WorkbenchFullRepaintPolicy {
   }
 
   shouldForceFullRepaint(now = this.now()): boolean {
-    if (now < this.#forceFullRepaintUntil) return true;
+    if (this.fullRepaintWindowActive(now)) return true;
     if (this.intervalMs <= 0) return false;
     if (now - this.#lastFullRepaintAt < this.intervalMs) return false;
     this.#lastFullRepaintAt = now;
     return true;
+  }
+
+  fullRepaintWindowActive(now = this.now()): boolean {
+    return now < this.#forceFullRepaintUntil;
   }
 
   inspectScreenSize(size: ConsoleSize): WorkbenchScreenRepaintInspection {

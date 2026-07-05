@@ -534,8 +534,10 @@ Deno.test("WorkbenchFullRepaintPolicy can request a temporary full repaint windo
 
   policy.requestFullRepaintWindow(DEFAULT_WORKBENCH_RESIZE_REPAINT_WINDOW_MS);
   now = DEFAULT_WORKBENCH_RESIZE_REPAINT_WINDOW_MS - 1;
+  assertEquals(policy.fullRepaintWindowActive(), true);
   assertEquals(policy.shouldForceFullRepaint(), true);
   now = DEFAULT_WORKBENCH_RESIZE_REPAINT_WINDOW_MS;
+  assertEquals(policy.fullRepaintWindowActive(), false);
   assertEquals(policy.shouldForceFullRepaint(), false);
 });
 

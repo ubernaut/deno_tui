@@ -1095,7 +1095,7 @@ const liveTimer = setInterval(() => {
   }
 }, 500);
 const resizeTimer = setInterval(() => {
-  if (syncTerminalSize()) draw();
+  if (syncTerminalSize() || repaintPolicy.fullRepaintWindowActive()) draw();
 }, 100);
 
 tui.on("destroy", () => {
@@ -1641,6 +1641,7 @@ function renderThreeGrid(
 
   if (grid.length === 0) {
     const message = threeAsciiAvailable.peek() ? "renderer warming up" : "renderer unavailable";
+    fillRect(frame, rect, t.surface);
     write(
       frame,
       rect.row + Math.floor(rect.height / 2),
