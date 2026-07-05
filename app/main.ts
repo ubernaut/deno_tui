@@ -25,12 +25,6 @@ import { accentColor, formatDuration, makeStyle, palette, severityAccent } from 
 import { SystemMonitor } from "./system_metrics.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelView } from "./three_panel.ts";
-import {
-  MONITOR_WINDOW_CONTROL_TEXT,
-  monitorWindowControlAt,
-  monitorWindowControlRect,
-  monitorWindowControlsVisible,
-} from "./monitor_window_controls.ts";
 import { centeredRect, fitTextWidth, FrameView, ListView, MultilineTextView, PanelView } from "./ui.ts";
 import {
   type Accent,
@@ -51,7 +45,11 @@ import {
 import { renderVisualization, visualizations } from "./visualizations.ts";
 
 const PANEL_SCROLLBAR_LINE_LIMIT = 256;
+const MONITOR_WINDOW_CONTROL_TEXT = "[-] [□] [↺] [x]";
+const MONITOR_WINDOW_CONTROL_WIDTH = 15;
+const MONITOR_WINDOW_CONTROL_MIN_WIDTH = MONITOR_WINDOW_CONTROL_WIDTH + 1;
 type MultiPaneLayoutId = Exclude<LayoutId, "single">;
+type MonitorWindowControl = "minimize" | "maximize" | "restore" | "close";
 type MonitorHit =
   | { type: "focus"; id: SlotId }
   | { type: "minimize"; id: SlotId }
@@ -1624,6 +1622,30 @@ function shiftVisualizationForSlot<T extends { id: string }>(
   const baseIndex = currentIndex === -1 ? 0 : currentIndex;
   const normalizedStep = ((step % ordered.length) + ordered.length) % ordered.length;
   return ordered[(baseIndex + normalizedStep) % ordered.length]!.id;
+}
+
+function monitorWindowControlsVisible(rect: Pick<Rect, "width" | "height">): boolean {
+  return rect.width >= MONITOR_WINDOW_CONTROL_MIN_WIDTH && rect.height >= 1;
+}
+
+function monitorWindowControlRect(rect: Rect): Rect {
+  const visible = monitorWindowControlsVisible(rect);
+  return {
+    column: visible ? rect.column + Math.max(0, rect.width - MONITOR_WINDOW_CONTROL_MIN_WIDTH) : 0,
+    row: visible ? rect.row : 0,
+    width: visible ? MONITOR_WINDOW_CONTROL_WIDTH : 0,
+    height: visible ? 1 : 0,
+  };
+}
+
+function monitorWindowControlAt(rect: Rect, x: number, y: number): MonitorWindowControl | undefined {
+  const controls = monitorWindowControlRect(rect);
+  if (controls.width <= 0 || y !== controls.row) return undefined;
+  if (x >= controls.column && x < controls.column + 3) return "minimize";
+  if (x >= controls.column + 4 && x < controls.column + 7) return "maximize";
+  if (x >= controls.column + 8 && x < controls.column + 11) return "restore";
+  if (x >= controls.column + 12 && x < controls.column + 15) return "close";
+  return undefined;
 }
 
 function slotLabel(slotId: SlotId) {
