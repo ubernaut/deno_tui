@@ -17,17 +17,17 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `scripts`: `27`
   - `plan`: `26`
 - Handwritten/code-heavy line counts:
-  - `src/app`: `24,839` lines across `77` files
-  - `src/runtime`: `11,152` lines across `34` files
-  - `src/components`: `10,304` lines across `43` files
-  - `src/three_ascii`: `7,000` lines across `25` files
-  - `app`: `20,381` lines across `29` files
-  - `examples`: `8,814` lines across `42` files
-  - `tests`: `49,603` lines across `74` files
+  - `src/app`: `24,617` lines across `75` top-level files
+  - `src/runtime`: `11,118` lines across `34` files
+  - `src/components`: `10,261` lines across `43` files
+  - `src/three_ascii`: `6,978` lines across `23` top-level files
+  - `app`: `20,346` lines across `29` files
+  - `examples`: `5,043` lines across `34` top-level files
+  - `tests`: `49,629` lines across `71` top-level suites (`74` tracked test files including fixtures)
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
-  - `docs/assets/api-workbench.js`: roughly `728KB`
-  - `docs/api-reference.md`: roughly `556KB`
+  - `docs/assets/api-workbench.js`: roughly `732KB`
+  - `docs/api-reference.md`: roughly `552KB`
   - `docs/assets/api-workbench.js.map` is no longer tracked; `deno task web:pages:build` omits sourcemaps and removes
     stale map artifacts.
 
@@ -193,6 +193,10 @@ The library core is real and valuable, but it needs clearer boundaries:
     standalone internal shard
   - Workbench global key resolution is folded into `src/app/workbench_menu.ts`, keeping top-level menu and shortcut
     behavior in one stable facade module while removing the standalone keymap shard
+  - Three panel adaptive render-cell budgeting now resets on viewport shape changes, preventing stale low-resolution
+    caps when resized panes keep similar total area but change aspect ratio
+  - Workbench Three grid projection pre-sizes zero-column target rows before copying cells, reducing array-growth churn
+    in resized/maximized Three panes while preserving cells outside the projected region
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
