@@ -58,6 +58,7 @@ import type { Accent, PanelRender, RenderContext, ThreeSceneMode, VisualizationD
 
 export { buildVisualizationDrive } from "./visualization_drive.ts";
 export type { VisualizationDrive, VisualizationSourceDrive } from "./visualization_drive.ts";
+export { defaultVisualizationForSlot, orderVisualizationsForSlot } from "./visualization_catalog.ts";
 export {
   cpuActivityRgb,
   cpuHexGridColumnCount,

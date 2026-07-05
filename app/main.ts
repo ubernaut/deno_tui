@@ -19,7 +19,6 @@ import {
 } from "../src/three_ascii/options.ts";
 import { AudioRegistry, discoverAudioSources } from "./audio.ts";
 import { detectViewportMode } from "./layout.ts";
-import { defaultVisualizationForSlot, orderVisualizationsForSlot } from "./panel_defaults.ts";
 import { buildSourceCatalog, resolveSourceFramesInto } from "./sources.ts";
 import { accentColor, formatDuration, makeStyle, palette, severityAccent } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
@@ -42,7 +41,12 @@ import {
   type SourceFrame,
   type ViewportMode,
 } from "./types.ts";
-import { renderVisualization, visualizations } from "./visualizations.ts";
+import {
+  defaultVisualizationForSlot,
+  orderVisualizationsForSlot,
+  renderVisualization,
+  visualizations,
+} from "./visualizations.ts";
 
 const PANEL_SCROLLBAR_LINE_LIMIT = 256;
 const MONITOR_WINDOW_CONTROL_TEXT = "[-] [□] [↺] [x]";

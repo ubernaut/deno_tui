@@ -15,8 +15,7 @@ import {
   resolveVisualizationTask,
   visualizationLaunchTargets,
 } from "../scripts/visualization_launcher.ts";
-import { defaultVisualizationForSlot, orderVisualizationsForSlot } from "../app/panel_defaults.ts";
-import { visualizations } from "../app/visualizations.ts";
+import { defaultVisualizationForSlot, orderVisualizationsForSlot, visualizations } from "../app/visualizations.ts";
 
 Deno.test("visualization launcher resolves public aliases to deno tasks", () => {
   assertEquals(resolveVisualizationTask(), "showcase");
