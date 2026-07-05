@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `592`
+- Tracked files after the current consolidation passes: `591`
 - Tracked top-level file counts:
   - `src`: `296`
-  - `tests`: `96`
+  - `tests`: `95`
   - `app`: `29`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `6,991` lines across `23` files
   - `app`: `20,353` lines across `29` files
   - `examples`: `8,770` lines across `41` files
-  - `tests`: `49,411` lines across `96` files
+  - `tests`: `49,408` lines across `95` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -220,6 +220,8 @@ The library core is real and valuable, but it needs clearer boundaries:
   - generic visual smoke assertions are now bundled into `tests/workbench_visual_smoke.test.ts`
   - Terminal scrollback controller and command assertions are now bundled into `tests/terminal_screen.test.ts`, keeping
     scrollback copy-mode/search/selection behavior with the runtime terminal screen coverage.
+  - Terminal workspace layout helper assertions are now bundled into `tests/terminal_workspace.test.ts`, keeping pane
+    creation, clone/prune, replace/remove/resize, title projection, and rect projection with workspace behavior.
   - EventEmitter behavior tests are now bundled into `tests/app_primitives.test.ts`, removing the standalone root
     primitive test shard without adding narrower coverage.
   - HitTargetStack and rectangle-helper behavior tests are now bundled into `tests/app_primitives.test.ts`, removing
