@@ -4632,7 +4632,7 @@ var ThreeAsciiAnsiGridAssembler = class {
     const foregroundRed = foregroundKey >> 16 & 255;
     const foregroundGreen = foregroundKey >> 8 & 255;
     const foregroundBlue = foregroundKey & 255;
-    cell = `${rgbToAnsiBackground(foregroundRed, foregroundGreen, foregroundBlue)} ${RESET2}`;
+    cell = `${rgbToAnsiForeground(foregroundRed, foregroundGreen, foregroundBlue)}\u2588${RESET2}`;
     this.cellCache.set(cellKey, cell);
     return cell;
   }

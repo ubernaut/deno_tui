@@ -313,8 +313,8 @@ The library core is real and valuable, but it needs clearer boundaries:
   - standalone visualization app layout and retained panel resize assertions are now bundled into
     `tests/visualization_primitives.test.ts`, keeping app-local monitor layout and panel rendering coverage with the
     lower-level visualization drawing helpers that use them.
-  - Health script catalog and result-formatting assertions are now bundled into `tests/e2e_script.test.ts`, keeping
-    repo gate script coverage together and removing another standalone script micro-suite.
+  - Health script catalog and result-formatting assertions are now bundled into `tests/e2e_script.test.ts`, keeping repo
+    gate script coverage together and removing another standalone script micro-suite.
 - Prefer subsystem-level runtime smoke coverage for workbench, Three ASCII, terminal shell, and web interaction.
 
 ### P1: Keep Three ASCII Performance Gated By Real Probes

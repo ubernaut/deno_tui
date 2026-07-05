@@ -34,6 +34,9 @@ export interface WorkbenchThreePaneCoverage {
   truecolorRows: number;
   truecolorMaxColumns: number;
   truecolorCells: number;
+  visibleRows: number;
+  visibleMaxColumns: number;
+  visibleCells: number;
 }
 
 export interface WorkbenchFullscreenVisualSmokeResult extends WorkbenchVisualSmokeResult {
@@ -44,17 +47,22 @@ export interface WorkbenchFullscreenVisualSmokeResult extends WorkbenchVisualSmo
   truecolorBackgroundMaxColumns: number;
   bodyTruecolorBackgroundRows: number;
   bodyTruecolorBackgroundMaxColumns: number;
+  bodyVisibleRows: number;
+  bodyVisibleMaxColumns: number;
 }
 
 interface ReplayState {
   row: number;
   column: number;
+  truecolorForeground: boolean;
   truecolorBackground: boolean;
 }
 
 export interface WorkbenchStyledScreenReplay {
   screen: string[][];
+  truecolorForeground: boolean[][];
   truecolorBackground: boolean[][];
+  truecolorStyled: boolean[][];
   truecolorBackgroundRows: number;
   truecolorBackgroundMaxColumns: number;
 }
@@ -135,15 +143,20 @@ export function inspectWorkbenchVisualSmokeOutput(
   const forbidden = FORBIDDEN_TOKENS.filter((token) => text.includes(token));
   const nonBlankRows = lines.filter((line) => line.trim().length > 0).length;
   const truecolorBackgroundWrites = countOccurrences(output, "\x1b[48;2;");
-  const threePane = inspectWorkbenchThreePaneCoverage(lines, replay.truecolorBackground);
+  const threePane = inspectWorkbenchThreePaneCoverage(lines, replay.truecolorStyled);
   if (threeLine.length === 0 && !rendererUnavailable) missing.push("three telemetry line");
   if (statusLine.trim().length === 0) missing.push("status line");
   if (threePane?.found && truecolorBackgroundWrites > 0) {
     const minPaneRows = Math.min(2, threePane.bodyRows);
     const minPaneColumns = Math.max(1, Math.floor(threePane.bodyColumns * 0.35));
+    const minVisibleColumns = Math.max(1, Math.floor(threePane.bodyColumns * 0.08));
     if (threePane.truecolorRows < minPaneRows) missing.push(`three pane truecolor rows >= ${minPaneRows}`);
     if (threePane.truecolorMaxColumns < minPaneColumns) {
       missing.push(`three pane truecolor columns >= ${minPaneColumns}`);
+    }
+    if (threePane.visibleRows < minPaneRows) missing.push(`three pane visible rows >= ${minPaneRows}`);
+    if (threePane.visibleMaxColumns < minVisibleColumns) {
+      missing.push(`three pane visible columns >= ${minVisibleColumns}`);
     }
   }
   return {
@@ -181,12 +194,13 @@ export function inspectWorkbenchFullscreenVisualSmokeOutput(
   const fullscreenCap = cellMatch && cellMatch[2] ? Number.parseInt(cellMatch[2], 10) : fullscreenCells;
   const truecolorBackgroundRows = base.finalTruecolorBackgroundRows;
   const truecolorBackgroundMaxColumns = base.finalTruecolorBackgroundMaxColumns;
-  const bodyTruecolor = threeBodyTruecolorCoverage(base.screenLines, replay.truecolorBackground);
+  const bodyTruecolor = threeBodyTruecolorCoverage(base.screenLines, replay.truecolorStyled);
   const missing = [...base.missing];
   const minCells = Math.max(1, Math.floor(options.minCells ?? 3_000));
   const minTruecolorRows = Math.max(1, Math.floor(options.minTruecolorRows ?? Math.min(12, options.rows)));
   const minTruecolorColumns = Math.max(1, Math.floor(options.minTruecolorColumns ?? options.columns * 0.75));
   const rendererUnavailable = base.screenLines.join("\n").includes("UNAVAILABLE");
+  const bodyVisible = threeBodyVisibleCoverage(base.screenLines);
   if (!rendererUnavailable && fullscreenCells < minCells) missing.push(`fullscreen three cells >= ${minCells}`);
   if (truecolorBackgroundRows < minTruecolorRows) missing.push(`truecolor rows >= ${minTruecolorRows}`);
   if (truecolorBackgroundMaxColumns < minTruecolorColumns) {
@@ -196,9 +210,16 @@ export function inspectWorkbenchFullscreenVisualSmokeOutput(
   if (bodyTruecolor.maxColumns < minTruecolorColumns) {
     missing.push(`three body truecolor columns >= ${minTruecolorColumns}`);
   }
+  if (!rendererUnavailable && bodyVisible.rows < Math.min(2, minTruecolorRows)) {
+    missing.push(`three body visible rows >= ${Math.min(2, minTruecolorRows)}`);
+  }
+  if (!rendererUnavailable && bodyVisible.maxColumns < Math.max(1, Math.floor(minTruecolorColumns * 0.08))) {
+    missing.push(`three body visible columns >= ${Math.max(1, Math.floor(minTruecolorColumns * 0.08))}`);
+  }
   const fullscreen = fullscreenCells >= minCells && truecolorBackgroundRows >= minTruecolorRows &&
     truecolorBackgroundMaxColumns >= minTruecolorColumns && bodyTruecolor.rows >= minTruecolorRows &&
-    bodyTruecolor.maxColumns >= minTruecolorColumns;
+    bodyTruecolor.maxColumns >= minTruecolorColumns && bodyVisible.rows >= Math.min(2, minTruecolorRows) &&
+    bodyVisible.maxColumns >= Math.max(1, Math.floor(minTruecolorColumns * 0.08));
   return {
     ...base,
     passed: base.forbidden.length === 0 && missing.length === 0,
@@ -210,6 +231,8 @@ export function inspectWorkbenchFullscreenVisualSmokeOutput(
     truecolorBackgroundMaxColumns,
     bodyTruecolorBackgroundRows: bodyTruecolor.rows,
     bodyTruecolorBackgroundMaxColumns: bodyTruecolor.maxColumns,
+    bodyVisibleRows: bodyVisible.rows,
+    bodyVisibleMaxColumns: bodyVisible.maxColumns,
   };
 }
 
@@ -247,9 +270,31 @@ function threeBodyTruecolorCoverage(
 function findThreeBodyEndRow(lines: readonly string[], startRow: number): number {
   for (let row = startRow; row < lines.length; row += 1) {
     const line = lines[row] ?? "";
-    if (line.includes("└") || line.trimStart().startsWith("windows [")) return row;
+    if (line.includes("└") || line.trimStart().startsWith("windows [") || line.includes("F10 menu")) return row;
   }
   return lines.length;
+}
+
+function threeBodyVisibleCoverage(lines: readonly string[]): { rows: number; maxColumns: number } {
+  const telemetryRow = lines.findIndex((line) => line.includes("fps") && line.includes("live"));
+  if (telemetryRow < 0) return { rows: 0, maxColumns: 0 };
+  const endRow = findThreeBodyEndRow(lines, telemetryRow + 1);
+  let rows = 0;
+  let maxColumns = 0;
+  for (let row = telemetryRow + 1; row < endRow; row += 1) {
+    const line = lines[row] ?? "";
+    const leftBorder = line.indexOf("│");
+    const rightBorder = line.lastIndexOf("│");
+    const start = leftBorder >= 0 ? leftBorder + 1 : 0;
+    const end = rightBorder > start ? rightBorder : line.length;
+    let count = 0;
+    for (let column = start; column < end; column += 1) {
+      if ((line[column] ?? " ") !== " ") count += 1;
+    }
+    if (count > 0) rows += 1;
+    maxColumns = Math.max(maxColumns, count);
+  }
+  return { rows, maxColumns };
 }
 
 export function formatWorkbenchVisualSmokeResult(result: WorkbenchVisualSmokeResult): string {
@@ -304,15 +349,24 @@ export function inspectWorkbenchThreePaneCoverage(
   let truecolorRows = 0;
   let truecolorMaxColumns = 0;
   let truecolorCells = 0;
+  let visibleRows = 0;
+  let visibleMaxColumns = 0;
+  let visibleCells = 0;
   for (let row = bodyStart; row < bottom; row += 1) {
     const mask = truecolorBackground[row] ?? [];
+    const line = lines[row] ?? "";
     let rowCells = 0;
+    let rowVisibleCells = 0;
     for (let column = left + 1; column < right; column += 1) {
       if (mask[column]) rowCells += 1;
+      if ((line[column] ?? " ") !== " ") rowVisibleCells += 1;
     }
     if (rowCells > 0) truecolorRows += 1;
+    if (rowVisibleCells > 0) visibleRows += 1;
     truecolorCells += rowCells;
+    visibleCells += rowVisibleCells;
     truecolorMaxColumns = Math.max(truecolorMaxColumns, rowCells);
+    visibleMaxColumns = Math.max(visibleMaxColumns, rowVisibleCells);
   }
   return {
     found: true,
@@ -326,6 +380,9 @@ export function inspectWorkbenchThreePaneCoverage(
     truecolorRows,
     truecolorMaxColumns,
     truecolorCells,
+    visibleRows,
+    visibleMaxColumns,
+    visibleCells,
   };
 }
 
@@ -359,13 +416,23 @@ export function replayWorkbenchStyledScreen(
   const columns = Math.max(1, Math.floor(options.columns));
   const rows = Math.max(1, Math.floor(options.rows));
   const screen = Array.from({ length: rows }, () => Array.from({ length: columns }, () => " "));
+  const truecolorForeground = Array.from({ length: rows }, () => Array.from({ length: columns }, () => false));
   const truecolorBackground = Array.from({ length: rows }, () => Array.from({ length: columns }, () => false));
-  const state: ReplayState = { row: 0, column: 0, truecolorBackground: false };
+  const truecolorStyled = Array.from({ length: rows }, () => Array.from({ length: columns }, () => false));
+  const state: ReplayState = { row: 0, column: 0, truecolorForeground: false, truecolorBackground: false };
   let index = 0;
   while (index < output.length) {
     const char = output[index]!;
     if (char === "\x1b") {
-      const skipped = skipEscape(output, index, screen, truecolorBackground, state);
+      const skipped = skipEscape(
+        output,
+        index,
+        screen,
+        truecolorForeground,
+        truecolorBackground,
+        truecolorStyled,
+        state,
+      );
       if (skipped > index) {
         index = skipped;
         continue;
@@ -386,7 +453,9 @@ export function replayWorkbenchStyledScreen(
     const glyph = String.fromCodePoint(codePoint);
     if (glyph >= " ") {
       screen[state.row]![state.column] = glyph;
+      truecolorForeground[state.row]![state.column] = state.truecolorForeground;
       truecolorBackground[state.row]![state.column] = state.truecolorBackground;
+      truecolorStyled[state.row]![state.column] = state.truecolorForeground || state.truecolorBackground;
       state.column += 1;
       if (state.column >= columns) {
         state.column = columns - 1;
@@ -396,7 +465,9 @@ export function replayWorkbenchStyledScreen(
   }
   return {
     screen,
+    truecolorForeground,
     truecolorBackground,
+    truecolorStyled,
     truecolorBackgroundRows: truecolorBackground.filter((row) => row.some(Boolean)).length,
     truecolorBackgroundMaxColumns: truecolorBackground.reduce(
       (max, row) => Math.max(max, row.reduce((count, cell) => count + (cell ? 1 : 0), 0)),
@@ -409,11 +480,15 @@ function skipEscape(
   output: string,
   start: number,
   screen: string[][],
+  truecolorForeground: boolean[][],
   truecolorBackground: boolean[][],
+  truecolorStyled: boolean[][],
   state: ReplayState,
 ): number {
   const next = output[start + 1];
-  if (next === "[") return applyCsi(output, start, screen, truecolorBackground, state);
+  if (next === "[") {
+    return applyCsi(output, start, screen, truecolorForeground, truecolorBackground, truecolorStyled, state);
+  }
   if (next === "]") return skipOsc(output, start);
   if (next === "P" || next === "_") return skipStringTerminatedEscape(output, start);
   return start + 1;
@@ -423,14 +498,24 @@ function applyCsi(
   output: string,
   start: number,
   screen: string[][],
+  truecolorForeground: boolean[][],
   truecolorBackground: boolean[][],
+  truecolorStyled: boolean[][],
   state: ReplayState,
 ): number {
   let index = start + 2;
   while (index < output.length) {
     const code = output.charCodeAt(index);
     if (code >= 0x40 && code <= 0x7e) {
-      applyCsiCommand(output.slice(start + 2, index), output[index]!, screen, truecolorBackground, state);
+      applyCsiCommand(
+        output.slice(start + 2, index),
+        output[index]!,
+        screen,
+        truecolorForeground,
+        truecolorBackground,
+        truecolorStyled,
+        state,
+      );
       return index + 1;
     }
     index += 1;
@@ -442,7 +527,9 @@ function applyCsiCommand(
   raw: string,
   command: string,
   screen: string[][],
+  truecolorForeground: boolean[][],
   truecolorBackground: boolean[][],
+  truecolorStyled: boolean[][],
   state: ReplayState,
 ): void {
   const params = raw.replace(/^\?/, "").split(";");
@@ -472,20 +559,27 @@ function applyCsiCommand(
     case "J":
       if (numberParam(params[0], 0) === 2 || numberParam(params[0], 0) === 3) {
         clearScreen(screen);
+        clearBooleanScreen(truecolorForeground);
         clearBooleanScreen(truecolorBackground);
+        clearBooleanScreen(truecolorStyled);
       }
       return;
     case "K":
       clearRow(screen[state.row]!, state.column, numberParam(params[0], 0));
+      clearBooleanRow(truecolorForeground[state.row]!, state.column, numberParam(params[0], 0));
       clearBooleanRow(truecolorBackground[state.row]!, state.column, numberParam(params[0], 0));
+      clearBooleanRow(truecolorStyled[state.row]!, state.column, numberParam(params[0], 0));
       return;
     case "m":
+      state.truecolorForeground = nextTruecolorForegroundState(raw, state.truecolorForeground);
       state.truecolorBackground = nextTruecolorBackgroundState(raw, state.truecolorBackground);
       return;
   }
   if (raw === "?1049h") {
     clearScreen(screen);
+    clearBooleanScreen(truecolorForeground);
     clearBooleanScreen(truecolorBackground);
+    clearBooleanScreen(truecolorStyled);
   }
 }
 
@@ -539,6 +633,17 @@ function nextTruecolorBackgroundState(raw: string, current: boolean): boolean {
     if (value === 0) return false;
     if (value === 49) current = false;
     if (value === 48 && params[index + 1] === 2) current = true;
+  }
+  return current;
+}
+
+function nextTruecolorForegroundState(raw: string, current: boolean): boolean {
+  const params = raw.replace(/^\?/, "").split(";").map((value) => Number.parseInt(value, 10));
+  for (let index = 0; index < params.length; index += 1) {
+    const value = params[index];
+    if (value === 0) return false;
+    if (value === 39) current = false;
+    if (value === 38 && params[index + 1] === 2) current = true;
   }
   return current;
 }

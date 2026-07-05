@@ -639,7 +639,7 @@ export class ThreeAsciiAnsiGridAssembler {
     const foregroundRed = (foregroundKey >> 16) & 0xff;
     const foregroundGreen = (foregroundKey >> 8) & 0xff;
     const foregroundBlue = foregroundKey & 0xff;
-    cell = `${rgbToAnsiBackground(foregroundRed, foregroundGreen, foregroundBlue)} ${RESET}`;
+    cell = `${rgbToAnsiForeground(foregroundRed, foregroundGreen, foregroundBlue)}█${RESET}`;
     this.cellCache.set(cellKey, cell);
     return cell;
   }

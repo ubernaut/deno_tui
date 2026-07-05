@@ -129,8 +129,8 @@ Deno.test("workbench visual smoke inspector measures Three pane truecolor covera
     "\x1b[3;1H┌─ LOGS ─┐ ┌─ THREE ASCII ─────────[ config ]─[-]─[M]─[R]─[x]┐",
     "\x1b[4;1H│logs    │ │ THREE ASCII · BLOCKS                            │",
     "\x1b[5;1H│colored │ │6ms 784c live 18fps                              │",
-    "\x1b[6;12H│\x1b[48;2;1;2;3m                                                 \x1b[0m│",
-    "\x1b[7;12H│\x1b[48;2;4;5;6m                         \x1b[0m                        │",
+    "\x1b[6;12H│\x1b[38;2;1;2;3m█████████████████████████████████████████████████\x1b[0m│",
+    "\x1b[7;12H│\x1b[38;2;4;5;6m█████████████████████████\x1b[0m                        │",
     "\x1b[8;12H└─────────────────────────────────────────────────┘",
     "\x1b[9;1Hfocus Three ASCII | Unit-01  F10 menu",
   ].join("");
@@ -141,6 +141,8 @@ Deno.test("workbench visual smoke inspector measures Three pane truecolor covera
   assertEquals(result.threePane?.bodyRows, 2);
   assertEquals(result.threePane?.truecolorRows, 2);
   assertEquals(result.threePane?.truecolorMaxColumns, 49);
+  assertEquals(result.threePane?.visibleRows, 2);
+  assertEquals(result.threePane?.visibleMaxColumns, 49);
   assertStringIncludes(formatWorkbenchVisualSmokeResult(result), "Three pane truecolor: 2 rows, 49/49 columns");
 });
 
@@ -160,7 +162,12 @@ Deno.test("workbench visual smoke inspector rejects colored resize frames when T
   const result = inspectWorkbenchVisualSmokeOutput(output, { columns: 70, rows: 9 });
 
   assertEquals(result.passed, false);
-  assertEquals(result.missing, ["three pane truecolor rows >= 2", "three pane truecolor columns >= 17"]);
+  assertEquals(result.missing, [
+    "three pane truecolor rows >= 2",
+    "three pane truecolor columns >= 17",
+    "three pane visible rows >= 2",
+    "three pane visible columns >= 3",
+  ]);
   assertEquals(result.threePane?.truecolorRows, 0);
   assertEquals(result.threePane?.truecolorMaxColumns, 0);
 });
@@ -201,9 +208,9 @@ Deno.test("workbench fullscreen visual smoke inspector verifies scale and trueco
     "\x1b[1;1HAPI WORKBENCH",
     "\x1b[4;1HTHREE ASCII",
     "\x1b[6;1Hframe 7ms scene 5 read 13 asm 0 3720c cap 3840c @10fps live 10fps",
-    "\x1b[8;1H\x1b[48;2;1;2;3m  \x1b[0m",
-    "\x1b[9;1H\x1b[48;2;4;5;6m  \x1b[0m",
-    "\x1b[10;1H\x1b[48;2;7;8;9m  \x1b[0m",
+    "\x1b[8;1H\x1b[48;2;1;2;3m\x1b[38;2;1;2;3m██\x1b[0m",
+    "\x1b[9;1H\x1b[48;2;4;5;6m\x1b[38;2;4;5;6m██\x1b[0m",
+    "\x1b[10;1H\x1b[48;2;7;8;9m\x1b[38;2;7;8;9m██\x1b[0m",
     "\x1b[12;1Hfocus Three ASCII | Unit-01  F10 menu",
   ].join("");
   const result = inspectWorkbenchFullscreenVisualSmokeOutput(output, {
@@ -224,6 +231,8 @@ Deno.test("workbench fullscreen visual smoke inspector verifies scale and trueco
   assertEquals(result.finalTruecolorBackgroundMaxColumns, 2);
   assertEquals(result.bodyTruecolorBackgroundRows, 3);
   assertEquals(result.bodyTruecolorBackgroundMaxColumns, 2);
+  assertEquals(result.bodyVisibleRows, 3);
+  assertEquals(result.bodyVisibleMaxColumns, 2);
   assertEquals(countTruecolorBackgroundRows(output), 3);
 });
 
@@ -234,9 +243,9 @@ Deno.test("workbench fullscreen visual smoke accepts compact telemetry after shr
     "\x1b[4;1H┌─ THREE ASCII ─┐",
     "\x1b[5;1H│ ACEROLA THREE │",
     "\x1b[6;1H│5ms 1602c live 20fps q1/2 rows 33/38 tier 3840c│",
-    "\x1b[7;2H\x1b[48;2;1;2;3m                                                            \x1b[0m",
-    "\x1b[8;2H\x1b[48;2;4;5;6m                                                            \x1b[0m",
-    "\x1b[9;2H\x1b[48;2;7;8;9m                                                            \x1b[0m",
+    "\x1b[7;2H\x1b[48;2;1;2;3m\x1b[38;2;1;2;3m████████████████████████████████████████████████████████████\x1b[0m",
+    "\x1b[8;2H\x1b[48;2;4;5;6m\x1b[38;2;4;5;6m████████████████████████████████████████████████████████████\x1b[0m",
+    "\x1b[9;2H\x1b[48;2;7;8;9m\x1b[38;2;7;8;9m████████████████████████████████████████████████████████████\x1b[0m",
     "\x1b[10;1H└────────────────┘",
     "\x1b[12;1Hfocus Three ASCII | Unit-01  F10 menu",
   ].join("");
@@ -253,6 +262,8 @@ Deno.test("workbench fullscreen visual smoke accepts compact telemetry after shr
   assertEquals(result.fullscreenCap, 1602);
   assertEquals(result.bodyTruecolorBackgroundRows, 3);
   assertEquals(result.bodyTruecolorBackgroundMaxColumns, 60);
+  assertEquals(result.bodyVisibleRows, 3);
+  assertEquals(result.bodyVisibleMaxColumns, 60);
 });
 
 Deno.test("workbench fullscreen visual smoke rejects narrow truecolor surfaces after resize", () => {
@@ -274,7 +285,12 @@ Deno.test("workbench fullscreen visual smoke rejects narrow truecolor surfaces a
   });
 
   assertEquals(result.passed, false);
-  assertEquals(result.missing, ["truecolor columns >= 60", "three body truecolor columns >= 60"]);
+  assertEquals(result.missing, [
+    "truecolor columns >= 60",
+    "three body truecolor columns >= 60",
+    "three body visible rows >= 2",
+    "three body visible columns >= 4",
+  ]);
   assertEquals(result.truecolorBackgroundMaxColumns, 10);
   assertEquals(result.bodyTruecolorBackgroundMaxColumns, 10);
 });
