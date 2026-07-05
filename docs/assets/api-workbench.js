@@ -17457,91 +17457,6 @@ function apiWorkbenchWrappedOptionStyle(theme2, active2) {
   return apiWorkbenchControlBaseStyle(theme2, active2);
 }
 
-// app/api_workbench_dropdown.ts
-function apiWorkbenchDropdownPopoverRect(options) {
-  const rect = options.rect;
-  const horizontalInset = Math.max(0, Math.floor(options.horizontalInset ?? 2));
-  const padding = Math.max(0, Math.floor(options.padding ?? 6));
-  const minContentWidth = Math.max(1, Math.floor(options.minContentWidth ?? 12));
-  const maxWidth = Math.max(1, Math.floor(rect.width) - horizontalInset * 2);
-  const contentWidth = Math.max(
-    minContentWidth,
-    maxItemTextWidth(options.items),
-    textWidth(options.label ?? "")
-  );
-  const width = Math.max(1, Math.min(Math.max(16, contentWidth + padding), Math.max(16, maxWidth)));
-  return {
-    column: rect.column + horizontalInset,
-    row: options.row,
-    width,
-    height: Math.max(2, options.items.length + 2)
-  };
-}
-function maxItemTextWidth(items) {
-  let width = 0;
-  for (const item of items) width = Math.max(width, textWidth(item));
-  return width;
-}
-
-// app/api_workbench_stepper.ts
-function apiWorkbenchStepperHitPlacementsInto(target, steps, activeIndex, rect, row, options = {}) {
-  const columnOffset = Math.max(0, Math.floor(options.columnOffset ?? 12));
-  const gap = Math.max(0, Math.floor(options.gap ?? 3));
-  const endColumn = rect.column + rect.width;
-  let column = rect.column + columnOffset;
-  let written = 0;
-  for (let index = 0; index < steps.length; index += 1) {
-    const step = steps[index];
-    const label = step.disabled ? `(${step.label})` : step.completed ? `\u2713 ${step.label}` : step.label;
-    const token = index === activeIndex ? `[${label}]` : label;
-    const width = textWidth(token);
-    if (column + width > endColumn) break;
-    const placement = target[written] ?? {
-      column: 0,
-      row: 0,
-      width: 0,
-      height: 1,
-      id: "stepper",
-      action: "activate"
-    };
-    placement.column = column;
-    placement.row = row;
-    placement.width = width;
-    placement.height = 1;
-    placement.id = "stepper";
-    placement.action = "activate";
-    placement.index = index;
-    target[written] = placement;
-    written += 1;
-    column += width + gap;
-  }
-  target.length = written;
-  return target;
-}
-
-// app/api_workbench_table.ts
-function nextSortableDataColumn(columns2, currentColumnId, delta) {
-  let sortableCount = 0;
-  let currentSortableIndex = -1;
-  for (let index = 0; index < columns2.length; index += 1) {
-    const column = columns2[index];
-    if (column.sortable === false) continue;
-    if (column.id === currentColumnId) currentSortableIndex = sortableCount;
-    sortableCount += 1;
-  }
-  if (sortableCount === 0) return void 0;
-  let targetSortableIndex = currentSortableIndex < 0 ? 0 : currentSortableIndex;
-  targetSortableIndex = ((targetSortableIndex + delta) % sortableCount + sortableCount) % sortableCount;
-  let sortableIndex = 0;
-  for (let index = 0; index < columns2.length; index += 1) {
-    const column = columns2[index];
-    if (column.sortable === false) continue;
-    if (sortableIndex === targetSortableIndex) return column;
-    sortableIndex += 1;
-  }
-  return void 0;
-}
-
 // app/api_workbench_textbox.ts
 function apiWorkbenchTextboxProjectionInto(rows2, options) {
   const rect = options.rect;
@@ -17757,6 +17672,85 @@ function nextApiWorkbenchControlId(current, delta, options = {}) {
   const next = index + delta;
   if (!options.wrap && (next < 0 || next >= apiWorkbenchControlIds.length)) return void 0;
   return apiWorkbenchControlIds[(next % apiWorkbenchControlIds.length + apiWorkbenchControlIds.length) % apiWorkbenchControlIds.length];
+}
+function nextSortableDataColumn(columns2, currentColumnId, delta) {
+  let sortableCount = 0;
+  let currentSortableIndex = -1;
+  for (let index = 0; index < columns2.length; index += 1) {
+    const column = columns2[index];
+    if (column.sortable === false) continue;
+    if (column.id === currentColumnId) currentSortableIndex = sortableCount;
+    sortableCount += 1;
+  }
+  if (sortableCount === 0) return void 0;
+  let targetSortableIndex = currentSortableIndex < 0 ? 0 : currentSortableIndex;
+  targetSortableIndex = ((targetSortableIndex + delta) % sortableCount + sortableCount) % sortableCount;
+  let sortableIndex = 0;
+  for (let index = 0; index < columns2.length; index += 1) {
+    const column = columns2[index];
+    if (column.sortable === false) continue;
+    if (sortableIndex === targetSortableIndex) return column;
+    sortableIndex += 1;
+  }
+  return void 0;
+}
+function apiWorkbenchDropdownPopoverRect(options) {
+  const rect = options.rect;
+  const horizontalInset = Math.max(0, Math.floor(options.horizontalInset ?? 2));
+  const padding = Math.max(0, Math.floor(options.padding ?? 6));
+  const minContentWidth = Math.max(1, Math.floor(options.minContentWidth ?? 12));
+  const maxWidth = Math.max(1, Math.floor(rect.width) - horizontalInset * 2);
+  const contentWidth = Math.max(
+    minContentWidth,
+    maxItemTextWidth(options.items),
+    textWidth(options.label ?? "")
+  );
+  const width = Math.max(1, Math.min(Math.max(16, contentWidth + padding), Math.max(16, maxWidth)));
+  return {
+    column: rect.column + horizontalInset,
+    row: options.row,
+    width,
+    height: Math.max(2, options.items.length + 2)
+  };
+}
+function maxItemTextWidth(items) {
+  let width = 0;
+  for (const item of items) width = Math.max(width, textWidth(item));
+  return width;
+}
+function apiWorkbenchStepperHitPlacementsInto(target, steps, activeIndex, rect, row, options = {}) {
+  const columnOffset = Math.max(0, Math.floor(options.columnOffset ?? 12));
+  const gap = Math.max(0, Math.floor(options.gap ?? 3));
+  const endColumn = rect.column + rect.width;
+  let column = rect.column + columnOffset;
+  let written = 0;
+  for (let index = 0; index < steps.length; index += 1) {
+    const step = steps[index];
+    const label = step.disabled ? `(${step.label})` : step.completed ? `\u2713 ${step.label}` : step.label;
+    const token = index === activeIndex ? `[${label}]` : label;
+    const width = textWidth(token);
+    if (column + width > endColumn) break;
+    const placement = target[written] ?? {
+      column: 0,
+      row: 0,
+      width: 0,
+      height: 1,
+      id: "stepper",
+      action: "activate"
+    };
+    placement.column = column;
+    placement.row = row;
+    placement.width = width;
+    placement.height = 1;
+    placement.id = "stepper";
+    placement.action = "activate";
+    placement.index = index;
+    target[written] = placement;
+    written += 1;
+    column += width + gap;
+  }
+  target.length = written;
+  return target;
 }
 
 // app/api_workbench_hit.ts
