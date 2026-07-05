@@ -995,7 +995,10 @@ export class ThreeAsciiRenderer {
       return;
     }
 
-    this.renderer.setSize(this.columns * THREE_ASCII_TILE_SIZE, this.rows * THREE_ASCII_TILE_SIZE);
+    const width = this.columns * THREE_ASCII_TILE_SIZE;
+    const height = this.rows * THREE_ASCII_TILE_SIZE;
+    this.renderer.setSize(width, height);
+    this.asciiNode?.setSize(width, height);
     this.sizeDirty = false;
     this.computeDirty = true;
   }

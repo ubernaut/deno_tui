@@ -666,6 +666,35 @@ Deno.test("ThreeAsciiRenderer skips unchanged uniform buffer uploads", () => {
   assertEquals(writes, 3);
 });
 
+Deno.test("ThreeAsciiRenderer resizes Acerola targets with the backend renderer", () => {
+  const renderer = new ThreeAsciiRenderer({
+    scene: new Scene(),
+    camera: new PerspectiveCamera(),
+    columns: 8,
+    rows: 4,
+  });
+  const rendererSizes: Array<[number, number]> = [];
+  const asciiNodeSizes: Array<[number, number]> = [];
+  const internals = renderer as unknown as {
+    renderer: { setSize: (width: number, height: number) => void };
+    asciiNode: { setSize: (width: number, height: number) => void };
+    applySize(): void;
+  };
+
+  internals.renderer = {
+    setSize: (width, height) => rendererSizes.push([width, height]),
+  };
+  internals.asciiNode = {
+    setSize: (width, height) => asciiNodeSizes.push([width, height]),
+  };
+
+  renderer.setSize(12, 6);
+  internals.applySize();
+
+  assertEquals(rendererSizes, [[12 * THREE_ASCII_TILE_SIZE, 6 * THREE_ASCII_TILE_SIZE]]);
+  assertEquals(asciiNodeSizes, [[12 * THREE_ASCII_TILE_SIZE, 6 * THREE_ASCII_TILE_SIZE]]);
+});
+
 Deno.test("ThreeAsciiRenderer marks compute resources dirty when terminal glyph style changes", () => {
   const renderer = new ThreeAsciiRenderer({
     scene: new Scene(),
