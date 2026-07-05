@@ -155,6 +155,7 @@ function writeProjectedGridRow(
     writeFrameCells(target, column, values, 0, targetWidth);
     return;
   }
+  if (column === 0 && target.length < targetWidth) target.length = targetWidth;
   writeFrameCellsUnchecked(target, column, values, targetWidth);
 }
 

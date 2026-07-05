@@ -24,6 +24,18 @@ Deno.test("workbench three grid writes ANSI cells into a frame rectangle", () =>
   assertEquals(frame[2]?.slice(2, 5), ["D", "E", "F"]);
 });
 
+Deno.test("workbench three grid preserves existing cells beyond a zero-column projection", () => {
+  const frame: WorkbenchFrame = [["old", "tail", "keep"]];
+  writeWorkbenchThreeGrid(
+    frame,
+    { column: 0, row: 0, width: 2, height: 1 },
+    [["A", "B"]],
+    ".",
+  );
+
+  assertEquals(frame[0], ["A", "B", "keep"]);
+});
+
 Deno.test("workbench three grid clips negative columns through the safe writer", () => {
   const frame: WorkbenchFrame = [];
   writeWorkbenchThreeGrid(
