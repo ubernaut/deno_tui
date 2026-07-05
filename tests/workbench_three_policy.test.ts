@@ -10,6 +10,7 @@ import {
   WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
   WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS,
   WORKBENCH_THREE_FULLSCREEN_PRESSURE_HIGH_BYTES_PER_SECOND,
+  WORKBENCH_THREE_FULLSCREEN_PRESSURE_LOW_BYTES_PER_SECOND,
   WORKBENCH_THREE_FULLSCREEN_PRESSURE_LEVELS,
   WORKBENCH_THREE_INITIAL_CELLS,
   WORKBENCH_THREE_LIVE_MAX_CELLS,
@@ -59,6 +60,12 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
     API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY.highBytesPerSecond,
     WORKBENCH_THREE_FULLSCREEN_PRESSURE_HIGH_BYTES_PER_SECOND,
   );
+  assertEquals(
+    API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY.lowBytesPerSecond,
+    WORKBENCH_THREE_FULLSCREEN_PRESSURE_LOW_BYTES_PER_SECOND,
+  );
+  assertEquals(WORKBENCH_THREE_FULLSCREEN_PRESSURE_HIGH_BYTES_PER_SECOND, 1_000_000);
+  assertEquals(WORKBENCH_THREE_FULLSCREEN_PRESSURE_LOW_BYTES_PER_SECOND, 240_000);
   assertEquals(WORKBENCH_THREE_READBACK_STRATEGY, "deferred");
 });
 
@@ -86,9 +93,9 @@ Deno.test("API workbench Three policy keeps live panes faster than idle panes", 
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(240, { live: true }), 1000 / 20);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(480, { live: true }), 1000 / 20);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(960, { live: true }), 1000 / 20);
-  assertEquals(apiWorkbenchThreeFrameIntervalForCells(1_920, { live: true }), 1000 / 14);
-  assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: true }), 1000 / 10);
-  assertEquals(apiWorkbenchThreeFrameIntervalForCells(7_680, { live: true }), 1000 / 8);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(1_920, { live: true }), 1000 / 20);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: true }), 1000 / 20);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(7_680, { live: true }), 1000 / 15);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(240, { live: false }), 1000 / 8);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: false }), 1000 / 5);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(7_680, { live: false }), 1000 / 4);
