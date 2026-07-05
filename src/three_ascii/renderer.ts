@@ -47,11 +47,13 @@ import {
   type ThreeAsciiRendererPerformance,
 } from "./performance.ts";
 import {
+  assembleThreeAsciiReadbackGridWithContext,
   executeThreeAsciiReadbackCopyPlan,
   ThreeAsciiReadbackCopyPlanCache,
   type ThreeAsciiReadbackCopySource,
   type ThreeAsciiReadbackCopySources,
   type ThreeAsciiReadbackCopySourceSlots,
+  type ThreeAsciiReadbackGridAssemblyContext,
   type ThreeAsciiReadbackLayout,
   ThreeAsciiReadbackLayoutCache,
   type ThreeAsciiReadbackLayoutOptions,
@@ -61,10 +63,6 @@ import {
   writeThreeAsciiReadbackCopySourceSlots,
   writeThreeAsciiReadbackLayoutOptions,
 } from "./readback.ts";
-import {
-  assembleThreeAsciiReadbackGridWithContext,
-  type ThreeAsciiReadbackGridAssemblyContext,
-} from "./readback_assembly.ts";
 import {
   emptyThreeAsciiRenderFrame,
   resolveThreeAsciiRenderFrameSelectionInto,

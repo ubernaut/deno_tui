@@ -2,6 +2,8 @@ import { Color } from "npm:three@0.183.2";
 import { assertEquals, assertThrows } from "./deps.ts";
 import type { ThreeAsciiAnsiGridInput } from "../src/three_ascii/ansi_grid.ts";
 import {
+  assembleThreeAsciiReadbackGrid,
+  assembleThreeAsciiReadbackGridWithContext,
   createThreeAsciiReadbackCopyPlan,
   createThreeAsciiReadbackLayout,
   createThreeAsciiReadbackViews,
@@ -19,10 +21,6 @@ import {
   writeThreeAsciiReadbackCopySourceSlots,
   writeThreeAsciiReadbackLayoutOptions,
 } from "../src/three_ascii/readback.ts";
-import {
-  assembleThreeAsciiReadbackGrid,
-  assembleThreeAsciiReadbackGridWithContext,
-} from "../src/three_ascii/readback_assembly.ts";
 
 Deno.test("three ascii readback layout packs fill edge and color buffers", () => {
   const layout = createThreeAsciiReadbackLayout({
