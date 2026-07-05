@@ -91,6 +91,11 @@ export interface AcerolaAsciiRenderProfile {
   terminalDepthColor: boolean;
 }
 
+/** Returns whether the full-resolution composite target is needed for the current render profile. */
+export function shouldRenderAcerolaAsciiComposite(profile: Pick<AcerolaAsciiRenderProfile, "image">): boolean {
+  return profile.image;
+}
+
 function configureMaskRenderTarget(renderTarget: RenderTarget, name: string): void {
   renderTarget.texture.name = name;
   renderTarget.texture.type = HalfFloatType;
@@ -411,7 +416,9 @@ export class AcerolaAsciiNode extends TempNode {
       this.renderMaterial(renderer, this.sobelXTarget, this.sobelXMaterial, "Acerola ASCII [Horizontal Sobel]");
       this.renderMaterial(renderer, this.sobelTarget, this.sobelMaterial, "Acerola ASCII [Vertical Sobel]");
     }
-    this.renderMaterial(renderer, this.asciiTarget, this.asciiMaterial, "Acerola ASCII [Composite]");
+    if (shouldRenderAcerolaAsciiComposite(this.renderProfile)) {
+      this.renderMaterial(renderer, this.asciiTarget, this.asciiMaterial, "Acerola ASCII [Composite]");
+    }
 
     RendererUtils.restoreRendererState(renderer, _rendererState);
   }
