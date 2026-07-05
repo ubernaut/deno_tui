@@ -11967,12 +11967,23 @@ function inset(rect, amount) {
   };
 }
 
-// src/app/workbench_frame_rows.ts
+// src/app/workbench_frame.ts
+var lineSignalRowCache = /* @__PURE__ */ new WeakMap();
+var frameRowMetadata = /* @__PURE__ */ new WeakMap();
 var RESET3 = "\x1B[0m";
 var MAX_FRAME_CELL_PARTS_CACHE_SIZE = 32768;
 var frameCellPartsCache = /* @__PURE__ */ new Map();
 var plainAsciiCellPartsCache = [];
 var runRenderResult = { value: "", nextColumn: 0 };
+function renderFrameRow(cells, width) {
+  const columns2 = Math.max(0, Math.floor(width));
+  const hint = frameRowMetadata.get(cells)?.renderedHint;
+  if (hint?.width === columns2) return hint.line;
+  return renderFrameArrayCells(cells, 0, width);
+}
+function renderFrameSlice(cells, start, width) {
+  return renderFrameArrayCells(cells, start, width);
+}
 function toStyledCells(value) {
   const cells = [];
   let style2 = "";
@@ -12004,12 +12015,6 @@ function readSgrSequenceAt(value, start) {
   }
   if (value[index] !== "m") return void 0;
   return value.slice(start, index + 1);
-}
-function renderFrameRow(cells, width) {
-  return renderFrameArrayCells(cells, 0, width);
-}
-function renderFrameSlice(cells, start, width) {
-  return renderFrameArrayCells(cells, start, width);
 }
 function renderFrameArrayCells(cells, start, width) {
   const columns2 = Math.max(0, Math.floor(width));
@@ -12195,23 +12200,6 @@ function styledFrameCellParts(prefix, text) {
     backgroundStyled: prefix.length > 0 && hasBackgroundSgr(prefix)
   };
 }
-
-// src/app/workbench_frame.ts
-var lineSignalRowCache = /* @__PURE__ */ new WeakMap();
-var frameRowMetadata = /* @__PURE__ */ new WeakMap();
-var RESET4 = "\x1B[0m";
-function renderFrameRow2(cells, width) {
-  const columns2 = Math.max(0, Math.floor(width));
-  const hint = frameRowMetadata.get(cells)?.renderedHint;
-  if (hint?.width === columns2) return hint.line;
-  return renderFrameRow(cells, width);
-}
-function renderFrameSlice2(cells, start, width) {
-  return renderFrameSlice(cells, start, width);
-}
-function toStyledCells2(value) {
-  return toStyledCells(value);
-}
 function prepareWorkbenchRows(rows2, count, create, reset) {
   const rowCount = Math.max(0, Math.floor(count));
   rows2.length = rowCount;
@@ -12277,18 +12265,18 @@ function writeStringFrameRow(frame, width, row, column, value) {
     frame[row] = fullRow;
     return;
   }
-  const valueCells = toStyledCells2(value);
+  const valueCells = toStyledCells(value);
   if (column <= 0 && column + valueCells.length >= width) {
-    frame[row] = renderFrameSlice2(valueCells, -column, width);
+    frame[row] = renderFrameSlice(valueCells, -column, width);
     return;
   }
-  const cells = toStyledCells2(frame[row] ?? "");
+  const cells = toStyledCells(frame[row] ?? "");
   let targetColumn = column;
   for (let index = 0; index < valueCells.length && targetColumn < width; index += 1) {
     if (targetColumn >= 0) cells[targetColumn] = valueCells[index];
     targetColumn += 1;
   }
-  frame[row] = renderFrameRow2(cells, width);
+  frame[row] = renderFrameRow(cells, width);
 }
 function fullRowStringLine(value, width, column) {
   const columns2 = Math.max(0, Math.floor(width));
@@ -12305,14 +12293,14 @@ function fullRowStringLine(value, width, column) {
     style2 = mergeSgrStyle(style2, sequence);
     index += sequence.length;
   }
-  if (!style2 || !value.endsWith(RESET4)) return void 0;
-  const resetStart = value.length - RESET4.length;
+  if (!style2 || !value.endsWith(RESET3)) return void 0;
+  const resetStart = value.length - RESET3.length;
   if (value.indexOf("\x1B", index) !== resetStart) return void 0;
   const text = value.slice(index, resetStart);
   const start = Math.max(0, -sourceColumn);
   const body = text.slice(start, start + columns2);
   if (body.length !== columns2) return void 0;
-  return style2 ? `${style2}${body}${RESET4}` : body;
+  return style2 ? `${style2}${body}${RESET3}` : body;
 }
 function fillStringFrameRect(frame, width, rect, value) {
   for (let row = rect.row; row < rect.row + rect.height; row += 1) {

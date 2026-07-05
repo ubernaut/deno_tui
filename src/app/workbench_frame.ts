@@ -2,16 +2,14 @@
 import type { Rectangle } from "../types.ts";
 import { isSgrReset, mergeSgrStyle } from "../utils/sgr_style.ts";
 import { stripStyles, textWidth } from "../utils/strings.ts";
-import {
-  readSgrSequenceAt,
-  renderFrameRow as renderFrameRowCells,
-  renderFrameSlice as renderFrameSliceCells,
-  toStyledCells as toStyledFrameCells,
-} from "./workbench_frame_rows.ts";
 
 const lineSignalRowCache = new WeakMap<WorkbenchLineSignal, WorkbenchLineSignalRowCache>();
 const frameRowMetadata = new WeakMap<string[], WorkbenchFrameRowMetadata>();
 const RESET = "\x1b[0m";
+const MAX_FRAME_CELL_PARTS_CACHE_SIZE = 32768;
+const frameCellPartsCache = new Map<string, FrameCellParts>();
+const plainAsciiCellPartsCache: Array<FrameCellParts | undefined> = [];
+const runRenderResult: FrameRunRenderResult = { value: "", nextColumn: 0 };
 
 /** Cell matrix used by immediate-mode workbench renderers before row assembly. */
 export type WorkbenchFrame = string[][];
@@ -61,17 +59,278 @@ export function renderFrameRow(cells: string[], width: number): string {
   const columns = Math.max(0, Math.floor(width));
   const hint = frameRowMetadata.get(cells)?.renderedHint;
   if (hint?.width === columns) return hint.line;
-  return renderFrameRowCells(cells, width);
+  return renderFrameArrayCells(cells, 0, width);
 }
 
 /** Assembles a clipped frame row slice from sparse styled cells. */
 export function renderFrameSlice(cells: string[], start: number, width: number): string {
-  return renderFrameSliceCells(cells, start, width);
+  return renderFrameArrayCells(cells, start, width);
 }
 
 /** Converts an ANSI-styled string into independently styled terminal cells. */
 export function toStyledCells(value: string): string[] {
-  return toStyledFrameCells(value);
+  const cells: string[] = [];
+  let style = "";
+  for (let index = 0; index < value.length;) {
+    if (value.charCodeAt(index) === 0x1b) {
+      const sequence = readSgrSequenceAt(value, index);
+      if (sequence) {
+        style = mergeSgrStyle(style, sequence);
+        index += sequence.length;
+        continue;
+      }
+    }
+    const char = value[index]!;
+    cells.push(style ? `${style}${char}\x1b[0m` : char);
+    index += char.length;
+  }
+  return cells;
+}
+
+/** Reads one SGR ANSI escape sequence starting at an exact string offset. */
+function readSgrSequenceAt(value: string, start: number): string | undefined {
+  if (value.charCodeAt(start) !== 0x1b || value[start + 1] !== "[") return undefined;
+  let index = start + 2;
+  while (index < value.length) {
+    const code = value.charCodeAt(index);
+    if ((code >= 0x30 && code <= 0x39) || code === 0x3b) {
+      index++;
+      continue;
+    }
+    break;
+  }
+  if (value[index] !== "m") return undefined;
+  return value.slice(start, index + 1);
+}
+
+function renderFrameArrayCells(cells: string[], start: number, width: number): string {
+  const columns = Math.max(0, Math.floor(width));
+  if (columns <= 0) return "";
+  const offset = Math.floor(start);
+  if (cells.length === 0 || offset >= cells.length) return " ".repeat(columns);
+  let row = "";
+  for (let column = 0; column < columns;) {
+    const firstCell = cells[offset + column] ?? " ";
+    const backgroundSpacePrefix = frameCellBackgroundSpacePrefix(firstCell);
+    if (backgroundSpacePrefix !== undefined) {
+      const styled = renderBackgroundSpaceRun(cells, offset, column, columns, firstCell, backgroundSpacePrefix);
+      row += styled.value;
+      column = styled.nextColumn;
+      continue;
+    }
+    const first = splitFrameCell(firstCell);
+    if (isBackgroundStyledFrameCell(first)) {
+      const styled = renderBackgroundStyledRun(cells, offset, column, columns, firstCell, first);
+      row += styled.value;
+      column = styled.nextColumn;
+      continue;
+    }
+    let next = column + 1;
+    while (next < columns && (cells[offset + next] ?? " ") === firstCell) {
+      next += 1;
+    }
+    let text = next - column === 1 ? first.text : first.text.repeat(next - column);
+    while (next < columns) {
+      const currentCell = cells[offset + next] ?? " ";
+      const current = splitFrameCell(currentCell);
+      if (current.prefix !== first.prefix || current.suffix !== first.suffix) break;
+      let repeatEnd = next + 1;
+      while (repeatEnd < columns && (cells[offset + repeatEnd] ?? " ") === currentCell) {
+        repeatEnd += 1;
+      }
+      text += repeatEnd - next === 1 ? current.text : current.text.repeat(repeatEnd - next);
+      next = repeatEnd;
+    }
+    row += `${first.prefix}${text}${first.suffix}`;
+    column = next;
+  }
+  return row;
+}
+
+function renderBackgroundSpaceRun(
+  cells: string[],
+  start: number,
+  startColumn: number,
+  width: number,
+  firstCell: string,
+  firstPrefix: string,
+): FrameRunRenderResult {
+  let next = startColumn;
+  let value = "";
+  let currentCell = firstCell;
+  let currentPrefix: string | undefined = firstPrefix;
+
+  while (next < width && currentPrefix !== undefined) {
+    let repeatEnd = next + 1;
+    while (repeatEnd < width && (cells[start + repeatEnd] ?? " ") === currentCell) {
+      repeatEnd += 1;
+    }
+    value += `${currentPrefix}${" ".repeat(repeatEnd - next)}`;
+    next = repeatEnd;
+
+    while (next < width) {
+      const nextCell = cells[start + next] ?? " ";
+      const nextPrefix = frameCellBackgroundSpacePrefix(nextCell);
+      if (nextPrefix === undefined || nextPrefix !== currentPrefix) break;
+      let samePrefixEnd = next + 1;
+      while (samePrefixEnd < width && (cells[start + samePrefixEnd] ?? " ") === nextCell) {
+        samePrefixEnd += 1;
+      }
+      value += " ".repeat(samePrefixEnd - next);
+      next = samePrefixEnd;
+    }
+
+    if (next >= width) break;
+    currentCell = cells[start + next] ?? " ";
+    currentPrefix = frameCellBackgroundSpacePrefix(currentCell);
+  }
+
+  runRenderResult.value = `${value}${RESET}`;
+  runRenderResult.nextColumn = next;
+  return runRenderResult;
+}
+
+function renderBackgroundStyledRun(
+  cells: string[],
+  start: number,
+  startColumn: number,
+  width: number,
+  firstCell: string,
+  first: FrameCellParts,
+): FrameRunRenderResult {
+  let next = startColumn;
+  let value = "";
+  let currentCell = firstCell;
+  let current = first;
+
+  while (next < width) {
+    let repeatEnd = next + 1;
+    while (repeatEnd < width && (cells[start + repeatEnd] ?? " ") === currentCell) {
+      repeatEnd += 1;
+    }
+    let text = repeatEnd - next === 1 ? current.text : current.text.repeat(repeatEnd - next);
+    next = repeatEnd;
+    while (next < width) {
+      const nextCell = cells[start + next] ?? " ";
+      const nextParts = splitFrameCell(nextCell);
+      if (!isBackgroundStyledFrameCell(nextParts) || nextParts.prefix !== current.prefix) break;
+      let samePrefixEnd = next + 1;
+      while (samePrefixEnd < width && (cells[start + samePrefixEnd] ?? " ") === nextCell) {
+        samePrefixEnd += 1;
+      }
+      text += samePrefixEnd - next === 1 ? nextParts.text : nextParts.text.repeat(samePrefixEnd - next);
+      next = samePrefixEnd;
+    }
+    value += `${current.prefix}${text}`;
+    if (next >= width) break;
+
+    currentCell = cells[start + next] ?? " ";
+    current = splitFrameCell(currentCell);
+    if (!isBackgroundStyledFrameCell(current)) break;
+  }
+
+  runRenderResult.value = `${value}${RESET}`;
+  runRenderResult.nextColumn = next;
+  return runRenderResult;
+}
+
+function isBackgroundStyledFrameCell(cell: FrameCellParts): boolean {
+  return cell.backgroundStyled;
+}
+
+interface FrameCellParts {
+  prefix: string;
+  text: string;
+  suffix: string;
+  backgroundStyled: boolean;
+}
+
+interface FrameRunRenderResult {
+  value: string;
+  nextColumn: number;
+}
+
+function splitFrameCell(cell: string): FrameCellParts {
+  if (cell.length === 1) {
+    const code = cell.charCodeAt(0);
+    if (code !== 0x1b && code < 128) {
+      return plainAsciiCellPartsCache[code] ??= plainFrameCellParts(cell);
+    }
+  }
+  const backgroundSpace = splitBackgroundSpaceFrameCell(cell);
+  if (backgroundSpace) return backgroundSpace;
+  if (!cell.includes("\x1b[") || !cell.endsWith("\x1b[0m")) {
+    return plainFrameCellParts(cell);
+  }
+  const cached = frameCellPartsCache.get(cell);
+  if (cached) return cached;
+
+  const body = cell.slice(0, -RESET.length);
+  const split = splitFrameCellBody(body);
+  if (!split) {
+    return plainFrameCellParts(cell);
+  }
+  if (frameCellPartsCache.size > MAX_FRAME_CELL_PARTS_CACHE_SIZE) {
+    frameCellPartsCache.clear();
+  }
+  frameCellPartsCache.set(cell, split);
+  return split;
+}
+
+function splitBackgroundSpaceFrameCell(cell: string): FrameCellParts | undefined {
+  const prefix = frameCellBackgroundSpacePrefix(cell);
+  if (prefix === undefined) return undefined;
+  return {
+    prefix,
+    text: " ",
+    suffix: RESET,
+    backgroundStyled: true,
+  };
+}
+
+function frameCellBackgroundSpacePrefix(cell: string): string | undefined {
+  if (cell.charCodeAt(0) !== 0x1b || cell.length < RESET.length + 2) return undefined;
+  const resetStart = cell.length - RESET.length;
+  const textIndex = resetStart - 1;
+  if (cell.charCodeAt(textIndex) !== 0x20 || cell.charCodeAt(textIndex - 1) !== 0x6d) return undefined;
+  for (let index = 0; index < RESET.length; index += 1) {
+    if (cell.charCodeAt(resetStart + index) !== RESET.charCodeAt(index)) return undefined;
+  }
+  const prefix = cell.slice(0, textIndex);
+  if (!hasBackgroundSgr(prefix)) return undefined;
+  return prefix;
+}
+
+function hasBackgroundSgr(prefix: string): boolean {
+  return prefix.includes("[48;") || prefix.includes(";48;");
+}
+
+function splitFrameCellBody(body: string): FrameCellParts | undefined {
+  if (body.length === 0) return undefined;
+  const lastCodeUnit = body.charCodeAt(body.length - 1);
+  if (lastCodeUnit < 0xdc00 || lastCodeUnit > 0xdfff) {
+    const text = body[body.length - 1]!;
+    if (text.charCodeAt(0) === 0x1b) return undefined;
+    return styledFrameCellParts(body.slice(0, -1), text);
+  }
+
+  const parts = Array.from(body);
+  const text = parts.pop();
+  if (!text || text.charCodeAt(0) === 0x1b) return undefined;
+  return styledFrameCellParts(parts.join(""), text);
+}
+
+function plainFrameCellParts(text: string): FrameCellParts {
+  return { prefix: "", text, suffix: "", backgroundStyled: false };
+}
+
+function styledFrameCellParts(prefix: string, text: string): FrameCellParts {
+  return {
+    prefix,
+    text,
+    suffix: RESET,
+    backgroundStyled: prefix.length > 0 && hasBackgroundSgr(prefix),
+  };
 }
 
 /** Copies a viewport from one sparse frame into another without stringifying ANSI cells. */

@@ -7,9 +7,9 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `701`
+- Tracked files after the current consolidation passes: `700`
 - Tracked top-level file counts:
-  - `src`: `346`
+  - `src`: `345`
   - `tests`: `142`
   - `app`: `42`
   - `docs`: `50`
@@ -17,7 +17,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `scripts`: `27`
   - `plan`: `26`
 - Handwritten/code-heavy line counts:
-  - `src/app`: `24,495` lines across `114` files
+  - `src/app`: `24,470` lines across `113` files
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,261` lines across `43` files
   - `src/three_ascii`: `7,201` lines across `35` files
@@ -78,6 +78,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Three ASCII compute dispatch command encoding now lives in `src/three_ascii/compute_plan.ts`
   - Three ASCII compute bind-group assembly now lives in `src/three_ascii/compute_resources.ts`
   - Workbench viewport sizing and active-window reveal scroll math now live in `src/app/workbench_layout.ts`
+  - Workbench frame row assembly now lives in `src/app/workbench_frame.ts`
   - Workbench ANSI output flushing now lives in `src/app/workbench_ansi_screen.ts`
   - Workbench diagnostic status/log formatting now lives in `src/app/workbench_status.ts`
   - Workbench Three window-state resolution now lives in `src/app/workbench_three_policy.ts`
