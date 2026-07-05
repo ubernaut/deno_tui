@@ -4,7 +4,7 @@ import {
   summarizeThreePanelProbe,
   type ThreePanelProbeSample,
   validateThreePanelProbeSummary,
-} from "../src/three_ascii/panel_probe.ts";
+} from "../src/three_ascii/probe.ts";
 
 const samples: ThreePanelProbeSample[] = [
   {
