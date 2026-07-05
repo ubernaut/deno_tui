@@ -105,7 +105,7 @@ import {
   workbenchScreenHeight,
   workbenchScreenWidth,
 } from "../src/app/workbench_repaint_policy.ts";
-import { WorkbenchThreeOverlayPressureGate } from "../src/app/workbench_three_runtime.ts";
+import { WorkbenchThreeCadenceMeter, WorkbenchThreeOverlayPressureGate } from "../src/app/workbench_three_runtime.ts";
 import {
   createWorkbenchThreeWindowState,
   resolveWorkbenchThreeWindowStateInto,
@@ -304,7 +304,6 @@ import {
   workbenchThreeBodyRect,
   workbenchThreeContentGraphicsRect,
 } from "../src/app/workbench_three_geometry.ts";
-import { WorkbenchThreeCadenceMeter } from "../src/app/workbench_three_cadence.ts";
 import {
   setWorkbenchThreeSceneSignal,
   workbenchStudioScene,

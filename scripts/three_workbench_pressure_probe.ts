@@ -33,7 +33,7 @@ import {
   createWorkbenchThreeTerminalPressureState,
   resolveWorkbenchThreeTerminalPressureUpdate,
 } from "../src/app/workbench_three_terminal_pressure.ts";
-import { WorkbenchThreeCadenceMeter } from "../src/app/workbench_three_cadence.ts";
+import { WorkbenchThreeCadenceMeter } from "../src/app/workbench_three_runtime.ts";
 
 const options = parseWorkbenchThreePressureProbeCliOptions<ThreeSceneMode>(Deno.args, {
   initialCells: WORKBENCH_THREE_INITIAL_CELLS,

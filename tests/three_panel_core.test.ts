@@ -13,7 +13,7 @@ import {
   resolveThreePanelValue,
   ThreePanelRenderQueue,
 } from "../src/app/three_panel_core.ts";
-import { WorkbenchThreeCadenceMeter } from "../src/app/workbench_three_cadence.ts";
+import { WorkbenchThreeCadenceMeter } from "../src/app/workbench_three_runtime.ts";
 import { Signal } from "../src/signals/mod.ts";
 
 Deno.test("nextFrameDelay compensates for current frame render time", () => {
