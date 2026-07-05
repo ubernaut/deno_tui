@@ -7,12 +7,12 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `676`
+- Tracked files after the current consolidation passes: `675`
 - Tracked top-level file counts:
   - `src`: `321`
   - `tests`: `142`
   - `app`: `42`
-  - `docs`: `50`
+  - `docs`: `49`
   - `examples`: `42`
   - `scripts`: `27`
   - `plan`: `26`
@@ -27,8 +27,9 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
-  - `docs/assets/api-workbench.js.map`: roughly `2MB`
   - `docs/api-reference.md`: roughly `556KB`
+  - `docs/assets/api-workbench.js.map` is no longer tracked; `deno task web:pages:build` omits sourcemaps and removes
+    stale map artifacts.
 
 ## Findings
 
@@ -191,6 +192,9 @@ The library core is real and valuable, but it needs clearer boundaries:
 - Decide which generated docs artifacts must remain tracked for GitHub Pages.
 - If a generated artifact can be rebuilt deterministically in CI or by `deno task`, stop treating it as source.
 - Keep screenshots only when they are referenced and useful.
+- Completed first pass:
+  - removed the unreferenced `docs/assets/api-workbench.js.map` source map and changed the Pages build to omit future
+    sourcemaps while still tracking the runnable `docs/assets/api-workbench.js` bundle.
 
 ### P3: Reduce Barrel And Compatibility Noise
 

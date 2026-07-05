@@ -21249,4 +21249,3 @@ function cols() {
 function rowsCount() {
   return host.platform.size.value.rows;
 }
-//# sourceMappingURL=api-workbench.js.map
