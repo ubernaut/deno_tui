@@ -187,7 +187,7 @@ import {
   type WorkbenchFrameRenderCommand,
   workbenchFrameRenderCommandsInto,
 } from "../../src/app/workbench_frame_render.ts";
-import { WorkbenchFramePainter } from "../../src/app/workbench_frame_painter.ts";
+import { WorkbenchFramePainter } from "../../src/app/workbench_row_render.ts";
 import type { RowStyle } from "../../src/app/workbench_rows.ts";
 import { workbenchThreePreviewRowsInto } from "../../app/workbench_visualization_window.ts";
 import {

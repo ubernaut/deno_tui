@@ -347,7 +347,7 @@ import {
   type WorkbenchFrameRenderCommand,
   workbenchFrameRenderCommandsInto,
 } from "../src/app/workbench_frame_render.ts";
-import { WorkbenchFramePainter } from "../src/app/workbench_frame_painter.ts";
+import { WorkbenchFramePainter } from "../src/app/workbench_row_render.ts";
 import { type RowStyle, type ThreeHeaderPerformance, threeHeaderRows } from "../src/app/workbench_rows.ts";
 import { writeThreeHeaderRuntimePerformance } from "../src/app/workbench_three_header.ts";
 import { shouldCountWorkbenchThreeGridPressure } from "../src/app/workbench_three_terminal_pressure.ts";

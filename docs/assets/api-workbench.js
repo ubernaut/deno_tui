@@ -18297,8 +18297,6 @@ function workbenchStyledRowsRenderCommandsInto(target, options) {
   }
   return target;
 }
-
-// src/app/workbench_frame_painter.ts
 var WorkbenchFramePainter = class {
   #options;
   #styledRows = [];
