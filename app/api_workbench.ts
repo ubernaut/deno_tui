@@ -180,6 +180,7 @@ import { WorkbenchModalBufferCache } from "../src/app/workbench_modal_cache.ts";
 import { WorkbenchTitlebarBufferCache } from "../src/app/workbench_titlebar_cache.ts";
 import { maxTextWidth, type VisibleMenuSlice } from "../src/app/workbench_text.ts";
 import {
+  applyWorkbenchTerminalSearchPromptInput,
   nextWorkbenchTerminalSessionId,
   resolveWorkbenchShellBackend,
   resolveWorkbenchTerminalProcessInputModeToggle,
@@ -2275,22 +2276,25 @@ function closeTerminalShellSearchModal(): void {
 }
 
 function handleTerminalShellSearchKey(event: { key: string; ctrl?: boolean; meta?: boolean }): boolean {
-  return dispatchWorkbenchTextPromptInput({
+  const input = applyWorkbenchTerminalSearchPromptInput({
     event,
     value: terminalShellSearchDraft.peek(),
-    maxLength: 80,
-    measureText: textWidth,
-  }, {
-    onCancel: () => {
+  });
+  switch (input.action) {
+    case "ignore":
+      return false;
+    case "cancel":
       closeTerminalShellSearchModal();
       pushLog("shell search cancelled");
-    },
-    onSubmit: () => runTerminalShellSearch(),
-    onUpdate: (value) => {
-      terminalShellSearchDraft.value = value;
+      return true;
+    case "submit":
+      runTerminalShellSearch();
+      return true;
+    case "update":
+      terminalShellSearchDraft.value = input.value;
       refreshTerminalShellSearchModal();
-    },
-  });
+      return true;
+  }
 }
 
 function runTerminalShellSearch(): void {

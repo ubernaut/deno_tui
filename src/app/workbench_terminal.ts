@@ -20,6 +20,11 @@ import { textWidth } from "../utils/strings.ts";
 import type { TerminalInputMode } from "./terminal_input.ts";
 import { buttonText, fitCellText } from "./workbench_frame.ts";
 import type { WorkbenchButtonRowItem } from "./workbench_control_layout.ts";
+import {
+  applyWorkbenchTextPromptInput,
+  type WorkbenchTextPromptInputEvent,
+  type WorkbenchTextPromptInputResult,
+} from "./workbench_prompt_input.ts";
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -358,6 +363,13 @@ export interface WorkbenchTerminalSearchModalBodyOptions {
   cursor?: string;
 }
 
+/** Options for applying one terminal search prompt key event. */
+export interface WorkbenchTerminalSearchPromptInputOptions {
+  event: WorkbenchTextPromptInputEvent;
+  value: string;
+  maxLength?: number;
+}
+
 /** Projected terminal copy-mode row metadata shared by console and browser renderers. */
 export interface WorkbenchTerminalCopyRowProjection {
   screenRow: number;
@@ -643,6 +655,18 @@ export function workbenchTerminalSearchModalBody(options: WorkbenchTerminalSearc
     matches > 0 ? `Matches ${matches}${active}` : "Matches none yet",
     "Enter searches, Escape cancels, N/Shift+N move between matches in copy mode.",
   ];
+}
+
+/** Applies common terminal search prompt editing keys with the workbench's default query length. */
+export function applyWorkbenchTerminalSearchPromptInput(
+  options: WorkbenchTerminalSearchPromptInputOptions,
+): WorkbenchTextPromptInputResult {
+  return applyWorkbenchTextPromptInput({
+    event: options.event,
+    value: options.value,
+    maxLength: options.maxLength ?? 80,
+    measureText: textWidth,
+  });
 }
 
 /** Projects browser-safe terminal protocol header rows into caller-owned storage. */

@@ -12,6 +12,7 @@ import type {
   TerminalSessionHandleInspection,
 } from "../src/runtime/terminal_backend.ts";
 import {
+  applyWorkbenchTerminalSearchPromptInput,
   createWorkbenchShellSession,
   nextWorkbenchTerminalSessionId,
   resolveWorkbenchShellBackend,
@@ -101,6 +102,33 @@ Deno.test("workbenchTerminalSearchModalBody projects active match state", () => 
       "Enter searches, Escape cancels, N/Shift+N move between matches in copy mode.",
     ],
   );
+});
+
+Deno.test("applyWorkbenchTerminalSearchPromptInput edits submits and cancels search drafts", () => {
+  assertEquals(applyWorkbenchTerminalSearchPromptInput({ event: { key: "g" }, value: "lo" }), {
+    action: "update",
+    value: "log",
+  });
+  assertEquals(applyWorkbenchTerminalSearchPromptInput({ event: { key: "backspace" }, value: "log" }), {
+    action: "update",
+    value: "lo",
+  });
+  assertEquals(applyWorkbenchTerminalSearchPromptInput({ event: { key: "return" }, value: "gpu" }), {
+    action: "submit",
+    value: "gpu",
+  });
+  assertEquals(applyWorkbenchTerminalSearchPromptInput({ event: { key: "escape" }, value: "gpu" }), {
+    action: "cancel",
+    value: "gpu",
+  });
+  assertEquals(
+    applyWorkbenchTerminalSearchPromptInput({ event: { key: "x" }, value: "ab", maxLength: 2 }),
+    { action: "update", value: "ab" },
+  );
+  assertEquals(applyWorkbenchTerminalSearchPromptInput({ event: { key: "x", ctrl: true }, value: "ab" }), {
+    action: "ignore",
+    value: "ab",
+  });
 });
 
 Deno.test("workbenchTerminalShellHeaderRowsInto projects reusable status and hint rows", () => {
