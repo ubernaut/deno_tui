@@ -4,12 +4,21 @@ import {
   adaptiveGridItemRect,
   adaptiveGridPage,
   dockRect,
+  flexRects,
   insetRect,
   resolveBreakpoint,
   splitRect,
   tileRects,
   WindowManagerController,
 } from "../src/layout/mod.ts";
+import type { Rectangle } from "../src/types.ts";
+
+const flexBounds: Rectangle = {
+  column: 2,
+  row: 4,
+  width: 40,
+  height: 12,
+};
 
 Deno.test("resolveBreakpoint picks the largest matching breakpoint", () => {
   const bounds = { column: 0, row: 0, width: 100, height: 30 };
@@ -50,6 +59,51 @@ Deno.test("dockRect returns dock and remaining body", () => {
   assertEquals(dockRect({ column: 0, row: 0, width: 10, height: 4 }, "bottom", 1, 1), {
     first: { column: 0, row: 3, width: 10, height: 1 },
     second: { column: 0, row: 0, width: 10, height: 2 },
+  });
+});
+
+Deno.test("flexRects distributes extra space by grow weight", () => {
+  const rects = flexRects(flexBounds, "row", [
+    { id: "left", basis: 10, grow: 1 },
+    { id: "right", basis: 10, grow: 3 },
+  ], 2);
+
+  assertEquals(rects.left.column, 2);
+  assertEquals(rects.left.row, 4);
+  assertEquals(rects.left.height, 12);
+  assertEquals(rects.right.height, 12);
+  assertEquals(rects.left.width + rects.right.width + 2, 40);
+  assertEquals(rects.left.width < rects.right.width, true);
+});
+
+Deno.test("flexRects shrinks items toward their minimums before overflowing", () => {
+  const rects = flexRects({ column: 0, row: 0, width: 18, height: 8 }, "row", [
+    { id: "a", basis: 12, min: 6, shrink: 1 },
+    { id: "b", basis: 12, min: 4, shrink: 2 },
+  ], 1);
+
+  assertEquals(rects.a.width + rects.b.width + 1, 18);
+  assertEquals(rects.a.width >= 6, true);
+  assertEquals(rects.b.width >= 4, true);
+});
+
+Deno.test("flexRects maps columns into vertical slices", () => {
+  const rects = flexRects(flexBounds, "column", [
+    { id: "top", basis: 3, grow: 1 },
+    { id: "bottom", basis: 3, grow: 1 },
+  ], 1);
+
+  assertEquals(rects.top, {
+    column: 2,
+    row: 4,
+    width: 40,
+    height: 6,
+  });
+  assertEquals(rects.bottom, {
+    column: 2,
+    row: 11,
+    width: 40,
+    height: 5,
   });
 });
 

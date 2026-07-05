@@ -281,6 +281,7 @@ export class ApiWorkbenchThreeRuntimeController {
   #pressureChange = emptyPressureChange();
   #pressureChangeInput: ApiWorkbenchThreePressureChangeInput;
   #lastFullscreenTargetCells = 0;
+  #lastFullscreenViewportCells = 0;
   #fullscreenTargetActive = false;
 
   constructor(private readonly options: ApiWorkbenchThreeRuntimeOptions) {
@@ -325,20 +326,30 @@ export class ApiWorkbenchThreeRuntimeController {
   }
 
   /** Promotes fullscreen render pressure to a new viewport target without fighting later pressure downshifts. */
-  syncFullscreenTargetCells(targetCells: number, active = this.hasFullscreenThreeWindow()): number {
+  syncFullscreenTargetCells(
+    targetCells: number,
+    active = this.hasFullscreenThreeWindow(),
+    viewportCells = targetCells,
+  ): number {
     const target = Math.max(
       WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
       Math.min(WORKBENCH_THREE_FULLSCREEN_MAX_CELLS, Math.floor(targetCells)),
     );
+    const viewport = Math.max(1, Math.floor(viewportCells));
     if (!active) {
       this.#fullscreenTargetActive = false;
       this.#lastFullscreenTargetCells = 0;
+      this.#lastFullscreenViewportCells = 0;
       return this.fullscreenMaxCells.peek();
     }
 
     const enteringFullscreen = !this.#fullscreenTargetActive;
     this.#fullscreenTargetActive = true;
-    if ((enteringFullscreen || target !== this.#lastFullscreenTargetCells) && target > this.fullscreenMaxCells.peek()) {
+    const viewportGrew = viewport > this.#lastFullscreenViewportCells;
+    if (
+      (enteringFullscreen || target !== this.#lastFullscreenTargetCells || viewportGrew) &&
+      target > this.fullscreenMaxCells.peek()
+    ) {
       this.fullscreenMaxCells.value = target;
       this.#fullscreenPressure.currentCells = target;
       this.#fullscreenPressure.highFrames = 0;
@@ -349,6 +360,7 @@ export class ApiWorkbenchThreeRuntimeController {
       this.syncFrameInterval();
     }
     this.#lastFullscreenTargetCells = target;
+    this.#lastFullscreenViewportCells = viewport;
     return this.fullscreenMaxCells.peek();
   }
 

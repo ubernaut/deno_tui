@@ -216,6 +216,26 @@ Deno.test("ApiWorkbenchThreeRuntimeController does not undo fullscreen pressure 
   controller.dispose();
 });
 
+Deno.test("ApiWorkbenchThreeRuntimeController promotes downshifted fullscreen budget when viewport grows", () => {
+  let fullscreen = true;
+  const controller = new ApiWorkbenchThreeRuntimeController({
+    hasLiveThreeWindow: () => true,
+    hasFullscreenThreeWindow: () => fullscreen,
+  });
+
+  controller.syncFullscreenTargetCells(WORKBENCH_THREE_FULLSCREEN_MAX_CELLS, fullscreen, 8_000);
+  controller.fullscreenMaxCells.value = 1_920;
+
+  assertEquals(controller.syncFullscreenTargetCells(WORKBENCH_THREE_FULLSCREEN_MAX_CELLS, fullscreen, 8_000), 1_920);
+  assertEquals(
+    controller.syncFullscreenTargetCells(WORKBENCH_THREE_FULLSCREEN_MAX_CELLS, fullscreen, 10_000),
+    WORKBENCH_THREE_FULLSCREEN_MAX_CELLS,
+  );
+  assertEquals(controller.inspectPressure().currentCells, WORKBENCH_THREE_FULLSCREEN_MAX_CELLS);
+
+  controller.dispose();
+});
+
 Deno.test("resolveApiWorkbenchThreePressureChange uses fullscreen pressure tiers when requested", () => {
   const change = resolveApiWorkbenchThreePressureChange({
     pressure: { currentCells: WORKBENCH_THREE_FULLSCREEN_MIN_CELLS, highFrames: 2, lowFrames: 0 },

@@ -1210,6 +1210,7 @@ function syncWorkbenchThreeRuntimeBudget(width: number, height: number): void {
   const syncedFullscreenMaxCells = workbenchThreeRuntime.syncFullscreenTargetCells(
     snapshot.fullscreenTargetCells,
     fullscreenThree,
+    snapshot.fullscreenViewportCells,
   );
   if (workbenchThreeFullscreenTargetCells.peek() !== snapshot.fullscreenTargetCells) {
     workbenchThreeFullscreenTargetCells.value = snapshot.fullscreenTargetCells;

@@ -8,7 +8,7 @@ import type { ThreeAsciiReadbackStrategy } from "../three_ascii/renderer_options
 export const WORKBENCH_THREE_LIVE_MAX_CELLS = 960;
 export const WORKBENCH_THREE_FULLSCREEN_MIN_CELLS = 3_840;
 export const WORKBENCH_THREE_FULLSCREEN_MAX_CELLS = 7_680;
-export const WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS = 960;
+export const WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS = 1_920;
 export const WORKBENCH_THREE_RESCUE_CELLS = 30;
 export const WORKBENCH_THREE_EMERGENCY_CELLS = 60;
 export const WORKBENCH_THREE_INITIAL_CELLS = 480;
@@ -23,7 +23,6 @@ export const WORKBENCH_THREE_PRESSURE_LEVELS = [
 ] as const;
 export const WORKBENCH_THREE_FULLSCREEN_PRESSURE_LEVELS = [
   WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS,
-  1_920,
   WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
   WORKBENCH_THREE_FULLSCREEN_MAX_CELLS,
 ] as const;
@@ -106,6 +105,7 @@ export interface WorkbenchThreeRuntimeBudgetSnapshotInput<TId extends string> {
 
 /** Runtime render budget values derived from the current viewport and fullscreen state. */
 export interface WorkbenchThreeRuntimeBudgetSnapshot {
+  fullscreenViewportCells: number;
   fullscreenTargetCells: number;
   effectiveMaxCells: number;
   runtimeAscii: ThreeAsciiConfigOptions;
@@ -219,10 +219,15 @@ export function resolveWorkbenchThreeRuntimeBudgetSnapshot<TId extends string>(
   input: WorkbenchThreeRuntimeBudgetSnapshotInput<TId>,
 ): WorkbenchThreeRuntimeBudgetSnapshot {
   const padding = input.fullscreenViewportPadding ?? {};
-  const fullscreenTargetCells = workbenchThreeFullscreenRenderCells({
+  const fullscreenViewport = {
     width: Math.max(0, input.viewport.width - Math.max(0, Math.floor(padding.columns ?? 0))),
     height: Math.max(0, input.viewport.height - Math.max(0, Math.floor(padding.rows ?? 0))),
-  });
+  };
+  const fullscreenViewportCells = Math.max(
+    1,
+    Math.floor(fullscreenViewport.width) * Math.floor(fullscreenViewport.height),
+  );
+  const fullscreenTargetCells = workbenchThreeFullscreenRenderCells(fullscreenViewport);
   const fullscreenThree = input.fullscreenId !== undefined && input.fullscreenId !== null &&
     (input.isThreeWindow?.(input.fullscreenId) ?? input.fullscreenId === input.id);
   const effectiveMaxCells = fullscreenThree
@@ -232,6 +237,7 @@ export function resolveWorkbenchThreeRuntimeBudgetSnapshot<TId extends string>(
     })
     : Math.max(1, Math.floor(input.liveMaxCells));
   return {
+    fullscreenViewportCells,
     fullscreenTargetCells,
     effectiveMaxCells,
     runtimeAscii: resolveWorkbenchThreeFullscreenAsciiOptions({

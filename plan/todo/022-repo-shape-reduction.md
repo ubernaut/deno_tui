@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `613`
+- Tracked files after the current consolidation passes: `612`
 - Tracked top-level file counts:
   - `src`: `298`
-  - `tests`: `111`
+  - `tests`: `110`
   - `app`: `30`
   - `docs`: `50`
   - `examples`: `41`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `6,968` lines across `23` files
   - `app`: `20,341` lines across `30` files
   - `examples`: `8,729` lines across `41` files
-  - `tests`: `49,117` lines across `111` top-level test files
+  - `tests`: `49,107` lines across `110` top-level test files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -247,7 +247,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Simple grid solver helper assertions are now bundled into `tests/html_css_layout.test.ts`, keeping private grid
     placement coverage with the HTML/CSS simple solver behavior
   - Workbench Three header telemetry assertions are now bundled into `tests/workbench_three_panel.test.ts`
-  - Public flex layout export assertions are now bundled into `tests/flex_layout.test.ts`
+  - flex layout assertions are now bundled into `tests/responsive_layout.test.ts`
   - Visualization panel defaults are now bundled into `tests/visualization_launcher.test.ts`
   - Workbench mobile command strip assertions are now bundled into `tests/workbench_control_layout.test.ts`
   - Workbench help and shared modal-content assertions are now bundled into `tests/workbench_facade.test.ts`
