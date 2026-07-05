@@ -157,7 +157,7 @@ export function inspectWorkbenchFullscreenVisualSmokeOutput(
   const truecolorBackgroundMaxColumns = base.finalTruecolorBackgroundMaxColumns;
   const bodyTruecolor = threeBodyTruecolorCoverage(base.screenLines, replay.truecolorBackground);
   const missing = [...base.missing];
-  const minCells = Math.max(1, Math.floor(options.minCells ?? 1_800));
+  const minCells = Math.max(1, Math.floor(options.minCells ?? 3_000));
   const minTruecolorRows = Math.max(1, Math.floor(options.minTruecolorRows ?? Math.min(12, options.rows)));
   const minTruecolorColumns = Math.max(1, Math.floor(options.minTruecolorColumns ?? options.columns * 0.75));
   if (fullscreenCells < minCells) missing.push(`fullscreen three cells >= ${minCells}`);

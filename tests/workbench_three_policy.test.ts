@@ -42,14 +42,13 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
     960,
   ]);
   assertEquals(Array.from(WORKBENCH_THREE_FULLSCREEN_PRESSURE_LEVELS), [
-    1920,
     3840,
     7680,
   ]);
   assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 960);
   assertEquals(WORKBENCH_THREE_FULLSCREEN_MIN_CELLS, 3_840);
   assertEquals(WORKBENCH_THREE_FULLSCREEN_MAX_CELLS, 7_680);
-  assertEquals(WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS, 1_920);
+  assertEquals(WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS, WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 480_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 24_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 180_000);
@@ -68,7 +67,7 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
     API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY.lowBytesPerSecond,
     WORKBENCH_THREE_FULLSCREEN_PRESSURE_LOW_BYTES_PER_SECOND,
   );
-  assertEquals(WORKBENCH_THREE_FULLSCREEN_PRESSURE_HIGH_BYTES_PER_SECOND, 300_000);
+  assertEquals(WORKBENCH_THREE_FULLSCREEN_PRESSURE_HIGH_BYTES_PER_SECOND, Number.POSITIVE_INFINITY);
   assertEquals(WORKBENCH_THREE_FULLSCREEN_PRESSURE_LOW_BYTES_PER_SECOND, 170_000);
   assertEquals(WORKBENCH_THREE_READBACK_STRATEGY, "deferred");
 });
@@ -260,7 +259,7 @@ Deno.test("API workbench Three policy preserves the tiled visual floor under sus
   assertEquals(state.highFrames, 0);
 });
 
-Deno.test("API workbench Three fullscreen pressure keeps a useful visual floor", () => {
+Deno.test("API workbench Three fullscreen pressure ignores byte volume while cadence is healthy", () => {
   const state = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
   const sample = {
     ...API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY,
@@ -275,7 +274,29 @@ Deno.test("API workbench Three fullscreen pressure keeps a useful visual floor",
     Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
   }
 
-  assertEquals(state.currentCells, WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS);
+  assertEquals(state.currentCells, WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
+  assertEquals(state.highFrames, 0);
+});
+
+Deno.test("API workbench Three fullscreen pressure can still downshift on sustained low FPS", () => {
+  const state = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_FULLSCREEN_MAX_CELLS);
+  const sample = {
+    ...API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY,
+    renderedThreeGrids: 1,
+    bytes: 180_000,
+    durationMs: 0.05,
+    sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_FULLSCREEN_MAX_CELLS, { live: true }),
+    observedFps: 4,
+    targetFps: 15,
+    observedFrameCount: WORKBENCH_THREE_PRESSURE_MIN_FPS_FRAMES,
+  };
+
+  const frames = API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY.highFrameThreshold ?? 1;
+  for (let index = 0; index < frames; index += 1) {
+    Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
+  }
+
+  assertEquals(state.currentCells, WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
   assertEquals(state.highFrames, 0);
 });
 

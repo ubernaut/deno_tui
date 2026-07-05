@@ -157,7 +157,7 @@ Deno.test("ApiWorkbenchThreeRuntimeController keeps fullscreen pressure separate
   controller.updatePressure(heavyFullscreen, fullscreenSample);
   controller.updatePressure(heavyFullscreen, fullscreenSample);
 
-  assertEquals(controller.fullscreenMaxCells.peek(), 1_920);
+  assertEquals(controller.fullscreenMaxCells.peek(), WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
   assertEquals(controller.liveMaxCells.peek(), WORKBENCH_THREE_INITIAL_CELLS);
 
   fullscreen = false;
@@ -238,17 +238,20 @@ Deno.test("ApiWorkbenchThreeRuntimeController promotes downshifted fullscreen bu
 
 Deno.test("resolveApiWorkbenchThreePressureChange uses fullscreen pressure tiers when requested", () => {
   const change = resolveApiWorkbenchThreePressureChange({
-    pressure: { currentCells: WORKBENCH_THREE_FULLSCREEN_MIN_CELLS, highFrames: 2, lowFrames: 0 },
-    currentCells: WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
+    pressure: { currentCells: WORKBENCH_THREE_FULLSCREEN_MAX_CELLS, highFrames: 2, lowFrames: 0 },
+    currentCells: WORKBENCH_THREE_FULLSCREEN_MAX_CELLS,
     fullscreenThree: true,
     frameIntervalMs: 1000 / 10,
     stats: { changed: 26, bytes: 150_000, durationMs: 0.2 },
     sample: { renderedThreeGrids: 1, renderedThreeRows: 26 },
+    observedFps: 4,
+    targetFps: 15,
+    observedFrameCount: 999,
   });
 
-  assertEquals(change.pressure, { currentCells: 1_920, highFrames: 0, lowFrames: 0 });
+  assertEquals(change.pressure, { currentCells: WORKBENCH_THREE_FULLSCREEN_MIN_CELLS, highFrames: 0, lowFrames: 0 });
   assertEquals(change.changed, true);
-  assertEquals(change.nextCells, 1_920);
+  assertEquals(change.nextCells, WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
 });
 
 Deno.test("ApiWorkbenchThreeRuntimeController records and resets rendered grid pressure samples", () => {
