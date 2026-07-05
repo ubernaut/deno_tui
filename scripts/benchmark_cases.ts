@@ -65,12 +65,6 @@ import {
   currentWorkspaceWindowsInto,
 } from "../src/app/workbench_workspace_menu.ts";
 import {
-  type ChangedSpan,
-  changedSpansInto,
-  snapshotChangedSpans,
-  snapshotFrameRow,
-} from "../src/app/workbench_ansi_spans.ts";
-import {
   createWorkbenchThreeTerminalPressureState,
   resolveWorkbenchThreeTerminalPressureBudget,
 } from "../src/app/workbench_three_terminal_pressure.ts";
@@ -298,12 +292,6 @@ const workbenchFrameRenderTheme = {
 };
 const workbenchFrameRenderLines: WorkbenchFrameBoxLine[] = [];
 const workbenchFrameRenderCommands: WorkbenchFrameRenderCommand[] = [];
-const workbenchSpanPrevious = Array.from({ length: workbenchFrameWidth }, (_, index) => `cell-${index % 17}`);
-const workbenchSpanNext = workbenchSpanPrevious.slice();
-const workbenchSpanSpans: ChangedSpan[] = [];
-const workbenchSpanPool: ChangedSpan[] = [];
-const workbenchSpanSnapshot = snapshotFrameRow(workbenchSpanPrevious, workbenchFrameWidth);
-let workbenchChangedSpanCursor = 0;
 const workbenchVisibleWindowSource = new Map<string, { column: number; row: number; width: number; height: number }>();
 const workbenchVisibleWindowTarget = new Map<string, { column: number; row: number; width: number; height: number }>();
 for (let index = 0; index < 60; index += 1) {
@@ -1142,39 +1130,6 @@ function runWorkbenchPrefilledCellBlitWorkload(): void {
   }
 }
 
-function runWorkbenchChangedSpanDetectionWorkload(): void {
-  const base = workbenchChangedSpanCursor++ % workbenchFrameWidth;
-  for (let index = 0; index < workbenchFrameWidth; index += 1) {
-    workbenchSpanNext[index] = workbenchSpanPrevious[index]!;
-  }
-  for (let index = 0; index < 12; index += 1) {
-    const column = (base + index * 13) % workbenchFrameWidth;
-    workbenchSpanNext[column] = `changed-${base}-${index}`;
-  }
-
-  const spans = changedSpansInto(
-    workbenchSpanSpans,
-    workbenchSpanPool,
-    workbenchSpanSnapshot,
-    workbenchSpanNext,
-    workbenchFrameWidth,
-  );
-  snapshotChangedSpans(workbenchSpanNext, workbenchSpanSnapshot, spans);
-  let covered = 0;
-  for (const span of spans) {
-    covered += span.width;
-  }
-  workbenchFrameChecksum = (workbenchFrameChecksum + spans.length + covered) % 1_000_000;
-  if (
-    spans.length <= 0 ||
-    spans.length > 8 ||
-    workbenchSpanSnapshot[base] !== workbenchSpanNext[base] ||
-    !Number.isFinite(workbenchFrameChecksum)
-  ) {
-    throw new Error("workbench changed-span detection workload failed");
-  }
-}
-
 function runWorkbenchVisibleWindowRectsWorkload(): void {
   const offset = (workbenchFrameChecksum % 18) * 2;
   const result = workbenchVisibleWindowRectsInto(workbenchVisibleWindowTarget, workbenchVisibleWindowSource, {
@@ -1713,15 +1668,6 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 250,
     maxAverageMs: 6,
     run: runWorkbenchAnsiScreenSpanFlushWorkload,
-  },
-  {
-    name: "render/workbench-changed-span-detection-168",
-    category: "render",
-    description: "Detect and snapshot sparse changed spans in a retained workbench terminal row.",
-    tags: ["render", "workbench", "frame", "terminal", "span", "diff"],
-    iterations: 2_000,
-    maxAverageMs: 1,
-    run: runWorkbenchChangedSpanDetectionWorkload,
   },
   {
     name: "render/workbench-visible-window-rects-60",

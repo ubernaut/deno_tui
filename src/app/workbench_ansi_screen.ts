@@ -6,10 +6,101 @@ import {
   markWorkbenchFrameRowRendered,
   workbenchFrameRowRenderedHint,
 } from "./workbench_frame.ts";
-import { type ChangedSpan, changedSpansInto, snapshotChangedSpans, snapshotFrameRow } from "./workbench_ansi_spans.ts";
 
 const encoder = new TextEncoder();
 const CLEAR_TO_END_OF_LINE = "\x1b[K";
+const DEFAULT_MAX_CHANGED_SPANS_PER_ROW = 8;
+const DEFAULT_MERGE_CHANGED_SPAN_GAP = 2;
+
+interface ChangedSpan {
+  start: number;
+  end: number;
+  width: number;
+}
+
+interface ChangedSpansOptions {
+  maxSpans?: number;
+  mergeGap?: number;
+}
+
+function changedSpansInto(
+  spans: ChangedSpan[],
+  pool: ChangedSpan[],
+  previous: readonly string[],
+  next: readonly string[],
+  width: number,
+  options?: ChangedSpansOptions,
+): ChangedSpan[] {
+  spans.length = 0;
+  const columns = Math.max(0, Math.floor(width));
+  const maxSpans = options?.maxSpans === undefined
+    ? DEFAULT_MAX_CHANGED_SPANS_PER_ROW
+    : Math.max(1, Math.floor(options.maxSpans));
+  const mergeGap = options?.mergeGap === undefined
+    ? DEFAULT_MERGE_CHANGED_SPAN_GAP
+    : Math.max(0, Math.floor(options.mergeGap));
+  let spanStart = -1;
+  let lastChanged = -1;
+
+  for (let column = 0; column < columns; column += 1) {
+    const nextCell = next[column] ?? " ";
+    if (previous[column] === nextCell) continue;
+
+    if (spanStart < 0) {
+      spanStart = column;
+    } else if (column - lastChanged > mergeGap + 1) {
+      writeChangedSpan(spans, pool, spans.length, spanStart, lastChanged);
+      if (spans.length >= maxSpans) {
+        spanStart = column;
+        lastChanged = column;
+        break;
+      }
+      spanStart = column;
+    }
+    lastChanged = column;
+  }
+
+  if (spanStart < 0) return spans;
+  if (spans.length >= maxSpans) {
+    writeChangedSpan(spans, pool, spans.length - 1, spans[spans.length - 1]!.start, columns - 1);
+    return spans;
+  }
+  writeChangedSpan(spans, pool, spans.length, spanStart, lastChanged);
+  return spans;
+}
+
+function snapshotChangedSpans(
+  row: readonly string[],
+  snapshot: string[],
+  spans: readonly ChangedSpan[],
+): string[] {
+  for (const span of spans) {
+    for (let column = span.start; column <= span.end; column += 1) {
+      snapshot[column] = row[column] ?? " ";
+    }
+  }
+  return snapshot;
+}
+
+function snapshotFrameRow(
+  row: readonly string[],
+  width: number,
+  reuse?: string[],
+  start = 0,
+  end = width - 1,
+): string[] {
+  const snapshot = reuse ?? [];
+  const columns = Math.max(0, Math.floor(width));
+  if (snapshot.length !== columns) {
+    snapshot.length = columns;
+  }
+  const first = Math.max(0, Math.floor(start));
+  const last = Math.min(columns - 1, Math.floor(end));
+  for (let column = first; column <= last; column += 1) {
+    snapshot[column] = row[column] ?? " ";
+  }
+  return snapshot;
+}
 
 /** Terminal flush statistics returned by retained workbench ANSI screen painters. */
 export interface WorkbenchAnsiScreenFlushStats {
@@ -271,4 +362,24 @@ export class WorkbenchAnsiScreenPainter {
       line,
     });
   }
+}
+
+function writeChangedSpan(
+  spans: ChangedSpan[],
+  pool: ChangedSpan[],
+  index: number,
+  start: number,
+  end: number,
+): void {
+  const span = pool[index];
+  if (span) {
+    span.start = start;
+    span.end = end;
+    span.width = end - start + 1;
+    spans[index] = span;
+    return;
+  }
+  const nextSpan = { start, end, width: end - start + 1 };
+  pool[index] = nextSpan;
+  spans[index] = nextSpan;
 }

@@ -7,23 +7,23 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `660`
+- Tracked files after the current consolidation passes: `658`
 - Tracked top-level file counts:
-  - `src`: `321`
-  - `tests`: `131`
+  - `src`: `320`
+  - `tests`: `130`
   - `app`: `38`
   - `docs`: `49`
   - `examples`: `42`
   - `scripts`: `27`
   - `plan`: `26`
 - Handwritten/code-heavy line counts:
-  - `src/app`: `24,231` lines across `89` files
+  - `src/app`: `24,230` lines across `88` files
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,261` lines across `43` files
   - `src/three_ascii`: `7,201` lines across `35` files
   - `app`: `20,302` lines across `38` files
   - `examples`: `8,732` lines across `41` files
-  - `tests`: `49,121` lines across `128` top-level test files
+  - `tests`: `49,058` lines across `127` top-level test files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -121,6 +121,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     resource panels share one system monitor visualization module behind the stable `app/visualizations.ts` facade
   - Three visualization fallback/signal helpers are folded into `app/visualizations.ts`, keeping renderer selection and
     fallback behavior behind the same visualization facade instead of a standalone app-only shard
+  - Workbench ANSI span diff helpers are folded into `src/app/workbench_ansi_screen.ts`, keeping retained row diffing
+    inside the screen painter module that owns its only runtime path
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
@@ -187,6 +189,8 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Workbench frame render-command assertions are now bundled into `tests/workbench_frame.test.ts`
   - Workbench content-size assertions are now bundled into `tests/workbench_panels.test.ts`
   - Workbench button style assertions are now bundled into `tests/workbench_control_layout.test.ts`
+  - Workbench ANSI span-diff assertions are now covered through `tests/workbench_ansi_screen.test.ts`, and the redundant
+    private-helper microbenchmark was removed in favor of the retained screen-painter span flush benchmark
 - Prefer subsystem-level runtime smoke coverage for workbench, Three ASCII, terminal shell, and web interaction.
 
 ### P1: Keep Three ASCII Performance Gated By Real Probes
