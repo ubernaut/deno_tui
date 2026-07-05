@@ -136,9 +136,9 @@ The library core is real and valuable, but it needs clearer boundaries:
 - Continue using benchmark cases for hot helpers, but treat live probes as required evidence:
   - `deno task three-workbench:startup-probe`
   - `deno task three-ascii:live-probe -- --frames 45 --glyphs blocks --max-cells 960 --check --max-average-ms 40`
-- Latest workbench block-mode startup probe after the Three panel diagnostics test consolidation: `6.88ms` steady
-  average, about `145.4 fps` at `53x17` cells with the capped default-workbench probe. Latest standalone block-mode live
-  probe: `18.41ms` steady average, about `54.3 fps` at `31x15` cells.
+- Latest workbench block-mode startup probe after the storage diagnostics runtime fold: `6.77ms` steady average, about
+  `147.7 fps` at `53x17` cells with the capped default-workbench probe. Latest standalone block-mode live probe:
+  `18.08ms` steady average, about `55.3 fps` at `31x15` cells.
 - Avoid speculative micro-optimizations unless they improve measured workbench/default-demo behavior.
 
 ### P2: Split Demo Framework From Library Framework
