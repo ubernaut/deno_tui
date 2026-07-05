@@ -234,6 +234,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   policy imports stable through the existing controls facade.
 - Split API workbench slider track and pointer-hit geometry into `api_workbench_control_slider.ts`, preserving existing
   controls facade imports for terminal/web renderers.
+- Split API workbench one-line control projection and render-command helpers into `api_workbench_control_line.ts`,
+  keeping the existing controls facade stable while isolating button/detail segment geometry.
 - Added a driven fullscreen visual smoke for the API Workbench default Three pane so future checks verify fullscreen
   render-cell scale and truecolor body repainting instead of relying on text-only ANSI replay.
 - Added exact repeated `--name` benchmark selectors so Three/workbench hot-path runs can target only the intended cases
