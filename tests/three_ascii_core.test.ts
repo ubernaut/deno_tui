@@ -21,7 +21,6 @@ import {
   rgbToAnsiBackground,
   rgbToAnsiForeground,
 } from "../src/three_ascii/colors.ts";
-import { resolveThreeAsciiComputeMode } from "../src/three_ascii/compute_mode.ts";
 import {
   createThreeAsciiComputeDispatchPlan,
   encodeThreeAsciiComputeDispatchCommands,
@@ -39,6 +38,7 @@ import {
 } from "../src/three_ascii/effect_options.ts";
 import {
   defaultThreeAsciiEffectState,
+  resolveThreeAsciiComputeMode,
   shouldIncludeThreeAsciiTerminalEdges,
   threeAsciiEffectStateFromSource,
   type ThreeAsciiEffectStateSource,

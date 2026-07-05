@@ -30,8 +30,11 @@ import {
   createThreeAsciiComputeResourcePlan,
   type ThreeAsciiComputeResourcePlanInput,
 } from "./compute_resources.ts";
-import { resolveThreeAsciiComputeMode } from "./compute_mode.ts";
-import { type ThreeAsciiEffectState, threeAsciiEffectStateFromSource } from "./effect_state.ts";
+import {
+  resolveThreeAsciiComputeMode,
+  type ThreeAsciiEffectState,
+  threeAsciiEffectStateFromSource,
+} from "./effect_state.ts";
 import { patchThreeAsciiEffectOptions } from "./effect_options.ts";
 import {
   destroyThreeAsciiGpuBufferSlot,

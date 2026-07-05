@@ -29,6 +29,14 @@ export interface ThreeAsciiEffectState extends ThreeAsciiUniformEffectState {
   backgroundColor: Color;
 }
 
+/** Resolved terminal compute passes needed for the current renderer state. */
+export interface ThreeAsciiComputeMode {
+  includeFill: boolean;
+  includeEdges: boolean;
+  includeDepthColor: boolean;
+  includeFillReadback: boolean;
+}
+
 export function defaultThreeAsciiEffectState(
   options: Partial<AcerolaAsciiNodeOptions> = {},
 ): ThreeAsciiEffectState {
@@ -75,4 +83,17 @@ export function shouldIncludeThreeAsciiTerminalEdges(
   terminalGlyphStyle: TerminalGlyphStyle,
 ): boolean {
   return effectState.edges && terminalGlyphStyle !== "blocks";
+}
+
+/** Resolve compute pass switches without touching WebGPU resources. */
+export function resolveThreeAsciiComputeMode(
+  effectState: Pick<ThreeAsciiEffectState, "edges" | "depthFalloff">,
+  terminalGlyphStyle: TerminalGlyphStyle,
+): ThreeAsciiComputeMode {
+  return {
+    includeFill: terminalGlyphStyle !== "blocks",
+    includeEdges: shouldIncludeThreeAsciiTerminalEdges(effectState, terminalGlyphStyle),
+    includeDepthColor: effectState.depthFalloff > 0,
+    includeFillReadback: terminalGlyphStyle !== "blocks",
+  };
 }

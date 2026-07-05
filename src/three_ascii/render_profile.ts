@@ -1,7 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { AcerolaAsciiRenderProfile } from "./AcerolaAsciiNode.ts";
-import { resolveThreeAsciiComputeMode } from "./compute_mode.ts";
-import type { ThreeAsciiEffectState } from "./effect_state.ts";
+import { resolveThreeAsciiComputeMode, type ThreeAsciiEffectState } from "./effect_state.ts";
 import type { ThreeAsciiRenderFrameSelection } from "./frame_options.ts";
 import type { TerminalGlyphStyle } from "./glyphs.ts";
 

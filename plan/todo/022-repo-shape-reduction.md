@@ -131,6 +131,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     for renderer-specific color mapping that is not part of the public terminal API
   - the unused allocating `resolveSourceFrames` app wrapper was removed; runtime paths use the reusable
     `resolveSourceFramesInto` buffer API directly
+  - Three ASCII compute-mode resolution is folded into `src/three_ascii/effect_state.ts`, removing an internal renderer
+    shard while keeping the compute pass decision covered by the existing Three ASCII core tests
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
