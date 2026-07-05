@@ -37,6 +37,7 @@ import {
   isApiWorkbenchTextControlActive,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
+  resolveApiWorkbenchControlKey,
 } from "../app/api_workbench_controls.ts";
 
 const controlTheme = {
@@ -67,6 +68,29 @@ Deno.test("api workbench control traversal supports wrap and edge-aware tabbing"
   assertEquals(isApiWorkbenchTextControlActive("controls", "controls", "textbox"), true);
   assertEquals(isApiWorkbenchTextControlActive("data", "controls", "input"), false);
   assertEquals(isApiWorkbenchTextControlActive("controls", "controls", "slider"), false);
+});
+
+Deno.test("api workbench control key resolver shares text dropdown radio and action policy", () => {
+  assertEquals(resolveApiWorkbenchControlKey("input", { key: "left" }), { type: "textInput" });
+  assertEquals(resolveApiWorkbenchControlKey("textbox", { key: "return" }), { type: "textInput" });
+  assertEquals(resolveApiWorkbenchControlKey("dropdown", { key: "down" }, { dropdownExpanded: true }), {
+    type: "dropdown",
+    action: "move",
+    delta: 1,
+  });
+  assertEquals(resolveApiWorkbenchControlKey("dropdown", { key: "home" }, { dropdownExpanded: true }), {
+    type: "dropdown",
+    action: "first",
+  });
+  assertEquals(resolveApiWorkbenchControlKey("dropdown", { key: "escape" }, { dropdownExpanded: true }), {
+    type: "dropdown",
+    action: "close",
+  });
+  assertEquals(resolveApiWorkbenchControlKey("radio", { key: "up" }), { type: "radio", delta: -1 });
+  assertEquals(resolveApiWorkbenchControlKey("slider", { key: "down" }), { type: "focus", delta: 1 });
+  assertEquals(resolveApiWorkbenchControlKey("slider", { key: "right" }), { type: "control", action: "next" });
+  assertEquals(resolveApiWorkbenchControlKey("button", { key: "return" }), { type: "control", action: "activate" });
+  assertEquals(resolveApiWorkbenchControlKey("button", { key: "tab" }), { type: "none" });
 });
 
 Deno.test("api workbench sortable column traversal skips disabled columns", () => {

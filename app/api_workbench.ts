@@ -273,6 +273,7 @@ import {
   apiWorkbenchWrappedOptionStyle,
   isApiWorkbenchTextControlActive,
   nextSortableDataColumn,
+  resolveApiWorkbenchControlKey,
 } from "./api_workbench_controls.ts";
 import { createHtmlCssLayoutDemo, HTML_CSS_LAYOUT_WINDOW_ID } from "../src/markup/demo_fixtures.ts";
 import {
@@ -4536,43 +4537,29 @@ function ensureCpuHexTileVisible(id: VisualizationWindowId, label: string): void
 
 function handleControlsKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
   const id = activeControl.peek();
-  if (id === "input") {
-    commandInput.handleKeyPress(event as never);
-    return;
-  }
-  if (id === "textbox") {
-    notes.handleKeyPress(event as never);
-    return;
-  }
-  if (id === "dropdown" && dropdown.expanded.peek()) {
-    if (event.key === "up") dropdown.move(-1);
-    else if (event.key === "down") dropdown.move(1);
-    else if (event.key === "home") dropdown.first();
-    else if (event.key === "end") dropdown.last();
-    else if (event.key === "escape") dropdown.close();
-    else if (event.key === "return" || event.key === "space") dropdown.selectActive();
-    else if (event.key === "left") applyControlHit(id, "previous");
-    else if (event.key === "right") applyControlHit(id, "next");
-    return;
-  }
-  if (id === "radio" && (event.key === "up" || event.key === "down")) {
-    modeRadio.move(event.key === "up" ? -1 : 1);
-    return;
-  }
-  if (event.key === "up") {
-    activeControl.value = controlAt(-1);
-    return;
-  }
-  if (event.key === "down") {
-    activeControl.value = controlAt(1);
-    return;
-  }
-  if (event.key === "left") {
-    applyControlHit(id, "previous");
-  } else if (event.key === "right") {
-    applyControlHit(id, "next");
-  } else if (event.key === "space" || event.key === "return") {
-    applyControlHit(id, "activate");
+  const resolved = resolveApiWorkbenchControlKey(id, event, { dropdownExpanded: dropdown.expanded.peek() });
+  switch (resolved.type) {
+    case "textInput":
+      id === "input" ? commandInput.handleKeyPress(event as never) : notes.handleKeyPress(event as never);
+      return;
+    case "dropdown":
+      if (resolved.action === "move") dropdown.move(resolved.delta);
+      else if (resolved.action === "first") dropdown.first();
+      else if (resolved.action === "last") dropdown.last();
+      else if (resolved.action === "close") dropdown.close();
+      else dropdown.selectActive();
+      return;
+    case "radio":
+      modeRadio.move(resolved.delta);
+      return;
+    case "focus":
+      activeControl.value = controlAt(resolved.delta);
+      return;
+    case "control":
+      applyControlHit(id, resolved.action);
+      return;
+    case "none":
+      return;
   }
 }
 

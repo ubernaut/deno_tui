@@ -164,6 +164,7 @@ import {
   apiWorkbenchWrappedOptionStyle,
   isApiWorkbenchTextControlActive,
   nextSortableDataColumn,
+  resolveApiWorkbenchControlKey,
 } from "../../app/api_workbench_controls.ts";
 import { findApiWorkbenchHitTarget, isApiWorkbenchTouchOptimizedLayout } from "../../app/api_workbench_hit.ts";
 import {
@@ -2600,13 +2601,31 @@ function selectDataRow(index: number): void {
 }
 
 function handleControlsKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
-  if (activeControl.peek() === "input") input.handleKeyPress(event as never);
-  else if (activeControl.peek() === "textbox") textBox.handleKeyPress(event as never);
-  else if (event.key === "up") activeControl.value = controlAt(-1);
-  else if (event.key === "down") activeControl.value = controlAt(1);
-  else if (event.key === "left") applyControlHit(activeControl.peek(), "previous");
-  else if (event.key === "right") applyControlHit(activeControl.peek(), "next");
-  else if (event.key === "space" || event.key === "return") applyControlHit(activeControl.peek(), "activate");
+  const id = activeControl.peek();
+  const resolved = resolveApiWorkbenchControlKey(id, event, { dropdownExpanded: dropdown.expanded.peek() });
+  switch (resolved.type) {
+    case "textInput":
+      id === "input" ? input.handleKeyPress(event as never) : textBox.handleKeyPress(event as never);
+      return;
+    case "dropdown":
+      if (resolved.action === "move") dropdown.move(resolved.delta);
+      else if (resolved.action === "first") dropdown.first();
+      else if (resolved.action === "last") dropdown.last();
+      else if (resolved.action === "close") dropdown.close();
+      else dropdown.selectActive();
+      return;
+    case "radio":
+      radio.move(resolved.delta);
+      return;
+    case "focus":
+      activeControl.value = controlAt(resolved.delta);
+      return;
+    case "control":
+      applyControlHit(id, resolved.action);
+      return;
+    case "none":
+      return;
+  }
 }
 
 function blurTextControl(): void {

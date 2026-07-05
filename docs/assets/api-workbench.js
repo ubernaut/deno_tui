@@ -17523,6 +17523,29 @@ function apiWorkbenchControlAtEdge(current, delta) {
 function isApiWorkbenchTextControlActive(activeWindowId, controlsWindowId, activeControl2) {
   return activeWindowId === controlsWindowId && (activeControl2 === "input" || activeControl2 === "textbox");
 }
+function resolveApiWorkbenchControlKey(id2, event, options = {}) {
+  if (id2 === "input" || id2 === "textbox") return { type: "textInput" };
+  if (id2 === "dropdown" && options.dropdownExpanded) {
+    if (event.key === "up") return { type: "dropdown", action: "move", delta: -1 };
+    if (event.key === "down") return { type: "dropdown", action: "move", delta: 1 };
+    if (event.key === "home") return { type: "dropdown", action: "first" };
+    if (event.key === "end") return { type: "dropdown", action: "last" };
+    if (event.key === "escape") return { type: "dropdown", action: "close" };
+    if (event.key === "return" || event.key === "space") return { type: "dropdown", action: "select" };
+    if (event.key === "left") return { type: "control", action: "previous" };
+    if (event.key === "right") return { type: "control", action: "next" };
+    return { type: "none" };
+  }
+  if (id2 === "radio" && (event.key === "up" || event.key === "down")) {
+    return { type: "radio", delta: event.key === "up" ? -1 : 1 };
+  }
+  if (event.key === "up") return { type: "focus", delta: -1 };
+  if (event.key === "down") return { type: "focus", delta: 1 };
+  if (event.key === "left") return { type: "control", action: "previous" };
+  if (event.key === "right") return { type: "control", action: "next" };
+  if (event.key === "space" || event.key === "return") return { type: "control", action: "activate" };
+  return { type: "none" };
+}
 function nextSortableDataColumn(columns2, currentColumnId, delta) {
   let sortableCount = 0;
   let currentSortableIndex = -1;
@@ -21118,13 +21141,31 @@ function selectDataRow(index) {
   push(`data row ${table.selectedKey() ?? index}`);
 }
 function handleControlsKey(event) {
-  if (activeControl.peek() === "input") input.handleKeyPress(event);
-  else if (activeControl.peek() === "textbox") textBox.handleKeyPress(event);
-  else if (event.key === "up") activeControl.value = controlAt(-1);
-  else if (event.key === "down") activeControl.value = controlAt(1);
-  else if (event.key === "left") applyControlHit(activeControl.peek(), "previous");
-  else if (event.key === "right") applyControlHit(activeControl.peek(), "next");
-  else if (event.key === "space" || event.key === "return") applyControlHit(activeControl.peek(), "activate");
+  const id2 = activeControl.peek();
+  const resolved = resolveApiWorkbenchControlKey(id2, event, { dropdownExpanded: dropdown.expanded.peek() });
+  switch (resolved.type) {
+    case "textInput":
+      id2 === "input" ? input.handleKeyPress(event) : textBox.handleKeyPress(event);
+      return;
+    case "dropdown":
+      if (resolved.action === "move") dropdown.move(resolved.delta);
+      else if (resolved.action === "first") dropdown.first();
+      else if (resolved.action === "last") dropdown.last();
+      else if (resolved.action === "close") dropdown.close();
+      else dropdown.selectActive();
+      return;
+    case "radio":
+      radio.move(resolved.delta);
+      return;
+    case "focus":
+      activeControl.value = controlAt(resolved.delta);
+      return;
+    case "control":
+      applyControlHit(id2, resolved.action);
+      return;
+    case "none":
+      return;
+  }
 }
 function blurTextControl() {
   const previous = activeControl.peek();
