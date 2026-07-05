@@ -33,7 +33,7 @@ const mode = choiceArg(Deno.args, "--mode", "studio" as ThreeSceneMode, threeSce
 const readbackStrategy = choiceArg(
   Deno.args,
   "--readback",
-  "blocking" as ThreeAsciiReadbackStrategy,
+  "deferred" as ThreeAsciiReadbackStrategy,
   [
     "blocking",
     "deferred",

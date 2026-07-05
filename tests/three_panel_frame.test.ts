@@ -406,7 +406,7 @@ Deno.test("ThreePanelFrameView keeps startup grid across empty deferred frames",
   }
 });
 
-Deno.test("ThreePanelFrameView defaults to blocking readback", async () => {
+Deno.test("ThreePanelFrameView defaults to deferred readback", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 32, height: 8 }, { deepObserve: true });
   const scene = new Signal<ThreeSceneState | null>(sceneState());
   const ascii = new Signal(createDefaultAsciiOptions("sharp"));
@@ -426,7 +426,7 @@ Deno.test("ThreePanelFrameView defaults to blocking readback", async () => {
 
   try {
     await waitFor(() => (renderer?.renderCount ?? 0) > 0);
-    assertEquals(readbackStrategy, "blocking");
+    assertEquals(readbackStrategy, "deferred");
   } finally {
     panel.dispose();
     rectangle.dispose();
@@ -1435,6 +1435,45 @@ Deno.test("ThreeAsciiObject defers resize while a frame is rendering", async () 
     object.erase();
     rectangle.dispose();
   }
+});
+
+Deno.test("ThreeAsciiObject defaults to deferred readback and preserves explicit blocking", () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
+  const sink = new MemoryCanvasSink();
+  const canvas = new Canvas({ sink, size: { columns: 40, rows: 20 } });
+  const strategies: ThreeAsciiRendererOptions["readbackStrategy"][] = [];
+
+  const deferredObject = new ThreeAsciiObject({
+    canvas,
+    rectangle,
+    scene: {} as Scene,
+    camera: {} as Camera,
+    style: emptyStyle,
+    zIndex: 1,
+    rendererFactory: (options) => {
+      strategies.push(options.readbackStrategy);
+      return new FakeGridRenderer(options.columns, options.rows);
+    },
+  });
+  deferredObject.erase();
+
+  const blockingObject = new ThreeAsciiObject({
+    canvas,
+    rectangle,
+    scene: {} as Scene,
+    camera: {} as Camera,
+    style: emptyStyle,
+    zIndex: 1,
+    readbackStrategy: "blocking",
+    rendererFactory: (options) => {
+      strategies.push(options.readbackStrategy);
+      return new FakeGridRenderer(options.columns, options.rows);
+    },
+  });
+  blockingObject.erase();
+
+  assertEquals(strategies, ["deferred", "blocking"]);
+  rectangle.dispose();
 });
 
 Deno.test("ThreeAsciiObject queues a startup grid before first frame completes", async () => {

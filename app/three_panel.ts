@@ -420,7 +420,7 @@ export class ThreePanelFrameView {
         terminalEdgeBias: ascii.terminalEdgeBias,
         terminalGlyphStyle: ascii.terminalGlyphStyle,
         deferredReadbackSlots: ascii.deferredReadbackSlots,
-        readbackStrategy: this.options.readbackStrategy ?? "blocking",
+        readbackStrategy: this.options.readbackStrategy ?? "deferred",
       });
       this.captureAppliedRendererState(rect, ascii, effectOptions, renderSize);
       this.setGrid(

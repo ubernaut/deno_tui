@@ -57,6 +57,9 @@ export interface ThreeAsciiObjectOptions extends DrawObjectOptions {
   pixelAspectRatio?: number;
   terminalEdgeBias?: number;
   terminalGlyphStyle?: TerminalGlyphStyle;
+  readbackStrategy?: ThreeAsciiRendererOptions["readbackStrategy"];
+  deferredReadbackSlots?: number;
+  deferredReadbackMaxStaleFrames?: number;
   effect?: AcerolaAsciiNodeOptions;
   onFrame?: (deltaTime: number) => void | Promise<void>;
   rendererFactory?: ThreeAsciiRendererFactory;
@@ -99,6 +102,9 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
       pixelAspectRatio: options.pixelAspectRatio,
       terminalEdgeBias: options.terminalEdgeBias,
       terminalGlyphStyle: options.terminalGlyphStyle,
+      readbackStrategy: options.readbackStrategy ?? "deferred",
+      deferredReadbackSlots: options.deferredReadbackSlots,
+      deferredReadbackMaxStaleFrames: options.deferredReadbackMaxStaleFrames,
       effect: options.effect,
     });
     this.frameInterval = options.frameInterval ?? 1000 / 24;
