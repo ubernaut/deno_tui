@@ -38,6 +38,7 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
     960,
   ]);
   assertEquals(Array.from(WORKBENCH_THREE_FULLSCREEN_PRESSURE_LEVELS), [
+    960,
     1920,
     3840,
     7680,
@@ -45,7 +46,7 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
   assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 480);
   assertEquals(WORKBENCH_THREE_FULLSCREEN_MIN_CELLS, 3_840);
   assertEquals(WORKBENCH_THREE_FULLSCREEN_MAX_CELLS, 7_680);
-  assertEquals(WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS, 1_920);
+  assertEquals(WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS, 960);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 480_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 24_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 60_000);
