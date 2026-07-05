@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `725`
+- Tracked files after the current consolidation passes: `724`
 - Tracked top-level file counts:
   - `src`: `349`
-  - `tests`: `158`
+  - `tests`: `157`
   - `app`: `47`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,188` lines across `37` files
   - `app`: `20,426` lines across `47` files
   - `examples`: `8,732` lines across `41` files
-  - `tests`: `49,099` lines across `158` files
+  - `tests`: `49,097` lines across `157` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `24MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -96,6 +96,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - API workbench explorer, inspector, and log projector tests are now `tests/workbench_panels.test.ts`
   - visualization Three fallback/signal and renderer fallback tests are now `tests/visualization_three.test.ts`
   - system metric diagnostics tests are part of `tests/system_metrics.test.ts`
+  - storage fallback diagnostics tests are part of `tests/runtime.test.ts`
   - tiny theme catalog, ANSI facade, manifest, and validation tests are now `tests/theme_core.test.ts`
   - theme provider facade, inspection, preview, and report tests are now `tests/theme_provider_workflows.test.ts`
   - Three ASCII shader, LUT, color, and glyph-key tests are now `tests/three_ascii_core.test.ts`
