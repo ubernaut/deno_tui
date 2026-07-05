@@ -4,6 +4,7 @@ import {
   countTruecolorBackgroundRows,
   formatWorkbenchVisualSmokeResult,
   inspectWorkbenchFullscreenVisualSmokeOutput,
+  inspectWorkbenchThreePaneCoverage,
   inspectWorkbenchVisualSmokeOutput,
   parseWorkbenchVisualSmokeArgs,
   replayWorkbenchScreen,
@@ -119,6 +120,68 @@ Deno.test("workbench visual smoke inspector finds workbench telemetry and collis
   assertEquals(result.finalTruecolorBackgroundRows, 1);
   assertEquals(result.finalTruecolorBackgroundMaxColumns, 1);
   assertStringIncludes(result.threeLine, "20fps");
+});
+
+Deno.test("workbench visual smoke inspector measures Three pane truecolor coverage", () => {
+  const output = [
+    "\x1b[2J",
+    "\x1b[1;1HAPI WORKBENCH",
+    "\x1b[3;1H┌─ LOGS ─┐ ┌─ THREE ASCII ─────────[ config ]─[-]─[M]─[R]─[x]┐",
+    "\x1b[4;1H│logs    │ │ THREE ASCII · BLOCKS                            │",
+    "\x1b[5;1H│colored │ │6ms 784c live 18fps                              │",
+    "\x1b[6;12H│\x1b[48;2;1;2;3m                                                 \x1b[0m│",
+    "\x1b[7;12H│\x1b[48;2;4;5;6m                         \x1b[0m                        │",
+    "\x1b[8;12H└─────────────────────────────────────────────────┘",
+    "\x1b[9;1Hfocus Three ASCII | Unit-01  F10 menu",
+  ].join("");
+  const result = inspectWorkbenchVisualSmokeOutput(output, { columns: 70, rows: 9 });
+
+  assertEquals(result.passed, true);
+  assertEquals(result.threePane?.found, true);
+  assertEquals(result.threePane?.bodyRows, 2);
+  assertEquals(result.threePane?.truecolorRows, 2);
+  assertEquals(result.threePane?.truecolorMaxColumns, 49);
+  assertStringIncludes(formatWorkbenchVisualSmokeResult(result), "Three pane truecolor: 2 rows, 49/49 columns");
+});
+
+Deno.test("workbench visual smoke inspector rejects colored resize frames when Three pane stays blank", () => {
+  const output = [
+    "\x1b[2J",
+    "\x1b[1;1HAPI WORKBENCH",
+    "\x1b[2;1H\x1b[48;2;9;9;9m                                                            \x1b[0m",
+    "\x1b[3;1H┌─ LOGS ─┐ ┌─ THREE ASCII ─────────[ config ]─[-]─[M]─[R]─[x]┐",
+    "\x1b[4;1H│logs    │ │ THREE ASCII · BLOCKS                            │",
+    "\x1b[5;1H│colored │ │6ms 784c live 18fps                              │",
+    "\x1b[6;12H│                                                 │",
+    "\x1b[7;12H│                                                 │",
+    "\x1b[8;12H└─────────────────────────────────────────────────┘",
+    "\x1b[9;1Hfocus Three ASCII | Unit-01  F10 menu",
+  ].join("");
+  const result = inspectWorkbenchVisualSmokeOutput(output, { columns: 70, rows: 9 });
+
+  assertEquals(result.passed, false);
+  assertEquals(result.missing, ["three pane truecolor rows >= 2", "three pane truecolor columns >= 17"]);
+  assertEquals(result.threePane?.truecolorRows, 0);
+  assertEquals(result.threePane?.truecolorMaxColumns, 0);
+});
+
+Deno.test("workbench Three pane coverage locates the last visible Three window", () => {
+  const lines = [
+    "┌─ THREE ASCII ─┐",
+    "│old            │",
+    "└───────────────┘",
+    "┌─ THREE ASCII ─────────[ config ]─[-]─[M]─[R]─[x]┐",
+    "│ THREE ASCII · BLOCKS                            │",
+    "│6ms 784c live 18fps                              │",
+    "│                                                 │",
+    "└─────────────────────────────────────────────────┘",
+  ];
+  const mask = lines.map((line, row) => Array.from({ length: line.length }, (_, column) => row === 6 && column > 0));
+  const coverage = inspectWorkbenchThreePaneCoverage(lines, mask);
+
+  assertEquals(coverage?.top, 3);
+  assertEquals(coverage?.bodyRows, 1);
+  assertEquals(coverage?.truecolorRows, 1);
 });
 
 Deno.test("workbench visual smoke inspector rejects known crash and paint collision text", () => {

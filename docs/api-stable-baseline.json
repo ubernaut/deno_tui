@@ -3839,27 +3839,6 @@
       "documented": true
     },
     {
-      "module": "src/app/workbench_keymap.ts",
-      "name": "resolveWorkbenchGlobalKey",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/workbench_keymap.ts",
-      "name": "WorkbenchGlobalKey",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/workbench_keymap.ts",
-      "name": "WorkbenchGlobalKeyAction",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
       "module": "src/app/workbench_layout.ts",
       "name": "clampWorkbenchTileDensity",
       "kind": "function",
@@ -4169,6 +4148,13 @@
     },
     {
       "module": "src/app/workbench_menu.ts",
+      "name": "resolveWorkbenchGlobalKey",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_menu.ts",
       "name": "resolveWorkbenchMenuFocusKey",
       "kind": "function",
       "typeOnly": false,
@@ -4179,6 +4165,20 @@
       "name": "resolveWorkbenchScreenDropdownKey",
       "kind": "function",
       "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_menu.ts",
+      "name": "WorkbenchGlobalKey",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_menu.ts",
+      "name": "WorkbenchGlobalKeyAction",
+      "kind": "type",
+      "typeOnly": true,
       "documented": true
     },
     {

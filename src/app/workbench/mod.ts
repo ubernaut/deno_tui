@@ -11,7 +11,6 @@ export * from "../workbench_ansi_screen.ts";
 export * from "../workbench_button_style.ts";
 export * from "../workbench_control_layout.ts";
 export * from "../workbench_layout.ts";
-export * from "../workbench_keymap.ts";
 export * from "../workbench_menu.ts";
 export * from "../workbench_overlay.ts";
 export * from "../workbench_panel_workspace_store.ts";

@@ -19,6 +19,21 @@ export interface WorkbenchVisualSmokeResult {
   truecolorBackgroundWrites: number;
   finalTruecolorBackgroundRows: number;
   finalTruecolorBackgroundMaxColumns: number;
+  threePane?: WorkbenchThreePaneCoverage;
+}
+
+export interface WorkbenchThreePaneCoverage {
+  found: boolean;
+  top: number;
+  left: number;
+  right: number;
+  bottom: number;
+  bodyStart: number;
+  bodyRows: number;
+  bodyColumns: number;
+  truecolorRows: number;
+  truecolorMaxColumns: number;
+  truecolorCells: number;
 }
 
 export interface WorkbenchFullscreenVisualSmokeResult extends WorkbenchVisualSmokeResult {
@@ -119,8 +134,17 @@ export function inspectWorkbenchVisualSmokeOutput(
   const forbidden = FORBIDDEN_TOKENS.filter((token) => text.includes(token));
   const nonBlankRows = lines.filter((line) => line.trim().length > 0).length;
   const truecolorBackgroundWrites = countOccurrences(output, "\x1b[48;2;");
+  const threePane = inspectWorkbenchThreePaneCoverage(lines, replay.truecolorBackground);
   if (threeLine.length === 0) missing.push("three telemetry line");
   if (statusLine.trim().length === 0) missing.push("status line");
+  if (threePane?.found && truecolorBackgroundWrites > 0) {
+    const minPaneRows = Math.min(2, threePane.bodyRows);
+    const minPaneColumns = Math.max(1, Math.floor(threePane.bodyColumns * 0.35));
+    if (threePane.truecolorRows < minPaneRows) missing.push(`three pane truecolor rows >= ${minPaneRows}`);
+    if (threePane.truecolorMaxColumns < minPaneColumns) {
+      missing.push(`three pane truecolor columns >= ${minPaneColumns}`);
+    }
+  }
   return {
     passed: missing.length === 0 && forbidden.length === 0 && nonBlankRows >= Math.min(4, options.rows),
     columns: options.columns,
@@ -135,6 +159,7 @@ export function inspectWorkbenchVisualSmokeOutput(
     truecolorBackgroundWrites,
     finalTruecolorBackgroundRows: replay.truecolorBackgroundRows,
     finalTruecolorBackgroundMaxColumns: replay.truecolorBackgroundMaxColumns,
+    threePane,
   };
 }
 
@@ -230,6 +255,11 @@ export function formatWorkbenchVisualSmokeResult(result: WorkbenchVisualSmokeRes
     `Truecolor backgrounds: ${result.truecolorBackgroundWrites}`,
     `Final truecolor rows: ${result.finalTruecolorBackgroundRows}`,
     `Final truecolor max columns: ${result.finalTruecolorBackgroundMaxColumns}`,
+    `Three pane truecolor: ${
+      result.threePane?.found
+        ? `${result.threePane.truecolorRows} rows, ${result.threePane.truecolorMaxColumns}/${result.threePane.bodyColumns} columns`
+        : "not found"
+    }`,
     `Nonblank rows: ${result.nonBlankRows}`,
     `Missing: ${result.missing.join(", ") || "-"}`,
     `Forbidden: ${result.forbidden.join(", ") || "-"}`,
@@ -247,6 +277,72 @@ export function replayWorkbenchScreen(
   options: { columns: number; rows: number },
 ): string[][] {
   return replayWorkbenchStyledScreen(output, options).screen;
+}
+
+export function inspectWorkbenchThreePaneCoverage(
+  lines: readonly string[],
+  truecolorBackground: readonly (readonly boolean[])[],
+): WorkbenchThreePaneCoverage | undefined {
+  const top = findWorkbenchThreePaneTop(lines);
+  if (top < 0) return undefined;
+  const line = lines[top] ?? "";
+  const left = line.indexOf("┌─ THREE ASCII");
+  const right = line.lastIndexOf("┐");
+  if (left < 0 || right <= left) return undefined;
+  const bottom = findWorkbenchThreePaneBottom(lines, top, left, right);
+  if (bottom <= top) return undefined;
+  const bodyStart = Math.min(bottom, findWorkbenchThreePaneBodyStart(lines, top, bottom));
+  const bodyRows = Math.max(0, bottom - bodyStart);
+  const bodyColumns = Math.max(0, right - left - 1);
+  let truecolorRows = 0;
+  let truecolorMaxColumns = 0;
+  let truecolorCells = 0;
+  for (let row = bodyStart; row < bottom; row += 1) {
+    const mask = truecolorBackground[row] ?? [];
+    let rowCells = 0;
+    for (let column = left + 1; column < right; column += 1) {
+      if (mask[column]) rowCells += 1;
+    }
+    if (rowCells > 0) truecolorRows += 1;
+    truecolorCells += rowCells;
+    truecolorMaxColumns = Math.max(truecolorMaxColumns, rowCells);
+  }
+  return {
+    found: true,
+    top,
+    left,
+    right,
+    bottom,
+    bodyStart,
+    bodyRows,
+    bodyColumns,
+    truecolorRows,
+    truecolorMaxColumns,
+    truecolorCells,
+  };
+}
+
+function findWorkbenchThreePaneTop(lines: readonly string[]): number {
+  for (let row = lines.length - 1; row >= 0; row -= 1) {
+    if ((lines[row] ?? "").includes("┌─ THREE ASCII")) return row;
+  }
+  return -1;
+}
+
+function findWorkbenchThreePaneBottom(lines: readonly string[], top: number, left: number, right: number): number {
+  for (let row = top + 1; row < lines.length; row += 1) {
+    const line = lines[row] ?? "";
+    if (line.slice(Math.max(0, left), right + 1).includes("└")) return row;
+  }
+  return lines.length;
+}
+
+function findWorkbenchThreePaneBodyStart(lines: readonly string[], top: number, bottom: number): number {
+  for (let row = top + 1; row < bottom; row += 1) {
+    const line = lines[row] ?? "";
+    if (line.includes("fps") && line.includes("live")) return row + 1;
+  }
+  return Math.min(bottom, top + 3);
 }
 
 export function replayWorkbenchStyledScreen(

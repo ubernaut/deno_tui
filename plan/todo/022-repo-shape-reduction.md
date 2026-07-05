@@ -7,9 +7,9 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `605`
+- Tracked files after the current consolidation passes: `604`
 - Tracked top-level file counts:
-  - `src`: `297`
+  - `src`: `296`
   - `tests`: `108`
   - `app`: `29`
   - `docs`: `50`
@@ -17,13 +17,13 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `scripts`: `27`
   - `plan`: `26`
 - Handwritten/code-heavy line counts:
-  - `src/app`: `24,671` lines across `78` files
+  - `src/app`: `24,438` lines across `75` files
   - `src/runtime`: `11,118` lines across `34` files
   - `src/components`: `10,261` lines across `43` files
   - `src/three_ascii`: `6,968` lines across `23` files
   - `app`: `20,324` lines across `29` files
-  - `examples`: `8,729` lines across `41` files
-  - `tests`: `49,177` lines across `105` top-level test files
+  - `examples`: `5,077` lines across `34` files
+  - `tests`: `49,198` lines across `106` top-level test files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -191,6 +191,8 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Three panel rotate/zoom interaction state is folded into `src/app/three_panel_core.ts`, keeping frame lifecycle,
     grid publication, graphics handles, and renderer interaction ownership in one core helper module while removing a
     standalone internal shard
+  - Workbench global key resolution is folded into `src/app/workbench_menu.ts`, keeping top-level menu and shortcut
+    behavior in one stable facade module while removing the standalone keymap shard
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

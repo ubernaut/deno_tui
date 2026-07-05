@@ -6,8 +6,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 ## Summary
 
 - Entrypoints: 9
-- Module visits: 499
-- Re-export declarations: 490
+- Module visits: 497
+- Re-export declarations: 488
 - Exported symbols: 5338
 - Documented symbols: 5338
 - Documentation coverage: 100.00%
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     222 |    2294 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     201 |    2146 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     221 |    2294 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     200 |    2146 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      87 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -39,8 +39,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 ### Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 222
-- Re-export declarations: 221
+- Modules: 221
+- Re-export declarations: 220
 - Exported symbols: 2294
 - Documented symbols: 2294
 - Documentation coverage: 100.00%
@@ -97,9 +97,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/workbench_button_style.ts`](#src-app-workbench-button-style-ts)                       |          0 |      10 |         10 |
 | [`src/app/workbench_control_layout.ts`](#src-app-workbench-control-layout-ts)                   |          0 |      17 |         17 |
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                                     |          0 |      30 |         30 |
-| [`src/app/workbench_keymap.ts`](#src-app-workbench-keymap-ts)                                   |          0 |       3 |          3 |
 | [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                                   |          0 |      34 |         34 |
-| [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                                       |          0 |      36 |         36 |
+| [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                                       |          0 |      39 |         39 |
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                                 |          0 |      13 |         13 |
 | [`src/app/workbench_panel_workspace_store.ts`](#src-app-workbench-panel-workspace-store-ts)     |          0 |       8 |          8 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                                     |          0 |      20 |         20 |
@@ -111,7 +110,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)                 |          0 |      27 |         27 |
 | [`src/app/workbench_workspace_store.ts`](#src-app-workbench-workspace-store-ts)                 |          0 |       6 |          6 |
 | [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)                             |          0 |      18 |         18 |
-| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                         |         19 |       0 |          0 |
+| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                         |         18 |       0 |          0 |
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                                       |          0 |       2 |          2 |
 | [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                                 |          0 |       4 |          4 |
 | [`src/canvas/dirty_region.ts`](#src-canvas-dirty-region-ts)                                     |          0 |       3 |          3 |
@@ -1130,14 +1129,6 @@ _No direct exported symbols._
 | `writeFrameCellsUnchecked`          | function  | no        | yes   |
 | `writeStringFrameRow`               | function  | no        | yes   |
 
-#### src/app/workbench_keymap.ts
-
-| Symbol                      | Kind      | Type Only | JSDoc |
-| --------------------------- | --------- | --------- | ----- |
-| `resolveWorkbenchGlobalKey` | function  | no        | yes   |
-| `WorkbenchGlobalKey`        | interface | yes       | yes   |
-| `WorkbenchGlobalKeyAction`  | type      | yes       | yes   |
-
 #### src/app/workbench_layout.ts
 
 | Symbol                                          | Kind      | Type Only | JSDoc |
@@ -1191,8 +1182,11 @@ _No direct exported symbols._
 | `moveWorkbenchMenuIndex`                         | function  | no        | yes   |
 | `MoveWorkbenchMenuIndexOptions`                  | interface | yes       | yes   |
 | `projectWorkbenchStandardTopMenuState`           | function  | no        | yes   |
+| `resolveWorkbenchGlobalKey`                      | function  | no        | yes   |
 | `resolveWorkbenchMenuFocusKey`                   | function  | no        | yes   |
 | `resolveWorkbenchScreenDropdownKey`              | function  | no        | yes   |
+| `WorkbenchGlobalKey`                             | interface | yes       | yes   |
+| `WorkbenchGlobalKeyAction`                       | type      | yes       | yes   |
 | `WorkbenchHeaderLayout`                          | interface | yes       | yes   |
 | `WorkbenchHeaderLayoutOptions`                   | interface | yes       | yes   |
 | `WorkbenchMenuBarHitLayout`                      | interface | yes       | yes   |
@@ -1519,7 +1513,6 @@ _No direct exported symbols._
 | `src/app/workbench_button_style.ts`            | star | -     |
 | `src/app/workbench_control_layout.ts`          | star | -     |
 | `src/app/workbench_layout.ts`                  | star | -     |
-| `src/app/workbench_keymap.ts`                  | star | -     |
 | `src/app/workbench_menu.ts`                    | star | -     |
 | `src/app/workbench_overlay.ts`                 | star | -     |
 | `src/app/workbench_panel_workspace_store.ts`   | star | -     |
@@ -3941,8 +3934,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 ### Summary
 
 - Entrypoint: `mod.web.ts`
-- Modules: 201
-- Re-export declarations: 200
+- Modules: 200
+- Re-export declarations: 199
 - Exported symbols: 2146
 - Documented symbols: 2146
 - Documentation coverage: 100.00%
@@ -3999,9 +3992,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/workbench_button_style.ts`](#src-app-workbench-button-style-ts)                       |          0 |      10 |         10 |
 | [`src/app/workbench_control_layout.ts`](#src-app-workbench-control-layout-ts)                   |          0 |      17 |         17 |
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                                     |          0 |      30 |         30 |
-| [`src/app/workbench_keymap.ts`](#src-app-workbench-keymap-ts)                                   |          0 |       3 |          3 |
 | [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                                   |          0 |      34 |         34 |
-| [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                                       |          0 |      36 |         36 |
+| [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                                       |          0 |      39 |         39 |
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                                 |          0 |      13 |         13 |
 | [`src/app/workbench_panel_workspace_store.ts`](#src-app-workbench-panel-workspace-store-ts)     |          0 |       8 |          8 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                                     |          0 |      20 |         20 |
@@ -4013,7 +4005,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)                 |          0 |      27 |         27 |
 | [`src/app/workbench_workspace_store.ts`](#src-app-workbench-workspace-store-ts)                 |          0 |       6 |          6 |
 | [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)                             |          0 |      18 |         18 |
-| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                         |         19 |       0 |          0 |
+| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                         |         18 |       0 |          0 |
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                                       |          0 |       2 |          2 |
 | [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                                 |          0 |       4 |          4 |
 | [`src/canvas/draw_object.ts`](#src-canvas-draw-object-ts)                                       |          0 |       2 |          2 |
@@ -5030,14 +5022,6 @@ _No direct exported symbols._
 | `writeFrameCellsUnchecked`          | function  | no        | yes   |
 | `writeStringFrameRow`               | function  | no        | yes   |
 
-#### src/app/workbench_keymap.ts
-
-| Symbol                      | Kind      | Type Only | JSDoc |
-| --------------------------- | --------- | --------- | ----- |
-| `resolveWorkbenchGlobalKey` | function  | no        | yes   |
-| `WorkbenchGlobalKey`        | interface | yes       | yes   |
-| `WorkbenchGlobalKeyAction`  | type      | yes       | yes   |
-
 #### src/app/workbench_layout.ts
 
 | Symbol                                          | Kind      | Type Only | JSDoc |
@@ -5091,8 +5075,11 @@ _No direct exported symbols._
 | `moveWorkbenchMenuIndex`                         | function  | no        | yes   |
 | `MoveWorkbenchMenuIndexOptions`                  | interface | yes       | yes   |
 | `projectWorkbenchStandardTopMenuState`           | function  | no        | yes   |
+| `resolveWorkbenchGlobalKey`                      | function  | no        | yes   |
 | `resolveWorkbenchMenuFocusKey`                   | function  | no        | yes   |
 | `resolveWorkbenchScreenDropdownKey`              | function  | no        | yes   |
+| `WorkbenchGlobalKey`                             | interface | yes       | yes   |
+| `WorkbenchGlobalKeyAction`                       | type      | yes       | yes   |
 | `WorkbenchHeaderLayout`                          | interface | yes       | yes   |
 | `WorkbenchHeaderLayoutOptions`                   | interface | yes       | yes   |
 | `WorkbenchMenuBarHitLayout`                      | interface | yes       | yes   |
@@ -5419,7 +5406,6 @@ _No direct exported symbols._
 | `src/app/workbench_button_style.ts`            | star | -     |
 | `src/app/workbench_control_layout.ts`          | star | -     |
 | `src/app/workbench_layout.ts`                  | star | -     |
-| `src/app/workbench_keymap.ts`                  | star | -     |
 | `src/app/workbench_menu.ts`                    | star | -     |
 | `src/app/workbench_overlay.ts`                 | star | -     |
 | `src/app/workbench_panel_workspace_store.ts`   | star | -     |
