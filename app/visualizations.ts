@@ -6,7 +6,6 @@ import {
   visualizationCatalogById,
 } from "./visualization_catalog.ts";
 import { buildVisualizationDrive, fallbackSource, type VisualizationDrive } from "./visualization_drive.ts";
-import { driveThreeSignal } from "./visualization_three_signal.ts";
 import {
   cpuActivityRgb,
   cpuHexGridColumnCount,
@@ -43,9 +42,10 @@ import {
 import { barChart, miniMeter, monitorGlyph, plotHistory } from "./visualization_primitives.ts";
 import {
   appendThreeSceneFooter,
+  driveThreeSignal,
   renderThreeFallbackBody,
   THREE_FALLBACK_BLOCKS,
-} from "./visualization_three_fallback.ts";
+} from "./visualization_three.ts";
 import {
   renderCpuLegend,
   renderCpuMonitor,
