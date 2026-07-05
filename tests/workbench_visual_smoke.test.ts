@@ -6,6 +6,7 @@ import {
   inspectWorkbenchFullscreenVisualSmokeOutput,
   inspectWorkbenchThreePaneCoverage,
   inspectWorkbenchVisualSmokeOutput,
+  isTransientWorkbenchThreeResizeResult,
   parseWorkbenchVisualSmokeArgs,
   replayWorkbenchScreen,
   replayWorkbenchStyledScreen,
@@ -341,6 +342,36 @@ Deno.test("workbench fullscreen visual smoke accepts full-pane offline renderer 
   assertEquals(result.fullscreenCells, 0);
   assertEquals(result.bodyTruecolorBackgroundRows, 3);
   assertEquals(result.bodyTruecolorBackgroundMaxColumns, 72);
+});
+
+Deno.test("workbench visual smoke transient resize classifier only retries Three warmup evidence", () => {
+  assertEquals(
+    isTransientWorkbenchThreeResizeResult({
+      forbidden: [],
+      missing: [
+        "three telemetry line",
+        "fullscreen three cells >= 1800",
+        "three body truecolor rows >= 8",
+        "three pane truecolor rows >= 2",
+        "three pane visible columns >= 4",
+      ],
+    }),
+    true,
+  );
+  assertEquals(
+    isTransientWorkbenchThreeResizeResult({
+      forbidden: ["RangeError"],
+      missing: ["three telemetry line"],
+    }),
+    false,
+  );
+  assertEquals(
+    isTransientWorkbenchThreeResizeResult({
+      forbidden: [],
+      missing: ["API WORKBENCH"],
+    }),
+    false,
+  );
 });
 
 Deno.test("workbench fullscreen visual smoke parser accepts resize flags", () => {

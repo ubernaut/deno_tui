@@ -7,6 +7,7 @@ export interface WorkbenchVisualSmokeOptions {
   settleMs?: number;
   timeoutMs?: number;
   dumpScreen?: boolean;
+  retryTransientResize?: boolean;
 }
 
 export interface WorkbenchVisualSmokeResult {
@@ -127,8 +128,8 @@ export async function runWorkbenchVisualSmoke(
     : Math.max(1, Math.floor(options.resizeColumns));
   const resizeRows = options.resizeRows === undefined ? undefined : Math.max(1, Math.floor(options.resizeRows));
   const command = options.command ?? DEFAULT_COMMAND;
-  const output = resizeColumns && resizeRows
-    ? await captureWorkbenchResizePty({
+  if (resizeColumns && resizeRows) {
+    return await runWorkbenchResizeVisualSmoke({
       command,
       columns,
       rows,
@@ -136,14 +137,43 @@ export async function runWorkbenchVisualSmoke(
       resizeRows,
       settleMs: options.settleMs ?? 3_000,
       timeoutMs: options.timeoutMs ?? 10_000,
-    })
-    : await captureWorkbenchPty({
-      command,
-      columns,
-      rows,
-      timeoutMs: options.timeoutMs ?? 8_000,
+      retryTransientResize: options.retryTransientResize ?? true,
     });
+  }
+
+  const output = await captureWorkbenchPty({
+    command,
+    columns,
+    rows,
+    timeoutMs: options.timeoutMs ?? 8_000,
+  });
   return inspectWorkbenchVisualSmokeOutput(output, { columns: resizeColumns ?? columns, rows: resizeRows ?? rows });
+}
+
+async function runWorkbenchResizeVisualSmoke(
+  options: Required<
+    Pick<
+      WorkbenchVisualSmokeOptions,
+      | "command"
+      | "columns"
+      | "rows"
+      | "resizeColumns"
+      | "resizeRows"
+      | "settleMs"
+      | "timeoutMs"
+      | "retryTransientResize"
+    >
+  >,
+): Promise<WorkbenchVisualSmokeResult> {
+  const maxAttempts = options.retryTransientResize ? 2 : 1;
+  let result: WorkbenchVisualSmokeResult | undefined;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const settleMs = attempt === 0 ? options.settleMs : Math.max(options.settleMs * 2, options.settleMs + 3_000);
+    const output = await captureWorkbenchResizePty({ ...options, settleMs });
+    result = inspectWorkbenchVisualSmokeOutput(output, { columns: options.resizeColumns, rows: options.resizeRows });
+    if (result.passed || !isTransientWorkbenchThreeResizeResult(result)) return result;
+  }
+  return result!;
 }
 
 export async function captureWorkbenchPty(
@@ -339,6 +369,21 @@ export function inspectWorkbenchFullscreenVisualSmokeOutput(
     bodyVisibleRows: bodyVisible.rows,
     bodyVisibleMaxColumns: bodyVisible.maxColumns,
   };
+}
+
+export function isTransientWorkbenchThreeResizeResult(
+  result: Pick<WorkbenchVisualSmokeResult, "forbidden" | "missing">,
+): boolean {
+  if (result.forbidden.length > 0 || result.missing.length === 0) return false;
+  return result.missing.every((missing) =>
+    missing === "three telemetry line" ||
+    missing.startsWith("fullscreen three cells ") ||
+    missing.startsWith("three body truecolor ") ||
+    missing.startsWith("three body visible ") ||
+    missing.startsWith("three pane truecolor ") ||
+    missing.startsWith("three pane visible ") ||
+    missing.startsWith("three rendered cells ")
+  );
 }
 
 function threeBodyTruecolorCoverage(

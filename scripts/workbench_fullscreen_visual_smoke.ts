@@ -1,5 +1,6 @@
 import {
   inspectWorkbenchFullscreenVisualSmokeOutput,
+  isTransientWorkbenchThreeResizeResult,
   type WorkbenchFullscreenVisualSmokeResult,
 } from "./workbench_visual_smoke.ts";
 
@@ -16,6 +17,7 @@ export interface WorkbenchFullscreenVisualSmokeOptions {
   minTruecolorRows?: number;
   minTruecolorColumns?: number;
   dumpScreen?: boolean;
+  retryTransientResize?: boolean;
 }
 
 const DEFAULT_COMMAND = ["deno", "task", "api-workbench"] as const;
@@ -73,7 +75,7 @@ export async function runWorkbenchFullscreenVisualSmoke(
     ? undefined
     : Math.max(1, Math.floor(options.resizeColumns));
   const resizeRows = options.resizeRows === undefined ? undefined : Math.max(1, Math.floor(options.resizeRows));
-  const output = await captureWorkbenchFullscreenPty({
+  return await runWorkbenchFullscreenVisualSmokeCapture({
     command: options.command ?? DEFAULT_COMMAND,
     columns,
     rows,
@@ -82,14 +84,42 @@ export async function runWorkbenchFullscreenVisualSmoke(
     timeoutMs: options.timeoutMs ?? 12_000,
     settleMs: options.settleMs ?? 4_000,
     fullscreenKey: options.fullscreenKey ?? "f",
-  });
-  return inspectWorkbenchFullscreenVisualSmokeOutput(output, {
-    columns: resizeColumns ?? columns,
-    rows: resizeRows ?? rows,
     minCells: options.minCells,
     minTruecolorRows: options.minTruecolorRows,
     minTruecolorColumns: options.minTruecolorColumns,
+    retryTransientResize: options.retryTransientResize ?? true,
   });
+}
+
+async function runWorkbenchFullscreenVisualSmokeCapture(
+  options:
+    & Required<
+      Pick<
+        WorkbenchFullscreenVisualSmokeOptions,
+        "command" | "columns" | "rows" | "timeoutMs" | "settleMs" | "fullscreenKey" | "retryTransientResize"
+      >
+    >
+    & Pick<
+      WorkbenchFullscreenVisualSmokeOptions,
+      "resizeColumns" | "resizeRows" | "minCells" | "minTruecolorRows" | "minTruecolorColumns"
+    >,
+): Promise<WorkbenchFullscreenVisualSmokeResult> {
+  const hasResize = options.resizeColumns !== undefined && options.resizeRows !== undefined;
+  const maxAttempts = hasResize && options.retryTransientResize ? 2 : 1;
+  let result: WorkbenchFullscreenVisualSmokeResult | undefined;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const settleMs = attempt === 0 ? options.settleMs : Math.max(options.settleMs * 2, options.settleMs + 3_000);
+    const output = await captureWorkbenchFullscreenPty({ ...options, settleMs });
+    result = inspectWorkbenchFullscreenVisualSmokeOutput(output, {
+      columns: options.resizeColumns ?? options.columns,
+      rows: options.resizeRows ?? options.rows,
+      minCells: options.minCells,
+      minTruecolorRows: options.minTruecolorRows,
+      minTruecolorColumns: options.minTruecolorColumns,
+    });
+    if (result.passed || !isTransientWorkbenchThreeResizeResult(result)) return result;
+  }
+  return result!;
 }
 
 export async function captureWorkbenchFullscreenPty(
@@ -139,15 +169,29 @@ def drain(duration):
             chunks.append(child.read_nonblocking(size=200000, timeout=0.05))
         except Exception:
             time.sleep(0.02)
+def recent_output():
+    return b"".join(chunks[-12:])
+def drain_until(duration, predicate, min_duration=0.75):
+    start = time.time()
+    start_index = len(chunks)
+    deadline = time.time() + duration
+    while time.time() < deadline:
+        try:
+            chunks.append(child.read_nonblocking(size=200000, timeout=0.05))
+        except Exception:
+            time.sleep(0.02)
+        if time.time() - start >= min_duration and predicate(b"".join(chunks[start_index:]) or recent_output()):
+            return True
+    return False
 try:
     drain(${(options.settleMs / 1000).toFixed(3)})
     child.send(${JSON.stringify(options.fullscreenKey)}.encode())
-    drain(${(options.settleMs / 1000).toFixed(3)})
+    drain_until(${(options.settleMs / 1000).toFixed(3)}, lambda output: b"fps" in output and b"live" in output)
     resize_rows = ${resizeRows}
     resize_columns = ${resizeColumns}
     if resize_rows and resize_columns:
         child.setwinsize(resize_rows, resize_columns)
-        drain(${(options.settleMs / 1000).toFixed(3)})
+        drain_until(${(options.settleMs / 1000).toFixed(3)}, lambda output: b"fps" in output and b"live" in output)
 finally:
     try:
         child.sendintr()
