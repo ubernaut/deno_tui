@@ -27,7 +27,48 @@ import {
   workspaceRenamedModalContent,
   workspaceSavedModalContent,
 } from "../src/app/workbench_workspace_menu.ts";
+import {
+  API_WORKBENCH_WORKSPACE_STORE_KEY,
+  API_WORKBENCH_WORKSPACE_STORE_OPTIONS,
+  apiWorkbenchWorkspaceStorageLabel,
+  apiWorkbenchWorkspaceStorageOptions,
+} from "../src/app/workbench_workspace_config.ts";
 import type { WorkbenchWorkspace, WorkbenchWorkspaceWindow } from "../src/app/mod.ts";
+
+Deno.test("API workbench workspace config exposes stable storage defaults", () => {
+  assertEquals(API_WORKBENCH_WORKSPACE_STORE_KEY, "api-workbench.workspaces");
+  assertEquals(API_WORKBENCH_WORKSPACE_STORE_OPTIONS, {
+    databaseName: "deno-tui-api-workbench",
+    storeName: "workspaces",
+    fallbackPath: ".api-workbench-workspaces.json",
+    version: 1,
+  });
+  assertEquals(apiWorkbenchWorkspaceStorageLabel(true), "IndexedDB");
+  assertEquals(apiWorkbenchWorkspaceStorageLabel(false), "Deno JSON");
+});
+
+Deno.test("apiWorkbenchWorkspaceStorageOptions projects API workbench persistence policy", () => {
+  const store = {
+    async get(_key: string) {
+      return undefined;
+    },
+    async set(_key: string, _value: unknown) {},
+    async delete(_key: string) {},
+  };
+  const options = apiWorkbenchWorkspaceStorageOptions({
+    store,
+    validVisualizationIds: ["cpu"],
+    hasIndexedDb: false,
+    normalizeAscii: (value) => typeof value === "string" ? { style: value } : undefined,
+  });
+
+  assertEquals(options.key, API_WORKBENCH_WORKSPACE_STORE_KEY);
+  assertStrictEquals(options.store, store);
+  assertEquals(options.normalizeName?.("", 2), "Workspace 3");
+  assertEquals(options.normalizeAscii?.("blocks"), { style: "blocks" });
+  assertEquals(options.diagnosticSource, "api-workbench");
+  assertEquals(options.storageLabel, "Deno JSON");
+});
 
 Deno.test("buildWorkspaceMenuEntries includes save and empty states", () => {
   const entries = buildWorkspaceMenuEntries([]);

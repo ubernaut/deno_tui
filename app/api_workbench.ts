@@ -13,13 +13,15 @@ import { SliderController } from "../src/components/slider.ts";
 import { StepperController } from "../src/components/stepper.ts";
 import { TextBoxController, type TextBoxVisualLine } from "../src/components/textbox.ts";
 import {
+  API_WORKBENCH_WORKSPACE_STORE_KEY,
+  apiWorkbenchWorkspaceStorageOptions,
   appendBoundedWorkbenchLogRow,
   blitWorkbenchFrameCells,
   buttonText,
   centerCellText as centerText,
   clampWorkbenchTileDensity,
   contrastText,
-  createWorkbenchWorkspaceStore,
+  createApiWorkbenchWorkspaceStore,
   dispatchWorkbenchTextPromptInput,
   fillFrameRect,
   fillFrameRow,
@@ -39,7 +41,6 @@ import {
   layoutWorkbenchTabsInto,
   layoutWorkbenchTitlebarInto,
   loadWorkbenchWorkspaceStorage,
-  normalizeWorkbenchWorkspaceName,
   persistWorkbenchWorkspaceStorage,
   prepareWorkbenchFrame,
   projectWorkbenchButton,
@@ -97,7 +98,6 @@ import {
   workbenchWindowScrollbarRenderCommandsInto,
   type WorkbenchWorkspace,
   workbenchWorkspaceScrollbarRenderCommandsInto,
-  type WorkbenchWorkspaceStorageOptions,
   WorkbenchWorkspaceViewportController,
   type WorkbenchWorkspaceWindow,
   workbenchWorkspaceWindowEntries,
@@ -502,7 +502,7 @@ const builtInWindowOrder = windowCatalog.builtInWindowOrder;
 const visualizationWindowOptionIds = windowCatalog.visualizationWindowOptionIds;
 const visualizationWindowOptionById = windowCatalog.visualizationWindowOptionById;
 const newWindowOptions: NewWindowOption[] = windowCatalog.newWindowOptions;
-const WORKSPACE_STORE_KEY = "api-workbench.workspaces";
+const WORKSPACE_STORE_KEY = API_WORKBENCH_WORKSPACE_STORE_KEY;
 
 requireInteractiveTerminal("deno task api-workbench");
 
@@ -510,7 +510,7 @@ const workbenchDiagnostics = new DiagnosticsCollector(120);
 const systemMonitor = new SystemMonitor({ historyLength: 72, diagnostics: workbenchDiagnostics });
 await systemMonitor.start(1000);
 const workbenchAudioRegistry = new AudioRegistry([]);
-const workspaceStore = createWorkspaceStore();
+const workspaceStore = createApiWorkbenchWorkspaceStore();
 const savedWorkspaces = new Signal<SavedWorkspace[]>(await loadSavedWorkspaces(), { deepObserve: true });
 const threeAsciiAvailable = new Signal(await probeCompatibleWebGPUDevice());
 const asciiConfigs = new WorkbenchAsciiConfigController<WindowId>("three");
@@ -3488,26 +3488,14 @@ async function persistSavedWorkspaces(): Promise<void> {
   await persistWorkbenchWorkspaceStorage(savedWorkspaces.peek(), workspaceStorageOptions());
 }
 
-function workspaceStorageOptions(): WorkbenchWorkspaceStorageOptions<AsciiOptions> {
-  return {
+function workspaceStorageOptions() {
+  return apiWorkbenchWorkspaceStorageOptions<AsciiOptions>({
     key: WORKSPACE_STORE_KEY,
     store: workspaceStore,
     validVisualizationIds: visualizationWindowOptionIds,
-    normalizeName: (name, index) => normalizeWorkbenchWorkspaceName(name, `Workspace ${index + 1}`),
     normalizeAscii: (candidate) =>
       candidate ? normalizeAsciiOptions(candidate as AsciiOptions, createDefaultWorkbenchAsciiOptions()) : undefined,
     diagnostics: workbenchDiagnostics,
-    diagnosticSource: "api-workbench",
-    storageLabel: "indexedDB" in globalThis ? "IndexedDB" : "Deno JSON",
-  };
-}
-
-function createWorkspaceStore() {
-  return createWorkbenchWorkspaceStore({
-    databaseName: "deno-tui-api-workbench",
-    storeName: "workspaces",
-    fallbackPath: ".api-workbench-workspaces.json",
-    version: 1,
   });
 }
 

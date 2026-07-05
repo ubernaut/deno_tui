@@ -4,6 +4,7 @@ import {
   ApiWorkbenchThreeRuntimeController,
   applyWorkbenchThreePanelFrameDefaults,
   buttonText,
+  createApiWorkbenchWorkspaceStore,
   createWorkbenchShellSession,
   hideWorkbenchThreeRect,
   HitTargetStack,
@@ -95,6 +96,7 @@ Deno.test("workbench facade exposes renderer-neutral helpers", () => {
   assertEquals(typeof workbenchStudioScene, "function");
   assertEquals(typeof workbenchWindowContentSize, "function");
   assertEquals(typeof workspaceMenuLabels, "function");
+  assertEquals(typeof createApiWorkbenchWorkspaceStore, "function");
   assertEquals(typeof workbenchStandardTopMenuDropdownOverlayInto, "function");
   assertEquals(typeof workbenchStatusSnapshotLine, "function");
   assertEquals(typeof WorkbenchTopMenuController, "function");

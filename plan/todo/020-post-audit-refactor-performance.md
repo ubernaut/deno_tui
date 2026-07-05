@@ -1176,5 +1176,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   to the small embedded-pane grid, while regular embedded panes still keep the lower rescue tiers.
 - Carried Three renderer `gridRevision` through `ThreeAsciiObject` so Canvas-backed Three ASCII components can skip the
   expensive retained-grid diff when deferred/saturated renderer frames return the same completed grid for the same
-  rectangle, canvas, and view. Focused Canvas object tests now prove unchanged revisions enqueue no rerender ranges;
-  raw diff benchmarks are unchanged because they intentionally exercise changing grid content.
+  rectangle, canvas, and view. Focused Canvas object tests now prove unchanged revisions enqueue no rerender ranges; raw
+  diff benchmarks are unchanged because they intentionally exercise changing grid content.
+- Extracted API Workbench workspace storage defaults and storage-option projection into a small shared helper, keeping
+  persistence policy out of the oversized terminal workbench module. Focused workspace tests now pin the storage key,
+  fallback store config, storage labels, normalization policy, and facade export path.

@@ -53,5 +53,6 @@ export * from "../workbench_three_header.ts";
 export * from "../workbench_viewport.ts";
 export * from "../workbench_window_registry.ts";
 export * from "../workbench_workspace.ts";
+export * from "../workbench_workspace_config.ts";
 export * from "../workbench_workspace_menu.ts";
 export * from "../workbench_workspace_store.ts";
