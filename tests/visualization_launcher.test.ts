@@ -15,6 +15,8 @@ import {
   resolveVisualizationTask,
   visualizationLaunchTargets,
 } from "../scripts/visualization_launcher.ts";
+import { defaultVisualizationForSlot, orderVisualizationsForSlot } from "../app/panel_defaults.ts";
+import { visualizations } from "../app/visualizations.ts";
 
 Deno.test("visualization launcher resolves public aliases to deno tasks", () => {
   assertEquals(resolveVisualizationTask(), "showcase");
@@ -83,6 +85,41 @@ Deno.test("interactive demo launcher accepts buffered printable input", () => {
 Deno.test("visualization launcher exposes unique primary aliases", () => {
   const aliases = visualizationLaunchTargets.map((entry) => entry.aliases[0]);
   assertEquals([...new Set(aliases)], aliases);
+});
+
+Deno.test("visualization panel defaults pick the curated monitor wall demos", () => {
+  assertEquals(defaultVisualizationForSlot("cpu"), "three-lattice");
+  assertEquals(defaultVisualizationForSlot("gpu"), "gpu-combined-monitor");
+  assertEquals(defaultVisualizationForSlot("gpuChip"), "gpu-chip-monitor");
+  assertEquals(defaultVisualizationForSlot("gpuMemory"), "gpu-memory-monitor");
+  assertEquals(defaultVisualizationForSlot("memory"), "three-hexshell");
+  assertEquals(defaultVisualizationForSlot("temperature"), "three-capture");
+  assertEquals(defaultVisualizationForSlot("disk"), "three-mapslab");
+  assertEquals(defaultVisualizationForSlot("network"), "three-solenoid");
+  assertEquals(defaultVisualizationForSlot("processes"), "process-monitor");
+});
+
+Deno.test("visualization panel defaults sort slot-specific recommendations first", () => {
+  assertEquals(orderVisualizationsForSlot("processes", visualizations).slice(0, 5).map((entry) => entry.id), [
+    "process-monitor",
+    "event-log",
+    "channel-matrix",
+    "telemetry-rack",
+    "warning-stack",
+  ]);
+  assertEquals(orderVisualizationsForSlot("cpu", visualizations).slice(0, 4).map((entry) => entry.id), [
+    "three-lattice",
+    "harmonic-graph",
+    "biosignal-strip",
+    "telemetry-rack",
+  ]);
+  assertEquals(orderVisualizationsForSlot("memory", visualizations).slice(0, 5).map((entry) => entry.id), [
+    "three-hexshell",
+    "hex-heatmap",
+    "field-ring",
+    "telemetry-rack",
+    "memory-monitor",
+  ]);
 });
 
 Deno.test("visualization launcher help includes all primary aliases", () => {
