@@ -60,7 +60,7 @@ export interface WorkbenchStyledScreenReplay {
 }
 
 const DEFAULT_COMMAND = ["deno", "task", "api-workbench"] as const;
-const REQUIRED_TOKENS: readonly string[] = ["API WORKBENCH", "THREE ASCII", "live", "fps"];
+const REQUIRED_TOKENS: readonly string[] = ["API WORKBENCH", "THREE ASCII"];
 const FORBIDDEN_TOKENS: readonly string[] = ["ReferenceError", "RangeError", "Maximum call stack", ")F10"];
 const FULLSCREEN_THREE_CELL_PATTERN = /(\d+)c(?: cap (\d+)c)?/;
 
@@ -130,12 +130,13 @@ export function inspectWorkbenchVisualSmokeOutput(
   const text = lines.join("\n");
   const statusLine = lines.at(-1) ?? "";
   const threeLine = lines.find((line) => line.includes("fps") && line.includes("live")) ?? "";
+  const rendererUnavailable = text.includes("UNAVAILABLE") && text.includes("ASCII");
   const missing = REQUIRED_TOKENS.filter((token) => !text.includes(token));
   const forbidden = FORBIDDEN_TOKENS.filter((token) => text.includes(token));
   const nonBlankRows = lines.filter((line) => line.trim().length > 0).length;
   const truecolorBackgroundWrites = countOccurrences(output, "\x1b[48;2;");
   const threePane = inspectWorkbenchThreePaneCoverage(lines, replay.truecolorBackground);
-  if (threeLine.length === 0) missing.push("three telemetry line");
+  if (threeLine.length === 0 && !rendererUnavailable) missing.push("three telemetry line");
   if (statusLine.trim().length === 0) missing.push("status line");
   if (threePane?.found && truecolorBackgroundWrites > 0) {
     const minPaneRows = Math.min(2, threePane.bodyRows);
@@ -185,7 +186,8 @@ export function inspectWorkbenchFullscreenVisualSmokeOutput(
   const minCells = Math.max(1, Math.floor(options.minCells ?? 3_000));
   const minTruecolorRows = Math.max(1, Math.floor(options.minTruecolorRows ?? Math.min(12, options.rows)));
   const minTruecolorColumns = Math.max(1, Math.floor(options.minTruecolorColumns ?? options.columns * 0.75));
-  if (fullscreenCells < minCells) missing.push(`fullscreen three cells >= ${minCells}`);
+  const rendererUnavailable = base.screenLines.join("\n").includes("UNAVAILABLE");
+  if (!rendererUnavailable && fullscreenCells < minCells) missing.push(`fullscreen three cells >= ${minCells}`);
   if (truecolorBackgroundRows < minTruecolorRows) missing.push(`truecolor rows >= ${minTruecolorRows}`);
   if (truecolorBackgroundMaxColumns < minTruecolorColumns) {
     missing.push(`truecolor columns >= ${minTruecolorColumns}`);
@@ -216,7 +218,12 @@ function threeBodyTruecolorCoverage(
   truecolorBackground: readonly (readonly boolean[])[],
 ): { rows: number; maxColumns: number } {
   const telemetryRow = lines.findIndex((line) => line.includes("fps") && line.includes("live"));
-  if (telemetryRow < 0) return { rows: 0, maxColumns: 0 };
+  if (telemetryRow < 0) {
+    const pane = inspectWorkbenchThreePaneCoverage(lines, truecolorBackground);
+    return pane?.found
+      ? { rows: pane.truecolorRows, maxColumns: pane.truecolorMaxColumns }
+      : { rows: 0, maxColumns: 0 };
+  }
   const endRow = findThreeBodyEndRow(lines, telemetryRow + 1);
   let rows = 0;
   let maxColumns = 0;

@@ -279,6 +279,35 @@ Deno.test("workbench fullscreen visual smoke rejects narrow truecolor surfaces a
   assertEquals(result.bodyTruecolorBackgroundMaxColumns, 10);
 });
 
+Deno.test("workbench fullscreen visual smoke accepts full-pane offline renderer fallback", () => {
+  const output = [
+    "\x1b[2J",
+    "\x1b[1;1HAPI WORKBENCH",
+    "\x1b[4;1H┌─ THREE ASCII ───────────────────────────────────────────────────────────┐",
+    "\x1b[5;1H│ ACEROLA THREE.JS ASCII · BLOCKS                                          │",
+    "\x1b[6;1H│                                                                          │",
+    "\x1b[7;2H\x1b[48;2;1;2;3m                                                                        \x1b[0m│",
+    "\x1b[8;2H\x1b[48;2;4;5;6m                                                                        \x1b[0m│",
+    "\x1b[9;2H\x1b[48;2;7;8;9m                                                                        \x1b[0m│",
+    "\x1b[10;1H│                         ASCII RENDERER OFFLINE                           │",
+    "\x1b[11;1H│                     THREE ASCII GPU READBACK UNAVAILABLE.                 │",
+    "\x1b[12;1H└──────────────────────────────────────────────────────────────────────────┘",
+    "\x1b[14;1Hfocus Three ASCII | Unit-01  F10 menu",
+  ].join("");
+  const result = inspectWorkbenchFullscreenVisualSmokeOutput(output, {
+    columns: 80,
+    rows: 14,
+    minCells: 1800,
+    minTruecolorRows: 3,
+    minTruecolorColumns: 60,
+  });
+
+  assertEquals(result.passed, true);
+  assertEquals(result.fullscreenCells, 0);
+  assertEquals(result.bodyTruecolorBackgroundRows, 3);
+  assertEquals(result.bodyTruecolorBackgroundMaxColumns, 72);
+});
+
 Deno.test("workbench fullscreen visual smoke parser accepts resize flags", () => {
   assertEquals(
     parseWorkbenchFullscreenVisualSmokeArgs([

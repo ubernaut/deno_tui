@@ -77,6 +77,7 @@
     "three-panel:live-probe": "deno run -A ./scripts/gpu_probe_lock_cli.ts -- deno run -A ./scripts/three_panel_live_probe.ts",
     "three-workbench:pressure-probe": "deno run -A ./scripts/gpu_probe_lock_cli.ts -- deno run -A ./scripts/three_workbench_pressure_probe.ts",
     "three-workbench:startup-probe": "deno run -A ./scripts/gpu_probe_lock_cli.ts -- deno run -A ./scripts/three_panel_live_probe.ts --frames 90 --glyphs blocks --max-cells 960 --width 96 --height 32 --check --max-average-ms 40",
+    "three-workbench:resize-probe": "deno run -A ./scripts/gpu_probe_lock_cli.ts -- deno run -A ./scripts/three_panel_live_probe.ts --frames 48 --glyphs blocks --max-cells 7680 --width 80 --height 24 --resize-width 154 --resize-height 41 --resize-frame 16 --check --min-resized-cells 6000 --max-average-ms 80",
     "three-workbench:narrow-probe": "deno run -A ./scripts/gpu_probe_lock_cli.ts -- deno run -A ./scripts/three_panel_live_probe.ts --frames 90 --glyphs blocks --max-cells 960 --width 37 --height 5 --check --max-average-ms 40",
     "three-workbench:fullscreen-probe": "deno run -A ./scripts/gpu_probe_lock_cli.ts -- deno run -A ./scripts/three_workbench_pressure_probe.ts --frames 36 --glyphs blocks --max-cells 3840 --ascii-cells 3840 --frame-width 168 --frame-height 54 --panel-width 136 --panel-height 36 --adaptive --fullscreen --check --min-steady-frames 3 --min-grid-updates 3 --min-source-rows 1 --min-latest-cells 1800",
     "viz": "deno run -A ./app/main.ts",

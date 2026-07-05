@@ -23,12 +23,16 @@ import { type ThreeSceneMode, threeSceneModes, type ThreeSceneSignal } from "../
 const frames = numberArg(Deno.args, "--frames", 36);
 const width = numberArg(Deno.args, "--width", 80);
 const height = numberArg(Deno.args, "--height", 24);
+const resizeWidth = optionalNumberArg(Deno.args, "--resize-width");
+const resizeHeight = optionalNumberArg(Deno.args, "--resize-height");
+const resizeFrame = numberArg(Deno.args, "--resize-frame", Math.max(1, Math.floor(frames / 2)));
 const maxCells = numberArg(Deno.args, "--max-cells", WORKBENCH_THREE_INITIAL_CELLS);
 const intervalMs = numberArg(Deno.args, "--interval", apiWorkbenchThreeFrameIntervalForCells(maxCells, { live: true }));
 const mode = choiceArg(Deno.args, "--mode", "studio" as ThreeSceneMode, threeSceneModes);
 const check = Deno.args.includes("--check");
 const minSteadyFrames = numberArg(Deno.args, "--min-steady-frames", 3);
 const minGridUpdates = numberArg(Deno.args, "--min-grid-updates", 2);
+const minResizedCells = optionalNumberArg(Deno.args, "--min-resized-cells");
 const maxAverageTotalMs = numberArg(Deno.args, "--max-average-ms", Math.max(80, intervalMs * 1.8));
 const glyphs = stringArg(Deno.args, "--glyphs", "blocks") as ReturnType<
   typeof createDefaultAsciiOptions
@@ -76,6 +80,9 @@ let firstGridElapsedMs: number | undefined;
 try {
   for (let index = 0; index < frames; index += 1) {
     const started = performance.now();
+    if (index === resizeFrame && resizeWidth !== undefined && resizeHeight !== undefined) {
+      rectangle.value = { column: 0, row: 0, width: resizeWidth, height: resizeHeight };
+    }
     scene.value = { mode, signal: signalForFrame(index, frames) };
     await delay(intervalMs);
     const performanceInfo = panel.inspectPerformance();
@@ -106,13 +113,19 @@ console.log(
 );
 
 if (check) {
+  const resizedErrors = validateResizeSamples(samples, {
+    resizeFrame,
+    resizeWidth,
+    resizeHeight,
+    minResizedCells,
+  });
   const validation = validateThreePanelProbeSummary(summarizeThreePanelProbe(samples), {
     minSteadyFrames,
     minGridUpdates,
     maxAverageTotalMs,
   });
-  if (!validation.ok) {
-    console.error(`three-panel live probe check failed: ${validation.errors.join("; ")}`);
+  if (!validation.ok || resizedErrors.length > 0) {
+    console.error(`three-panel live probe check failed: ${[...validation.errors, ...resizedErrors].join("; ")}`);
     Deno.exit(1);
   }
 }
@@ -160,4 +173,42 @@ function signalForFrame(index: number, total: number): ThreeSceneSignal {
     active: true,
     pressed: index % 8 < 4,
   };
+}
+
+function optionalNumberArg(args: readonly string[], name: string): number | undefined {
+  const value = numberArg(args, name, Number.NaN);
+  return Number.isFinite(value) ? value : undefined;
+}
+
+function validateResizeSamples(
+  samples: readonly ThreePanelProbeSample[],
+  options: {
+    resizeFrame: number;
+    resizeWidth?: number;
+    resizeHeight?: number;
+    minResizedCells?: number;
+  },
+): string[] {
+  if (options.resizeWidth === undefined || options.resizeHeight === undefined) return [];
+  const afterResize = samples.filter((sample) => sample.index >= options.resizeFrame + 1);
+  const latest = afterResize.at(-1);
+  const errors: string[] = [];
+  if (!latest) {
+    errors.push("no samples after resize");
+    return errors;
+  }
+  if (latest.columns <= 0 || latest.rows <= 0) {
+    errors.push("resized grid is empty");
+  }
+  const minCells = options.minResizedCells;
+  if (minCells !== undefined && latest.columns * latest.rows < minCells) {
+    errors.push(`resized grid cells ${latest.columns * latest.rows} < ${minCells}`);
+  }
+  if (options.resizeWidth > width && latest.columns <= (samples[0]?.columns ?? 0)) {
+    errors.push(`resized grid columns did not grow: ${latest.columns}`);
+  }
+  if (options.resizeHeight > height && latest.rows <= (samples[0]?.rows ?? 0)) {
+    errors.push(`resized grid rows did not grow: ${latest.rows}`);
+  }
+  return errors;
 }
