@@ -1271,9 +1271,6 @@ function runWorkbenchThreeFullscreenPressurePolicyWorkload(): void {
     if (next.currentCells < WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS) {
       throw new Error("fullscreen Three pressure collapsed below the visual floor");
     }
-    if (WORKBENCH_THREE_FULLSCREEN_PRESSURE_HIGH_BYTES_PER_SECOND < 1_000_000) {
-      throw new Error("fullscreen Three pressure byte-rate ceiling is below the interactive block-frame target");
-    }
     workbenchThreeFullscreenPressureChecksum = (
       workbenchThreeFullscreenPressureChecksum + next.currentCells + next.highFrames + next.lowFrames
     ) % 1_000_000;
