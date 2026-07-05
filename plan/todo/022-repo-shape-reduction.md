@@ -7,9 +7,9 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `692`
+- Tracked files after the current consolidation passes: `691`
 - Tracked top-level file counts:
-  - `src`: `337`
+  - `src`: `336`
   - `tests`: `142`
   - `app`: `42`
   - `docs`: `50`
@@ -17,7 +17,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `scripts`: `27`
   - `plan`: `26`
 - Handwritten/code-heavy line counts:
-  - `src/app`: `24,384` lines across `105` files
+  - `src/app`: `24,343` lines across `104` files
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,261` lines across `43` files
   - `src/three_ascii`: `7,201` lines across `35` files
@@ -61,6 +61,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - system metrics network parsing is folded into `app/system_metrics_sources.ts`
   - API workbench content-size projection is folded into `app/workbench_panels.ts`
   - input-widget command helpers are folded into `src/app/widget_commands.ts`
+  - terminal scrollback command helpers are folded into `src/app/terminal_commands.ts`
   - API workbench control styles and wrapped-option projection are folded into `app/api_workbench_controls.ts`
   - API workbench primitive control ids and hit types are folded into `app/api_workbench_controls.ts`
   - API workbench control row projection is folded into `app/api_workbench_controls.ts`
