@@ -99,6 +99,11 @@ import {
   workbenchWorkspaceWindowEntries,
   writeFrame,
 } from "../src/app/workbench/mod.ts";
+import {
+  API_WORKBENCH_WORKSPACE_STORE_KEY,
+  apiWorkbenchWorkspaceStorageOptions,
+  createApiWorkbenchWorkspaceStore,
+} from "../src/app/workbench_workspace_menu.ts";
 import { WorkbenchFullRepaintPolicy } from "../src/app/workbench_repaint_policy.ts";
 import {
   syncWorkbenchTerminalSize,
@@ -112,11 +117,6 @@ import {
   type WorkbenchThreeWindowState,
   workbenchThreeWindowStateIsInteractive,
 } from "../src/app/workbench_three_policy.ts";
-import {
-  API_WORKBENCH_WORKSPACE_STORE_KEY,
-  apiWorkbenchWorkspaceStorageOptions,
-  createApiWorkbenchWorkspaceStore,
-} from "../src/app/workbench_workspace_config.ts";
 import {
   inspectWorkbenchWindowSignalState,
   WorkbenchController,

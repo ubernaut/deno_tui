@@ -1,6 +1,10 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { assertEquals, assertStrictEquals } from "./deps.ts";
 import {
+  API_WORKBENCH_WORKSPACE_STORE_KEY,
+  API_WORKBENCH_WORKSPACE_STORE_OPTIONS,
+  apiWorkbenchWorkspaceStorageLabel,
+  apiWorkbenchWorkspaceStorageOptions,
   buildWorkspaceMenuEntries,
   buildWorkspaceMenuEntriesInto,
   currentWorkspaceVisualizationIds,
@@ -27,12 +31,6 @@ import {
   workspaceRenamedModalContent,
   workspaceSavedModalContent,
 } from "../src/app/workbench_workspace_menu.ts";
-import {
-  API_WORKBENCH_WORKSPACE_STORE_KEY,
-  API_WORKBENCH_WORKSPACE_STORE_OPTIONS,
-  apiWorkbenchWorkspaceStorageLabel,
-  apiWorkbenchWorkspaceStorageOptions,
-} from "../src/app/workbench_workspace_config.ts";
 import type { WorkbenchWorkspace, WorkbenchWorkspaceWindow } from "../src/app/mod.ts";
 
 Deno.test("API workbench workspace config exposes stable storage defaults", () => {

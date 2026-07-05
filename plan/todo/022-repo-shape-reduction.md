@@ -7,9 +7,9 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `658`
+- Tracked files after the current consolidation passes: `657`
 - Tracked top-level file counts:
-  - `src`: `320`
+  - `src`: `319`
   - `tests`: `130`
   - `app`: `38`
   - `docs`: `49`
@@ -17,13 +17,13 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `scripts`: `27`
   - `plan`: `26`
 - Handwritten/code-heavy line counts:
-  - `src/app`: `24,230` lines across `88` files
+  - `src/app`: `24,227` lines across `87` files
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,261` lines across `43` files
   - `src/three_ascii`: `7,201` lines across `35` files
   - `app`: `20,302` lines across `38` files
   - `examples`: `8,732` lines across `41` files
-  - `tests`: `49,058` lines across `127` top-level test files
+  - `tests`: `49,056` lines across `127` top-level test files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -123,6 +123,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     fallback behavior behind the same visualization facade instead of a standalone app-only shard
   - Workbench ANSI span diff helpers are folded into `src/app/workbench_ansi_screen.ts`, keeping retained row diffing
     inside the screen painter module that owns its only runtime path
+  - API workbench workspace storage defaults are folded into `src/app/workbench_workspace_menu.ts`, keeping workspace
+    menu behavior and persistence policy together instead of in a separate app-only config shard
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
