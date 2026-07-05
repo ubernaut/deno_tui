@@ -146,6 +146,25 @@ Deno.test("workbench visual smoke inspector measures Three pane truecolor covera
   assertStringIncludes(formatWorkbenchVisualSmokeResult(result), "Three pane truecolor: 2 rows, 49/49 columns");
 });
 
+Deno.test("workbench visual smoke inspector rejects under-scaled Three pane telemetry", () => {
+  const output = [
+    "\x1b[2J",
+    "\x1b[1;1HAPI WORKBENCH",
+    "\x1b[3;1H┌─ LOGS ─┐ ┌─ THREE ASCII ─────────[ config ]─[-]─[M]─[R]─[x]┐",
+    "\x1b[4;1H│logs    │ │ THREE ASCII · BLOCKS                            │",
+    "\x1b[5;1H│colored │ │6ms 40c live 18fps                               │",
+    "\x1b[6;12H│\x1b[48;2;1;2;3m\x1b[38;2;1;2;3m█████████████████████████████████████████████████\x1b[0m│",
+    "\x1b[7;12H│\x1b[48;2;4;5;6m\x1b[38;2;4;5;6m█████████████████████████████████████████████████\x1b[0m│",
+    "\x1b[8;12H└─────────────────────────────────────────────────┘",
+    "\x1b[9;1Hfocus Three ASCII | Unit-01  F10 menu",
+  ].join("");
+  const result = inspectWorkbenchVisualSmokeOutput(output, { columns: 70, rows: 9 });
+
+  assertEquals(result.passed, false);
+  assertEquals(result.threeRenderedCells, 40);
+  assertEquals(result.missing, ["three rendered cells >= 73"]);
+});
+
 Deno.test("workbench visual smoke inspector rejects colored resize frames when Three pane stays blank", () => {
   const output = [
     "\x1b[2J",
@@ -351,7 +370,28 @@ Deno.test("workbench fullscreen visual smoke parser accepts resize flags", () =>
 
 Deno.test("workbench visual smoke parser accepts viewport flags", () => {
   assertEquals(
-    parseWorkbenchVisualSmokeArgs(["--", "--columns", "160", "--rows=48", "--timeout-ms", "9000"]),
-    { columns: 160, rows: 48, timeoutMs: 9000 },
+    parseWorkbenchVisualSmokeArgs([
+      "--",
+      "--columns",
+      "100",
+      "--rows=30",
+      "--resize-columns",
+      "160",
+      "--resize-rows=48",
+      "--settle-ms",
+      "3000",
+      "--timeout-ms",
+      "9000",
+      "--dump-screen",
+    ]),
+    {
+      columns: 100,
+      rows: 30,
+      resizeColumns: 160,
+      resizeRows: 48,
+      settleMs: 3000,
+      timeoutMs: 9000,
+      dumpScreen: true,
+    },
   );
 });

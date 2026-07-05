@@ -1201,6 +1201,7 @@ function syncWorkbenchThreeRuntimeBudget(width: number, height: number): void {
     fullscreenId: maximized.peek(),
     ascii: ascii.peek(),
     liveMaxCells: workbenchThreeLiveMaxCells.peek(),
+    liveViewport: threeBodyRect.peek(),
     fullscreenMaxCells: workbenchThreeFullscreenMaxCells.peek(),
     viewport: { width, height },
     fullscreenViewportPadding: { columns: 6, rows: 10 },

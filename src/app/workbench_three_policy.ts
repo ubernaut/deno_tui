@@ -92,6 +92,7 @@ export interface WorkbenchThreeRuntimeBudgetSnapshotInput<TId extends string> {
   fullscreenId?: TId | null;
   ascii: ThreeAsciiConfigOptions;
   liveMaxCells: number;
+  liveViewport?: { width: number; height: number };
   fullscreenMaxCells: number;
   viewport: { width: number; height: number };
   fullscreenViewportPadding?: { columns?: number; rows?: number };
@@ -225,12 +226,15 @@ export function resolveWorkbenchThreeRuntimeBudgetSnapshot<TId extends string>(
   const fullscreenTargetCells = workbenchThreeFullscreenRenderCells(fullscreenViewport);
   const fullscreenThree = input.fullscreenId !== undefined && input.fullscreenId !== null &&
     (input.isThreeWindow?.(input.fullscreenId) ?? input.fullscreenId === input.id);
+  const liveViewportTargetCells = input.liveViewport
+    ? workbenchThreeLiveRenderCells(input.liveViewport)
+    : WORKBENCH_THREE_LIVE_MAX_CELLS;
   const effectiveMaxCells = fullscreenThree
     ? apiWorkbenchThreeEffectiveMaxCells(input.fullscreenMaxCells, {
       fullscreenThree: true,
       fullscreenMinCells: fullscreenTargetCells,
     })
-    : Math.max(1, Math.floor(input.liveMaxCells));
+    : Math.max(liveViewportTargetCells, Math.floor(input.liveMaxCells));
   return {
     fullscreenViewportCells,
     fullscreenTargetCells,
@@ -353,6 +357,18 @@ export function workbenchThreeFullscreenRenderCells(
   const maxCells = Math.max(minCells, Math.floor(options.maxCells ?? WORKBENCH_THREE_FULLSCREEN_MAX_CELLS));
   const area = Math.max(1, Math.floor(rect.width) * Math.floor(rect.height));
   return Math.max(minCells, Math.min(maxCells, area));
+}
+
+/** Returns the runtime render-cell floor for a tiled live Three pane at its current body size. */
+export function workbenchThreeLiveRenderCells(
+  rect: { width: number; height: number },
+  options: { minCells?: number; maxCells?: number; areaRatio?: number } = {},
+): number {
+  const minCells = Math.max(1, Math.floor(options.minCells ?? 480));
+  const maxCells = Math.max(minCells, Math.floor(options.maxCells ?? WORKBENCH_THREE_FULLSCREEN_MIN_CELLS));
+  const areaRatio = Math.min(1, Math.max(0.1, options.areaRatio ?? 0.9));
+  const area = Math.max(1, Math.floor(rect.width) * Math.floor(rect.height));
+  return Math.max(minCells, Math.min(maxCells, Math.floor(area * areaRatio)));
 }
 
 function workbenchThreeWindowStateSourceId<Id extends string>(source: WorkbenchThreeWindowStateSource<Id>): Id {

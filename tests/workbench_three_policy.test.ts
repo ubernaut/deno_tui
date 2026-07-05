@@ -28,6 +28,7 @@ import {
   WORKBENCH_THREE_RESCUE_CELLS,
   WORKBENCH_THREE_RESCUE_DRAW_INTERVAL_MS,
   workbenchThreeFullscreenRenderCells,
+  workbenchThreeLiveRenderCells,
   workbenchThreeWindowStateIsInteractive,
 } from "../src/app/workbench_three_policy.ts";
 import {
@@ -109,6 +110,12 @@ Deno.test("API workbench Three fullscreen render target follows viewport within 
     ),
     960,
   );
+});
+
+Deno.test("API workbench Three live render target follows tiled pane size", () => {
+  assertEquals(workbenchThreeLiveRenderCells({ width: 20, height: 10 }), 480);
+  assertEquals(workbenchThreeLiveRenderCells({ width: 51, height: 17 }), 780);
+  assertEquals(workbenchThreeLiveRenderCells({ width: 100, height: 40 }), 3_600);
 });
 
 Deno.test("API workbench Three policy leaves non-fullscreen ASCII options unchanged", () => {
@@ -195,7 +202,22 @@ Deno.test("API workbench Three policy keeps live cap outside fullscreen Three pa
 
   assertEquals(snapshot.fullscreenTargetCells, WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
   assertEquals(snapshot.fullscreenViewportCells, 200);
-  assertEquals(snapshot.effectiveMaxCells, 480);
+  assertEquals(snapshot.effectiveMaxCells, WORKBENCH_THREE_LIVE_MAX_CELLS);
+  assertStrictEquals(snapshot.runtimeAscii, ascii);
+});
+
+Deno.test("API workbench Three policy floors live caps to the visible tiled pane area", () => {
+  const ascii = createDefaultWorkbenchAsciiOptions();
+  const snapshot = resolveWorkbenchThreeRuntimeBudgetSnapshot({
+    id: "three",
+    ascii,
+    liveMaxCells: 480,
+    liveViewport: { width: 51, height: 17 },
+    fullscreenMaxCells: 1_920,
+    viewport: { width: 160, height: 48 },
+  });
+
+  assertEquals(snapshot.effectiveMaxCells, 780);
   assertStrictEquals(snapshot.runtimeAscii, ascii);
 });
 

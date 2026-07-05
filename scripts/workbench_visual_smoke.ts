@@ -2,7 +2,11 @@ export interface WorkbenchVisualSmokeOptions {
   command?: readonly string[];
   columns?: number;
   rows?: number;
+  resizeColumns?: number;
+  resizeRows?: number;
+  settleMs?: number;
   timeoutMs?: number;
+  dumpScreen?: boolean;
 }
 
 export interface WorkbenchVisualSmokeResult {
@@ -19,6 +23,7 @@ export interface WorkbenchVisualSmokeResult {
   truecolorBackgroundWrites: number;
   finalTruecolorBackgroundRows: number;
   finalTruecolorBackgroundMaxColumns: number;
+  threeRenderedCells: number;
   threePane?: WorkbenchThreePaneCoverage;
 }
 
@@ -71,10 +76,19 @@ const DEFAULT_COMMAND = ["deno", "task", "api-workbench"] as const;
 const REQUIRED_TOKENS: readonly string[] = ["API WORKBENCH", "THREE ASCII"];
 const FORBIDDEN_TOKENS: readonly string[] = ["ReferenceError", "RangeError", "Maximum call stack", ")F10"];
 const FULLSCREEN_THREE_CELL_PATTERN = /(\d+)c(?: cap (\d+)c)?/;
+const THREE_RENDERED_CELL_PATTERN = /(\d+)c/;
 
 if (import.meta.main) {
-  const result = await runWorkbenchVisualSmoke(parseWorkbenchVisualSmokeArgs(Deno.args));
+  const options = parseWorkbenchVisualSmokeArgs(Deno.args);
+  const result = await runWorkbenchVisualSmoke(options);
   console.log(formatWorkbenchVisualSmokeResult(result));
+  if (result.screenLines.length > 0 && options.dumpScreen) {
+    console.log("");
+    console.log("Screen:");
+    for (let index = 0; index < result.screenLines.length; index += 1) {
+      console.log(`${String(index + 1).padStart(2, "0")}|${result.screenLines[index]}`);
+    }
+  }
   if (!result.passed) Deno.exit(1);
 }
 
@@ -84,6 +98,10 @@ export function parseWorkbenchVisualSmokeArgs(args: readonly string[]): Workbenc
     const arg = args[index]!;
     if (arg === "--") continue;
     const [name, inlineValue] = arg.split("=", 2);
+    if (name === "--dump-screen") {
+      options.dumpScreen = true;
+      continue;
+    }
     const value = inlineValue ?? args[index + 1];
     if (inlineValue === undefined && name.startsWith("--")) index += 1;
     if (value === undefined) continue;
@@ -91,6 +109,9 @@ export function parseWorkbenchVisualSmokeArgs(args: readonly string[]): Workbenc
     if (!Number.isFinite(number)) continue;
     if (name === "--columns") options.columns = number;
     else if (name === "--rows") options.rows = number;
+    else if (name === "--resize-columns") options.resizeColumns = number;
+    else if (name === "--resize-rows") options.resizeRows = number;
+    else if (name === "--settle-ms") options.settleMs = number;
     else if (name === "--timeout-ms") options.timeoutMs = number;
   }
   return options;
@@ -101,16 +122,33 @@ export async function runWorkbenchVisualSmoke(
 ): Promise<WorkbenchVisualSmokeResult> {
   const columns = Math.max(1, Math.floor(options.columns ?? 118));
   const rows = Math.max(1, Math.floor(options.rows ?? 34));
-  const output = await captureWorkbenchPty({
-    command: options.command ?? DEFAULT_COMMAND,
-    columns,
-    rows,
-    timeoutMs: options.timeoutMs ?? 8_000,
-  });
-  return inspectWorkbenchVisualSmokeOutput(output, { columns, rows });
+  const resizeColumns = options.resizeColumns === undefined
+    ? undefined
+    : Math.max(1, Math.floor(options.resizeColumns));
+  const resizeRows = options.resizeRows === undefined ? undefined : Math.max(1, Math.floor(options.resizeRows));
+  const command = options.command ?? DEFAULT_COMMAND;
+  const output = resizeColumns && resizeRows
+    ? await captureWorkbenchResizePty({
+      command,
+      columns,
+      rows,
+      resizeColumns,
+      resizeRows,
+      settleMs: options.settleMs ?? 3_000,
+      timeoutMs: options.timeoutMs ?? 10_000,
+    })
+    : await captureWorkbenchPty({
+      command,
+      columns,
+      rows,
+      timeoutMs: options.timeoutMs ?? 8_000,
+    });
+  return inspectWorkbenchVisualSmokeOutput(output, { columns: resizeColumns ?? columns, rows: resizeRows ?? rows });
 }
 
-export async function captureWorkbenchPty(options: Required<WorkbenchVisualSmokeOptions>): Promise<string> {
+export async function captureWorkbenchPty(
+  options: Required<Pick<WorkbenchVisualSmokeOptions, "command" | "columns" | "rows" | "timeoutMs">>,
+): Promise<string> {
   const shellCommand = [
     `stty cols ${options.columns} rows ${options.rows}`,
     `timeout -k 1s ${Math.max(0.1, options.timeoutMs / 1000)}s ${quoteCommand(options.command)}`,
@@ -126,6 +164,63 @@ export async function captureWorkbenchPty(options: Required<WorkbenchVisualSmoke
     throw new Error(error || "workbench visual smoke produced no PTY output");
   }
   return text;
+}
+
+export async function captureWorkbenchResizePty(
+  options: Required<
+    Pick<
+      WorkbenchVisualSmokeOptions,
+      "command" | "columns" | "rows" | "resizeColumns" | "resizeRows" | "timeoutMs" | "settleMs"
+    >
+  >,
+): Promise<string> {
+  const tempFile = await Deno.makeTempFile({ prefix: "deno-tui-workbench-resize-", suffix: ".ansi" });
+  const command = quotePythonList(options.command);
+  const python = `
+import pexpect, sys, time
+path = sys.argv[1]
+command = ${command}
+child = pexpect.spawn(command[0], command[1:], encoding=None, timeout=${
+    Math.ceil(options.timeoutMs / 1000)
+  }, dimensions=(${options.rows}, ${options.columns}))
+chunks = []
+def drain(duration):
+    deadline = time.time() + duration
+    while time.time() < deadline:
+        try:
+            chunks.append(child.read_nonblocking(size=200000, timeout=0.05))
+        except Exception:
+            time.sleep(0.02)
+try:
+    drain(${(options.settleMs / 1000).toFixed(3)})
+    child.setwinsize(${options.resizeRows}, ${options.resizeColumns})
+    drain(${(options.settleMs / 1000).toFixed(3)})
+finally:
+    try:
+        child.sendintr()
+    except Exception:
+        pass
+    time.sleep(0.2)
+    try:
+        child.terminate(force=True)
+    except Exception:
+        pass
+open(path, "wb").write(b"".join(chunks))
+`;
+  try {
+    const process = await new Deno.Command("python3", {
+      args: ["-c", python, tempFile],
+      stdout: "piped",
+      stderr: "piped",
+    }).output();
+    if (!process.success) {
+      const error = new TextDecoder().decode(process.stderr).trim();
+      throw new Error(error || "workbench resize visual smoke PTY capture failed");
+    }
+    return await Deno.readTextFile(tempFile);
+  } finally {
+    await Deno.remove(tempFile).catch(() => {});
+  }
 }
 
 export function inspectWorkbenchVisualSmokeOutput(
@@ -144,6 +239,7 @@ export function inspectWorkbenchVisualSmokeOutput(
   const nonBlankRows = lines.filter((line) => line.trim().length > 0).length;
   const truecolorBackgroundWrites = countOccurrences(output, "\x1b[48;2;");
   const threePane = inspectWorkbenchThreePaneCoverage(lines, replay.truecolorStyled);
+  const threeRenderedCells = parseThreeRenderedCells(threeLine);
   if (threeLine.length === 0 && !rendererUnavailable) missing.push("three telemetry line");
   if (statusLine.trim().length === 0) missing.push("status line");
   if (threePane?.found && truecolorBackgroundWrites > 0) {
@@ -157,6 +253,10 @@ export function inspectWorkbenchVisualSmokeOutput(
     if (threePane.visibleRows < minPaneRows) missing.push(`three pane visible rows >= ${minPaneRows}`);
     if (threePane.visibleMaxColumns < minVisibleColumns) {
       missing.push(`three pane visible columns >= ${minVisibleColumns}`);
+    }
+    const minRenderedCells = Math.max(1, Math.floor(threePane.bodyRows * threePane.bodyColumns * 0.75));
+    if (!rendererUnavailable && threeRenderedCells > 0 && threeRenderedCells < minRenderedCells) {
+      missing.push(`three rendered cells >= ${minRenderedCells}`);
     }
   }
   return {
@@ -173,6 +273,7 @@ export function inspectWorkbenchVisualSmokeOutput(
     truecolorBackgroundWrites,
     finalTruecolorBackgroundRows: replay.truecolorBackgroundRows,
     finalTruecolorBackgroundMaxColumns: replay.truecolorBackgroundMaxColumns,
+    threeRenderedCells,
     threePane,
   };
 }
@@ -305,6 +406,7 @@ export function formatWorkbenchVisualSmokeResult(result: WorkbenchVisualSmokeRes
     `Size: ${result.columns}x${result.rows}`,
     `Output: ${result.outputBytes} bytes`,
     `Truecolor backgrounds: ${result.truecolorBackgroundWrites}`,
+    `Three rendered cells: ${result.threeRenderedCells}`,
     `Final truecolor rows: ${result.finalTruecolorBackgroundRows}`,
     `Final truecolor max columns: ${result.finalTruecolorBackgroundMaxColumns}`,
     `Three pane truecolor: ${
@@ -322,6 +424,11 @@ export function formatWorkbenchVisualSmokeResult(result: WorkbenchVisualSmokeRes
     "Three line:",
     result.threeLine,
   ].join("\n");
+}
+
+function parseThreeRenderedCells(line: string): number {
+  const match = line.match(THREE_RENDERED_CELL_PATTERN);
+  return match ? Number.parseInt(match[1]!, 10) : 0;
 }
 
 export function replayWorkbenchScreen(
@@ -604,6 +711,10 @@ function skipStringTerminatedEscape(output: string, start: number): number {
 
 function quoteCommand(command: readonly string[]): string {
   return command.map((part) => `'${part.replaceAll("'", "'\\''")}'`).join(" ");
+}
+
+function quotePythonList(values: readonly string[]): string {
+  return `[${values.map((value) => JSON.stringify(value)).join(", ")}]`;
 }
 
 function clearScreen(screen: string[][]): void {
