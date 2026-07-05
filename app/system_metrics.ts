@@ -1,9 +1,7 @@
 import { Signal } from "../src/signals/mod.ts";
 import type { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import { clamp } from "./styles.ts";
-import { type CpuTimes, sampleCpuStatRows } from "./system_metrics_cpu.ts";
 import { compactDiagnostics, processDiagnostics } from "./system_metrics_diagnostics.ts";
-import { parseDfDiskRows } from "./system_metrics_disk.ts";
 import { NvidiaSmiGpuMetricsProvider, type SystemGpuMetricsProvider } from "./system_metrics_gpu.ts";
 import { type NetCounters, sampleNetworkStats } from "./system_metrics_network.ts";
 import {
@@ -18,7 +16,13 @@ import {
   type SystemProcessSortKey,
 } from "./system_metrics_process.ts";
 import { collectAlerts, emptySnapshot, pushHistory } from "./system_metrics_snapshot.ts";
-import { sampleTemperatures, type TemperatureSample } from "./system_metrics_temperature.ts";
+import {
+  type CpuTimes,
+  parseDfDiskRows,
+  sampleCpuStatRows,
+  sampleTemperatures,
+  type TemperatureSample,
+} from "./system_metrics_sources.ts";
 import type { DiskSnapshot, ProcessSnapshot, SystemMetricDiagnostic, SystemSnapshot } from "./types.ts";
 
 export {
