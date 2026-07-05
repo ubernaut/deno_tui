@@ -13,7 +13,6 @@ export * from "./disposables.ts";
 export * from "./form_commands.ts";
 export * from "./focus_commands.ts";
 export * from "./forms.ts";
-export * from "./history_bindings.ts";
 export * from "./history.ts";
 export * from "./input_commands.ts";
 export * from "./list_commands.ts";

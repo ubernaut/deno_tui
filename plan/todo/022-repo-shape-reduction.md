@@ -7,9 +7,9 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `686`
+- Tracked files after the current consolidation passes: `685`
 - Tracked top-level file counts:
-  - `src`: `331`
+  - `src`: `330`
   - `tests`: `142`
   - `app`: `42`
   - `docs`: `50`
@@ -17,7 +17,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `scripts`: `27`
   - `plan`: `26`
 - Handwritten/code-heavy line counts:
-  - `src/app`: `24,277` lines across `99` files
+  - `src/app`: `24,275` lines across `98` files
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,261` lines across `43` files
   - `src/three_ascii`: `7,201` lines across `35` files
@@ -25,10 +25,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `examples`: `8,732` lines across `41` files
   - `tests`: `49,107` lines across `142` files
 - Generated/docs weight:
-  - `docs/screenshots`: roughly `24MB`
+  - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
   - `docs/assets/api-workbench.js.map`: roughly `2MB`
-  - `docs/api-reference.md`: roughly `528KB`
+  - `docs/api-reference.md`: roughly `560KB`
 
 ## Findings
 
@@ -66,6 +66,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - form field binding is folded into `src/app/forms.ts`
   - runtime profile, renderer, and workload command helpers are folded into `src/app/runtime_commands.ts`
   - settings reset command helpers are folded into `src/app/settings.ts`
+  - history route and command bindings are folded into `src/app/history.ts`
   - API workbench control styles and wrapped-option projection are folded into `app/api_workbench_controls.ts`
   - API workbench primitive control ids and hit types are folded into `app/api_workbench_controls.ts`
   - API workbench control row projection is folded into `app/api_workbench_controls.ts`

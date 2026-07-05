@@ -1067,45 +1067,38 @@
       "documented": true
     },
     {
-      "module": "src/app/history_bindings.ts",
+      "module": "src/app/history.ts",
       "name": "bindHistoryCommands",
       "kind": "function",
       "typeOnly": false,
       "documented": true
     },
     {
-      "module": "src/app/history_bindings.ts",
+      "module": "src/app/history.ts",
       "name": "bindRouteHistory",
       "kind": "function",
       "typeOnly": false,
       "documented": true
     },
     {
-      "module": "src/app/history_bindings.ts",
+      "module": "src/app/history.ts",
       "name": "HistoryCommandKind",
       "kind": "type",
       "typeOnly": true,
       "documented": true
     },
     {
-      "module": "src/app/history_bindings.ts",
+      "module": "src/app/history.ts",
       "name": "HistoryCommandOptions",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
     },
     {
-      "module": "src/app/history_bindings.ts",
+      "module": "src/app/history.ts",
       "name": "historyCommands",
       "kind": "function",
       "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/history_bindings.ts",
-      "name": "RouteHistoryBindingOptions",
-      "kind": "interface",
-      "typeOnly": true,
       "documented": true
     },
     {
@@ -1139,6 +1132,13 @@
     {
       "module": "src/app/history.ts",
       "name": "HistoryTransaction",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/history.ts",
+      "name": "RouteHistoryBindingOptions",
       "kind": "interface",
       "typeOnly": true,
       "documented": true

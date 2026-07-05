@@ -24,8 +24,7 @@ import {
 import { CommandRegistry } from "../src/app/commands.ts";
 import type { Command, CommandActionFactory } from "../src/app/commands.ts";
 import { createDisposableStack, DisposableStack, disposeReverse } from "../src/app/disposables.ts";
-import { bindHistoryCommands, bindRouteHistory, historyCommands } from "../src/app/history_bindings.ts";
-import { HistoryStack } from "../src/app/history.ts";
+import { bindHistoryCommands, bindRouteHistory, historyCommands, HistoryStack } from "../src/app/history.ts";
 import { bindMouseInteractions, createMouseInteractionRouter } from "../src/app/mouse_bindings.ts";
 import {
   createAppPlugin,

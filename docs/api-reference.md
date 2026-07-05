@@ -6,8 +6,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 ## Summary
 
 - Entrypoints: 9
-- Module visits: 523
-- Re-export declarations: 514
+- Module visits: 521
+- Re-export declarations: 512
 - Exported symbols: 5331
 - Documented symbols: 5331
 - Documentation coverage: 100.00%
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     234 |    2291 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     213 |    2143 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     233 |    2291 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     212 |    2143 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      87 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -39,8 +39,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 ### Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 234
-- Re-export declarations: 233
+- Modules: 233
+- Re-export declarations: 232
 - Exported symbols: 2291
 - Documented symbols: 2291
 - Documentation coverage: 100.00%
@@ -67,15 +67,14 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/focus_commands.ts`](#src-app-focus-commands-ts)                                       |          0 |       7 |          7 |
 | [`src/app/form_commands.ts`](#src-app-form-commands-ts)                                         |          0 |       7 |          7 |
 | [`src/app/forms.ts`](#src-app-forms-ts)                                                         |          0 |      19 |         19 |
-| [`src/app/history_bindings.ts`](#src-app-history-bindings-ts)                                   |          0 |       6 |          6 |
-| [`src/app/history.ts`](#src-app-history-ts)                                                     |          0 |       5 |          5 |
+| [`src/app/history.ts`](#src-app-history-ts)                                                     |          0 |      11 |         11 |
 | [`src/app/hit_targets.ts`](#src-app-hit-targets-ts)                                             |          0 |       8 |          8 |
 | [`src/app/input_commands.ts`](#src-app-input-commands-ts)                                       |          0 |       6 |          6 |
 | [`src/app/list_commands.ts`](#src-app-list-commands-ts)                                         |          0 |       6 |          6 |
 | [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                             |          0 |       6 |          6 |
 | [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                       |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         49 |       0 |          0 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         48 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                       |          0 |      10 |         10 |
 | [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                           |          0 |       6 |          6 |
 | [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     |          0 |      17 |         17 |
@@ -555,7 +554,7 @@ _No direct exported symbols._
 | `minLength`                  | function  | no        | yes   |
 | `required`                   | function  | no        | yes   |
 
-#### src/app/history_bindings.ts
+#### src/app/history.ts
 
 | Symbol                       | Kind      | Type Only | JSDoc |
 | ---------------------------- | --------- | --------- | ----- |
@@ -564,17 +563,12 @@ _No direct exported symbols._
 | `HistoryCommandKind`         | type      | yes       | yes   |
 | `HistoryCommandOptions`      | interface | yes       | yes   |
 | `historyCommands`            | function  | no        | yes   |
+| `HistoryEntryInspection`     | interface | yes       | yes   |
+| `HistoryInspection`          | interface | yes       | yes   |
+| `HistoryStack`               | class     | no        | yes   |
+| `HistoryStackOptions`        | interface | yes       | yes   |
+| `HistoryTransaction`         | interface | yes       | yes   |
 | `RouteHistoryBindingOptions` | interface | yes       | yes   |
-
-#### src/app/history.ts
-
-| Symbol                   | Kind      | Type Only | JSDoc |
-| ------------------------ | --------- | --------- | ----- |
-| `HistoryEntryInspection` | interface | yes       | yes   |
-| `HistoryInspection`      | interface | yes       | yes   |
-| `HistoryStack`           | class     | no        | yes   |
-| `HistoryStackOptions`    | interface | yes       | yes   |
-| `HistoryTransaction`     | interface | yes       | yes   |
 
 #### src/app/hit_targets.ts
 
@@ -662,7 +656,6 @@ _No direct exported symbols._
 | `src/app/form_commands.ts`            | star | -     |
 | `src/app/focus_commands.ts`           | star | -     |
 | `src/app/forms.ts`                    | star | -     |
-| `src/app/history_bindings.ts`         | star | -     |
 | `src/app/history.ts`                  | star | -     |
 | `src/app/input_commands.ts`           | star | -     |
 | `src/app/list_commands.ts`            | star | -     |
@@ -4022,8 +4015,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 ### Summary
 
 - Entrypoint: `mod.web.ts`
-- Modules: 213
-- Re-export declarations: 212
+- Modules: 212
+- Re-export declarations: 211
 - Exported symbols: 2143
 - Documented symbols: 2143
 - Documentation coverage: 100.00%
@@ -4050,15 +4043,14 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/focus_commands.ts`](#src-app-focus-commands-ts)                                       |          0 |       7 |          7 |
 | [`src/app/form_commands.ts`](#src-app-form-commands-ts)                                         |          0 |       7 |          7 |
 | [`src/app/forms.ts`](#src-app-forms-ts)                                                         |          0 |      19 |         19 |
-| [`src/app/history_bindings.ts`](#src-app-history-bindings-ts)                                   |          0 |       6 |          6 |
-| [`src/app/history.ts`](#src-app-history-ts)                                                     |          0 |       5 |          5 |
+| [`src/app/history.ts`](#src-app-history-ts)                                                     |          0 |      11 |         11 |
 | [`src/app/hit_targets.ts`](#src-app-hit-targets-ts)                                             |          0 |       8 |          8 |
 | [`src/app/input_commands.ts`](#src-app-input-commands-ts)                                       |          0 |       6 |          6 |
 | [`src/app/list_commands.ts`](#src-app-list-commands-ts)                                         |          0 |       6 |          6 |
 | [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                             |          0 |       6 |          6 |
 | [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                       |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         49 |       0 |          0 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         48 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                       |          0 |      10 |         10 |
 | [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                           |          0 |       6 |          6 |
 | [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     |          0 |      17 |         17 |
@@ -4536,7 +4528,7 @@ _No direct exported symbols._
 | `minLength`                  | function  | no        | yes   |
 | `required`                   | function  | no        | yes   |
 
-#### src/app/history_bindings.ts
+#### src/app/history.ts
 
 | Symbol                       | Kind      | Type Only | JSDoc |
 | ---------------------------- | --------- | --------- | ----- |
@@ -4545,17 +4537,12 @@ _No direct exported symbols._
 | `HistoryCommandKind`         | type      | yes       | yes   |
 | `HistoryCommandOptions`      | interface | yes       | yes   |
 | `historyCommands`            | function  | no        | yes   |
+| `HistoryEntryInspection`     | interface | yes       | yes   |
+| `HistoryInspection`          | interface | yes       | yes   |
+| `HistoryStack`               | class     | no        | yes   |
+| `HistoryStackOptions`        | interface | yes       | yes   |
+| `HistoryTransaction`         | interface | yes       | yes   |
 | `RouteHistoryBindingOptions` | interface | yes       | yes   |
-
-#### src/app/history.ts
-
-| Symbol                   | Kind      | Type Only | JSDoc |
-| ------------------------ | --------- | --------- | ----- |
-| `HistoryEntryInspection` | interface | yes       | yes   |
-| `HistoryInspection`      | interface | yes       | yes   |
-| `HistoryStack`           | class     | no        | yes   |
-| `HistoryStackOptions`    | interface | yes       | yes   |
-| `HistoryTransaction`     | interface | yes       | yes   |
 
 #### src/app/hit_targets.ts
 
@@ -4643,7 +4630,6 @@ _No direct exported symbols._
 | `src/app/form_commands.ts`            | star | -     |
 | `src/app/focus_commands.ts`           | star | -     |
 | `src/app/forms.ts`                    | star | -     |
-| `src/app/history_bindings.ts`         | star | -     |
 | `src/app/history.ts`                  | star | -     |
 | `src/app/input_commands.ts`           | star | -     |
 | `src/app/list_commands.ts`            | star | -     |
