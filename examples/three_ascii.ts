@@ -40,7 +40,7 @@ import {
   threeAsciiDemoSidePanelVisible,
   threeAsciiDemoTitlebarControlAt,
   threeAsciiDemoTitleRect,
-} from "../app/three_ascii_demo_window.ts";
+} from "../app/types.ts";
 import { Computed, Signal, Tui } from "../mod.ts";
 
 const showControlsAtStartup = !Deno.args.some((arg) => arg === "--no-controls" || arg === "--hide-controls");

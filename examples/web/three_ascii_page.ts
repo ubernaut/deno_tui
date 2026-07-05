@@ -22,7 +22,7 @@ import {
   threeAsciiDemoControlText,
   threeAsciiDemoTitlebarControlAt,
   threeAsciiDemoTitleRect,
-} from "../../app/three_ascii_demo_window.ts";
+} from "../../app/types.ts";
 import { type ThreeSceneMode, threeSceneModes } from "../../app/types.ts";
 import { applyAsciiPreset, asciiEffectOptions, createDefaultAsciiOptions } from "../../src/three_ascii/options.ts";
 

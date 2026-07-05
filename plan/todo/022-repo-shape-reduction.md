@@ -7,23 +7,23 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `607`
+- Tracked files after the current consolidation passes: `606`
 - Tracked top-level file counts:
   - `src`: `298`
   - `tests`: `105`
-  - `app`: `30`
+  - `app`: `29`
   - `docs`: `50`
   - `examples`: `41`
   - `scripts`: `27`
   - `plan`: `26`
 - Handwritten/code-heavy line counts:
-  - `src/app`: `24,631` lines across `79` files
+  - `src/app`: `24,649` lines across `79` files
   - `src/runtime`: `11,118` lines across `34` files
   - `src/components`: `10,261` lines across `43` files
   - `src/three_ascii`: `6,968` lines across `23` files
-  - `app`: `20,341` lines across `30` files
+  - `app`: `20,327` lines across `29` files
   - `examples`: `8,729` lines across `41` files
-  - `tests`: `49,119` lines across `105` top-level test files
+  - `tests`: `49,148` lines across `105` top-level test files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -185,6 +185,9 @@ The library core is real and valuable, but it needs clearer boundaries:
     the shared text utilities that already own the corresponding tests and facade export
   - Workbench Three viewport mouse routing is folded into `src/app/workbench_three_panel_registry.ts`, keeping panel
     lifecycle and pointer interaction ownership together without widening the public workbench facade
+  - Standalone Three ASCII demo window geometry is folded into the app-local type surface in `app/types.ts`, keeping
+    terminal and web Three demo layout helpers out of a standalone app-only shard without widening the stable package
+    API
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
@@ -305,10 +308,10 @@ The library core is real and valuable, but it needs clearer boundaries:
 - Continue using benchmark cases for hot helpers, but treat live probes as required evidence:
   - `deno task three-workbench:startup-probe`
   - `deno task three-ascii:live-probe -- --frames 45 --glyphs blocks --max-cells 960 --check --max-average-ms 40`
-- Latest workbench block-mode startup probe after the direct-range copy optimization: `6.78ms` steady average, about
-  `147.5 fps` at `53x17` cells with the capped default-workbench probe. Latest standalone block-mode live probe defaults
-  to deferred readback and reports `7.33ms` steady average, about `136.5 fps` at `31x15` cells; explicit blocking
-  readback on the same probe reports `18.71ms` steady average, about `53.5 fps`.
+- Latest workbench block-mode startup probe after the fit-projection resize fix: `5.01ms` steady average, about
+  `199.6 fps` at `53x17` cells with the capped default-workbench probe. Latest standalone block-mode live probe defaults
+  to deferred readback and reports `6.39ms` steady average, about `156.4 fps` at `31x15` cells; explicit blocking
+  readback on the same probe previously reported `18.71ms` steady average, about `53.5 fps`.
 - Avoid speculative micro-optimizations unless they improve measured workbench/default-demo behavior.
 
 ### P2: Split Demo Framework From Library Framework

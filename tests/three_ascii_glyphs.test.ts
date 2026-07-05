@@ -10,7 +10,7 @@ import {
   threeAsciiDemoSidePanelVisible,
   threeAsciiDemoTitlebarControlAt,
   threeAsciiDemoTitleRect,
-} from "../app/three_ascii_demo_window.ts";
+} from "../app/types.ts";
 import { buildFallbackGrid, formatThreeAsciiFallbackDetail } from "../src/canvas/three_ascii.ts";
 import { blockFillGlyphForBucket, bucketAsciiLuminance, glyphForTile } from "../src/three_ascii/glyphs.ts";
 import { buildThreeAsciiAnsiGrid, ThreeAsciiAnsiGridAssembler } from "../src/three_ascii/renderer.ts";
