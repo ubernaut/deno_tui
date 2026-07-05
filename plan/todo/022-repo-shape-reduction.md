@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `774`
+- Tracked files after the current consolidation passes: `772`
 - Tracked top-level file counts:
   - `src`: `368`
-  - `tests`: `187`
+  - `tests`: `185`
   - `app`: `48`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,195` lines across `45` files
   - `app`: `20,428` lines across `48` files
   - `examples`: `8,732` lines across `42` files
-  - `tests`: `49,298` lines across `187` files
+  - `tests`: `49,297` lines across `185` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `24MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -84,6 +84,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - theme provider inspection, preview, and report tests are now `tests/theme_provider_workflows.test.ts`
   - Three ASCII shader, LUT, color, and glyph-key tests are now `tests/three_ascii_core.test.ts`
   - Three panel timing, value, frame-update, and lifecycle helper tests are now `tests/three_panel_core.test.ts`
+  - Three panel cadence and render-queue helper tests are now bundled into `tests/three_panel_core.test.ts`
   - Three ASCII probe CLI helper tests are now bundled into `tests/three_ascii_probe.test.ts`
   - generic visual smoke assertions are now bundled into `tests/workbench_visual_smoke.test.ts`
   - system metrics GPU, network, process, and snapshot helper tests are now `tests/system_metrics_core.test.ts`

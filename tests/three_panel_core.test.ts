@@ -1,4 +1,5 @@
 import { assertEquals } from "./deps.ts";
+import { assertRejects } from "./deps.ts";
 import { nextFrameDelay } from "../src/runtime/frame_timing.ts";
 import { threePanelFrameUpdate } from "../src/app/three_panel_frame_update.ts";
 import {
@@ -11,6 +12,8 @@ import {
   resolveThreePanelLiveValue,
   resolveThreePanelValue,
 } from "../src/app/three_panel_values.ts";
+import { ThreePanelRenderQueue } from "../src/app/three_panel_render_queue.ts";
+import { WorkbenchThreeCadenceMeter } from "../src/app/workbench_three_cadence.ts";
 import { Signal } from "../src/signals/mod.ts";
 
 Deno.test("nextFrameDelay compensates for current frame render time", () => {
@@ -150,3 +153,113 @@ Deno.test("isCurrentThreePanelFrame also requires the render loop to be running"
   assertEquals(isCurrentThreePanelFrame({ ...base, running: false }), false);
   assertEquals(isCurrentThreePanelFrame({ ...base, currentGeneration: 3 }), false);
 });
+
+Deno.test("WorkbenchThreeCadenceMeter reports observed frame cadence after repeated updates", () => {
+  const meter = new WorkbenchThreeCadenceMeter({ alpha: 0.5 });
+
+  assertEquals(meter.inspect(), { updates: 0, averageFrameMs: undefined, measuredFps: undefined });
+  assertEquals(meter.record(100), { updates: 1, averageFrameMs: undefined, measuredFps: undefined });
+  assertEquals(meter.record(150), { updates: 2, averageFrameMs: 50, measuredFps: 20 });
+  assertEquals(meter.record(250), { updates: 3, averageFrameMs: 75, measuredFps: 1000 / 75 });
+});
+
+Deno.test("WorkbenchThreeCadenceMeter resets stale gaps without retaining old cadence", () => {
+  const meter = new WorkbenchThreeCadenceMeter({ resetAfterMs: 100 });
+
+  meter.record(0);
+  meter.record(50);
+  assertEquals(meter.inspect().averageFrameMs, 50);
+
+  meter.record(500);
+  assertEquals(meter.inspect().averageFrameMs, 450);
+
+  meter.reset();
+  assertEquals(meter.inspect(), { updates: 0, averageFrameMs: undefined, measuredFps: undefined });
+});
+
+Deno.test("WorkbenchThreeCadenceMeter hides stale measured fps before the next update", () => {
+  const meter = new WorkbenchThreeCadenceMeter({ resetAfterMs: 100 });
+
+  meter.record(0);
+  meter.record(50);
+
+  assertEquals(meter.inspectAt(75), { updates: 2, averageFrameMs: 50, measuredFps: 20 });
+  assertEquals(meter.measuredFps(151), undefined);
+  assertEquals(meter.inspectAt(151), { updates: 2, averageFrameMs: undefined, measuredFps: undefined });
+});
+
+Deno.test("ThreePanelRenderQueue serializes queued frame work", async () => {
+  const queue = new ThreePanelRenderQueue();
+  const order: string[] = [];
+  const releaseFirst = deferred<void>();
+
+  const first = queue.run(async () => {
+    order.push("first:start");
+    await releaseFirst.promise;
+    order.push("first:end");
+    return "first";
+  });
+  const second = queue.run(() => {
+    order.push("second");
+    return "second";
+  });
+
+  await waitFor(() => order.length === 1);
+  assertEquals(order, ["first:start"]);
+  assertEquals(queue.inspect().running, 1);
+  assertEquals(queue.inspect().pending, 1);
+
+  releaseFirst.resolve();
+  assertEquals(await Promise.all([first, second]), ["first", "second"]);
+  assertEquals(order, ["first:start", "first:end", "second"]);
+  assertEquals(queue.inspect(), {
+    running: 0,
+    pending: 0,
+    scheduled: 2,
+    completed: 2,
+    failed: 0,
+  });
+});
+
+Deno.test("ThreePanelRenderQueue continues after a failed frame", async () => {
+  const queue = new ThreePanelRenderQueue();
+  const error = new Error("frame failed");
+
+  await assertRejects(
+    () =>
+      queue.run(() => {
+        throw error;
+      }),
+    Error,
+    "frame failed",
+  );
+
+  assertEquals(await queue.run(() => "next"), "next");
+  assertEquals(queue.inspect(), {
+    running: 0,
+    pending: 0,
+    scheduled: 2,
+    completed: 1,
+    failed: 1,
+  });
+});
+
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+async function waitFor(predicate: () => boolean, timeoutMs = 200): Promise<void> {
+  const startedAt = performance.now();
+  while (!predicate()) {
+    if (performance.now() - startedAt > timeoutMs) {
+      throw new Error("timed out waiting for render queue state");
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1));
+  }
+}
