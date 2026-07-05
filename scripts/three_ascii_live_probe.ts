@@ -1,4 +1,4 @@
-import { asciiEffectOptions, createDefaultAsciiOptions } from "../app/ascii_options.ts";
+import { asciiEffectOptions, createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import { createNeonThreeScene } from "../app/neon_three.ts";
 import { type ThreeSceneMode, threeSceneModes, type ThreeSceneSignal } from "../app/types.ts";
 import {

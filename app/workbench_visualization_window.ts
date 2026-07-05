@@ -2,7 +2,7 @@
 import { workbenchAsciiRendererModeLabel } from "../src/app/workbench_ascii.ts";
 import { compactSpaces, maxTrimmedTextWidth } from "../src/app/workbench_text.ts";
 import { prepareWorkbenchRows } from "../src/app/workbench_frame.ts";
-import { terminalGlyphStyleLabel } from "./ascii_options.ts";
+import { terminalGlyphStyleLabel } from "../src/three_ascii/options.ts";
 import type { RowStyle } from "../src/app/workbench_rows.ts";
 import type { AsciiOptions, PanelRender } from "./types.ts";
 

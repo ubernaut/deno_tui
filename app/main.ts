@@ -7,16 +7,16 @@ import { WindowManagerController, type WindowManagerWindowInspection } from "../
 import { Computed, Effect, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
 import { Tui } from "../src/tui.ts";
+import { ASCII_DEMO_PRESETS } from "../src/three_ascii/demo_presets.ts";
+import { TERMINAL_GLYPH_STYLES } from "../src/three_ascii/glyphs.ts";
 import {
   applyAsciiPreset,
-  ASCII_DEMO_PRESETS,
   asciiControlValues,
   asciiPresetLabel,
   createDefaultAsciiOptions,
   formatAsciiControlValue,
-  TERMINAL_GLYPH_STYLES,
   terminalGlyphStyleLabel,
-} from "./ascii_options.ts";
+} from "../src/three_ascii/options.ts";
 import { AudioRegistry, discoverAudioSources } from "./audio.ts";
 import { detectViewportMode } from "./layout.ts";
 import { defaultVisualizationForSlot, orderVisualizationsForSlot } from "./panel_defaults.ts";

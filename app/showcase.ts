@@ -5,7 +5,7 @@ import { Computed, Effect, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
 import { Tui } from "../src/tui.ts";
 import { adaptiveGridItemRect, adaptiveGridPage } from "../src/layout/mod.ts";
-import { createDefaultAsciiOptions, terminalGlyphStyleLabel } from "./ascii_options.ts";
+import { createDefaultAsciiOptions, terminalGlyphStyleLabel } from "../src/three_ascii/options.ts";
 import { demos, formatCountdown, type NeonDemo, type NeonSection } from "./neon_theme.ts";
 import { accentColor, makeStyle, palette, severityAccent } from "./styles.ts";
 import { stringSeed, unitWave, waveSeries } from "./synthetic_wave.ts";

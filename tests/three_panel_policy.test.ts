@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "./deps.ts";
-import { createDefaultAsciiOptions } from "../app/ascii_options.ts";
+import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import {
   resolveThreePanelFrameInterval,
   resolveThreePanelRenderPolicy,

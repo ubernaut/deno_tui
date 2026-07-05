@@ -284,7 +284,8 @@ import {
   htmlCssLayoutSummaryRows,
   htmlCssVisibleLayoutBoxesInto,
 } from "./html_css_layout_view.ts";
-import { ASCII_DEMO_PRESETS, asciiDemoPresetIds, cloneAsciiOptions, normalizeAsciiOptions } from "./ascii_options.ts";
+import { ASCII_DEMO_PRESETS, asciiDemoPresetIds } from "../src/three_ascii/demo_presets.ts";
+import { cloneAsciiOptions, normalizeAsciiOptions } from "../src/three_ascii/options.ts";
 import { resolveSourceFramesInto } from "./sources.ts";
 import { makeStyle } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";

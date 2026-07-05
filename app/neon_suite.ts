@@ -1,4 +1,4 @@
-import { createDefaultAsciiOptions } from "./ascii_options.ts";
+import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import { demos, type NeonDemo, type NeonSection } from "./neon_theme.ts";
 import { stringSeed, unitWave, waveSeries } from "./synthetic_wave.ts";
 import type {

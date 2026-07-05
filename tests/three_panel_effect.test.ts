@@ -1,5 +1,5 @@
 import { assertEquals } from "./deps.ts";
-import { asciiEffectOptions, createDefaultAsciiOptions } from "../app/ascii_options.ts";
+import { asciiEffectOptions, createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import {
   emptyThreePanelRendererState,
   resolveThreePanelRendererStateUpdate,

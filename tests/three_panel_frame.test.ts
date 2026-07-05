@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "./deps.ts";
 import { Signal } from "../src/signals/mod.ts";
-import { createDefaultAsciiOptions } from "../app/ascii_options.ts";
+import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import {
   resolveThreePanelAdaptiveRenderBudget,
   resolveThreePanelRenderPolicy,

@@ -13,7 +13,7 @@ import {
   type ThreeAsciiRenderFrameOptions,
 } from "../src/three_ascii/renderer.ts";
 import type { ThreeAsciiReadbackStrategy } from "../src/three_ascii/renderer_options.ts";
-import { asciiEffectOptions } from "./ascii_options.ts";
+import { asciiEffectOptions } from "../src/three_ascii/options.ts";
 import { createNeonThreeScene, type NeonThreeSceneBundle } from "./neon_three.ts";
 import { ThreePanelGraphicsImageController } from "../src/app/three_panel_graphics.ts";
 import {
