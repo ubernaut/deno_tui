@@ -12297,11 +12297,6 @@ function fullRowStringLine(value, width, column) {
   if (body.length !== columns2) return void 0;
   return style2 ? `${style2}${body}${RESET3}` : body;
 }
-function fillStringFrameRect(frame, width, rect, value) {
-  for (let row = rect.row; row < rect.row + rect.height; row += 1) {
-    writeStringFrameRow(frame, width, row, rect.column, value);
-  }
-}
 function workbenchFrameBoxLinesInto(target, rect, title) {
   target.length = 0;
   if (rect.width <= 0 || rect.height <= 0) return target;
@@ -18303,6 +18298,81 @@ function workbenchStyledRowsRenderCommandsInto(target, options) {
   return target;
 }
 
+// src/app/workbench_frame_painter.ts
+var WorkbenchFramePainter = class {
+  #options;
+  #styledRows = [];
+  constructor(options) {
+    this.#options = options;
+  }
+  width(frame) {
+    return this.#options.width(frame);
+  }
+  paint(text, options = {}) {
+    return this.#options.style({
+      fg: options.fg ?? this.#options.theme().text,
+      bg: options.bg,
+      bold: options.bold
+    })(text);
+  }
+  write(frame, row, column, value) {
+    this.#options.write(frame, this.width(frame), row, column, value);
+  }
+  fillRow(frame, row, bg) {
+    const width = this.width(frame);
+    this.write(frame, row, 0, this.paint(" ".repeat(Math.max(0, width)), { bg }));
+  }
+  fillRect(frame, rect, bg) {
+    const width = this.width(frame);
+    const value = this.paint(" ".repeat(Math.max(0, rect.width)), { bg });
+    if (this.#options.fillRect) {
+      this.#options.fillRect(frame, width, rect, value);
+      return;
+    }
+    for (let row = rect.row; row < rect.row + rect.height; row += 1) {
+      this.#options.write(frame, width, row, rect.column, value);
+    }
+  }
+  writeRows(frame, rect, rows2, sourceStart = 0) {
+    const commands = workbenchStyledRowsRenderCommandsInto(this.#styledRows, {
+      rect,
+      rows: rows2,
+      sourceStart,
+      theme: this.#options.theme(),
+      fit: this.#options.fit
+    });
+    for (let index = 0; index < commands.length; index += 1) {
+      const command = commands[index];
+      this.write(
+        frame,
+        command.row,
+        command.column,
+        this.paint(command.text, {
+          fg: command.fg,
+          bg: command.bg,
+          bold: command.bold
+        })
+      );
+    }
+  }
+  writeButton(frame, row, column, label, options = {}) {
+    const button = projectWorkbenchButton(
+      label,
+      this.#options.theme(),
+      this.#options.contrastText,
+      {
+        compact: options.compact,
+        maxWidth: options.maxWidth,
+        state: options.state,
+        tone: options.tone
+      }
+    );
+    if (button.width <= 0) return 0;
+    this.write(frame, row, column, this.paint(button.text, button.style));
+    return button.width;
+  }
+};
+
 // src/app/workbench_ascii.ts
 var defaultWorkbenchAsciiConfigRows = [
   { kind: "preset", label: "Preset" },
@@ -18985,7 +19055,6 @@ var inspectorRenderRows = [];
 var inspectorActionTextRows = [];
 var inspectorWrappedTextRows = [];
 var logRenderRows = [];
-var styledRowRenderCommands = [];
 var htmlCssLayoutBoxes = [];
 var htmlCssLayoutRenderCommands = [];
 var shelfBuffers = new WorkbenchShelfBufferCache();
@@ -18993,6 +19062,14 @@ var menuBarHitLayouts = [];
 var headerLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
 var windowFrameBoxLines = [];
 var windowFrameRenderCommands = [];
+var framePainter = new WorkbenchFramePainter({
+  width: () => cols(),
+  theme,
+  style: makeStyle,
+  contrastText,
+  fit,
+  write: writeStringFrameRow
+});
 var workspaceScrollbarRenderCommands = [];
 var visiblePanelRects = /* @__PURE__ */ new Map();
 var webTerminalActions = [
@@ -21059,32 +21136,16 @@ function isTextControlActive() {
   return active.peek() === "controls" && (activeControl.peek() === "input" || activeControl.peek() === "textbox");
 }
 function write(frame, row, column, value) {
-  writeStringFrameRow(frame, cols(), row, column, value);
+  framePainter.write(frame, row, column, value);
 }
 function writeStyledRows(frame, rect, rows2, sourceStart = 0) {
-  const t = theme();
-  const commands = workbenchStyledRowsRenderCommandsInto(styledRowRenderCommands, {
-    rect,
-    rows: rows2,
-    sourceStart,
-    theme: t,
-    fit
-  });
-  for (let index = 0; index < commands.length; index += 1) {
-    const command = commands[index];
-    write(
-      frame,
-      command.row,
-      command.column,
-      paint(command.text, command.fg, command.bg, command.bold)
-    );
-  }
+  framePainter.writeRows(frame, rect, rows2, sourceStart);
 }
 function fit(value, width) {
   return fitCellText(value, width);
 }
 function fillRect(frame, rect, bg) {
-  fillStringFrameRect(frame, cols(), rect, paint(" ".repeat(Math.max(0, rect.width)), theme().text, bg));
+  framePainter.fillRect(frame, rect, bg);
 }
 function drawFrame(frame, rect, title, selected) {
   const commands = workbenchFrameRenderCommandsInto(windowFrameRenderCommands, windowFrameBoxLines, {
@@ -21110,18 +21171,10 @@ function buttonText2(label, compact2 = false) {
   return buttonText(label, { compact: compact2 });
 }
 function writeButton(frame, row, column, label, options = {}) {
-  const button = projectWorkbenchButton(label, theme(), contrastText, {
-    compact: options.compact,
-    maxWidth: options.maxWidth,
-    state: options.state,
-    tone: options.tone
-  });
-  if (button.width <= 0) return 0;
-  write(frame, row, column, paint(button.text, button.style.fg, button.style.bg, button.style.bold));
-  return button.width;
+  return framePainter.writeButton(frame, row, column, label, options);
 }
 function paint(value, fg = theme().text, bg = theme().background, bold = false) {
-  return makeStyle({ fg, bg, bold })(value);
+  return framePainter.paint(value, { fg, bg, bold });
 }
 function findHit(x, y) {
   const target = hitTargets.find(x, y);
