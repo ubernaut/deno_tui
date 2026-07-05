@@ -1,5 +1,10 @@
-import { assertEquals, assertInstanceOf } from "./deps.ts";
+import { assertEquals, assertInstanceOf, assertThrows } from "./deps.ts";
 import { mergeThemeCatalogComponents } from "../src/theme_catalog.ts";
+import { diffThemeEnginesCore } from "../src/theme_diff_core.ts";
+import {
+  ThemeEngine as ThemeEngineModule,
+  ThemeInheritanceError as ThemeInheritanceErrorModule,
+} from "../src/theme_engine.ts";
 import {
   createAnsiStyle as createAnsiStyleFromModule,
   createAnsiStyleMap,
@@ -12,12 +17,20 @@ import {
 import {
   createAnsiStyle,
   createStandardComponentThemeDefinitions,
+  createThemeEngine,
+  createThemeEngineFromPalette,
   createThemeLayerStack,
+  createThemeRegistry,
   emptyStyle,
   standardThemeComponentNames,
+  ThemeEngine,
+  ThemeInheritanceError,
   ThemeLayerStack,
+  ThemePackNotFoundError,
+  ThemeRegistry,
 } from "../src/theme.ts";
 import { ThemeLayerStackImplementation } from "../src/theme_layer_stack.ts";
+import { ThemePackNotFoundErrorImplementation, ThemeRegistryImplementation } from "../src/theme_registry.ts";
 import {
   type CompiledThemeManifestStyleReferenceCore,
   compileThemeManifestStateDefinitionCore,
@@ -116,6 +129,207 @@ Deno.test("theme layer stack implementation composes enabled layers only", () =>
   assertEquals(Object.keys(layers.compose().tokens ?? {}), ["muted"]);
 
   layers.dispose();
+});
+
+Deno.test("theme registry module backs the public facade classes", () => {
+  assertEquals(ThemeRegistry.prototype instanceof ThemeRegistryImplementation, true);
+  assertEquals(ThemePackNotFoundError.prototype instanceof ThemePackNotFoundErrorImplementation, true);
+
+  const registry = createThemeRegistry([
+    {
+      id: "ops",
+      label: "Ops",
+      palette: "terminal",
+      options: {
+        components: {
+          button: { variants: { danger: { active: "danger" } } },
+        },
+      },
+    },
+  ]);
+
+  assertInstanceOf(registry, ThemeRegistry);
+  assertInstanceOf(registry, ThemeRegistryImplementation);
+  assertEquals(registry.ids(), ["ops"]);
+  assertEquals(registry.inspect(), [
+    {
+      id: "ops",
+      label: "Ops",
+      palette: "terminal",
+      components: [{ name: "button", variants: ["danger"] }],
+    },
+  ]);
+  assertInstanceOf(registry.engine("ops"), ThemeEngine);
+  assertThrows(() => registry.engine("missing"), ThemePackNotFoundError, 'Theme pack "missing" is not registered');
+});
+
+Deno.test("theme registry implementation composes packs overrides and custom errors", () => {
+  class CustomMissingPack extends Error {}
+  const registry = new ThemeRegistryImplementation([
+    {
+      id: "base",
+      palette: "plain",
+      options: {
+        tokens: { accent: (text) => `a${text}` },
+        components: {
+          label: { base: { active: "accent" } },
+        },
+      },
+    },
+  ], {
+    createNotFoundError: (id) => new CustomMissingPack(id),
+  });
+
+  const engine = registry.engine("base", {
+    tokens: { accent: (text) => `b${text}` },
+    components: {
+      button: { base: { active: "accent" } },
+    },
+  });
+
+  assertEquals(registry.has("base"), true);
+  assertEquals(registry.get("base")?.id, "base");
+  assertEquals(engine.inspect().components, [
+    { name: "button", variants: [] },
+    { name: "label", variants: [] },
+  ]);
+  assertEquals(engine.resolve("button", "active")("x"), "bx");
+  assertThrows(() => registry.engine("missing"), CustomMissingPack);
+});
+
+Deno.test("theme engine module backs the public facade classes", () => {
+  assertEquals(ThemeEngine.prototype instanceof ThemeEngineModule, true);
+  assertEquals(ThemeInheritanceError.prototype instanceof ThemeInheritanceErrorModule, true);
+
+  const engine = createThemeEngine("plain", {
+    components: {
+      button: {
+        base: { active: "accent" },
+        variants: { danger: { active: "danger" } },
+      },
+    },
+  });
+
+  assertInstanceOf(engine, ThemeEngineModule);
+  assertInstanceOf(engine, ThemeEngine);
+  assertEquals(engine.inspect().tokens, [
+    "foreground",
+    "muted",
+    "accent",
+    "success",
+    "warning",
+    "danger",
+    "surface",
+  ]);
+  assertEquals(engine.inspect().components, [{ name: "button", variants: ["danger"] }]);
+  assertEquals(engine.componentNames(), ["button"]);
+  assertEquals(engine.variants("button"), ["danger"]);
+});
+
+Deno.test("theme engine module preserves inheritance and extension behavior", () => {
+  const engine = createThemeEngineFromPalette({}, {
+    components: {
+      base: { base: { base: "foreground" } },
+      child: { extends: "base", variants: { selected: { focused: "accent" } } },
+    },
+  });
+  const extended = engine.extend({
+    components: {
+      child: { variants: { danger: { active: "danger" } } },
+    },
+  });
+
+  assertEquals(extended.componentNames(), ["base", "child"]);
+  assertEquals(extended.variants("child"), ["danger", "selected"]);
+  assertThrows(
+    () =>
+      new ThemeEngineModule({
+        components: {
+          a: { extends: "b" },
+          b: { extends: "a" },
+        },
+      }).component("a"),
+    ThemeInheritanceErrorModule,
+    "a -> b -> a",
+  );
+  assertThrows(
+    () =>
+      createThemeEngine("plain", {
+        components: {
+          a: { extends: "b" },
+          b: { extends: "a" },
+        },
+      }).component("a"),
+    ThemeInheritanceError,
+    "a -> b -> a",
+  );
+});
+
+Deno.test("theme diff core previews token and component state changes", () => {
+  const base = {
+    theme: {
+      tokens: {
+        foreground: (value: string) => `fg:${value}`,
+        accent: (value: string) => `accent:${value}`,
+      },
+    },
+    componentNames: () => ["Button"],
+    variants: () => ["danger"],
+    component: (_component: string, variant = "default") => ({
+      base: variant === "danger" ? (value: string) => `danger:${value}` : (value: string) => `fg:${value}`,
+      focused: (value: string) => `focus:${value}`,
+    }),
+  };
+  const next = {
+    theme: {
+      tokens: {
+        foreground: (value: string) => `bright:${value}`,
+        accent: (value: string) => `accent:${value}`,
+      },
+    },
+    componentNames: () => ["Button"],
+    variants: () => ["danger"],
+    component: (_component: string, variant = "default") => ({
+      base: variant === "danger" ? (value: string) => `danger:${value}` : (value: string) => `bright:${value}`,
+      focused: (value: string) => `focus:${value}`,
+    }),
+  };
+
+  const diff = diffThemeEnginesCore(base, next, {
+    sample: "x",
+    tokenNames: ["foreground", "accent"],
+    states: ["base", "focused"],
+  });
+
+  assertEquals(diff.tokens.map((entry) => [entry.token, entry.before.styled, entry.after.styled]), [
+    ["foreground", "fg:x", "bright:x"],
+  ]);
+  assertEquals(
+    diff.components.map((
+      entry,
+    ) => [entry.component, entry.variant, entry.state, entry.before.styled, entry.after.styled]),
+    [["Button", "default", "base", "fg:x", "bright:x"]],
+  );
+});
+
+Deno.test("theme diff core can include unchanged values and custom variants", () => {
+  const engine = {
+    theme: { tokens: { foreground: (value: string) => `fg:${value}` } },
+    componentNames: () => ["Button"],
+    variants: () => ["ignored"],
+    component: () => ({ base: (value: string) => `base:${value}` }),
+  };
+
+  const diff = diffThemeEnginesCore(engine, engine, {
+    sample: "x",
+    tokenNames: ["foreground"],
+    states: ["base"],
+    variants: () => ["custom"],
+    includeUnchanged: true,
+  });
+
+  assertEquals(diff.tokens.length, 1);
+  assertEquals(diff.components.map((entry) => [entry.variant, entry.before.styled]), [["custom", "base:x"]]);
 });
 
 Deno.test("theme manifest core compiles token names ansi specs and pipelines", () => {
