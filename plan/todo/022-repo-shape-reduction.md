@@ -7,11 +7,11 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `675`
+- Tracked files after the current consolidation passes: `674`
 - Tracked top-level file counts:
   - `src`: `321`
   - `tests`: `142`
-  - `app`: `42`
+  - `app`: `41`
   - `docs`: `49`
   - `examples`: `42`
   - `scripts`: `27`
@@ -21,7 +21,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,261` lines across `43` files
   - `src/three_ascii`: `7,201` lines across `35` files
-  - `app`: `20,312` lines across `42` files
+  - `app`: `20,313` lines across `41` files
   - `examples`: `8,732` lines across `41` files
   - `tests`: `49,107` lines across `142` files
 - Generated/docs weight:
@@ -113,6 +113,8 @@ The library core is real and valuable, but it needs clearer boundaries:
   - visualization panel source/alert summary helpers are folded into `app/visualization_primitives.ts`
   - API workbench control-line projection is folded into `app/api_workbench_controls.ts`
   - network monitor rendering is folded into the visualization catalog module that owns its only caller
+  - synthetic waveform helpers are folded into `app/visualization_primitives.ts` so Neon and workbench synthetic data
+    share the existing visualization helper module instead of a standalone app shard
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
