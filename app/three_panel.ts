@@ -21,25 +21,23 @@ import {
 } from "../src/app/three_panel_interaction.ts";
 import {
   defaultThreePanelRenderQueue,
+  emptyThreePanelRendererState,
   hasThreePanelGridCells,
   isCurrentThreePanelFrame,
   ownsThreePanelFrame,
   resolveThreePanelLifecycleState,
+  resolveThreePanelRendererStateUpdate,
   threePanelAdaptiveRenderCellsDiagnostic,
   threePanelGraphicsFallbackDiagnostic,
   threePanelGraphicsFallbackReason,
   ThreePanelGraphicsImageController,
   ThreePanelGridPublisher,
   type ThreePanelLifecycleState,
+  threePanelRendererStateMatches,
+  type ThreePanelRendererStateSnapshot,
   ThreePanelRenderQueue,
   threePanelSlowFrameDiagnostic,
 } from "../src/app/three_panel_core.ts";
-import {
-  emptyThreePanelRendererState,
-  resolveThreePanelRendererStateUpdate,
-  threePanelRendererStateMatches,
-  type ThreePanelRendererStateSnapshot,
-} from "../src/app/three_panel_effect.ts";
 import { type ThreePanelFrameUpdate, threePanelFrameUpdate } from "../src/app/three_panel_core.ts";
 import {
   resolveThreePanelAdaptiveRenderBudget,

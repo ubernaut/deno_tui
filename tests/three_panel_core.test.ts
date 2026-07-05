@@ -20,20 +20,18 @@ import {
 } from "../src/app/three_panel_interaction.ts";
 import {
   emptyThreePanelRendererState,
-  resolveThreePanelRendererStateUpdate,
-  threePanelAsciiEffectOptionsEqual,
-  threePanelRendererStateMatches,
-} from "../src/app/three_panel_effect.ts";
-import {
   fingerprintThreePanelGrid,
   hasThreePanelGridCells,
+  resolveThreePanelRendererStateUpdate,
   threePanelAdaptiveRenderCellsDiagnostic,
+  threePanelAsciiEffectOptionsEqual,
   threePanelBlankGrid,
   threePanelGraphicsFallbackDiagnostic,
   threePanelGraphicsFallbackReason,
   ThreePanelGraphicsImageController,
   ThreePanelGridPublicationCache,
   ThreePanelGridPublisher,
+  threePanelRendererStateMatches,
   threePanelSlowFrameDiagnostic,
 } from "../src/app/three_panel_core.ts";
 import { WorkbenchThreeCadenceMeter } from "../src/app/workbench_three_runtime.ts";
