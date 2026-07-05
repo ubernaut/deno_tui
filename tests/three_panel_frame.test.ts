@@ -61,6 +61,25 @@ Deno.test("ThreePanelAdaptiveRenderBudgetController owns warmup and requested-si
   );
 });
 
+Deno.test("ThreePanelAdaptiveRenderBudgetController resets reduced caps when the viewport expands", () => {
+  const controller = new ThreePanelAdaptiveRenderBudgetController();
+  const smallRect = { width: 96, height: 32 };
+  const largeRect = { width: 180, height: 50 };
+
+  controller.renderSize(smallRect, 7_680);
+  controller.update({ requestedMaxCells: 7_680, frameMs: 1_000, targetMs: 1000 / 18 });
+  controller.update({ requestedMaxCells: 7_680, frameMs: 220, targetMs: 1000 / 18 });
+  const reduced = controller.update({ requestedMaxCells: 7_680, frameMs: 220, targetMs: 1000 / 18 });
+  assertEquals(reduced.direction, "down");
+
+  const reducedSize = controller.renderSize(smallRect, 7_680);
+  assert(reducedSize.columns * reducedSize.rows <= reduced.maxCells!);
+
+  const expandedSize = controller.renderSize(largeRect, 7_680);
+  assert(expandedSize.columns * expandedSize.rows > reducedSize.columns * reducedSize.rows);
+  assert(expandedSize.columns * expandedSize.rows <= 7_680);
+});
+
 Deno.test("ThreePanelFrameView stays inert while disabled", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
   const scene = new Signal<ThreeSceneState | null>({
