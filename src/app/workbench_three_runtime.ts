@@ -7,8 +7,10 @@ import {
   type WorkbenchThreeTerminalPressureState,
 } from "./workbench_three_terminal_pressure.ts";
 import {
+  API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY,
   API_WORKBENCH_THREE_PRESSURE_POLICY,
   apiWorkbenchThreeFrameIntervalForCells,
+  WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
   WORKBENCH_THREE_INITIAL_CELLS,
 } from "./workbench_three_policy.ts";
 import type { WorkbenchThreeCadenceInspection } from "./workbench_three_cadence.ts";
@@ -27,6 +29,7 @@ export interface ApiWorkbenchThreePressureSample {
 export interface ApiWorkbenchThreePressureChangeInput {
   pressure: WorkbenchThreeTerminalPressureState;
   currentCells: number;
+  fullscreenThree?: boolean;
   frameIntervalMs: number;
   stats: ApiWorkbenchThreeFlushStats;
   sample: ApiWorkbenchThreePressureSample;
@@ -60,6 +63,7 @@ export interface ApiWorkbenchThreePressureUpdateGate {
 
 export interface ApiWorkbenchThreeRuntimeOptions {
   hasLiveThreeWindow: () => boolean;
+  hasFullscreenThreeWindow?: () => boolean;
   onPressureChange?: (message: string) => void;
 }
 
@@ -75,8 +79,11 @@ export function resolveApiWorkbenchThreePressureChangeInto(
   target: ApiWorkbenchThreePressureChange,
   input: ApiWorkbenchThreePressureChangeInput,
 ): ApiWorkbenchThreePressureChange {
+  const policy = input.fullscreenThree
+    ? API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY
+    : API_WORKBENCH_THREE_PRESSURE_POLICY;
   const next = resolveWorkbenchThreeTerminalPressureUpdate(input.pressure, {
-    ...API_WORKBENCH_THREE_PRESSURE_POLICY,
+    ...policy,
     currentCells: input.currentCells,
     renderedThreeGrids: input.sample.renderedThreeGrids,
     renderedThreeRows: input.sample.renderedThreeRows,
@@ -121,9 +128,11 @@ export function shouldUpdateApiWorkbenchThreePressure(input: ApiWorkbenchThreePr
 /** Owns API workbench Three renderer cadence and terminal-pressure state. */
 export class ApiWorkbenchThreeRuntimeController {
   readonly liveMaxCells = new Signal(WORKBENCH_THREE_INITIAL_CELLS);
+  readonly fullscreenMaxCells = new Signal(WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
   readonly frameInterval: Signal<number>;
 
   #pressure: WorkbenchThreeTerminalPressureState;
+  #fullscreenPressure: WorkbenchThreeTerminalPressureState;
   #pressureSample: ApiWorkbenchThreePressureSample = emptyPressureSample();
   #lastPressureInspection: ApiWorkbenchThreePressureInspection;
   #pressureChange = emptyPressureChange();
@@ -131,9 +140,10 @@ export class ApiWorkbenchThreeRuntimeController {
 
   constructor(private readonly options: ApiWorkbenchThreeRuntimeOptions) {
     this.frameInterval = new Signal(
-      apiWorkbenchThreeFrameIntervalForCells(this.liveMaxCells.peek(), { live: this.options.hasLiveThreeWindow() }),
+      apiWorkbenchThreeFrameIntervalForCells(this.activeMaxCells(), { live: this.options.hasLiveThreeWindow() }),
     );
     this.#pressure = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_INITIAL_CELLS);
+    this.#fullscreenPressure = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
     this.#lastPressureInspection = emptyPressureInspection(this.#pressure);
     this.#pressureChangeInput = {
       pressure: this.#pressure,
@@ -145,7 +155,7 @@ export class ApiWorkbenchThreeRuntimeController {
   }
 
   syncFrameInterval(): void {
-    const next = apiWorkbenchThreeFrameIntervalForCells(this.liveMaxCells.peek(), {
+    const next = apiWorkbenchThreeFrameIntervalForCells(this.activeMaxCells(), {
       live: this.options.hasLiveThreeWindow(),
     });
     if (this.frameInterval.peek() !== next) this.frameInterval.value = next;
@@ -163,6 +173,8 @@ export class ApiWorkbenchThreeRuntimeController {
   resetPressureCounters(): void {
     this.#pressure.highFrames = 0;
     this.#pressure.lowFrames = 0;
+    this.#fullscreenPressure.highFrames = 0;
+    this.#fullscreenPressure.lowFrames = 0;
     this.#lastPressureInspection.highFrames = 0;
     this.#lastPressureInspection.lowFrames = 0;
   }
@@ -180,7 +192,12 @@ export class ApiWorkbenchThreeRuntimeController {
     sample: ApiWorkbenchThreePressureSample = this.#pressureSample,
     telemetry: Pick<ApiWorkbenchThreePressureChangeInput, "observedFps" | "targetFps" | "observedFrameCount"> = {},
   ): void {
-    this.#pressureChangeInput.currentCells = this.liveMaxCells.peek();
+    const fullscreenThree = this.hasFullscreenThreeWindow();
+    const pressure = this.activePressure();
+    const maxCells = fullscreenThree ? this.fullscreenMaxCells : this.liveMaxCells;
+    this.#pressureChangeInput.pressure = pressure;
+    this.#pressureChangeInput.currentCells = maxCells.peek();
+    this.#pressureChangeInput.fullscreenThree = fullscreenThree;
     this.#pressureChangeInput.frameIntervalMs = this.frameInterval.peek();
     this.#pressureChangeInput.stats = stats;
     this.#pressureChangeInput.sample = sample;
@@ -188,9 +205,9 @@ export class ApiWorkbenchThreeRuntimeController {
     this.#pressureChangeInput.targetFps = telemetry.targetFps;
     this.#pressureChangeInput.observedFrameCount = telemetry.observedFrameCount;
     const change = resolveApiWorkbenchThreePressureChangeInto(this.#pressureChange, this.#pressureChangeInput);
-    this.#pressure.currentCells = change.pressure.currentCells;
-    this.#pressure.highFrames = change.pressure.highFrames;
-    this.#pressure.lowFrames = change.pressure.lowFrames;
+    pressure.currentCells = change.pressure.currentCells;
+    pressure.highFrames = change.pressure.highFrames;
+    pressure.lowFrames = change.pressure.lowFrames;
     this.#lastPressureInspection.currentCells = change.pressure.currentCells;
     this.#lastPressureInspection.highFrames = change.pressure.highFrames;
     this.#lastPressureInspection.lowFrames = change.pressure.lowFrames;
@@ -205,7 +222,7 @@ export class ApiWorkbenchThreeRuntimeController {
     this.#lastPressureInspection.lastScoped = change.scoped;
     if (!change.changed) return;
 
-    this.liveMaxCells.value = change.nextCells;
+    maxCells.value = change.nextCells;
     this.syncFrameInterval();
     if (change.logMessage) this.options.onPressureChange?.(change.logMessage);
   }
@@ -223,11 +240,11 @@ export class ApiWorkbenchThreeRuntimeController {
   }
 
   inspectPressure(): WorkbenchThreeTerminalPressureState {
-    return { ...this.#pressure };
+    return { ...this.activePressure() };
   }
 
   inspectPressureInto(target: WorkbenchThreeTerminalPressureState): WorkbenchThreeTerminalPressureState {
-    return writePressureState(target, this.#pressure);
+    return writePressureState(target, this.activePressure());
   }
 
   inspectPressureDetails(): ApiWorkbenchThreePressureInspection {
@@ -240,7 +257,20 @@ export class ApiWorkbenchThreeRuntimeController {
 
   dispose(): void {
     this.liveMaxCells.dispose();
+    this.fullscreenMaxCells.dispose();
     this.frameInterval.dispose();
+  }
+
+  private hasFullscreenThreeWindow(): boolean {
+    return this.options.hasFullscreenThreeWindow?.() ?? false;
+  }
+
+  private activeMaxCells(): number {
+    return this.hasFullscreenThreeWindow() ? this.fullscreenMaxCells.peek() : this.liveMaxCells.peek();
+  }
+
+  private activePressure(): WorkbenchThreeTerminalPressureState {
+    return this.hasFullscreenThreeWindow() ? this.#fullscreenPressure : this.#pressure;
   }
 }
 

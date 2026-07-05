@@ -346,7 +346,6 @@ import {
   workbenchThreeWindowIsInteractive,
 } from "../src/app/workbench_three_terminal_pressure.ts";
 import {
-  apiWorkbenchThreeEffectiveMaxCells,
   apiWorkbenchThreeFrameIntervalForCells,
   WORKBENCH_THREE_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
@@ -680,14 +679,17 @@ const currentWorkspaceWindowBuffer: SavedWorkspaceWindow[] = [];
 const currentWorkspaceVisualizationIdBuffer: string[] = [];
 const workbenchThreeRuntime = new ApiWorkbenchThreeRuntimeController({
   hasLiveThreeWindow: hasLiveThreeRenderedWindow,
+  hasFullscreenThreeWindow,
   onPressureChange: pushLog,
 });
 const workbenchThreeLiveMaxCells = workbenchThreeRuntime.liveMaxCells;
+const workbenchThreeFullscreenMaxCells = workbenchThreeRuntime.fullscreenMaxCells;
 const workbenchThreeEffectiveMaxCells = new Computed(() => {
   const fullscreenId = maximized.value;
-  return apiWorkbenchThreeEffectiveMaxCells(workbenchThreeLiveMaxCells.value, {
-    fullscreenThree: fullscreenId ? isThreeRenderedWindow(fullscreenId) : false,
-  });
+  if (fullscreenId && isThreeRenderedWindow(fullscreenId)) {
+    return workbenchThreeFullscreenMaxCells.value;
+  }
+  return workbenchThreeLiveMaxCells.value;
 });
 const workbenchThreeFrameInterval = workbenchThreeRuntime.frameInterval;
 const workbenchThreePressureDetails: ApiWorkbenchThreePressureInspection = workbenchThreeRuntime
@@ -1144,6 +1146,11 @@ function updateThreeTerminalPressure(stats: WorkbenchAnsiScreenFlushStats): void
     return;
   }
   workbenchThreeRuntime.updatePressureFromCadence(stats, threeCadence.inspect());
+}
+
+function hasFullscreenThreeWindow(): boolean {
+  const fullscreenId = maximized.peek();
+  return fullscreenId ? isThreeRenderedWindow(fullscreenId) : false;
 }
 
 function scheduleDraw(): void {

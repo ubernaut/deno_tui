@@ -8,6 +8,7 @@ import {
 } from "../src/app/workbench_three_runtime.ts";
 import {
   apiWorkbenchThreeFrameIntervalForCells,
+  WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
   WORKBENCH_THREE_INITIAL_CELLS,
 } from "../src/app/workbench_three_policy.ts";
 
@@ -56,6 +57,58 @@ Deno.test("ApiWorkbenchThreeRuntimeController recovers toward live max under qui
   assertEquals(controller.inspectPressure().lowFrames, 0);
 
   controller.dispose();
+});
+
+Deno.test("ApiWorkbenchThreeRuntimeController keeps fullscreen pressure separate from normal live pressure", () => {
+  let fullscreen = false;
+  const controller = new ApiWorkbenchThreeRuntimeController({
+    hasLiveThreeWindow: () => true,
+    hasFullscreenThreeWindow: () => fullscreen,
+  });
+
+  assertEquals(controller.liveMaxCells.peek(), WORKBENCH_THREE_INITIAL_CELLS);
+  assertEquals(controller.fullscreenMaxCells.peek(), WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
+
+  fullscreen = true;
+  controller.syncFrameInterval();
+  assertEquals(
+    controller.frameInterval.peek(),
+    apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_FULLSCREEN_MIN_CELLS, { live: true }),
+  );
+
+  const heavyFullscreen = { changed: 26, bytes: 150_000, durationMs: 0.2 };
+  const fullscreenSample = { renderedThreeGrids: 1, renderedThreeRows: 26 };
+  controller.updatePressure(heavyFullscreen, fullscreenSample);
+  controller.updatePressure(heavyFullscreen, fullscreenSample);
+  controller.updatePressure(heavyFullscreen, fullscreenSample);
+
+  assertEquals(controller.fullscreenMaxCells.peek(), 1_920);
+  assertEquals(controller.liveMaxCells.peek(), WORKBENCH_THREE_INITIAL_CELLS);
+
+  fullscreen = false;
+  controller.syncFrameInterval();
+  assertEquals(controller.liveMaxCells.peek(), WORKBENCH_THREE_INITIAL_CELLS);
+  assertEquals(
+    controller.frameInterval.peek(),
+    apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_INITIAL_CELLS, { live: true }),
+  );
+
+  controller.dispose();
+});
+
+Deno.test("resolveApiWorkbenchThreePressureChange uses fullscreen pressure tiers when requested", () => {
+  const change = resolveApiWorkbenchThreePressureChange({
+    pressure: { currentCells: WORKBENCH_THREE_FULLSCREEN_MIN_CELLS, highFrames: 2, lowFrames: 0 },
+    currentCells: WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
+    fullscreenThree: true,
+    frameIntervalMs: 1000 / 10,
+    stats: { changed: 26, bytes: 150_000, durationMs: 0.2 },
+    sample: { renderedThreeGrids: 1, renderedThreeRows: 26 },
+  });
+
+  assertEquals(change.pressure, { currentCells: 1_920, highFrames: 0, lowFrames: 0 });
+  assertEquals(change.changed, true);
+  assertEquals(change.nextCells, 1_920);
 });
 
 Deno.test("ApiWorkbenchThreeRuntimeController records and resets rendered grid pressure samples", () => {
