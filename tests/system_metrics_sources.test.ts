@@ -6,7 +6,7 @@ import type {
   SystemMetricsDirEntry,
   SystemMetricsNetworkInterface,
   SystemMetricsProvider,
-} from "../app/system_metrics_provider.ts";
+} from "../app/system_metrics_sources.ts";
 
 Deno.test("system metrics sources compute CPU usage deltas", () => {
   const previous = sampleCpuStatRows(

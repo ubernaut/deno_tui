@@ -1,6 +1,6 @@
 import type { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import { clamp } from "./styles.ts";
-import type { SystemMetricsCommandOutput, SystemMetricsProvider } from "./system_metrics_provider.ts";
+import type { SystemMetricsCommandOutput, SystemMetricsProvider } from "./system_metrics_sources.ts";
 import type { GpuSnapshot, SystemMetricDiagnostic } from "./types.ts";
 
 const COMMAND_OUTPUT_DECODER = new TextDecoder();
