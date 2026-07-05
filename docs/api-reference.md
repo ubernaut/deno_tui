@@ -8,8 +8,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 - Entrypoints: 9
 - Module visits: 503
 - Re-export declarations: 494
-- Exported symbols: 5331
-- Documented symbols: 5331
+- Exported symbols: 5333
+- Documented symbols: 5333
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     224 |    2291 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     203 |    2143 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     224 |    2292 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     203 |    2144 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      87 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -41,8 +41,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Entrypoint: `mod.ts`
 - Modules: 224
 - Re-export declarations: 223
-- Exported symbols: 2291
-- Documented symbols: 2291
+- Exported symbols: 2292
+- Documented symbols: 2292
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -108,7 +108,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/workbench_status.ts`](#src-app-workbench-status-ts)                                   |          0 |      23 |         23 |
 | [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                               |          0 |      66 |         66 |
 | [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                                       |          0 |      10 |         10 |
-| [`src/app/workbench_three_terminal_pressure.ts`](#src-app-workbench-three-terminal-pressure-ts) |          0 |      23 |         23 |
+| [`src/app/workbench_three_terminal_pressure.ts`](#src-app-workbench-three-terminal-pressure-ts) |          0 |      24 |         24 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                               |          0 |      10 |         10 |
 | [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)                 |          0 |      27 |         27 |
 | [`src/app/workbench_workspace_store.ts`](#src-app-workbench-workspace-store-ts)                 |          0 |       6 |          6 |
@@ -1417,6 +1417,7 @@ _No direct exported symbols._
 | `createWorkbenchThreeTerminalPressureState`       | function  | no        | yes   |
 | `formatWorkbenchThreeTerminalPressureUpdateLog`   | function  | no        | yes   |
 | `resolveWorkbenchThreeTerminalPressureBudget`     | function  | no        | yes   |
+| `resolveWorkbenchThreeTerminalPressureBudgetInto` | function  | no        | yes   |
 | `resolveWorkbenchThreeTerminalPressureUpdate`     | function  | no        | yes   |
 | `shouldApplyWorkbenchThreeTerminalPressureSample` | function  | no        | yes   |
 | `shouldCountWorkbenchThreeGridPressure`           | function  | no        | yes   |
@@ -3954,8 +3955,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Entrypoint: `mod.web.ts`
 - Modules: 203
 - Re-export declarations: 202
-- Exported symbols: 2143
-- Documented symbols: 2143
+- Exported symbols: 2144
+- Documented symbols: 2144
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -4021,7 +4022,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/workbench_status.ts`](#src-app-workbench-status-ts)                                   |          0 |      23 |         23 |
 | [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                               |          0 |      66 |         66 |
 | [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                                       |          0 |      10 |         10 |
-| [`src/app/workbench_three_terminal_pressure.ts`](#src-app-workbench-three-terminal-pressure-ts) |          0 |      23 |         23 |
+| [`src/app/workbench_three_terminal_pressure.ts`](#src-app-workbench-three-terminal-pressure-ts) |          0 |      24 |         24 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                               |          0 |      10 |         10 |
 | [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)                 |          0 |      27 |         27 |
 | [`src/app/workbench_workspace_store.ts`](#src-app-workbench-workspace-store-ts)                 |          0 |       6 |          6 |
@@ -5328,6 +5329,7 @@ _No direct exported symbols._
 | `createWorkbenchThreeTerminalPressureState`       | function  | no        | yes   |
 | `formatWorkbenchThreeTerminalPressureUpdateLog`   | function  | no        | yes   |
 | `resolveWorkbenchThreeTerminalPressureBudget`     | function  | no        | yes   |
+| `resolveWorkbenchThreeTerminalPressureBudgetInto` | function  | no        | yes   |
 | `resolveWorkbenchThreeTerminalPressureUpdate`     | function  | no        | yes   |
 | `shouldApplyWorkbenchThreeTerminalPressureSample` | function  | no        | yes   |
 | `shouldCountWorkbenchThreeGridPressure`           | function  | no        | yes   |

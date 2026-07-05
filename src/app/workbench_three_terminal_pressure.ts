@@ -239,19 +239,22 @@ export function resolveWorkbenchThreeTerminalPressureBudget(
   state: WorkbenchThreeTerminalPressureState,
   options: WorkbenchThreeTerminalPressureOptions,
 ): WorkbenchThreeTerminalPressureResult {
+  return resolveWorkbenchThreeTerminalPressureBudgetInto(emptyTerminalPressureResult(), state, options);
+}
+
+/** Resolves the next render-cell budget into a caller-owned result to avoid per-frame allocations. */
+export function resolveWorkbenchThreeTerminalPressureBudgetInto(
+  target: WorkbenchThreeTerminalPressureResult,
+  state: WorkbenchThreeTerminalPressureState,
+  options: WorkbenchThreeTerminalPressureOptions,
+): WorkbenchThreeTerminalPressureResult {
   const levels = normalizedLevels(options.levels);
   const current = clampToLevel(state.currentCells, levels);
   const highFrameThreshold = Math.max(1, Math.floor(options.highFrameThreshold ?? 2));
   const lowFrameThreshold = Math.max(1, Math.floor(options.lowFrameThreshold ?? 120));
 
   if (options.renderedThreeGrids <= 0 || options.bytes <= 0) {
-    return {
-      currentCells: current,
-      highFrames: 0,
-      lowFrames: 0,
-      changed: current !== state.currentCells,
-      direction: "steady",
-    };
+    return writeTerminalPressureResult(target, current, 0, 0, current !== state.currentCells, "steady");
   }
 
   const highDurationMs = Math.max(1, options.highDurationMs ?? Number.POSITIVE_INFINITY);
@@ -268,30 +271,12 @@ export function resolveWorkbenchThreeTerminalPressureBudget(
     const highFrames = state.highFrames + 1;
     if (highFrames >= highFrameThreshold) {
       const next = nextLowerLevel(current, levels);
-      return {
-        currentCells: next,
-        highFrames: 0,
-        lowFrames: 0,
-        changed: next !== state.currentCells,
-        direction: "down",
-      };
+      return writeTerminalPressureResult(target, next, 0, 0, next !== state.currentCells, "down");
     }
-    return {
-      currentCells: current,
-      highFrames,
-      lowFrames: 0,
-      changed: current !== state.currentCells,
-      direction: "steady",
-    };
+    return writeTerminalPressureResult(target, current, highFrames, 0, current !== state.currentCells, "steady");
   }
   if (highPressure) {
-    return {
-      currentCells: current,
-      highFrames: 0,
-      lowFrames: 0,
-      changed: current !== state.currentCells,
-      direction: "steady",
-    };
+    return writeTerminalPressureResult(target, current, 0, 0, current !== state.currentCells, "steady");
   }
 
   const lowByteRate = bytesPerSecond <= lowBytesPerSecond;
@@ -302,24 +287,12 @@ export function resolveWorkbenchThreeTerminalPressureBudget(
     const lowFrames = state.lowFrames + 1;
     if (lowFrames >= lowFrameThreshold) {
       const next = nextHigherLevel(current, levels);
-      return { currentCells: next, highFrames: 0, lowFrames: 0, changed: next !== state.currentCells, direction: "up" };
+      return writeTerminalPressureResult(target, next, 0, 0, next !== state.currentCells, "up");
     }
-    return {
-      currentCells: current,
-      highFrames: 0,
-      lowFrames,
-      changed: current !== state.currentCells,
-      direction: "steady",
-    };
+    return writeTerminalPressureResult(target, current, 0, lowFrames, current !== state.currentCells, "steady");
   }
 
-  return {
-    currentCells: current,
-    highFrames: 0,
-    lowFrames: 0,
-    changed: current !== state.currentCells,
-    direction: "steady",
-  };
+  return writeTerminalPressureResult(target, current, 0, 0, current !== state.currentCells, "steady");
 }
 
 /** Converts terminal output bytes over a sample window into bytes per second. */
@@ -399,4 +372,30 @@ function nextHigherLevel(value: number, levels: readonly number[]): number {
     if (candidate > value) return candidate;
   }
   return levels[levels.length - 1]!;
+}
+
+function emptyTerminalPressureResult(): WorkbenchThreeTerminalPressureResult {
+  return {
+    currentCells: 0,
+    highFrames: 0,
+    lowFrames: 0,
+    changed: false,
+    direction: "steady",
+  };
+}
+
+function writeTerminalPressureResult(
+  target: WorkbenchThreeTerminalPressureResult,
+  currentCells: number,
+  highFrames: number,
+  lowFrames: number,
+  changed: boolean,
+  direction: WorkbenchThreeTerminalPressureResult["direction"],
+): WorkbenchThreeTerminalPressureResult {
+  target.currentCells = currentCells;
+  target.highFrames = highFrames;
+  target.lowFrames = lowFrames;
+  target.changed = changed;
+  target.direction = direction;
+  return target;
 }

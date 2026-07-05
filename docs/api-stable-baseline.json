@@ -5422,6 +5422,13 @@
     },
     {
       "module": "src/app/workbench_three_terminal_pressure.ts",
+      "name": "resolveWorkbenchThreeTerminalPressureBudgetInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_three_terminal_pressure.ts",
       "name": "resolveWorkbenchThreeTerminalPressureUpdate",
       "kind": "function",
       "typeOnly": false,

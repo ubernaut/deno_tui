@@ -3,6 +3,7 @@ import {
   createWorkbenchThreeTerminalPressureState,
   formatWorkbenchThreeTerminalPressureUpdateLog,
   resolveWorkbenchThreeTerminalPressureBudget,
+  resolveWorkbenchThreeTerminalPressureBudgetInto,
   resolveWorkbenchThreeTerminalPressureUpdate,
   shouldApplyWorkbenchThreeTerminalPressureSample,
   shouldCountWorkbenchThreeGridPressure,
@@ -35,6 +36,29 @@ Deno.test("workbench Three terminal pressure steps down across sustained heavy o
   Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, options));
   Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, options));
   assertEquals(state.currentCells, 240);
+});
+
+Deno.test("workbench Three terminal pressure budget can reuse caller-owned results", () => {
+  const state = createWorkbenchThreeTerminalPressureState(960);
+  const target = {
+    currentCells: 0,
+    highFrames: 0,
+    lowFrames: 0,
+    changed: false,
+    direction: "steady" as const,
+  };
+  const result = resolveWorkbenchThreeTerminalPressureBudgetInto(target, state, {
+    renderedThreeGrids: 1,
+    bytes: 90_000,
+    levels: [240, 480, 960],
+    highBytes: 80_000,
+    lowBytes: 35_000,
+    highFrameThreshold: 1,
+  });
+
+  assertEquals(result, target);
+  assertEquals(target.currentCells, 480);
+  assertEquals(target.direction, "down");
 });
 
 Deno.test("workbench Three terminal pressure recovers slowly after low output", () => {
