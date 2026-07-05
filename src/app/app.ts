@@ -10,11 +10,10 @@ import {
   type CommandKeyBindingOptions,
   type CommandKeymapBindingOptions,
 } from "./command_bindings.ts";
-import { CommandRegistry } from "./commands.ts";
+import { CommandRegistry, insertUniqueSortedString } from "./commands.ts";
 import { DisposableStack } from "./disposables.ts";
 import { bindMouseInteractions, MouseInteractionRouter } from "./mouse_bindings.ts";
 import { type Route, RouteManager } from "./router.ts";
-import { insertUniqueSortedString } from "./sorted_strings.ts";
 
 /** Construction options for a high-level TUI application shell. */
 export interface TuiAppOptions<TRoute extends Route = Route> {

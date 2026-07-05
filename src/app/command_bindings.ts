@@ -11,8 +11,7 @@ import {
   type WeightedSearchField,
 } from "../utils/search.ts";
 import type { Action } from "./actions.ts";
-import type { Command, CommandDispatch, CommandRegistry } from "./commands.ts";
-import { insertUniqueSortedString } from "./sorted_strings.ts";
+import { type Command, type CommandDispatch, type CommandRegistry, insertUniqueSortedString } from "./commands.ts";
 
 /** Public interface describing a command Surface Item. */
 export interface CommandSurfaceItem {
