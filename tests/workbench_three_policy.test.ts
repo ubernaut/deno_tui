@@ -44,11 +44,13 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
   ]);
   assertEquals(Array.from(WORKBENCH_THREE_FULLSCREEN_PRESSURE_LEVELS), [
     3840,
+    7680,
     15400,
+    30720,
   ]);
   assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 960);
   assertEquals(WORKBENCH_THREE_FULLSCREEN_MIN_CELLS, 3_840);
-  assertEquals(WORKBENCH_THREE_FULLSCREEN_MAX_CELLS, 15_400);
+  assertEquals(WORKBENCH_THREE_FULLSCREEN_MAX_CELLS, 30_720);
   assertEquals(WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS, WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 480_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 24_000);
@@ -96,16 +98,19 @@ Deno.test("API workbench Three policy keeps live panes faster than idle panes", 
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: true }), 1000 / 20);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(7_680, { live: true }), 1000 / 15);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(15_400, { live: true }), 1000 / 15);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(30_720, { live: true }), 1000 / 12);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(240, { live: false }), 1000 / 8);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: false }), 1000 / 5);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(7_680, { live: false }), 1000 / 4);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(15_400, { live: false }), 1000 / 4);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(30_720, { live: false }), 1000 / 4);
 });
 
 Deno.test("API workbench Three fullscreen render target follows viewport within policy bounds", () => {
   assertEquals(workbenchThreeFullscreenRenderCells({ width: 20, height: 10 }), WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
   assertEquals(workbenchThreeFullscreenRenderCells({ width: 100, height: 50 }), 5_000);
-  assertEquals(workbenchThreeFullscreenRenderCells({ width: 240, height: 90 }), WORKBENCH_THREE_FULLSCREEN_MAX_CELLS);
+  assertEquals(workbenchThreeFullscreenRenderCells({ width: 240, height: 90 }), 21_600);
+  assertEquals(workbenchThreeFullscreenRenderCells({ width: 360, height: 120 }), WORKBENCH_THREE_FULLSCREEN_MAX_CELLS);
   assertEquals(
     workbenchThreeFullscreenRenderCells(
       { width: 100, height: 50 },
@@ -199,15 +204,34 @@ Deno.test("API workbench Three policy uses measured body size for active fullscr
     ascii,
     liveMaxCells: 960,
     liveViewport: { width: 177, height: 45 },
-    fullscreenMaxCells: 15_400,
+    fullscreenMaxCells: 30_720,
     viewport: { width: 180, height: 54 },
     fullscreenViewportPadding: { columns: 6, rows: 10 },
   });
 
   assertEquals(snapshot.fullscreenViewportCells, 7_965);
   assertEquals(snapshot.fullscreenTargetCells, 7_965);
-  assertEquals(snapshot.effectiveMaxCells, 15_400);
+  assertEquals(snapshot.effectiveMaxCells, 30_720);
   assertEquals(snapshot.runtimeAscii.renderMaxCells, 7_965);
+});
+
+Deno.test("API workbench Three policy allows large fullscreen panes to use the exposed top render tier", () => {
+  const ascii = createDefaultWorkbenchAsciiOptions();
+  const snapshot = resolveWorkbenchThreeRuntimeBudgetSnapshot({
+    id: "three",
+    fullscreenId: "three",
+    ascii,
+    liveMaxCells: 960,
+    liveViewport: { width: 240, height: 95 },
+    fullscreenMaxCells: WORKBENCH_THREE_FULLSCREEN_MAX_CELLS,
+    viewport: { width: 246, height: 105 },
+    fullscreenViewportPadding: { columns: 6, rows: 10 },
+  });
+
+  assertEquals(snapshot.fullscreenViewportCells, 22_800);
+  assertEquals(snapshot.fullscreenTargetCells, 22_800);
+  assertEquals(snapshot.effectiveMaxCells, WORKBENCH_THREE_FULLSCREEN_MAX_CELLS);
+  assertEquals(snapshot.runtimeAscii.renderMaxCells, 22_800);
 });
 
 Deno.test("API workbench Three policy keeps live cap outside fullscreen Three panes", () => {
@@ -356,11 +380,11 @@ Deno.test("API workbench Three fullscreen pressure can still downshift on sustai
     Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
   }
 
-  assertEquals(state.currentCells, WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
+  assertEquals(state.currentCells, 15_400);
   assertEquals(state.highFrames, 0);
 });
 
-Deno.test("API workbench Three fullscreen pressure can recover to the large-pane tier", () => {
+Deno.test("API workbench Three fullscreen pressure recovers through large-pane tiers", () => {
   const state = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
   const sample = {
     ...API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY,
@@ -375,7 +399,7 @@ Deno.test("API workbench Three fullscreen pressure can recover to the large-pane
     Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
   }
 
-  assertEquals(state.currentCells, WORKBENCH_THREE_FULLSCREEN_MAX_CELLS);
+  assertEquals(state.currentCells, 7_680);
   assertEquals(state.lowFrames, 0);
 });
 

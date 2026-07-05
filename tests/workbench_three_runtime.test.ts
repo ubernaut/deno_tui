@@ -272,9 +272,9 @@ Deno.test("resolveApiWorkbenchThreePressureChange uses fullscreen pressure tiers
     observedFrameCount: 999,
   });
 
-  assertEquals(change.pressure, { currentCells: WORKBENCH_THREE_FULLSCREEN_MIN_CELLS, highFrames: 0, lowFrames: 0 });
+  assertEquals(change.pressure, { currentCells: 15_400, highFrames: 0, lowFrames: 0 });
   assertEquals(change.changed, true);
-  assertEquals(change.nextCells, WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
+  assertEquals(change.nextCells, 15_400);
 });
 
 Deno.test("ApiWorkbenchThreeRuntimeController records and resets rendered grid pressure samples", () => {
