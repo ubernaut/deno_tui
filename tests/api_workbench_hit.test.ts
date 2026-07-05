@@ -1,6 +1,7 @@
 import { assertEquals } from "./deps.ts";
 import {
   expandedApiWorkbenchTouchHitRect,
+  findApiWorkbenchHitTarget,
   isApiWorkbenchTouchOptimizedLayout,
   resolveApiWorkbenchHitWindowId,
   resolveApiWorkbenchTitlebarHitAction,
@@ -8,6 +9,7 @@ import {
   resolveApiWorkbenchWindowVScrollbarOffset,
   resolveApiWorkbenchWorkspaceScrollbarOffset,
 } from "../app/api_workbench_hit.ts";
+import type { Rectangle } from "../src/types.ts";
 
 const ids = {
   terminalShell: "terminal-shell",
@@ -117,3 +119,41 @@ Deno.test("api workbench expanded touch hit rect grows small targets and clips t
     { column: 0, row: 0, width: 4, height: 2 },
   );
 });
+
+Deno.test("api workbench shared hit lookup expands targets only for touch layouts", () => {
+  const targets = hitStack([
+    { rect: { column: 10, row: 5, width: 2, height: 1 }, action: "small" },
+    { rect: { column: 20, row: 5, width: 4, height: 1 }, action: "direct" },
+  ]);
+  const bounds = { column: 0, row: 0, width: 40, height: 20 };
+
+  assertEquals(findApiWorkbenchHitTarget({ targets, x: 21, y: 5, bounds })?.action, "direct");
+  assertEquals(findApiWorkbenchHitTarget({ targets, x: 8, y: 4, bounds })?.action, undefined);
+  assertEquals(findApiWorkbenchHitTarget({ targets, x: 8, y: 4, bounds, touchOptimized: true })?.action, "small");
+});
+
+function hitStack<TAction>(entries: Array<{ rect: Rectangle; action: TAction }>) {
+  return {
+    find(x: number, y: number) {
+      for (let index = entries.length - 1; index >= 0; index -= 1) {
+        const entry = entries[index]!;
+        if (contains(entry.rect, x, y)) return entry;
+      }
+    },
+    findExpanded(
+      x: number,
+      y: number,
+      expand: (rect: Rectangle, target: { rect: Rectangle; action: TAction }) => Rectangle | undefined,
+    ) {
+      for (let index = entries.length - 1; index >= 0; index -= 1) {
+        const entry = entries[index]!;
+        const rect = expand(entry.rect, entry);
+        if (rect && contains(rect, x, y)) return { rect, action: entry.action };
+      }
+    },
+  };
+}
+
+function contains(rect: Rectangle, x: number, y: number): boolean {
+  return x >= rect.column && x < rect.column + rect.width && y >= rect.row && y < rect.row + rect.height;
+}

@@ -226,7 +226,7 @@ import {
   TERMINAL_SHELL_WINDOW_ID,
 } from "./api_workbench_catalog.ts";
 import {
-  expandedApiWorkbenchTouchHitRect,
+  findApiWorkbenchHitTarget,
   isApiWorkbenchTouchOptimizedLayout,
   resolveApiWorkbenchHitWindowId,
   resolveApiWorkbenchTitlebarHitAction,
@@ -4658,14 +4658,13 @@ function addHit(rect: Rectangle, action: HitAction): void {
 }
 
 function findHit(x: number, y: number): { rect: Rectangle; action: HitAction } | undefined {
-  const target = hitTargets.find(x, y);
-  if (target) return target;
-  if (!isTouchOptimizedLayout()) return undefined;
-  return hitTargets.findExpanded(x, y, (rect) =>
-    expandedApiWorkbenchTouchHitRect({
-      rect,
-      bounds: { column: 0, row: 0, width: currentWidth(), height: currentHeight() },
-    }));
+  return findApiWorkbenchHitTarget({
+    targets: hitTargets,
+    x,
+    y,
+    bounds: { column: 0, row: 0, width: currentWidth(), height: currentHeight() },
+    touchOptimized: isTouchOptimizedLayout(),
+  });
 }
 
 function isTouchOptimizedLayout(): boolean {

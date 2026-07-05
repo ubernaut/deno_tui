@@ -49,6 +49,28 @@ export interface ApiWorkbenchTouchHitRectInput {
   bounds: Rectangle;
 }
 
+export interface ApiWorkbenchHitTarget<TAction> {
+  rect: Rectangle;
+  action: TAction;
+}
+
+export interface ApiWorkbenchHitTargetStack<TAction> {
+  find(x: number, y: number): ApiWorkbenchHitTarget<TAction> | undefined;
+  findExpanded(
+    x: number,
+    y: number,
+    expand: (rect: Rectangle, target: ApiWorkbenchHitTarget<TAction>) => Rectangle | undefined,
+  ): ApiWorkbenchHitTarget<TAction> | undefined;
+}
+
+export interface FindApiWorkbenchHitTargetInput<TAction> {
+  targets: ApiWorkbenchHitTargetStack<TAction>;
+  x: number;
+  y: number;
+  bounds: Rectangle;
+  touchOptimized?: boolean;
+}
+
 /** Maps a renderer-neutral titlebar button kind to the workbench hit action it should trigger. */
 export function resolveApiWorkbenchTitlebarHitAction<TWindowId extends string>(
   id: TWindowId,
@@ -159,6 +181,20 @@ export function expandedApiWorkbenchTouchHitRect(input: ApiWorkbenchTouchHitRect
     },
     bounds,
   );
+}
+
+/** Finds a workbench hit target with optional touch expansion using the shared API workbench policy. */
+export function findApiWorkbenchHitTarget<TAction>(
+  input: FindApiWorkbenchHitTargetInput<TAction>,
+): ApiWorkbenchHitTarget<TAction> | undefined {
+  const target = input.targets.find(input.x, input.y);
+  if (target) return target;
+  if (!input.touchOptimized) return undefined;
+  return input.targets.findExpanded(input.x, input.y, (rect, target) =>
+    expandedApiWorkbenchTouchHitRect({
+      rect,
+      bounds: input.bounds,
+    }) ?? target.rect);
 }
 
 function clipApiWorkbenchRect(rect: Rectangle, bounds: Rectangle): Rectangle {

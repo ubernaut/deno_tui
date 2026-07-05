@@ -17763,6 +17763,15 @@ function expandedApiWorkbenchTouchHitRect(input2) {
     bounds
   );
 }
+function findApiWorkbenchHitTarget(input2) {
+  const target = input2.targets.find(input2.x, input2.y);
+  if (target) return target;
+  if (!input2.touchOptimized) return void 0;
+  return input2.targets.findExpanded(input2.x, input2.y, (rect, target2) => expandedApiWorkbenchTouchHitRect({
+    rect,
+    bounds: input2.bounds
+  }) ?? target2.rect);
+}
 function clipApiWorkbenchRect(rect, bounds) {
   const column = Math.max(bounds.column, rect.column);
   const row = Math.max(bounds.row, rect.row);
@@ -21175,13 +21184,13 @@ function paint(value, fg = theme().text, bg = theme().background, bold = false) 
   return framePainter.paint(value, { fg, bg, bold });
 }
 function findHit(x, y) {
-  const target = hitTargets.find(x, y);
-  if (target) return target;
-  if (!isTouchOptimizedLayout()) return void 0;
-  return hitTargets.findExpanded(x, y, (rect) => expandedApiWorkbenchTouchHitRect({
-    rect,
-    bounds: { column: 0, row: 0, width: cols(), height: rowsCount() }
-  }));
+  return findApiWorkbenchHitTarget({
+    targets: hitTargets,
+    x,
+    y,
+    bounds: { column: 0, row: 0, width: cols(), height: rowsCount() },
+    touchOptimized: isTouchOptimizedLayout()
+  });
 }
 function isTouchOptimizedLayout() {
   const coarsePointer = globalThis.matchMedia?.("(pointer: coarse)")?.matches ?? false;
