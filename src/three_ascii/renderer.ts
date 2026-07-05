@@ -715,14 +715,14 @@ export class ThreeAsciiRenderer {
     const initStart = initialized ? 0 : performance.now();
     await this.init();
     const initMs = initialized ? 0 : performance.now() - initStart;
+    this.applySize();
+    this.updateCameraAspect();
     const updateStart = performance.now();
     if (onFrame) {
       await onFrame(deltaTime);
     }
     const updateMs = performance.now() - updateStart;
     const renderStart = performance.now();
-    this.applySize();
-    this.updateCameraAspect();
     this.applyRenderProfile(selection, effectState);
     this.renderPipeline!.render();
     return { initMs, updateMs, renderMs: performance.now() - renderStart };

@@ -732,6 +732,47 @@ Deno.test("ThreeAsciiRenderer resizes Acerola targets with the backend renderer"
   assertEquals(asciiNodeSizes, [[12 * THREE_ASCII_TILE_SIZE, 6 * THREE_ASCII_TILE_SIZE]]);
 });
 
+Deno.test("ThreeAsciiRenderer updates camera aspect before scene frame callbacks after resize", async () => {
+  const camera = new PerspectiveCamera(42, 1, 0.1, 100);
+  const renderer = new ThreeAsciiRenderer({
+    scene: new Scene(),
+    camera,
+    columns: 8,
+    rows: 8,
+    pixelAspectRatio: 1,
+  });
+  const observedAspects: number[] = [];
+  const internals = renderer as unknown as {
+    initPromise: Promise<void>;
+    renderer: { setSize: (_width: number, _height: number) => void };
+    asciiNode: {
+      setSize: (_width: number, _height: number) => void;
+      setRenderProfile: (_profile: AcerolaAsciiRenderProfile) => void;
+    };
+    renderPipeline: { render: () => void };
+    renderScene: (
+      deltaTime: number,
+      onFrame?: (deltaTime: number) => void | Promise<void>,
+      selection?: { renderAnsi: boolean; renderImage: boolean },
+    ) => Promise<unknown>;
+  };
+
+  internals.initPromise = Promise.resolve();
+  internals.renderer = { setSize: () => {} };
+  internals.asciiNode = {
+    setSize: () => {},
+    setRenderProfile: () => {},
+  };
+  internals.renderPipeline = { render: () => {} };
+
+  renderer.setSize(16, 8);
+  await internals.renderScene(0, () => {
+    observedAspects.push(camera.aspect);
+  }, { renderAnsi: true, renderImage: false });
+
+  assertEquals(observedAspects, [2]);
+});
+
 Deno.test("ThreeAsciiRenderer marks compute resources dirty when terminal glyph style changes", () => {
   const renderer = new ThreeAsciiRenderer({
     scene: new Scene(),
