@@ -212,6 +212,7 @@ import {
   apiWorkbenchPanelTitle,
   type ApiWorkbenchProcessRow,
   apiWorkbenchRows,
+  apiWorkbenchTerminalOutputLineStyle,
   apiWorkbenchTerminalStatusToneColor,
   type ApiWorkbenchThemeSpec,
   apiWorkbenchVisualizationSupportsThree,
@@ -454,15 +455,6 @@ type SavedWorkspace = WorkbenchWorkspace<AsciiOptions>;
 type SavedWorkspaceWindow = WorkbenchWorkspaceWindow<AsciiOptions>;
 
 type WorkspaceNameMode = "save" | "rename";
-
-function terminalOutputLineStyle(
-  source: "stdout" | "stderr" | "system",
-  t: ThemeSpec,
-): { fg: string; bg: string; bold?: boolean } {
-  if (source === "stderr") return { fg: t.danger, bg: t.surface, bold: true };
-  if (source === "system") return { fg: t.warn, bg: t.panelSoft, bold: true };
-  return { fg: t.text, bg: t.surface };
-}
 
 function terminalAnsiColor(code: number | undefined, t: ThemeSpec, background: boolean): string | undefined {
   if (code === undefined) return undefined;
@@ -1981,7 +1973,7 @@ function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
       ? { fg: t.soft, bg: t.panelSoft }
       : projected.kind === "empty"
       ? { fg: t.muted, bg: t.surface }
-      : terminalOutputLineStyle(projected.source ?? "stdout", t);
+      : apiWorkbenchTerminalOutputLineStyle(projected.source ?? "stdout", t);
     write(
       frame,
       row + index,

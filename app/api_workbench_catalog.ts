@@ -62,6 +62,15 @@ export function apiWorkbenchTerminalStatusToneColor(
   }
 }
 
+export function apiWorkbenchTerminalOutputLineStyle(
+  source: "stdout" | "stderr" | "system",
+  theme: ApiWorkbenchThemeSpec,
+): { fg: string; bg: string; bold?: boolean } {
+  if (source === "stderr") return { fg: theme.danger, bg: theme.surface, bold: true };
+  if (source === "system") return { fg: theme.warn, bg: theme.panelSoft, bold: true };
+  return { fg: theme.text, bg: theme.surface };
+}
+
 export const apiWorkbenchPanelTitles: Record<string, string> = {
   explorer: "Explorer",
   inspector: "Inspector",

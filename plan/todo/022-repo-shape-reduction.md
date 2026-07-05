@@ -129,6 +129,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     frame ownership, grid publishing, and raster-image lifecycle logic in one Three panel core module
   - API workbench terminal paint helpers are now private to `app/api_workbench.ts`, avoiding a reusable `src/app` shard
     for renderer-specific color mapping that is not part of the public terminal API
+  - API workbench terminal status and output-line colors now live in `app/api_workbench_catalog.ts`, keeping shared
+    console/browser presentation policy app-local without adding public terminal API surface
   - the unused allocating `resolveSourceFrames` app wrapper was removed; runtime paths use the reusable
     `resolveSourceFramesInto` buffer API directly
   - Three ASCII compute-mode resolution is folded into `src/three_ascii/effect_state.ts`, removing an internal renderer

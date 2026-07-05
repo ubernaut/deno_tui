@@ -8,6 +8,7 @@ import {
   apiWorkbenchPanelTitle,
   apiWorkbenchRows,
   apiWorkbenchShortPanelTitle,
+  apiWorkbenchTerminalOutputLineStyle,
   apiWorkbenchTerminalStatusToneColor,
   apiWorkbenchVisualizationSupportsThree,
   apiWorkbenchWindowTitle,
@@ -91,6 +92,25 @@ Deno.test("api workbench catalog maps terminal status tones through active theme
   assertEquals(apiWorkbenchTerminalStatusToneColor("starting", theme), theme.accent);
   assertEquals(apiWorkbenchTerminalStatusToneColor("idle", theme), theme.borderStrong);
   assertEquals(apiWorkbenchTerminalStatusToneColor(undefined, theme), theme.borderStrong);
+});
+
+Deno.test("api workbench catalog maps terminal output line styles through active theme colors", () => {
+  const theme = createApiWorkbenchThemes()[0]!;
+
+  assertEquals(apiWorkbenchTerminalOutputLineStyle("stdout", theme), {
+    fg: theme.text,
+    bg: theme.surface,
+  });
+  assertEquals(apiWorkbenchTerminalOutputLineStyle("stderr", theme), {
+    fg: theme.danger,
+    bg: theme.surface,
+    bold: true,
+  });
+  assertEquals(apiWorkbenchTerminalOutputLineStyle("system", theme), {
+    fg: theme.warn,
+    bg: theme.panelSoft,
+    bold: true,
+  });
 });
 
 Deno.test("api workbench catalog exposes built-in window order", () => {
