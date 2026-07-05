@@ -16,7 +16,7 @@ import {
   WORKBENCH_THREE_INITIAL_CELLS,
 } from "./workbench_three_policy.ts";
 
-const livePressureLevelCache = new Map<number, readonly number[]>();
+const pressureLevelCache = new Map<string, readonly number[]>();
 
 const pressureChangeUpdateTargets = new WeakMap<
   ApiWorkbenchThreePressureChange,
@@ -107,9 +107,7 @@ export function resolveApiWorkbenchThreePressureChangeInto(
   const policy = input.fullscreenThree
     ? API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY
     : API_WORKBENCH_THREE_PRESSURE_POLICY;
-  const levels = input.fullscreenThree
-    ? policy.levels
-    : livePressureLevelsForCurrentCells(input.currentCells, policy.levels);
+  const levels = pressureLevelsForCurrentCells(input.currentCells, policy.levels);
   const next = resolveWorkbenchThreeTerminalPressureUpdateInto(pressureChangeUpdateTarget(target), input.pressure, {
     ...policy,
     levels,
@@ -149,15 +147,14 @@ export function resolveApiWorkbenchThreePressureChangeInto(
   return target;
 }
 
-function livePressureLevelsForCurrentCells(currentCells: number, levels: readonly number[]): readonly number[] {
+function pressureLevelsForCurrentCells(currentCells: number, levels: readonly number[]): readonly number[] {
   const current = Math.max(1, Math.floor(currentCells));
   if (levels.includes(current)) return levels;
-  const max = levels[levels.length - 1] ?? current;
-  if (current <= max) return levels;
-  let cached = livePressureLevelCache.get(current);
+  const cacheKey = `${current}|${levels.join(",")}`;
+  let cached = pressureLevelCache.get(cacheKey);
   if (!cached) {
-    cached = [...levels, current];
-    livePressureLevelCache.set(current, cached);
+    cached = [...levels, current].sort((left, right) => left - right);
+    pressureLevelCache.set(cacheKey, cached);
   }
   return cached;
 }

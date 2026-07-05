@@ -492,6 +492,22 @@ Deno.test("resolveApiWorkbenchThreePressureChange preserves viewport-promoted li
   assertEquals(change.scoped, true);
 });
 
+Deno.test("resolveApiWorkbenchThreePressureChange preserves viewport-promoted fullscreen budgets on broad redraws", () => {
+  const change = resolveApiWorkbenchThreePressureChange({
+    pressure: { currentCells: 5_624, highFrames: 2, lowFrames: 3 },
+    currentCells: 5_624,
+    fullscreenThree: true,
+    frameIntervalMs: 1000 / 20,
+    stats: { changed: 47, bytes: 900_000, durationMs: 8 },
+    sample: { renderedThreeGrids: 1, renderedThreeRows: 38 },
+  });
+
+  assertEquals(change.pressure, { currentCells: 5_624, highFrames: 0, lowFrames: 0 });
+  assertEquals(change.changed, false);
+  assertEquals(change.nextCells, 5_624);
+  assertEquals(change.scoped, false);
+});
+
 Deno.test("resolveApiWorkbenchThreePressureChange projects downshift and log message", () => {
   const change = resolveApiWorkbenchThreePressureChange({
     pressure: { currentCells: 960, highFrames: 3, lowFrames: 0 },
