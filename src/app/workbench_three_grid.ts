@@ -109,10 +109,7 @@ export function writeWorkbenchThreeGrid(
         lastProjectedRow = source;
         continue;
       }
-      rowBuffer.length = targetWidth;
-      for (let column = 0; column < targetWidth; column += 1) {
-        rowBuffer[column] = source[sourceColumnIndexes[column]!] ?? fallbackCell;
-      }
+      projectScaledGridRowInto(rowBuffer, source, sourceColumnIndexes, targetWidth, fallbackCell);
       writeProjectedGridRow(target, rect.column + columnOffset, rowBuffer, targetWidth);
       lastProjectedSourceRow = sourceRow;
       lastProjectedRow = rowBuffer;
@@ -159,6 +156,31 @@ function writeProjectedGridRow(
     return;
   }
   writeFrameCellsUnchecked(target, column, values, targetWidth);
+}
+
+function projectScaledGridRowInto(
+  target: string[],
+  source: readonly string[],
+  sourceColumnIndexes: readonly number[],
+  targetWidth: number,
+  fallbackCell: string,
+): string[] {
+  target.length = targetWidth;
+  for (let column = 0; column < targetWidth;) {
+    const sourceColumn = sourceColumnIndexes[column]!;
+    const cell = source[sourceColumn] ?? fallbackCell;
+    let next = column + 1;
+    while (next < targetWidth && sourceColumnIndexes[next] === sourceColumn) {
+      next += 1;
+    }
+    if (next - column === 1) {
+      target[column] = cell;
+    } else {
+      target.fill(cell, column, next);
+    }
+    column = next;
+  }
+  return target;
 }
 
 export function resolveWorkbenchThreeGridProjection(
