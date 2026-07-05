@@ -3,6 +3,7 @@ import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import { emptySnapshot } from "../app/system_metrics_snapshot.ts";
 import type { RenderContext, SlotConfig, SourceFrame, SystemSnapshot, ThreeSceneMode } from "../app/types.ts";
 import { buildVisualizationDrive } from "../app/visualization_drive.ts";
+import { renderVisualization } from "../app/visualizations.ts";
 import {
   appendThreeSceneFooter,
   driveThreeSignal,
@@ -130,6 +131,14 @@ Deno.test("three fallback body renders bounded mode-specific text fields", () =>
   assertMatch(body, /CPU-MAI/u);
   assert(lines.length >= 3);
   assert(lines.every((line) => line.length <= fallbackContext.width));
+});
+
+Deno.test("three visualization renderer exposes a chunky text fallback body", () => {
+  const rendered = renderVisualization(fallbackContext);
+
+  assertMatch(rendered.body, /LATTICE DRIVE/);
+  assertMatch(rendered.body, /[█▇▆▅▄▃▂▁]/u);
+  assertEquals(rendered.three?.mode, "lattice");
 });
 
 Deno.test("three fallback body covers all scene modes with visible output", () => {

@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `731`
+- Tracked files after the current consolidation passes: `730`
 - Tracked top-level file counts:
   - `src`: `349`
-  - `tests`: `164`
+  - `tests`: `163`
   - `app`: `47`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,188` lines across `37` files
   - `app`: `20,426` lines across `47` files
   - `examples`: `8,732` lines across `41` files
-  - `tests`: `49,244` lines across `164` files
+  - `tests`: `49,147` lines across `163` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `24MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -94,7 +94,7 @@ The library core is real and valuable, but it needs clearer boundaries:
 - Completed first passes:
   - `tests/utils/*` are now `tests/utils.test.ts`
   - API workbench explorer, inspector, and log projector tests are now `tests/workbench_panels.test.ts`
-  - visualization Three fallback/signal tests are now `tests/visualization_three.test.ts`
+  - visualization Three fallback/signal and renderer fallback tests are now `tests/visualization_three.test.ts`
   - system metric diagnostics tests are part of `tests/system_metrics.test.ts`
   - tiny theme catalog, ANSI facade, manifest, and validation tests are now `tests/theme_core.test.ts`
   - theme provider inspection, preview, and report tests are now `tests/theme_provider_workflows.test.ts`
@@ -131,9 +131,9 @@ The library core is real and valuable, but it needs clearer boundaries:
 - Continue using benchmark cases for hot helpers, but treat live probes as required evidence:
   - `deno task three-workbench:startup-probe`
   - `deno task three-ascii:live-probe -- --frames 45 --glyphs blocks --max-cells 960 --check --max-average-ms 40`
-- Latest workbench block-mode startup probe after the Neon Three catalog consolidation: `7.65ms` steady average, about
-  `130.7 fps` at `53x17` cells with the capped default-workbench probe. Latest standalone block-mode live probe:
-  `18.12ms` steady average, about `55.2 fps` at `31x15` cells.
+- Latest workbench block-mode startup probe after the visualization Three fallback test consolidation: `6.93ms` steady
+  average, about `144.3 fps` at `53x17` cells with the capped default-workbench probe. Latest standalone block-mode live
+  probe: `18.58ms` steady average, about `53.8 fps` at `31x15` cells.
 - Avoid speculative micro-optimizations unless they improve measured workbench/default-demo behavior.
 
 ### P2: Split Demo Framework From Library Framework
