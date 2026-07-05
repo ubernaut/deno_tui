@@ -1,7 +1,7 @@
 import { assert, assertEquals, assertNotEquals, assertNotStrictEquals } from "./deps.ts";
 import { assertRejects } from "./deps.ts";
 import { createNeonThreeScene } from "../app/neon_three.ts";
-import { nextFrameDelay } from "../src/runtime/frame_timing.ts";
+import { nextFrameDelay } from "../src/runtime/render_loop.ts";
 import { threePanelFrameUpdate } from "../src/app/three_panel_core.ts";
 import {
   isCurrentThreePanelFrame,

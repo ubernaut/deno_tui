@@ -8,8 +8,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 - Entrypoints: 9
 - Module visits: 503
 - Re-export declarations: 494
-- Exported symbols: 5335
-- Documented symbols: 5335
+- Exported symbols: 5338
+- Documented symbols: 5338
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,12 +18,12 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     224 |    2293 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     203 |    2145 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     224 |    2294 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     203 |    2146 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      87 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
-| `./runtime`     | `./mod.runtime.ts`             | shared   | beta         |      31 |     392 | 100.00% |
+| `./runtime`     | `./mod.runtime.ts`             | shared   | beta         |      31 |     393 | 100.00% |
 | `./terminal`    | `./mod.terminal.ts`            | terminal | beta         |      15 |     157 | 100.00% |
 | `./testing`     | `./mod.testing.ts`             | shared   | beta         |       4 |      22 | 100.00% |
 | `./layout/yoga` | `./src/layout/solvers/yoga.ts` | shared   | experimental |       1 |       3 | 100.00% |
@@ -41,8 +41,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Entrypoint: `mod.ts`
 - Modules: 224
 - Re-export declarations: 223
-- Exported symbols: 2293
-- Documented symbols: 2293
+- Exported symbols: 2294
+- Documented symbols: 2294
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -212,7 +212,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/runtime/process_session.ts`](#src-runtime-process-session-ts)                             |          0 |       9 |          9 |
 | [`src/runtime/profiles.ts`](#src-runtime-profiles-ts)                                           |          0 |      24 |         24 |
 | [`src/runtime/pty_backend.ts`](#src-runtime-pty-backend-ts)                                     |          0 |      12 |         12 |
-| [`src/runtime/render_loop.ts`](#src-runtime-render-loop-ts)                                     |          0 |      13 |         13 |
+| [`src/runtime/render_loop.ts`](#src-runtime-render-loop-ts)                                     |          0 |      14 |         14 |
 | [`src/runtime/renderer_backends.ts`](#src-runtime-renderer-backends-ts)                         |          0 |      24 |         24 |
 | [`src/runtime/resource_bindings.ts`](#src-runtime-resource-bindings-ts)                         |          0 |       4 |          4 |
 | [`src/runtime/resource.ts`](#src-runtime-resource-ts)                                           |          0 |      14 |         14 |
@@ -2941,6 +2941,7 @@ _No direct exported symbols._
 | `MicrotaskScheduler`           | class     | no        | yes   |
 | `MicrotaskSchedulerInspection` | interface | yes       | yes   |
 | `MicrotaskSchedulerOptions`    | interface | yes       | yes   |
+| `nextFrameDelay`               | function  | no        | yes   |
 | `RenderLoop`                   | class     | no        | yes   |
 | `RenderLoopFrame`              | interface | yes       | yes   |
 | `RenderLoopInspection`         | interface | yes       | yes   |
@@ -3956,8 +3957,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Entrypoint: `mod.web.ts`
 - Modules: 203
 - Re-export declarations: 202
-- Exported symbols: 2145
-- Documented symbols: 2145
+- Exported symbols: 2146
+- Documented symbols: 2146
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -4117,7 +4118,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/runtime/graphics_surface.ts`](#src-runtime-graphics-surface-ts)                           |          0 |      15 |         15 |
 | [`src/runtime/kitty_graphics.ts`](#src-runtime-kitty-graphics-ts)                               |          0 |      25 |         25 |
 | [`src/runtime/profiles.ts`](#src-runtime-profiles-ts)                                           |          0 |      24 |         24 |
-| [`src/runtime/render_loop.ts`](#src-runtime-render-loop-ts)                                     |          0 |      13 |         13 |
+| [`src/runtime/render_loop.ts`](#src-runtime-render-loop-ts)                                     |          0 |      14 |         14 |
 | [`src/runtime/renderer_backends.ts`](#src-runtime-renderer-backends-ts)                         |          0 |      24 |         24 |
 | [`src/runtime/resource_bindings.ts`](#src-runtime-resource-bindings-ts)                         |          0 |       4 |          4 |
 | [`src/runtime/resource.ts`](#src-runtime-resource-ts)                                           |          0 |      14 |         14 |
@@ -6723,6 +6724,7 @@ _No direct exported symbols._
 | `MicrotaskScheduler`           | class     | no        | yes   |
 | `MicrotaskSchedulerInspection` | interface | yes       | yes   |
 | `MicrotaskSchedulerOptions`    | interface | yes       | yes   |
+| `nextFrameDelay`               | function  | no        | yes   |
 | `RenderLoop`                   | class     | no        | yes   |
 | `RenderLoopFrame`              | interface | yes       | yes   |
 | `RenderLoopInspection`         | interface | yes       | yes   |
@@ -8156,8 +8158,8 @@ Shared runtime primitives for scheduling, storage, workers, resources, diagnosti
 - Entrypoint: `mod.runtime.ts`
 - Modules: 31
 - Re-export declarations: 30
-- Exported symbols: 392
-- Documented symbols: 392
+- Exported symbols: 393
+- Documented symbols: 393
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -8178,7 +8180,7 @@ Shared runtime primitives for scheduling, storage, workers, resources, diagnosti
 | [`src/runtime/process_session.ts`](#src-runtime-process-session-ts)                     |          0 |       9 |          9 |
 | [`src/runtime/profiles.ts`](#src-runtime-profiles-ts)                                   |          0 |      24 |         24 |
 | [`src/runtime/pty_backend.ts`](#src-runtime-pty-backend-ts)                             |          0 |      12 |         12 |
-| [`src/runtime/render_loop.ts`](#src-runtime-render-loop-ts)                             |          0 |      13 |         13 |
+| [`src/runtime/render_loop.ts`](#src-runtime-render-loop-ts)                             |          0 |      14 |         14 |
 | [`src/runtime/renderer_backends.ts`](#src-runtime-renderer-backends-ts)                 |          0 |      24 |         24 |
 | [`src/runtime/resource_bindings.ts`](#src-runtime-resource-bindings-ts)                 |          0 |       4 |          4 |
 | [`src/runtime/resource.ts`](#src-runtime-resource-ts)                                   |          0 |      14 |         14 |
@@ -8457,6 +8459,7 @@ _No direct exported symbols._
 | `MicrotaskScheduler`           | class     | no        | yes   |
 | `MicrotaskSchedulerInspection` | interface | yes       | yes   |
 | `MicrotaskSchedulerOptions`    | interface | yes       | yes   |
+| `nextFrameDelay`               | function  | no        | yes   |
 | `RenderLoop`                   | class     | no        | yes   |
 | `RenderLoopFrame`              | interface | yes       | yes   |
 | `RenderLoopInspection`         | interface | yes       | yes   |

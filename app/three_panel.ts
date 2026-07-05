@@ -4,7 +4,7 @@ import { Effect, Signal, SignalBatchScheduler, type SignalOfObject } from "../sr
 import { emptyStyle } from "../src/theme.ts";
 import type { GraphicsSurface, GraphicsSurfaceInspection } from "../src/runtime/graphics_surface.ts";
 import type { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
-import { nextFrameDelay } from "../src/runtime/frame_timing.ts";
+import { nextFrameDelay } from "../src/runtime/render_loop.ts";
 import {
   ThreeAsciiRenderer,
   type ThreeAsciiRendererOptions,

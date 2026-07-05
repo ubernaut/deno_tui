@@ -11484,6 +11484,13 @@
     },
     {
       "module": "src/runtime/render_loop.ts",
+      "name": "nextFrameDelay",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/render_loop.ts",
       "name": "RenderLoop",
       "kind": "class",
       "typeOnly": false,

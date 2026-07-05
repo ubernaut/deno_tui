@@ -66,6 +66,13 @@ export interface FrameSchedulerOptions {
   onError?: (error: unknown) => void;
 }
 
+/** Returns the next frame delay after accounting for time already spent rendering the current frame. */
+export function nextFrameDelay(intervalMs: number, frameStartedAt: number, now: number): number {
+  const interval = Math.max(0, intervalMs);
+  const elapsed = Math.max(0, now - frameStartedAt);
+  return Math.max(0, interval - elapsed);
+}
+
 /** Coalesces repeated scheduling requests into one pending microtask. */
 export class MicrotaskScheduler {
   readonly #queueMicrotask: (callback: () => void) => void;

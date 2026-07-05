@@ -20,7 +20,7 @@ import {
   type ThreeAsciiRenderFrame,
   type ThreeAsciiRenderFrameOptions,
 } from "../three_ascii/renderer.ts";
-import { nextFrameDelay } from "../runtime/frame_timing.ts";
+import { nextFrameDelay } from "../runtime/render_loop.ts";
 
 /** Public interface describing a three Ascii Grid Renderer. */
 export interface ThreeAsciiGridRenderer {
