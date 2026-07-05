@@ -1,5 +1,8 @@
 import { assert, assertEquals } from "./deps.ts";
 import {
+  explorerTextRowsInto,
+  projectedTextWidth,
+  workbenchDataContentWidth,
   workbenchExplorerRowsInto,
   type WorkbenchExplorerTheme,
   type WorkbenchInspectorBuffers,
@@ -7,6 +10,7 @@ import {
   type WorkbenchInspectorTheme,
   workbenchLogRowsFromSourcesInto,
   workbenchLogRowsInto,
+  workbenchWindowContentSize,
 } from "../app/workbench_panels.ts";
 import type { RowStyle } from "../src/app/workbench_rows.ts";
 import type { FileExplorerNode } from "../src/components/file_explorer.ts";
@@ -34,6 +38,23 @@ const inspectorTheme: WorkbenchInspectorTheme = {
 const directoryNode: FileExplorerNode = { id: "src", label: "src", kind: "directory", path: "src" };
 const fileNode: FileExplorerNode = { id: "src/mod.ts", label: "mod.ts", kind: "file", path: "src/mod.ts" };
 const fit = (value: string, width: number) => value.slice(0, Math.max(0, width));
+
+const contentSizeBase = {
+  id: "inspector",
+  viewport: { column: 4, row: 2, width: 20, height: 10 },
+  docs: ["short", "a much longer log row"],
+  explorerRows: ["src", "  mod.ts"],
+  dataColumns: [{ width: 4 }, { width: 8 }],
+  dataRowCount: 30,
+  terminalOutputLines: ["stdout one", "stderr line"],
+  terminalOutputWindowId: "terminalOutput",
+  terminalShellWindowId: "terminalShell",
+  isVisualizationWindow: (id: string) => id.startsWith("viz:"),
+  visualizationContentSize: (_id: string, _viewport: unknown, baseWidth: number, baseHeight: number) => ({
+    width: baseWidth + 3,
+    height: baseHeight + 4,
+  }),
+};
 
 const treeRows: TreeRow[] = [
   {
@@ -219,4 +240,50 @@ Deno.test("workbench log rows trims stale retained rows", () => {
   const rows = workbenchLogRowsInto(target, [], { text: "#fff", surface: "#000" });
 
   assertEquals(rows.length, 0);
+});
+
+Deno.test("workbenchWindowContentSize estimates built-in window content", () => {
+  assertEquals(workbenchWindowContentSize({ ...contentSizeBase, id: "explorer" }), { width: 20, height: 10 });
+  assertEquals(workbenchWindowContentSize({ ...contentSizeBase, id: "controls" }), { width: 20, height: 44 });
+  assertEquals(workbenchWindowContentSize({ ...contentSizeBase, id: "inspector" }), { width: 20, height: 18 });
+  assertEquals(workbenchWindowContentSize({ ...contentSizeBase, id: "logs" }), { width: 23, height: 10 });
+  assertEquals(workbenchWindowContentSize({ ...contentSizeBase, id: "data" }), { width: 24, height: 34 });
+  assertEquals(workbenchWindowContentSize({ ...contentSizeBase, id: "three" }), { width: 20, height: 10 });
+  assertEquals(workbenchWindowContentSize({ ...contentSizeBase, id: "htmlLayout" }), { width: 20, height: 20 });
+  assertEquals(workbenchWindowContentSize({ ...contentSizeBase, id: "unknown" }), { width: 20, height: 16 });
+});
+
+Deno.test("workbenchWindowContentSize clamps terminal content dimensions", () => {
+  assertEquals(workbenchWindowContentSize({ ...contentSizeBase, id: "terminalShell" }), { width: 72, height: 24 });
+  assertEquals(
+    workbenchWindowContentSize({
+      ...contentSizeBase,
+      id: "terminalOutput",
+      terminalOutputLines: ["x".repeat(300), "ok"],
+    }),
+    { width: 120, height: 16 },
+  );
+  assertEquals(
+    workbenchWindowContentSize({
+      ...contentSizeBase,
+      id: "terminalOutput",
+      viewport: { column: 0, row: 0, width: 140, height: 30 },
+      terminalOutputLines: Array.from({ length: 40 }, (_, index) => `line ${index}`),
+    }),
+    { width: 140, height: 44 },
+  );
+});
+
+Deno.test("workbenchWindowContentSize delegates visualization windows", () => {
+  assertEquals(workbenchWindowContentSize({ ...contentSizeBase, id: "viz:cpu" }), { width: 23, height: 14 });
+});
+
+Deno.test("workbench content-size helpers reuse text rows and measure projected text", () => {
+  const target = ["stale"];
+  const rows = explorerTextRowsInto(target, [{ text: "alpha" }, { text: "beta gamma" }], (entry) => entry.text);
+
+  assertEquals(rows, target);
+  assertEquals(rows, ["alpha", "beta gamma"]);
+  assertEquals(projectedTextWidth([{ text: "alpha" }, { text: "beta gamma" }], (entry) => entry.text), 10);
+  assertEquals(workbenchDataContentWidth([{ width: 4 }, {}, { width: 6 }]), 36);
 });
