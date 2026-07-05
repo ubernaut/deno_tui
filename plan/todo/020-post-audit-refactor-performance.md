@@ -1160,3 +1160,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Fixed API Workbench fullscreen rendering to use a viewport-sized maximized rectangle with zero workspace scroll
   offset, preventing stale virtual-layout offsets from clipping Three panes after fullscreen resize. Verified with a
   real PTY resize capture at 150x44 and focused layout/Three tests.
+- Tightened the shared status-bar renderer so clipped right-side shortcut hints keep a visible separator from the left
+  diagnostics segment. A real 118x34 PTY workbench capture no longer joins `warning` and `F10`, and the default Three
+  pane still reported roughly `5ms 333c live 20fps`.

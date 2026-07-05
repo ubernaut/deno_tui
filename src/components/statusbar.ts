@@ -13,11 +13,19 @@ export interface StatusBarOptions extends ComponentOptions {
 /** Renders status Bar into deterministic text rows. */
 export function renderStatusBar(left: string, right: string, width: number): string {
   const safeWidth = Math.max(0, width);
-  const leftText = left.slice(0, safeWidth);
+  let leftText = left.slice(0, safeWidth);
   const remaining = safeWidth - leftText.length;
   if (remaining <= 0) return leftText;
-  const rightText = right.slice(0, remaining);
-  const gap = Math.max(0, safeWidth - leftText.length - rightText.length);
+
+  const minGap = leftText.length > 0 && right.length > 0 ? Math.min(2, safeWidth) : 0;
+  let rightText = right.slice(0, remaining);
+  let gap = Math.max(0, safeWidth - leftText.length - rightText.length);
+  if (rightText.length > 0 && gap < minGap) {
+    const trim = Math.min(leftText.length, minGap - gap);
+    leftText = leftText.slice(0, leftText.length - trim);
+    rightText = right.slice(0, Math.max(0, safeWidth - leftText.length - minGap));
+    gap = rightText.length > 0 ? Math.max(minGap, safeWidth - leftText.length - rightText.length) : 0;
+  }
   return `${leftText}${" ".repeat(gap)}${rightText}`;
 }
 

@@ -57,7 +57,7 @@ Deno.test("workbench status helper composes aligned full status lines", () => {
       shortcutProfile: "web",
       width: 72,
     }),
-    "focus data | Unit-01 | tiles dense | diag ok1-8 focus  T theme  H help  ",
+    "focus data | Unit-01 | tiles dense | diag   1-8 focus  T theme  H help  ",
   );
 });
 
@@ -73,7 +73,7 @@ Deno.test("workbench status snapshot helper composes aligned status lines", () =
       width: 64,
       shortcutProfile: "web",
     }),
-    "focus Logs | Ghost Shell | tiles wide | slow frame1-8 focus  T t",
+    "focus Logs | Ghost Shell | tiles wide | slow fra  1-8 focus  T t",
   );
 });
 
