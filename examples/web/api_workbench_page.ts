@@ -19,7 +19,6 @@ import {
   DataTableController,
   defaultWorkbenchMinimizedState,
   FileExplorerController,
-  fillStringFrameRect,
   fitCellText,
   formatWorkbenchDiagnosticStatus,
   type HitTarget,
@@ -46,7 +45,6 @@ import {
   persistWorkbenchPanelWorkspaceState,
   prepareWorkbenchRows,
   ProgressBarController,
-  projectWorkbenchButton,
   projectWorkbenchButtonCommand,
   RadioGroupController,
   renderMenuBar,
@@ -189,10 +187,7 @@ import {
   type WorkbenchFrameRenderCommand,
   workbenchFrameRenderCommandsInto,
 } from "../../src/app/workbench_frame_render.ts";
-import {
-  type WorkbenchStyledRowRenderCommand,
-  workbenchStyledRowsRenderCommandsInto,
-} from "../../src/app/workbench_row_render.ts";
+import { WorkbenchFramePainter } from "../../src/app/workbench_frame_painter.ts";
 import type { RowStyle } from "../../src/app/workbench_rows.ts";
 import { workbenchThreePreviewRowsInto } from "../../app/workbench_visualization_window.ts";
 import {
@@ -392,7 +387,6 @@ const inspectorRenderRows: RowStyle[] = [];
 const inspectorActionTextRows: string[] = [];
 const inspectorWrappedTextRows: string[] = [];
 const logRenderRows: RowStyle[] = [];
-const styledRowRenderCommands: WorkbenchStyledRowRenderCommand[] = [];
 const htmlCssLayoutBoxes: ComputedLayoutBox[] = [];
 const htmlCssLayoutRenderCommands: HtmlCssLayoutRenderCommand[] = [];
 const shelfBuffers = new WorkbenchShelfBufferCache<PanelId>();
@@ -400,6 +394,14 @@ const menuBarHitLayouts: WorkbenchMenuBarHitLayout[] = [];
 const headerLayout: WorkbenchHeaderLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
 const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
 const windowFrameRenderCommands: WorkbenchFrameRenderCommand[] = [];
+const framePainter = new WorkbenchFramePainter<string[], ThemeSpec>({
+  width: () => cols(),
+  theme,
+  style: makeStyle,
+  contrastText,
+  fit,
+  write: writeStringFrameRow,
+});
 const workspaceScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const visiblePanelRects = new Map<PanelId, Rectangle>();
 const webTerminalActions: readonly WebTerminalAction[] = [
@@ -2634,34 +2636,18 @@ function isTextControlActive(): boolean {
   return active.peek() === "controls" && (activeControl.peek() === "input" || activeControl.peek() === "textbox");
 }
 function write(frame: string[], row: number, column: number, value: string): void {
-  writeStringFrameRow(frame, cols(), row, column, value);
+  framePainter.write(frame, row, column, value);
 }
 
 function writeStyledRows(frame: string[], rect: Rectangle, rows: readonly RowStyle[], sourceStart = 0): void {
-  const t = theme();
-  const commands = workbenchStyledRowsRenderCommandsInto(styledRowRenderCommands, {
-    rect,
-    rows,
-    sourceStart,
-    theme: t,
-    fit,
-  });
-  for (let index = 0; index < commands.length; index += 1) {
-    const command = commands[index]!;
-    write(
-      frame,
-      command.row,
-      command.column,
-      paint(command.text, command.fg, command.bg, command.bold),
-    );
-  }
+  framePainter.writeRows(frame, rect, rows, sourceStart);
 }
 
 function fit(value: string, width: number): string {
   return fitCellText(value, width);
 }
 function fillRect(frame: string[], rect: Rectangle, bg: string): void {
-  fillStringFrameRect(frame, cols(), rect, paint(" ".repeat(Math.max(0, rect.width)), theme().text, bg));
+  framePainter.fillRect(frame, rect, bg);
 }
 
 function drawFrame(frame: string[], rect: Rectangle, title: string, selected: boolean): void {
@@ -2701,19 +2687,11 @@ function writeButton(
     maxWidth?: number;
   } = {},
 ): number {
-  const button = projectWorkbenchButton(label, theme(), contrastText, {
-    compact: options.compact,
-    maxWidth: options.maxWidth,
-    state: options.state,
-    tone: options.tone,
-  });
-  if (button.width <= 0) return 0;
-  write(frame, row, column, paint(button.text, button.style.fg, button.style.bg, button.style.bold));
-  return button.width;
+  return framePainter.writeButton(frame, row, column, label, options);
 }
 
 function paint(value: string, fg = theme().text, bg = theme().background, bold = false): string {
-  return makeStyle({ fg, bg, bold })(value);
+  return framePainter.paint(value, { fg, bg, bold });
 }
 function findHit(x: number, y: number): HitTarget<Hit> | undefined {
   const target = hitTargets.find(x, y);

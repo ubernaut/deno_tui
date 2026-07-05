@@ -20,8 +20,6 @@ import {
   clampWorkbenchTileDensity,
   contrastText,
   dispatchWorkbenchTextPromptInput,
-  fillFrameRect,
-  fillFrameRow,
   findWorkbenchWorkspace,
   fitCellText as fit,
   formatWorkbenchDiagnosticStatus,
@@ -40,7 +38,6 @@ import {
   loadWorkbenchWorkspaceStorage,
   persistWorkbenchWorkspaceStorage,
   prepareWorkbenchFrame,
-  projectWorkbenchButton,
   projectWorkbenchButtonCommand,
   projectWorkbenchStandardTopMenuState,
   renderFrameRow,
@@ -350,10 +347,7 @@ import {
   type WorkbenchFrameRenderCommand,
   workbenchFrameRenderCommandsInto,
 } from "../src/app/workbench_frame_render.ts";
-import {
-  type WorkbenchStyledRowRenderCommand,
-  workbenchStyledRowsRenderCommandsInto,
-} from "../src/app/workbench_row_render.ts";
+import { WorkbenchFramePainter } from "../src/app/workbench_frame_painter.ts";
 import { type RowStyle, type ThreeHeaderPerformance, threeHeaderRows } from "../src/app/workbench_rows.ts";
 import { writeThreeHeaderRuntimePerformance } from "../src/app/workbench_three_header.ts";
 import { shouldCountWorkbenchThreeGridPressure } from "../src/app/workbench_three_terminal_pressure.ts";
@@ -572,7 +566,6 @@ const visualizationTextRows: string[] = [];
 const visualizationRenderRows: RowStyle[] = [];
 const threeFallbackRowsBuffer: RowStyle[] = [];
 const logRenderRows: RowStyle[] = [];
-const styledRowRenderCommands: WorkbenchStyledRowRenderCommand[] = [];
 const terminalOutputContentRows: string[] = [];
 const terminalOutputWindowRows: WorkbenchTerminalOutputWindowRow[] = [];
 const ASCII_DEMO_PRESET_IDS = asciiDemoPresetIds();
@@ -794,6 +787,14 @@ const workbenchThreeIdleFrameInterval = apiWorkbenchThreeFrameIntervalForCells(W
   live: false,
 });
 type Frame = WorkbenchFrame;
+const framePainter = new WorkbenchFramePainter<Frame, ThemeSpec>({
+  width: (target) => frameWidthHints.get(target) ?? currentWidth(),
+  theme,
+  style: makeStyle,
+  contrastText,
+  fit,
+  write: writeFrame,
+});
 interface DropdownOverlay {
   kind: "control" | "theme" | "newWindow" | "workspace";
   coordinate: "workspace" | "screen";
@@ -4614,46 +4615,27 @@ function pushLog(message: string): void {
 }
 
 function writeRows(frame: Frame, rect: Rectangle, rows: RowStyle[]): void {
-  const t = theme();
-  const commands = workbenchStyledRowsRenderCommandsInto(styledRowRenderCommands, {
-    rect,
-    rows,
-    theme: t,
-    fit,
-  });
-  for (let index = 0; index < commands.length; index += 1) {
-    const command = commands[index]!;
-    write(
-      frame,
-      command.row,
-      command.column,
-      paint(command.text, {
-        fg: command.fg,
-        bg: command.bg,
-        bold: command.bold,
-      }),
-    );
-  }
+  framePainter.writeRows(frame, rect, rows);
 }
 
 function write(frame: Frame, row: number, column: number, value: string): void {
-  writeFrame(frame, workbenchFrameWidth(frame), row, column, value);
+  framePainter.write(frame, row, column, value);
 }
 
 function fillRow(frame: Frame, row: number, bg: string): void {
-  fillFrameRow(frame, workbenchFrameWidth(frame), row, makeStyle({ bg }));
+  framePainter.fillRow(frame, row, bg);
 }
 
 function fillRect(frame: Frame, rect: Rectangle, bg: string): void {
-  fillFrameRect(frame, workbenchFrameWidth(frame), rect, makeStyle({ bg }));
+  framePainter.fillRect(frame, rect, bg);
 }
 
 function workbenchFrameWidth(frame: Frame): number {
-  return frameWidthHints.get(frame) ?? currentWidth();
+  return framePainter.width(frame);
 }
 
 function paint(text: string, options: { fg?: string; bg?: string; bold?: boolean } = {}): string {
-  return makeStyle({ fg: options.fg ?? theme().text, bg: options.bg, bold: options.bold })(text);
+  return framePainter.paint(text, options);
 }
 
 function writeButton(
@@ -4668,20 +4650,7 @@ function writeButton(
     maxWidth?: number;
   } = {},
 ): number {
-  const button = projectWorkbenchButton(
-    label,
-    theme(),
-    contrastText,
-    {
-      compact: options.compact,
-      maxWidth: options.maxWidth,
-      state: options.state,
-      tone: options.tone,
-    },
-  );
-  if (button.width <= 0) return 0;
-  write(frame, row, column, paint(button.text, button.style));
-  return button.width;
+  return framePainter.writeButton(frame, row, column, label, options);
 }
 
 function addHit(rect: Rectangle, action: HitAction): void {
