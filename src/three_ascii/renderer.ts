@@ -30,8 +30,10 @@ import {
   createThreeAsciiComputeResourcePlan,
   destroyThreeAsciiGpuBufferSlot,
   ensureThreeAsciiGpuBufferSlot,
+  THREE_ASCII_UNIFORM_FLOAT_COUNT,
   type ThreeAsciiComputeResourcePlanInput,
   type ThreeAsciiGpuBufferSlot,
+  writeThreeAsciiUniformValues,
 } from "./compute_resources.ts";
 import {
   resolveThreeAsciiComputeMode,
@@ -85,7 +87,6 @@ import {
   THREE_ASCII_TILE_SIZE,
   THREE_ASCII_WORKGROUP_SIZE,
 } from "./shaders.ts";
-import { THREE_ASCII_UNIFORM_FLOAT_COUNT, writeThreeAsciiUniformValues } from "./uniforms.ts";
 import { getCompatibleWebGPUDevice } from "./webgpu_compat.ts";
 
 const GPU_MAP_READ = 1;

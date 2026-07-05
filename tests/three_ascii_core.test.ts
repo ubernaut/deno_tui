@@ -33,8 +33,10 @@ import {
   createThreeAsciiComputeResourcePlan,
   destroyThreeAsciiGpuBufferSlot,
   ensureThreeAsciiGpuBufferSlot,
+  THREE_ASCII_UNIFORM_FLOAT_COUNT,
   type ThreeAsciiGpuBuffer,
   type ThreeAsciiGpuBufferDevice,
+  writeThreeAsciiUniformValues,
 } from "../src/three_ascii/compute_resources.ts";
 import {
   patchThreeAsciiEffectOptions,
@@ -95,7 +97,6 @@ import {
   THREE_ASCII_TILE_SIZE,
   THREE_ASCII_WORKGROUP_SIZE,
 } from "../src/three_ascii/shaders.ts";
-import { THREE_ASCII_UNIFORM_FLOAT_COUNT, writeThreeAsciiUniformValues } from "../src/three_ascii/uniforms.ts";
 
 Deno.test("three ascii shader constants preserve renderer dimensions", () => {
   assertEquals(THREE_ASCII_TILE_SIZE, 8);

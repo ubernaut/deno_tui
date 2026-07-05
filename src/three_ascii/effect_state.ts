@@ -3,8 +3,8 @@ import { Color } from "npm:three@0.183.2";
 
 import type { AcerolaAsciiNodeOptions } from "./AcerolaAsciiNode.ts";
 import { colorValue } from "./colors.ts";
+import type { ThreeAsciiUniformEffectState } from "./compute_resources.ts";
 import type { TerminalGlyphStyle } from "./glyphs.ts";
-import type { ThreeAsciiUniformEffectState } from "./uniforms.ts";
 
 interface ThreeAsciiEffectUniformLike<T> {
   value: T;

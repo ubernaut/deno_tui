@@ -141,6 +141,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     conversion and per-cell color-key reuse together instead of in a standalone internal shard
   - Three ASCII GPU buffer slot helpers are folded into `src/three_ascii/compute_resources.ts`, keeping WebGPU buffer
     lifecycle, pipeline caching, and bind-group resource helpers in one internal resource module
+  - Three ASCII compute uniform packing is folded into `src/three_ascii/compute_resources.ts`, keeping uniform buffer
+    layout and compute resource lifecycle in the same internal renderer module
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
