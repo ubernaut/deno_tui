@@ -230,6 +230,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   facade to re-export it for existing terminal/browser callers.
 - Moved the shared API workbench control hit-placement shape into the acyclic base module and split stepper hit
   placement into `api_workbench_stepper_hits.ts`, preserving the existing controls facade export surface.
+- Split API workbench control paint-style helpers into `api_workbench_control_styles.ts`, keeping terminal/browser theme
+  policy imports stable through the existing controls facade.
 - Added a driven fullscreen visual smoke for the API Workbench default Three pane so future checks verify fullscreen
   render-cell scale and truecolor body repainting instead of relying on text-only ANSI replay.
 - Added exact repeated `--name` benchmark selectors so Three/workbench hot-path runs can target only the intended cases
