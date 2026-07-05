@@ -274,10 +274,10 @@ The library core is real and valuable, but it needs clearer boundaries:
 - Continue using benchmark cases for hot helpers, but treat live probes as required evidence:
   - `deno task three-workbench:startup-probe`
   - `deno task three-ascii:live-probe -- --frames 45 --glyphs blocks --max-cells 960 --check --max-average-ms 40`
-- Latest workbench block-mode startup probe after defaulting panel/object demos to deferred readback: `6.93ms` steady
-  average, about `144.3 fps` at `53x17` cells with the capped default-workbench probe. Latest standalone block-mode live
-  probe now defaults to deferred readback and reports `7.18ms` steady average, about `139.3 fps` at `31x15` cells;
-  explicit blocking readback on the same probe reports `18.71ms` steady average, about `53.5 fps`.
+- Latest workbench block-mode startup probe after the direct-range copy optimization: `6.78ms` steady average, about
+  `147.5 fps` at `53x17` cells with the capped default-workbench probe. Latest standalone block-mode live probe defaults
+  to deferred readback and reports `7.33ms` steady average, about `136.5 fps` at `31x15` cells; explicit blocking
+  readback on the same probe reports `18.71ms` steady average, about `53.5 fps`.
 - Avoid speculative micro-optimizations unless they improve measured workbench/default-demo behavior.
 
 ### P2: Split Demo Framework From Library Framework
