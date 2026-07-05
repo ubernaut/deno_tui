@@ -26,6 +26,7 @@ import { colors } from "../app/neon_theme.ts";
 import {
   cycleDemo,
   demoIndex,
+  emptyNeonSuiteRender,
   formatNeonSuiteAlert,
   moveGridSelection,
   neonDemosForSection,
@@ -89,6 +90,13 @@ Deno.test("neon suite renderer covers text and three scene demos", () => {
 
   const threeRender = renderNeonSuiteDemo({ demo: lattice, phase: 4, width: 48, height: 8, selected: true });
   assertEquals(threeRender.three?.mode, "lattice");
+  assertEquals(emptyNeonSuiteRender(), {
+    body: "",
+    footer: "",
+    alert: "",
+    accent: "signal",
+    severity: "info",
+  });
 });
 
 Deno.test("neon suite maps non-text NGE widgets to primitive three scenes", () => {

@@ -10,6 +10,7 @@ import { formatCountdown, type NeonDemo } from "./neon_theme.ts";
 import {
   cycleDemo,
   demoIndex,
+  emptyNeonSuiteRender,
   fitText,
   formatNeonSuiteAlert,
   hiddenRect,
@@ -189,7 +190,7 @@ for (let index = 0; index < 25; index += 1) {
   const selected = new Computed(() => selectedIndex.value === index && !!demo.value);
   const render = new Computed(() => {
     const current = demo.value;
-    if (!current || rect.value.width <= 0 || rect.value.height <= 0) return emptyRender();
+    if (!current || rect.value.width <= 0 || rect.value.height <= 0) return emptyNeonSuiteRender();
     return renderCard(current, rect.value, selected.value);
   });
 
@@ -473,14 +474,4 @@ function clampVolume(value: number) {
 function playCue() {
   if (volume.peek() <= 0) return;
   Deno.stdout.writeSync(new Uint8Array([7]));
-}
-
-function emptyRender(): PanelRender {
-  return {
-    body: "",
-    footer: "",
-    alert: "",
-    accent: "signal",
-    severity: "info",
-  };
 }

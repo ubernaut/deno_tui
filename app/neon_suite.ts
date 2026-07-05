@@ -223,6 +223,16 @@ export function hiddenRect(): Rect {
   return { column: 0, row: 0, width: 0, height: 0 };
 }
 
+export function emptyNeonSuiteRender(): PanelRender {
+  return {
+    body: "",
+    footer: "",
+    alert: "",
+    accent: "signal",
+    severity: "info",
+  };
+}
+
 function syntheticSources(demo: NeonDemo, phase: number, selected: boolean): SourceFrame[] {
   const base = stringSeed(demo.id);
   const specs: Array<{ name: string; accent: Accent; offset: number }> = [

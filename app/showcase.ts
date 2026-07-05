@@ -8,6 +8,7 @@ import { adaptiveGridItemRect, adaptiveGridPage } from "../src/layout/mod.ts";
 import { createDefaultAsciiOptions, terminalGlyphStyleLabel } from "../src/three_ascii/options.ts";
 import { demos, formatCountdown, type NeonDemo } from "./neon_theme.ts";
 import {
+  emptyNeonSuiteRender,
   fitText as crop,
   hiddenRect,
   type NeonSuiteSection as ShowcaseSection,
@@ -166,7 +167,7 @@ for (let index = 0; index < demos.length; index += 1) {
   const render = new Computed(() => {
     const current = demo.value;
     if (!current || rect.value.width <= 0 || rect.value.height <= 0) {
-      return emptyRender();
+      return emptyNeonSuiteRender();
     }
     return renderShowcaseDemo(current, rect.value, selected.value);
   });
@@ -379,16 +380,6 @@ function renderShowcaseDemo(demo: NeonDemo, rect: Rect, selected: boolean): Pane
     width: Math.max(8, rect.width - 2),
     height: Math.max(4, rect.height - 4),
   });
-}
-
-function emptyRender(): PanelRender {
-  return {
-    body: "",
-    footer: "",
-    alert: "",
-    accent: "signal",
-    severity: "info",
-  };
 }
 
 function titleInk(accent: Accent) {
