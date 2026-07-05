@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `591`
+- Tracked files after the current consolidation passes: `590`
 - Tracked top-level file counts:
   - `src`: `296`
-  - `tests`: `95`
+  - `tests`: `94`
   - `app`: `29`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,000` lines across `25` files
   - `app`: `20,381` lines across `29` files
   - `examples`: `8,814` lines across `42` files
-  - `tests`: `49,494` lines across `95` files
+  - `tests`: `49,492` lines across `94` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -278,6 +278,8 @@ The library core is real and valuable, but it needs clearer boundaries:
   - flex layout assertions are now bundled into `tests/responsive_layout.test.ts`
   - Visualization panel defaults are now bundled into `tests/visualization_launcher.test.ts`
   - Workbench mobile command strip assertions are now bundled into `tests/workbench_control_layout.test.ts`
+  - Workspace launcher catalog, file-explorer, window-preview, wrapped-bar, and quit-modal assertions are now bundled
+    into `tests/visualization_launcher.test.ts`, keeping demo launcher behavior in one subsystem suite.
   - Workbench help and shared modal-content assertions are now bundled into `tests/workbench_facade.test.ts`
   - Web API workbench terminal workspace assertions are now bundled into `tests/web_remote_terminal.test.ts`
   - GPU probe lock assertions are now bundled into `tests/three_ascii_probe.test.ts`
