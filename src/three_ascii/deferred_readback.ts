@@ -1,6 +1,6 @@
 import { Color } from "npm:three@0.183.2";
 
-import { destroyThreeAsciiGpuBufferSlot, type ThreeAsciiGpuBufferSlot } from "./gpu_buffers.ts";
+import { destroyThreeAsciiGpuBufferSlot, type ThreeAsciiGpuBufferSlot } from "./compute_resources.ts";
 import type { ThreeAsciiReadbackLayout } from "./readback.ts";
 import type { TerminalGlyphStyle } from "./glyphs.ts";
 

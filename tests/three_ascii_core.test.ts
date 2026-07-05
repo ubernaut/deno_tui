@@ -31,6 +31,10 @@ import {
   createThreeAsciiComputeBindGroups,
   createThreeAsciiComputePipeline,
   createThreeAsciiComputeResourcePlan,
+  destroyThreeAsciiGpuBufferSlot,
+  ensureThreeAsciiGpuBufferSlot,
+  type ThreeAsciiGpuBuffer,
+  type ThreeAsciiGpuBufferDevice,
 } from "../src/three_ascii/compute_resources.ts";
 import {
   patchThreeAsciiEffectOptions,
@@ -50,12 +54,6 @@ import {
   THREE_ASCII_ANSI_FRAME_OPTIONS,
   THREE_ASCII_IMAGE_FRAME_OPTIONS,
 } from "../src/three_ascii/frame_options.ts";
-import {
-  destroyThreeAsciiGpuBufferSlot,
-  ensureThreeAsciiGpuBufferSlot,
-  type ThreeAsciiGpuBuffer,
-  type ThreeAsciiGpuBufferDevice,
-} from "../src/three_ascii/gpu_buffers.ts";
 import { compactMappedRgbaRows } from "../src/three_ascii/headless_canvas.ts";
 import { loadAsciiLutTextures } from "../src/three_ascii/loadAsciiLuts.ts";
 import {

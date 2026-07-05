@@ -139,6 +139,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     typed view caching, and ANSI grid assembly adaptation in one internal readback module
   - Three ASCII indexed ANSI color-key caching is folded into `src/three_ascii/colors.ts`, keeping linear-to-byte color
     conversion and per-cell color-key reuse together instead of in a standalone internal shard
+  - Three ASCII GPU buffer slot helpers are folded into `src/three_ascii/compute_resources.ts`, keeping WebGPU buffer
+    lifecycle, pipeline caching, and bind-group resource helpers in one internal resource module
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

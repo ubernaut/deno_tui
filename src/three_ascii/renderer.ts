@@ -28,7 +28,10 @@ import {
   createThreeAsciiComputeBindGroups,
   createThreeAsciiComputePipeline,
   createThreeAsciiComputeResourcePlan,
+  destroyThreeAsciiGpuBufferSlot,
+  ensureThreeAsciiGpuBufferSlot,
   type ThreeAsciiComputeResourcePlanInput,
+  type ThreeAsciiGpuBufferSlot,
 } from "./compute_resources.ts";
 import {
   resolveThreeAsciiComputeMode,
@@ -36,11 +39,6 @@ import {
   threeAsciiEffectStateFromSource,
 } from "./effect_state.ts";
 import { patchThreeAsciiEffectOptions } from "./effect_options.ts";
-import {
-  destroyThreeAsciiGpuBufferSlot,
-  ensureThreeAsciiGpuBufferSlot,
-  type ThreeAsciiGpuBufferSlot,
-} from "./gpu_buffers.ts";
 import {
   createThreeAsciiRendererPerformance,
   createThreeAsciiRendererSaturatedPerformance,
