@@ -80,6 +80,7 @@ Deno.test("workbench visual smoke replay tracks final truecolor background cells
 
   assertEquals(replay.screen.map((row) => row.join("").trimEnd()), ["plain", "", "xx.", ""]);
   assertEquals(replay.truecolorBackgroundRows, 1);
+  assertEquals(replay.truecolorBackgroundMaxColumns, 2);
   assertEquals(replay.truecolorBackground[2]?.slice(0, 3), [true, true, false]);
 });
 
@@ -97,6 +98,7 @@ Deno.test("workbench visual smoke inspector reports final truecolor rows", () =>
 
   assertEquals(result.truecolorBackgroundWrites, 1);
   assertEquals(result.finalTruecolorBackgroundRows, 0);
+  assertEquals(result.finalTruecolorBackgroundMaxColumns, 0);
 });
 
 Deno.test("workbench visual smoke inspector finds workbench telemetry and collisions", () => {
@@ -115,6 +117,7 @@ Deno.test("workbench visual smoke inspector finds workbench telemetry and collis
   assertEquals(result.forbidden, []);
   assertEquals(result.truecolorBackgroundWrites, 1);
   assertEquals(result.finalTruecolorBackgroundRows, 1);
+  assertEquals(result.finalTruecolorBackgroundMaxColumns, 1);
   assertStringIncludes(result.threeLine, "20fps");
 });
 
@@ -145,6 +148,7 @@ Deno.test("workbench fullscreen visual smoke inspector verifies scale and trueco
     rows: 12,
     minCells: 1800,
     minTruecolorRows: 3,
+    minTruecolorColumns: 2,
   });
 
   assertEquals(result.passed, true);
@@ -153,7 +157,32 @@ Deno.test("workbench fullscreen visual smoke inspector verifies scale and trueco
   assertEquals(result.fullscreenCap, 3840);
   assertEquals(result.truecolorBackgroundRows, 3);
   assertEquals(result.finalTruecolorBackgroundRows, 3);
+  assertEquals(result.truecolorBackgroundMaxColumns, 2);
+  assertEquals(result.finalTruecolorBackgroundMaxColumns, 2);
   assertEquals(countTruecolorBackgroundRows(output), 3);
+});
+
+Deno.test("workbench fullscreen visual smoke rejects narrow truecolor surfaces after resize", () => {
+  const output = [
+    "\x1b[2J",
+    "\x1b[1;1HAPI WORKBENCH",
+    "\x1b[4;1HTHREE ASCII",
+    "\x1b[6;1Hframe 7ms scene 5 read 13 asm 0 3720c cap 3840c @10fps live 10fps",
+    "\x1b[8;1H\x1b[48;2;1;2;3m          \x1b[0m",
+    "\x1b[9;1H\x1b[48;2;4;5;6m          \x1b[0m",
+    "\x1b[12;1Hfocus Three ASCII | Unit-01  F10 menu",
+  ].join("");
+  const result = inspectWorkbenchFullscreenVisualSmokeOutput(output, {
+    columns: 80,
+    rows: 12,
+    minCells: 1800,
+    minTruecolorRows: 2,
+    minTruecolorColumns: 60,
+  });
+
+  assertEquals(result.passed, false);
+  assertEquals(result.missing, ["truecolor columns >= 60"]);
+  assertEquals(result.truecolorBackgroundMaxColumns, 10);
 });
 
 Deno.test("workbench fullscreen visual smoke parser accepts resize flags", () => {

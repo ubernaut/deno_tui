@@ -14,6 +14,7 @@ export interface WorkbenchFullscreenVisualSmokeOptions {
   fullscreenKey?: string;
   minCells?: number;
   minTruecolorRows?: number;
+  minTruecolorColumns?: number;
   dumpScreen?: boolean;
 }
 
@@ -58,6 +59,7 @@ export function parseWorkbenchFullscreenVisualSmokeArgs(
     else if (name === "--settle-ms") options.settleMs = number;
     else if (name === "--min-cells") options.minCells = number;
     else if (name === "--min-truecolor-rows") options.minTruecolorRows = number;
+    else if (name === "--min-truecolor-columns") options.minTruecolorColumns = number;
   }
   return options;
 }
@@ -86,6 +88,7 @@ export async function runWorkbenchFullscreenVisualSmoke(
     rows: resizeRows ?? rows,
     minCells: options.minCells,
     minTruecolorRows: options.minTruecolorRows,
+    minTruecolorColumns: options.minTruecolorColumns,
   });
 }
 
@@ -185,6 +188,7 @@ export function formatWorkbenchFullscreenVisualSmokeResult(result: WorkbenchFull
     `Output: ${result.outputBytes} bytes`,
     `Fullscreen cells: ${result.fullscreenCells}/${result.fullscreenCap}`,
     `Truecolor rows: ${result.truecolorBackgroundRows}`,
+    `Truecolor max columns: ${result.truecolorBackgroundMaxColumns}`,
     `Final truecolor rows: ${result.finalTruecolorBackgroundRows}`,
     `Truecolor backgrounds: ${result.truecolorBackgroundWrites}`,
     `Nonblank rows: ${result.nonBlankRows}`,

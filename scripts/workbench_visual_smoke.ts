@@ -18,6 +18,7 @@ export interface WorkbenchVisualSmokeResult {
   outputBytes: number;
   truecolorBackgroundWrites: number;
   finalTruecolorBackgroundRows: number;
+  finalTruecolorBackgroundMaxColumns: number;
 }
 
 export interface WorkbenchFullscreenVisualSmokeResult extends WorkbenchVisualSmokeResult {
@@ -25,6 +26,7 @@ export interface WorkbenchFullscreenVisualSmokeResult extends WorkbenchVisualSmo
   fullscreenCells: number;
   fullscreenCap: number;
   truecolorBackgroundRows: number;
+  truecolorBackgroundMaxColumns: number;
 }
 
 interface ReplayState {
@@ -37,6 +39,7 @@ export interface WorkbenchStyledScreenReplay {
   screen: string[][];
   truecolorBackground: boolean[][];
   truecolorBackgroundRows: number;
+  truecolorBackgroundMaxColumns: number;
 }
 
 const DEFAULT_COMMAND = ["deno", "task", "api-workbench"] as const;
@@ -129,24 +132,37 @@ export function inspectWorkbenchVisualSmokeOutput(
     outputBytes: new TextEncoder().encode(output).byteLength,
     truecolorBackgroundWrites,
     finalTruecolorBackgroundRows: replay.truecolorBackgroundRows,
+    finalTruecolorBackgroundMaxColumns: replay.truecolorBackgroundMaxColumns,
   };
 }
 
 export function inspectWorkbenchFullscreenVisualSmokeOutput(
   output: string,
-  options: { columns: number; rows: number; minCells?: number; minTruecolorRows?: number },
+  options: {
+    columns: number;
+    rows: number;
+    minCells?: number;
+    minTruecolorRows?: number;
+    minTruecolorColumns?: number;
+  },
 ): WorkbenchFullscreenVisualSmokeResult {
   const base = inspectWorkbenchVisualSmokeOutput(output, options);
   const cellMatch = base.threeLine.match(FULLSCREEN_THREE_CELL_PATTERN);
   const fullscreenCells = cellMatch ? Number.parseInt(cellMatch[1]!, 10) : 0;
   const fullscreenCap = cellMatch ? Number.parseInt(cellMatch[2]!, 10) : 0;
   const truecolorBackgroundRows = base.finalTruecolorBackgroundRows;
+  const truecolorBackgroundMaxColumns = base.finalTruecolorBackgroundMaxColumns;
   const missing = [...base.missing];
   const minCells = Math.max(1, Math.floor(options.minCells ?? 1_800));
   const minTruecolorRows = Math.max(1, Math.floor(options.minTruecolorRows ?? Math.min(12, options.rows)));
+  const minTruecolorColumns = Math.max(1, Math.floor(options.minTruecolorColumns ?? options.columns * 0.75));
   if (fullscreenCells < minCells) missing.push(`fullscreen three cells >= ${minCells}`);
   if (truecolorBackgroundRows < minTruecolorRows) missing.push(`truecolor rows >= ${minTruecolorRows}`);
-  const fullscreen = fullscreenCells >= minCells && truecolorBackgroundRows >= minTruecolorRows;
+  if (truecolorBackgroundMaxColumns < minTruecolorColumns) {
+    missing.push(`truecolor columns >= ${minTruecolorColumns}`);
+  }
+  const fullscreen = fullscreenCells >= minCells && truecolorBackgroundRows >= minTruecolorRows &&
+    truecolorBackgroundMaxColumns >= minTruecolorColumns;
   return {
     ...base,
     passed: base.forbidden.length === 0 && missing.length === 0,
@@ -155,6 +171,7 @@ export function inspectWorkbenchFullscreenVisualSmokeOutput(
     fullscreenCells,
     fullscreenCap,
     truecolorBackgroundRows,
+    truecolorBackgroundMaxColumns,
   };
 }
 
@@ -167,6 +184,7 @@ export function formatWorkbenchVisualSmokeResult(result: WorkbenchVisualSmokeRes
     `Output: ${result.outputBytes} bytes`,
     `Truecolor backgrounds: ${result.truecolorBackgroundWrites}`,
     `Final truecolor rows: ${result.finalTruecolorBackgroundRows}`,
+    `Final truecolor max columns: ${result.finalTruecolorBackgroundMaxColumns}`,
     `Nonblank rows: ${result.nonBlankRows}`,
     `Missing: ${result.missing.join(", ") || "-"}`,
     `Forbidden: ${result.forbidden.join(", ") || "-"}`,
@@ -232,6 +250,10 @@ export function replayWorkbenchStyledScreen(
     screen,
     truecolorBackground,
     truecolorBackgroundRows: truecolorBackground.filter((row) => row.some(Boolean)).length,
+    truecolorBackgroundMaxColumns: truecolorBackground.reduce(
+      (max, row) => Math.max(max, row.reduce((count, cell) => count + (cell ? 1 : 0), 0)),
+      0,
+    ),
   };
 }
 

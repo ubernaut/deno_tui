@@ -1647,8 +1647,8 @@ function renderThreeGrid(
   }
 }
 
-function threeGridScaleModeForWindow(id: WindowId): boolean | "down" {
-  return maximized.peek() === id ? true : "down";
+function threeGridScaleModeForWindow(_id: WindowId): boolean | "down" {
+  return true;
 }
 
 function renderExplorer(frame: Frame, rect: Rectangle): void {
