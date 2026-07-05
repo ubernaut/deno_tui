@@ -17,12 +17,26 @@ import {
   updateWorkbenchLineSignals,
   updateWorkbenchStringLineSignals,
   type WorkbenchFrame,
+  type WorkbenchFrameBoxLine,
   workbenchFrameBoxLinesInto,
   writeFrame,
   writeFrameCells,
   writeFrameCellsUnchecked,
   writeStringFrameRow,
 } from "../src/app/workbench_frame.ts";
+import {
+  type WorkbenchFrameRenderCommand,
+  workbenchFrameRenderCommandsInto,
+} from "../src/app/workbench_frame_render.ts";
+
+const frameRenderTheme = {
+  background: "#000",
+  panel: "#111",
+  panelSoft: "#222",
+  border: "#333",
+  borderStrong: "#444",
+  accent: "#0f0",
+};
 
 Deno.test("workbench frame helpers preserve ANSI styling per terminal cell", () => {
   assertEquals(toStyledCells("\x1b[31mAB\x1b[0m C"), [
@@ -36,6 +50,93 @@ Deno.test("workbench frame helpers preserve ANSI styling per terminal cell", () 
   writeFrame(frame, 5, 0, 1, "\x1b[31mAB\x1b[0m");
   assertEquals(renderFrameRow(frame[0]!, 5), " \x1b[31mAB\x1b[0m  ");
   assertEquals(renderFrameSlice(frame[0]!, 1, 2), "\x1b[31mAB\x1b[0m");
+});
+
+Deno.test("workbenchFrameRenderCommandsInto projects active frame fill border and title styles", () => {
+  const lines: WorkbenchFrameBoxLine[] = [];
+  const commands = workbenchFrameRenderCommandsInto([], lines, {
+    rect: { column: 1, row: 2, width: 8, height: 4 },
+    title: "Panel",
+    active: true,
+    theme: frameRenderTheme,
+  });
+
+  assertEquals(commands[0], {
+    kind: "fill",
+    rect: { column: 1, row: 2, width: 8, height: 4 },
+    bg: "#222",
+  });
+  assertEquals(commands[1], {
+    kind: "text",
+    row: 2,
+    column: 1,
+    text: "┌──────┐",
+    style: { fg: "#0f0", bg: "#222", bold: true },
+    lineKind: "border",
+  });
+  assertEquals(commands.find((command) => command.kind === "text" && command.lineKind === "title"), {
+    kind: "text",
+    row: 2,
+    column: 3,
+    text: " PANEL ",
+    style: { fg: "#000", bg: "#0f0", bold: true },
+    lineKind: "title",
+  });
+});
+
+Deno.test("workbenchFrameRenderCommandsInto projects inactive frame colors and reuses buffers", () => {
+  const lines: WorkbenchFrameBoxLine[] = [];
+  const target: WorkbenchFrameRenderCommand[] = [];
+  const first = workbenchFrameRenderCommandsInto(target, lines, {
+    rect: { column: 0, row: 0, width: 6, height: 3 },
+    title: "A",
+    active: true,
+    theme: frameRenderTheme,
+  });
+  const fill = first[0];
+  const text = first[1];
+
+  const second = workbenchFrameRenderCommandsInto(target, lines, {
+    rect: { column: 2, row: 1, width: 6, height: 3 },
+    title: "B",
+    active: false,
+    theme: frameRenderTheme,
+  });
+
+  assertEquals(second === target, true);
+  assertEquals(second[0] === fill, true);
+  assertEquals(second[1] === text, true);
+  assertEquals(second[0], {
+    kind: "fill",
+    rect: { column: 2, row: 1, width: 6, height: 3 },
+    bg: "#111",
+  });
+  assertEquals(second[1], {
+    kind: "text",
+    row: 1,
+    column: 2,
+    text: "┌────┐",
+    style: { fg: "#444", bg: "#111", bold: false },
+    lineKind: "border",
+  });
+});
+
+Deno.test("workbenchFrameRenderCommandsInto clears target for empty bounds", () => {
+  const target: WorkbenchFrameRenderCommand[] = [{
+    kind: "fill",
+    rect: { column: 0, row: 0, width: 1, height: 1 },
+    bg: "stale",
+  }];
+
+  const commands = workbenchFrameRenderCommandsInto(target, [], {
+    rect: { column: 0, row: 0, width: 0, height: 3 },
+    title: "Hidden",
+    active: false,
+    theme: frameRenderTheme,
+  });
+
+  assertEquals(commands, []);
+  assertEquals(commands === target, true);
 });
 
 Deno.test("workbench frame row assembly fast paths empty and out-of-range rows", () => {
