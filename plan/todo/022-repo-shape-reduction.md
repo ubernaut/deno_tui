@@ -7,9 +7,9 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `739`
+- Tracked files after the current consolidation passes: `738`
 - Tracked top-level file counts:
-  - `src`: `353`
+  - `src`: `352`
   - `tests`: `167`
   - `app`: `48`
   - `docs`: `50`
@@ -17,13 +17,13 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `scripts`: `27`
   - `plan`: `26`
 - Handwritten/code-heavy line counts:
-  - `src/app`: `24,505` lines across `119` files
+  - `src/app`: `24,499` lines across `118` files
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,261` lines across `43` files
   - `src/three_ascii`: `7,188` lines across `37` files
   - `app`: `20,429` lines across `48` files
   - `examples`: `8,732` lines across `41` files
-  - `tests`: `49,245` lines across `167` files
+  - `tests`: `49,244` lines across `167` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `24MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -76,6 +76,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Three ASCII deferred readback submission and failure handling now live in `src/three_ascii/renderer.ts`
   - Three ASCII camera-aspect, image-frame, and mapped-readback helpers now live in `src/three_ascii/renderer.ts`
   - Workbench viewport sizing and active-window reveal scroll math now live in `src/app/workbench_layout.ts`
+  - Workbench ANSI output flushing now lives in `src/app/workbench_ansi_screen.ts`
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
@@ -122,8 +123,8 @@ The library core is real and valuable, but it needs clearer boundaries:
 - Continue using benchmark cases for hot helpers, but treat live probes as required evidence:
   - `deno task three-workbench:startup-probe`
   - `deno task three-ascii:live-probe -- --frames 45 --glyphs blocks --max-cells 960 --check --max-average-ms 40`
-- Latest workbench block-mode startup probe after the workbench viewport/layout consolidation: `6.73ms` steady average,
-  about `148.5 fps` at `53x17` cells with the capped default-workbench probe.
+- Latest workbench block-mode startup probe after the workbench ANSI output consolidation: `6.82ms` steady average,
+  about `146.6 fps` at `53x17` cells with the capped default-workbench probe.
 - Avoid speculative micro-optimizations unless they improve measured workbench/default-demo behavior.
 
 ### P2: Split Demo Framework From Library Framework

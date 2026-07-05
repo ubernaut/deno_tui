@@ -1,6 +1,5 @@
 import { assertEquals, assertStringIncludes } from "./deps.ts";
-import { WorkbenchAnsiScreenPainter } from "../src/app/workbench_ansi_screen.ts";
-import { writeWorkbenchAnsiScreenOutput } from "../src/app/workbench_ansi_output.ts";
+import { WorkbenchAnsiScreenPainter, writeWorkbenchAnsiScreenOutput } from "../src/app/workbench_ansi_screen.ts";
 import { renderFrameRow, renderFrameSlice, type WorkbenchFrame, writeFrame } from "../src/app/workbench_frame.ts";
 
 Deno.test("writeWorkbenchAnsiScreenOutput returns zero-byte stats without writing empty output", () => {

@@ -1,6 +1,5 @@
 import type { CanvasStdout } from "../canvas/sink.ts";
 import { moveCursor } from "../utils/ansi_codes.ts";
-import { type WorkbenchAnsiScreenFlushStats, writeWorkbenchAnsiScreenOutput } from "./workbench_ansi_output.ts";
 import {
   cleanWorkbenchFrameRowFingerprint,
   fitCellText,
@@ -9,13 +8,39 @@ import {
 } from "./workbench_frame.ts";
 import { type ChangedSpan, changedSpansInto, snapshotChangedSpans, snapshotFrameRow } from "./workbench_ansi_spans.ts";
 
+const encoder = new TextEncoder();
+const CLEAR_TO_END_OF_LINE = "\x1b[K";
+
+/** Terminal flush statistics returned by retained workbench ANSI screen painters. */
+export interface WorkbenchAnsiScreenFlushStats {
+  rows: number;
+  changed: number;
+  cleared: number;
+  bytes: number;
+  durationMs: number;
+}
+
+/** Encodes and writes assembled ANSI rows while measuring byte count and write duration. */
+export function writeWorkbenchAnsiScreenOutput(
+  stdout: CanvasStdout,
+  output: readonly string[],
+  stats: Pick<WorkbenchAnsiScreenFlushStats, "rows" | "changed" | "cleared">,
+): WorkbenchAnsiScreenFlushStats {
+  if (output.length === 0) {
+    return { ...stats, bytes: 0, durationMs: 0 };
+  }
+
+  const flushStart = performance.now();
+  const bytes = encoder.encode(output.join(""));
+  stdout.writeSync(bytes);
+  return { ...stats, bytes: bytes.byteLength, durationMs: performance.now() - flushStart };
+}
+
 interface WorkbenchAnsiScreenRowCache {
   width: number;
   fingerprint: string;
   line: string;
 }
-
-const CLEAR_TO_END_OF_LINE = "\x1b[K";
 
 /** Small cache for repeated terminal cursor-position escape sequences. */
 class WorkbenchAnsiCursorCache {
@@ -56,8 +81,6 @@ function workbenchAnsiSpanRowRenderedHintCacheMatches(
   return renderedHint !== undefined && cache?.width === Math.max(0, Math.floor(width)) &&
     cache.line === renderedHint;
 }
-
-export type { WorkbenchAnsiScreenFlushStats } from "./workbench_ansi_output.ts";
 
 /** Retained ANSI-row painter for full-screen workbench frames. */
 export class WorkbenchAnsiScreenPainter {
