@@ -6,8 +6,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 ## Summary
 
 - Entrypoints: 9
-- Module visits: 521
-- Re-export declarations: 512
+- Module visits: 519
+- Re-export declarations: 510
 - Exported symbols: 5331
 - Documented symbols: 5331
 - Documentation coverage: 100.00%
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     233 |    2291 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     212 |    2143 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     232 |    2291 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     211 |    2143 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      87 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -39,8 +39,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 ### Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 233
-- Re-export declarations: 232
+- Modules: 232
+- Re-export declarations: 231
 - Exported symbols: 2291
 - Documented symbols: 2291
 - Documentation coverage: 100.00%
@@ -74,7 +74,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                             |          0 |       6 |          6 |
 | [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                       |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         48 |       0 |          0 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         47 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                       |          0 |      10 |         10 |
 | [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                           |          0 |       6 |          6 |
 | [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     |          0 |      17 |         17 |
@@ -90,9 +90,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/split_pane_commands.ts`](#src-app-split-pane-commands-ts)                             |          0 |       7 |          7 |
 | [`src/app/table_commands.ts`](#src-app-table-commands-ts)                                       |          0 |       6 |          6 |
 | [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                                         |          0 |       6 |          6 |
-| [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                                 |          0 |      24 |         24 |
+| [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                                 |          0 |      29 |         29 |
 | [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                                       |          0 |      17 |         17 |
-| [`src/app/terminal_window_bindings.ts`](#src-app-terminal-window-bindings-ts)                   |          0 |       5 |          5 |
 | [`src/app/theme_commands.ts`](#src-app-theme-commands-ts)                                       |          0 |      10 |         10 |
 | [`src/app/theme_engine_commands.ts`](#src-app-theme-engine-commands-ts)                         |          0 |       9 |          9 |
 | [`src/app/theme_pipeline_commands.ts`](#src-app-theme-pipeline-commands-ts)                     |          0 |       5 |          5 |
@@ -640,56 +639,55 @@ _No direct exported symbols._
 
 #### src/app/mod.ts
 
-| Re-export Target                      | Kind | Names |
-| ------------------------------------- | ---- | ----- |
-| `src/app/actions.ts`                  | star | -     |
-| `src/app/app.ts`                      | star | -     |
-| `src/app/component_commands.ts`       | star | -     |
-| `src/app/command_bindings.ts`         | star | -     |
-| `src/app/command_search_index.ts`     | star | -     |
-| `src/app/commands.ts`                 | star | -     |
-| `src/app/data_query_bindings.ts`      | star | -     |
-| `src/app/data_query_commands.ts`      | star | -     |
-| `src/app/data_query_plugin.ts`        | star | -     |
-| `src/app/data_table_commands.ts`      | star | -     |
-| `src/app/disposables.ts`              | star | -     |
-| `src/app/form_commands.ts`            | star | -     |
-| `src/app/focus_commands.ts`           | star | -     |
-| `src/app/forms.ts`                    | star | -     |
-| `src/app/history.ts`                  | star | -     |
-| `src/app/input_commands.ts`           | star | -     |
-| `src/app/list_commands.ts`            | star | -     |
-| `src/app/log_viewer_commands.ts`      | star | -     |
-| `src/app/menu_bar_commands.ts`        | star | -     |
-| `src/app/metric_series_commands.ts`   | star | -     |
-| `src/app/mouse_bindings.ts`           | star | -     |
-| `src/app/pad_commands.ts`             | star | -     |
-| `src/app/plugins.ts`                  | star | -     |
-| `src/app/route_bindings.ts`           | star | -     |
-| `src/app/router.ts`                   | star | -     |
-| `src/app/runtime_commands.ts`         | star | -     |
-| `src/app/runtime_profile_plugin.ts`   | star | -     |
-| `src/app/runtime_renderer_plugin.ts`  | star | -     |
-| `src/app/scroll_area_commands.ts`     | star | -     |
-| `src/app/selection_bindings.ts`       | star | -     |
-| `src/app/settings_bindings.ts`        | star | -     |
-| `src/app/settings.ts`                 | star | -     |
-| `src/app/split_pane_commands.ts`      | star | -     |
-| `src/app/table_commands.ts`           | star | -     |
-| `src/app/tabs_commands.ts`            | star | -     |
-| `src/app/terminal_commands.ts`        | star | -     |
-| `src/app/terminal_input.ts`           | star | -     |
-| `src/app/terminal_window_bindings.ts` | star | -     |
-| `src/app/theme_commands.ts`           | star | -     |
-| `src/app/theme_engine_commands.ts`    | star | -     |
-| `src/app/theme_pipeline_commands.ts`  | star | -     |
-| `src/app/theme_plugin.ts`             | star | -     |
-| `src/app/theme_workspace_plugin.ts`   | star | -     |
-| `src/app/toast_commands.ts`           | star | -     |
-| `src/app/tree_commands.ts`            | star | -     |
-| `src/app/window_manager_commands.ts`  | star | -     |
-| `src/app/widget_commands.ts`          | star | -     |
-| `src/app/workbench/mod.ts`            | star | -     |
+| Re-export Target                     | Kind | Names |
+| ------------------------------------ | ---- | ----- |
+| `src/app/actions.ts`                 | star | -     |
+| `src/app/app.ts`                     | star | -     |
+| `src/app/component_commands.ts`      | star | -     |
+| `src/app/command_bindings.ts`        | star | -     |
+| `src/app/command_search_index.ts`    | star | -     |
+| `src/app/commands.ts`                | star | -     |
+| `src/app/data_query_bindings.ts`     | star | -     |
+| `src/app/data_query_commands.ts`     | star | -     |
+| `src/app/data_query_plugin.ts`       | star | -     |
+| `src/app/data_table_commands.ts`     | star | -     |
+| `src/app/disposables.ts`             | star | -     |
+| `src/app/form_commands.ts`           | star | -     |
+| `src/app/focus_commands.ts`          | star | -     |
+| `src/app/forms.ts`                   | star | -     |
+| `src/app/history.ts`                 | star | -     |
+| `src/app/input_commands.ts`          | star | -     |
+| `src/app/list_commands.ts`           | star | -     |
+| `src/app/log_viewer_commands.ts`     | star | -     |
+| `src/app/menu_bar_commands.ts`       | star | -     |
+| `src/app/metric_series_commands.ts`  | star | -     |
+| `src/app/mouse_bindings.ts`          | star | -     |
+| `src/app/pad_commands.ts`            | star | -     |
+| `src/app/plugins.ts`                 | star | -     |
+| `src/app/route_bindings.ts`          | star | -     |
+| `src/app/router.ts`                  | star | -     |
+| `src/app/runtime_commands.ts`        | star | -     |
+| `src/app/runtime_profile_plugin.ts`  | star | -     |
+| `src/app/runtime_renderer_plugin.ts` | star | -     |
+| `src/app/scroll_area_commands.ts`    | star | -     |
+| `src/app/selection_bindings.ts`      | star | -     |
+| `src/app/settings_bindings.ts`       | star | -     |
+| `src/app/settings.ts`                | star | -     |
+| `src/app/split_pane_commands.ts`     | star | -     |
+| `src/app/table_commands.ts`          | star | -     |
+| `src/app/tabs_commands.ts`           | star | -     |
+| `src/app/terminal_commands.ts`       | star | -     |
+| `src/app/terminal_input.ts`          | star | -     |
+| `src/app/theme_commands.ts`          | star | -     |
+| `src/app/theme_engine_commands.ts`   | star | -     |
+| `src/app/theme_pipeline_commands.ts` | star | -     |
+| `src/app/theme_plugin.ts`            | star | -     |
+| `src/app/theme_workspace_plugin.ts`  | star | -     |
+| `src/app/toast_commands.ts`          | star | -     |
+| `src/app/tree_commands.ts`           | star | -     |
+| `src/app/window_manager_commands.ts` | star | -     |
+| `src/app/widget_commands.ts`         | star | -     |
+| `src/app/workbench/mod.ts`           | star | -     |
 
 _No direct exported symbols._
 
@@ -912,6 +910,7 @@ _No direct exported symbols._
 | `bindTerminalScrollbackCommands`       | function  | no        | yes   |
 | `bindTerminalShellWorkspaceCommands`   | function  | no        | yes   |
 | `bindTerminalWorkspaceCommands`        | function  | no        | yes   |
+| `syncTerminalWindowLayout`             | function  | no        | yes   |
 | `TerminalCommandAction`                | type      | yes       | yes   |
 | `TerminalCommandKind`                  | type      | yes       | yes   |
 | `TerminalCommandOptions`               | interface | yes       | yes   |
@@ -927,6 +926,10 @@ _No direct exported symbols._
 | `TerminalShellWorkspaceCommandOptions` | interface | yes       | yes   |
 | `TerminalShellWorkspaceCommandPayload` | interface | yes       | yes   |
 | `terminalShellWorkspaceCommands`       | function  | no        | yes   |
+| `TerminalWindowBinding`                | interface | yes       | yes   |
+| `terminalWindowContentSize`            | function  | no        | yes   |
+| `TerminalWindowLayoutSyncOptions`      | interface | yes       | yes   |
+| `TerminalWindowLayoutSyncResult`       | interface | yes       | yes   |
 | `TerminalWorkspaceCommandAction`       | type      | yes       | yes   |
 | `TerminalWorkspaceCommandKind`         | type      | yes       | yes   |
 | `TerminalWorkspaceCommandOptions`      | interface | yes       | yes   |
@@ -954,16 +957,6 @@ _No direct exported symbols._
 | `TerminalMouseTrackingMode`            | type      | yes       | yes   |
 | `TerminalPasteConfirmationPolicy`      | type      | yes       | yes   |
 | `TerminalPasteInspection`              | interface | yes       | yes   |
-
-#### src/app/terminal_window_bindings.ts
-
-| Symbol                            | Kind      | Type Only | JSDoc |
-| --------------------------------- | --------- | --------- | ----- |
-| `syncTerminalWindowLayout`        | function  | no        | yes   |
-| `TerminalWindowBinding`           | interface | yes       | yes   |
-| `terminalWindowContentSize`       | function  | no        | yes   |
-| `TerminalWindowLayoutSyncOptions` | interface | yes       | yes   |
-| `TerminalWindowLayoutSyncResult`  | interface | yes       | yes   |
 
 #### src/app/theme_commands.ts
 
@@ -4015,8 +4008,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 ### Summary
 
 - Entrypoint: `mod.web.ts`
-- Modules: 212
-- Re-export declarations: 211
+- Modules: 211
+- Re-export declarations: 210
 - Exported symbols: 2143
 - Documented symbols: 2143
 - Documentation coverage: 100.00%
@@ -4050,7 +4043,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                             |          0 |       6 |          6 |
 | [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                       |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         48 |       0 |          0 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         47 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                       |          0 |      10 |         10 |
 | [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                           |          0 |       6 |          6 |
 | [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     |          0 |      17 |         17 |
@@ -4066,9 +4059,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/split_pane_commands.ts`](#src-app-split-pane-commands-ts)                             |          0 |       7 |          7 |
 | [`src/app/table_commands.ts`](#src-app-table-commands-ts)                                       |          0 |       6 |          6 |
 | [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                                         |          0 |       6 |          6 |
-| [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                                 |          0 |      24 |         24 |
+| [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                                 |          0 |      29 |         29 |
 | [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                                       |          0 |      17 |         17 |
-| [`src/app/terminal_window_bindings.ts`](#src-app-terminal-window-bindings-ts)                   |          0 |       5 |          5 |
 | [`src/app/theme_commands.ts`](#src-app-theme-commands-ts)                                       |          0 |      10 |         10 |
 | [`src/app/theme_engine_commands.ts`](#src-app-theme-engine-commands-ts)                         |          0 |       9 |          9 |
 | [`src/app/theme_pipeline_commands.ts`](#src-app-theme-pipeline-commands-ts)                     |          0 |       5 |          5 |
@@ -4614,56 +4606,55 @@ _No direct exported symbols._
 
 #### src/app/mod.ts
 
-| Re-export Target                      | Kind | Names |
-| ------------------------------------- | ---- | ----- |
-| `src/app/actions.ts`                  | star | -     |
-| `src/app/app.ts`                      | star | -     |
-| `src/app/component_commands.ts`       | star | -     |
-| `src/app/command_bindings.ts`         | star | -     |
-| `src/app/command_search_index.ts`     | star | -     |
-| `src/app/commands.ts`                 | star | -     |
-| `src/app/data_query_bindings.ts`      | star | -     |
-| `src/app/data_query_commands.ts`      | star | -     |
-| `src/app/data_query_plugin.ts`        | star | -     |
-| `src/app/data_table_commands.ts`      | star | -     |
-| `src/app/disposables.ts`              | star | -     |
-| `src/app/form_commands.ts`            | star | -     |
-| `src/app/focus_commands.ts`           | star | -     |
-| `src/app/forms.ts`                    | star | -     |
-| `src/app/history.ts`                  | star | -     |
-| `src/app/input_commands.ts`           | star | -     |
-| `src/app/list_commands.ts`            | star | -     |
-| `src/app/log_viewer_commands.ts`      | star | -     |
-| `src/app/menu_bar_commands.ts`        | star | -     |
-| `src/app/metric_series_commands.ts`   | star | -     |
-| `src/app/mouse_bindings.ts`           | star | -     |
-| `src/app/pad_commands.ts`             | star | -     |
-| `src/app/plugins.ts`                  | star | -     |
-| `src/app/route_bindings.ts`           | star | -     |
-| `src/app/router.ts`                   | star | -     |
-| `src/app/runtime_commands.ts`         | star | -     |
-| `src/app/runtime_profile_plugin.ts`   | star | -     |
-| `src/app/runtime_renderer_plugin.ts`  | star | -     |
-| `src/app/scroll_area_commands.ts`     | star | -     |
-| `src/app/selection_bindings.ts`       | star | -     |
-| `src/app/settings_bindings.ts`        | star | -     |
-| `src/app/settings.ts`                 | star | -     |
-| `src/app/split_pane_commands.ts`      | star | -     |
-| `src/app/table_commands.ts`           | star | -     |
-| `src/app/tabs_commands.ts`            | star | -     |
-| `src/app/terminal_commands.ts`        | star | -     |
-| `src/app/terminal_input.ts`           | star | -     |
-| `src/app/terminal_window_bindings.ts` | star | -     |
-| `src/app/theme_commands.ts`           | star | -     |
-| `src/app/theme_engine_commands.ts`    | star | -     |
-| `src/app/theme_pipeline_commands.ts`  | star | -     |
-| `src/app/theme_plugin.ts`             | star | -     |
-| `src/app/theme_workspace_plugin.ts`   | star | -     |
-| `src/app/toast_commands.ts`           | star | -     |
-| `src/app/tree_commands.ts`            | star | -     |
-| `src/app/window_manager_commands.ts`  | star | -     |
-| `src/app/widget_commands.ts`          | star | -     |
-| `src/app/workbench/mod.ts`            | star | -     |
+| Re-export Target                     | Kind | Names |
+| ------------------------------------ | ---- | ----- |
+| `src/app/actions.ts`                 | star | -     |
+| `src/app/app.ts`                     | star | -     |
+| `src/app/component_commands.ts`      | star | -     |
+| `src/app/command_bindings.ts`        | star | -     |
+| `src/app/command_search_index.ts`    | star | -     |
+| `src/app/commands.ts`                | star | -     |
+| `src/app/data_query_bindings.ts`     | star | -     |
+| `src/app/data_query_commands.ts`     | star | -     |
+| `src/app/data_query_plugin.ts`       | star | -     |
+| `src/app/data_table_commands.ts`     | star | -     |
+| `src/app/disposables.ts`             | star | -     |
+| `src/app/form_commands.ts`           | star | -     |
+| `src/app/focus_commands.ts`          | star | -     |
+| `src/app/forms.ts`                   | star | -     |
+| `src/app/history.ts`                 | star | -     |
+| `src/app/input_commands.ts`          | star | -     |
+| `src/app/list_commands.ts`           | star | -     |
+| `src/app/log_viewer_commands.ts`     | star | -     |
+| `src/app/menu_bar_commands.ts`       | star | -     |
+| `src/app/metric_series_commands.ts`  | star | -     |
+| `src/app/mouse_bindings.ts`          | star | -     |
+| `src/app/pad_commands.ts`            | star | -     |
+| `src/app/plugins.ts`                 | star | -     |
+| `src/app/route_bindings.ts`          | star | -     |
+| `src/app/router.ts`                  | star | -     |
+| `src/app/runtime_commands.ts`        | star | -     |
+| `src/app/runtime_profile_plugin.ts`  | star | -     |
+| `src/app/runtime_renderer_plugin.ts` | star | -     |
+| `src/app/scroll_area_commands.ts`    | star | -     |
+| `src/app/selection_bindings.ts`      | star | -     |
+| `src/app/settings_bindings.ts`       | star | -     |
+| `src/app/settings.ts`                | star | -     |
+| `src/app/split_pane_commands.ts`     | star | -     |
+| `src/app/table_commands.ts`          | star | -     |
+| `src/app/tabs_commands.ts`           | star | -     |
+| `src/app/terminal_commands.ts`       | star | -     |
+| `src/app/terminal_input.ts`          | star | -     |
+| `src/app/theme_commands.ts`          | star | -     |
+| `src/app/theme_engine_commands.ts`   | star | -     |
+| `src/app/theme_pipeline_commands.ts` | star | -     |
+| `src/app/theme_plugin.ts`            | star | -     |
+| `src/app/theme_workspace_plugin.ts`  | star | -     |
+| `src/app/toast_commands.ts`          | star | -     |
+| `src/app/tree_commands.ts`           | star | -     |
+| `src/app/window_manager_commands.ts` | star | -     |
+| `src/app/widget_commands.ts`         | star | -     |
+| `src/app/workbench/mod.ts`           | star | -     |
 
 _No direct exported symbols._
 
@@ -4886,6 +4877,7 @@ _No direct exported symbols._
 | `bindTerminalScrollbackCommands`       | function  | no        | yes   |
 | `bindTerminalShellWorkspaceCommands`   | function  | no        | yes   |
 | `bindTerminalWorkspaceCommands`        | function  | no        | yes   |
+| `syncTerminalWindowLayout`             | function  | no        | yes   |
 | `TerminalCommandAction`                | type      | yes       | yes   |
 | `TerminalCommandKind`                  | type      | yes       | yes   |
 | `TerminalCommandOptions`               | interface | yes       | yes   |
@@ -4901,6 +4893,10 @@ _No direct exported symbols._
 | `TerminalShellWorkspaceCommandOptions` | interface | yes       | yes   |
 | `TerminalShellWorkspaceCommandPayload` | interface | yes       | yes   |
 | `terminalShellWorkspaceCommands`       | function  | no        | yes   |
+| `TerminalWindowBinding`                | interface | yes       | yes   |
+| `terminalWindowContentSize`            | function  | no        | yes   |
+| `TerminalWindowLayoutSyncOptions`      | interface | yes       | yes   |
+| `TerminalWindowLayoutSyncResult`       | interface | yes       | yes   |
 | `TerminalWorkspaceCommandAction`       | type      | yes       | yes   |
 | `TerminalWorkspaceCommandKind`         | type      | yes       | yes   |
 | `TerminalWorkspaceCommandOptions`      | interface | yes       | yes   |
@@ -4928,16 +4924,6 @@ _No direct exported symbols._
 | `TerminalMouseTrackingMode`            | type      | yes       | yes   |
 | `TerminalPasteConfirmationPolicy`      | type      | yes       | yes   |
 | `TerminalPasteInspection`              | interface | yes       | yes   |
-
-#### src/app/terminal_window_bindings.ts
-
-| Symbol                            | Kind      | Type Only | JSDoc |
-| --------------------------------- | --------- | --------- | ----- |
-| `syncTerminalWindowLayout`        | function  | no        | yes   |
-| `TerminalWindowBinding`           | interface | yes       | yes   |
-| `terminalWindowContentSize`       | function  | no        | yes   |
-| `TerminalWindowLayoutSyncOptions` | interface | yes       | yes   |
-| `TerminalWindowLayoutSyncResult`  | interface | yes       | yes   |
 
 #### src/app/theme_commands.ts
 

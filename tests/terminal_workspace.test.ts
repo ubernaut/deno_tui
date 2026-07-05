@@ -2,12 +2,13 @@ import { assertEquals, assertNotStrictEquals } from "./deps.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
 import {
   bindTerminalWorkspaceCommands,
+  syncTerminalWindowLayout,
+  terminalWindowContentSize,
   type TerminalWorkspaceCommandAction,
   terminalWorkspaceCommands,
 } from "../src/app/terminal_commands.ts";
 import { TerminalOutputController } from "../src/components/terminal_output.ts";
 import { WindowManagerController } from "../src/layout/window_manager.ts";
-import { syncTerminalWindowLayout, terminalWindowContentSize } from "../src/app/terminal_window_bindings.ts";
 import type {
   TerminalBackend,
   TerminalBackendSpawnOptions,

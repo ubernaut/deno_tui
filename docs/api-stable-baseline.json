@@ -2391,6 +2391,13 @@
     },
     {
       "module": "src/app/terminal_commands.ts",
+      "name": "syncTerminalWindowLayout",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/terminal_commands.ts",
       "name": "TerminalCommandAction",
       "kind": "type",
       "typeOnly": true,
@@ -2492,6 +2499,34 @@
       "name": "terminalShellWorkspaceCommands",
       "kind": "function",
       "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/terminal_commands.ts",
+      "name": "TerminalWindowBinding",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/terminal_commands.ts",
+      "name": "terminalWindowContentSize",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/terminal_commands.ts",
+      "name": "TerminalWindowLayoutSyncOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/terminal_commands.ts",
+      "name": "TerminalWindowLayoutSyncResult",
+      "kind": "interface",
+      "typeOnly": true,
       "documented": true
     },
     {
@@ -2644,41 +2679,6 @@
     {
       "module": "src/app/terminal_input.ts",
       "name": "TerminalPasteInspection",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/terminal_window_bindings.ts",
-      "name": "syncTerminalWindowLayout",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/terminal_window_bindings.ts",
-      "name": "TerminalWindowBinding",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/terminal_window_bindings.ts",
-      "name": "terminalWindowContentSize",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/terminal_window_bindings.ts",
-      "name": "TerminalWindowLayoutSyncOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/terminal_window_bindings.ts",
-      "name": "TerminalWindowLayoutSyncResult",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
