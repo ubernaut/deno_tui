@@ -1,7 +1,13 @@
 import { assertEquals } from "./deps.ts";
 import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import { workbenchStyledRowsRenderCommandsInto } from "../src/app/workbench_row_render.ts";
-import { dataFooterRows, type RowStyle, threeHeaderRows, type WorkbenchRowTheme } from "../src/app/workbench_rows.ts";
+import {
+  dataFooterRows,
+  type RowStyle,
+  threeHeaderRows,
+  threeHeaderRowsInto,
+  type WorkbenchRowTheme,
+} from "../src/app/workbench_rows.ts";
 import {
   formatWorkbenchDiagnosticLogEntry,
   formatWorkbenchDiagnosticStatus,
@@ -271,6 +277,35 @@ Deno.test("threeHeaderRows includes compact renderer telemetry when it fits", ()
     })[1]?.text,
     "17ms 1920c live 10fps",
   );
+});
+
+Deno.test("threeHeaderRowsInto reuses caller-owned row storage", () => {
+  const target: RowStyle[] = [{ text: "stale" }, { text: "stale" }, { text: "stale" }, { text: "extra" }];
+  const firstRows = threeHeaderRowsInto(target, "BLOCKS", 80, rowTheme);
+  const firstRow = firstRows[0];
+  const secondRow = firstRows[1];
+  const thirdRow = firstRows[2];
+
+  assertEquals(firstRows, threeHeaderRows("BLOCKS", 80, rowTheme));
+  assertEquals(firstRows.length, 3);
+
+  const secondRows = threeHeaderRowsInto(target, "GLYPHS", 30, rowTheme, {
+    totalMs: 17.4,
+    sceneMs: 12.2,
+    readbackMs: 4.1,
+    assemblyMs: 1.3,
+    cells: 1920,
+    targetFps: 18,
+    measuredFps: 9.7,
+  });
+
+  assertEquals(secondRows, target);
+  assertEquals(secondRows[0] === firstRow, true);
+  assertEquals(secondRows[1] === secondRow, true);
+  assertEquals(secondRows[2] === thirdRow, true);
+  assertEquals(secondRows[0]?.text, " THREE ASCII · GLYPHS ");
+  assertEquals(secondRows[1]?.text, "17ms 1920c live 10fps");
+  assertEquals(secondRows[2], { text: "", bg: "#000000" });
 });
 
 Deno.test("dataFooterRows returns styled footer rows and wraps narrow widths", () => {

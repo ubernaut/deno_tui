@@ -55,7 +55,12 @@ import {
 import { AudioRegistry } from "../app/audio.ts";
 import { createHtmlCssLayoutDemo } from "../src/markup/demo_fixtures.ts";
 import { resolveSourceFramesInto } from "../app/sources.ts";
-import { type ThreeHeaderPerformance, threeHeaderRows, type WorkbenchRowTheme } from "../src/app/workbench_rows.ts";
+import {
+  type RowStyle,
+  type ThreeHeaderPerformance,
+  threeHeaderRowsInto,
+  type WorkbenchRowTheme,
+} from "../src/app/workbench_rows.ts";
 import {
   type WorkbenchFrameRenderCommand,
   workbenchFrameRenderCommandsInto,
@@ -200,6 +205,7 @@ const workbenchThreeHeaderPerformance: ThreeHeaderPerformance = {
   deferredReadbackSlots: 6,
   deferredReadbackUnresolved: 2,
 };
+const workbenchThreeHeaderRows: RowStyle[] = [];
 const workbenchThreePressureLevels = [120, 240, 480, 960] as const;
 const workbenchThreePressureState = createWorkbenchThreeTerminalPressureState(960);
 const workbenchThreeFullscreenPressureState = createWorkbenchThreeTerminalPressureState(
@@ -1165,7 +1171,13 @@ function runWorkbenchThreeHeaderTelemetryWorkload(): void {
   let checksum = 0;
   for (const mode of workbenchThreeHeaderModes) {
     for (const width of workbenchThreeHeaderWidths) {
-      const rows = threeHeaderRows(mode, width, workbenchThreeHeaderTheme, workbenchThreeHeaderPerformance);
+      const rows = threeHeaderRowsInto(
+        workbenchThreeHeaderRows,
+        mode,
+        width,
+        workbenchThreeHeaderTheme,
+        workbenchThreeHeaderPerformance,
+      );
       checksum += rows[0]?.text.length ?? 0;
       checksum += rows[1]?.text.length ?? 0;
     }

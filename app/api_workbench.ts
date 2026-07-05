@@ -342,7 +342,7 @@ import {
   workbenchFrameRenderCommandsInto,
 } from "../src/app/workbench_frame_render.ts";
 import { WorkbenchFramePainter } from "../src/app/workbench_row_render.ts";
-import { type RowStyle, type ThreeHeaderPerformance, threeHeaderRows } from "../src/app/workbench_rows.ts";
+import { type RowStyle, type ThreeHeaderPerformance, threeHeaderRowsInto } from "../src/app/workbench_rows.ts";
 import { writeThreeHeaderRuntimePerformance } from "../src/app/workbench_three_header.ts";
 import { shouldCountWorkbenchThreeGridPressure } from "../src/app/workbench_three_terminal_pressure.ts";
 import {
@@ -745,6 +745,7 @@ const workbenchThreeHeaderPerformance: ThreeHeaderPerformance = {
   assemblyMs: 0,
   cells: 0,
 };
+const workbenchThreeHeaderRows: RowStyle[] = [];
 const WORKBENCH_THREE_OVERLAY_PRESSURE_COOLDOWN_FRAMES = 6;
 const workbenchThreeOverlayPressureGate = new WorkbenchThreeOverlayPressureGate(
   WORKBENCH_THREE_OVERLAY_PRESSURE_COOLDOWN_FRAMES,
@@ -1592,7 +1593,8 @@ function renderThree(frame: Frame, rect: Rectangle): void {
     writeRows(
       frame,
       rect,
-      threeHeaderRows(
+      threeHeaderRowsInto(
+        workbenchThreeHeaderRows,
         mode,
         rect.width,
         t,

@@ -48,6 +48,17 @@ export function threeHeaderRows(
   theme: WorkbenchRowTheme,
   performance?: ThreeHeaderPerformance,
 ): RowStyle[] {
+  return threeHeaderRowsInto([], mode, width, theme, performance);
+}
+
+/** Builds responsive Three ASCII header rows into caller-owned storage. */
+export function threeHeaderRowsInto(
+  target: RowStyle[],
+  mode: string,
+  width: number,
+  theme: WorkbenchRowTheme,
+  performance?: ThreeHeaderPerformance,
+): RowStyle[] {
   const labels = threeHeaderLabels(mode);
   const perf = performance ? threeHeaderPerformanceText(performance, width) : "";
   const titleText = width >= labels.titleWidth ? labels.title : labels.compactTitle;
@@ -57,16 +68,29 @@ export function threeHeaderRows(
     : perf && width >= textWidth(perf)
     ? perf
     : detailBase;
-  return [
-    {
-      text: titleText,
-      fg: theme.buttonActiveText,
-      bg: theme.buttonActiveBg,
-      bold: true,
-    },
-    { text: detailText, fg: theme.soft, bg: theme.surface },
-    { text: "", bg: theme.surface },
-  ];
+  target.length = 3;
+  target[0] = writeRowStyle(target[0], titleText, theme.buttonActiveText, theme.buttonActiveBg, true);
+  target[1] = writeRowStyle(target[1], detailText, theme.soft, theme.surface);
+  target[2] = writeRowStyle(target[2], "", undefined, theme.surface);
+  return target;
+}
+
+function writeRowStyle(
+  target: RowStyle | undefined,
+  text: string,
+  fg: string | undefined,
+  bg: string | undefined,
+  bold?: boolean,
+): RowStyle {
+  const row = target ?? { text: "" };
+  row.text = text;
+  if (fg === undefined) delete row.fg;
+  else row.fg = fg;
+  if (bg === undefined) delete row.bg;
+  else row.bg = bg;
+  if (bold === undefined) delete row.bold;
+  else row.bold = bold;
+  return row;
 }
 
 function threeHeaderLabels(mode: string): ThreeHeaderLabels {

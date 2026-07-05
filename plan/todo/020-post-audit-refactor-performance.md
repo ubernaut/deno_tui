@@ -1217,3 +1217,7 @@ performance, shared terminal/web workbench projections, and oversized module red
   keep stable assembly colors without allocating a new `Color` clone for every submitted readback.
 - Avoided the renderer-owned Three ASCII reusable grid row-length reset when frame dimensions are unchanged, keeping
   stable-size frames on the direct overwrite path instead of touching every row before assembly.
+- Added caller-owned Three header row projection and routed the API Workbench plus benchmark hot path through retained
+  row storage. The existing `threeHeaderRows()` API remains as a wrapper, while the header benchmark improved from
+  roughly `0.112ms` to `0.099ms` on this run; the default workbench resize visual smoke and Three block span flush
+  benchmark stayed green.
