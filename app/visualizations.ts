@@ -13,13 +13,6 @@ import {
   type VisualizationDrive,
 } from "./visualization_drive.ts";
 import {
-  cpuActivityRgb,
-  cpuHexGridColumnCount,
-  cpuHexTileLayout,
-  cpuHexTileLayoutInto,
-  renderCpuHexGrid,
-} from "./visualization_cpu_hex.ts";
-import {
   biosignalStrip,
   channelMatrix,
   circularField,
@@ -56,6 +49,11 @@ import {
   THREE_FALLBACK_BLOCKS,
 } from "./visualization_three.ts";
 import {
+  cpuActivityRgb,
+  cpuHexGridColumnCount,
+  cpuHexTileLayout,
+  cpuHexTileLayoutInto,
+  renderCpuHexGrid,
   renderCpuLegend,
   renderCpuMonitor,
   renderDiskMonitor,
@@ -78,13 +76,13 @@ export {
   processMatchesCpuLabel,
   selectedCpuHexTilesWith,
   topCpuProcessLabelForCpu,
-} from "./visualization_cpu_hex.ts";
+} from "./visualization_system.ts";
 export type {
   CpuHexNavigationKey,
   CpuHexScrollOffset,
   CpuHexScrollTargetOptions,
   CpuHexTileLayout,
-} from "./visualization_cpu_hex.ts";
+} from "./visualization_system.ts";
 
 export const visualizations: VisualizationDescriptor[] = visualizationCatalog.map((entry) => ({ ...entry }));
 

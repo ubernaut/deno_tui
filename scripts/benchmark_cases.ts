@@ -93,7 +93,7 @@ import {
   SystemMonitor,
 } from "../app/system_metrics.ts";
 import { syntheticWorkbenchSystem } from "../app/workbench_synthetic.ts";
-import { cpuHexTileLayoutInto } from "../app/visualization_cpu_hex.ts";
+import { cpuHexTileLayoutInto } from "../app/visualizations.ts";
 import {
   queueRerenderCellInto,
   queueRerenderRangeInto,
