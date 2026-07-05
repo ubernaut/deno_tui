@@ -17,13 +17,13 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `scripts`: `27`
   - `plan`: `26`
 - Handwritten/code-heavy line counts:
-  - `src/app`: `23,268` lines across `105` files
+  - `src/app`: `24,384` lines across `105` files
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,261` lines across `43` files
   - `src/three_ascii`: `7,201` lines across `35` files
   - `app`: `20,312` lines across `42` files
   - `examples`: `8,732` lines across `41` files
-  - `tests`: `49,097` lines across `142` files
+  - `tests`: `49,107` lines across `142` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `24MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
