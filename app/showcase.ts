@@ -6,35 +6,20 @@ import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts
 import { Tui } from "../src/tui.ts";
 import { adaptiveGridItemRect, adaptiveGridPage } from "../src/layout/mod.ts";
 import { createDefaultAsciiOptions, terminalGlyphStyleLabel } from "../src/three_ascii/options.ts";
-import { demos, formatCountdown, type NeonDemo, type NeonSection } from "./neon_theme.ts";
+import { demos, formatCountdown, type NeonDemo } from "./neon_theme.ts";
+import {
+  fitText as crop,
+  hiddenRect,
+  type NeonSuiteSection as ShowcaseSection,
+  neonSuiteSectionLabels as sectionLabels,
+  neonSuiteSections as sectionOrder,
+  renderNeonSuiteDemo,
+} from "./neon_suite.ts";
 import { accentColor, makeStyle, palette, severityAccent } from "./styles.ts";
-import { stringSeed, unitWave, waveSeries } from "./synthetic_wave.ts";
 import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelView } from "./three_panel.ts";
-import type {
-  Accent,
-  AsciiOptions,
-  BorderMode,
-  PanelRender,
-  Rect,
-  RenderContext,
-  SlotConfig,
-  SourceFrame,
-  SystemSnapshot,
-} from "./types.ts";
-import { renderVisualization } from "./visualizations.ts";
+import type { Accent, AsciiOptions, BorderMode, PanelRender, Rect } from "./types.ts";
 import { PanelView } from "./ui.ts";
-
-type ShowcaseSection = NeonSection | "all";
-
-const sectionOrder: ShowcaseSection[] = ["all", "overview", "signals", "control", "three"];
-const sectionLabels: Record<ShowcaseSection, string> = {
-  all: "ALL",
-  overview: "OVERVIEW",
-  signals: "SIGNALS",
-  control: "CONTROL",
-  three: "THREE",
-};
 
 requireInteractiveTerminal("deno task showcase");
 
@@ -386,116 +371,14 @@ function gridPage() {
 }
 
 function renderShowcaseDemo(demo: NeonDemo, rect: Rect, selected: boolean): PanelRender {
-  const context = buildRenderContext(demo, rect, selected);
-  return renderVisualization(context);
-}
-
-function buildRenderContext(demo: NeonDemo, rect: Rect, selected: boolean): RenderContext {
-  const slot: SlotConfig = {
-    id: "cpu",
-    name: demo.badge,
-    visualizationId: demo.id,
-    inputSourceIds: ["demo:drive", "demo:harmonic", "demo:noise"],
-    cycleEnabled: false,
-    cycleIntervalMs: 10000,
+  return renderNeonSuiteDemo({
+    demo,
+    selected,
     ascii: ascii.peek(),
-  };
-
-  return {
-    slot,
-    system: syntheticSystemSnapshot(demo),
-    sources: syntheticSources(demo, selected),
     phase: phase.value,
     width: Math.max(8, rect.width - 2),
     height: Math.max(4, rect.height - 4),
-  };
-}
-
-function syntheticSources(demo: NeonDemo, selected: boolean): SourceFrame[] {
-  const base = stringSeed(demo.id);
-  const specs: Array<{ name: string; accent: Accent; offset: number }> = [
-    { name: demo.badge, accent: demo.accent, offset: base % 31 },
-    { name: "Harmonic", accent: "signal", offset: base % 17 },
-    { name: "Noise", accent: selected ? "amber" : "violet", offset: base % 43 },
-  ];
-
-  const sources = new Array<SourceFrame>(specs.length);
-  for (let index = 0; index < specs.length; index++) {
-    const spec = specs[index]!;
-    const series = waveSeries(64, phase.value + spec.offset, 0.12 + index * 0.035, 0.08 + index * 0.025);
-    const value = series[series.length - 1] ?? 0.5;
-    sources[index] = {
-      id: `demo:${demo.id}:${index}`,
-      name: spec.name,
-      accent: value > 0.88 ? "alarm" : value > 0.72 ? spec.accent : spec.accent,
-      value,
-      series,
-      detailLines: [`${Math.round(value * 100)}% ${demo.code}`],
-    };
-  }
-  return sources;
-}
-
-function syntheticSystemSnapshot(demo: NeonDemo): SystemSnapshot {
-  const hot = unitWave(phase.value, 0.08, 0.13);
-  return {
-    timestamp: Date.now(),
-    hostname: "showcase",
-    osRelease: "neon",
-    uptimeSeconds: phase.value,
-    loadavg: [hot * 2, hot * 1.4, hot],
-    cpuOverall: hot * 100,
-    cpuCores: [],
-    cpuHistory: waveSeries(64, phase.value, 0.08, 0.03, 100),
-    gpu: {
-      available: true,
-      name: "SHOWCASE RENDER CORE",
-      utilizationPercent: hot * 100,
-      memoryUsed: hot * 18 * 1024 ** 3,
-      memoryTotal: 24 * 1024 ** 3,
-      memoryPercent: hot * 75,
-      temperatureCelsius: 36 + hot * 47,
-      powerWatts: 85 + hot * 220,
-      graphicsClockMhz: 1500 + hot * 950,
-      memoryClockMhz: 9000 + hot * 1200,
-    },
-    gpuUtilizationHistory: waveSeries(64, phase.value, 0.075, 0.29),
-    gpuMemoryHistory: waveSeries(64, phase.value, 0.045, 0.51),
-    memory: {
-      total: 32 * 1024 ** 3,
-      used: hot * 24 * 1024 ** 3,
-      available: (1 - hot) * 24 * 1024 ** 3,
-      free: (1 - hot) * 24 * 1024 ** 3,
-      swapTotal: 8 * 1024 ** 3,
-      swapUsed: hot * 2 * 1024 ** 3,
-      percent: hot * 100,
-      swapPercent: hot * 25,
-    },
-    memoryHistory: waveSeries(64, phase.value, 0.05, 0.1),
-    swapHistory: waveSeries(64, phase.value, 0.04, 0.2, 0.35),
-    temperatures: [{ label: "CORE", celsius: 40 + hot * 48 }],
-    disks: [{
-      filesystem: "/dev/showcase",
-      mount: "/",
-      total: 1,
-      used: hot,
-      available: 1 - hot,
-      percent: Math.round(hot * 100),
-    }],
-    networks: [{
-      name: "eth0",
-      addresses: ["127.0.0.1"],
-      rxBytes: 0,
-      txBytes: 0,
-      rxRate: hot * 95_000_000,
-      txRate: hot * 72_000_000,
-    }],
-    rxHistory: waveSeries(64, phase.value, 0.11, 0.2),
-    txHistory: waveSeries(64, phase.value, 0.09, 0.4),
-    processes: [],
-    alerts: hot > 0.92 ? [{ severity: "warning", title: demo.badge, detail: "DRIVE SATURATION" }] : [],
-    diagnostics: [],
-  };
+  });
 }
 
 function emptyRender(): PanelRender {
@@ -510,15 +393,4 @@ function emptyRender(): PanelRender {
 
 function titleInk(accent: Accent) {
   return accent === "phosphor" || accent === "signal" || accent === "amber" ? palette.void : palette.paper;
-}
-
-function hiddenRect(): Rect {
-  return { column: 0, row: 0, width: 0, height: 0 };
-}
-
-function crop(text: string, width: number) {
-  if (width <= 0) {
-    return "";
-  }
-  return text.length <= width ? text : `${text.slice(0, Math.max(0, width - 1))}…`;
 }
