@@ -1,6 +1,6 @@
 import { assertEquals, assertStringIncludes } from "./deps.ts";
 import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
-import { emptySnapshot } from "../app/system_metrics_snapshot.ts";
+import { emptySnapshot } from "../app/system_metrics.ts";
 import { buildVisualizationDrive } from "../app/visualization_drive.ts";
 import {
   alertText,
