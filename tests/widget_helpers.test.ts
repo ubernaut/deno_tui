@@ -1,21 +1,31 @@
 import { assertEquals } from "./deps.ts";
-import { bindButtonCommands, buttonCommands } from "../src/app/button_commands.ts";
-import { bindCheckBoxCommands, checkBoxCommands } from "../src/app/checkbox_commands.ts";
-import { bindComboBoxCommands, comboBoxCommands } from "../src/app/combobox_commands.ts";
 import { bindInputCommands, inputCommands } from "../src/app/input_commands.ts";
 import { bindListCommands, listCommands } from "../src/app/list_commands.ts";
 import { bindMenuBarCommands, menuBarCommands } from "../src/app/menu_bar_commands.ts";
 import { bindPadCommands, padCommands } from "../src/app/pad_commands.ts";
-import { bindProgressBarCommands, progressBarCommands } from "../src/app/progress_bar_commands.ts";
-import { bindRadioGroupCommands, radioGroupCommands } from "../src/app/radio_group_commands.ts";
 import { bindScrollAreaCommands, scrollAreaCommands } from "../src/app/scroll_area_commands.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
-import { bindSliderCommands, sliderCommands } from "../src/app/slider_commands.ts";
-import { bindStepperCommands, stepperCommands } from "../src/app/stepper_commands.ts";
 import { bindTableCommands, tableCommands } from "../src/app/table_commands.ts";
 import { bindTabsCommands, tabsCommands } from "../src/app/tabs_commands.ts";
-import { bindTextBoxCommands, textBoxCommands } from "../src/app/textbox_commands.ts";
 import { bindTreeCommands, treeCommands } from "../src/app/tree_commands.ts";
+import {
+  bindButtonCommands,
+  bindCheckBoxCommands,
+  bindComboBoxCommands,
+  bindProgressBarCommands,
+  bindRadioGroupCommands,
+  bindSliderCommands,
+  bindStepperCommands,
+  bindTextBoxCommands,
+  buttonCommands,
+  checkBoxCommands,
+  comboBoxCommands,
+  progressBarCommands,
+  radioGroupCommands,
+  sliderCommands,
+  stepperCommands,
+  textBoxCommands,
+} from "../src/app/widget_commands.ts";
 import { formatKeyBinding, KeymapRegistry } from "../src/keymap.ts";
 import { renderBreadcrumbs } from "../src/components/breadcrumbs.ts";
 import { ButtonController } from "../src/components/button.ts";

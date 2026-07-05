@@ -6,10 +6,10 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 ## Summary
 
 - Entrypoints: 9
-- Module visits: 534
-- Re-export declarations: 525
-- Exported symbols: 4944
-- Documented symbols: 4944
+- Module visits: 533
+- Re-export declarations: 524
+- Exported symbols: 5331
+- Documented symbols: 5331
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,13 +18,13 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     241 |    2116 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     220 |    1971 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     239 |    2291 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     218 |    2143 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
-| `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |       8 |      54 | 100.00% |
+| `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      87 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
-| `./runtime`     | `./mod.runtime.ts`             | shared   | beta         |      31 |     387 | 100.00% |
-| `./terminal`    | `./mod.terminal.ts`            | terminal | beta         |      15 |     155 | 100.00% |
+| `./runtime`     | `./mod.runtime.ts`             | shared   | beta         |      31 |     392 | 100.00% |
+| `./terminal`    | `./mod.terminal.ts`            | terminal | beta         |      15 |     157 | 100.00% |
 | `./testing`     | `./mod.testing.ts`             | shared   | beta         |       4 |      22 | 100.00% |
 | `./layout/yoga` | `./src/layout/solvers/yoga.ts` | shared   | experimental |       1 |       3 | 100.00% |
 
@@ -39,259 +39,257 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 ### Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 241
-- Re-export declarations: 240
-- Exported symbols: 2116
-- Documented symbols: 2116
+- Modules: 239
+- Re-export declarations: 238
+- Exported symbols: 2291
+- Documented symbols: 2291
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
 
 ### Module Index
 
-| Module                                                                                      | Re-exports | Symbols | Documented |
-| ------------------------------------------------------------------------------------------- | ---------: | ------: | ---------: |
-| [`mod.ts`](#mod-ts)                                                                         |         33 |       0 |          0 |
-| [`src/api_stability.ts`](#src-api-stability-ts)                                             |          0 |      14 |         14 |
-| [`src/app/actions.ts`](#src-app-actions-ts)                                                 |          0 |       7 |          7 |
-| [`src/app/app.ts`](#src-app-app-ts)                                                         |          0 |      13 |         13 |
-| [`src/app/button_commands.ts`](#src-app-button-commands-ts)                                 |          0 |       6 |          6 |
-| [`src/app/checkbox_commands.ts`](#src-app-checkbox-commands-ts)                             |          0 |       6 |          6 |
-| [`src/app/combobox_commands.ts`](#src-app-combobox-commands-ts)                             |          0 |       6 |          6 |
-| [`src/app/command_bindings.ts`](#src-app-command-bindings-ts)                               |          0 |      26 |         26 |
-| [`src/app/command_search_index.ts`](#src-app-command-search-index-ts)                       |          0 |      11 |         11 |
-| [`src/app/commands.ts`](#src-app-commands-ts)                                               |          0 |       8 |          8 |
-| [`src/app/component_commands.ts`](#src-app-component-commands-ts)                           |          0 |       5 |          5 |
-| [`src/app/data_query_bindings.ts`](#src-app-data-query-bindings-ts)                         |          0 |      12 |         12 |
-| [`src/app/data_query_commands.ts`](#src-app-data-query-commands-ts)                         |          0 |       7 |          7 |
-| [`src/app/data_query_plugin.ts`](#src-app-data-query-plugin-ts)                             |          0 |       5 |          5 |
-| [`src/app/data_table_commands.ts`](#src-app-data-table-commands-ts)                         |          0 |       4 |          4 |
-| [`src/app/disposables.ts`](#src-app-disposables-ts)                                         |          0 |       6 |          6 |
-| [`src/app/focus_commands.ts`](#src-app-focus-commands-ts)                                   |          0 |       7 |          7 |
-| [`src/app/form_bindings.ts`](#src-app-form-bindings-ts)                                     |          0 |       2 |          2 |
-| [`src/app/form_commands.ts`](#src-app-form-commands-ts)                                     |          0 |       7 |          7 |
-| [`src/app/forms.ts`](#src-app-forms-ts)                                                     |          0 |      17 |         17 |
-| [`src/app/history_bindings.ts`](#src-app-history-bindings-ts)                               |          0 |       6 |          6 |
-| [`src/app/history.ts`](#src-app-history-ts)                                                 |          0 |       5 |          5 |
-| [`src/app/hit_targets.ts`](#src-app-hit-targets-ts)                                         |          0 |       8 |          8 |
-| [`src/app/input_commands.ts`](#src-app-input-commands-ts)                                   |          0 |       6 |          6 |
-| [`src/app/list_commands.ts`](#src-app-list-commands-ts)                                     |          0 |       6 |          6 |
-| [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                         |          0 |       6 |          6 |
-| [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                             |          0 |       6 |          6 |
-| [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                   |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                                         |         61 |       0 |          0 |
-| [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                   |          0 |      10 |         10 |
-| [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                       |          0 |       6 |          6 |
-| [`src/app/plugins.ts`](#src-app-plugins-ts)                                                 |          0 |      17 |         17 |
-| [`src/app/progress_bar_commands.ts`](#src-app-progress-bar-commands-ts)                     |          0 |       6 |          6 |
-| [`src/app/radio_group_commands.ts`](#src-app-radio-group-commands-ts)                       |          0 |       6 |          6 |
-| [`src/app/route_bindings.ts`](#src-app-route-bindings-ts)                                   |          0 |       9 |          9 |
-| [`src/app/router.ts`](#src-app-router-ts)                                                   |          0 |       5 |          5 |
-| [`src/app/runtime_profile_commands.ts`](#src-app-runtime-profile-commands-ts)               |          0 |       5 |          5 |
-| [`src/app/runtime_profile_plugin.ts`](#src-app-runtime-profile-plugin-ts)                   |          0 |       5 |          5 |
-| [`src/app/runtime_renderer_commands.ts`](#src-app-runtime-renderer-commands-ts)             |          0 |       5 |          5 |
-| [`src/app/runtime_renderer_plugin.ts`](#src-app-runtime-renderer-plugin-ts)                 |          0 |       5 |          5 |
-| [`src/app/runtime_workload_commands.ts`](#src-app-runtime-workload-commands-ts)             |          0 |       5 |          5 |
-| [`src/app/scroll_area_commands.ts`](#src-app-scroll-area-commands-ts)                       |          0 |       6 |          6 |
-| [`src/app/selection_bindings.ts`](#src-app-selection-bindings-ts)                           |          0 |       8 |          8 |
-| [`src/app/settings_bindings.ts`](#src-app-settings-bindings-ts)                             |          0 |      21 |         21 |
-| [`src/app/settings_commands.ts`](#src-app-settings-commands-ts)                             |          0 |       5 |          5 |
-| [`src/app/settings.ts`](#src-app-settings-ts)                                               |          0 |       5 |          5 |
-| [`src/app/slider_commands.ts`](#src-app-slider-commands-ts)                                 |          0 |       6 |          6 |
-| [`src/app/split_pane_commands.ts`](#src-app-split-pane-commands-ts)                         |          0 |       7 |          7 |
-| [`src/app/stepper_commands.ts`](#src-app-stepper-commands-ts)                               |          0 |       6 |          6 |
-| [`src/app/surface_bindings.ts`](#src-app-surface-bindings-ts)                               |          0 |       2 |          2 |
-| [`src/app/table_commands.ts`](#src-app-table-commands-ts)                                   |          0 |       6 |          6 |
-| [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                                     |          0 |       6 |          6 |
-| [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                             |          0 |      24 |         24 |
-| [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                                   |          0 |      17 |         17 |
-| [`src/app/terminal_window_bindings.ts`](#src-app-terminal-window-bindings-ts)               |          0 |       5 |          5 |
-| [`src/app/textbox_commands.ts`](#src-app-textbox-commands-ts)                               |          0 |       6 |          6 |
-| [`src/app/theme_commands.ts`](#src-app-theme-commands-ts)                                   |          0 |      10 |         10 |
-| [`src/app/theme_engine_commands.ts`](#src-app-theme-engine-commands-ts)                     |          0 |       9 |          9 |
-| [`src/app/theme_pipeline_commands.ts`](#src-app-theme-pipeline-commands-ts)                 |          0 |       5 |          5 |
-| [`src/app/theme_plugin.ts`](#src-app-theme-plugin-ts)                                       |          0 |       8 |          8 |
-| [`src/app/theme_workspace_plugin.ts`](#src-app-theme-workspace-plugin-ts)                   |          0 |       5 |          5 |
-| [`src/app/toast_commands.ts`](#src-app-toast-commands-ts)                                   |          0 |       6 |          6 |
-| [`src/app/tree_commands.ts`](#src-app-tree-commands-ts)                                     |          0 |       6 |          6 |
-| [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)                 |          0 |       8 |          8 |
-| [`src/app/workbench_button_style.ts`](#src-app-workbench-button-style-ts)                   |          0 |       5 |          5 |
-| [`src/app/workbench_control_layout.ts`](#src-app-workbench-control-layout-ts)               |          0 |      14 |         14 |
-| [`src/app/workbench_diagnostics.ts`](#src-app-workbench-diagnostics-ts)                     |          0 |       6 |          6 |
-| [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                                 |          0 |      19 |         19 |
-| [`src/app/workbench_help.ts`](#src-app-workbench-help-ts)                                   |          0 |       3 |          3 |
-| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                               |          0 |      27 |         27 |
-| [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                                   |          0 |      19 |         19 |
-| [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                             |          0 |      13 |         13 |
-| [`src/app/workbench_panel_workspace_store.ts`](#src-app-workbench-panel-workspace-store-ts) |          0 |       8 |          8 |
-| [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                                 |          0 |      20 |         20 |
-| [`src/app/workbench_status.ts`](#src-app-workbench-status-ts)                               |          0 |      13 |         13 |
-| [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                           |          0 |      25 |         25 |
-| [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                                   |          0 |      10 |         10 |
-| [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                           |          0 |      10 |         10 |
-| [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                           |          0 |       4 |          4 |
-| [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)             |          0 |      14 |         14 |
-| [`src/app/workbench_workspace_store.ts`](#src-app-workbench-workspace-store-ts)             |          0 |       6 |          6 |
-| [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)                         |          0 |      18 |         18 |
-| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                     |         19 |       0 |          0 |
-| [`src/canvas/box.ts`](#src-canvas-box-ts)                                                   |          0 |       2 |          2 |
-| [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                             |          0 |       4 |          4 |
-| [`src/canvas/dirty_region.ts`](#src-canvas-dirty-region-ts)                                 |          0 |       2 |          2 |
-| [`src/canvas/draw_object.ts`](#src-canvas-draw-object-ts)                                   |          0 |       2 |          2 |
-| [`src/canvas/mod.ts`](#src-canvas-mod-ts)                                                   |          8 |       0 |          0 |
-| [`src/canvas/sink.ts`](#src-canvas-sink-ts)                                                 |          0 |       8 |          8 |
-| [`src/canvas/spatial_index.ts`](#src-canvas-spatial-index-ts)                               |          0 |       2 |          2 |
-| [`src/canvas/text.ts`](#src-canvas-text-ts)                                                 |          0 |       3 |          3 |
-| [`src/canvas/three_ascii.ts`](#src-canvas-three-ascii-ts)                                   |          0 |       6 |          6 |
-| [`src/component.ts`](#src-component-ts)                                                     |          0 |       4 |          4 |
-| [`src/components/box.ts`](#src-components-box-ts)                                           |          0 |       1 |          1 |
-| [`src/components/breadcrumbs.ts`](#src-components-breadcrumbs-ts)                           |          0 |       4 |          4 |
-| [`src/components/button.ts`](#src-components-button-ts)                                     |          0 |       5 |          5 |
-| [`src/components/catalog.ts`](#src-components-catalog-ts)                                   |          0 |      19 |         19 |
-| [`src/components/chart.ts`](#src-components-chart-ts)                                       |          0 |       3 |          3 |
-| [`src/components/checkbox.ts`](#src-components-checkbox-ts)                                 |          0 |       7 |          7 |
-| [`src/components/combobox.ts`](#src-components-combobox-ts)                                 |          0 |       7 |          7 |
-| [`src/components/command_palette.ts`](#src-components-command-palette-ts)                   |          0 |      12 |         12 |
-| [`src/components/context_menu.ts`](#src-components-context-menu-ts)                         |          0 |      10 |         10 |
-| [`src/components/data_table.ts`](#src-components-data-table-ts)                             |          0 |      16 |         16 |
-| [`src/components/empty_state.ts`](#src-components-empty-state-ts)                           |          0 |       4 |          4 |
-| [`src/components/file_explorer.ts`](#src-components-file-explorer-ts)                       |          0 |       7 |          7 |
-| [`src/components/frame.ts`](#src-components-frame-ts)                                       |          0 |       4 |          4 |
-| [`src/components/gauge.ts`](#src-components-gauge-ts)                                       |          0 |       3 |          3 |
-| [`src/components/input.ts`](#src-components-input-ts)                                       |          0 |       8 |          8 |
-| [`src/components/interaction.ts`](#src-components-interaction-ts)                           |          0 |       7 |          7 |
-| [`src/components/key_help.ts`](#src-components-key-help-ts)                                 |          0 |       3 |          3 |
-| [`src/components/label.ts`](#src-components-label-ts)                                       |          0 |       6 |          6 |
-| [`src/components/list.ts`](#src-components-list-ts)                                         |          0 |       9 |          9 |
-| [`src/components/log_viewer.ts`](#src-components-log-viewer-ts)                             |          0 |       6 |          6 |
-| [`src/components/menu_bar.ts`](#src-components-menu-bar-ts)                                 |          0 |      10 |         10 |
-| [`src/components/metric_series.ts`](#src-components-metric-series-ts)                       |          0 |      10 |         10 |
-| [`src/components/mod.ts`](#src-components-mod-ts)                                           |         41 |       0 |          0 |
-| [`src/components/modal.ts`](#src-components-modal-ts)                                       |          0 |      11 |         11 |
-| [`src/components/pad.ts`](#src-components-pad-ts)                                           |          0 |      13 |         13 |
-| [`src/components/progressbar.ts`](#src-components-progressbar-ts)                           |          0 |      15 |         15 |
-| [`src/components/radio_group.ts`](#src-components-radio-group-ts)                           |          0 |      11 |         11 |
-| [`src/components/scroll_area.ts`](#src-components-scroll-area-ts)                           |          0 |      13 |         13 |
-| [`src/components/slider.ts`](#src-components-slider-ts)                                     |          0 |      14 |         14 |
-| [`src/components/sparkline.ts`](#src-components-sparkline-ts)                               |          0 |       3 |          3 |
-| [`src/components/spinner.ts`](#src-components-spinner-ts)                                   |          0 |       6 |          6 |
-| [`src/components/statusbar.ts`](#src-components-statusbar-ts)                               |          0 |       3 |          3 |
-| [`src/components/stepper.ts`](#src-components-stepper-ts)                                   |          0 |      11 |         11 |
-| [`src/components/table.ts`](#src-components-table-ts)                                       |          0 |      13 |         13 |
-| [`src/components/tabs.ts`](#src-components-tabs-ts)                                         |          0 |      10 |         10 |
-| [`src/components/terminal_output.ts`](#src-components-terminal-output-ts)                   |          0 |       7 |          7 |
-| [`src/components/text.ts`](#src-components-text-ts)                                         |          0 |       2 |          2 |
-| [`src/components/textbox.ts`](#src-components-textbox-ts)                                   |          0 |      15 |         15 |
-| [`src/components/three_ascii.ts`](#src-components-three-ascii-ts)                           |          0 |       2 |          2 |
-| [`src/components/toast.ts`](#src-components-toast-ts)                                       |          0 |       8 |          8 |
-| [`src/components/tree.ts`](#src-components-tree-ts)                                         |          0 |      11 |         11 |
-| [`src/components/virtual_list.ts`](#src-components-virtual-list-ts)                         |          0 |       9 |          9 |
-| [`src/controls.ts`](#src-controls-ts)                                                       |          0 |       2 |          2 |
-| [`src/event_emitter.ts`](#src-event-emitter-ts)                                             |          0 |       5 |          5 |
-| [`src/focus.ts`](#src-focus-ts)                                                             |          0 |       7 |          7 |
-| [`src/grwizard_themes.ts`](#src-grwizard-themes-ts)                                         |          0 |       5 |          5 |
-| [`src/input_reader/mod.ts`](#src-input-reader-mod-ts)                                       |          0 |       2 |          2 |
-| [`src/input.ts`](#src-input-ts)                                                             |          0 |       1 |          1 |
-| [`src/keymap.ts`](#src-keymap-ts)                                                           |          0 |       6 |          6 |
-| [`src/layout/engine.ts`](#src-layout-engine-ts)                                             |          0 |       6 |          6 |
-| [`src/layout/errors.ts`](#src-layout-errors-ts)                                             |          0 |       2 |          2 |
-| [`src/layout/flex_layout.ts`](#src-layout-flex-layout-ts)                                   |          0 |       3 |          3 |
-| [`src/layout/grid_layout.ts`](#src-layout-grid-layout-ts)                                   |          0 |       3 |          3 |
-| [`src/layout/horizontal_layout.ts`](#src-layout-horizontal-layout-ts)                       |          0 |       1 |          1 |
-| [`src/layout/measurement.ts`](#src-layout-measurement-ts)                                   |          0 |       6 |          6 |
-| [`src/layout/mod.ts`](#src-layout-mod-ts)                                                   |         16 |       0 |          0 |
-| [`src/layout/overlay.ts`](#src-layout-overlay-ts)                                           |          0 |      19 |         19 |
-| [`src/layout/recipe.ts`](#src-layout-recipe-ts)                                             |          0 |      18 |         18 |
-| [`src/layout/responsive.ts`](#src-layout-responsive-ts)                                     |          0 |      14 |         14 |
-| [`src/layout/solver.ts`](#src-layout-solver-ts)                                             |          0 |      13 |         13 |
-| [`src/layout/solvers/simple.ts`](#src-layout-solvers-simple-ts)                             |          0 |       3 |          3 |
-| [`src/layout/split_pane.ts`](#src-layout-split-pane-ts)                                     |          0 |      10 |         10 |
-| [`src/layout/style.ts`](#src-layout-style-ts)                                               |          0 |      33 |         33 |
-| [`src/layout/types.ts`](#src-layout-types-ts)                                               |          0 |       3 |          3 |
-| [`src/layout/vertical_layout.ts`](#src-layout-vertical-layout-ts)                           |          0 |       1 |          1 |
-| [`src/layout/window_manager.ts`](#src-layout-window-manager-ts)                             |          0 |      10 |         10 |
-| [`src/markup/cascade.ts`](#src-markup-cascade-ts)                                           |          0 |       7 |          7 |
-| [`src/markup/css.ts`](#src-markup-css-ts)                                                   |          0 |      11 |         11 |
-| [`src/markup/demo_fixtures.ts`](#src-markup-demo-fixtures-ts)                               |          0 |       7 |          7 |
-| [`src/markup/html.ts`](#src-markup-html-ts)                                                 |          0 |       3 |          3 |
-| [`src/markup/hydrate.ts`](#src-markup-hydrate-ts)                                           |          0 |       5 |          5 |
-| [`src/markup/layout_worker.ts`](#src-markup-layout-worker-ts)                               |          0 |       6 |          6 |
-| [`src/markup/mod.ts`](#src-markup-mod-ts)                                                   |          8 |       0 |          0 |
-| [`src/markup/support.ts`](#src-markup-support-ts)                                           |          0 |       2 |          2 |
-| [`src/markup/widgets.ts`](#src-markup-widgets-ts)                                           |          0 |      15 |         15 |
-| [`src/perf/benchmark.ts`](#src-perf-benchmark-ts)                                           |          0 |      19 |         19 |
-| [`src/perf/mod.ts`](#src-perf-mod-ts)                                                       |          1 |       0 |          0 |
-| [`src/runtime/capabilities.ts`](#src-runtime-capabilities-ts)                               |          0 |      16 |         16 |
-| [`src/runtime/data_pipeline_bindings.ts`](#src-runtime-data-pipeline-bindings-ts)           |          0 |       4 |          4 |
-| [`src/runtime/data_pipeline.ts`](#src-runtime-data-pipeline-ts)                             |          0 |      19 |         19 |
-| [`src/runtime/data_query.ts`](#src-runtime-data-query-ts)                                   |          0 |      15 |         15 |
-| [`src/runtime/diagnostics.ts`](#src-runtime-diagnostics-ts)                                 |          0 |      12 |         12 |
-| [`src/runtime/graphics_surface.ts`](#src-runtime-graphics-surface-ts)                       |          0 |      15 |         15 |
-| [`src/runtime/kitty_graphics.ts`](#src-runtime-kitty-graphics-ts)                           |          0 |      25 |         25 |
-| [`src/runtime/mod.ts`](#src-runtime-mod-ts)                                                 |         29 |       0 |          0 |
-| [`src/runtime/process_session.ts`](#src-runtime-process-session-ts)                         |          0 |       9 |          9 |
-| [`src/runtime/profiles.ts`](#src-runtime-profiles-ts)                                       |          0 |      24 |         24 |
-| [`src/runtime/pty_backend.ts`](#src-runtime-pty-backend-ts)                                 |          0 |      12 |         12 |
-| [`src/runtime/render_loop.ts`](#src-runtime-render-loop-ts)                                 |          0 |      10 |         10 |
-| [`src/runtime/renderer_backends.ts`](#src-runtime-renderer-backends-ts)                     |          0 |      24 |         24 |
-| [`src/runtime/resource_bindings.ts`](#src-runtime-resource-bindings-ts)                     |          0 |       4 |          4 |
-| [`src/runtime/resource.ts`](#src-runtime-resource-ts)                                       |          0 |      14 |         14 |
-| [`src/runtime/scheduler.ts`](#src-runtime-scheduler-ts)                                     |          0 |      13 |         13 |
-| [`src/runtime/storage.ts`](#src-runtime-storage-ts)                                         |          0 |      10 |         10 |
-| [`src/runtime/telemetry.ts`](#src-runtime-telemetry-ts)                                     |          0 |      15 |         15 |
-| [`src/runtime/terminal_backend_registry.ts`](#src-runtime-terminal-backend-registry-ts)     |          0 |       9 |          9 |
-| [`src/runtime/terminal_backend.ts`](#src-runtime-terminal-backend-ts)                       |          0 |       9 |          9 |
-| [`src/runtime/terminal_capabilities.ts`](#src-runtime-terminal-capabilities-ts)             |          0 |      27 |         27 |
-| [`src/runtime/terminal_screen.ts`](#src-runtime-terminal-screen-ts)                         |          0 |       6 |          6 |
-| [`src/runtime/terminal_scrollback.ts`](#src-runtime-terminal-scrollback-ts)                 |          0 |       5 |          5 |
-| [`src/runtime/terminal_session.ts`](#src-runtime-terminal-session-ts)                       |          0 |       8 |          8 |
-| [`src/runtime/terminal_shell_workspace.ts`](#src-runtime-terminal-shell-workspace-ts)       |          0 |       5 |          5 |
-| [`src/runtime/terminal_shell.ts`](#src-runtime-terminal-shell-ts)                           |          0 |       3 |          3 |
-| [`src/runtime/terminal_status.ts`](#src-runtime-terminal-status-ts)                         |          0 |      16 |         16 |
-| [`src/runtime/terminal_templates.ts`](#src-runtime-terminal-templates-ts)                   |          0 |      22 |         22 |
-| [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)                   |          0 |      24 |         24 |
-| [`src/runtime/worker_pool.ts`](#src-runtime-worker-pool-ts)                                 |          0 |      12 |         12 |
-| [`src/selection.ts`](#src-selection-ts)                                                     |          0 |      16 |         16 |
-| [`src/signals/computed.ts`](#src-signals-computed-ts)                                       |          0 |       3 |          3 |
-| [`src/signals/dependency_tracking.ts`](#src-signals-dependency-tracking-ts)                 |          0 |       3 |          3 |
-| [`src/signals/effect.ts`](#src-signals-effect-ts)                                           |          0 |       3 |          3 |
-| [`src/signals/flusher.ts`](#src-signals-flusher-ts)                                         |          0 |       1 |          1 |
-| [`src/signals/lazy_computed.ts`](#src-signals-lazy-computed-ts)                             |          0 |       1 |          1 |
-| [`src/signals/lazy_effect.ts`](#src-signals-lazy-effect-ts)                                 |          0 |       1 |          1 |
-| [`src/signals/mod.ts`](#src-signals-mod-ts)                                                 |          9 |       0 |          0 |
-| [`src/signals/reactivity.ts`](#src-signals-reactivity-ts)                                   |          0 |      13 |         13 |
-| [`src/signals/signal.ts`](#src-signals-signal-ts)                                           |          0 |      11 |         11 |
-| [`src/signals/types.ts`](#src-signals-types-ts)                                             |          0 |       4 |          4 |
-| [`src/testing/input.ts`](#src-testing-input-ts)                                             |          0 |       7 |          7 |
-| [`src/testing/mod.ts`](#src-testing-mod-ts)                                                 |          2 |       0 |          0 |
-| [`src/testing/snapshot.ts`](#src-testing-snapshot-ts)                                       |          0 |      15 |         15 |
-| [`src/theme_binding.ts`](#src-theme-binding-ts)                                             |          0 |       8 |          8 |
-| [`src/theme_engine_cache.ts`](#src-theme-engine-cache-ts)                                   |          0 |       6 |          6 |
-| [`src/theme_engine_factory.ts`](#src-theme-engine-factory-ts)                               |          0 |      19 |         19 |
-| [`src/theme_engine_pipeline.ts`](#src-theme-engine-pipeline-ts)                             |          0 |      12 |         12 |
-| [`src/theme_gallery.ts`](#src-theme-gallery-ts)                                             |          0 |      11 |         11 |
-| [`src/theme_resolver.ts`](#src-theme-resolver-ts)                                           |          0 |      15 |         15 |
-| [`src/theme_workspace.ts`](#src-theme-workspace-ts)                                         |          0 |       7 |          7 |
-| [`src/theme.ts`](#src-theme-ts)                                                             |          0 |     115 |        115 |
-| [`src/three_ascii/AcerolaAsciiNode.ts`](#src-three-ascii-acerolaasciinode-ts)               |          0 |       2 |          2 |
-| [`src/three_ascii/demo_presets.ts`](#src-three-ascii-demo-presets-ts)                       |          0 |      14 |         14 |
-| [`src/three_ascii/glyphs.ts`](#src-three-ascii-glyphs-ts)                                   |          0 |      13 |         13 |
-| [`src/three_ascii/mod.ts`](#src-three-ascii-mod-ts)                                         |          6 |       0 |          0 |
-| [`src/three_ascii/options.ts`](#src-three-ascii-options-ts)                                 |          0 |      15 |         15 |
-| [`src/three_ascii/renderer.ts`](#src-three-ascii-renderer-ts)                               |          0 |       8 |          8 |
-| [`src/three_ascii/webgpu_compat.ts`](#src-three-ascii-webgpu-compat-ts)                     |          0 |       2 |          2 |
-| [`src/tui.ts`](#src-tui-ts)                                                                 |          0 |       2 |          2 |
-| [`src/types.ts`](#src-types-ts)                                                             |          0 |       8 |          8 |
-| [`src/utils/ansi_codes.ts`](#src-utils-ansi-codes-ts)                                       |          0 |      12 |         12 |
-| [`src/utils/async.ts`](#src-utils-async-ts)                                                 |          0 |       1 |          1 |
-| [`src/utils/component.ts`](#src-utils-component-ts)                                         |          0 |       2 |          2 |
-| [`src/utils/mod.ts`](#src-utils-mod-ts)                                                     |          7 |       0 |          0 |
-| [`src/utils/numbers.ts`](#src-utils-numbers-ts)                                             |          0 |       6 |          6 |
-| [`src/utils/signals.ts`](#src-utils-signals-ts)                                             |          0 |       1 |          1 |
-| [`src/utils/sorted_array.ts`](#src-utils-sorted-array-ts)                                   |          0 |       2 |          2 |
-| [`src/utils/strings.ts`](#src-utils-strings-ts)                                             |          0 |       9 |          9 |
-| [`src/view.ts`](#src-view-ts)                                                               |          0 |       1 |          1 |
-| [`src/viewport.ts`](#src-viewport-ts)                                                       |          0 |      18 |         18 |
+| Module                                                                                          | Re-exports | Symbols | Documented |
+| ----------------------------------------------------------------------------------------------- | ---------: | ------: | ---------: |
+| [`mod.ts`](#mod-ts)                                                                             |         33 |       0 |          0 |
+| [`src/api_stability.ts`](#src-api-stability-ts)                                                 |          0 |      14 |         14 |
+| [`src/app/actions.ts`](#src-app-actions-ts)                                                     |          0 |       7 |          7 |
+| [`src/app/app.ts`](#src-app-app-ts)                                                             |          0 |      13 |         13 |
+| [`src/app/command_bindings.ts`](#src-app-command-bindings-ts)                                   |          0 |      26 |         26 |
+| [`src/app/command_search_index.ts`](#src-app-command-search-index-ts)                           |          0 |      11 |         11 |
+| [`src/app/commands.ts`](#src-app-commands-ts)                                                   |          0 |       9 |          9 |
+| [`src/app/component_commands.ts`](#src-app-component-commands-ts)                               |          0 |       5 |          5 |
+| [`src/app/data_query_bindings.ts`](#src-app-data-query-bindings-ts)                             |          0 |      12 |         12 |
+| [`src/app/data_query_commands.ts`](#src-app-data-query-commands-ts)                             |          0 |       7 |          7 |
+| [`src/app/data_query_plugin.ts`](#src-app-data-query-plugin-ts)                                 |          0 |       5 |          5 |
+| [`src/app/data_table_commands.ts`](#src-app-data-table-commands-ts)                             |          0 |       4 |          4 |
+| [`src/app/disposables.ts`](#src-app-disposables-ts)                                             |          0 |       6 |          6 |
+| [`src/app/focus_commands.ts`](#src-app-focus-commands-ts)                                       |          0 |       7 |          7 |
+| [`src/app/form_bindings.ts`](#src-app-form-bindings-ts)                                         |          0 |       2 |          2 |
+| [`src/app/form_commands.ts`](#src-app-form-commands-ts)                                         |          0 |       7 |          7 |
+| [`src/app/forms.ts`](#src-app-forms-ts)                                                         |          0 |      17 |         17 |
+| [`src/app/history_bindings.ts`](#src-app-history-bindings-ts)                                   |          0 |       6 |          6 |
+| [`src/app/history.ts`](#src-app-history-ts)                                                     |          0 |       5 |          5 |
+| [`src/app/hit_targets.ts`](#src-app-hit-targets-ts)                                             |          0 |       8 |          8 |
+| [`src/app/input_commands.ts`](#src-app-input-commands-ts)                                       |          0 |       6 |          6 |
+| [`src/app/list_commands.ts`](#src-app-list-commands-ts)                                         |          0 |       6 |          6 |
+| [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                             |          0 |       6 |          6 |
+| [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                                 |          0 |       6 |          6 |
+| [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                       |          0 |       6 |          6 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         54 |       0 |          0 |
+| [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                       |          0 |      10 |         10 |
+| [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                           |          0 |       6 |          6 |
+| [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     |          0 |      17 |         17 |
+| [`src/app/route_bindings.ts`](#src-app-route-bindings-ts)                                       |          0 |       9 |          9 |
+| [`src/app/router.ts`](#src-app-router-ts)                                                       |          0 |       5 |          5 |
+| [`src/app/runtime_profile_commands.ts`](#src-app-runtime-profile-commands-ts)                   |          0 |       5 |          5 |
+| [`src/app/runtime_profile_plugin.ts`](#src-app-runtime-profile-plugin-ts)                       |          0 |       5 |          5 |
+| [`src/app/runtime_renderer_commands.ts`](#src-app-runtime-renderer-commands-ts)                 |          0 |       5 |          5 |
+| [`src/app/runtime_renderer_plugin.ts`](#src-app-runtime-renderer-plugin-ts)                     |          0 |       5 |          5 |
+| [`src/app/runtime_workload_commands.ts`](#src-app-runtime-workload-commands-ts)                 |          0 |       5 |          5 |
+| [`src/app/scroll_area_commands.ts`](#src-app-scroll-area-commands-ts)                           |          0 |       6 |          6 |
+| [`src/app/selection_bindings.ts`](#src-app-selection-bindings-ts)                               |          0 |       8 |          8 |
+| [`src/app/settings_bindings.ts`](#src-app-settings-bindings-ts)                                 |          0 |      21 |         21 |
+| [`src/app/settings_commands.ts`](#src-app-settings-commands-ts)                                 |          0 |       5 |          5 |
+| [`src/app/settings.ts`](#src-app-settings-ts)                                                   |          0 |       5 |          5 |
+| [`src/app/split_pane_commands.ts`](#src-app-split-pane-commands-ts)                             |          0 |       7 |          7 |
+| [`src/app/surface_bindings.ts`](#src-app-surface-bindings-ts)                                   |          0 |       2 |          2 |
+| [`src/app/table_commands.ts`](#src-app-table-commands-ts)                                       |          0 |       6 |          6 |
+| [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                                         |          0 |       6 |          6 |
+| [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                                 |          0 |      24 |         24 |
+| [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                                       |          0 |      17 |         17 |
+| [`src/app/terminal_window_bindings.ts`](#src-app-terminal-window-bindings-ts)                   |          0 |       5 |          5 |
+| [`src/app/theme_commands.ts`](#src-app-theme-commands-ts)                                       |          0 |      10 |         10 |
+| [`src/app/theme_engine_commands.ts`](#src-app-theme-engine-commands-ts)                         |          0 |       9 |          9 |
+| [`src/app/theme_pipeline_commands.ts`](#src-app-theme-pipeline-commands-ts)                     |          0 |       5 |          5 |
+| [`src/app/theme_plugin.ts`](#src-app-theme-plugin-ts)                                           |          0 |       8 |          8 |
+| [`src/app/theme_workspace_plugin.ts`](#src-app-theme-workspace-plugin-ts)                       |          0 |       5 |          5 |
+| [`src/app/toast_commands.ts`](#src-app-toast-commands-ts)                                       |          0 |       6 |          6 |
+| [`src/app/tree_commands.ts`](#src-app-tree-commands-ts)                                         |          0 |       6 |          6 |
+| [`src/app/widget_commands.ts`](#src-app-widget-commands-ts)                                     |          0 |      48 |         48 |
+| [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)                     |          0 |       8 |          8 |
+| [`src/app/workbench_ansi_screen.ts`](#src-app-workbench-ansi-screen-ts)                         |          0 |       3 |          3 |
+| [`src/app/workbench_button_style.ts`](#src-app-workbench-button-style-ts)                       |          0 |      10 |         10 |
+| [`src/app/workbench_control_layout.ts`](#src-app-workbench-control-layout-ts)                   |          0 |      17 |         17 |
+| [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                                     |          0 |      30 |         30 |
+| [`src/app/workbench_help.ts`](#src-app-workbench-help-ts)                                       |          0 |       3 |          3 |
+| [`src/app/workbench_keymap.ts`](#src-app-workbench-keymap-ts)                                   |          0 |       3 |          3 |
+| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                                   |          0 |      34 |         34 |
+| [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                                       |          0 |      36 |         36 |
+| [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                                 |          0 |      13 |         13 |
+| [`src/app/workbench_panel_workspace_store.ts`](#src-app-workbench-panel-workspace-store-ts)     |          0 |       8 |          8 |
+| [`src/app/workbench_prompt_input.ts`](#src-app-workbench-prompt-input-ts)                       |          0 |       7 |          7 |
+| [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                                     |          0 |      20 |         20 |
+| [`src/app/workbench_status.ts`](#src-app-workbench-status-ts)                                   |          0 |      23 |         23 |
+| [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                               |          0 |      66 |         66 |
+| [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                                       |          0 |      10 |         10 |
+| [`src/app/workbench_three_terminal_pressure.ts`](#src-app-workbench-three-terminal-pressure-ts) |          0 |      23 |         23 |
+| [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                               |          0 |      10 |         10 |
+| [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)                 |          0 |      27 |         27 |
+| [`src/app/workbench_workspace_store.ts`](#src-app-workbench-workspace-store-ts)                 |          0 |       6 |          6 |
+| [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)                             |          0 |      18 |         18 |
+| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                         |         21 |       0 |          0 |
+| [`src/canvas/box.ts`](#src-canvas-box-ts)                                                       |          0 |       2 |          2 |
+| [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                                 |          0 |       4 |          4 |
+| [`src/canvas/dirty_region.ts`](#src-canvas-dirty-region-ts)                                     |          0 |       3 |          3 |
+| [`src/canvas/draw_object.ts`](#src-canvas-draw-object-ts)                                       |          0 |       2 |          2 |
+| [`src/canvas/mod.ts`](#src-canvas-mod-ts)                                                       |          8 |       0 |          0 |
+| [`src/canvas/sink.ts`](#src-canvas-sink-ts)                                                     |          0 |       8 |          8 |
+| [`src/canvas/spatial_index.ts`](#src-canvas-spatial-index-ts)                                   |          0 |       2 |          2 |
+| [`src/canvas/text.ts`](#src-canvas-text-ts)                                                     |          0 |       3 |          3 |
+| [`src/canvas/three_ascii.ts`](#src-canvas-three-ascii-ts)                                       |          0 |       6 |          6 |
+| [`src/component.ts`](#src-component-ts)                                                         |          0 |       4 |          4 |
+| [`src/components/box.ts`](#src-components-box-ts)                                               |          0 |       1 |          1 |
+| [`src/components/breadcrumbs.ts`](#src-components-breadcrumbs-ts)                               |          0 |       4 |          4 |
+| [`src/components/button.ts`](#src-components-button-ts)                                         |          0 |       5 |          5 |
+| [`src/components/catalog.ts`](#src-components-catalog-ts)                                       |          0 |      19 |         19 |
+| [`src/components/chart.ts`](#src-components-chart-ts)                                           |          0 |       3 |          3 |
+| [`src/components/checkbox.ts`](#src-components-checkbox-ts)                                     |          0 |       7 |          7 |
+| [`src/components/combobox.ts`](#src-components-combobox-ts)                                     |          0 |       7 |          7 |
+| [`src/components/command_palette.ts`](#src-components-command-palette-ts)                       |          0 |      12 |         12 |
+| [`src/components/context_menu.ts`](#src-components-context-menu-ts)                             |          0 |      10 |         10 |
+| [`src/components/data_table.ts`](#src-components-data-table-ts)                                 |          0 |      16 |         16 |
+| [`src/components/empty_state.ts`](#src-components-empty-state-ts)                               |          0 |       4 |          4 |
+| [`src/components/file_explorer.ts`](#src-components-file-explorer-ts)                           |          0 |       7 |          7 |
+| [`src/components/frame.ts`](#src-components-frame-ts)                                           |          0 |       4 |          4 |
+| [`src/components/gauge.ts`](#src-components-gauge-ts)                                           |          0 |       3 |          3 |
+| [`src/components/input.ts`](#src-components-input-ts)                                           |          0 |       8 |          8 |
+| [`src/components/interaction.ts`](#src-components-interaction-ts)                               |          0 |       7 |          7 |
+| [`src/components/key_help.ts`](#src-components-key-help-ts)                                     |          0 |       3 |          3 |
+| [`src/components/label.ts`](#src-components-label-ts)                                           |          0 |       6 |          6 |
+| [`src/components/list.ts`](#src-components-list-ts)                                             |          0 |       9 |          9 |
+| [`src/components/log_viewer.ts`](#src-components-log-viewer-ts)                                 |          0 |       6 |          6 |
+| [`src/components/menu_bar.ts`](#src-components-menu-bar-ts)                                     |          0 |      10 |         10 |
+| [`src/components/metric_series.ts`](#src-components-metric-series-ts)                           |          0 |      10 |         10 |
+| [`src/components/mod.ts`](#src-components-mod-ts)                                               |         41 |       0 |          0 |
+| [`src/components/modal.ts`](#src-components-modal-ts)                                           |          0 |      11 |         11 |
+| [`src/components/pad.ts`](#src-components-pad-ts)                                               |          0 |      13 |         13 |
+| [`src/components/progressbar.ts`](#src-components-progressbar-ts)                               |          0 |      15 |         15 |
+| [`src/components/radio_group.ts`](#src-components-radio-group-ts)                               |          0 |      11 |         11 |
+| [`src/components/scroll_area.ts`](#src-components-scroll-area-ts)                               |          0 |      13 |         13 |
+| [`src/components/slider.ts`](#src-components-slider-ts)                                         |          0 |      14 |         14 |
+| [`src/components/sparkline.ts`](#src-components-sparkline-ts)                                   |          0 |       3 |          3 |
+| [`src/components/spinner.ts`](#src-components-spinner-ts)                                       |          0 |       6 |          6 |
+| [`src/components/statusbar.ts`](#src-components-statusbar-ts)                                   |          0 |       4 |          4 |
+| [`src/components/stepper.ts`](#src-components-stepper-ts)                                       |          0 |      11 |         11 |
+| [`src/components/table.ts`](#src-components-table-ts)                                           |          0 |      13 |         13 |
+| [`src/components/tabs.ts`](#src-components-tabs-ts)                                             |          0 |      10 |         10 |
+| [`src/components/terminal_output.ts`](#src-components-terminal-output-ts)                       |          0 |       7 |          7 |
+| [`src/components/text.ts`](#src-components-text-ts)                                             |          0 |       2 |          2 |
+| [`src/components/textbox.ts`](#src-components-textbox-ts)                                       |          0 |      15 |         15 |
+| [`src/components/three_ascii.ts`](#src-components-three-ascii-ts)                               |          0 |       2 |          2 |
+| [`src/components/toast.ts`](#src-components-toast-ts)                                           |          0 |       8 |          8 |
+| [`src/components/tree.ts`](#src-components-tree-ts)                                             |          0 |      11 |         11 |
+| [`src/components/virtual_list.ts`](#src-components-virtual-list-ts)                             |          0 |       9 |          9 |
+| [`src/controls.ts`](#src-controls-ts)                                                           |          0 |       2 |          2 |
+| [`src/event_emitter.ts`](#src-event-emitter-ts)                                                 |          0 |       5 |          5 |
+| [`src/focus.ts`](#src-focus-ts)                                                                 |          0 |       7 |          7 |
+| [`src/grwizard_themes.ts`](#src-grwizard-themes-ts)                                             |          0 |       5 |          5 |
+| [`src/input_reader/mod.ts`](#src-input-reader-mod-ts)                                           |          0 |       2 |          2 |
+| [`src/input.ts`](#src-input-ts)                                                                 |          0 |       1 |          1 |
+| [`src/keymap.ts`](#src-keymap-ts)                                                               |          0 |       6 |          6 |
+| [`src/layout/engine.ts`](#src-layout-engine-ts)                                                 |          0 |       6 |          6 |
+| [`src/layout/errors.ts`](#src-layout-errors-ts)                                                 |          0 |       2 |          2 |
+| [`src/layout/flex_layout.ts`](#src-layout-flex-layout-ts)                                       |          0 |       3 |          3 |
+| [`src/layout/grid_layout.ts`](#src-layout-grid-layout-ts)                                       |          0 |       3 |          3 |
+| [`src/layout/horizontal_layout.ts`](#src-layout-horizontal-layout-ts)                           |          0 |       1 |          1 |
+| [`src/layout/measurement.ts`](#src-layout-measurement-ts)                                       |          0 |       6 |          6 |
+| [`src/layout/mod.ts`](#src-layout-mod-ts)                                                       |         16 |       0 |          0 |
+| [`src/layout/overlay.ts`](#src-layout-overlay-ts)                                               |          0 |      19 |         19 |
+| [`src/layout/recipe.ts`](#src-layout-recipe-ts)                                                 |          0 |      18 |         18 |
+| [`src/layout/responsive.ts`](#src-layout-responsive-ts)                                         |          0 |      14 |         14 |
+| [`src/layout/solver.ts`](#src-layout-solver-ts)                                                 |          0 |      13 |         13 |
+| [`src/layout/solvers/simple.ts`](#src-layout-solvers-simple-ts)                                 |          0 |       3 |          3 |
+| [`src/layout/split_pane.ts`](#src-layout-split-pane-ts)                                         |          0 |      10 |         10 |
+| [`src/layout/style.ts`](#src-layout-style-ts)                                                   |          0 |      33 |         33 |
+| [`src/layout/types.ts`](#src-layout-types-ts)                                                   |          0 |       3 |          3 |
+| [`src/layout/vertical_layout.ts`](#src-layout-vertical-layout-ts)                               |          0 |       1 |          1 |
+| [`src/layout/window_manager.ts`](#src-layout-window-manager-ts)                                 |          0 |      10 |         10 |
+| [`src/markup/cascade.ts`](#src-markup-cascade-ts)                                               |          0 |       7 |          7 |
+| [`src/markup/css.ts`](#src-markup-css-ts)                                                       |          0 |      11 |         11 |
+| [`src/markup/demo_fixtures.ts`](#src-markup-demo-fixtures-ts)                                   |          0 |       7 |          7 |
+| [`src/markup/html.ts`](#src-markup-html-ts)                                                     |          0 |       3 |          3 |
+| [`src/markup/hydrate.ts`](#src-markup-hydrate-ts)                                               |          0 |       5 |          5 |
+| [`src/markup/layout_worker.ts`](#src-markup-layout-worker-ts)                                   |          0 |       6 |          6 |
+| [`src/markup/mod.ts`](#src-markup-mod-ts)                                                       |          8 |       0 |          0 |
+| [`src/markup/support.ts`](#src-markup-support-ts)                                               |          0 |       2 |          2 |
+| [`src/markup/widgets.ts`](#src-markup-widgets-ts)                                               |          0 |      15 |         15 |
+| [`src/perf/benchmark.ts`](#src-perf-benchmark-ts)                                               |          0 |      20 |         20 |
+| [`src/perf/mod.ts`](#src-perf-mod-ts)                                                           |          1 |       0 |          0 |
+| [`src/runtime/capabilities.ts`](#src-runtime-capabilities-ts)                                   |          0 |      16 |         16 |
+| [`src/runtime/data_pipeline_bindings.ts`](#src-runtime-data-pipeline-bindings-ts)               |          0 |       4 |          4 |
+| [`src/runtime/data_pipeline.ts`](#src-runtime-data-pipeline-ts)                                 |          0 |      19 |         19 |
+| [`src/runtime/data_query.ts`](#src-runtime-data-query-ts)                                       |          0 |      15 |         15 |
+| [`src/runtime/diagnostics.ts`](#src-runtime-diagnostics-ts)                                     |          0 |      12 |         12 |
+| [`src/runtime/graphics_surface.ts`](#src-runtime-graphics-surface-ts)                           |          0 |      15 |         15 |
+| [`src/runtime/kitty_graphics.ts`](#src-runtime-kitty-graphics-ts)                               |          0 |      25 |         25 |
+| [`src/runtime/mod.ts`](#src-runtime-mod-ts)                                                     |         29 |       0 |          0 |
+| [`src/runtime/process_session.ts`](#src-runtime-process-session-ts)                             |          0 |       9 |          9 |
+| [`src/runtime/profiles.ts`](#src-runtime-profiles-ts)                                           |          0 |      24 |         24 |
+| [`src/runtime/pty_backend.ts`](#src-runtime-pty-backend-ts)                                     |          0 |      12 |         12 |
+| [`src/runtime/render_loop.ts`](#src-runtime-render-loop-ts)                                     |          0 |      13 |         13 |
+| [`src/runtime/renderer_backends.ts`](#src-runtime-renderer-backends-ts)                         |          0 |      24 |         24 |
+| [`src/runtime/resource_bindings.ts`](#src-runtime-resource-bindings-ts)                         |          0 |       4 |          4 |
+| [`src/runtime/resource.ts`](#src-runtime-resource-ts)                                           |          0 |      14 |         14 |
+| [`src/runtime/scheduler.ts`](#src-runtime-scheduler-ts)                                         |          0 |      13 |         13 |
+| [`src/runtime/storage.ts`](#src-runtime-storage-ts)                                             |          0 |      10 |         10 |
+| [`src/runtime/telemetry.ts`](#src-runtime-telemetry-ts)                                         |          0 |      15 |         15 |
+| [`src/runtime/terminal_backend_registry.ts`](#src-runtime-terminal-backend-registry-ts)         |          0 |       9 |          9 |
+| [`src/runtime/terminal_backend.ts`](#src-runtime-terminal-backend-ts)                           |          0 |       9 |          9 |
+| [`src/runtime/terminal_capabilities.ts`](#src-runtime-terminal-capabilities-ts)                 |          0 |      27 |         27 |
+| [`src/runtime/terminal_screen.ts`](#src-runtime-terminal-screen-ts)                             |          0 |       6 |          6 |
+| [`src/runtime/terminal_scrollback.ts`](#src-runtime-terminal-scrollback-ts)                     |          0 |       5 |          5 |
+| [`src/runtime/terminal_session.ts`](#src-runtime-terminal-session-ts)                           |          0 |       8 |          8 |
+| [`src/runtime/terminal_shell_workspace.ts`](#src-runtime-terminal-shell-workspace-ts)           |          0 |       5 |          5 |
+| [`src/runtime/terminal_shell.ts`](#src-runtime-terminal-shell-ts)                               |          0 |       3 |          3 |
+| [`src/runtime/terminal_status.ts`](#src-runtime-terminal-status-ts)                             |          0 |      18 |         18 |
+| [`src/runtime/terminal_templates.ts`](#src-runtime-terminal-templates-ts)                       |          0 |      22 |         22 |
+| [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)                       |          0 |      24 |         24 |
+| [`src/runtime/worker_pool.ts`](#src-runtime-worker-pool-ts)                                     |          0 |      12 |         12 |
+| [`src/selection.ts`](#src-selection-ts)                                                         |          0 |      16 |         16 |
+| [`src/signals/computed.ts`](#src-signals-computed-ts)                                           |          0 |       3 |          3 |
+| [`src/signals/dependency_tracking.ts`](#src-signals-dependency-tracking-ts)                     |          0 |       3 |          3 |
+| [`src/signals/effect.ts`](#src-signals-effect-ts)                                               |          0 |       3 |          3 |
+| [`src/signals/flusher.ts`](#src-signals-flusher-ts)                                             |          0 |       1 |          1 |
+| [`src/signals/lazy_computed.ts`](#src-signals-lazy-computed-ts)                                 |          0 |       1 |          1 |
+| [`src/signals/lazy_effect.ts`](#src-signals-lazy-effect-ts)                                     |          0 |       1 |          1 |
+| [`src/signals/mod.ts`](#src-signals-mod-ts)                                                     |          9 |       0 |          0 |
+| [`src/signals/reactivity.ts`](#src-signals-reactivity-ts)                                       |          0 |      13 |         13 |
+| [`src/signals/signal.ts`](#src-signals-signal-ts)                                               |          0 |      11 |         11 |
+| [`src/signals/types.ts`](#src-signals-types-ts)                                                 |          0 |       4 |          4 |
+| [`src/testing/input.ts`](#src-testing-input-ts)                                                 |          0 |       7 |          7 |
+| [`src/testing/mod.ts`](#src-testing-mod-ts)                                                     |          2 |       0 |          0 |
+| [`src/testing/snapshot.ts`](#src-testing-snapshot-ts)                                           |          0 |      15 |         15 |
+| [`src/theme_binding.ts`](#src-theme-binding-ts)                                                 |          0 |       8 |          8 |
+| [`src/theme_engine_cache.ts`](#src-theme-engine-cache-ts)                                       |          0 |       6 |          6 |
+| [`src/theme_engine_factory.ts`](#src-theme-engine-factory-ts)                                   |          0 |      19 |         19 |
+| [`src/theme_engine_pipeline.ts`](#src-theme-engine-pipeline-ts)                                 |          0 |      12 |         12 |
+| [`src/theme_gallery.ts`](#src-theme-gallery-ts)                                                 |          0 |      11 |         11 |
+| [`src/theme_resolver.ts`](#src-theme-resolver-ts)                                               |          0 |      15 |         15 |
+| [`src/theme_workspace.ts`](#src-theme-workspace-ts)                                             |          0 |       7 |          7 |
+| [`src/theme.ts`](#src-theme-ts)                                                                 |          0 |     115 |        115 |
+| [`src/three_ascii/AcerolaAsciiNode.ts`](#src-three-ascii-acerolaasciinode-ts)                   |          0 |       3 |          3 |
+| [`src/three_ascii/demo_presets.ts`](#src-three-ascii-demo-presets-ts)                           |          0 |      14 |         14 |
+| [`src/three_ascii/frame_options.ts`](#src-three-ascii-frame-options-ts)                         |          0 |       8 |          8 |
+| [`src/three_ascii/glyphs.ts`](#src-three-ascii-glyphs-ts)                                       |          0 |      13 |         13 |
+| [`src/three_ascii/mod.ts`](#src-three-ascii-mod-ts)                                             |          7 |       0 |          0 |
+| [`src/three_ascii/options.ts`](#src-three-ascii-options-ts)                                     |          0 |      15 |         15 |
+| [`src/three_ascii/performance.ts`](#src-three-ascii-performance-ts)                             |          0 |       6 |          6 |
+| [`src/three_ascii/render_profile.ts`](#src-three-ascii-render-profile-ts)                       |          0 |       3 |          3 |
+| [`src/three_ascii/renderer.ts`](#src-three-ascii-renderer-ts)                                   |          2 |      22 |         22 |
+| [`src/three_ascii/webgpu_compat.ts`](#src-three-ascii-webgpu-compat-ts)                         |          0 |       3 |          3 |
+| [`src/tui.ts`](#src-tui-ts)                                                                     |          0 |       2 |          2 |
+| [`src/types.ts`](#src-types-ts)                                                                 |          0 |       8 |          8 |
+| [`src/utils/ansi_codes.ts`](#src-utils-ansi-codes-ts)                                           |          0 |      12 |         12 |
+| [`src/utils/async.ts`](#src-utils-async-ts)                                                     |          0 |       1 |          1 |
+| [`src/utils/component.ts`](#src-utils-component-ts)                                             |          0 |       2 |          2 |
+| [`src/utils/mod.ts`](#src-utils-mod-ts)                                                         |          7 |       0 |          0 |
+| [`src/utils/numbers.ts`](#src-utils-numbers-ts)                                                 |          0 |       6 |          6 |
+| [`src/utils/signals.ts`](#src-utils-signals-ts)                                                 |          0 |       1 |          1 |
+| [`src/utils/sorted_array.ts`](#src-utils-sorted-array-ts)                                       |          0 |       2 |          2 |
+| [`src/utils/strings.ts`](#src-utils-strings-ts)                                                 |          0 |       9 |          9 |
+| [`src/view.ts`](#src-view-ts)                                                                   |          0 |       1 |          1 |
+| [`src/viewport.ts`](#src-viewport-ts)                                                           |          0 |      18 |         18 |
 
 ### Modules
 
@@ -384,39 +382,6 @@ _No direct exported symbols._
 | `TuiAppInspection`     | interface | yes       | yes   |
 | `TuiAppOptions`        | interface | yes       | yes   |
 
-#### src/app/button_commands.ts
-
-| Symbol                 | Kind      | Type Only | JSDoc |
-| ---------------------- | --------- | --------- | ----- |
-| `bindButtonCommands`   | function  | no        | yes   |
-| `ButtonCommandAction`  | type      | yes       | yes   |
-| `ButtonCommandKind`    | type      | yes       | yes   |
-| `ButtonCommandOptions` | interface | yes       | yes   |
-| `ButtonCommandPayload` | interface | yes       | yes   |
-| `buttonCommands`       | function  | no        | yes   |
-
-#### src/app/checkbox_commands.ts
-
-| Symbol                   | Kind      | Type Only | JSDoc |
-| ------------------------ | --------- | --------- | ----- |
-| `bindCheckBoxCommands`   | function  | no        | yes   |
-| `CheckBoxCommandAction`  | type      | yes       | yes   |
-| `CheckBoxCommandKind`    | type      | yes       | yes   |
-| `CheckBoxCommandOptions` | interface | yes       | yes   |
-| `CheckBoxCommandPayload` | interface | yes       | yes   |
-| `checkBoxCommands`       | function  | no        | yes   |
-
-#### src/app/combobox_commands.ts
-
-| Symbol                   | Kind      | Type Only | JSDoc |
-| ------------------------ | --------- | --------- | ----- |
-| `bindComboBoxCommands`   | function  | no        | yes   |
-| `ComboBoxCommandAction`  | type      | yes       | yes   |
-| `ComboBoxCommandKind`    | type      | yes       | yes   |
-| `ComboBoxCommandOptions` | interface | yes       | yes   |
-| `ComboBoxCommandPayload` | interface | yes       | yes   |
-| `comboBoxCommands`       | function  | no        | yes   |
-
 #### src/app/command_bindings.ts
 
 | Symbol                              | Kind      | Type Only | JSDoc |
@@ -476,6 +441,7 @@ _No direct exported symbols._
 | `CommandRegistry`           | class     | no        | yes   |
 | `CommandRegistryInspection` | interface | yes       | yes   |
 | `CommandRegistryListener`   | type      | yes       | yes   |
+| `insertUniqueSortedString`  | function  | no        | yes   |
 
 #### src/app/component_commands.ts
 
@@ -694,9 +660,6 @@ _No direct exported symbols._
 | -------------------------------------- | ---- | ----- |
 | `src/app/actions.ts`                   | star | -     |
 | `src/app/app.ts`                       | star | -     |
-| `src/app/button_commands.ts`           | star | -     |
-| `src/app/checkbox_commands.ts`         | star | -     |
-| `src/app/combobox_commands.ts`         | star | -     |
 | `src/app/component_commands.ts`        | star | -     |
 | `src/app/command_bindings.ts`          | star | -     |
 | `src/app/command_search_index.ts`      | star | -     |
@@ -720,8 +683,6 @@ _No direct exported symbols._
 | `src/app/mouse_bindings.ts`            | star | -     |
 | `src/app/pad_commands.ts`              | star | -     |
 | `src/app/plugins.ts`                   | star | -     |
-| `src/app/progress_bar_commands.ts`     | star | -     |
-| `src/app/radio_group_commands.ts`      | star | -     |
 | `src/app/route_bindings.ts`            | star | -     |
 | `src/app/router.ts`                    | star | -     |
 | `src/app/runtime_profile_commands.ts`  | star | -     |
@@ -734,16 +695,13 @@ _No direct exported symbols._
 | `src/app/settings_commands.ts`         | star | -     |
 | `src/app/settings_bindings.ts`         | star | -     |
 | `src/app/settings.ts`                  | star | -     |
-| `src/app/slider_commands.ts`           | star | -     |
 | `src/app/split_pane_commands.ts`       | star | -     |
-| `src/app/stepper_commands.ts`          | star | -     |
 | `src/app/surface_bindings.ts`          | star | -     |
 | `src/app/table_commands.ts`            | star | -     |
 | `src/app/tabs_commands.ts`             | star | -     |
 | `src/app/terminal_commands.ts`         | star | -     |
 | `src/app/terminal_input.ts`            | star | -     |
 | `src/app/terminal_window_bindings.ts`  | star | -     |
-| `src/app/textbox_commands.ts`          | star | -     |
 | `src/app/theme_commands.ts`            | star | -     |
 | `src/app/theme_engine_commands.ts`     | star | -     |
 | `src/app/theme_pipeline_commands.ts`   | star | -     |
@@ -752,6 +710,7 @@ _No direct exported symbols._
 | `src/app/toast_commands.ts`            | star | -     |
 | `src/app/tree_commands.ts`             | star | -     |
 | `src/app/window_manager_commands.ts`   | star | -     |
+| `src/app/widget_commands.ts`           | star | -     |
 | `src/app/workbench/mod.ts`             | star | -     |
 
 _No direct exported symbols._
@@ -803,28 +762,6 @@ _No direct exported symbols._
 | `inspectAppPluginCatalog`               | function  | no        | yes   |
 | `inspectAppPluginDefinition`            | function  | no        | yes   |
 | `queryAppPluginDefinitions`             | function  | no        | yes   |
-
-#### src/app/progress_bar_commands.ts
-
-| Symbol                      | Kind      | Type Only | JSDoc |
-| --------------------------- | --------- | --------- | ----- |
-| `bindProgressBarCommands`   | function  | no        | yes   |
-| `ProgressBarCommandAction`  | type      | yes       | yes   |
-| `ProgressBarCommandKind`    | type      | yes       | yes   |
-| `ProgressBarCommandOptions` | interface | yes       | yes   |
-| `ProgressBarCommandPayload` | interface | yes       | yes   |
-| `progressBarCommands`       | function  | no        | yes   |
-
-#### src/app/radio_group_commands.ts
-
-| Symbol                     | Kind      | Type Only | JSDoc |
-| -------------------------- | --------- | --------- | ----- |
-| `bindRadioGroupCommands`   | function  | no        | yes   |
-| `RadioGroupCommandAction`  | type      | yes       | yes   |
-| `RadioGroupCommandKind`    | type      | yes       | yes   |
-| `RadioGroupCommandOptions` | interface | yes       | yes   |
-| `RadioGroupCommandPayload` | interface | yes       | yes   |
-| `radioGroupCommands`       | function  | no        | yes   |
 
 #### src/app/route_bindings.ts
 
@@ -970,17 +907,6 @@ _No direct exported symbols._
 | `SettingsControllerInspection` | interface | yes       | yes   |
 | `SettingsControllerOptions`    | interface | yes       | yes   |
 
-#### src/app/slider_commands.ts
-
-| Symbol                 | Kind      | Type Only | JSDoc |
-| ---------------------- | --------- | --------- | ----- |
-| `bindSliderCommands`   | function  | no        | yes   |
-| `SliderCommandAction`  | type      | yes       | yes   |
-| `SliderCommandKind`    | type      | yes       | yes   |
-| `SliderCommandOptions` | interface | yes       | yes   |
-| `SliderCommandPayload` | interface | yes       | yes   |
-| `sliderCommands`       | function  | no        | yes   |
-
 #### src/app/split_pane_commands.ts
 
 | Symbol                     | Kind      | Type Only | JSDoc |
@@ -992,17 +918,6 @@ _No direct exported symbols._
 | `SplitPaneCommandOptions`  | interface | yes       | yes   |
 | `splitPaneCommands`        | function  | no        | yes   |
 | `SplitPaneSnapshotPayload` | interface | yes       | yes   |
-
-#### src/app/stepper_commands.ts
-
-| Symbol                  | Kind      | Type Only | JSDoc |
-| ----------------------- | --------- | --------- | ----- |
-| `bindStepperCommands`   | function  | no        | yes   |
-| `StepperCommandAction`  | type      | yes       | yes   |
-| `StepperCommandKind`    | type      | yes       | yes   |
-| `StepperCommandOptions` | interface | yes       | yes   |
-| `StepperCommandPayload` | interface | yes       | yes   |
-| `stepperCommands`       | function  | no        | yes   |
 
 #### src/app/surface_bindings.ts
 
@@ -1094,17 +1009,6 @@ _No direct exported symbols._
 | `TerminalWindowLayoutSyncOptions` | interface | yes       | yes   |
 | `TerminalWindowLayoutSyncResult`  | interface | yes       | yes   |
 
-#### src/app/textbox_commands.ts
-
-| Symbol                  | Kind      | Type Only | JSDoc |
-| ----------------------- | --------- | --------- | ----- |
-| `bindTextBoxCommands`   | function  | no        | yes   |
-| `TextBoxCommandAction`  | type      | yes       | yes   |
-| `TextBoxCommandKind`    | type      | yes       | yes   |
-| `TextBoxCommandOptions` | interface | yes       | yes   |
-| `TextBoxCommandPayload` | interface | yes       | yes   |
-| `textBoxCommands`       | function  | no        | yes   |
-
 #### src/app/theme_commands.ts
 
 | Symbol                     | Kind      | Type Only | JSDoc |
@@ -1189,6 +1093,59 @@ _No direct exported symbols._
 | `TreeCommandPayload` | interface | yes       | yes   |
 | `treeCommands`       | function  | no        | yes   |
 
+#### src/app/widget_commands.ts
+
+| Symbol                      | Kind      | Type Only | JSDoc |
+| --------------------------- | --------- | --------- | ----- |
+| `bindButtonCommands`        | function  | no        | yes   |
+| `bindCheckBoxCommands`      | function  | no        | yes   |
+| `bindComboBoxCommands`      | function  | no        | yes   |
+| `bindProgressBarCommands`   | function  | no        | yes   |
+| `bindRadioGroupCommands`    | function  | no        | yes   |
+| `bindSliderCommands`        | function  | no        | yes   |
+| `bindStepperCommands`       | function  | no        | yes   |
+| `bindTextBoxCommands`       | function  | no        | yes   |
+| `ButtonCommandAction`       | type      | yes       | yes   |
+| `ButtonCommandKind`         | type      | yes       | yes   |
+| `ButtonCommandOptions`      | interface | yes       | yes   |
+| `ButtonCommandPayload`      | interface | yes       | yes   |
+| `buttonCommands`            | function  | no        | yes   |
+| `CheckBoxCommandAction`     | type      | yes       | yes   |
+| `CheckBoxCommandKind`       | type      | yes       | yes   |
+| `CheckBoxCommandOptions`    | interface | yes       | yes   |
+| `CheckBoxCommandPayload`    | interface | yes       | yes   |
+| `checkBoxCommands`          | function  | no        | yes   |
+| `ComboBoxCommandAction`     | type      | yes       | yes   |
+| `ComboBoxCommandKind`       | type      | yes       | yes   |
+| `ComboBoxCommandOptions`    | interface | yes       | yes   |
+| `ComboBoxCommandPayload`    | interface | yes       | yes   |
+| `comboBoxCommands`          | function  | no        | yes   |
+| `ProgressBarCommandAction`  | type      | yes       | yes   |
+| `ProgressBarCommandKind`    | type      | yes       | yes   |
+| `ProgressBarCommandOptions` | interface | yes       | yes   |
+| `ProgressBarCommandPayload` | interface | yes       | yes   |
+| `progressBarCommands`       | function  | no        | yes   |
+| `RadioGroupCommandAction`   | type      | yes       | yes   |
+| `RadioGroupCommandKind`     | type      | yes       | yes   |
+| `RadioGroupCommandOptions`  | interface | yes       | yes   |
+| `RadioGroupCommandPayload`  | interface | yes       | yes   |
+| `radioGroupCommands`        | function  | no        | yes   |
+| `SliderCommandAction`       | type      | yes       | yes   |
+| `SliderCommandKind`         | type      | yes       | yes   |
+| `SliderCommandOptions`      | interface | yes       | yes   |
+| `SliderCommandPayload`      | interface | yes       | yes   |
+| `sliderCommands`            | function  | no        | yes   |
+| `StepperCommandAction`      | type      | yes       | yes   |
+| `StepperCommandKind`        | type      | yes       | yes   |
+| `StepperCommandOptions`     | interface | yes       | yes   |
+| `StepperCommandPayload`     | interface | yes       | yes   |
+| `stepperCommands`           | function  | no        | yes   |
+| `TextBoxCommandAction`      | type      | yes       | yes   |
+| `TextBoxCommandKind`        | type      | yes       | yes   |
+| `TextBoxCommandOptions`     | interface | yes       | yes   |
+| `TextBoxCommandPayload`     | interface | yes       | yes   |
+| `textBoxCommands`           | function  | no        | yes   |
+
 #### src/app/window_manager_commands.ts
 
 | Symbol                        | Kind      | Type Only | JSDoc |
@@ -1202,15 +1159,28 @@ _No direct exported symbols._
 | `WindowManagerRenameFactory`  | type      | yes       | yes   |
 | `WindowManagerWindowFactory`  | type      | yes       | yes   |
 
+#### src/app/workbench_ansi_screen.ts
+
+| Symbol                           | Kind      | Type Only | JSDoc |
+| -------------------------------- | --------- | --------- | ----- |
+| `WorkbenchAnsiScreenFlushStats`  | interface | yes       | yes   |
+| `WorkbenchAnsiScreenPainter`     | class     | no        | yes   |
+| `writeWorkbenchAnsiScreenOutput` | function  | no        | yes   |
+
 #### src/app/workbench_button_style.ts
 
-| Symbol                        | Kind      | Type Only | JSDoc |
-| ----------------------------- | --------- | --------- | ----- |
-| `WorkbenchButtonContrast`     | type      | yes       | yes   |
-| `workbenchButtonPaintOptions` | function  | no        | yes   |
-| `WorkbenchButtonState`        | type      | yes       | yes   |
-| `WorkbenchButtonTheme`        | interface | yes       | yes   |
-| `WorkbenchButtonTone`         | type      | yes       | yes   |
+| Symbol                                    | Kind      | Type Only | JSDoc |
+| ----------------------------------------- | --------- | --------- | ----- |
+| `projectWorkbenchButton`                  | function  | no        | yes   |
+| `projectWorkbenchButtonCommand`           | function  | no        | yes   |
+| `WorkbenchButtonCommandProjectionOptions` | interface | yes       | yes   |
+| `WorkbenchButtonContrast`                 | type      | yes       | yes   |
+| `workbenchButtonPaintOptions`             | function  | no        | yes   |
+| `WorkbenchButtonProjection`               | interface | yes       | yes   |
+| `WorkbenchButtonProjectionOptions`        | interface | yes       | yes   |
+| `WorkbenchButtonState`                    | type      | yes       | yes   |
+| `WorkbenchButtonTheme`                    | interface | yes       | yes   |
+| `WorkbenchButtonTone`                     | type      | yes       | yes   |
 
 #### src/app/workbench_control_layout.ts
 
@@ -1229,42 +1199,45 @@ _No direct exported symbols._
 | `WorkbenchControlButtonLineSegmentKind` | type      | yes       | yes   |
 | `WorkbenchControlOptionRow`             | interface | yes       | yes   |
 | `WorkbenchControlOptionToken`           | interface | yes       | yes   |
+| `WorkbenchMobileCommandAction`          | type      | yes       | yes   |
+| `workbenchMobileCommandStripItemsInto`  | function  | no        | yes   |
+| `WorkbenchMobileCommandStripOptions`    | interface | yes       | yes   |
 | `wrappedControlOptionRowCount`          | function  | no        | yes   |
-
-#### src/app/workbench_diagnostics.ts
-
-| Symbol                              | Kind      | Type Only | JSDoc |
-| ----------------------------------- | --------- | --------- | ----- |
-| `appendBoundedWorkbenchLogRow`      | function  | no        | yes   |
-| `formatWorkbenchDiagnosticLogEntry` | function  | no        | yes   |
-| `formatWorkbenchDiagnosticStatus`   | function  | no        | yes   |
-| `initialWorkbenchDiagnosticLogRows` | function  | no        | yes   |
-| `subscribeWorkbenchDiagnosticLog`   | function  | no        | yes   |
-| `WorkbenchDiagnosticFormatOptions`  | interface | yes       | yes   |
 
 #### src/app/workbench_frame.ts
 
-| Symbol                       | Kind      | Type Only | JSDoc |
-| ---------------------------- | --------- | --------- | ----- |
-| `buttonText`                 | function  | no        | yes   |
-| `centerCellText`             | function  | no        | yes   |
-| `contrastText`               | function  | no        | yes   |
-| `fillFrameRect`              | function  | no        | yes   |
-| `fillFrameRow`               | function  | no        | yes   |
-| `fillStringFrameRect`        | function  | no        | yes   |
-| `fitCellText`                | function  | no        | yes   |
-| `parseHexColor`              | function  | no        | yes   |
-| `prepareWorkbenchFrame`      | function  | no        | yes   |
-| `prepareWorkbenchRows`       | function  | no        | yes   |
-| `renderFrameRow`             | function  | no        | yes   |
-| `renderFrameSlice`           | function  | no        | yes   |
-| `toStyledCells`              | function  | no        | yes   |
-| `WorkbenchFrame`             | type      | yes       | yes   |
-| `WorkbenchFrameBoxLine`      | interface | yes       | yes   |
-| `workbenchFrameBoxLinesInto` | function  | no        | yes   |
-| `WorkbenchFrameStyle`        | type      | yes       | yes   |
-| `writeFrame`                 | function  | no        | yes   |
-| `writeStringFrameRow`        | function  | no        | yes   |
+| Symbol                              | Kind      | Type Only | JSDoc |
+| ----------------------------------- | --------- | --------- | ----- |
+| `blitWorkbenchFrameCells`           | function  | no        | yes   |
+| `buttonText`                        | function  | no        | yes   |
+| `centerCellText`                    | function  | no        | yes   |
+| `cleanWorkbenchFrameRowFingerprint` | function  | no        | yes   |
+| `contrastText`                      | function  | no        | yes   |
+| `fillFrameRect`                     | function  | no        | yes   |
+| `fillFrameRow`                      | function  | no        | yes   |
+| `fillStringFrameRect`               | function  | no        | yes   |
+| `fitCellText`                       | function  | no        | yes   |
+| `markWorkbenchFrameRowRendered`     | function  | no        | yes   |
+| `parseHexColor`                     | function  | no        | yes   |
+| `prepareWorkbenchFrame`             | function  | no        | yes   |
+| `prepareWorkbenchRows`              | function  | no        | yes   |
+| `renderFrameRow`                    | function  | no        | yes   |
+| `renderFrameSlice`                  | function  | no        | yes   |
+| `toStyledCells`                     | function  | no        | yes   |
+| `updateWorkbenchLineSignals`        | function  | no        | yes   |
+| `updateWorkbenchStringLineSignals`  | function  | no        | yes   |
+| `WorkbenchFrame`                    | type      | yes       | yes   |
+| `WorkbenchFrameBoxLine`             | interface | yes       | yes   |
+| `workbenchFrameBoxLinesInto`        | function  | no        | yes   |
+| `workbenchFrameRowRenderedHint`     | function  | no        | yes   |
+| `WorkbenchFrameStyle`               | type      | yes       | yes   |
+| `WorkbenchLineSignal`               | interface | yes       | yes   |
+| `WorkbenchLineSignalUpdateStats`    | interface | yes       | yes   |
+| `writeFrame`                        | function  | no        | yes   |
+| `writeFrameCell`                    | function  | no        | yes   |
+| `writeFrameCells`                   | function  | no        | yes   |
+| `writeFrameCellsUnchecked`          | function  | no        | yes   |
+| `writeStringFrameRow`               | function  | no        | yes   |
 
 #### src/app/workbench_help.ts
 
@@ -1273,6 +1246,14 @@ _No direct exported symbols._
 | `WorkbenchHelpProfile`     | type      | yes       | yes   |
 | `workbenchHelpRows`        | function  | no        | yes   |
 | `WorkbenchHelpRowsOptions` | interface | yes       | yes   |
+
+#### src/app/workbench_keymap.ts
+
+| Symbol                      | Kind      | Type Only | JSDoc |
+| --------------------------- | --------- | --------- | ----- |
+| `resolveWorkbenchGlobalKey` | function  | no        | yes   |
+| `WorkbenchGlobalKey`        | interface | yes       | yes   |
+| `WorkbenchGlobalKeyAction`  | type      | yes       | yes   |
 
 #### src/app/workbench_layout.ts
 
@@ -1286,15 +1267,22 @@ _No direct exported symbols._
 | `workbenchAdaptiveWindowLayout`                 | function  | no        | yes   |
 | `WorkbenchAdaptiveWindowLayoutManager`          | interface | yes       | yes   |
 | `WorkbenchAdaptiveWindowLayoutOptions`          | interface | yes       | yes   |
+| `workbenchContentViewport`                      | function  | no        | yes   |
+| `WorkbenchContentViewportOptions`               | interface | yes       | yes   |
+| `workbenchFullscreenWindowRect`                 | function  | no        | yes   |
 | `workbenchHorizontalScrollbarCellsInto`         | function  | no        | yes   |
 | `WorkbenchLayoutEntryShape`                     | interface | yes       | yes   |
 | `WorkbenchLayoutShape`                          | interface | yes       | yes   |
+| `workbenchRevealActiveRowOffset`                | function  | no        | yes   |
+| `WorkbenchRevealActiveRowOptions`               | interface | yes       | yes   |
 | `WorkbenchScrollbarAxis`                        | type      | yes       | yes   |
 | `WorkbenchScrollbarCell`                        | interface | yes       | yes   |
 | `WorkbenchScrollbarRenderCommand`               | interface | yes       | yes   |
 | `workbenchVerticalScrollbarCellsInto`           | function  | no        | yes   |
 | `workbenchVerticalScrollbarRect`                | function  | no        | yes   |
 | `WorkbenchVerticalScrollbarRectOptions`         | interface | yes       | yes   |
+| `workbenchVisibleWindowRectsInto`               | function  | no        | yes   |
+| `WorkbenchVisibleWindowRectsOptions`            | interface | yes       | yes   |
 | `workbenchWindowLayout`                         | function  | no        | yes   |
 | `WorkbenchWindowLayout`                         | interface | yes       | yes   |
 | `WorkbenchWindowScrollbarRectOptions`           | interface | yes       | yes   |
@@ -1308,27 +1296,44 @@ _No direct exported symbols._
 
 #### src/app/workbench_menu.ts
 
-| Symbol                              | Kind      | Type Only | JSDoc |
-| ----------------------------------- | --------- | --------- | ----- |
-| `isWorkbenchMenuActivationKey`      | function  | no        | yes   |
-| `isWorkbenchMenuCloseKey`           | function  | no        | yes   |
-| `layoutWorkbenchHeader`             | function  | no        | yes   |
-| `layoutWorkbenchHeaderInto`         | function  | no        | yes   |
-| `layoutWorkbenchMenuBarHits`        | function  | no        | yes   |
-| `layoutWorkbenchMenuBarHitsInto`    | function  | no        | yes   |
-| `layoutWorkbenchTopMenuItemRect`    | function  | no        | yes   |
-| `moveWorkbenchMenuIndex`            | function  | no        | yes   |
-| `MoveWorkbenchMenuIndexOptions`     | interface | yes       | yes   |
-| `WorkbenchHeaderLayout`             | interface | yes       | yes   |
-| `WorkbenchHeaderLayoutOptions`      | interface | yes       | yes   |
-| `WorkbenchMenuBarHitLayout`         | interface | yes       | yes   |
-| `WorkbenchMenuBarHitLayoutOptions`  | interface | yes       | yes   |
-| `WorkbenchMenuBarItemShape`         | interface | yes       | yes   |
-| `WorkbenchMenuKey`                  | interface | yes       | yes   |
-| `WorkbenchTopMenuController`        | class     | no        | yes   |
-| `WorkbenchTopMenuControllerOptions` | interface | yes       | yes   |
-| `WorkbenchTopMenuInspection`        | interface | yes       | yes   |
-| `WorkbenchTopMenuItemRectOptions`   | interface | yes       | yes   |
+| Symbol                                           | Kind      | Type Only | JSDoc |
+| ------------------------------------------------ | --------- | --------- | ----- |
+| `isWorkbenchMenuActivationKey`                   | function  | no        | yes   |
+| `isWorkbenchMenuCloseKey`                        | function  | no        | yes   |
+| `layoutWorkbenchHeader`                          | function  | no        | yes   |
+| `layoutWorkbenchHeaderInto`                      | function  | no        | yes   |
+| `layoutWorkbenchMenuBarHits`                     | function  | no        | yes   |
+| `layoutWorkbenchMenuBarHitsInto`                 | function  | no        | yes   |
+| `layoutWorkbenchTopMenuItemRect`                 | function  | no        | yes   |
+| `moveWorkbenchMenuIndex`                         | function  | no        | yes   |
+| `MoveWorkbenchMenuIndexOptions`                  | interface | yes       | yes   |
+| `projectWorkbenchStandardTopMenuState`           | function  | no        | yes   |
+| `resolveWorkbenchMenuFocusKey`                   | function  | no        | yes   |
+| `resolveWorkbenchScreenDropdownKey`              | function  | no        | yes   |
+| `WorkbenchHeaderLayout`                          | interface | yes       | yes   |
+| `WorkbenchHeaderLayoutOptions`                   | interface | yes       | yes   |
+| `WorkbenchMenuBarHitLayout`                      | interface | yes       | yes   |
+| `WorkbenchMenuBarHitLayoutOptions`               | interface | yes       | yes   |
+| `WorkbenchMenuBarItemShape`                      | interface | yes       | yes   |
+| `WorkbenchMenuFocusKeyAction`                    | type      | yes       | yes   |
+| `WorkbenchMenuKey`                               | interface | yes       | yes   |
+| `WorkbenchScreenDropdownKey`                     | interface | yes       | yes   |
+| `WorkbenchScreenDropdownKeyAction`               | type      | yes       | yes   |
+| `WorkbenchScreenDropdownKeyOptions`              | interface | yes       | yes   |
+| `WorkbenchStandardTopMenuDropdownEntry`          | interface | yes       | yes   |
+| `workbenchStandardTopMenuDropdownOverlayInto`    | function  | no        | yes   |
+| `WorkbenchStandardTopMenuDropdownOverlayOptions` | interface | yes       | yes   |
+| `WorkbenchStandardTopMenuId`                     | type      | yes       | yes   |
+| `workbenchStandardTopMenuIdForItem`              | function  | no        | yes   |
+| `WorkbenchStandardTopMenuSignalState`            | interface | yes       | yes   |
+| `WorkbenchTopMenuController`                     | class     | no        | yes   |
+| `WorkbenchTopMenuControllerOptions`              | interface | yes       | yes   |
+| `WorkbenchTopMenuDropdownOverlay`                | interface | yes       | yes   |
+| `workbenchTopMenuDropdownOverlayInto`            | function  | no        | yes   |
+| `WorkbenchTopMenuDropdownOverlayOptions`         | interface | yes       | yes   |
+| `WorkbenchTopMenuInspection`                     | interface | yes       | yes   |
+| `WorkbenchTopMenuItemRectOptions`                | interface | yes       | yes   |
+| `WorkbenchTopMenuVisibleSlice`                   | interface | yes       | yes   |
 
 #### src/app/workbench_overlay.ts
 
@@ -1361,6 +1366,18 @@ _No direct exported symbols._
 | `WorkbenchPanelWorkspaceCache`               | interface | yes       | yes   |
 | `WorkbenchPanelWorkspaceStorageDiagnostics`  | interface | yes       | yes   |
 
+#### src/app/workbench_prompt_input.ts
+
+| Symbol                             | Kind      | Type Only | JSDoc |
+| ---------------------------------- | --------- | --------- | ----- |
+| `applyWorkbenchTextPromptInput`    | function  | no        | yes   |
+| `dispatchWorkbenchTextPromptInput` | function  | no        | yes   |
+| `WorkbenchTextPromptInputAction`   | type      | yes       | yes   |
+| `WorkbenchTextPromptInputEvent`    | interface | yes       | yes   |
+| `WorkbenchTextPromptInputHandlers` | interface | yes       | yes   |
+| `WorkbenchTextPromptInputOptions`  | interface | yes       | yes   |
+| `WorkbenchTextPromptInputResult`   | interface | yes       | yes   |
+
 #### src/app/workbench_shelf.ts
 
 | Symbol                                | Kind      | Type Only | JSDoc |
@@ -1390,6 +1407,13 @@ _No direct exported symbols._
 
 | Symbol                                  | Kind      | Type Only | JSDoc |
 | --------------------------------------- | --------- | --------- | ----- |
+| `appendBoundedWorkbenchLogRow`          | function  | no        | yes   |
+| `formatWorkbenchDiagnosticLogEntry`     | function  | no        | yes   |
+| `formatWorkbenchDiagnosticStatus`       | function  | no        | yes   |
+| `initialWorkbenchDiagnosticLogRows`     | function  | no        | yes   |
+| `subscribeWorkbenchDiagnosticLog`       | function  | no        | yes   |
+| `workbenchCompactStatusDiagnostics`     | function  | no        | yes   |
+| `WorkbenchDiagnosticFormatOptions`      | interface | yes       | yes   |
 | `workbenchEmptyWorkspaceMessage`        | function  | no        | yes   |
 | `WorkbenchEmptyWorkspaceMessageOptions` | interface | yes       | yes   |
 | `WorkbenchEmptyWorkspaceWindowState`    | interface | yes       | yes   |
@@ -1401,38 +1425,82 @@ _No direct exported symbols._
 | `WorkbenchStatusLineOptions`            | interface | yes       | yes   |
 | `WorkbenchStatusShortcutProfile`        | type      | yes       | yes   |
 | `workbenchStatusShortcuts`              | function  | no        | yes   |
+| `WorkbenchStatusSnapshot`               | interface | yes       | yes   |
+| `workbenchStatusSnapshotLine`           | function  | no        | yes   |
+| `WorkbenchStatusSnapshotLineOptions`    | interface | yes       | yes   |
 | `workbenchTileDensityLabel`             | function  | no        | yes   |
 | `WorkbenchTileDensityLabel`             | type      | yes       | yes   |
 
 #### src/app/workbench_terminal.ts
 
-| Symbol                                          | Kind      | Type Only | JSDoc |
-| ----------------------------------------------- | --------- | --------- | ----- |
-| `createWorkbenchShellSession`                   | function  | no        | yes   |
-| `resolveWorkbenchShellBackend`                  | function  | no        | yes   |
-| `WORKBENCH_TERMINAL_OUTPUT_TOOLBAR_ACTIONS`     | const     | no        | yes   |
-| `WORKBENCH_TERMINAL_TOOLBAR_ACTIONS`            | const     | no        | yes   |
-| `WorkbenchShellBackendResolution`               | interface | yes       | yes   |
-| `WorkbenchShellBackendResolverOptions`          | interface | yes       | yes   |
-| `WorkbenchShellSession`                         | interface | yes       | yes   |
-| `WorkbenchShellSessionOptions`                  | interface | yes       | yes   |
-| `WorkbenchTerminalOutputToolbarAction`          | type      | yes       | yes   |
-| `WorkbenchTerminalOutputToolbarItemOptions`     | interface | yes       | yes   |
-| `workbenchTerminalOutputToolbarItemsInto`       | function  | no        | yes   |
-| `WorkbenchTerminalOutputToolbarState`           | interface | yes       | yes   |
-| `WorkbenchTerminalPaneProjection`               | interface | yes       | yes   |
-| `WorkbenchTerminalPaneProjectionOptions`        | interface | yes       | yes   |
-| `workbenchTerminalPaneProjectionsInto`          | function  | no        | yes   |
-| `WorkbenchTerminalSessionTab`                   | interface | yes       | yes   |
-| `WorkbenchTerminalSessionTabOptions`            | interface | yes       | yes   |
-| `WorkbenchTerminalSessionTabPlacement`          | interface | yes       | yes   |
-| `WorkbenchTerminalSessionTabRenderCommand`      | interface | yes       | yes   |
-| `workbenchTerminalSessionTabRenderCommandsInto` | function  | no        | yes   |
-| `workbenchTerminalSessionTabsInto`              | function  | no        | yes   |
-| `WorkbenchTerminalToolbarAction`                | type      | yes       | yes   |
-| `WorkbenchTerminalToolbarItemOptions`           | interface | yes       | yes   |
-| `workbenchTerminalToolbarItemsInto`             | function  | no        | yes   |
-| `WorkbenchTerminalToolbarState`                 | interface | yes       | yes   |
+| Symbol                                           | Kind      | Type Only | JSDoc |
+| ------------------------------------------------ | --------- | --------- | ----- |
+| `applyWorkbenchTerminalSearchPromptInput`        | function  | no        | yes   |
+| `createWorkbenchShellSession`                    | function  | no        | yes   |
+| `nextWorkbenchTerminalSessionId`                 | function  | no        | yes   |
+| `resolveWorkbenchShellBackend`                   | function  | no        | yes   |
+| `resolveWorkbenchTerminalInputModeToggle`        | function  | no        | yes   |
+| `resolveWorkbenchTerminalOutputKeyAction`        | function  | no        | yes   |
+| `resolveWorkbenchTerminalProcessInputModeToggle` | function  | no        | yes   |
+| `resolveWorkbenchTerminalShellInputModeToggle`   | function  | no        | yes   |
+| `resolveWorkbenchTerminalShellKeyAction`         | function  | no        | yes   |
+| `WORKBENCH_TERMINAL_OUTPUT_TOOLBAR_ACTIONS`      | const     | no        | yes   |
+| `WORKBENCH_TERMINAL_TOOLBAR_ACTIONS`             | const     | no        | yes   |
+| `WorkbenchShellBackendResolution`                | interface | yes       | yes   |
+| `WorkbenchShellBackendResolverOptions`           | interface | yes       | yes   |
+| `WorkbenchShellSession`                          | interface | yes       | yes   |
+| `WorkbenchShellSessionOptions`                   | interface | yes       | yes   |
+| `WorkbenchTerminalCopyRowProjection`             | interface | yes       | yes   |
+| `workbenchTerminalCopyRowsInto`                  | function  | no        | yes   |
+| `WorkbenchTerminalCopyRowsOptions`               | interface | yes       | yes   |
+| `WorkbenchTerminalCopySelection`                 | interface | yes       | yes   |
+| `WorkbenchTerminalInputModeToggleOptions`        | interface | yes       | yes   |
+| `WorkbenchTerminalInputModeToggleResult`         | interface | yes       | yes   |
+| `WorkbenchTerminalKey`                           | interface | yes       | yes   |
+| `workbenchTerminalOutputRowsInto`                | function  | no        | yes   |
+| `WorkbenchTerminalOutputRowsOptions`             | interface | yes       | yes   |
+| `WorkbenchTerminalOutputToolbarAction`           | type      | yes       | yes   |
+| `WorkbenchTerminalOutputToolbarItemOptions`      | interface | yes       | yes   |
+| `workbenchTerminalOutputToolbarItemsInto`        | function  | no        | yes   |
+| `WorkbenchTerminalOutputToolbarState`            | interface | yes       | yes   |
+| `WorkbenchTerminalOutputWindowRow`               | interface | yes       | yes   |
+| `workbenchTerminalOutputWindowRowsInto`          | function  | no        | yes   |
+| `WorkbenchTerminalOutputWindowRowsOptions`       | interface | yes       | yes   |
+| `WorkbenchTerminalPaneProjection`                | interface | yes       | yes   |
+| `WorkbenchTerminalPaneProjectionOptions`         | interface | yes       | yes   |
+| `workbenchTerminalPaneProjectionsInto`           | function  | no        | yes   |
+| `WorkbenchTerminalPaneTitleContrast`             | type      | yes       | yes   |
+| `WorkbenchTerminalPaneTitleRenderCommand`        | interface | yes       | yes   |
+| `workbenchTerminalPaneTitleRenderCommandsInto`   | function  | no        | yes   |
+| `WorkbenchTerminalPaneTitleTheme`                | interface | yes       | yes   |
+| `WorkbenchTerminalProtocolHeaderOptions`         | interface | yes       | yes   |
+| `workbenchTerminalProtocolHeaderRowsInto`        | function  | no        | yes   |
+| `workbenchTerminalSearchModalBody`               | function  | no        | yes   |
+| `WorkbenchTerminalSearchModalBodyOptions`        | interface | yes       | yes   |
+| `WorkbenchTerminalSearchModalScrollbackState`    | interface | yes       | yes   |
+| `WorkbenchTerminalSearchPromptInputOptions`      | interface | yes       | yes   |
+| `WorkbenchTerminalSessionIdOptions`              | interface | yes       | yes   |
+| `WorkbenchTerminalSessionIdSource`               | interface | yes       | yes   |
+| `WorkbenchTerminalSessionTab`                    | interface | yes       | yes   |
+| `WorkbenchTerminalSessionTabOptions`             | interface | yes       | yes   |
+| `WorkbenchTerminalSessionTabPlacement`           | interface | yes       | yes   |
+| `WorkbenchTerminalSessionTabRenderCommand`       | interface | yes       | yes   |
+| `workbenchTerminalSessionTabRenderCommandsInto`  | function  | no        | yes   |
+| `workbenchTerminalSessionTabsInto`               | function  | no        | yes   |
+| `WorkbenchTerminalSessionTabSource`              | interface | yes       | yes   |
+| `workbenchTerminalSessionTabSourcesInto`         | function  | no        | yes   |
+| `workbenchTerminalSessionTitleFromId`            | function  | no        | yes   |
+| `WorkbenchTerminalSessionTitleOptions`           | interface | yes       | yes   |
+| `WorkbenchTerminalShellHeaderRow`                | interface | yes       | yes   |
+| `workbenchTerminalShellHeaderRowsInto`           | function  | no        | yes   |
+| `WorkbenchTerminalShellHeaderRowsOptions`        | interface | yes       | yes   |
+| `WorkbenchTerminalToolbarAction`                 | type      | yes       | yes   |
+| `WorkbenchTerminalToolbarItemOptions`            | interface | yes       | yes   |
+| `workbenchTerminalToolbarItemsInto`              | function  | no        | yes   |
+| `WorkbenchTerminalToolbarScrollbackSource`       | interface | yes       | yes   |
+| `WorkbenchTerminalToolbarState`                  | interface | yes       | yes   |
+| `workbenchTerminalToolbarStateFromSnapshot`      | function  | no        | yes   |
+| `WorkbenchTerminalToolbarStateSnapshot`          | interface | yes       | yes   |
 
 #### src/app/workbench_text.ts
 
@@ -1449,6 +1517,34 @@ _No direct exported symbols._
 | `wrapPlainText`                 | function  | no        | yes   |
 | `wrapPlainTextInto`             | function  | no        | yes   |
 
+#### src/app/workbench_three_terminal_pressure.ts
+
+| Symbol                                            | Kind      | Type Only | JSDoc |
+| ------------------------------------------------- | --------- | --------- | ----- |
+| `createWorkbenchThreeTerminalPressureState`       | function  | no        | yes   |
+| `formatWorkbenchThreeTerminalPressureUpdateLog`   | function  | no        | yes   |
+| `resolveWorkbenchThreeTerminalPressureBudget`     | function  | no        | yes   |
+| `resolveWorkbenchThreeTerminalPressureUpdate`     | function  | no        | yes   |
+| `shouldApplyWorkbenchThreeTerminalPressureSample` | function  | no        | yes   |
+| `shouldCountWorkbenchThreeGridPressure`           | function  | no        | yes   |
+| `WorkbenchThreeCadenceWindow`                     | interface | yes       | yes   |
+| `workbenchThreeFrameIntervalForCells`             | function  | no        | yes   |
+| `WorkbenchThreeFrameIntervalOptions`              | interface | yes       | yes   |
+| `WorkbenchThreeGridPressureTelemetry`             | interface | yes       | yes   |
+| `WorkbenchThreeLiveCadenceOptions`                | interface | yes       | yes   |
+| `WorkbenchThreePressureSampleScope`               | interface | yes       | yes   |
+| `workbenchThreeShouldUseLiveCadence`              | function  | no        | yes   |
+| `WorkbenchThreeTerminalByteRateOptions`           | interface | yes       | yes   |
+| `workbenchThreeTerminalBytesPerSecond`            | function  | no        | yes   |
+| `WorkbenchThreeTerminalPressureOptions`           | interface | yes       | yes   |
+| `WorkbenchThreeTerminalPressureResult`            | interface | yes       | yes   |
+| `WorkbenchThreeTerminalPressureState`             | interface | yes       | yes   |
+| `WorkbenchThreeTerminalPressureUpdateLogOptions`  | interface | yes       | yes   |
+| `WorkbenchThreeTerminalPressureUpdateOptions`     | interface | yes       | yes   |
+| `WorkbenchThreeTerminalPressureUpdateResult`      | interface | yes       | yes   |
+| `WorkbenchThreeWindowInteractivityOptions`        | interface | yes       | yes   |
+| `workbenchThreeWindowIsInteractive`               | function  | no        | yes   |
+
 #### src/app/workbench_titlebar.ts
 
 | Symbol                                      | Kind      | Type Only | JSDoc |
@@ -1464,33 +1560,37 @@ _No direct exported symbols._
 | `WorkbenchTitlebarLayout`                   | interface | yes       | yes   |
 | `WorkbenchTitlebarLayoutOptions`            | interface | yes       | yes   |
 
-#### src/app/workbench_viewport.ts
-
-| Symbol                            | Kind      | Type Only | JSDoc |
-| --------------------------------- | --------- | --------- | ----- |
-| `workbenchContentViewport`        | function  | no        | yes   |
-| `WorkbenchContentViewportOptions` | interface | yes       | yes   |
-| `workbenchRevealActiveRowOffset`  | function  | no        | yes   |
-| `WorkbenchRevealActiveRowOptions` | interface | yes       | yes   |
-
 #### src/app/workbench_window_registry.ts
 
-| Symbol                                      | Kind      | Type Only | JSDoc |
-| ------------------------------------------- | --------- | --------- | ----- |
-| `createWorkbenchVisualizationWindowOptions` | function  | no        | yes   |
-| `createWorkbenchWindowOptions`              | function  | no        | yes   |
-| `isWorkbenchVisualizationWindowId`          | function  | no        | yes   |
-| `isWorkbenchWindowOptionLoaded`             | function  | no        | yes   |
-| `workbenchVisualizationIdFromWindowId`      | function  | no        | yes   |
-| `WorkbenchVisualizationOptionSource`        | interface | yes       | yes   |
-| `workbenchVisualizationWindowId`            | function  | no        | yes   |
-| `WorkbenchWindowOption`                     | interface | yes       | yes   |
-| `WorkbenchWindowOptionCatalogInput`         | interface | yes       | yes   |
-| `WorkbenchWindowOptionGroup`                | type      | yes       | yes   |
-| `workbenchWindowOptionMenuLabel`            | function  | no        | yes   |
-| `workbenchWindowOptionMenuLabelsInto`       | function  | no        | yes   |
-| `workbenchWindowOptionMinimums`             | function  | no        | yes   |
-| `WorkbenchWindowOptionMinimums`             | interface | yes       | yes   |
+| Symbol                                            | Kind      | Type Only | JSDoc |
+| ------------------------------------------------- | --------- | --------- | ----- |
+| `createWorkbenchVisualizationWindowOptions`       | function  | no        | yes   |
+| `createWorkbenchWindowOptions`                    | function  | no        | yes   |
+| `isWorkbenchVisualizationWindowId`                | function  | no        | yes   |
+| `isWorkbenchWindowOptionLoaded`                   | function  | no        | yes   |
+| `WorkbenchBuiltInWindowToggleOptions`             | interface | yes       | yes   |
+| `workbenchBuiltInWindowTogglePlan`                | function  | no        | yes   |
+| `WorkbenchBuiltInWindowTogglePlan`                | interface | yes       | yes   |
+| `workbenchVisualizationIdFromWindowId`            | function  | no        | yes   |
+| `WorkbenchVisualizationOptionSource`              | interface | yes       | yes   |
+| `workbenchVisualizationWindowId`                  | function  | no        | yes   |
+| `WorkbenchVisualizationWindowRegistration`        | interface | yes       | yes   |
+| `WorkbenchVisualizationWindowRegistrationOptions` | interface | yes       | yes   |
+| `workbenchVisualizationWindowRegistrationPlan`    | function  | no        | yes   |
+| `WorkbenchVisualizationWindowRegistrationPlan`    | interface | yes       | yes   |
+| `WorkbenchVisualizationWindowToggleOptions`       | interface | yes       | yes   |
+| `workbenchVisualizationWindowTogglePlan`          | function  | no        | yes   |
+| `WorkbenchVisualizationWindowTogglePlan`          | type      | yes       | yes   |
+| `WorkbenchWindowOption`                           | interface | yes       | yes   |
+| `WorkbenchWindowOptionCatalogInput`               | interface | yes       | yes   |
+| `WorkbenchWindowOptionGroup`                      | type      | yes       | yes   |
+| `workbenchWindowOptionMenuLabel`                  | function  | no        | yes   |
+| `workbenchWindowOptionMenuLabelsInto`             | function  | no        | yes   |
+| `workbenchWindowOptionMinimums`                   | function  | no        | yes   |
+| `WorkbenchWindowOptionMinimums`                   | interface | yes       | yes   |
+| `workbenchWindowOptionTogglePlan`                 | function  | no        | yes   |
+| `WorkbenchWindowOptionTogglePlan`                 | type      | yes       | yes   |
+| `workbenchWindowOptionWindowId`                   | function  | no        | yes   |
 
 #### src/app/workbench_workspace_store.ts
 
@@ -1528,27 +1628,29 @@ _No direct exported symbols._
 
 #### src/app/workbench/mod.ts
 
-| Re-export Target                             | Kind | Names |
-| -------------------------------------------- | ---- | ----- |
-| `src/app/hit_targets.ts`                     | star | -     |
-| `src/app/workbench_frame.ts`                 | star | -     |
-| `src/app/workbench_help.ts`                  | star | -     |
-| `src/app/workbench_button_style.ts`          | star | -     |
-| `src/app/workbench_control_layout.ts`        | star | -     |
-| `src/app/workbench_diagnostics.ts`           | star | -     |
-| `src/app/workbench_layout.ts`                | star | -     |
-| `src/app/workbench_menu.ts`                  | star | -     |
-| `src/app/workbench_overlay.ts`               | star | -     |
-| `src/app/workbench_panel_workspace_store.ts` | star | -     |
-| `src/app/workbench_shelf.ts`                 | star | -     |
-| `src/app/workbench_status.ts`                | star | -     |
-| `src/app/workbench_terminal.ts`              | star | -     |
-| `src/app/workbench_titlebar.ts`              | star | -     |
-| `src/app/workbench_text.ts`                  | star | -     |
-| `src/app/workbench_viewport.ts`              | star | -     |
-| `src/app/workbench_window_registry.ts`       | star | -     |
-| `src/app/workbench_workspace.ts`             | star | -     |
-| `src/app/workbench_workspace_store.ts`       | star | -     |
+| Re-export Target                               | Kind | Names |
+| ---------------------------------------------- | ---- | ----- |
+| `src/app/hit_targets.ts`                       | star | -     |
+| `src/app/workbench_frame.ts`                   | star | -     |
+| `src/app/workbench_ansi_screen.ts`             | star | -     |
+| `src/app/workbench_help.ts`                    | star | -     |
+| `src/app/workbench_button_style.ts`            | star | -     |
+| `src/app/workbench_control_layout.ts`          | star | -     |
+| `src/app/workbench_layout.ts`                  | star | -     |
+| `src/app/workbench_keymap.ts`                  | star | -     |
+| `src/app/workbench_menu.ts`                    | star | -     |
+| `src/app/workbench_overlay.ts`                 | star | -     |
+| `src/app/workbench_panel_workspace_store.ts`   | star | -     |
+| `src/app/workbench_prompt_input.ts`            | star | -     |
+| `src/app/workbench_shelf.ts`                   | star | -     |
+| `src/app/workbench_status.ts`                  | star | -     |
+| `src/app/workbench_terminal.ts`                | star | -     |
+| `src/app/workbench_titlebar.ts`                | star | -     |
+| `src/app/workbench_text.ts`                    | star | -     |
+| `src/app/workbench_three_terminal_pressure.ts` | star | -     |
+| `src/app/workbench_window_registry.ts`         | star | -     |
+| `src/app/workbench_workspace.ts`               | star | -     |
+| `src/app/workbench_workspace_store.ts`         | star | -     |
 
 _No direct exported symbols._
 
@@ -1570,10 +1672,11 @@ _No direct exported symbols._
 
 #### src/canvas/dirty_region.ts
 
-| Symbol            | Kind      | Type Only | JSDoc |
-| ----------------- | --------- | --------- | ----- |
-| `DirtyRegion`     | class     | no        | yes   |
-| `DirtyRowSegment` | interface | yes       | yes   |
+| Symbol                         | Kind      | Type Only | JSDoc |
+| ------------------------------ | --------- | --------- | ----- |
+| `DirtyRegion`                  | class     | no        | yes   |
+| `DirtyRowSegment`              | interface | yes       | yes   |
+| `mergeDirtyRowSegmentsInPlace` | function  | no        | yes   |
 
 #### src/canvas/draw_object.ts
 
@@ -2092,11 +2195,12 @@ _No direct exported symbols._
 
 #### src/components/statusbar.ts
 
-| Symbol             | Kind      | Type Only | JSDoc |
-| ------------------ | --------- | --------- | ----- |
-| `renderStatusBar`  | function  | no        | yes   |
-| `StatusBar`        | class     | no        | yes   |
-| `StatusBarOptions` | interface | yes       | yes   |
+| Symbol              | Kind      | Type Only | JSDoc |
+| ------------------- | --------- | --------- | ----- |
+| `renderStatusBar`   | function  | no        | yes   |
+| `StatusBar`         | class     | no        | yes   |
+| `StatusBarOptions`  | interface | yes       | yes   |
+| `StatusBarPriority` | type      | yes       | yes   |
 
 #### src/components/stepper.ts
 
@@ -2681,6 +2785,7 @@ _No direct exported symbols._
 | `inspectBenchmarkCatalog`         | function  | no        | yes   |
 | `queryBenchmarkCases`             | function  | no        | yes   |
 | `summarizeBenchmarkResults`       | function  | no        | yes   |
+| `summarizeBestBenchmarkSummaries` | function  | no        | yes   |
 
 #### src/perf/mod.ts
 
@@ -2933,6 +3038,9 @@ _No direct exported symbols._
 | ------------------------------ | --------- | --------- | ----- |
 | `createRenderLoop`             | function  | no        | yes   |
 | `defaultRenderLoopTimer`       | const     | no        | yes   |
+| `FrameScheduler`               | class     | no        | yes   |
+| `FrameSchedulerInspection`     | interface | yes       | yes   |
+| `FrameSchedulerOptions`        | interface | yes       | yes   |
 | `MicrotaskScheduler`           | class     | no        | yes   |
 | `MicrotaskSchedulerInspection` | interface | yes       | yes   |
 | `MicrotaskSchedulerOptions`    | interface | yes       | yes   |
@@ -3166,24 +3274,26 @@ _No direct exported symbols._
 
 #### src/runtime/terminal_status.ts
 
-| Symbol                            | Kind      | Type Only | JSDoc |
-| --------------------------------- | --------- | --------- | ----- |
-| `formatTerminalOutputHint`        | function  | no        | yes   |
-| `formatTerminalShellHint`         | function  | no        | yes   |
-| `formatTerminalShellStatusLine`   | function  | no        | yes   |
-| `formatTerminalShellWindowTitle`  | function  | no        | yes   |
-| `summarizeTerminalStatus`         | function  | no        | yes   |
-| `terminalBackendKindLabel`        | function  | no        | yes   |
-| `terminalInputModeDisplayLabel`   | function  | no        | yes   |
-| `TerminalShellHintOptions`        | interface | yes       | yes   |
-| `TerminalShellStatusLineOptions`  | interface | yes       | yes   |
-| `TerminalShellWindowTitleOptions` | interface | yes       | yes   |
-| `terminalStatusFields`            | function  | no        | yes   |
-| `TerminalStatusSource`            | type      | yes       | yes   |
-| `TerminalStatusSummary`           | interface | yes       | yes   |
-| `TerminalStatusSummaryOptions`    | interface | yes       | yes   |
-| `terminalStatusTone`              | function  | no        | yes   |
-| `TerminalStatusTone`              | type      | yes       | yes   |
+| Symbol                             | Kind      | Type Only | JSDoc |
+| ---------------------------------- | --------- | --------- | ----- |
+| `formatTerminalOutputHint`         | function  | no        | yes   |
+| `formatTerminalOutputWindowTitle`  | function  | no        | yes   |
+| `formatTerminalShellHint`          | function  | no        | yes   |
+| `formatTerminalShellStatusLine`    | function  | no        | yes   |
+| `formatTerminalShellWindowTitle`   | function  | no        | yes   |
+| `summarizeTerminalStatus`          | function  | no        | yes   |
+| `terminalBackendKindLabel`         | function  | no        | yes   |
+| `terminalInputModeDisplayLabel`    | function  | no        | yes   |
+| `TerminalOutputWindowTitleOptions` | interface | yes       | yes   |
+| `TerminalShellHintOptions`         | interface | yes       | yes   |
+| `TerminalShellStatusLineOptions`   | interface | yes       | yes   |
+| `TerminalShellWindowTitleOptions`  | interface | yes       | yes   |
+| `terminalStatusFields`             | function  | no        | yes   |
+| `TerminalStatusSource`             | type      | yes       | yes   |
+| `TerminalStatusSummary`            | interface | yes       | yes   |
+| `TerminalStatusSummaryOptions`     | interface | yes       | yes   |
+| `terminalStatusTone`               | function  | no        | yes   |
+| `TerminalStatusTone`               | type      | yes       | yes   |
 
 #### src/runtime/terminal_templates.ts
 
@@ -3656,10 +3766,11 @@ _No direct exported symbols._
 
 #### src/three_ascii/AcerolaAsciiNode.ts
 
-| Symbol                    | Kind      | Type Only | JSDoc |
-| ------------------------- | --------- | --------- | ----- |
-| `AcerolaAsciiNode`        | class     | no        | yes   |
-| `AcerolaAsciiNodeOptions` | interface | yes       | yes   |
+| Symbol                      | Kind      | Type Only | JSDoc |
+| --------------------------- | --------- | --------- | ----- |
+| `AcerolaAsciiNode`          | class     | no        | yes   |
+| `AcerolaAsciiNodeOptions`   | interface | yes       | yes   |
+| `AcerolaAsciiRenderProfile` | interface | yes       | yes   |
 
 #### src/three_ascii/demo_presets.ts
 
@@ -3679,6 +3790,19 @@ _No direct exported symbols._
 | `AsciiToggleControlKey`         | type      | yes       | yes   |
 | `DEFAULT_ASCII_DEMO_EFFECT`     | const     | no        | yes   |
 | `findAsciiDemoPreset`           | function  | no        | yes   |
+
+#### src/three_ascii/frame_options.ts
+
+| Symbol                                      | Kind      | Type Only | JSDoc |
+| ------------------------------------------- | --------- | --------- | ----- |
+| `emptyThreeAsciiRenderFrame`                | function  | no        | yes   |
+| `resolveThreeAsciiRenderFrameSelection`     | function  | no        | yes   |
+| `resolveThreeAsciiRenderFrameSelectionInto` | function  | no        | yes   |
+| `THREE_ASCII_ANSI_FRAME_OPTIONS`            | const     | no        | yes   |
+| `THREE_ASCII_IMAGE_FRAME_OPTIONS`           | const     | no        | yes   |
+| `ThreeAsciiEmptyRenderFrame`                | interface | yes       | yes   |
+| `ThreeAsciiRenderFrameOptions`              | interface | yes       | yes   |
+| `ThreeAsciiRenderFrameSelection`            | interface | yes       | yes   |
 
 #### src/three_ascii/glyphs.ts
 
@@ -3706,6 +3830,7 @@ _No direct exported symbols._
 | `src/three_ascii/demo_presets.ts`     | star | -     |
 | `src/three_ascii/glyphs.ts`           | star | -     |
 | `src/three_ascii/options.ts`          | star | -     |
+| `src/three_ascii/render_profile.ts`   | star | -     |
 | `src/three_ascii/renderer.ts`         | star | -     |
 | `src/three_ascii/webgpu_compat.ts`    | star | -     |
 
@@ -3731,25 +3856,64 @@ _No direct exported symbols._
 | `ThreeAsciiConfigOptions`           | interface | yes       | yes   |
 | `ThreeAsciiOptionNumericControlKey` | type      | yes       | yes   |
 
+#### src/three_ascii/performance.ts
+
+| Symbol                                         | Kind      | Type Only | JSDoc |
+| ---------------------------------------------- | --------- | --------- | ----- |
+| `createThreeAsciiRendererPerformance`          | function  | no        | yes   |
+| `createThreeAsciiRendererSaturatedPerformance` | function  | no        | yes   |
+| `ThreeAsciiReadbackQueueInspection`            | interface | yes       | yes   |
+| `ThreeAsciiRendererPerformance`                | interface | yes       | yes   |
+| `ThreeAsciiRendererPerformanceInput`           | interface | yes       | yes   |
+| `ThreeAsciiRendererSaturatedPerformanceInput`  | interface | yes       | yes   |
+
+#### src/three_ascii/render_profile.ts
+
+| Symbol                               | Kind      | Type Only | JSDoc |
+| ------------------------------------ | --------- | --------- | ----- |
+| `resolveThreeAsciiRenderProfile`     | function  | no        | yes   |
+| `resolveThreeAsciiRenderProfileInto` | function  | no        | yes   |
+| `ThreeAsciiRenderProfileInput`       | interface | yes       | yes   |
+
 #### src/three_ascii/renderer.ts
 
-| Symbol                         | Kind      | Type Only | JSDoc |
-| ------------------------------ | --------- | --------- | ----- |
-| `buildThreeAsciiAnsiGrid`      | function  | no        | yes   |
-| `ThreeAsciiAnsiGridAssembler`  | class     | no        | yes   |
-| `ThreeAsciiAnsiGridInput`      | interface | yes       | yes   |
-| `ThreeAsciiImageFrame`         | interface | yes       | yes   |
-| `ThreeAsciiRenderer`           | class     | no        | yes   |
-| `ThreeAsciiRendererOptions`    | interface | yes       | yes   |
-| `ThreeAsciiRenderFrame`        | interface | yes       | yes   |
-| `ThreeAsciiRenderFrameOptions` | interface | yes       | yes   |
+| Re-export Target                   | Kind  | Names                                |
+| ---------------------------------- | ----- | ------------------------------------ |
+| `src/three_ascii/frame_options.ts` | named | `type ThreeAsciiRenderFrameOptions`  |
+| `src/three_ascii/performance.ts`   | named | `type ThreeAsciiRendererPerformance` |
+
+| Symbol                                        | Kind      | Type Only | JSDoc |
+| --------------------------------------------- | --------- | --------- | ----- |
+| `buildThreeAsciiAnsiGrid`                     | function  | no        | yes   |
+| `computeThreeAsciiCameraAspect`               | function  | no        | yes   |
+| `handleThreeAsciiDeferredReadbackFailure`     | function  | no        | yes   |
+| `readThreeAsciiImageFrame`                    | function  | no        | yes   |
+| `resolveThreeAsciiDeferredReadbackSubmission` | function  | no        | yes   |
+| `shouldUpdateThreeAsciiCameraAspect`          | function  | no        | yes   |
+| `THREE_ASCII_CAMERA_ASPECT_EPSILON`           | const     | no        | yes   |
+| `ThreeAsciiAnsiGridAssembler`                 | class     | no        | yes   |
+| `ThreeAsciiAnsiGridInput`                     | interface | yes       | yes   |
+| `ThreeAsciiCameraAspectInput`                 | interface | yes       | yes   |
+| `ThreeAsciiDeferredReadbackFailureQueue`      | interface | yes       | yes   |
+| `ThreeAsciiDeferredReadbackFailureResult`     | interface | yes       | yes   |
+| `ThreeAsciiDeferredReadbackSubmission`        | interface | yes       | yes   |
+| `ThreeAsciiImageFrame`                        | interface | yes       | yes   |
+| `ThreeAsciiImageFrameSource`                  | interface | yes       | yes   |
+| `ThreeAsciiMappedReadbackBuffer`              | interface | yes       | yes   |
+| `ThreeAsciiMappedReadbackOptions`             | interface | yes       | yes   |
+| `ThreeAsciiReadbackError`                     | class     | no        | yes   |
+| `ThreeAsciiRenderer`                          | class     | no        | yes   |
+| `ThreeAsciiRendererOptions`                   | interface | yes       | yes   |
+| `ThreeAsciiRenderFrame`                       | interface | yes       | yes   |
+| `withThreeAsciiMappedReadback`                | function  | no        | yes   |
 
 #### src/three_ascii/webgpu_compat.ts
 
-| Symbol                        | Kind     | Type Only | JSDoc |
-| ----------------------------- | -------- | --------- | ----- |
-| `getCompatibleWebGPUDevice`   | function | no        | yes   |
-| `probeCompatibleWebGPUDevice` | function | no        | yes   |
+| Symbol                             | Kind     | Type Only | JSDoc |
+| ---------------------------------- | -------- | --------- | ----- |
+| `getCompatibleWebGPUDevice`        | function | no        | yes   |
+| `probeCompatibleWebGPUDevice`      | function | no        | yes   |
+| `resetCompatibleWebGPUDeviceCache` | function | no        | yes   |
 
 #### src/tui.ts
 
@@ -3893,238 +4057,236 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 ### Summary
 
 - Entrypoint: `mod.web.ts`
-- Modules: 220
-- Re-export declarations: 219
-- Exported symbols: 1971
-- Documented symbols: 1971
+- Modules: 218
+- Re-export declarations: 217
+- Exported symbols: 2143
+- Documented symbols: 2143
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
 
 ### Module Index
 
-| Module                                                                                      | Re-exports | Symbols | Documented |
-| ------------------------------------------------------------------------------------------- | ---------: | ------: | ---------: |
-| [`mod.web.ts`](#mod-web-ts)                                                                 |         52 |       0 |          0 |
-| [`src/api_stability.ts`](#src-api-stability-ts)                                             |          0 |      14 |         14 |
-| [`src/app/actions.ts`](#src-app-actions-ts)                                                 |          0 |       7 |          7 |
-| [`src/app/app.ts`](#src-app-app-ts)                                                         |          0 |      13 |         13 |
-| [`src/app/button_commands.ts`](#src-app-button-commands-ts)                                 |          0 |       6 |          6 |
-| [`src/app/checkbox_commands.ts`](#src-app-checkbox-commands-ts)                             |          0 |       6 |          6 |
-| [`src/app/combobox_commands.ts`](#src-app-combobox-commands-ts)                             |          0 |       6 |          6 |
-| [`src/app/command_bindings.ts`](#src-app-command-bindings-ts)                               |          0 |      26 |         26 |
-| [`src/app/command_search_index.ts`](#src-app-command-search-index-ts)                       |          0 |      11 |         11 |
-| [`src/app/commands.ts`](#src-app-commands-ts)                                               |          0 |       8 |          8 |
-| [`src/app/component_commands.ts`](#src-app-component-commands-ts)                           |          0 |       5 |          5 |
-| [`src/app/data_query_bindings.ts`](#src-app-data-query-bindings-ts)                         |          0 |      12 |         12 |
-| [`src/app/data_query_commands.ts`](#src-app-data-query-commands-ts)                         |          0 |       7 |          7 |
-| [`src/app/data_query_plugin.ts`](#src-app-data-query-plugin-ts)                             |          0 |       5 |          5 |
-| [`src/app/data_table_commands.ts`](#src-app-data-table-commands-ts)                         |          0 |       4 |          4 |
-| [`src/app/disposables.ts`](#src-app-disposables-ts)                                         |          0 |       6 |          6 |
-| [`src/app/focus_commands.ts`](#src-app-focus-commands-ts)                                   |          0 |       7 |          7 |
-| [`src/app/form_bindings.ts`](#src-app-form-bindings-ts)                                     |          0 |       2 |          2 |
-| [`src/app/form_commands.ts`](#src-app-form-commands-ts)                                     |          0 |       7 |          7 |
-| [`src/app/forms.ts`](#src-app-forms-ts)                                                     |          0 |      17 |         17 |
-| [`src/app/history_bindings.ts`](#src-app-history-bindings-ts)                               |          0 |       6 |          6 |
-| [`src/app/history.ts`](#src-app-history-ts)                                                 |          0 |       5 |          5 |
-| [`src/app/hit_targets.ts`](#src-app-hit-targets-ts)                                         |          0 |       8 |          8 |
-| [`src/app/input_commands.ts`](#src-app-input-commands-ts)                                   |          0 |       6 |          6 |
-| [`src/app/list_commands.ts`](#src-app-list-commands-ts)                                     |          0 |       6 |          6 |
-| [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                         |          0 |       6 |          6 |
-| [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                             |          0 |       6 |          6 |
-| [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                   |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                                         |         61 |       0 |          0 |
-| [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                   |          0 |      10 |         10 |
-| [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                       |          0 |       6 |          6 |
-| [`src/app/plugins.ts`](#src-app-plugins-ts)                                                 |          0 |      17 |         17 |
-| [`src/app/progress_bar_commands.ts`](#src-app-progress-bar-commands-ts)                     |          0 |       6 |          6 |
-| [`src/app/radio_group_commands.ts`](#src-app-radio-group-commands-ts)                       |          0 |       6 |          6 |
-| [`src/app/route_bindings.ts`](#src-app-route-bindings-ts)                                   |          0 |       9 |          9 |
-| [`src/app/router.ts`](#src-app-router-ts)                                                   |          0 |       5 |          5 |
-| [`src/app/runtime_profile_commands.ts`](#src-app-runtime-profile-commands-ts)               |          0 |       5 |          5 |
-| [`src/app/runtime_profile_plugin.ts`](#src-app-runtime-profile-plugin-ts)                   |          0 |       5 |          5 |
-| [`src/app/runtime_renderer_commands.ts`](#src-app-runtime-renderer-commands-ts)             |          0 |       5 |          5 |
-| [`src/app/runtime_renderer_plugin.ts`](#src-app-runtime-renderer-plugin-ts)                 |          0 |       5 |          5 |
-| [`src/app/runtime_workload_commands.ts`](#src-app-runtime-workload-commands-ts)             |          0 |       5 |          5 |
-| [`src/app/scroll_area_commands.ts`](#src-app-scroll-area-commands-ts)                       |          0 |       6 |          6 |
-| [`src/app/selection_bindings.ts`](#src-app-selection-bindings-ts)                           |          0 |       8 |          8 |
-| [`src/app/settings_bindings.ts`](#src-app-settings-bindings-ts)                             |          0 |      21 |         21 |
-| [`src/app/settings_commands.ts`](#src-app-settings-commands-ts)                             |          0 |       5 |          5 |
-| [`src/app/settings.ts`](#src-app-settings-ts)                                               |          0 |       5 |          5 |
-| [`src/app/slider_commands.ts`](#src-app-slider-commands-ts)                                 |          0 |       6 |          6 |
-| [`src/app/split_pane_commands.ts`](#src-app-split-pane-commands-ts)                         |          0 |       7 |          7 |
-| [`src/app/stepper_commands.ts`](#src-app-stepper-commands-ts)                               |          0 |       6 |          6 |
-| [`src/app/surface_bindings.ts`](#src-app-surface-bindings-ts)                               |          0 |       2 |          2 |
-| [`src/app/table_commands.ts`](#src-app-table-commands-ts)                                   |          0 |       6 |          6 |
-| [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                                     |          0 |       6 |          6 |
-| [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                             |          0 |      24 |         24 |
-| [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                                   |          0 |      17 |         17 |
-| [`src/app/terminal_window_bindings.ts`](#src-app-terminal-window-bindings-ts)               |          0 |       5 |          5 |
-| [`src/app/textbox_commands.ts`](#src-app-textbox-commands-ts)                               |          0 |       6 |          6 |
-| [`src/app/theme_commands.ts`](#src-app-theme-commands-ts)                                   |          0 |      10 |         10 |
-| [`src/app/theme_engine_commands.ts`](#src-app-theme-engine-commands-ts)                     |          0 |       9 |          9 |
-| [`src/app/theme_pipeline_commands.ts`](#src-app-theme-pipeline-commands-ts)                 |          0 |       5 |          5 |
-| [`src/app/theme_plugin.ts`](#src-app-theme-plugin-ts)                                       |          0 |       8 |          8 |
-| [`src/app/theme_workspace_plugin.ts`](#src-app-theme-workspace-plugin-ts)                   |          0 |       5 |          5 |
-| [`src/app/toast_commands.ts`](#src-app-toast-commands-ts)                                   |          0 |       6 |          6 |
-| [`src/app/tree_commands.ts`](#src-app-tree-commands-ts)                                     |          0 |       6 |          6 |
-| [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)                 |          0 |       8 |          8 |
-| [`src/app/workbench_button_style.ts`](#src-app-workbench-button-style-ts)                   |          0 |       5 |          5 |
-| [`src/app/workbench_control_layout.ts`](#src-app-workbench-control-layout-ts)               |          0 |      14 |         14 |
-| [`src/app/workbench_diagnostics.ts`](#src-app-workbench-diagnostics-ts)                     |          0 |       6 |          6 |
-| [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                                 |          0 |      19 |         19 |
-| [`src/app/workbench_help.ts`](#src-app-workbench-help-ts)                                   |          0 |       3 |          3 |
-| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                               |          0 |      27 |         27 |
-| [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                                   |          0 |      19 |         19 |
-| [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                             |          0 |      13 |         13 |
-| [`src/app/workbench_panel_workspace_store.ts`](#src-app-workbench-panel-workspace-store-ts) |          0 |       8 |          8 |
-| [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                                 |          0 |      20 |         20 |
-| [`src/app/workbench_status.ts`](#src-app-workbench-status-ts)                               |          0 |      13 |         13 |
-| [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                           |          0 |      25 |         25 |
-| [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                                   |          0 |      10 |         10 |
-| [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                           |          0 |      10 |         10 |
-| [`src/app/workbench_viewport.ts`](#src-app-workbench-viewport-ts)                           |          0 |       4 |          4 |
-| [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)             |          0 |      14 |         14 |
-| [`src/app/workbench_workspace_store.ts`](#src-app-workbench-workspace-store-ts)             |          0 |       6 |          6 |
-| [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)                         |          0 |      18 |         18 |
-| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                     |         19 |       0 |          0 |
-| [`src/canvas/box.ts`](#src-canvas-box-ts)                                                   |          0 |       2 |          2 |
-| [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                             |          0 |       4 |          4 |
-| [`src/canvas/draw_object.ts`](#src-canvas-draw-object-ts)                                   |          0 |       2 |          2 |
-| [`src/canvas/sink.ts`](#src-canvas-sink-ts)                                                 |          0 |       8 |          8 |
-| [`src/canvas/text.ts`](#src-canvas-text-ts)                                                 |          0 |       3 |          3 |
-| [`src/canvas/three_ascii.ts`](#src-canvas-three-ascii-ts)                                   |          0 |       6 |          6 |
-| [`src/components/box.ts`](#src-components-box-ts)                                           |          0 |       1 |          1 |
-| [`src/components/breadcrumbs.ts`](#src-components-breadcrumbs-ts)                           |          0 |       4 |          4 |
-| [`src/components/button.ts`](#src-components-button-ts)                                     |          0 |       5 |          5 |
-| [`src/components/catalog.ts`](#src-components-catalog-ts)                                   |          0 |      19 |         19 |
-| [`src/components/chart.ts`](#src-components-chart-ts)                                       |          0 |       3 |          3 |
-| [`src/components/checkbox.ts`](#src-components-checkbox-ts)                                 |          0 |       7 |          7 |
-| [`src/components/combobox.ts`](#src-components-combobox-ts)                                 |          0 |       7 |          7 |
-| [`src/components/command_palette.ts`](#src-components-command-palette-ts)                   |          0 |      12 |         12 |
-| [`src/components/context_menu.ts`](#src-components-context-menu-ts)                         |          0 |      10 |         10 |
-| [`src/components/data_table.ts`](#src-components-data-table-ts)                             |          0 |      16 |         16 |
-| [`src/components/empty_state.ts`](#src-components-empty-state-ts)                           |          0 |       4 |          4 |
-| [`src/components/file_explorer.ts`](#src-components-file-explorer-ts)                       |          0 |       7 |          7 |
-| [`src/components/frame.ts`](#src-components-frame-ts)                                       |          0 |       4 |          4 |
-| [`src/components/gauge.ts`](#src-components-gauge-ts)                                       |          0 |       3 |          3 |
-| [`src/components/input.ts`](#src-components-input-ts)                                       |          0 |       8 |          8 |
-| [`src/components/interaction.ts`](#src-components-interaction-ts)                           |          0 |       7 |          7 |
-| [`src/components/key_help.ts`](#src-components-key-help-ts)                                 |          0 |       3 |          3 |
-| [`src/components/label.ts`](#src-components-label-ts)                                       |          0 |       6 |          6 |
-| [`src/components/list.ts`](#src-components-list-ts)                                         |          0 |       9 |          9 |
-| [`src/components/log_viewer.ts`](#src-components-log-viewer-ts)                             |          0 |       6 |          6 |
-| [`src/components/menu_bar.ts`](#src-components-menu-bar-ts)                                 |          0 |      10 |         10 |
-| [`src/components/metric_series.ts`](#src-components-metric-series-ts)                       |          0 |      10 |         10 |
-| [`src/components/mod.ts`](#src-components-mod-ts)                                           |         41 |       0 |          0 |
-| [`src/components/modal.ts`](#src-components-modal-ts)                                       |          0 |      11 |         11 |
-| [`src/components/pad.ts`](#src-components-pad-ts)                                           |          0 |      13 |         13 |
-| [`src/components/progressbar.ts`](#src-components-progressbar-ts)                           |          0 |      15 |         15 |
-| [`src/components/radio_group.ts`](#src-components-radio-group-ts)                           |          0 |      11 |         11 |
-| [`src/components/scroll_area.ts`](#src-components-scroll-area-ts)                           |          0 |      13 |         13 |
-| [`src/components/slider.ts`](#src-components-slider-ts)                                     |          0 |      14 |         14 |
-| [`src/components/sparkline.ts`](#src-components-sparkline-ts)                               |          0 |       3 |          3 |
-| [`src/components/spinner.ts`](#src-components-spinner-ts)                                   |          0 |       6 |          6 |
-| [`src/components/statusbar.ts`](#src-components-statusbar-ts)                               |          0 |       3 |          3 |
-| [`src/components/stepper.ts`](#src-components-stepper-ts)                                   |          0 |      11 |         11 |
-| [`src/components/table.ts`](#src-components-table-ts)                                       |          0 |      13 |         13 |
-| [`src/components/tabs.ts`](#src-components-tabs-ts)                                         |          0 |      10 |         10 |
-| [`src/components/terminal_output.ts`](#src-components-terminal-output-ts)                   |          0 |       7 |          7 |
-| [`src/components/text.ts`](#src-components-text-ts)                                         |          0 |       2 |          2 |
-| [`src/components/textbox.ts`](#src-components-textbox-ts)                                   |          0 |      15 |         15 |
-| [`src/components/three_ascii.ts`](#src-components-three-ascii-ts)                           |          0 |       2 |          2 |
-| [`src/components/toast.ts`](#src-components-toast-ts)                                       |          0 |       8 |          8 |
-| [`src/components/tree.ts`](#src-components-tree-ts)                                         |          0 |      11 |         11 |
-| [`src/components/virtual_list.ts`](#src-components-virtual-list-ts)                         |          0 |       9 |          9 |
-| [`src/event_emitter.ts`](#src-event-emitter-ts)                                             |          0 |       5 |          5 |
-| [`src/focus.ts`](#src-focus-ts)                                                             |          0 |       7 |          7 |
-| [`src/grwizard_themes.ts`](#src-grwizard-themes-ts)                                         |          0 |       5 |          5 |
-| [`src/layout/engine.ts`](#src-layout-engine-ts)                                             |          0 |       6 |          6 |
-| [`src/layout/errors.ts`](#src-layout-errors-ts)                                             |          0 |       2 |          2 |
-| [`src/layout/flex_layout.ts`](#src-layout-flex-layout-ts)                                   |          0 |       3 |          3 |
-| [`src/layout/grid_layout.ts`](#src-layout-grid-layout-ts)                                   |          0 |       3 |          3 |
-| [`src/layout/horizontal_layout.ts`](#src-layout-horizontal-layout-ts)                       |          0 |       1 |          1 |
-| [`src/layout/measurement.ts`](#src-layout-measurement-ts)                                   |          0 |       6 |          6 |
-| [`src/layout/mod.ts`](#src-layout-mod-ts)                                                   |         16 |       0 |          0 |
-| [`src/layout/overlay.ts`](#src-layout-overlay-ts)                                           |          0 |      19 |         19 |
-| [`src/layout/recipe.ts`](#src-layout-recipe-ts)                                             |          0 |      18 |         18 |
-| [`src/layout/responsive.ts`](#src-layout-responsive-ts)                                     |          0 |      14 |         14 |
-| [`src/layout/solver.ts`](#src-layout-solver-ts)                                             |          0 |      13 |         13 |
-| [`src/layout/solvers/simple.ts`](#src-layout-solvers-simple-ts)                             |          0 |       3 |          3 |
-| [`src/layout/split_pane.ts`](#src-layout-split-pane-ts)                                     |          0 |      10 |         10 |
-| [`src/layout/style.ts`](#src-layout-style-ts)                                               |          0 |      33 |         33 |
-| [`src/layout/types.ts`](#src-layout-types-ts)                                               |          0 |       3 |          3 |
-| [`src/layout/vertical_layout.ts`](#src-layout-vertical-layout-ts)                           |          0 |       1 |          1 |
-| [`src/layout/window_manager.ts`](#src-layout-window-manager-ts)                             |          0 |      10 |         10 |
-| [`src/markup/cascade.ts`](#src-markup-cascade-ts)                                           |          0 |       7 |          7 |
-| [`src/markup/css.ts`](#src-markup-css-ts)                                                   |          0 |      11 |         11 |
-| [`src/markup/demo_fixtures.ts`](#src-markup-demo-fixtures-ts)                               |          0 |       7 |          7 |
-| [`src/markup/html.ts`](#src-markup-html-ts)                                                 |          0 |       3 |          3 |
-| [`src/markup/hydrate.ts`](#src-markup-hydrate-ts)                                           |          0 |       5 |          5 |
-| [`src/markup/layout_worker.ts`](#src-markup-layout-worker-ts)                               |          0 |       6 |          6 |
-| [`src/markup/mod.ts`](#src-markup-mod-ts)                                                   |          8 |       0 |          0 |
-| [`src/markup/support.ts`](#src-markup-support-ts)                                           |          0 |       2 |          2 |
-| [`src/markup/widgets.ts`](#src-markup-widgets-ts)                                           |          0 |      15 |         15 |
-| [`src/perf/benchmark.ts`](#src-perf-benchmark-ts)                                           |          0 |      19 |         19 |
-| [`src/perf/mod.ts`](#src-perf-mod-ts)                                                       |          1 |       0 |          0 |
-| [`src/platform/mod.ts`](#src-platform-mod-ts)                                               |          1 |       0 |          0 |
-| [`src/platform/types.ts`](#src-platform-types-ts)                                           |          0 |      10 |         10 |
-| [`src/runtime/capabilities.ts`](#src-runtime-capabilities-ts)                               |          0 |      16 |         16 |
-| [`src/runtime/data_pipeline_bindings.ts`](#src-runtime-data-pipeline-bindings-ts)           |          0 |       4 |          4 |
-| [`src/runtime/data_pipeline.ts`](#src-runtime-data-pipeline-ts)                             |          0 |      19 |         19 |
-| [`src/runtime/data_query.ts`](#src-runtime-data-query-ts)                                   |          0 |      15 |         15 |
-| [`src/runtime/graphics_surface.ts`](#src-runtime-graphics-surface-ts)                       |          0 |      15 |         15 |
-| [`src/runtime/kitty_graphics.ts`](#src-runtime-kitty-graphics-ts)                           |          0 |      25 |         25 |
-| [`src/runtime/profiles.ts`](#src-runtime-profiles-ts)                                       |          0 |      24 |         24 |
-| [`src/runtime/render_loop.ts`](#src-runtime-render-loop-ts)                                 |          0 |      10 |         10 |
-| [`src/runtime/renderer_backends.ts`](#src-runtime-renderer-backends-ts)                     |          0 |      24 |         24 |
-| [`src/runtime/resource_bindings.ts`](#src-runtime-resource-bindings-ts)                     |          0 |       4 |          4 |
-| [`src/runtime/resource.ts`](#src-runtime-resource-ts)                                       |          0 |      14 |         14 |
-| [`src/runtime/scheduler.ts`](#src-runtime-scheduler-ts)                                     |          0 |      13 |         13 |
-| [`src/runtime/storage.ts`](#src-runtime-storage-ts)                                         |          0 |      10 |         10 |
-| [`src/runtime/telemetry.ts`](#src-runtime-telemetry-ts)                                     |          0 |      15 |         15 |
-| [`src/runtime/terminal_screen.ts`](#src-runtime-terminal-screen-ts)                         |          0 |       6 |          6 |
-| [`src/runtime/terminal_scrollback.ts`](#src-runtime-terminal-scrollback-ts)                 |          0 |       5 |          5 |
-| [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)                   |          0 |      24 |         24 |
-| [`src/runtime/worker_pool.ts`](#src-runtime-worker-pool-ts)                                 |          0 |      12 |         12 |
-| [`src/selection.ts`](#src-selection-ts)                                                     |          0 |      16 |         16 |
-| [`src/signals/computed.ts`](#src-signals-computed-ts)                                       |          0 |       3 |          3 |
-| [`src/signals/dependency_tracking.ts`](#src-signals-dependency-tracking-ts)                 |          0 |       3 |          3 |
-| [`src/signals/effect.ts`](#src-signals-effect-ts)                                           |          0 |       3 |          3 |
-| [`src/signals/flusher.ts`](#src-signals-flusher-ts)                                         |          0 |       1 |          1 |
-| [`src/signals/lazy_computed.ts`](#src-signals-lazy-computed-ts)                             |          0 |       1 |          1 |
-| [`src/signals/lazy_effect.ts`](#src-signals-lazy-effect-ts)                                 |          0 |       1 |          1 |
-| [`src/signals/mod.ts`](#src-signals-mod-ts)                                                 |          9 |       0 |          0 |
-| [`src/signals/reactivity.ts`](#src-signals-reactivity-ts)                                   |          0 |      13 |         13 |
-| [`src/signals/signal.ts`](#src-signals-signal-ts)                                           |          0 |      11 |         11 |
-| [`src/signals/types.ts`](#src-signals-types-ts)                                             |          0 |       4 |          4 |
-| [`src/theme_binding.ts`](#src-theme-binding-ts)                                             |          0 |       8 |          8 |
-| [`src/theme_engine_cache.ts`](#src-theme-engine-cache-ts)                                   |          0 |       6 |          6 |
-| [`src/theme_engine_factory.ts`](#src-theme-engine-factory-ts)                               |          0 |      19 |         19 |
-| [`src/theme_engine_pipeline.ts`](#src-theme-engine-pipeline-ts)                             |          0 |      12 |         12 |
-| [`src/theme_gallery.ts`](#src-theme-gallery-ts)                                             |          0 |      11 |         11 |
-| [`src/theme_resolver.ts`](#src-theme-resolver-ts)                                           |          0 |      15 |         15 |
-| [`src/theme_workspace.ts`](#src-theme-workspace-ts)                                         |          0 |       7 |          7 |
-| [`src/theme.ts`](#src-theme-ts)                                                             |          0 |     115 |        115 |
-| [`src/three_ascii/AcerolaAsciiNode.ts`](#src-three-ascii-acerolaasciinode-ts)               |          0 |       2 |          2 |
-| [`src/three_ascii/demo_presets.ts`](#src-three-ascii-demo-presets-ts)                       |          0 |      14 |         14 |
-| [`src/three_ascii/glyphs.ts`](#src-three-ascii-glyphs-ts)                                   |          0 |      13 |         13 |
-| [`src/three_ascii/mod.ts`](#src-three-ascii-mod-ts)                                         |          6 |       0 |          0 |
-| [`src/three_ascii/options.ts`](#src-three-ascii-options-ts)                                 |          0 |      15 |         15 |
-| [`src/three_ascii/renderer.ts`](#src-three-ascii-renderer-ts)                               |          0 |       8 |          8 |
-| [`src/three_ascii/webgpu_compat.ts`](#src-three-ascii-webgpu-compat-ts)                     |          0 |       2 |          2 |
-| [`src/utils/async.ts`](#src-utils-async-ts)                                                 |          0 |       1 |          1 |
-| [`src/utils/numbers.ts`](#src-utils-numbers-ts)                                             |          0 |       6 |          6 |
-| [`src/utils/sorted_array.ts`](#src-utils-sorted-array-ts)                                   |          0 |       2 |          2 |
-| [`src/utils/strings.ts`](#src-utils-strings-ts)                                             |          0 |       9 |          9 |
-| [`src/view.ts`](#src-view-ts)                                                               |          0 |       1 |          1 |
-| [`src/viewport.ts`](#src-viewport-ts)                                                       |          0 |      18 |         18 |
-| [`src/web/cell_canvas_sink.ts`](#src-web-cell-canvas-sink-ts)                               |          0 |       5 |          5 |
-| [`src/web/dom_renderer.ts`](#src-web-dom-renderer-ts)                                       |          0 |       7 |          7 |
-| [`src/web/host.ts`](#src-web-host-ts)                                                       |          0 |       5 |          5 |
-| [`src/web/mod.ts`](#src-web-mod-ts)                                                         |          5 |       0 |          0 |
-| [`src/web/platform.ts`](#src-web-platform-ts)                                               |          0 |       7 |          7 |
-| [`src/web/remote_terminal.ts`](#src-web-remote-terminal-ts)                                 |          0 |      19 |         19 |
+| Module                                                                                          | Re-exports | Symbols | Documented |
+| ----------------------------------------------------------------------------------------------- | ---------: | ------: | ---------: |
+| [`mod.web.ts`](#mod-web-ts)                                                                     |         52 |       0 |          0 |
+| [`src/api_stability.ts`](#src-api-stability-ts)                                                 |          0 |      14 |         14 |
+| [`src/app/actions.ts`](#src-app-actions-ts)                                                     |          0 |       7 |          7 |
+| [`src/app/app.ts`](#src-app-app-ts)                                                             |          0 |      13 |         13 |
+| [`src/app/command_bindings.ts`](#src-app-command-bindings-ts)                                   |          0 |      26 |         26 |
+| [`src/app/command_search_index.ts`](#src-app-command-search-index-ts)                           |          0 |      11 |         11 |
+| [`src/app/commands.ts`](#src-app-commands-ts)                                                   |          0 |       9 |          9 |
+| [`src/app/component_commands.ts`](#src-app-component-commands-ts)                               |          0 |       5 |          5 |
+| [`src/app/data_query_bindings.ts`](#src-app-data-query-bindings-ts)                             |          0 |      12 |         12 |
+| [`src/app/data_query_commands.ts`](#src-app-data-query-commands-ts)                             |          0 |       7 |          7 |
+| [`src/app/data_query_plugin.ts`](#src-app-data-query-plugin-ts)                                 |          0 |       5 |          5 |
+| [`src/app/data_table_commands.ts`](#src-app-data-table-commands-ts)                             |          0 |       4 |          4 |
+| [`src/app/disposables.ts`](#src-app-disposables-ts)                                             |          0 |       6 |          6 |
+| [`src/app/focus_commands.ts`](#src-app-focus-commands-ts)                                       |          0 |       7 |          7 |
+| [`src/app/form_bindings.ts`](#src-app-form-bindings-ts)                                         |          0 |       2 |          2 |
+| [`src/app/form_commands.ts`](#src-app-form-commands-ts)                                         |          0 |       7 |          7 |
+| [`src/app/forms.ts`](#src-app-forms-ts)                                                         |          0 |      17 |         17 |
+| [`src/app/history_bindings.ts`](#src-app-history-bindings-ts)                                   |          0 |       6 |          6 |
+| [`src/app/history.ts`](#src-app-history-ts)                                                     |          0 |       5 |          5 |
+| [`src/app/hit_targets.ts`](#src-app-hit-targets-ts)                                             |          0 |       8 |          8 |
+| [`src/app/input_commands.ts`](#src-app-input-commands-ts)                                       |          0 |       6 |          6 |
+| [`src/app/list_commands.ts`](#src-app-list-commands-ts)                                         |          0 |       6 |          6 |
+| [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                             |          0 |       6 |          6 |
+| [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                                 |          0 |       6 |          6 |
+| [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                       |          0 |       6 |          6 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         54 |       0 |          0 |
+| [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                       |          0 |      10 |         10 |
+| [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                           |          0 |       6 |          6 |
+| [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     |          0 |      17 |         17 |
+| [`src/app/route_bindings.ts`](#src-app-route-bindings-ts)                                       |          0 |       9 |          9 |
+| [`src/app/router.ts`](#src-app-router-ts)                                                       |          0 |       5 |          5 |
+| [`src/app/runtime_profile_commands.ts`](#src-app-runtime-profile-commands-ts)                   |          0 |       5 |          5 |
+| [`src/app/runtime_profile_plugin.ts`](#src-app-runtime-profile-plugin-ts)                       |          0 |       5 |          5 |
+| [`src/app/runtime_renderer_commands.ts`](#src-app-runtime-renderer-commands-ts)                 |          0 |       5 |          5 |
+| [`src/app/runtime_renderer_plugin.ts`](#src-app-runtime-renderer-plugin-ts)                     |          0 |       5 |          5 |
+| [`src/app/runtime_workload_commands.ts`](#src-app-runtime-workload-commands-ts)                 |          0 |       5 |          5 |
+| [`src/app/scroll_area_commands.ts`](#src-app-scroll-area-commands-ts)                           |          0 |       6 |          6 |
+| [`src/app/selection_bindings.ts`](#src-app-selection-bindings-ts)                               |          0 |       8 |          8 |
+| [`src/app/settings_bindings.ts`](#src-app-settings-bindings-ts)                                 |          0 |      21 |         21 |
+| [`src/app/settings_commands.ts`](#src-app-settings-commands-ts)                                 |          0 |       5 |          5 |
+| [`src/app/settings.ts`](#src-app-settings-ts)                                                   |          0 |       5 |          5 |
+| [`src/app/split_pane_commands.ts`](#src-app-split-pane-commands-ts)                             |          0 |       7 |          7 |
+| [`src/app/surface_bindings.ts`](#src-app-surface-bindings-ts)                                   |          0 |       2 |          2 |
+| [`src/app/table_commands.ts`](#src-app-table-commands-ts)                                       |          0 |       6 |          6 |
+| [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                                         |          0 |       6 |          6 |
+| [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                                 |          0 |      24 |         24 |
+| [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                                       |          0 |      17 |         17 |
+| [`src/app/terminal_window_bindings.ts`](#src-app-terminal-window-bindings-ts)                   |          0 |       5 |          5 |
+| [`src/app/theme_commands.ts`](#src-app-theme-commands-ts)                                       |          0 |      10 |         10 |
+| [`src/app/theme_engine_commands.ts`](#src-app-theme-engine-commands-ts)                         |          0 |       9 |          9 |
+| [`src/app/theme_pipeline_commands.ts`](#src-app-theme-pipeline-commands-ts)                     |          0 |       5 |          5 |
+| [`src/app/theme_plugin.ts`](#src-app-theme-plugin-ts)                                           |          0 |       8 |          8 |
+| [`src/app/theme_workspace_plugin.ts`](#src-app-theme-workspace-plugin-ts)                       |          0 |       5 |          5 |
+| [`src/app/toast_commands.ts`](#src-app-toast-commands-ts)                                       |          0 |       6 |          6 |
+| [`src/app/tree_commands.ts`](#src-app-tree-commands-ts)                                         |          0 |       6 |          6 |
+| [`src/app/widget_commands.ts`](#src-app-widget-commands-ts)                                     |          0 |      48 |         48 |
+| [`src/app/window_manager_commands.ts`](#src-app-window-manager-commands-ts)                     |          0 |       8 |          8 |
+| [`src/app/workbench_ansi_screen.ts`](#src-app-workbench-ansi-screen-ts)                         |          0 |       3 |          3 |
+| [`src/app/workbench_button_style.ts`](#src-app-workbench-button-style-ts)                       |          0 |      10 |         10 |
+| [`src/app/workbench_control_layout.ts`](#src-app-workbench-control-layout-ts)                   |          0 |      17 |         17 |
+| [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                                     |          0 |      30 |         30 |
+| [`src/app/workbench_help.ts`](#src-app-workbench-help-ts)                                       |          0 |       3 |          3 |
+| [`src/app/workbench_keymap.ts`](#src-app-workbench-keymap-ts)                                   |          0 |       3 |          3 |
+| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                                   |          0 |      34 |         34 |
+| [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                                       |          0 |      36 |         36 |
+| [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                                 |          0 |      13 |         13 |
+| [`src/app/workbench_panel_workspace_store.ts`](#src-app-workbench-panel-workspace-store-ts)     |          0 |       8 |          8 |
+| [`src/app/workbench_prompt_input.ts`](#src-app-workbench-prompt-input-ts)                       |          0 |       7 |          7 |
+| [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                                     |          0 |      20 |         20 |
+| [`src/app/workbench_status.ts`](#src-app-workbench-status-ts)                                   |          0 |      23 |         23 |
+| [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                               |          0 |      66 |         66 |
+| [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                                       |          0 |      10 |         10 |
+| [`src/app/workbench_three_terminal_pressure.ts`](#src-app-workbench-three-terminal-pressure-ts) |          0 |      23 |         23 |
+| [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                               |          0 |      10 |         10 |
+| [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)                 |          0 |      27 |         27 |
+| [`src/app/workbench_workspace_store.ts`](#src-app-workbench-workspace-store-ts)                 |          0 |       6 |          6 |
+| [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)                             |          0 |      18 |         18 |
+| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                         |         21 |       0 |          0 |
+| [`src/canvas/box.ts`](#src-canvas-box-ts)                                                       |          0 |       2 |          2 |
+| [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                                 |          0 |       4 |          4 |
+| [`src/canvas/draw_object.ts`](#src-canvas-draw-object-ts)                                       |          0 |       2 |          2 |
+| [`src/canvas/sink.ts`](#src-canvas-sink-ts)                                                     |          0 |       8 |          8 |
+| [`src/canvas/text.ts`](#src-canvas-text-ts)                                                     |          0 |       3 |          3 |
+| [`src/canvas/three_ascii.ts`](#src-canvas-three-ascii-ts)                                       |          0 |       6 |          6 |
+| [`src/components/box.ts`](#src-components-box-ts)                                               |          0 |       1 |          1 |
+| [`src/components/breadcrumbs.ts`](#src-components-breadcrumbs-ts)                               |          0 |       4 |          4 |
+| [`src/components/button.ts`](#src-components-button-ts)                                         |          0 |       5 |          5 |
+| [`src/components/catalog.ts`](#src-components-catalog-ts)                                       |          0 |      19 |         19 |
+| [`src/components/chart.ts`](#src-components-chart-ts)                                           |          0 |       3 |          3 |
+| [`src/components/checkbox.ts`](#src-components-checkbox-ts)                                     |          0 |       7 |          7 |
+| [`src/components/combobox.ts`](#src-components-combobox-ts)                                     |          0 |       7 |          7 |
+| [`src/components/command_palette.ts`](#src-components-command-palette-ts)                       |          0 |      12 |         12 |
+| [`src/components/context_menu.ts`](#src-components-context-menu-ts)                             |          0 |      10 |         10 |
+| [`src/components/data_table.ts`](#src-components-data-table-ts)                                 |          0 |      16 |         16 |
+| [`src/components/empty_state.ts`](#src-components-empty-state-ts)                               |          0 |       4 |          4 |
+| [`src/components/file_explorer.ts`](#src-components-file-explorer-ts)                           |          0 |       7 |          7 |
+| [`src/components/frame.ts`](#src-components-frame-ts)                                           |          0 |       4 |          4 |
+| [`src/components/gauge.ts`](#src-components-gauge-ts)                                           |          0 |       3 |          3 |
+| [`src/components/input.ts`](#src-components-input-ts)                                           |          0 |       8 |          8 |
+| [`src/components/interaction.ts`](#src-components-interaction-ts)                               |          0 |       7 |          7 |
+| [`src/components/key_help.ts`](#src-components-key-help-ts)                                     |          0 |       3 |          3 |
+| [`src/components/label.ts`](#src-components-label-ts)                                           |          0 |       6 |          6 |
+| [`src/components/list.ts`](#src-components-list-ts)                                             |          0 |       9 |          9 |
+| [`src/components/log_viewer.ts`](#src-components-log-viewer-ts)                                 |          0 |       6 |          6 |
+| [`src/components/menu_bar.ts`](#src-components-menu-bar-ts)                                     |          0 |      10 |         10 |
+| [`src/components/metric_series.ts`](#src-components-metric-series-ts)                           |          0 |      10 |         10 |
+| [`src/components/mod.ts`](#src-components-mod-ts)                                               |         41 |       0 |          0 |
+| [`src/components/modal.ts`](#src-components-modal-ts)                                           |          0 |      11 |         11 |
+| [`src/components/pad.ts`](#src-components-pad-ts)                                               |          0 |      13 |         13 |
+| [`src/components/progressbar.ts`](#src-components-progressbar-ts)                               |          0 |      15 |         15 |
+| [`src/components/radio_group.ts`](#src-components-radio-group-ts)                               |          0 |      11 |         11 |
+| [`src/components/scroll_area.ts`](#src-components-scroll-area-ts)                               |          0 |      13 |         13 |
+| [`src/components/slider.ts`](#src-components-slider-ts)                                         |          0 |      14 |         14 |
+| [`src/components/sparkline.ts`](#src-components-sparkline-ts)                                   |          0 |       3 |          3 |
+| [`src/components/spinner.ts`](#src-components-spinner-ts)                                       |          0 |       6 |          6 |
+| [`src/components/statusbar.ts`](#src-components-statusbar-ts)                                   |          0 |       4 |          4 |
+| [`src/components/stepper.ts`](#src-components-stepper-ts)                                       |          0 |      11 |         11 |
+| [`src/components/table.ts`](#src-components-table-ts)                                           |          0 |      13 |         13 |
+| [`src/components/tabs.ts`](#src-components-tabs-ts)                                             |          0 |      10 |         10 |
+| [`src/components/terminal_output.ts`](#src-components-terminal-output-ts)                       |          0 |       7 |          7 |
+| [`src/components/text.ts`](#src-components-text-ts)                                             |          0 |       2 |          2 |
+| [`src/components/textbox.ts`](#src-components-textbox-ts)                                       |          0 |      15 |         15 |
+| [`src/components/three_ascii.ts`](#src-components-three-ascii-ts)                               |          0 |       2 |          2 |
+| [`src/components/toast.ts`](#src-components-toast-ts)                                           |          0 |       8 |          8 |
+| [`src/components/tree.ts`](#src-components-tree-ts)                                             |          0 |      11 |         11 |
+| [`src/components/virtual_list.ts`](#src-components-virtual-list-ts)                             |          0 |       9 |          9 |
+| [`src/event_emitter.ts`](#src-event-emitter-ts)                                                 |          0 |       5 |          5 |
+| [`src/focus.ts`](#src-focus-ts)                                                                 |          0 |       7 |          7 |
+| [`src/grwizard_themes.ts`](#src-grwizard-themes-ts)                                             |          0 |       5 |          5 |
+| [`src/layout/engine.ts`](#src-layout-engine-ts)                                                 |          0 |       6 |          6 |
+| [`src/layout/errors.ts`](#src-layout-errors-ts)                                                 |          0 |       2 |          2 |
+| [`src/layout/flex_layout.ts`](#src-layout-flex-layout-ts)                                       |          0 |       3 |          3 |
+| [`src/layout/grid_layout.ts`](#src-layout-grid-layout-ts)                                       |          0 |       3 |          3 |
+| [`src/layout/horizontal_layout.ts`](#src-layout-horizontal-layout-ts)                           |          0 |       1 |          1 |
+| [`src/layout/measurement.ts`](#src-layout-measurement-ts)                                       |          0 |       6 |          6 |
+| [`src/layout/mod.ts`](#src-layout-mod-ts)                                                       |         16 |       0 |          0 |
+| [`src/layout/overlay.ts`](#src-layout-overlay-ts)                                               |          0 |      19 |         19 |
+| [`src/layout/recipe.ts`](#src-layout-recipe-ts)                                                 |          0 |      18 |         18 |
+| [`src/layout/responsive.ts`](#src-layout-responsive-ts)                                         |          0 |      14 |         14 |
+| [`src/layout/solver.ts`](#src-layout-solver-ts)                                                 |          0 |      13 |         13 |
+| [`src/layout/solvers/simple.ts`](#src-layout-solvers-simple-ts)                                 |          0 |       3 |          3 |
+| [`src/layout/split_pane.ts`](#src-layout-split-pane-ts)                                         |          0 |      10 |         10 |
+| [`src/layout/style.ts`](#src-layout-style-ts)                                                   |          0 |      33 |         33 |
+| [`src/layout/types.ts`](#src-layout-types-ts)                                                   |          0 |       3 |          3 |
+| [`src/layout/vertical_layout.ts`](#src-layout-vertical-layout-ts)                               |          0 |       1 |          1 |
+| [`src/layout/window_manager.ts`](#src-layout-window-manager-ts)                                 |          0 |      10 |         10 |
+| [`src/markup/cascade.ts`](#src-markup-cascade-ts)                                               |          0 |       7 |          7 |
+| [`src/markup/css.ts`](#src-markup-css-ts)                                                       |          0 |      11 |         11 |
+| [`src/markup/demo_fixtures.ts`](#src-markup-demo-fixtures-ts)                                   |          0 |       7 |          7 |
+| [`src/markup/html.ts`](#src-markup-html-ts)                                                     |          0 |       3 |          3 |
+| [`src/markup/hydrate.ts`](#src-markup-hydrate-ts)                                               |          0 |       5 |          5 |
+| [`src/markup/layout_worker.ts`](#src-markup-layout-worker-ts)                                   |          0 |       6 |          6 |
+| [`src/markup/mod.ts`](#src-markup-mod-ts)                                                       |          8 |       0 |          0 |
+| [`src/markup/support.ts`](#src-markup-support-ts)                                               |          0 |       2 |          2 |
+| [`src/markup/widgets.ts`](#src-markup-widgets-ts)                                               |          0 |      15 |         15 |
+| [`src/perf/benchmark.ts`](#src-perf-benchmark-ts)                                               |          0 |      20 |         20 |
+| [`src/perf/mod.ts`](#src-perf-mod-ts)                                                           |          1 |       0 |          0 |
+| [`src/platform/mod.ts`](#src-platform-mod-ts)                                                   |          1 |       0 |          0 |
+| [`src/platform/types.ts`](#src-platform-types-ts)                                               |          0 |      10 |         10 |
+| [`src/runtime/capabilities.ts`](#src-runtime-capabilities-ts)                                   |          0 |      16 |         16 |
+| [`src/runtime/data_pipeline_bindings.ts`](#src-runtime-data-pipeline-bindings-ts)               |          0 |       4 |          4 |
+| [`src/runtime/data_pipeline.ts`](#src-runtime-data-pipeline-ts)                                 |          0 |      19 |         19 |
+| [`src/runtime/data_query.ts`](#src-runtime-data-query-ts)                                       |          0 |      15 |         15 |
+| [`src/runtime/graphics_surface.ts`](#src-runtime-graphics-surface-ts)                           |          0 |      15 |         15 |
+| [`src/runtime/kitty_graphics.ts`](#src-runtime-kitty-graphics-ts)                               |          0 |      25 |         25 |
+| [`src/runtime/profiles.ts`](#src-runtime-profiles-ts)                                           |          0 |      24 |         24 |
+| [`src/runtime/render_loop.ts`](#src-runtime-render-loop-ts)                                     |          0 |      13 |         13 |
+| [`src/runtime/renderer_backends.ts`](#src-runtime-renderer-backends-ts)                         |          0 |      24 |         24 |
+| [`src/runtime/resource_bindings.ts`](#src-runtime-resource-bindings-ts)                         |          0 |       4 |          4 |
+| [`src/runtime/resource.ts`](#src-runtime-resource-ts)                                           |          0 |      14 |         14 |
+| [`src/runtime/scheduler.ts`](#src-runtime-scheduler-ts)                                         |          0 |      13 |         13 |
+| [`src/runtime/storage.ts`](#src-runtime-storage-ts)                                             |          0 |      10 |         10 |
+| [`src/runtime/telemetry.ts`](#src-runtime-telemetry-ts)                                         |          0 |      15 |         15 |
+| [`src/runtime/terminal_screen.ts`](#src-runtime-terminal-screen-ts)                             |          0 |       6 |          6 |
+| [`src/runtime/terminal_scrollback.ts`](#src-runtime-terminal-scrollback-ts)                     |          0 |       5 |          5 |
+| [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)                       |          0 |      24 |         24 |
+| [`src/runtime/worker_pool.ts`](#src-runtime-worker-pool-ts)                                     |          0 |      12 |         12 |
+| [`src/selection.ts`](#src-selection-ts)                                                         |          0 |      16 |         16 |
+| [`src/signals/computed.ts`](#src-signals-computed-ts)                                           |          0 |       3 |          3 |
+| [`src/signals/dependency_tracking.ts`](#src-signals-dependency-tracking-ts)                     |          0 |       3 |          3 |
+| [`src/signals/effect.ts`](#src-signals-effect-ts)                                               |          0 |       3 |          3 |
+| [`src/signals/flusher.ts`](#src-signals-flusher-ts)                                             |          0 |       1 |          1 |
+| [`src/signals/lazy_computed.ts`](#src-signals-lazy-computed-ts)                                 |          0 |       1 |          1 |
+| [`src/signals/lazy_effect.ts`](#src-signals-lazy-effect-ts)                                     |          0 |       1 |          1 |
+| [`src/signals/mod.ts`](#src-signals-mod-ts)                                                     |          9 |       0 |          0 |
+| [`src/signals/reactivity.ts`](#src-signals-reactivity-ts)                                       |          0 |      13 |         13 |
+| [`src/signals/signal.ts`](#src-signals-signal-ts)                                               |          0 |      11 |         11 |
+| [`src/signals/types.ts`](#src-signals-types-ts)                                                 |          0 |       4 |          4 |
+| [`src/theme_binding.ts`](#src-theme-binding-ts)                                                 |          0 |       8 |          8 |
+| [`src/theme_engine_cache.ts`](#src-theme-engine-cache-ts)                                       |          0 |       6 |          6 |
+| [`src/theme_engine_factory.ts`](#src-theme-engine-factory-ts)                                   |          0 |      19 |         19 |
+| [`src/theme_engine_pipeline.ts`](#src-theme-engine-pipeline-ts)                                 |          0 |      12 |         12 |
+| [`src/theme_gallery.ts`](#src-theme-gallery-ts)                                                 |          0 |      11 |         11 |
+| [`src/theme_resolver.ts`](#src-theme-resolver-ts)                                               |          0 |      15 |         15 |
+| [`src/theme_workspace.ts`](#src-theme-workspace-ts)                                             |          0 |       7 |          7 |
+| [`src/theme.ts`](#src-theme-ts)                                                                 |          0 |     115 |        115 |
+| [`src/three_ascii/AcerolaAsciiNode.ts`](#src-three-ascii-acerolaasciinode-ts)                   |          0 |       3 |          3 |
+| [`src/three_ascii/demo_presets.ts`](#src-three-ascii-demo-presets-ts)                           |          0 |      14 |         14 |
+| [`src/three_ascii/frame_options.ts`](#src-three-ascii-frame-options-ts)                         |          0 |       8 |          8 |
+| [`src/three_ascii/glyphs.ts`](#src-three-ascii-glyphs-ts)                                       |          0 |      13 |         13 |
+| [`src/three_ascii/mod.ts`](#src-three-ascii-mod-ts)                                             |          7 |       0 |          0 |
+| [`src/three_ascii/options.ts`](#src-three-ascii-options-ts)                                     |          0 |      15 |         15 |
+| [`src/three_ascii/performance.ts`](#src-three-ascii-performance-ts)                             |          0 |       6 |          6 |
+| [`src/three_ascii/render_profile.ts`](#src-three-ascii-render-profile-ts)                       |          0 |       3 |          3 |
+| [`src/three_ascii/renderer.ts`](#src-three-ascii-renderer-ts)                                   |          2 |      22 |         22 |
+| [`src/three_ascii/webgpu_compat.ts`](#src-three-ascii-webgpu-compat-ts)                         |          0 |       3 |          3 |
+| [`src/utils/async.ts`](#src-utils-async-ts)                                                     |          0 |       1 |          1 |
+| [`src/utils/numbers.ts`](#src-utils-numbers-ts)                                                 |          0 |       6 |          6 |
+| [`src/utils/sorted_array.ts`](#src-utils-sorted-array-ts)                                       |          0 |       2 |          2 |
+| [`src/utils/strings.ts`](#src-utils-strings-ts)                                                 |          0 |       9 |          9 |
+| [`src/view.ts`](#src-view-ts)                                                                   |          0 |       1 |          1 |
+| [`src/viewport.ts`](#src-viewport-ts)                                                           |          0 |      18 |         18 |
+| [`src/web/cell_canvas_sink.ts`](#src-web-cell-canvas-sink-ts)                                   |          0 |       5 |          5 |
+| [`src/web/dom_renderer.ts`](#src-web-dom-renderer-ts)                                           |          0 |       7 |          7 |
+| [`src/web/host.ts`](#src-web-host-ts)                                                           |          0 |       5 |          5 |
+| [`src/web/mod.ts`](#src-web-mod-ts)                                                             |          5 |       0 |          0 |
+| [`src/web/platform.ts`](#src-web-platform-ts)                                                   |          0 |       7 |          7 |
+| [`src/web/remote_terminal.ts`](#src-web-remote-terminal-ts)                                     |          0 |      19 |         19 |
 
 ### Modules
 
@@ -4236,39 +4398,6 @@ _No direct exported symbols._
 | `TuiAppInspection`     | interface | yes       | yes   |
 | `TuiAppOptions`        | interface | yes       | yes   |
 
-#### src/app/button_commands.ts
-
-| Symbol                 | Kind      | Type Only | JSDoc |
-| ---------------------- | --------- | --------- | ----- |
-| `bindButtonCommands`   | function  | no        | yes   |
-| `ButtonCommandAction`  | type      | yes       | yes   |
-| `ButtonCommandKind`    | type      | yes       | yes   |
-| `ButtonCommandOptions` | interface | yes       | yes   |
-| `ButtonCommandPayload` | interface | yes       | yes   |
-| `buttonCommands`       | function  | no        | yes   |
-
-#### src/app/checkbox_commands.ts
-
-| Symbol                   | Kind      | Type Only | JSDoc |
-| ------------------------ | --------- | --------- | ----- |
-| `bindCheckBoxCommands`   | function  | no        | yes   |
-| `CheckBoxCommandAction`  | type      | yes       | yes   |
-| `CheckBoxCommandKind`    | type      | yes       | yes   |
-| `CheckBoxCommandOptions` | interface | yes       | yes   |
-| `CheckBoxCommandPayload` | interface | yes       | yes   |
-| `checkBoxCommands`       | function  | no        | yes   |
-
-#### src/app/combobox_commands.ts
-
-| Symbol                   | Kind      | Type Only | JSDoc |
-| ------------------------ | --------- | --------- | ----- |
-| `bindComboBoxCommands`   | function  | no        | yes   |
-| `ComboBoxCommandAction`  | type      | yes       | yes   |
-| `ComboBoxCommandKind`    | type      | yes       | yes   |
-| `ComboBoxCommandOptions` | interface | yes       | yes   |
-| `ComboBoxCommandPayload` | interface | yes       | yes   |
-| `comboBoxCommands`       | function  | no        | yes   |
-
 #### src/app/command_bindings.ts
 
 | Symbol                              | Kind      | Type Only | JSDoc |
@@ -4328,6 +4457,7 @@ _No direct exported symbols._
 | `CommandRegistry`           | class     | no        | yes   |
 | `CommandRegistryInspection` | interface | yes       | yes   |
 | `CommandRegistryListener`   | type      | yes       | yes   |
+| `insertUniqueSortedString`  | function  | no        | yes   |
 
 #### src/app/component_commands.ts
 
@@ -4546,9 +4676,6 @@ _No direct exported symbols._
 | -------------------------------------- | ---- | ----- |
 | `src/app/actions.ts`                   | star | -     |
 | `src/app/app.ts`                       | star | -     |
-| `src/app/button_commands.ts`           | star | -     |
-| `src/app/checkbox_commands.ts`         | star | -     |
-| `src/app/combobox_commands.ts`         | star | -     |
 | `src/app/component_commands.ts`        | star | -     |
 | `src/app/command_bindings.ts`          | star | -     |
 | `src/app/command_search_index.ts`      | star | -     |
@@ -4572,8 +4699,6 @@ _No direct exported symbols._
 | `src/app/mouse_bindings.ts`            | star | -     |
 | `src/app/pad_commands.ts`              | star | -     |
 | `src/app/plugins.ts`                   | star | -     |
-| `src/app/progress_bar_commands.ts`     | star | -     |
-| `src/app/radio_group_commands.ts`      | star | -     |
 | `src/app/route_bindings.ts`            | star | -     |
 | `src/app/router.ts`                    | star | -     |
 | `src/app/runtime_profile_commands.ts`  | star | -     |
@@ -4586,16 +4711,13 @@ _No direct exported symbols._
 | `src/app/settings_commands.ts`         | star | -     |
 | `src/app/settings_bindings.ts`         | star | -     |
 | `src/app/settings.ts`                  | star | -     |
-| `src/app/slider_commands.ts`           | star | -     |
 | `src/app/split_pane_commands.ts`       | star | -     |
-| `src/app/stepper_commands.ts`          | star | -     |
 | `src/app/surface_bindings.ts`          | star | -     |
 | `src/app/table_commands.ts`            | star | -     |
 | `src/app/tabs_commands.ts`             | star | -     |
 | `src/app/terminal_commands.ts`         | star | -     |
 | `src/app/terminal_input.ts`            | star | -     |
 | `src/app/terminal_window_bindings.ts`  | star | -     |
-| `src/app/textbox_commands.ts`          | star | -     |
 | `src/app/theme_commands.ts`            | star | -     |
 | `src/app/theme_engine_commands.ts`     | star | -     |
 | `src/app/theme_pipeline_commands.ts`   | star | -     |
@@ -4604,6 +4726,7 @@ _No direct exported symbols._
 | `src/app/toast_commands.ts`            | star | -     |
 | `src/app/tree_commands.ts`             | star | -     |
 | `src/app/window_manager_commands.ts`   | star | -     |
+| `src/app/widget_commands.ts`           | star | -     |
 | `src/app/workbench/mod.ts`             | star | -     |
 
 _No direct exported symbols._
@@ -4655,28 +4778,6 @@ _No direct exported symbols._
 | `inspectAppPluginCatalog`               | function  | no        | yes   |
 | `inspectAppPluginDefinition`            | function  | no        | yes   |
 | `queryAppPluginDefinitions`             | function  | no        | yes   |
-
-#### src/app/progress_bar_commands.ts
-
-| Symbol                      | Kind      | Type Only | JSDoc |
-| --------------------------- | --------- | --------- | ----- |
-| `bindProgressBarCommands`   | function  | no        | yes   |
-| `ProgressBarCommandAction`  | type      | yes       | yes   |
-| `ProgressBarCommandKind`    | type      | yes       | yes   |
-| `ProgressBarCommandOptions` | interface | yes       | yes   |
-| `ProgressBarCommandPayload` | interface | yes       | yes   |
-| `progressBarCommands`       | function  | no        | yes   |
-
-#### src/app/radio_group_commands.ts
-
-| Symbol                     | Kind      | Type Only | JSDoc |
-| -------------------------- | --------- | --------- | ----- |
-| `bindRadioGroupCommands`   | function  | no        | yes   |
-| `RadioGroupCommandAction`  | type      | yes       | yes   |
-| `RadioGroupCommandKind`    | type      | yes       | yes   |
-| `RadioGroupCommandOptions` | interface | yes       | yes   |
-| `RadioGroupCommandPayload` | interface | yes       | yes   |
-| `radioGroupCommands`       | function  | no        | yes   |
 
 #### src/app/route_bindings.ts
 
@@ -4822,17 +4923,6 @@ _No direct exported symbols._
 | `SettingsControllerInspection` | interface | yes       | yes   |
 | `SettingsControllerOptions`    | interface | yes       | yes   |
 
-#### src/app/slider_commands.ts
-
-| Symbol                 | Kind      | Type Only | JSDoc |
-| ---------------------- | --------- | --------- | ----- |
-| `bindSliderCommands`   | function  | no        | yes   |
-| `SliderCommandAction`  | type      | yes       | yes   |
-| `SliderCommandKind`    | type      | yes       | yes   |
-| `SliderCommandOptions` | interface | yes       | yes   |
-| `SliderCommandPayload` | interface | yes       | yes   |
-| `sliderCommands`       | function  | no        | yes   |
-
 #### src/app/split_pane_commands.ts
 
 | Symbol                     | Kind      | Type Only | JSDoc |
@@ -4844,17 +4934,6 @@ _No direct exported symbols._
 | `SplitPaneCommandOptions`  | interface | yes       | yes   |
 | `splitPaneCommands`        | function  | no        | yes   |
 | `SplitPaneSnapshotPayload` | interface | yes       | yes   |
-
-#### src/app/stepper_commands.ts
-
-| Symbol                  | Kind      | Type Only | JSDoc |
-| ----------------------- | --------- | --------- | ----- |
-| `bindStepperCommands`   | function  | no        | yes   |
-| `StepperCommandAction`  | type      | yes       | yes   |
-| `StepperCommandKind`    | type      | yes       | yes   |
-| `StepperCommandOptions` | interface | yes       | yes   |
-| `StepperCommandPayload` | interface | yes       | yes   |
-| `stepperCommands`       | function  | no        | yes   |
 
 #### src/app/surface_bindings.ts
 
@@ -4946,17 +5025,6 @@ _No direct exported symbols._
 | `TerminalWindowLayoutSyncOptions` | interface | yes       | yes   |
 | `TerminalWindowLayoutSyncResult`  | interface | yes       | yes   |
 
-#### src/app/textbox_commands.ts
-
-| Symbol                  | Kind      | Type Only | JSDoc |
-| ----------------------- | --------- | --------- | ----- |
-| `bindTextBoxCommands`   | function  | no        | yes   |
-| `TextBoxCommandAction`  | type      | yes       | yes   |
-| `TextBoxCommandKind`    | type      | yes       | yes   |
-| `TextBoxCommandOptions` | interface | yes       | yes   |
-| `TextBoxCommandPayload` | interface | yes       | yes   |
-| `textBoxCommands`       | function  | no        | yes   |
-
 #### src/app/theme_commands.ts
 
 | Symbol                     | Kind      | Type Only | JSDoc |
@@ -5041,6 +5109,59 @@ _No direct exported symbols._
 | `TreeCommandPayload` | interface | yes       | yes   |
 | `treeCommands`       | function  | no        | yes   |
 
+#### src/app/widget_commands.ts
+
+| Symbol                      | Kind      | Type Only | JSDoc |
+| --------------------------- | --------- | --------- | ----- |
+| `bindButtonCommands`        | function  | no        | yes   |
+| `bindCheckBoxCommands`      | function  | no        | yes   |
+| `bindComboBoxCommands`      | function  | no        | yes   |
+| `bindProgressBarCommands`   | function  | no        | yes   |
+| `bindRadioGroupCommands`    | function  | no        | yes   |
+| `bindSliderCommands`        | function  | no        | yes   |
+| `bindStepperCommands`       | function  | no        | yes   |
+| `bindTextBoxCommands`       | function  | no        | yes   |
+| `ButtonCommandAction`       | type      | yes       | yes   |
+| `ButtonCommandKind`         | type      | yes       | yes   |
+| `ButtonCommandOptions`      | interface | yes       | yes   |
+| `ButtonCommandPayload`      | interface | yes       | yes   |
+| `buttonCommands`            | function  | no        | yes   |
+| `CheckBoxCommandAction`     | type      | yes       | yes   |
+| `CheckBoxCommandKind`       | type      | yes       | yes   |
+| `CheckBoxCommandOptions`    | interface | yes       | yes   |
+| `CheckBoxCommandPayload`    | interface | yes       | yes   |
+| `checkBoxCommands`          | function  | no        | yes   |
+| `ComboBoxCommandAction`     | type      | yes       | yes   |
+| `ComboBoxCommandKind`       | type      | yes       | yes   |
+| `ComboBoxCommandOptions`    | interface | yes       | yes   |
+| `ComboBoxCommandPayload`    | interface | yes       | yes   |
+| `comboBoxCommands`          | function  | no        | yes   |
+| `ProgressBarCommandAction`  | type      | yes       | yes   |
+| `ProgressBarCommandKind`    | type      | yes       | yes   |
+| `ProgressBarCommandOptions` | interface | yes       | yes   |
+| `ProgressBarCommandPayload` | interface | yes       | yes   |
+| `progressBarCommands`       | function  | no        | yes   |
+| `RadioGroupCommandAction`   | type      | yes       | yes   |
+| `RadioGroupCommandKind`     | type      | yes       | yes   |
+| `RadioGroupCommandOptions`  | interface | yes       | yes   |
+| `RadioGroupCommandPayload`  | interface | yes       | yes   |
+| `radioGroupCommands`        | function  | no        | yes   |
+| `SliderCommandAction`       | type      | yes       | yes   |
+| `SliderCommandKind`         | type      | yes       | yes   |
+| `SliderCommandOptions`      | interface | yes       | yes   |
+| `SliderCommandPayload`      | interface | yes       | yes   |
+| `sliderCommands`            | function  | no        | yes   |
+| `StepperCommandAction`      | type      | yes       | yes   |
+| `StepperCommandKind`        | type      | yes       | yes   |
+| `StepperCommandOptions`     | interface | yes       | yes   |
+| `StepperCommandPayload`     | interface | yes       | yes   |
+| `stepperCommands`           | function  | no        | yes   |
+| `TextBoxCommandAction`      | type      | yes       | yes   |
+| `TextBoxCommandKind`        | type      | yes       | yes   |
+| `TextBoxCommandOptions`     | interface | yes       | yes   |
+| `TextBoxCommandPayload`     | interface | yes       | yes   |
+| `textBoxCommands`           | function  | no        | yes   |
+
 #### src/app/window_manager_commands.ts
 
 | Symbol                        | Kind      | Type Only | JSDoc |
@@ -5054,15 +5175,28 @@ _No direct exported symbols._
 | `WindowManagerRenameFactory`  | type      | yes       | yes   |
 | `WindowManagerWindowFactory`  | type      | yes       | yes   |
 
+#### src/app/workbench_ansi_screen.ts
+
+| Symbol                           | Kind      | Type Only | JSDoc |
+| -------------------------------- | --------- | --------- | ----- |
+| `WorkbenchAnsiScreenFlushStats`  | interface | yes       | yes   |
+| `WorkbenchAnsiScreenPainter`     | class     | no        | yes   |
+| `writeWorkbenchAnsiScreenOutput` | function  | no        | yes   |
+
 #### src/app/workbench_button_style.ts
 
-| Symbol                        | Kind      | Type Only | JSDoc |
-| ----------------------------- | --------- | --------- | ----- |
-| `WorkbenchButtonContrast`     | type      | yes       | yes   |
-| `workbenchButtonPaintOptions` | function  | no        | yes   |
-| `WorkbenchButtonState`        | type      | yes       | yes   |
-| `WorkbenchButtonTheme`        | interface | yes       | yes   |
-| `WorkbenchButtonTone`         | type      | yes       | yes   |
+| Symbol                                    | Kind      | Type Only | JSDoc |
+| ----------------------------------------- | --------- | --------- | ----- |
+| `projectWorkbenchButton`                  | function  | no        | yes   |
+| `projectWorkbenchButtonCommand`           | function  | no        | yes   |
+| `WorkbenchButtonCommandProjectionOptions` | interface | yes       | yes   |
+| `WorkbenchButtonContrast`                 | type      | yes       | yes   |
+| `workbenchButtonPaintOptions`             | function  | no        | yes   |
+| `WorkbenchButtonProjection`               | interface | yes       | yes   |
+| `WorkbenchButtonProjectionOptions`        | interface | yes       | yes   |
+| `WorkbenchButtonState`                    | type      | yes       | yes   |
+| `WorkbenchButtonTheme`                    | interface | yes       | yes   |
+| `WorkbenchButtonTone`                     | type      | yes       | yes   |
 
 #### src/app/workbench_control_layout.ts
 
@@ -5081,42 +5215,45 @@ _No direct exported symbols._
 | `WorkbenchControlButtonLineSegmentKind` | type      | yes       | yes   |
 | `WorkbenchControlOptionRow`             | interface | yes       | yes   |
 | `WorkbenchControlOptionToken`           | interface | yes       | yes   |
+| `WorkbenchMobileCommandAction`          | type      | yes       | yes   |
+| `workbenchMobileCommandStripItemsInto`  | function  | no        | yes   |
+| `WorkbenchMobileCommandStripOptions`    | interface | yes       | yes   |
 | `wrappedControlOptionRowCount`          | function  | no        | yes   |
-
-#### src/app/workbench_diagnostics.ts
-
-| Symbol                              | Kind      | Type Only | JSDoc |
-| ----------------------------------- | --------- | --------- | ----- |
-| `appendBoundedWorkbenchLogRow`      | function  | no        | yes   |
-| `formatWorkbenchDiagnosticLogEntry` | function  | no        | yes   |
-| `formatWorkbenchDiagnosticStatus`   | function  | no        | yes   |
-| `initialWorkbenchDiagnosticLogRows` | function  | no        | yes   |
-| `subscribeWorkbenchDiagnosticLog`   | function  | no        | yes   |
-| `WorkbenchDiagnosticFormatOptions`  | interface | yes       | yes   |
 
 #### src/app/workbench_frame.ts
 
-| Symbol                       | Kind      | Type Only | JSDoc |
-| ---------------------------- | --------- | --------- | ----- |
-| `buttonText`                 | function  | no        | yes   |
-| `centerCellText`             | function  | no        | yes   |
-| `contrastText`               | function  | no        | yes   |
-| `fillFrameRect`              | function  | no        | yes   |
-| `fillFrameRow`               | function  | no        | yes   |
-| `fillStringFrameRect`        | function  | no        | yes   |
-| `fitCellText`                | function  | no        | yes   |
-| `parseHexColor`              | function  | no        | yes   |
-| `prepareWorkbenchFrame`      | function  | no        | yes   |
-| `prepareWorkbenchRows`       | function  | no        | yes   |
-| `renderFrameRow`             | function  | no        | yes   |
-| `renderFrameSlice`           | function  | no        | yes   |
-| `toStyledCells`              | function  | no        | yes   |
-| `WorkbenchFrame`             | type      | yes       | yes   |
-| `WorkbenchFrameBoxLine`      | interface | yes       | yes   |
-| `workbenchFrameBoxLinesInto` | function  | no        | yes   |
-| `WorkbenchFrameStyle`        | type      | yes       | yes   |
-| `writeFrame`                 | function  | no        | yes   |
-| `writeStringFrameRow`        | function  | no        | yes   |
+| Symbol                              | Kind      | Type Only | JSDoc |
+| ----------------------------------- | --------- | --------- | ----- |
+| `blitWorkbenchFrameCells`           | function  | no        | yes   |
+| `buttonText`                        | function  | no        | yes   |
+| `centerCellText`                    | function  | no        | yes   |
+| `cleanWorkbenchFrameRowFingerprint` | function  | no        | yes   |
+| `contrastText`                      | function  | no        | yes   |
+| `fillFrameRect`                     | function  | no        | yes   |
+| `fillFrameRow`                      | function  | no        | yes   |
+| `fillStringFrameRect`               | function  | no        | yes   |
+| `fitCellText`                       | function  | no        | yes   |
+| `markWorkbenchFrameRowRendered`     | function  | no        | yes   |
+| `parseHexColor`                     | function  | no        | yes   |
+| `prepareWorkbenchFrame`             | function  | no        | yes   |
+| `prepareWorkbenchRows`              | function  | no        | yes   |
+| `renderFrameRow`                    | function  | no        | yes   |
+| `renderFrameSlice`                  | function  | no        | yes   |
+| `toStyledCells`                     | function  | no        | yes   |
+| `updateWorkbenchLineSignals`        | function  | no        | yes   |
+| `updateWorkbenchStringLineSignals`  | function  | no        | yes   |
+| `WorkbenchFrame`                    | type      | yes       | yes   |
+| `WorkbenchFrameBoxLine`             | interface | yes       | yes   |
+| `workbenchFrameBoxLinesInto`        | function  | no        | yes   |
+| `workbenchFrameRowRenderedHint`     | function  | no        | yes   |
+| `WorkbenchFrameStyle`               | type      | yes       | yes   |
+| `WorkbenchLineSignal`               | interface | yes       | yes   |
+| `WorkbenchLineSignalUpdateStats`    | interface | yes       | yes   |
+| `writeFrame`                        | function  | no        | yes   |
+| `writeFrameCell`                    | function  | no        | yes   |
+| `writeFrameCells`                   | function  | no        | yes   |
+| `writeFrameCellsUnchecked`          | function  | no        | yes   |
+| `writeStringFrameRow`               | function  | no        | yes   |
 
 #### src/app/workbench_help.ts
 
@@ -5125,6 +5262,14 @@ _No direct exported symbols._
 | `WorkbenchHelpProfile`     | type      | yes       | yes   |
 | `workbenchHelpRows`        | function  | no        | yes   |
 | `WorkbenchHelpRowsOptions` | interface | yes       | yes   |
+
+#### src/app/workbench_keymap.ts
+
+| Symbol                      | Kind      | Type Only | JSDoc |
+| --------------------------- | --------- | --------- | ----- |
+| `resolveWorkbenchGlobalKey` | function  | no        | yes   |
+| `WorkbenchGlobalKey`        | interface | yes       | yes   |
+| `WorkbenchGlobalKeyAction`  | type      | yes       | yes   |
 
 #### src/app/workbench_layout.ts
 
@@ -5138,15 +5283,22 @@ _No direct exported symbols._
 | `workbenchAdaptiveWindowLayout`                 | function  | no        | yes   |
 | `WorkbenchAdaptiveWindowLayoutManager`          | interface | yes       | yes   |
 | `WorkbenchAdaptiveWindowLayoutOptions`          | interface | yes       | yes   |
+| `workbenchContentViewport`                      | function  | no        | yes   |
+| `WorkbenchContentViewportOptions`               | interface | yes       | yes   |
+| `workbenchFullscreenWindowRect`                 | function  | no        | yes   |
 | `workbenchHorizontalScrollbarCellsInto`         | function  | no        | yes   |
 | `WorkbenchLayoutEntryShape`                     | interface | yes       | yes   |
 | `WorkbenchLayoutShape`                          | interface | yes       | yes   |
+| `workbenchRevealActiveRowOffset`                | function  | no        | yes   |
+| `WorkbenchRevealActiveRowOptions`               | interface | yes       | yes   |
 | `WorkbenchScrollbarAxis`                        | type      | yes       | yes   |
 | `WorkbenchScrollbarCell`                        | interface | yes       | yes   |
 | `WorkbenchScrollbarRenderCommand`               | interface | yes       | yes   |
 | `workbenchVerticalScrollbarCellsInto`           | function  | no        | yes   |
 | `workbenchVerticalScrollbarRect`                | function  | no        | yes   |
 | `WorkbenchVerticalScrollbarRectOptions`         | interface | yes       | yes   |
+| `workbenchVisibleWindowRectsInto`               | function  | no        | yes   |
+| `WorkbenchVisibleWindowRectsOptions`            | interface | yes       | yes   |
 | `workbenchWindowLayout`                         | function  | no        | yes   |
 | `WorkbenchWindowLayout`                         | interface | yes       | yes   |
 | `WorkbenchWindowScrollbarRectOptions`           | interface | yes       | yes   |
@@ -5160,27 +5312,44 @@ _No direct exported symbols._
 
 #### src/app/workbench_menu.ts
 
-| Symbol                              | Kind      | Type Only | JSDoc |
-| ----------------------------------- | --------- | --------- | ----- |
-| `isWorkbenchMenuActivationKey`      | function  | no        | yes   |
-| `isWorkbenchMenuCloseKey`           | function  | no        | yes   |
-| `layoutWorkbenchHeader`             | function  | no        | yes   |
-| `layoutWorkbenchHeaderInto`         | function  | no        | yes   |
-| `layoutWorkbenchMenuBarHits`        | function  | no        | yes   |
-| `layoutWorkbenchMenuBarHitsInto`    | function  | no        | yes   |
-| `layoutWorkbenchTopMenuItemRect`    | function  | no        | yes   |
-| `moveWorkbenchMenuIndex`            | function  | no        | yes   |
-| `MoveWorkbenchMenuIndexOptions`     | interface | yes       | yes   |
-| `WorkbenchHeaderLayout`             | interface | yes       | yes   |
-| `WorkbenchHeaderLayoutOptions`      | interface | yes       | yes   |
-| `WorkbenchMenuBarHitLayout`         | interface | yes       | yes   |
-| `WorkbenchMenuBarHitLayoutOptions`  | interface | yes       | yes   |
-| `WorkbenchMenuBarItemShape`         | interface | yes       | yes   |
-| `WorkbenchMenuKey`                  | interface | yes       | yes   |
-| `WorkbenchTopMenuController`        | class     | no        | yes   |
-| `WorkbenchTopMenuControllerOptions` | interface | yes       | yes   |
-| `WorkbenchTopMenuInspection`        | interface | yes       | yes   |
-| `WorkbenchTopMenuItemRectOptions`   | interface | yes       | yes   |
+| Symbol                                           | Kind      | Type Only | JSDoc |
+| ------------------------------------------------ | --------- | --------- | ----- |
+| `isWorkbenchMenuActivationKey`                   | function  | no        | yes   |
+| `isWorkbenchMenuCloseKey`                        | function  | no        | yes   |
+| `layoutWorkbenchHeader`                          | function  | no        | yes   |
+| `layoutWorkbenchHeaderInto`                      | function  | no        | yes   |
+| `layoutWorkbenchMenuBarHits`                     | function  | no        | yes   |
+| `layoutWorkbenchMenuBarHitsInto`                 | function  | no        | yes   |
+| `layoutWorkbenchTopMenuItemRect`                 | function  | no        | yes   |
+| `moveWorkbenchMenuIndex`                         | function  | no        | yes   |
+| `MoveWorkbenchMenuIndexOptions`                  | interface | yes       | yes   |
+| `projectWorkbenchStandardTopMenuState`           | function  | no        | yes   |
+| `resolveWorkbenchMenuFocusKey`                   | function  | no        | yes   |
+| `resolveWorkbenchScreenDropdownKey`              | function  | no        | yes   |
+| `WorkbenchHeaderLayout`                          | interface | yes       | yes   |
+| `WorkbenchHeaderLayoutOptions`                   | interface | yes       | yes   |
+| `WorkbenchMenuBarHitLayout`                      | interface | yes       | yes   |
+| `WorkbenchMenuBarHitLayoutOptions`               | interface | yes       | yes   |
+| `WorkbenchMenuBarItemShape`                      | interface | yes       | yes   |
+| `WorkbenchMenuFocusKeyAction`                    | type      | yes       | yes   |
+| `WorkbenchMenuKey`                               | interface | yes       | yes   |
+| `WorkbenchScreenDropdownKey`                     | interface | yes       | yes   |
+| `WorkbenchScreenDropdownKeyAction`               | type      | yes       | yes   |
+| `WorkbenchScreenDropdownKeyOptions`              | interface | yes       | yes   |
+| `WorkbenchStandardTopMenuDropdownEntry`          | interface | yes       | yes   |
+| `workbenchStandardTopMenuDropdownOverlayInto`    | function  | no        | yes   |
+| `WorkbenchStandardTopMenuDropdownOverlayOptions` | interface | yes       | yes   |
+| `WorkbenchStandardTopMenuId`                     | type      | yes       | yes   |
+| `workbenchStandardTopMenuIdForItem`              | function  | no        | yes   |
+| `WorkbenchStandardTopMenuSignalState`            | interface | yes       | yes   |
+| `WorkbenchTopMenuController`                     | class     | no        | yes   |
+| `WorkbenchTopMenuControllerOptions`              | interface | yes       | yes   |
+| `WorkbenchTopMenuDropdownOverlay`                | interface | yes       | yes   |
+| `workbenchTopMenuDropdownOverlayInto`            | function  | no        | yes   |
+| `WorkbenchTopMenuDropdownOverlayOptions`         | interface | yes       | yes   |
+| `WorkbenchTopMenuInspection`                     | interface | yes       | yes   |
+| `WorkbenchTopMenuItemRectOptions`                | interface | yes       | yes   |
+| `WorkbenchTopMenuVisibleSlice`                   | interface | yes       | yes   |
 
 #### src/app/workbench_overlay.ts
 
@@ -5213,6 +5382,18 @@ _No direct exported symbols._
 | `WorkbenchPanelWorkspaceCache`               | interface | yes       | yes   |
 | `WorkbenchPanelWorkspaceStorageDiagnostics`  | interface | yes       | yes   |
 
+#### src/app/workbench_prompt_input.ts
+
+| Symbol                             | Kind      | Type Only | JSDoc |
+| ---------------------------------- | --------- | --------- | ----- |
+| `applyWorkbenchTextPromptInput`    | function  | no        | yes   |
+| `dispatchWorkbenchTextPromptInput` | function  | no        | yes   |
+| `WorkbenchTextPromptInputAction`   | type      | yes       | yes   |
+| `WorkbenchTextPromptInputEvent`    | interface | yes       | yes   |
+| `WorkbenchTextPromptInputHandlers` | interface | yes       | yes   |
+| `WorkbenchTextPromptInputOptions`  | interface | yes       | yes   |
+| `WorkbenchTextPromptInputResult`   | interface | yes       | yes   |
+
 #### src/app/workbench_shelf.ts
 
 | Symbol                                | Kind      | Type Only | JSDoc |
@@ -5242,6 +5423,13 @@ _No direct exported symbols._
 
 | Symbol                                  | Kind      | Type Only | JSDoc |
 | --------------------------------------- | --------- | --------- | ----- |
+| `appendBoundedWorkbenchLogRow`          | function  | no        | yes   |
+| `formatWorkbenchDiagnosticLogEntry`     | function  | no        | yes   |
+| `formatWorkbenchDiagnosticStatus`       | function  | no        | yes   |
+| `initialWorkbenchDiagnosticLogRows`     | function  | no        | yes   |
+| `subscribeWorkbenchDiagnosticLog`       | function  | no        | yes   |
+| `workbenchCompactStatusDiagnostics`     | function  | no        | yes   |
+| `WorkbenchDiagnosticFormatOptions`      | interface | yes       | yes   |
 | `workbenchEmptyWorkspaceMessage`        | function  | no        | yes   |
 | `WorkbenchEmptyWorkspaceMessageOptions` | interface | yes       | yes   |
 | `WorkbenchEmptyWorkspaceWindowState`    | interface | yes       | yes   |
@@ -5253,38 +5441,82 @@ _No direct exported symbols._
 | `WorkbenchStatusLineOptions`            | interface | yes       | yes   |
 | `WorkbenchStatusShortcutProfile`        | type      | yes       | yes   |
 | `workbenchStatusShortcuts`              | function  | no        | yes   |
+| `WorkbenchStatusSnapshot`               | interface | yes       | yes   |
+| `workbenchStatusSnapshotLine`           | function  | no        | yes   |
+| `WorkbenchStatusSnapshotLineOptions`    | interface | yes       | yes   |
 | `workbenchTileDensityLabel`             | function  | no        | yes   |
 | `WorkbenchTileDensityLabel`             | type      | yes       | yes   |
 
 #### src/app/workbench_terminal.ts
 
-| Symbol                                          | Kind      | Type Only | JSDoc |
-| ----------------------------------------------- | --------- | --------- | ----- |
-| `createWorkbenchShellSession`                   | function  | no        | yes   |
-| `resolveWorkbenchShellBackend`                  | function  | no        | yes   |
-| `WORKBENCH_TERMINAL_OUTPUT_TOOLBAR_ACTIONS`     | const     | no        | yes   |
-| `WORKBENCH_TERMINAL_TOOLBAR_ACTIONS`            | const     | no        | yes   |
-| `WorkbenchShellBackendResolution`               | interface | yes       | yes   |
-| `WorkbenchShellBackendResolverOptions`          | interface | yes       | yes   |
-| `WorkbenchShellSession`                         | interface | yes       | yes   |
-| `WorkbenchShellSessionOptions`                  | interface | yes       | yes   |
-| `WorkbenchTerminalOutputToolbarAction`          | type      | yes       | yes   |
-| `WorkbenchTerminalOutputToolbarItemOptions`     | interface | yes       | yes   |
-| `workbenchTerminalOutputToolbarItemsInto`       | function  | no        | yes   |
-| `WorkbenchTerminalOutputToolbarState`           | interface | yes       | yes   |
-| `WorkbenchTerminalPaneProjection`               | interface | yes       | yes   |
-| `WorkbenchTerminalPaneProjectionOptions`        | interface | yes       | yes   |
-| `workbenchTerminalPaneProjectionsInto`          | function  | no        | yes   |
-| `WorkbenchTerminalSessionTab`                   | interface | yes       | yes   |
-| `WorkbenchTerminalSessionTabOptions`            | interface | yes       | yes   |
-| `WorkbenchTerminalSessionTabPlacement`          | interface | yes       | yes   |
-| `WorkbenchTerminalSessionTabRenderCommand`      | interface | yes       | yes   |
-| `workbenchTerminalSessionTabRenderCommandsInto` | function  | no        | yes   |
-| `workbenchTerminalSessionTabsInto`              | function  | no        | yes   |
-| `WorkbenchTerminalToolbarAction`                | type      | yes       | yes   |
-| `WorkbenchTerminalToolbarItemOptions`           | interface | yes       | yes   |
-| `workbenchTerminalToolbarItemsInto`             | function  | no        | yes   |
-| `WorkbenchTerminalToolbarState`                 | interface | yes       | yes   |
+| Symbol                                           | Kind      | Type Only | JSDoc |
+| ------------------------------------------------ | --------- | --------- | ----- |
+| `applyWorkbenchTerminalSearchPromptInput`        | function  | no        | yes   |
+| `createWorkbenchShellSession`                    | function  | no        | yes   |
+| `nextWorkbenchTerminalSessionId`                 | function  | no        | yes   |
+| `resolveWorkbenchShellBackend`                   | function  | no        | yes   |
+| `resolveWorkbenchTerminalInputModeToggle`        | function  | no        | yes   |
+| `resolveWorkbenchTerminalOutputKeyAction`        | function  | no        | yes   |
+| `resolveWorkbenchTerminalProcessInputModeToggle` | function  | no        | yes   |
+| `resolveWorkbenchTerminalShellInputModeToggle`   | function  | no        | yes   |
+| `resolveWorkbenchTerminalShellKeyAction`         | function  | no        | yes   |
+| `WORKBENCH_TERMINAL_OUTPUT_TOOLBAR_ACTIONS`      | const     | no        | yes   |
+| `WORKBENCH_TERMINAL_TOOLBAR_ACTIONS`             | const     | no        | yes   |
+| `WorkbenchShellBackendResolution`                | interface | yes       | yes   |
+| `WorkbenchShellBackendResolverOptions`           | interface | yes       | yes   |
+| `WorkbenchShellSession`                          | interface | yes       | yes   |
+| `WorkbenchShellSessionOptions`                   | interface | yes       | yes   |
+| `WorkbenchTerminalCopyRowProjection`             | interface | yes       | yes   |
+| `workbenchTerminalCopyRowsInto`                  | function  | no        | yes   |
+| `WorkbenchTerminalCopyRowsOptions`               | interface | yes       | yes   |
+| `WorkbenchTerminalCopySelection`                 | interface | yes       | yes   |
+| `WorkbenchTerminalInputModeToggleOptions`        | interface | yes       | yes   |
+| `WorkbenchTerminalInputModeToggleResult`         | interface | yes       | yes   |
+| `WorkbenchTerminalKey`                           | interface | yes       | yes   |
+| `workbenchTerminalOutputRowsInto`                | function  | no        | yes   |
+| `WorkbenchTerminalOutputRowsOptions`             | interface | yes       | yes   |
+| `WorkbenchTerminalOutputToolbarAction`           | type      | yes       | yes   |
+| `WorkbenchTerminalOutputToolbarItemOptions`      | interface | yes       | yes   |
+| `workbenchTerminalOutputToolbarItemsInto`        | function  | no        | yes   |
+| `WorkbenchTerminalOutputToolbarState`            | interface | yes       | yes   |
+| `WorkbenchTerminalOutputWindowRow`               | interface | yes       | yes   |
+| `workbenchTerminalOutputWindowRowsInto`          | function  | no        | yes   |
+| `WorkbenchTerminalOutputWindowRowsOptions`       | interface | yes       | yes   |
+| `WorkbenchTerminalPaneProjection`                | interface | yes       | yes   |
+| `WorkbenchTerminalPaneProjectionOptions`         | interface | yes       | yes   |
+| `workbenchTerminalPaneProjectionsInto`           | function  | no        | yes   |
+| `WorkbenchTerminalPaneTitleContrast`             | type      | yes       | yes   |
+| `WorkbenchTerminalPaneTitleRenderCommand`        | interface | yes       | yes   |
+| `workbenchTerminalPaneTitleRenderCommandsInto`   | function  | no        | yes   |
+| `WorkbenchTerminalPaneTitleTheme`                | interface | yes       | yes   |
+| `WorkbenchTerminalProtocolHeaderOptions`         | interface | yes       | yes   |
+| `workbenchTerminalProtocolHeaderRowsInto`        | function  | no        | yes   |
+| `workbenchTerminalSearchModalBody`               | function  | no        | yes   |
+| `WorkbenchTerminalSearchModalBodyOptions`        | interface | yes       | yes   |
+| `WorkbenchTerminalSearchModalScrollbackState`    | interface | yes       | yes   |
+| `WorkbenchTerminalSearchPromptInputOptions`      | interface | yes       | yes   |
+| `WorkbenchTerminalSessionIdOptions`              | interface | yes       | yes   |
+| `WorkbenchTerminalSessionIdSource`               | interface | yes       | yes   |
+| `WorkbenchTerminalSessionTab`                    | interface | yes       | yes   |
+| `WorkbenchTerminalSessionTabOptions`             | interface | yes       | yes   |
+| `WorkbenchTerminalSessionTabPlacement`           | interface | yes       | yes   |
+| `WorkbenchTerminalSessionTabRenderCommand`       | interface | yes       | yes   |
+| `workbenchTerminalSessionTabRenderCommandsInto`  | function  | no        | yes   |
+| `workbenchTerminalSessionTabsInto`               | function  | no        | yes   |
+| `WorkbenchTerminalSessionTabSource`              | interface | yes       | yes   |
+| `workbenchTerminalSessionTabSourcesInto`         | function  | no        | yes   |
+| `workbenchTerminalSessionTitleFromId`            | function  | no        | yes   |
+| `WorkbenchTerminalSessionTitleOptions`           | interface | yes       | yes   |
+| `WorkbenchTerminalShellHeaderRow`                | interface | yes       | yes   |
+| `workbenchTerminalShellHeaderRowsInto`           | function  | no        | yes   |
+| `WorkbenchTerminalShellHeaderRowsOptions`        | interface | yes       | yes   |
+| `WorkbenchTerminalToolbarAction`                 | type      | yes       | yes   |
+| `WorkbenchTerminalToolbarItemOptions`            | interface | yes       | yes   |
+| `workbenchTerminalToolbarItemsInto`              | function  | no        | yes   |
+| `WorkbenchTerminalToolbarScrollbackSource`       | interface | yes       | yes   |
+| `WorkbenchTerminalToolbarState`                  | interface | yes       | yes   |
+| `workbenchTerminalToolbarStateFromSnapshot`      | function  | no        | yes   |
+| `WorkbenchTerminalToolbarStateSnapshot`          | interface | yes       | yes   |
 
 #### src/app/workbench_text.ts
 
@@ -5301,6 +5533,34 @@ _No direct exported symbols._
 | `wrapPlainText`                 | function  | no        | yes   |
 | `wrapPlainTextInto`             | function  | no        | yes   |
 
+#### src/app/workbench_three_terminal_pressure.ts
+
+| Symbol                                            | Kind      | Type Only | JSDoc |
+| ------------------------------------------------- | --------- | --------- | ----- |
+| `createWorkbenchThreeTerminalPressureState`       | function  | no        | yes   |
+| `formatWorkbenchThreeTerminalPressureUpdateLog`   | function  | no        | yes   |
+| `resolveWorkbenchThreeTerminalPressureBudget`     | function  | no        | yes   |
+| `resolveWorkbenchThreeTerminalPressureUpdate`     | function  | no        | yes   |
+| `shouldApplyWorkbenchThreeTerminalPressureSample` | function  | no        | yes   |
+| `shouldCountWorkbenchThreeGridPressure`           | function  | no        | yes   |
+| `WorkbenchThreeCadenceWindow`                     | interface | yes       | yes   |
+| `workbenchThreeFrameIntervalForCells`             | function  | no        | yes   |
+| `WorkbenchThreeFrameIntervalOptions`              | interface | yes       | yes   |
+| `WorkbenchThreeGridPressureTelemetry`             | interface | yes       | yes   |
+| `WorkbenchThreeLiveCadenceOptions`                | interface | yes       | yes   |
+| `WorkbenchThreePressureSampleScope`               | interface | yes       | yes   |
+| `workbenchThreeShouldUseLiveCadence`              | function  | no        | yes   |
+| `WorkbenchThreeTerminalByteRateOptions`           | interface | yes       | yes   |
+| `workbenchThreeTerminalBytesPerSecond`            | function  | no        | yes   |
+| `WorkbenchThreeTerminalPressureOptions`           | interface | yes       | yes   |
+| `WorkbenchThreeTerminalPressureResult`            | interface | yes       | yes   |
+| `WorkbenchThreeTerminalPressureState`             | interface | yes       | yes   |
+| `WorkbenchThreeTerminalPressureUpdateLogOptions`  | interface | yes       | yes   |
+| `WorkbenchThreeTerminalPressureUpdateOptions`     | interface | yes       | yes   |
+| `WorkbenchThreeTerminalPressureUpdateResult`      | interface | yes       | yes   |
+| `WorkbenchThreeWindowInteractivityOptions`        | interface | yes       | yes   |
+| `workbenchThreeWindowIsInteractive`               | function  | no        | yes   |
+
 #### src/app/workbench_titlebar.ts
 
 | Symbol                                      | Kind      | Type Only | JSDoc |
@@ -5316,33 +5576,37 @@ _No direct exported symbols._
 | `WorkbenchTitlebarLayout`                   | interface | yes       | yes   |
 | `WorkbenchTitlebarLayoutOptions`            | interface | yes       | yes   |
 
-#### src/app/workbench_viewport.ts
-
-| Symbol                            | Kind      | Type Only | JSDoc |
-| --------------------------------- | --------- | --------- | ----- |
-| `workbenchContentViewport`        | function  | no        | yes   |
-| `WorkbenchContentViewportOptions` | interface | yes       | yes   |
-| `workbenchRevealActiveRowOffset`  | function  | no        | yes   |
-| `WorkbenchRevealActiveRowOptions` | interface | yes       | yes   |
-
 #### src/app/workbench_window_registry.ts
 
-| Symbol                                      | Kind      | Type Only | JSDoc |
-| ------------------------------------------- | --------- | --------- | ----- |
-| `createWorkbenchVisualizationWindowOptions` | function  | no        | yes   |
-| `createWorkbenchWindowOptions`              | function  | no        | yes   |
-| `isWorkbenchVisualizationWindowId`          | function  | no        | yes   |
-| `isWorkbenchWindowOptionLoaded`             | function  | no        | yes   |
-| `workbenchVisualizationIdFromWindowId`      | function  | no        | yes   |
-| `WorkbenchVisualizationOptionSource`        | interface | yes       | yes   |
-| `workbenchVisualizationWindowId`            | function  | no        | yes   |
-| `WorkbenchWindowOption`                     | interface | yes       | yes   |
-| `WorkbenchWindowOptionCatalogInput`         | interface | yes       | yes   |
-| `WorkbenchWindowOptionGroup`                | type      | yes       | yes   |
-| `workbenchWindowOptionMenuLabel`            | function  | no        | yes   |
-| `workbenchWindowOptionMenuLabelsInto`       | function  | no        | yes   |
-| `workbenchWindowOptionMinimums`             | function  | no        | yes   |
-| `WorkbenchWindowOptionMinimums`             | interface | yes       | yes   |
+| Symbol                                            | Kind      | Type Only | JSDoc |
+| ------------------------------------------------- | --------- | --------- | ----- |
+| `createWorkbenchVisualizationWindowOptions`       | function  | no        | yes   |
+| `createWorkbenchWindowOptions`                    | function  | no        | yes   |
+| `isWorkbenchVisualizationWindowId`                | function  | no        | yes   |
+| `isWorkbenchWindowOptionLoaded`                   | function  | no        | yes   |
+| `WorkbenchBuiltInWindowToggleOptions`             | interface | yes       | yes   |
+| `workbenchBuiltInWindowTogglePlan`                | function  | no        | yes   |
+| `WorkbenchBuiltInWindowTogglePlan`                | interface | yes       | yes   |
+| `workbenchVisualizationIdFromWindowId`            | function  | no        | yes   |
+| `WorkbenchVisualizationOptionSource`              | interface | yes       | yes   |
+| `workbenchVisualizationWindowId`                  | function  | no        | yes   |
+| `WorkbenchVisualizationWindowRegistration`        | interface | yes       | yes   |
+| `WorkbenchVisualizationWindowRegistrationOptions` | interface | yes       | yes   |
+| `workbenchVisualizationWindowRegistrationPlan`    | function  | no        | yes   |
+| `WorkbenchVisualizationWindowRegistrationPlan`    | interface | yes       | yes   |
+| `WorkbenchVisualizationWindowToggleOptions`       | interface | yes       | yes   |
+| `workbenchVisualizationWindowTogglePlan`          | function  | no        | yes   |
+| `WorkbenchVisualizationWindowTogglePlan`          | type      | yes       | yes   |
+| `WorkbenchWindowOption`                           | interface | yes       | yes   |
+| `WorkbenchWindowOptionCatalogInput`               | interface | yes       | yes   |
+| `WorkbenchWindowOptionGroup`                      | type      | yes       | yes   |
+| `workbenchWindowOptionMenuLabel`                  | function  | no        | yes   |
+| `workbenchWindowOptionMenuLabelsInto`             | function  | no        | yes   |
+| `workbenchWindowOptionMinimums`                   | function  | no        | yes   |
+| `WorkbenchWindowOptionMinimums`                   | interface | yes       | yes   |
+| `workbenchWindowOptionTogglePlan`                 | function  | no        | yes   |
+| `WorkbenchWindowOptionTogglePlan`                 | type      | yes       | yes   |
+| `workbenchWindowOptionWindowId`                   | function  | no        | yes   |
 
 #### src/app/workbench_workspace_store.ts
 
@@ -5380,27 +5644,29 @@ _No direct exported symbols._
 
 #### src/app/workbench/mod.ts
 
-| Re-export Target                             | Kind | Names |
-| -------------------------------------------- | ---- | ----- |
-| `src/app/hit_targets.ts`                     | star | -     |
-| `src/app/workbench_frame.ts`                 | star | -     |
-| `src/app/workbench_help.ts`                  | star | -     |
-| `src/app/workbench_button_style.ts`          | star | -     |
-| `src/app/workbench_control_layout.ts`        | star | -     |
-| `src/app/workbench_diagnostics.ts`           | star | -     |
-| `src/app/workbench_layout.ts`                | star | -     |
-| `src/app/workbench_menu.ts`                  | star | -     |
-| `src/app/workbench_overlay.ts`               | star | -     |
-| `src/app/workbench_panel_workspace_store.ts` | star | -     |
-| `src/app/workbench_shelf.ts`                 | star | -     |
-| `src/app/workbench_status.ts`                | star | -     |
-| `src/app/workbench_terminal.ts`              | star | -     |
-| `src/app/workbench_titlebar.ts`              | star | -     |
-| `src/app/workbench_text.ts`                  | star | -     |
-| `src/app/workbench_viewport.ts`              | star | -     |
-| `src/app/workbench_window_registry.ts`       | star | -     |
-| `src/app/workbench_workspace.ts`             | star | -     |
-| `src/app/workbench_workspace_store.ts`       | star | -     |
+| Re-export Target                               | Kind | Names |
+| ---------------------------------------------- | ---- | ----- |
+| `src/app/hit_targets.ts`                       | star | -     |
+| `src/app/workbench_frame.ts`                   | star | -     |
+| `src/app/workbench_ansi_screen.ts`             | star | -     |
+| `src/app/workbench_help.ts`                    | star | -     |
+| `src/app/workbench_button_style.ts`            | star | -     |
+| `src/app/workbench_control_layout.ts`          | star | -     |
+| `src/app/workbench_layout.ts`                  | star | -     |
+| `src/app/workbench_keymap.ts`                  | star | -     |
+| `src/app/workbench_menu.ts`                    | star | -     |
+| `src/app/workbench_overlay.ts`                 | star | -     |
+| `src/app/workbench_panel_workspace_store.ts`   | star | -     |
+| `src/app/workbench_prompt_input.ts`            | star | -     |
+| `src/app/workbench_shelf.ts`                   | star | -     |
+| `src/app/workbench_status.ts`                  | star | -     |
+| `src/app/workbench_terminal.ts`                | star | -     |
+| `src/app/workbench_titlebar.ts`                | star | -     |
+| `src/app/workbench_text.ts`                    | star | -     |
+| `src/app/workbench_three_terminal_pressure.ts` | star | -     |
+| `src/app/workbench_window_registry.ts`         | star | -     |
+| `src/app/workbench_workspace.ts`               | star | -     |
+| `src/app/workbench_workspace_store.ts`         | star | -     |
 
 _No direct exported symbols._
 
@@ -5906,11 +6172,12 @@ _No direct exported symbols._
 
 #### src/components/statusbar.ts
 
-| Symbol             | Kind      | Type Only | JSDoc |
-| ------------------ | --------- | --------- | ----- |
-| `renderStatusBar`  | function  | no        | yes   |
-| `StatusBar`        | class     | no        | yes   |
-| `StatusBarOptions` | interface | yes       | yes   |
+| Symbol              | Kind      | Type Only | JSDoc |
+| ------------------- | --------- | --------- | ----- |
+| `renderStatusBar`   | function  | no        | yes   |
+| `StatusBar`         | class     | no        | yes   |
+| `StatusBarOptions`  | interface | yes       | yes   |
+| `StatusBarPriority` | type      | yes       | yes   |
 
 #### src/components/stepper.ts
 
@@ -6464,6 +6731,7 @@ _No direct exported symbols._
 | `inspectBenchmarkCatalog`         | function  | no        | yes   |
 | `queryBenchmarkCases`             | function  | no        | yes   |
 | `summarizeBenchmarkResults`       | function  | no        | yes   |
+| `summarizeBestBenchmarkSummaries` | function  | no        | yes   |
 
 #### src/perf/mod.ts
 
@@ -6655,6 +6923,9 @@ _No direct exported symbols._
 | ------------------------------ | --------- | --------- | ----- |
 | `createRenderLoop`             | function  | no        | yes   |
 | `defaultRenderLoopTimer`       | const     | no        | yes   |
+| `FrameScheduler`               | class     | no        | yes   |
+| `FrameSchedulerInspection`     | interface | yes       | yes   |
+| `FrameSchedulerOptions`        | interface | yes       | yes   |
 | `MicrotaskScheduler`           | class     | no        | yes   |
 | `MicrotaskSchedulerInspection` | interface | yes       | yes   |
 | `MicrotaskSchedulerOptions`    | interface | yes       | yes   |
@@ -7198,10 +7469,11 @@ _No direct exported symbols._
 
 #### src/three_ascii/AcerolaAsciiNode.ts
 
-| Symbol                    | Kind      | Type Only | JSDoc |
-| ------------------------- | --------- | --------- | ----- |
-| `AcerolaAsciiNode`        | class     | no        | yes   |
-| `AcerolaAsciiNodeOptions` | interface | yes       | yes   |
+| Symbol                      | Kind      | Type Only | JSDoc |
+| --------------------------- | --------- | --------- | ----- |
+| `AcerolaAsciiNode`          | class     | no        | yes   |
+| `AcerolaAsciiNodeOptions`   | interface | yes       | yes   |
+| `AcerolaAsciiRenderProfile` | interface | yes       | yes   |
 
 #### src/three_ascii/demo_presets.ts
 
@@ -7221,6 +7493,19 @@ _No direct exported symbols._
 | `AsciiToggleControlKey`         | type      | yes       | yes   |
 | `DEFAULT_ASCII_DEMO_EFFECT`     | const     | no        | yes   |
 | `findAsciiDemoPreset`           | function  | no        | yes   |
+
+#### src/three_ascii/frame_options.ts
+
+| Symbol                                      | Kind      | Type Only | JSDoc |
+| ------------------------------------------- | --------- | --------- | ----- |
+| `emptyThreeAsciiRenderFrame`                | function  | no        | yes   |
+| `resolveThreeAsciiRenderFrameSelection`     | function  | no        | yes   |
+| `resolveThreeAsciiRenderFrameSelectionInto` | function  | no        | yes   |
+| `THREE_ASCII_ANSI_FRAME_OPTIONS`            | const     | no        | yes   |
+| `THREE_ASCII_IMAGE_FRAME_OPTIONS`           | const     | no        | yes   |
+| `ThreeAsciiEmptyRenderFrame`                | interface | yes       | yes   |
+| `ThreeAsciiRenderFrameOptions`              | interface | yes       | yes   |
+| `ThreeAsciiRenderFrameSelection`            | interface | yes       | yes   |
 
 #### src/three_ascii/glyphs.ts
 
@@ -7248,6 +7533,7 @@ _No direct exported symbols._
 | `src/three_ascii/demo_presets.ts`     | star | -     |
 | `src/three_ascii/glyphs.ts`           | star | -     |
 | `src/three_ascii/options.ts`          | star | -     |
+| `src/three_ascii/render_profile.ts`   | star | -     |
 | `src/three_ascii/renderer.ts`         | star | -     |
 | `src/three_ascii/webgpu_compat.ts`    | star | -     |
 
@@ -7273,25 +7559,64 @@ _No direct exported symbols._
 | `ThreeAsciiConfigOptions`           | interface | yes       | yes   |
 | `ThreeAsciiOptionNumericControlKey` | type      | yes       | yes   |
 
+#### src/three_ascii/performance.ts
+
+| Symbol                                         | Kind      | Type Only | JSDoc |
+| ---------------------------------------------- | --------- | --------- | ----- |
+| `createThreeAsciiRendererPerformance`          | function  | no        | yes   |
+| `createThreeAsciiRendererSaturatedPerformance` | function  | no        | yes   |
+| `ThreeAsciiReadbackQueueInspection`            | interface | yes       | yes   |
+| `ThreeAsciiRendererPerformance`                | interface | yes       | yes   |
+| `ThreeAsciiRendererPerformanceInput`           | interface | yes       | yes   |
+| `ThreeAsciiRendererSaturatedPerformanceInput`  | interface | yes       | yes   |
+
+#### src/three_ascii/render_profile.ts
+
+| Symbol                               | Kind      | Type Only | JSDoc |
+| ------------------------------------ | --------- | --------- | ----- |
+| `resolveThreeAsciiRenderProfile`     | function  | no        | yes   |
+| `resolveThreeAsciiRenderProfileInto` | function  | no        | yes   |
+| `ThreeAsciiRenderProfileInput`       | interface | yes       | yes   |
+
 #### src/three_ascii/renderer.ts
 
-| Symbol                         | Kind      | Type Only | JSDoc |
-| ------------------------------ | --------- | --------- | ----- |
-| `buildThreeAsciiAnsiGrid`      | function  | no        | yes   |
-| `ThreeAsciiAnsiGridAssembler`  | class     | no        | yes   |
-| `ThreeAsciiAnsiGridInput`      | interface | yes       | yes   |
-| `ThreeAsciiImageFrame`         | interface | yes       | yes   |
-| `ThreeAsciiRenderer`           | class     | no        | yes   |
-| `ThreeAsciiRendererOptions`    | interface | yes       | yes   |
-| `ThreeAsciiRenderFrame`        | interface | yes       | yes   |
-| `ThreeAsciiRenderFrameOptions` | interface | yes       | yes   |
+| Re-export Target                   | Kind  | Names                                |
+| ---------------------------------- | ----- | ------------------------------------ |
+| `src/three_ascii/frame_options.ts` | named | `type ThreeAsciiRenderFrameOptions`  |
+| `src/three_ascii/performance.ts`   | named | `type ThreeAsciiRendererPerformance` |
+
+| Symbol                                        | Kind      | Type Only | JSDoc |
+| --------------------------------------------- | --------- | --------- | ----- |
+| `buildThreeAsciiAnsiGrid`                     | function  | no        | yes   |
+| `computeThreeAsciiCameraAspect`               | function  | no        | yes   |
+| `handleThreeAsciiDeferredReadbackFailure`     | function  | no        | yes   |
+| `readThreeAsciiImageFrame`                    | function  | no        | yes   |
+| `resolveThreeAsciiDeferredReadbackSubmission` | function  | no        | yes   |
+| `shouldUpdateThreeAsciiCameraAspect`          | function  | no        | yes   |
+| `THREE_ASCII_CAMERA_ASPECT_EPSILON`           | const     | no        | yes   |
+| `ThreeAsciiAnsiGridAssembler`                 | class     | no        | yes   |
+| `ThreeAsciiAnsiGridInput`                     | interface | yes       | yes   |
+| `ThreeAsciiCameraAspectInput`                 | interface | yes       | yes   |
+| `ThreeAsciiDeferredReadbackFailureQueue`      | interface | yes       | yes   |
+| `ThreeAsciiDeferredReadbackFailureResult`     | interface | yes       | yes   |
+| `ThreeAsciiDeferredReadbackSubmission`        | interface | yes       | yes   |
+| `ThreeAsciiImageFrame`                        | interface | yes       | yes   |
+| `ThreeAsciiImageFrameSource`                  | interface | yes       | yes   |
+| `ThreeAsciiMappedReadbackBuffer`              | interface | yes       | yes   |
+| `ThreeAsciiMappedReadbackOptions`             | interface | yes       | yes   |
+| `ThreeAsciiReadbackError`                     | class     | no        | yes   |
+| `ThreeAsciiRenderer`                          | class     | no        | yes   |
+| `ThreeAsciiRendererOptions`                   | interface | yes       | yes   |
+| `ThreeAsciiRenderFrame`                       | interface | yes       | yes   |
+| `withThreeAsciiMappedReadback`                | function  | no        | yes   |
 
 #### src/three_ascii/webgpu_compat.ts
 
-| Symbol                        | Kind     | Type Only | JSDoc |
-| ----------------------------- | -------- | --------- | ----- |
-| `getCompatibleWebGPUDevice`   | function | no        | yes   |
-| `probeCompatibleWebGPUDevice` | function | no        | yes   |
+| Symbol                             | Kind     | Type Only | JSDoc |
+| ---------------------------------- | -------- | --------- | ----- |
+| `getCompatibleWebGPUDevice`        | function | no        | yes   |
+| `probeCompatibleWebGPUDevice`      | function | no        | yes   |
+| `resetCompatibleWebGPUDeviceCache` | function | no        | yes   |
 
 #### src/utils/async.ts
 
@@ -7544,10 +7869,10 @@ Focused Three.js/WebGPU ASCII renderer package for glyph, block, mixed, and Kitt
 ### Summary
 
 - Entrypoint: `mod.three_ascii.ts`
-- Modules: 8
-- Re-export declarations: 7
-- Exported symbols: 54
-- Documented symbols: 54
+- Modules: 11
+- Re-export declarations: 10
+- Exported symbols: 87
+- Documented symbols: 87
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -7557,13 +7882,16 @@ Focused Three.js/WebGPU ASCII renderer package for glyph, block, mixed, and Kitt
 | Module                                                                        | Re-exports | Symbols | Documented |
 | ----------------------------------------------------------------------------- | ---------: | ------: | ---------: |
 | [`mod.three_ascii.ts`](#mod-three-ascii-ts)                                   |          1 |       0 |          0 |
-| [`src/three_ascii/AcerolaAsciiNode.ts`](#src-three-ascii-acerolaasciinode-ts) |          0 |       2 |          2 |
+| [`src/three_ascii/AcerolaAsciiNode.ts`](#src-three-ascii-acerolaasciinode-ts) |          0 |       3 |          3 |
 | [`src/three_ascii/demo_presets.ts`](#src-three-ascii-demo-presets-ts)         |          0 |      14 |         14 |
+| [`src/three_ascii/frame_options.ts`](#src-three-ascii-frame-options-ts)       |          0 |       8 |          8 |
 | [`src/three_ascii/glyphs.ts`](#src-three-ascii-glyphs-ts)                     |          0 |      13 |         13 |
-| [`src/three_ascii/mod.ts`](#src-three-ascii-mod-ts)                           |          6 |       0 |          0 |
+| [`src/three_ascii/mod.ts`](#src-three-ascii-mod-ts)                           |          7 |       0 |          0 |
 | [`src/three_ascii/options.ts`](#src-three-ascii-options-ts)                   |          0 |      15 |         15 |
-| [`src/three_ascii/renderer.ts`](#src-three-ascii-renderer-ts)                 |          0 |       8 |          8 |
-| [`src/three_ascii/webgpu_compat.ts`](#src-three-ascii-webgpu-compat-ts)       |          0 |       2 |          2 |
+| [`src/three_ascii/performance.ts`](#src-three-ascii-performance-ts)           |          0 |       6 |          6 |
+| [`src/three_ascii/render_profile.ts`](#src-three-ascii-render-profile-ts)     |          0 |       3 |          3 |
+| [`src/three_ascii/renderer.ts`](#src-three-ascii-renderer-ts)                 |          2 |      22 |         22 |
+| [`src/three_ascii/webgpu_compat.ts`](#src-three-ascii-webgpu-compat-ts)       |          0 |       3 |          3 |
 
 ### Modules
 
@@ -7577,10 +7905,11 @@ _No direct exported symbols._
 
 #### src/three_ascii/AcerolaAsciiNode.ts
 
-| Symbol                    | Kind      | Type Only | JSDoc |
-| ------------------------- | --------- | --------- | ----- |
-| `AcerolaAsciiNode`        | class     | no        | yes   |
-| `AcerolaAsciiNodeOptions` | interface | yes       | yes   |
+| Symbol                      | Kind      | Type Only | JSDoc |
+| --------------------------- | --------- | --------- | ----- |
+| `AcerolaAsciiNode`          | class     | no        | yes   |
+| `AcerolaAsciiNodeOptions`   | interface | yes       | yes   |
+| `AcerolaAsciiRenderProfile` | interface | yes       | yes   |
 
 #### src/three_ascii/demo_presets.ts
 
@@ -7600,6 +7929,19 @@ _No direct exported symbols._
 | `AsciiToggleControlKey`         | type      | yes       | yes   |
 | `DEFAULT_ASCII_DEMO_EFFECT`     | const     | no        | yes   |
 | `findAsciiDemoPreset`           | function  | no        | yes   |
+
+#### src/three_ascii/frame_options.ts
+
+| Symbol                                      | Kind      | Type Only | JSDoc |
+| ------------------------------------------- | --------- | --------- | ----- |
+| `emptyThreeAsciiRenderFrame`                | function  | no        | yes   |
+| `resolveThreeAsciiRenderFrameSelection`     | function  | no        | yes   |
+| `resolveThreeAsciiRenderFrameSelectionInto` | function  | no        | yes   |
+| `THREE_ASCII_ANSI_FRAME_OPTIONS`            | const     | no        | yes   |
+| `THREE_ASCII_IMAGE_FRAME_OPTIONS`           | const     | no        | yes   |
+| `ThreeAsciiEmptyRenderFrame`                | interface | yes       | yes   |
+| `ThreeAsciiRenderFrameOptions`              | interface | yes       | yes   |
+| `ThreeAsciiRenderFrameSelection`            | interface | yes       | yes   |
 
 #### src/three_ascii/glyphs.ts
 
@@ -7627,6 +7969,7 @@ _No direct exported symbols._
 | `src/three_ascii/demo_presets.ts`     | star | -     |
 | `src/three_ascii/glyphs.ts`           | star | -     |
 | `src/three_ascii/options.ts`          | star | -     |
+| `src/three_ascii/render_profile.ts`   | star | -     |
 | `src/three_ascii/renderer.ts`         | star | -     |
 | `src/three_ascii/webgpu_compat.ts`    | star | -     |
 
@@ -7652,25 +7995,64 @@ _No direct exported symbols._
 | `ThreeAsciiConfigOptions`           | interface | yes       | yes   |
 | `ThreeAsciiOptionNumericControlKey` | type      | yes       | yes   |
 
+#### src/three_ascii/performance.ts
+
+| Symbol                                         | Kind      | Type Only | JSDoc |
+| ---------------------------------------------- | --------- | --------- | ----- |
+| `createThreeAsciiRendererPerformance`          | function  | no        | yes   |
+| `createThreeAsciiRendererSaturatedPerformance` | function  | no        | yes   |
+| `ThreeAsciiReadbackQueueInspection`            | interface | yes       | yes   |
+| `ThreeAsciiRendererPerformance`                | interface | yes       | yes   |
+| `ThreeAsciiRendererPerformanceInput`           | interface | yes       | yes   |
+| `ThreeAsciiRendererSaturatedPerformanceInput`  | interface | yes       | yes   |
+
+#### src/three_ascii/render_profile.ts
+
+| Symbol                               | Kind      | Type Only | JSDoc |
+| ------------------------------------ | --------- | --------- | ----- |
+| `resolveThreeAsciiRenderProfile`     | function  | no        | yes   |
+| `resolveThreeAsciiRenderProfileInto` | function  | no        | yes   |
+| `ThreeAsciiRenderProfileInput`       | interface | yes       | yes   |
+
 #### src/three_ascii/renderer.ts
 
-| Symbol                         | Kind      | Type Only | JSDoc |
-| ------------------------------ | --------- | --------- | ----- |
-| `buildThreeAsciiAnsiGrid`      | function  | no        | yes   |
-| `ThreeAsciiAnsiGridAssembler`  | class     | no        | yes   |
-| `ThreeAsciiAnsiGridInput`      | interface | yes       | yes   |
-| `ThreeAsciiImageFrame`         | interface | yes       | yes   |
-| `ThreeAsciiRenderer`           | class     | no        | yes   |
-| `ThreeAsciiRendererOptions`    | interface | yes       | yes   |
-| `ThreeAsciiRenderFrame`        | interface | yes       | yes   |
-| `ThreeAsciiRenderFrameOptions` | interface | yes       | yes   |
+| Re-export Target                   | Kind  | Names                                |
+| ---------------------------------- | ----- | ------------------------------------ |
+| `src/three_ascii/frame_options.ts` | named | `type ThreeAsciiRenderFrameOptions`  |
+| `src/three_ascii/performance.ts`   | named | `type ThreeAsciiRendererPerformance` |
+
+| Symbol                                        | Kind      | Type Only | JSDoc |
+| --------------------------------------------- | --------- | --------- | ----- |
+| `buildThreeAsciiAnsiGrid`                     | function  | no        | yes   |
+| `computeThreeAsciiCameraAspect`               | function  | no        | yes   |
+| `handleThreeAsciiDeferredReadbackFailure`     | function  | no        | yes   |
+| `readThreeAsciiImageFrame`                    | function  | no        | yes   |
+| `resolveThreeAsciiDeferredReadbackSubmission` | function  | no        | yes   |
+| `shouldUpdateThreeAsciiCameraAspect`          | function  | no        | yes   |
+| `THREE_ASCII_CAMERA_ASPECT_EPSILON`           | const     | no        | yes   |
+| `ThreeAsciiAnsiGridAssembler`                 | class     | no        | yes   |
+| `ThreeAsciiAnsiGridInput`                     | interface | yes       | yes   |
+| `ThreeAsciiCameraAspectInput`                 | interface | yes       | yes   |
+| `ThreeAsciiDeferredReadbackFailureQueue`      | interface | yes       | yes   |
+| `ThreeAsciiDeferredReadbackFailureResult`     | interface | yes       | yes   |
+| `ThreeAsciiDeferredReadbackSubmission`        | interface | yes       | yes   |
+| `ThreeAsciiImageFrame`                        | interface | yes       | yes   |
+| `ThreeAsciiImageFrameSource`                  | interface | yes       | yes   |
+| `ThreeAsciiMappedReadbackBuffer`              | interface | yes       | yes   |
+| `ThreeAsciiMappedReadbackOptions`             | interface | yes       | yes   |
+| `ThreeAsciiReadbackError`                     | class     | no        | yes   |
+| `ThreeAsciiRenderer`                          | class     | no        | yes   |
+| `ThreeAsciiRendererOptions`                   | interface | yes       | yes   |
+| `ThreeAsciiRenderFrame`                       | interface | yes       | yes   |
+| `withThreeAsciiMappedReadback`                | function  | no        | yes   |
 
 #### src/three_ascii/webgpu_compat.ts
 
-| Symbol                        | Kind     | Type Only | JSDoc |
-| ----------------------------- | -------- | --------- | ----- |
-| `getCompatibleWebGPUDevice`   | function | no        | yes   |
-| `probeCompatibleWebGPUDevice` | function | no        | yes   |
+| Symbol                             | Kind     | Type Only | JSDoc |
+| ---------------------------------- | -------- | --------- | ----- |
+| `getCompatibleWebGPUDevice`        | function | no        | yes   |
+| `probeCompatibleWebGPUDevice`      | function | no        | yes   |
+| `resetCompatibleWebGPUDeviceCache` | function | no        | yes   |
 
 ## Entrypoint ./theme
 
@@ -7980,8 +8362,8 @@ Shared runtime primitives for scheduling, storage, workers, resources, diagnosti
 - Entrypoint: `mod.runtime.ts`
 - Modules: 31
 - Re-export declarations: 30
-- Exported symbols: 387
-- Documented symbols: 387
+- Exported symbols: 392
+- Documented symbols: 392
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -8002,7 +8384,7 @@ Shared runtime primitives for scheduling, storage, workers, resources, diagnosti
 | [`src/runtime/process_session.ts`](#src-runtime-process-session-ts)                     |          0 |       9 |          9 |
 | [`src/runtime/profiles.ts`](#src-runtime-profiles-ts)                                   |          0 |      24 |         24 |
 | [`src/runtime/pty_backend.ts`](#src-runtime-pty-backend-ts)                             |          0 |      12 |         12 |
-| [`src/runtime/render_loop.ts`](#src-runtime-render-loop-ts)                             |          0 |      10 |         10 |
+| [`src/runtime/render_loop.ts`](#src-runtime-render-loop-ts)                             |          0 |      13 |         13 |
 | [`src/runtime/renderer_backends.ts`](#src-runtime-renderer-backends-ts)                 |          0 |      24 |         24 |
 | [`src/runtime/resource_bindings.ts`](#src-runtime-resource-bindings-ts)                 |          0 |       4 |          4 |
 | [`src/runtime/resource.ts`](#src-runtime-resource-ts)                                   |          0 |      14 |         14 |
@@ -8017,7 +8399,7 @@ Shared runtime primitives for scheduling, storage, workers, resources, diagnosti
 | [`src/runtime/terminal_session.ts`](#src-runtime-terminal-session-ts)                   |          0 |       8 |          8 |
 | [`src/runtime/terminal_shell_workspace.ts`](#src-runtime-terminal-shell-workspace-ts)   |          0 |       5 |          5 |
 | [`src/runtime/terminal_shell.ts`](#src-runtime-terminal-shell-ts)                       |          0 |       3 |          3 |
-| [`src/runtime/terminal_status.ts`](#src-runtime-terminal-status-ts)                     |          0 |      16 |         16 |
+| [`src/runtime/terminal_status.ts`](#src-runtime-terminal-status-ts)                     |          0 |      18 |         18 |
 | [`src/runtime/terminal_templates.ts`](#src-runtime-terminal-templates-ts)               |          0 |      22 |         22 |
 | [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)               |          0 |      24 |         24 |
 | [`src/runtime/worker_pool.ts`](#src-runtime-worker-pool-ts)                             |          0 |      12 |         12 |
@@ -8275,6 +8657,9 @@ _No direct exported symbols._
 | ------------------------------ | --------- | --------- | ----- |
 | `createRenderLoop`             | function  | no        | yes   |
 | `defaultRenderLoopTimer`       | const     | no        | yes   |
+| `FrameScheduler`               | class     | no        | yes   |
+| `FrameSchedulerInspection`     | interface | yes       | yes   |
+| `FrameSchedulerOptions`        | interface | yes       | yes   |
 | `MicrotaskScheduler`           | class     | no        | yes   |
 | `MicrotaskSchedulerInspection` | interface | yes       | yes   |
 | `MicrotaskSchedulerOptions`    | interface | yes       | yes   |
@@ -8508,24 +8893,26 @@ _No direct exported symbols._
 
 #### src/runtime/terminal_status.ts
 
-| Symbol                            | Kind      | Type Only | JSDoc |
-| --------------------------------- | --------- | --------- | ----- |
-| `formatTerminalOutputHint`        | function  | no        | yes   |
-| `formatTerminalShellHint`         | function  | no        | yes   |
-| `formatTerminalShellStatusLine`   | function  | no        | yes   |
-| `formatTerminalShellWindowTitle`  | function  | no        | yes   |
-| `summarizeTerminalStatus`         | function  | no        | yes   |
-| `terminalBackendKindLabel`        | function  | no        | yes   |
-| `terminalInputModeDisplayLabel`   | function  | no        | yes   |
-| `TerminalShellHintOptions`        | interface | yes       | yes   |
-| `TerminalShellStatusLineOptions`  | interface | yes       | yes   |
-| `TerminalShellWindowTitleOptions` | interface | yes       | yes   |
-| `terminalStatusFields`            | function  | no        | yes   |
-| `TerminalStatusSource`            | type      | yes       | yes   |
-| `TerminalStatusSummary`           | interface | yes       | yes   |
-| `TerminalStatusSummaryOptions`    | interface | yes       | yes   |
-| `terminalStatusTone`              | function  | no        | yes   |
-| `TerminalStatusTone`              | type      | yes       | yes   |
+| Symbol                             | Kind      | Type Only | JSDoc |
+| ---------------------------------- | --------- | --------- | ----- |
+| `formatTerminalOutputHint`         | function  | no        | yes   |
+| `formatTerminalOutputWindowTitle`  | function  | no        | yes   |
+| `formatTerminalShellHint`          | function  | no        | yes   |
+| `formatTerminalShellStatusLine`    | function  | no        | yes   |
+| `formatTerminalShellWindowTitle`   | function  | no        | yes   |
+| `summarizeTerminalStatus`          | function  | no        | yes   |
+| `terminalBackendKindLabel`         | function  | no        | yes   |
+| `terminalInputModeDisplayLabel`    | function  | no        | yes   |
+| `TerminalOutputWindowTitleOptions` | interface | yes       | yes   |
+| `TerminalShellHintOptions`         | interface | yes       | yes   |
+| `TerminalShellStatusLineOptions`   | interface | yes       | yes   |
+| `TerminalShellWindowTitleOptions`  | interface | yes       | yes   |
+| `terminalStatusFields`             | function  | no        | yes   |
+| `TerminalStatusSource`             | type      | yes       | yes   |
+| `TerminalStatusSummary`            | interface | yes       | yes   |
+| `TerminalStatusSummaryOptions`     | interface | yes       | yes   |
+| `terminalStatusTone`               | function  | no        | yes   |
+| `TerminalStatusTone`               | type      | yes       | yes   |
 
 #### src/runtime/terminal_templates.ts
 
@@ -8613,8 +9000,8 @@ Terminal parser, screen, shell, backend, PTY, workspace, and input-reader primit
 - Entrypoint: `mod.terminal.ts`
 - Modules: 15
 - Re-export declarations: 14
-- Exported symbols: 155
-- Documented symbols: 155
+- Exported symbols: 157
+- Documented symbols: 157
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -8635,7 +9022,7 @@ Terminal parser, screen, shell, backend, PTY, workspace, and input-reader primit
 | [`src/runtime/terminal_sequences.ts`](#src-runtime-terminal-sequences-ts)               |          0 |       3 |          3 |
 | [`src/runtime/terminal_session.ts`](#src-runtime-terminal-session-ts)                   |          0 |       8 |          8 |
 | [`src/runtime/terminal_shell.ts`](#src-runtime-terminal-shell-ts)                       |          0 |       3 |          3 |
-| [`src/runtime/terminal_status.ts`](#src-runtime-terminal-status-ts)                     |          0 |      16 |         16 |
+| [`src/runtime/terminal_status.ts`](#src-runtime-terminal-status-ts)                     |          0 |      18 |         18 |
 | [`src/runtime/terminal_templates.ts`](#src-runtime-terminal-templates-ts)               |          0 |      22 |         22 |
 | [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)               |          0 |      24 |         24 |
 
@@ -8812,24 +9199,26 @@ _No direct exported symbols._
 
 #### src/runtime/terminal_status.ts
 
-| Symbol                            | Kind      | Type Only | JSDoc |
-| --------------------------------- | --------- | --------- | ----- |
-| `formatTerminalOutputHint`        | function  | no        | yes   |
-| `formatTerminalShellHint`         | function  | no        | yes   |
-| `formatTerminalShellStatusLine`   | function  | no        | yes   |
-| `formatTerminalShellWindowTitle`  | function  | no        | yes   |
-| `summarizeTerminalStatus`         | function  | no        | yes   |
-| `terminalBackendKindLabel`        | function  | no        | yes   |
-| `terminalInputModeDisplayLabel`   | function  | no        | yes   |
-| `TerminalShellHintOptions`        | interface | yes       | yes   |
-| `TerminalShellStatusLineOptions`  | interface | yes       | yes   |
-| `TerminalShellWindowTitleOptions` | interface | yes       | yes   |
-| `terminalStatusFields`            | function  | no        | yes   |
-| `TerminalStatusSource`            | type      | yes       | yes   |
-| `TerminalStatusSummary`           | interface | yes       | yes   |
-| `TerminalStatusSummaryOptions`    | interface | yes       | yes   |
-| `terminalStatusTone`              | function  | no        | yes   |
-| `TerminalStatusTone`              | type      | yes       | yes   |
+| Symbol                             | Kind      | Type Only | JSDoc |
+| ---------------------------------- | --------- | --------- | ----- |
+| `formatTerminalOutputHint`         | function  | no        | yes   |
+| `formatTerminalOutputWindowTitle`  | function  | no        | yes   |
+| `formatTerminalShellHint`          | function  | no        | yes   |
+| `formatTerminalShellStatusLine`    | function  | no        | yes   |
+| `formatTerminalShellWindowTitle`   | function  | no        | yes   |
+| `summarizeTerminalStatus`          | function  | no        | yes   |
+| `terminalBackendKindLabel`         | function  | no        | yes   |
+| `terminalInputModeDisplayLabel`    | function  | no        | yes   |
+| `TerminalOutputWindowTitleOptions` | interface | yes       | yes   |
+| `TerminalShellHintOptions`         | interface | yes       | yes   |
+| `TerminalShellStatusLineOptions`   | interface | yes       | yes   |
+| `TerminalShellWindowTitleOptions`  | interface | yes       | yes   |
+| `terminalStatusFields`             | function  | no        | yes   |
+| `TerminalStatusSource`             | type      | yes       | yes   |
+| `TerminalStatusSummary`            | interface | yes       | yes   |
+| `TerminalStatusSummaryOptions`     | interface | yes       | yes   |
+| `terminalStatusTone`               | function  | no        | yes   |
+| `TerminalStatusTone`               | type      | yes       | yes   |
 
 #### src/runtime/terminal_templates.ts
 

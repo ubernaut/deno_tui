@@ -241,132 +241,6 @@
       "documented": true
     },
     {
-      "module": "src/app/button_commands.ts",
-      "name": "bindButtonCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/button_commands.ts",
-      "name": "ButtonCommandAction",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/button_commands.ts",
-      "name": "ButtonCommandKind",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/button_commands.ts",
-      "name": "ButtonCommandOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/button_commands.ts",
-      "name": "ButtonCommandPayload",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/button_commands.ts",
-      "name": "buttonCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/checkbox_commands.ts",
-      "name": "bindCheckBoxCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/checkbox_commands.ts",
-      "name": "CheckBoxCommandAction",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/checkbox_commands.ts",
-      "name": "CheckBoxCommandKind",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/checkbox_commands.ts",
-      "name": "CheckBoxCommandOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/checkbox_commands.ts",
-      "name": "CheckBoxCommandPayload",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/checkbox_commands.ts",
-      "name": "checkBoxCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/combobox_commands.ts",
-      "name": "bindComboBoxCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/combobox_commands.ts",
-      "name": "ComboBoxCommandAction",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/combobox_commands.ts",
-      "name": "ComboBoxCommandKind",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/combobox_commands.ts",
-      "name": "ComboBoxCommandOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/combobox_commands.ts",
-      "name": "ComboBoxCommandPayload",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/combobox_commands.ts",
-      "name": "comboBoxCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
       "module": "src/app/command_bindings.ts",
       "name": "bindCommandKeymap",
       "kind": "function",
@@ -1767,90 +1641,6 @@
       "documented": true
     },
     {
-      "module": "src/app/progress_bar_commands.ts",
-      "name": "bindProgressBarCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/progress_bar_commands.ts",
-      "name": "ProgressBarCommandAction",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/progress_bar_commands.ts",
-      "name": "ProgressBarCommandKind",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/progress_bar_commands.ts",
-      "name": "ProgressBarCommandOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/progress_bar_commands.ts",
-      "name": "ProgressBarCommandPayload",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/progress_bar_commands.ts",
-      "name": "progressBarCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/radio_group_commands.ts",
-      "name": "bindRadioGroupCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/radio_group_commands.ts",
-      "name": "RadioGroupCommandAction",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/radio_group_commands.ts",
-      "name": "RadioGroupCommandKind",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/radio_group_commands.ts",
-      "name": "RadioGroupCommandOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/radio_group_commands.ts",
-      "name": "RadioGroupCommandPayload",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/radio_group_commands.ts",
-      "name": "radioGroupCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
       "module": "src/app/route_bindings.ts",
       "name": "bindRouteCommands",
       "kind": "function",
@@ -2439,48 +2229,6 @@
       "documented": true
     },
     {
-      "module": "src/app/slider_commands.ts",
-      "name": "bindSliderCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/slider_commands.ts",
-      "name": "SliderCommandAction",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/slider_commands.ts",
-      "name": "SliderCommandKind",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/slider_commands.ts",
-      "name": "SliderCommandOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/slider_commands.ts",
-      "name": "SliderCommandPayload",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/slider_commands.ts",
-      "name": "sliderCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
       "module": "src/app/split_pane_commands.ts",
       "name": "bindSplitPaneCommands",
       "kind": "function",
@@ -2527,48 +2275,6 @@
       "name": "SplitPaneSnapshotPayload",
       "kind": "interface",
       "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/stepper_commands.ts",
-      "name": "bindStepperCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/stepper_commands.ts",
-      "name": "StepperCommandAction",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/stepper_commands.ts",
-      "name": "StepperCommandKind",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/stepper_commands.ts",
-      "name": "StepperCommandOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/stepper_commands.ts",
-      "name": "StepperCommandPayload",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/stepper_commands.ts",
-      "name": "stepperCommands",
-      "kind": "function",
-      "typeOnly": false,
       "documented": true
     },
     {
@@ -2992,48 +2698,6 @@
       "documented": true
     },
     {
-      "module": "src/app/textbox_commands.ts",
-      "name": "bindTextBoxCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/textbox_commands.ts",
-      "name": "TextBoxCommandAction",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/textbox_commands.ts",
-      "name": "TextBoxCommandKind",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/textbox_commands.ts",
-      "name": "TextBoxCommandOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/textbox_commands.ts",
-      "name": "TextBoxCommandPayload",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/textbox_commands.ts",
-      "name": "textBoxCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
       "module": "src/app/theme_commands.ts",
       "name": "bindThemeCommands",
       "kind": "function",
@@ -3372,6 +3036,342 @@
     {
       "module": "src/app/tree_commands.ts",
       "name": "treeCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "bindButtonCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "bindCheckBoxCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "bindComboBoxCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "bindProgressBarCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "bindRadioGroupCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "bindSliderCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "bindStepperCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "bindTextBoxCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "ButtonCommandAction",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "ButtonCommandKind",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "ButtonCommandOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "ButtonCommandPayload",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "buttonCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "CheckBoxCommandAction",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "CheckBoxCommandKind",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "CheckBoxCommandOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "CheckBoxCommandPayload",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "checkBoxCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "ComboBoxCommandAction",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "ComboBoxCommandKind",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "ComboBoxCommandOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "ComboBoxCommandPayload",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "comboBoxCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "ProgressBarCommandAction",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "ProgressBarCommandKind",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "ProgressBarCommandOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "ProgressBarCommandPayload",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "progressBarCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "RadioGroupCommandAction",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "RadioGroupCommandKind",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "RadioGroupCommandOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "RadioGroupCommandPayload",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "radioGroupCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "SliderCommandAction",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "SliderCommandKind",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "SliderCommandOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "SliderCommandPayload",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "sliderCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "StepperCommandAction",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "StepperCommandKind",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "StepperCommandOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "StepperCommandPayload",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "stepperCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "TextBoxCommandAction",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "TextBoxCommandKind",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "TextBoxCommandOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "TextBoxCommandPayload",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/widget_commands.ts",
+      "name": "textBoxCommands",
       "kind": "function",
       "typeOnly": false,
       "documented": true
