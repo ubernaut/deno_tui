@@ -196,6 +196,9 @@ interface QueueFullyVisibleIntegerRangesOptions extends QueueChangedCellsInterna
 
 function queueChangedFullyVisibleIntegerRanges(options: QueueFullyVisibleIntegerRangesOptions): boolean {
   const { grid, rectangle, rerenderRanges, previous, cacheValid, columns, rows } = options;
+  if (!cacheValid) {
+    return queueInitialFullyVisibleIntegerRanges(options);
+  }
   let changed = false;
   const rectangleColumn = rectangle.column;
   const rectangleRow = rectangle.row;
@@ -248,6 +251,35 @@ function queueChangedFullyVisibleIntegerRanges(options: QueueFullyVisibleInteger
   }
 
   return changed;
+}
+
+function queueInitialFullyVisibleIntegerRanges(options: QueueFullyVisibleIntegerRangesOptions): boolean {
+  const { grid, rectangle, rerenderRanges, previous, columns, rows } = options;
+  const rectangleColumn = rectangle.column;
+  const rectangleRow = rectangle.row;
+  const previousCells = previous.cells;
+
+  for (let row = 0; row < rows; row += 1) {
+    const outputRow = grid[row];
+    const rowOffset = row * columns;
+    if (outputRow && outputRow.length >= columns) {
+      for (let column = 0; column < columns; column += 1) {
+        previousCells[rowOffset + column] = outputRow[column] as string;
+      }
+    } else {
+      for (let column = 0; column < columns; column += 1) {
+        previousCells[rowOffset + column] = outputRow?.[column] ?? " ";
+      }
+    }
+    queueFullyVisibleRangeRun(
+      rerenderRanges,
+      rectangleRow + row,
+      rectangleColumn,
+      rectangleColumn + columns,
+    );
+  }
+
+  return rows > 0 && columns > 0;
 }
 
 function queueChangedIntegerAlignedCells(options: QueueIntegerAlignedCellsOptions): boolean {

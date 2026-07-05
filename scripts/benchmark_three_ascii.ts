@@ -16,7 +16,11 @@ import { defaultThreeAsciiProbeOptions, threeAsciiProbeReport } from "../src/thr
 import type { ThreeAsciiRendererPerformance } from "../src/three_ascii/performance.ts";
 import { createThreeAsciiReadbackLayout, ThreeAsciiReadbackViewCache } from "../src/three_ascii/readback.ts";
 import { resolveThreeAsciiRenderProfileInto } from "../src/three_ascii/render_profile.ts";
-import { createThreeAsciiGridDiffState, queueChangedThreeAsciiGridCells } from "../src/canvas/three_ascii_diff.ts";
+import {
+  clearThreeAsciiGridDiffState,
+  createThreeAsciiGridDiffState,
+  queueChangedThreeAsciiGridCells,
+} from "../src/canvas/three_ascii_diff.ts";
 import {
   summarizeWorkbenchThreePressureProbe,
   type WorkbenchThreePressureProbeSample,
@@ -459,6 +463,23 @@ function runThreeAsciiDirectDiffQueueWorkload(): void {
   }
 }
 
+function runThreeAsciiInitialDirectDiffQueueWorkload(): void {
+  clearThreeAsciiGridDiffState(threeAsciiDirectDiffState);
+  queueChangedThreeAsciiGridCells(
+    threeAsciiDiffGridA,
+    threeAsciiDiffRectangle,
+    { columns: threeAsciiDiffRectangle.width, rows: threeAsciiDiffRectangle.height },
+    threeAsciiDirectDiffCells,
+    threeAsciiDirectDiffState,
+    undefined,
+    threeAsciiDirectDiffRanges,
+  );
+  if ((threeAsciiDirectDiffRanges[0]?.[0]?.endColumn ?? 0) !== threeAsciiDiffRectangle.width) {
+    throw new Error("initial Three ASCII diff did not queue a full visible row range");
+  }
+  clearThreeAsciiDirectDiffQueue();
+}
+
 function createThreeAsciiDiffGrid(columns: number, rows: number, phase: number): string[][] {
   const grid = new Array<string[]>(rows);
   for (let row = 0; row < rows; row += 1) {
@@ -814,6 +835,15 @@ export const threeAsciiBenchmarkCases: BenchmarkCase[] = [
     iterations: 200,
     maxAverageMs: 8,
     run: runThreeAsciiDirectDiffQueueWorkload,
+  },
+  {
+    name: "render/three-ascii-initial-frame-diff-96x40",
+    category: "render",
+    description: "Queue initial 96x40 Three ASCII visible row ranges after renderer startup or rebuild.",
+    tags: ["render", "three", "ascii", "canvas", "diff", "startup"],
+    iterations: 500,
+    maxAverageMs: 4,
+    run: runThreeAsciiInitialDirectDiffQueueWorkload,
   },
   {
     name: "render/three-ascii-frame-diff-96x40",
