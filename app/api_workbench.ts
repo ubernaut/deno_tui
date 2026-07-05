@@ -2952,7 +2952,7 @@ function createVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
       id,
       fullscreenId: maximized.value,
       ascii: asciiForWindow(id).value,
-      fullscreenMinCells: WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
+      fullscreenMinCells: workbenchThreeFullscreenTargetCells.value,
     })
   );
   const panel = createWorkbenchThreePanelFrameView({
