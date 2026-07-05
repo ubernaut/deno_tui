@@ -124,6 +124,14 @@ export function formatPercent(value: number) {
 }
 
 export function formatBytes(value: number) {
+  return formatBytesWithSeparator(value, " ");
+}
+
+export function formatCompactBytes(value: number) {
+  return formatBytesWithSeparator(value, "");
+}
+
+function formatBytesWithSeparator(value: number, separator: string) {
   const units = ["B", "KiB", "MiB", "GiB", "TiB"];
   let amount = Math.max(0, value);
   let index = 0;
@@ -132,11 +140,15 @@ export function formatBytes(value: number) {
     index += 1;
   }
   const precision = amount >= 100 || index === 0 ? 0 : amount >= 10 ? 1 : 2;
-  return `${amount.toFixed(precision)} ${units[index]}`;
+  return `${amount.toFixed(precision)}${separator}${units[index]}`;
 }
 
 export function formatRate(value: number) {
   return `${formatBytes(value)}/s`;
+}
+
+export function formatOptionalNumber(value: number | null, suffix: string) {
+  return value === null ? "--" : `${value.toFixed(value >= 100 ? 0 : 1)}${suffix}`;
 }
 
 export function formatDuration(seconds: number) {

@@ -1,5 +1,5 @@
 import { AudioRegistry } from "./audio.ts";
-import { clamp } from "./styles.ts";
+import { clamp, formatCompactBytes, formatOptionalNumber } from "./styles.ts";
 import type { AudioCatalogEntry, SourceDescriptor, SourceFrame, SystemSnapshot } from "./types.ts";
 
 export function buildSourceCatalog(audioCatalog: AudioCatalogEntry[]) {
@@ -233,7 +233,7 @@ export function getSourceFrame(
         series: system.memoryHistory,
         detailLines: [
           `USED ${system.memory.percent.toFixed(1)}%`,
-          `AVAIL ${bytesToShort(system.memory.available)}`,
+          `AVAIL ${formatCompactBytes(system.memory.available)}`,
         ],
       };
     case "sys:swap":
@@ -245,7 +245,7 @@ export function getSourceFrame(
         series: system.swapHistory,
         detailLines: [
           `USED ${system.memory.swapPercent.toFixed(1)}%`,
-          `FREE ${bytesToShort(Math.max(0, system.memory.swapTotal - system.memory.swapUsed))}`,
+          `FREE ${formatCompactBytes(Math.max(0, system.memory.swapTotal - system.memory.swapUsed))}`,
         ],
       };
     case "sys:network":
@@ -386,7 +386,9 @@ function networkDetailLines(system: SystemSnapshot, limit: number): string[] {
   const lines = new Array<string>(count);
   for (let index = 0; index < count; index += 1) {
     const network = system.networks[index]!;
-    lines[index] = `${network.name.toUpperCase()} ${bytesToShort(network.rxRate)}↓ ${bytesToShort(network.txRate)}↑`;
+    lines[index] = `${network.name.toUpperCase()} ${formatCompactBytes(network.rxRate)}↓ ${
+      formatCompactBytes(network.txRate)
+    }↑`;
   }
   return lines;
 }
@@ -578,7 +580,7 @@ function gpuDetailLines(system: SystemSnapshot) {
   return [
     system.gpu.name,
     `CHIP ${system.gpu.utilizationPercent.toFixed(0)}%  VRAM ${system.gpu.memoryPercent.toFixed(0)}%`,
-    `MEM ${bytesToShort(system.gpu.memoryUsed)} / ${bytesToShort(system.gpu.memoryTotal)}`,
+    `MEM ${formatCompactBytes(system.gpu.memoryUsed)} / ${formatCompactBytes(system.gpu.memoryTotal)}`,
     gpuThermalPowerLine(system),
   ];
 }
@@ -599,9 +601,9 @@ function gpuMemoryDetailLines(system: SystemSnapshot) {
   if (!system.gpu.available) return ["GPU MEMORY OFFLINE"];
   return [
     `VRAM ${system.gpu.memoryPercent.toFixed(0)}%`,
-    `${bytesToShort(system.gpu.memoryUsed)} USED`,
-    `${bytesToShort(Math.max(0, system.gpu.memoryTotal - system.gpu.memoryUsed))} FREE`,
-    `${bytesToShort(system.gpu.memoryTotal)} TOTAL`,
+    `${formatCompactBytes(system.gpu.memoryUsed)} USED`,
+    `${formatCompactBytes(Math.max(0, system.gpu.memoryTotal - system.gpu.memoryUsed))} FREE`,
+    `${formatCompactBytes(system.gpu.memoryTotal)} TOTAL`,
   ];
 }
 
@@ -609,19 +611,4 @@ function gpuThermalPowerLine(system: SystemSnapshot) {
   return `TEMP ${formatOptionalNumber(system.gpu.temperatureCelsius, "C")}  POWER ${
     formatOptionalNumber(system.gpu.powerWatts, "W")
   }`;
-}
-
-function formatOptionalNumber(value: number | null, suffix: string) {
-  return value === null ? "--" : `${value.toFixed(value >= 100 ? 0 : 1)}${suffix}`;
-}
-
-function bytesToShort(value: number) {
-  const units = ["B", "KiB", "MiB", "GiB", "TiB"];
-  let amount = Math.max(0, value);
-  let index = 0;
-  while (amount >= 1024 && index < units.length - 1) {
-    amount /= 1024;
-    index += 1;
-  }
-  return `${amount.toFixed(amount >= 100 || index === 0 ? 0 : amount >= 10 ? 1 : 2)}${units[index]}`;
 }

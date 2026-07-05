@@ -102,7 +102,7 @@ import { createThemeLayerStack, createThemeProvider, createThemeRegistry } from 
 import { createThemeEnginePipeline } from "../src/theme_engine_pipeline.ts";
 import { createThemeWorkspace } from "../src/theme_workspace.ts";
 import type { Tui } from "../src/tui.ts";
-import { makeStyle } from "../app/styles.ts";
+import { formatBytes, formatCompactBytes, formatOptionalNumber, makeStyle } from "../app/styles.ts";
 
 Deno.test("makeStyle expands short hex colors without changing ANSI output", () => {
   const style = makeStyle({ fg: "#0f8", bg: "123", bold: true });
@@ -112,6 +112,15 @@ Deno.test("makeStyle expands short hex colors without changing ANSI output", () 
 
 Deno.test("makeStyle returns identity style when no options are set", () => {
   assertEquals(makeStyle()("plain"), "plain");
+});
+
+Deno.test("app byte and optional-number formatters cover spaced and compact display", () => {
+  assertEquals(formatBytes(1536), "1.50 KiB");
+  assertEquals(formatCompactBytes(1536), "1.50KiB");
+  assertEquals(formatCompactBytes(5 * 1024 ** 3), "5.00GiB");
+  assertEquals(formatOptionalNumber(null, "W"), "--");
+  assertEquals(formatOptionalNumber(99.4, "W"), "99.4W");
+  assertEquals(formatOptionalNumber(1815, "MHz"), "1815MHz");
 });
 
 Deno.test("ActionBus dispatches to subscribers in registration order", async () => {
