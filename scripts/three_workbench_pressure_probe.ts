@@ -27,7 +27,7 @@ import {
   summarizeWorkbenchThreePressureProbe,
   validateWorkbenchThreePressureProbeSummary,
   type WorkbenchThreePressureProbeSample,
-} from "../src/three_ascii/workbench_pressure_probe.ts";
+} from "../src/app/workbench_three_pressure_probe.ts";
 import { type ThreeSceneMode, threeSceneModes } from "../app/types.ts";
 import {
   createWorkbenchThreeTerminalPressureState,

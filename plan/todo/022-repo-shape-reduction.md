@@ -153,6 +153,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     timing formatting, and CLI argument helpers in one probe-support module
   - Three ASCII panel probe summaries and validation are folded into `src/three_ascii/probe.ts`, keeping renderer and
     panel live-probe support together instead of split across tiny internal probe shards
+  - Workbench Three pressure probe support now lives in `src/app/workbench_three_pressure_probe.ts`, keeping
+    app-specific terminal pressure analysis out of the reusable Three ASCII renderer package boundary
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

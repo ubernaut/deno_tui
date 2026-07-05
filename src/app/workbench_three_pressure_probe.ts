@@ -1,7 +1,7 @@
-import { workbenchThreeTerminalBytesPerSecond } from "../app/workbench_three_terminal_pressure.ts";
-import type { TerminalGlyphStyle } from "./glyphs.ts";
-import { choiceArg, formatFps, formatMs, numberArg } from "./probe.ts";
-import type { ThreeAsciiReadbackStrategy } from "./renderer_options.ts";
+import type { TerminalGlyphStyle } from "../three_ascii/glyphs.ts";
+import { choiceArg, formatFps, formatMs, numberArg } from "../three_ascii/probe.ts";
+import type { ThreeAsciiReadbackStrategy } from "../three_ascii/renderer_options.ts";
+import { workbenchThreeTerminalBytesPerSecond } from "./workbench_three_terminal_pressure.ts";
 
 export interface WorkbenchThreePressureProbeSample {
   index: number;

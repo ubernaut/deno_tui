@@ -24,7 +24,7 @@ import {
 import {
   summarizeWorkbenchThreePressureProbe,
   type WorkbenchThreePressureProbeSample,
-} from "../src/three_ascii/workbench_pressure_probe.ts";
+} from "../src/app/workbench_three_pressure_probe.ts";
 
 const threeAsciiColumns = 96;
 const threeAsciiRows = 40;

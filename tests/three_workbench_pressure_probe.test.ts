@@ -10,7 +10,7 @@ import {
   validateWorkbenchThreePressureProbe,
   validateWorkbenchThreePressureProbeSummary,
   type WorkbenchThreePressureProbeSample,
-} from "../src/three_ascii/workbench_pressure_probe.ts";
+} from "../src/app/workbench_three_pressure_probe.ts";
 
 Deno.test("summarizeWorkbenchThreePressureProbe excludes placeholder and startup samples", () => {
   const samples: WorkbenchThreePressureProbeSample[] = [
