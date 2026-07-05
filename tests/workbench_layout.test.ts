@@ -4,8 +4,10 @@ import {
   WorkbenchActiveRevealTracker,
   workbenchAdaptiveTileOptions,
   workbenchAdaptiveWindowLayout,
+  workbenchContentViewport,
   workbenchFullscreenWindowRect,
   workbenchHorizontalScrollbarCellsInto,
+  workbenchRevealActiveRowOffset,
   workbenchVerticalScrollbarCellsInto,
   workbenchVerticalScrollbarRect,
   workbenchVisibleWindowRectsInto,
@@ -15,7 +17,6 @@ import {
   workbenchWorkspaceScrollbarRenderCommandsInto,
   WorkbenchWorkspaceViewportController,
 } from "../src/app/workbench_layout.ts";
-import { workbenchContentViewport, workbenchRevealActiveRowOffset } from "../src/app/workbench_viewport.ts";
 import type { ViewportAxisOverflow, ViewportOverflowInspection } from "../src/viewport.ts";
 
 Deno.test("clampWorkbenchTileDensity keeps density in the shared supported range", () => {

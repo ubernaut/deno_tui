@@ -72,9 +72,9 @@ Work:
         web workbench titlebar button hit geometry to it.
   - [x] Extracted renderer-neutral minimized shelf and fullscreen tab layout into `src/app/workbench_shelf.ts` and
         migrated terminal/web shelf hit geometry to it.
-  - [x] Extracted scrollbar-aware content viewport sizing into `src/app/workbench_viewport.ts` with direct coverage for
+  - [x] Folded scrollbar-aware content viewport sizing into `src/app/workbench_layout.ts` with direct coverage for
         coupled horizontal/vertical overflow.
-  - [x] Extracted shared active-window reveal scroll math into `src/app/workbench_viewport.ts` and migrated terminal/web
+  - [x] Folded shared active-window reveal scroll math into `src/app/workbench_layout.ts` and migrated terminal/web
         workspace auto-scroll behavior to it.
   - [x] Extracted per-window Three ASCII config signal ownership and option stepping helpers into
         `src/app/workbench_ascii.ts`, reducing workbench-local renderer config state and making modal control behavior
@@ -209,7 +209,7 @@ Acceptance checks:
 - [x] Shared unit tests cover focus, minimize/maximize/restore/close, scrollbars, dropdowns, modals, workspace
       open/save, and keyboard-only operation.
   - [x] Coverage now spans `window_manager_usability`, `workbench_menu`, `workbench_titlebar`, `workbench_shelf`,
-        `workbench_viewport`, `workbench_workspace`, `workbench_terminal`, and widget command/controller tests.
+        `workbench_layout`, `workbench_workspace`, `workbench_terminal`, and widget command/controller tests.
 - [x] `deno task api-workbench:check`
 - [x] `deno task web:demo:check`
 - [x] `deno task health`
