@@ -1,5 +1,6 @@
 import { assertEquals } from "./deps.ts";
 import {
+  workbenchCompactStatusDiagnostics,
   workbenchEmptyWorkspaceMessage,
   workbenchHeaderHelp,
   workbenchStatusLeft,
@@ -24,6 +25,21 @@ Deno.test("workbench status helper composes optional diagnostics", () => {
   assertEquals(
     workbenchStatusLeft({ focus: "Data", theme: "Unit-01", tileDensity: 1, diagnostics: "diag 1 warning" }),
     "focus Data | Unit-01 | tiles dense | diag 1 warning",
+  );
+});
+
+Deno.test("workbench status helper compacts redundant diagnostics for tight rows", () => {
+  assertEquals(workbenchCompactStatusDiagnostics(undefined), undefined);
+  assertEquals(workbenchCompactStatusDiagnostics("diag 1 warning (1 warning)"), "diag 1 warning");
+  assertEquals(
+    workbenchStatusLine({
+      focus: "Three ASCII",
+      theme: "Unit-01 Signal",
+      tileDensity: 0,
+      diagnostics: "diag 1 warning (1 warning)",
+      width: 118,
+    }),
+    "focus Three ASCII | Unit-01 Signal | tiles balanced | diag 1 warning          F10 menu  N new  G config  M/F/R  Q quit",
   );
 });
 

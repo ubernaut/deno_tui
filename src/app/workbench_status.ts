@@ -76,6 +76,13 @@ export function workbenchStatusLeft(options: WorkbenchStatusLeftOptions): string
   return parts.join(" | ");
 }
 
+/** Removes redundant diagnostic detail when the status bar needs room for shortcuts. */
+export function workbenchCompactStatusDiagnostics(diagnostics: string | undefined): string | undefined {
+  const text = diagnostics?.trim();
+  if (!text) return undefined;
+  return text.replace(/\s+\([^)]*\)\s*$/, "").trim() || text;
+}
+
 /** Builds right-aligned shortcut text for the bottom workbench status bar. */
 export function workbenchStatusShortcuts(
   profile: WorkbenchStatusShortcutProfile = "terminal",
@@ -95,9 +102,21 @@ export function workbenchStatusShortcuts(
 
 /** Builds the fully-aligned workbench status-bar text shared by terminal and web adapters. */
 export function workbenchStatusLine(options: WorkbenchStatusLineOptions): string {
+  const right = workbenchStatusShortcuts(options.shortcutProfile, options.width);
+  const fullLeft = workbenchStatusLeft(options);
+  if (fullLeft.length + right.length + (fullLeft && right ? 2 : 0) <= Math.max(0, options.width)) {
+    return renderStatusBar(fullLeft, right, options.width, "right");
+  }
+  const compactDiagnostics = workbenchCompactStatusDiagnostics(options.diagnostics);
+  const compactLeft = compactDiagnostics === options.diagnostics
+    ? fullLeft
+    : workbenchStatusLeft({ ...options, diagnostics: compactDiagnostics });
+  if (compactLeft.length + right.length + (compactLeft && right ? 2 : 0) <= Math.max(0, options.width)) {
+    return renderStatusBar(compactLeft, right, options.width, "right");
+  }
   return renderStatusBar(
-    workbenchStatusLeft(options),
-    workbenchStatusShortcuts(options.shortcutProfile, options.width),
+    compactLeft,
+    right,
     options.width,
     "right",
   );
