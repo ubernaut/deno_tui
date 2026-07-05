@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `603`
+- Tracked files after the current consolidation passes: `602`
 - Tracked top-level file counts:
   - `src`: `296`
-  - `tests`: `107`
+  - `tests`: `106`
   - `app`: `29`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `6,991` lines across `23` files
   - `app`: `20,353` lines across `29` files
   - `examples`: `8,770` lines across `41` files
-  - `tests`: `49,371` lines across `107` files
+  - `tests`: `49,398` lines across `106` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -220,6 +220,8 @@ The library core is real and valuable, but it needs clearer boundaries:
   - generic visual smoke assertions are now bundled into `tests/workbench_visual_smoke.test.ts`
   - EventEmitter behavior tests are now bundled into `tests/app_primitives.test.ts`, removing the standalone root
     primitive test shard without adding narrower coverage.
+  - HitTargetStack and rectangle-helper behavior tests are now bundled into `tests/app_primitives.test.ts`, removing
+    another standalone app-primitive shard without changing the covered assertions.
   - system metrics GPU, network, process, and snapshot helper tests are now `tests/system_metrics_core.test.ts`
   - small Three ASCII renderer option/profile/frame/cache helper shards are now bundled into
     `tests/three_ascii_core.test.ts`
