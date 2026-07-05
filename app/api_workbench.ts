@@ -316,6 +316,7 @@ import {
   workbenchVisualizationRowsInto,
 } from "./workbench_visualization_window.ts";
 import {
+  apiWorkbenchWorkspaceStorageLabel,
   buildWorkspaceMenuEntriesInto,
   currentWorkspaceVisualizationIdsInto as workspaceVisualizationIdsFromWindowsInto,
   currentWorkspaceWindowsInto as currentWorkspaceWindowsFromIdsInto,
@@ -3341,7 +3342,7 @@ function workspaceNameModalBody(): string[] {
     draftName: workspaceNameDraft.peek(),
     cursor: mode ? "▌" : "",
     loadedVisualizationIds: currentWorkspaceVisualizationIds(),
-    storageLabel: "indexedDB" in globalThis ? "IndexedDB" : "Deno JSON fallback",
+    storageLabel: apiWorkbenchWorkspaceStorageLabel(),
     targetName: workspaceTargetName.peek(),
     targetWorkspace: workspaceByName(workspaceTargetName.peek()) ?? null,
   });
