@@ -3,14 +3,14 @@ import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import { emptySnapshot } from "../app/system_metrics_snapshot.ts";
 import type { RenderContext, SlotConfig, SourceFrame, SystemSnapshot, ThreeSceneMode } from "../app/types.ts";
 import { buildVisualizationDrive } from "../app/visualization_drive.ts";
-import { renderVisualization } from "../app/visualizations.ts";
 import {
   appendThreeSceneFooter,
   driveThreeSignal,
   modeTwist,
   renderThreeFallbackBody,
+  renderVisualization,
   threeSceneModeLabel,
-} from "../app/visualization_three.ts";
+} from "../app/visualizations.ts";
 
 const fallbackContext: RenderContext = {
   width: 28,
