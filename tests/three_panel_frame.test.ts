@@ -2,8 +2,6 @@ import { assert, assertEquals } from "./deps.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import {
-  resolveThreePanelAdaptiveRenderBudget,
-  resolveThreePanelRenderPolicy,
   resolveThreePanelRenderSize,
   ThreePanelAdaptiveRenderBudgetController,
   type ThreePanelFrameUpdate,
@@ -31,121 +29,6 @@ import type {
   ThreeAsciiRendererPerformance,
   ThreeAsciiRenderFrameOptions,
 } from "../src/three_ascii/renderer.ts";
-
-Deno.test("resolveThreePanelRenderPolicy selects ASCII and Kitty frame modes", () => {
-  const ascii = createDefaultAsciiOptions("sharp");
-  assertEquals(
-    resolveThreePanelRenderPolicy({
-      ascii,
-      graphicsAvailable: true,
-      graphicsRectangle: { width: 8, height: 4 },
-      rendererSupportsImage: true,
-    }),
-    {
-      kittyActive: false,
-      renderAscii: true,
-      renderImage: false,
-      frameOptions: { ansi: true, image: false },
-    },
-  );
-
-  assertEquals(
-    resolveThreePanelRenderPolicy({
-      ascii: { ...ascii, kittyGraphics: true, kittyDisableAscii: false },
-      graphicsAvailable: true,
-      graphicsRectangle: { width: 8, height: 4 },
-      rendererSupportsImage: true,
-    }),
-    {
-      kittyActive: true,
-      renderAscii: true,
-      renderImage: true,
-      frameOptions: { ansi: true, image: true },
-    },
-  );
-
-  assertEquals(
-    resolveThreePanelRenderPolicy({
-      ascii: { ...ascii, kittyGraphics: true, kittyDisableAscii: true },
-      graphicsAvailable: true,
-      graphicsRectangle: { width: 8, height: 4 },
-      rendererSupportsImage: true,
-    }),
-    {
-      kittyActive: true,
-      renderAscii: false,
-      renderImage: true,
-      frameOptions: { ansi: false, image: true },
-    },
-  );
-
-  assertEquals(
-    resolveThreePanelRenderPolicy({
-      ascii: { ...ascii, kittyGraphics: true, kittyDisableAscii: true },
-      graphicsAvailable: true,
-      graphicsRectangle: { width: 0, height: 4 },
-      rendererSupportsImage: true,
-    }).kittyActive,
-    false,
-  );
-});
-
-Deno.test("resolveThreePanelRenderSize preserves small panes and caps large panes by area", () => {
-  assertEquals(resolveThreePanelRenderSize({ width: 80, height: 24 }, 3_840), { columns: 80, rows: 24 });
-
-  const capped = resolveThreePanelRenderSize({ width: 160, height: 60 }, 3_840);
-  assert(capped.columns < 160);
-  assert(capped.rows < 60);
-  assert(capped.columns * capped.rows <= 3_840);
-  assert(capped.columns / capped.rows > 160 / 60 - 0.2);
-});
-
-Deno.test("resolveThreePanelAdaptiveRenderBudget steps down on sustained slow frames", () => {
-  const warmup = resolveThreePanelAdaptiveRenderBudget({
-    requestedMaxCells: 3_840,
-    frameMs: 220,
-    targetMs: 1000 / 18,
-    slowFrames: 0,
-    fastFrames: 0,
-    sampleFrames: 0,
-  });
-  assertEquals(warmup.direction, "steady");
-  assertEquals(warmup.slowFrames, 0);
-  assertEquals(warmup.maxCells, undefined);
-
-  const first = resolveThreePanelAdaptiveRenderBudget({
-    requestedMaxCells: 3_840,
-    frameMs: 220,
-    targetMs: 1000 / 18,
-    slowFrames: 0,
-    fastFrames: 0,
-    sampleFrames: 1,
-  });
-  assertEquals(first.direction, "steady");
-  assertEquals(first.maxCells, undefined);
-
-  const second = resolveThreePanelAdaptiveRenderBudget({
-    requestedMaxCells: 3_840,
-    frameMs: 220,
-    targetMs: 1000 / 18,
-    slowFrames: first.slowFrames,
-    fastFrames: first.fastFrames,
-    sampleFrames: 2,
-  });
-  assertEquals(second.direction, "down");
-  assertEquals(second.maxCells, 1_920);
-
-  const recovered = resolveThreePanelAdaptiveRenderBudget({
-    requestedMaxCells: 3_840,
-    currentMaxCells: 1_920,
-    frameMs: 20,
-    targetMs: 1000 / 18,
-    slowFrames: 0,
-    fastFrames: 119,
-  });
-  assertEquals(recovered.direction, "up");
-  assertEquals(recovered.maxCells, undefined);
-});
 
 Deno.test("ThreePanelAdaptiveRenderBudgetController owns warmup and requested-size state", () => {
   const controller = new ThreePanelAdaptiveRenderBudgetController();

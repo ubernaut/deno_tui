@@ -241,6 +241,9 @@ The library core is real and valuable, but it needs clearer boundaries:
   - duplicate Three panel lifecycle-state assertions were removed from `tests/three_panel_frame.test.ts`; the pure
     helper behavior remains covered in `tests/three_panel_core.test.ts`, keeping frame tests focused on live view
     behavior.
+  - duplicate Three panel render-policy, render-size, and adaptive-budget assertions were removed from
+    `tests/three_panel_frame.test.ts`; those pure policy behaviors remain covered in `tests/three_panel_policy.test.ts`,
+    leaving the frame suite focused on live panel behavior and renderer lifecycle scenarios.
 - Prefer subsystem-level runtime smoke coverage for workbench, Three ASCII, terminal shell, and web interaction.
 
 ### P1: Keep Three ASCII Performance Gated By Real Probes
