@@ -1,17 +1,17 @@
 import { assertEquals } from "./deps.ts";
 import { assertRejects } from "./deps.ts";
 import { nextFrameDelay } from "../src/runtime/frame_timing.ts";
-import { threePanelFrameUpdate } from "../src/app/three_panel_frame_update.ts";
+import { threePanelFrameUpdate } from "../src/app/three_panel_core.ts";
 import {
   isCurrentThreePanelFrame,
   ownsThreePanelFrame,
   resolveThreePanelLifecycleState,
-} from "../src/app/three_panel_lifecycle.ts";
+} from "../src/app/three_panel_core.ts";
 import {
   resolveOptionalThreePanelValue,
   resolveThreePanelLiveValue,
   resolveThreePanelValue,
-} from "../src/app/three_panel_values.ts";
+} from "../src/app/three_panel_core.ts";
 import { ThreePanelRenderQueue } from "../src/app/three_panel_render_queue.ts";
 import { WorkbenchThreeCadenceMeter } from "../src/app/workbench_three_cadence.ts";
 import { Signal } from "../src/signals/mod.ts";

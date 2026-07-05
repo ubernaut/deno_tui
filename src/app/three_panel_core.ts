@@ -1,3 +1,10 @@
+export interface ThreePanelValueSignal<T> {
+  peek(): T;
+}
+
+export type ThreePanelResolvableValue<T> = T | ThreePanelValueSignal<T>;
+export type ThreePanelResolvableLiveValue = boolean | ThreePanelValueSignal<boolean> | (() => boolean);
+
 export type ThreePanelLifecycleState =
   | "idle"
   | "initializing"
@@ -35,6 +42,29 @@ export interface ThreePanelCurrentFrameInput<TRenderer, TBundle>
   running: boolean;
 }
 
+export interface ThreePanelFrameUpdate {
+  rendererBacked: boolean;
+  rows: number;
+  columns: number;
+}
+
+export function resolveThreePanelValue<T>(value: ThreePanelResolvableValue<T>): T {
+  return isThreePanelValueSignal(value) ? value.peek() : value;
+}
+
+export function resolveOptionalThreePanelValue<T>(
+  value: ThreePanelResolvableValue<T> | undefined,
+): T | undefined {
+  return value === undefined ? undefined : resolveThreePanelValue(value);
+}
+
+export function resolveThreePanelLiveValue(value: ThreePanelResolvableLiveValue | undefined): boolean {
+  if (value === undefined) return true;
+  if (isThreePanelValueSignal(value)) return value.peek();
+  if (typeof value === "function") return value();
+  return value;
+}
+
 export function resolveThreePanelLifecycleState(input: ThreePanelLifecycleStateInput): ThreePanelLifecycleState {
   if (input.disposed) return "disposed";
   if (input.failed) return "failed";
@@ -57,4 +87,20 @@ export function isCurrentThreePanelFrame<TRenderer, TBundle>(
   input: ThreePanelCurrentFrameInput<TRenderer, TBundle>,
 ): boolean {
   return input.running && ownsThreePanelFrame(input);
+}
+
+/** Builds the lightweight event payload emitted when a Three panel renders or publishes a grid. */
+export function threePanelFrameUpdate(
+  grid: readonly (readonly string[] | undefined)[] | undefined,
+  rendererBacked: boolean,
+): ThreePanelFrameUpdate {
+  return {
+    rendererBacked,
+    rows: grid?.length ?? 0,
+    columns: grid?.[0]?.length ?? 0,
+  };
+}
+
+function isThreePanelValueSignal<T>(value: unknown): value is ThreePanelValueSignal<T> {
+  return typeof value === "object" && value !== null && typeof (value as { peek?: unknown }).peek === "function";
 }

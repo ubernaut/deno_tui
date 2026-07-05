@@ -25,7 +25,7 @@ import {
   ownsThreePanelFrame,
   resolveThreePanelLifecycleState,
   type ThreePanelLifecycleState,
-} from "../src/app/three_panel_lifecycle.ts";
+} from "../src/app/three_panel_core.ts";
 import {
   threePanelAdaptiveRenderCellsDiagnostic,
   threePanelGraphicsFallbackDiagnostic,
@@ -42,7 +42,7 @@ import {
   threePanelRendererStateMatches,
   type ThreePanelRendererStateSnapshot,
 } from "../src/app/three_panel_effect.ts";
-import { type ThreePanelFrameUpdate, threePanelFrameUpdate } from "../src/app/three_panel_frame_update.ts";
+import { type ThreePanelFrameUpdate, threePanelFrameUpdate } from "../src/app/three_panel_core.ts";
 import { hasThreePanelGridCells, ThreePanelGridPublisher } from "../src/app/three_panel_grid.ts";
 import {
   resolveThreePanelRenderPolicy,
@@ -57,11 +57,11 @@ import {
   resolveOptionalThreePanelValue,
   resolveThreePanelLiveValue,
   resolveThreePanelValue,
-} from "../src/app/three_panel_values.ts";
+} from "../src/app/three_panel_core.ts";
 import type { AsciiOptions, Rect, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 
 export type { ThreePanelInteractionState } from "../src/app/three_panel_interaction.ts";
-export type { ThreePanelFrameUpdate } from "../src/app/three_panel_frame_update.ts";
+export type { ThreePanelFrameUpdate } from "../src/app/three_panel_core.ts";
 export {
   resolveThreePanelAdaptiveRenderBudget,
   ThreePanelAdaptiveRenderBudgetController,
@@ -90,7 +90,7 @@ export {
   type ThreePanelResolvableLiveValue,
   type ThreePanelResolvableValue,
   type ThreePanelValueSignal,
-} from "../src/app/three_panel_values.ts";
+} from "../src/app/three_panel_core.ts";
 
 export interface ThreeSceneState {
   mode: ThreeSceneMode;

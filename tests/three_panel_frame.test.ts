@@ -12,7 +12,7 @@ import {
   ThreePanelRenderQueue,
   type ThreeSceneState,
 } from "../app/three_panel.ts";
-import { resolveThreePanelLifecycleState } from "../src/app/three_panel_lifecycle.ts";
+import { resolveThreePanelLifecycleState } from "../src/app/three_panel_core.ts";
 import { Canvas, MemoryCanvasSink, type ThreeAsciiGridRenderer, ThreeAsciiObject } from "../src/canvas/mod.ts";
 import type {
   GraphicsDeleteMode,
