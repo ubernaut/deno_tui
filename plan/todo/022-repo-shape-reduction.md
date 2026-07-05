@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `748`
+- Tracked files after the current consolidation passes: `746`
 - Tracked top-level file counts:
   - `src`: `360`
-  - `tests`: `169`
+  - `tests`: `167`
   - `app`: `48`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,195` lines across `43` files
   - `app`: `20,429` lines across `48` files
   - `examples`: `8,732` lines across `41` files
-  - `tests`: `49,264` lines across `169` files
+  - `tests`: `49,244` lines across `167` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `24MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -110,6 +110,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Workbench viewport helper assertions are now bundled into `tests/workbench_layout.test.ts`
   - Three ASCII deferred readback staleness, submission, and failure assertions are now bundled into
     `tests/three_ascii_core.test.ts`
+  - Three ASCII effect option and effect state assertions are now bundled into `tests/three_ascii_core.test.ts`
 - Prefer subsystem-level runtime smoke coverage for workbench, Three ASCII, terminal shell, and web interaction.
 
 ### P1: Keep Three ASCII Performance Gated By Real Probes
@@ -117,8 +118,8 @@ The library core is real and valuable, but it needs clearer boundaries:
 - Continue using benchmark cases for hot helpers, but treat live probes as required evidence:
   - `deno task three-workbench:startup-probe`
   - `deno task three-ascii:live-probe -- --frames 45 --glyphs blocks --max-cells 960 --check --max-average-ms 40`
-- Latest workbench block-mode startup probe after the Three ASCII readback test consolidation: `6.67ms` steady average,
-  about `150.0 fps` at `53x17` cells with the capped default-workbench probe.
+- Latest workbench block-mode startup probe after the Three ASCII effect test consolidation: `6.80ms` steady average,
+  about `147.0 fps` at `53x17` cells with the capped default-workbench probe.
 - Avoid speculative micro-optimizations unless they improve measured workbench/default-demo behavior.
 
 ### P2: Split Demo Framework From Library Framework

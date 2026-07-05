@@ -28,6 +28,16 @@ import {
 } from "../src/three_ascii/colors.ts";
 import { resolveThreeAsciiComputeMode } from "../src/three_ascii/compute_mode.ts";
 import {
+  patchThreeAsciiEffectOptions,
+  threeAsciiEffectOptionsAffectComputeUniforms,
+} from "../src/three_ascii/effect_options.ts";
+import {
+  defaultThreeAsciiEffectState,
+  shouldIncludeThreeAsciiTerminalEdges,
+  threeAsciiEffectStateFromSource,
+  type ThreeAsciiEffectStateSource,
+} from "../src/three_ascii/effect_state.ts";
+import {
   emptyThreeAsciiRenderFrame,
   resolveThreeAsciiRenderFrameSelection,
   resolveThreeAsciiRenderFrameSelectionInto,
@@ -277,6 +287,129 @@ Deno.test("three ascii compute mode matches terminal glyph style requirements", 
     includeDepthColor: true,
     includeFillReadback: false,
   });
+});
+
+Deno.test("three ascii effect option patches report changed values and uniform dirtiness", () => {
+  const target = { normalThreshold: 0.1, edgeThreshold: 8 };
+
+  const noOp = patchThreeAsciiEffectOptions(target, { normalThreshold: 0.1 });
+  assertEquals(noOp.changed, false);
+  assertEquals(noOp.patch, {});
+  assertEquals(noOp.uniformDirty, false);
+  assertEquals(target.normalThreshold, 0.1);
+
+  const changed = patchThreeAsciiEffectOptions(target, { normalThreshold: 0.2, edgeThreshold: 6 });
+  assertEquals(changed.changed, true);
+  assertEquals(changed.patch, { normalThreshold: 0.2, edgeThreshold: 6 });
+  assertEquals(changed.uniformDirty, true);
+  assertEquals(target.normalThreshold, 0.2);
+  assertEquals(target.edgeThreshold, 6);
+  assertEquals(threeAsciiEffectOptionsAffectComputeUniforms({ edgeThreshold: 4 }), true);
+  assertEquals(threeAsciiEffectOptionsAffectComputeUniforms({ exposure: 1.2 }), true);
+  assertEquals(threeAsciiEffectOptionsAffectComputeUniforms({ normalThreshold: 0.2 }), false);
+  assertEquals(threeAsciiEffectOptionsAffectComputeUniforms({ offset: { x: 1, y: 1 } }), false);
+});
+
+Deno.test("three ascii effect option patches normalize colors and compare offsets by value", () => {
+  const colors = {
+    asciiColor: new Color(0xffffff),
+    backgroundColor: 0x000000,
+  };
+
+  const noColorOp = patchThreeAsciiEffectOptions(colors, {
+    asciiColor: "#ffffff",
+    backgroundColor: new Color(0x000000),
+  });
+  assertEquals(noColorOp.changed, false);
+  assertEquals(noColorOp.uniformDirty, false);
+
+  const colorChange = patchThreeAsciiEffectOptions(colors, { backgroundColor: "#010203" });
+  assertEquals(colorChange.changed, true);
+  assertEquals(colorChange.uniformDirty, true);
+  assertEquals((colorChange.patch.backgroundColor as Color).getHex(), 0x010203);
+  assertEquals((colors.backgroundColor as Color).getHex(), 0x010203);
+
+  const offset = { offset: { x: 1, y: 2 } };
+  assertEquals(patchThreeAsciiEffectOptions(offset, { offset: { x: 1, y: 2 } }).changed, false);
+  const offsetChange = patchThreeAsciiEffectOptions(offset, { offset: { x: 2, y: 2 } });
+  assertEquals(offsetChange.changed, true);
+  assertEquals(offsetChange.patch.offset, { x: 2, y: 2 });
+  assertEquals(offsetChange.uniformDirty, false);
+});
+
+Deno.test("three ascii effect state applies defaults and projects Acerola node state", () => {
+  const defaults = defaultThreeAsciiEffectState({
+    asciiColor: 0x123456,
+    backgroundColor: "#010203",
+  });
+
+  assertEquals(defaults.edges, true);
+  assertEquals(defaults.fill, true);
+  assertEquals(defaults.invertLuminance, false);
+  assertEquals(defaults.exposure, 1);
+  assertEquals(defaults.attenuation, 1);
+  assertEquals(defaults.blendWithBase, 0);
+  assertEquals(defaults.depthFalloff, 0);
+  assertEquals(defaults.depthOffset, 0);
+  assertEquals(defaults.edgeThreshold, 8);
+  assertEquals(defaults.asciiColor.getHex(), 0x123456);
+  assertEquals(defaults.backgroundColor.getHex(), 0x010203);
+
+  const configured = defaultThreeAsciiEffectState({
+    edges: false,
+    fill: false,
+    invertLuminance: true,
+    exposure: 1.4,
+    attenuation: 0.8,
+    blendWithBase: 0.5,
+    depthFalloff: 0.18,
+    depthOffset: 110,
+    edgeThreshold: 12,
+  });
+  assertEquals(configured.edges, false);
+  assertEquals(configured.fill, false);
+  assertEquals(configured.invertLuminance, true);
+  assertEquals(configured.exposure, 1.4);
+  assertEquals(configured.attenuation, 0.8);
+  assertEquals(configured.blendWithBase, 0.5);
+  assertEquals(configured.depthFalloff, 0.18);
+  assertEquals(configured.depthOffset, 110);
+  assertEquals(configured.edgeThreshold, 12);
+
+  const asciiColor = new Color(0xff3300);
+  const backgroundColor = new Color(0x001122);
+  const source: ThreeAsciiEffectStateSource = {
+    edges: { value: 0 },
+    fill: { value: 1 },
+    invertLuminance: { value: "yes" },
+    exposure: { value: "1.5" },
+    attenuation: { value: 0.75 },
+    blendWithBase: { value: "0.25" },
+    depthFalloff: { value: "2" },
+    depthOffset: { value: 3 },
+    edgeThreshold: { value: "9" },
+    asciiColor: { value: asciiColor },
+    backgroundColor: { value: backgroundColor },
+  };
+  const projected = threeAsciiEffectStateFromSource(source);
+  assertEquals(projected.edges, false);
+  assertEquals(projected.fill, true);
+  assertEquals(projected.invertLuminance, true);
+  assertEquals(projected.exposure, 1.5);
+  assertEquals(projected.attenuation, 0.75);
+  assertEquals(projected.blendWithBase, 0.25);
+  assertEquals(projected.depthFalloff, 2);
+  assertEquals(projected.depthOffset, 3);
+  assertEquals(projected.edgeThreshold, 9);
+  assertEquals(projected.asciiColor, asciiColor);
+  assertEquals(projected.backgroundColor, backgroundColor);
+});
+
+Deno.test("three ascii terminal edge overlay is disabled for block rendering", () => {
+  assertEquals(shouldIncludeThreeAsciiTerminalEdges({ edges: true }, "glyphs"), true);
+  assertEquals(shouldIncludeThreeAsciiTerminalEdges({ edges: true }, "mixed"), true);
+  assertEquals(shouldIncludeThreeAsciiTerminalEdges({ edges: true }, "blocks"), false);
+  assertEquals(shouldIncludeThreeAsciiTerminalEdges({ edges: false }, "glyphs"), false);
 });
 
 Deno.test("three ascii frame selection resolves ANSI and image outputs", () => {
