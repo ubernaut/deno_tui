@@ -27,17 +27,15 @@ import {
 import {
   fingerprintThreePanelGrid,
   hasThreePanelGridCells,
+  threePanelAdaptiveRenderCellsDiagnostic,
   threePanelBlankGrid,
+  threePanelGraphicsFallbackDiagnostic,
+  threePanelGraphicsFallbackReason,
   ThreePanelGraphicsImageController,
   ThreePanelGridPublicationCache,
   ThreePanelGridPublisher,
-} from "../src/app/three_panel_core.ts";
-import {
-  threePanelAdaptiveRenderCellsDiagnostic,
-  threePanelGraphicsFallbackDiagnostic,
-  threePanelGraphicsFallbackReason,
   threePanelSlowFrameDiagnostic,
-} from "../src/app/three_panel_diagnostics.ts";
+} from "../src/app/three_panel_core.ts";
 import { WorkbenchThreeCadenceMeter } from "../src/app/workbench_three_runtime.ts";
 import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import type {

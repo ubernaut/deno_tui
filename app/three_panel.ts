@@ -25,17 +25,15 @@ import {
   isCurrentThreePanelFrame,
   ownsThreePanelFrame,
   resolveThreePanelLifecycleState,
+  threePanelAdaptiveRenderCellsDiagnostic,
+  threePanelGraphicsFallbackDiagnostic,
+  threePanelGraphicsFallbackReason,
   ThreePanelGraphicsImageController,
   ThreePanelGridPublisher,
   type ThreePanelLifecycleState,
   ThreePanelRenderQueue,
-} from "../src/app/three_panel_core.ts";
-import {
-  threePanelAdaptiveRenderCellsDiagnostic,
-  threePanelGraphicsFallbackDiagnostic,
-  threePanelGraphicsFallbackReason,
   threePanelSlowFrameDiagnostic,
-} from "../src/app/three_panel_diagnostics.ts";
+} from "../src/app/three_panel_core.ts";
 import {
   emptyThreePanelRendererState,
   resolveThreePanelRendererStateUpdate,
