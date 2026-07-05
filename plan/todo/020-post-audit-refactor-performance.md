@@ -1225,3 +1225,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   inserted intermediate fullscreen pressure tiers, and added a large fullscreen resize visual-smoke task. PTY captures
   at `190x54` and `246x72` now show real renderer telemetry (`8228c/8228c` and `15066c/15066c`) instead of an offline
   fallback or visibly stretched lower-resolution source grid.
+- Extracted API Workbench control keyboard resolution into a focused helper module behind the existing controls facade,
+  preserving terminal/browser imports while trimming the oversized controls projection module. Focused control tests and
+  terminal/web type checks passed after the split.
