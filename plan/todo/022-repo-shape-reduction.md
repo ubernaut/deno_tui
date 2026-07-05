@@ -7,11 +7,11 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `776`
+- Tracked files after the current consolidation passes: `775`
 - Tracked top-level file counts:
   - `src`: `368`
   - `tests`: `188`
-  - `app`: `49`
+  - `app`: `48`
   - `docs`: `50`
   - `examples`: `42`
   - `scripts`: `27`
@@ -21,7 +21,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,241` lines across `43` files
   - `src/three_ascii`: `7,195` lines across `45` files
-  - `app`: `20,423` lines across `49` files
+  - `app`: `20,428` lines across `48` files
   - `examples`: `8,732` lines across `42` files
   - `tests`: `49,299` lines across `188` files
 - Generated/docs weight:
@@ -58,6 +58,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - visualization Three fallback/signal helpers are bundled in `app/visualization_three.ts`
   - the app ASCII options shim was removed in favor of direct `src/three_ascii/*` imports
   - system metric diagnostics are folded into `app/system_metrics.ts`
+  - system metrics network parsing is folded into `app/system_metrics_sources.ts`
   - API workbench control styles and wrapped-option projection are folded into `app/api_workbench_controls.ts`
   - API workbench primitive control ids and hit types are folded into `app/api_workbench_control_line.ts`
   - API workbench control row projection is folded into `app/api_workbench_controls.ts`

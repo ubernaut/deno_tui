@@ -2,7 +2,6 @@ import { Signal } from "../src/signals/mod.ts";
 import type { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import { clamp } from "./styles.ts";
 import { NvidiaSmiGpuMetricsProvider, type SystemGpuMetricsProvider } from "./system_metrics_gpu.ts";
-import { type NetCounters, sampleNetworkStats } from "./system_metrics_network.ts";
 import {
   DenoSystemMetricsProvider,
   type SystemMetricsCommandOutput,
@@ -17,8 +16,10 @@ import {
 import { collectAlerts, emptySnapshot, pushHistory } from "./system_metrics_snapshot.ts";
 import {
   type CpuTimes,
+  type NetCounters,
   parseDfDiskRows,
   sampleCpuStatRows,
+  sampleNetworkStats,
   sampleTemperatures,
   type TemperatureSample,
 } from "./system_metrics_sources.ts";
