@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `573`
+- Tracked files after the current consolidation passes: `572`
 - Tracked top-level file counts:
   - `src`: `296`
-  - `tests`: `77`
+  - `tests`: `76`
   - `app`: `29`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,000` lines across `25` files
   - `app`: `20,381` lines across `29` files
   - `examples`: `8,814` lines across `42` files
-  - `tests`: `49,646` lines across `77` files
+  - `tests`: `49,648` lines across `76` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -295,6 +295,8 @@ The library core is real and valuable, but it needs clearer boundaries:
   - API workbench hit resolution, scrollbar offsets, and touch-target expansion assertions are now bundled into
     `tests/api_workbench_controls.test.ts`, keeping keyboard, control, pointer, and hit behavior together.
   - Workbench help and shared modal-content assertions are now bundled into `tests/workbench_facade.test.ts`
+  - Workbench overlay layout, dropdown render-command, modal row, and modal action assertions are now bundled into
+    `tests/workbench_facade.test.ts`, keeping facade-exported workbench helpers in one subsystem suite.
   - Web API workbench terminal workspace assertions are now bundled into `tests/web_remote_terminal.test.ts`
   - GPU probe lock assertions are now bundled into `tests/three_ascii_probe.test.ts`
   - Three panel live-probe summary and validation assertions are now bundled into `tests/three_ascii_probe.test.ts`
