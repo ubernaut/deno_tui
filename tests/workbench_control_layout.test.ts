@@ -1,6 +1,12 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { assertEquals } from "./deps.ts";
 import {
+  projectWorkbenchButton,
+  projectWorkbenchButtonCommand,
+  workbenchButtonPaintOptions,
+  type WorkbenchButtonTheme,
+} from "../src/app/workbench_button_style.ts";
+import {
   layoutWorkbenchButtonRow,
   layoutWorkbenchButtonRowInto,
   layoutWorkbenchControlButtonLine,
@@ -11,6 +17,107 @@ import {
   workbenchMobileCommandStripItemsInto,
   wrappedControlOptionRowCount,
 } from "../src/app/workbench_control_layout.ts";
+
+const buttonTheme: WorkbenchButtonTheme = {
+  background: "#000000",
+  border: "#444444",
+  buttonActiveBg: "#00ffaa",
+  buttonBg: "#2255ff",
+  buttonMutedBg: "#202020",
+  buttonMutedText: "#777777",
+  danger: "#ff2255",
+  good: "#44dd66",
+  text: "#eeeeee",
+  warn: "#ffcc33",
+};
+
+const contrast = (color: string) => `contrast:${color}`;
+
+Deno.test("workbenchButtonPaintOptions resolves base active and disabled states", () => {
+  assertEquals(workbenchButtonPaintOptions(buttonTheme, contrast), {
+    fg: "contrast:#2255ff",
+    bg: buttonTheme.buttonBg,
+    bold: true,
+  });
+  assertEquals(workbenchButtonPaintOptions(buttonTheme, contrast, "active"), {
+    fg: "contrast:#00ffaa",
+    bg: buttonTheme.buttonActiveBg,
+    bold: true,
+  });
+  assertEquals(workbenchButtonPaintOptions(buttonTheme, contrast, "disabled"), {
+    fg: buttonTheme.buttonMutedText,
+    bg: buttonTheme.buttonMutedBg,
+    bold: false,
+  });
+});
+
+Deno.test("workbenchButtonPaintOptions lets semantic tones override active color", () => {
+  assertEquals(workbenchButtonPaintOptions(buttonTheme, contrast, "active", "danger"), {
+    fg: "contrast:#ff2255",
+    bg: buttonTheme.danger,
+    bold: true,
+  });
+  assertEquals(workbenchButtonPaintOptions(buttonTheme, contrast, "base", "warning"), {
+    fg: "contrast:#ffcc33",
+    bg: buttonTheme.warn,
+    bold: true,
+  });
+  assertEquals(workbenchButtonPaintOptions(buttonTheme, contrast, "base", "success"), {
+    fg: "contrast:#44dd66",
+    bg: buttonTheme.good,
+    bold: true,
+  });
+  assertEquals(workbenchButtonPaintOptions(buttonTheme, contrast, "base", "muted"), {
+    fg: "contrast:#444444",
+    bg: buttonTheme.border,
+    bold: true,
+  });
+});
+
+Deno.test("projectWorkbenchButton clips text and resolves shared paint options", () => {
+  assertEquals(projectWorkbenchButton(" Launch ", buttonTheme, contrast, { maxWidth: 5 }), {
+    text: "[ La…",
+    width: 5,
+    style: {
+      fg: "contrast:#2255ff",
+      bg: buttonTheme.buttonBg,
+      bold: true,
+    },
+  });
+  assertEquals(projectWorkbenchButton("x", buttonTheme, contrast, { compact: true, tone: "danger" }), {
+    text: "[x]",
+    width: 3,
+    style: {
+      fg: "contrast:#ff2255",
+      bg: buttonTheme.danger,
+      bold: true,
+    },
+  });
+});
+
+Deno.test("projectWorkbenchButtonCommand preserves pre-clipped text and resolves paint", () => {
+  assertEquals(projectWorkbenchButtonCommand({ text: "[Save]", state: "active" }, buttonTheme, contrast), {
+    text: "[Save]",
+    width: 6,
+    style: {
+      fg: "contrast:#00ffaa",
+      bg: buttonTheme.buttonActiveBg,
+      bold: true,
+    },
+  });
+  assertEquals(
+    projectWorkbenchButtonCommand({ text: "[Delete]", state: "disabled", tone: "danger" }, buttonTheme, contrast),
+    {
+      text: "[Delete]",
+      width: 8,
+      style: {
+        fg: buttonTheme.buttonMutedText,
+        bg: buttonTheme.buttonMutedBg,
+        bold: false,
+      },
+    },
+  );
+});
 
 Deno.test("layoutWorkbenchControlButtonLine keeps button background scoped to the button token", () => {
   assertEquals(layoutWorkbenchControlButtonLine("> ", "[ Run ] presses=2", 24), [
