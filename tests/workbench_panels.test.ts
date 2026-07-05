@@ -3,6 +3,10 @@ import {
   explorerTextRowsInto,
   projectedTextWidth,
   workbenchDataContentWidth,
+  type WorkbenchDataTableBuffers,
+  workbenchDataTablePageSize,
+  workbenchDataTableRowsInto,
+  type WorkbenchDataTableTheme,
   workbenchExplorerRowsInto,
   type WorkbenchExplorerTheme,
   type WorkbenchInspectorBuffers,
@@ -13,8 +17,15 @@ import {
   workbenchWindowContentSize,
 } from "../app/workbench_panels.ts";
 import type { RowStyle } from "../src/app/workbench_rows.ts";
+import type { DataColumn, DataTableView } from "../src/components/data_table.ts";
 import type { FileExplorerNode } from "../src/components/file_explorer.ts";
 import type { TreeRow } from "../src/components/tree.ts";
+
+interface DataRow extends Record<string, unknown> {
+  id: string;
+  name: string;
+  state: string;
+}
 
 const explorerTheme: WorkbenchExplorerTheme = {
   background: "#000000",
@@ -33,6 +44,35 @@ const inspectorTheme: WorkbenchInspectorTheme = {
   surface: "#050510",
   text: "#eeeeee",
   warn: "#ffaa00",
+};
+const dataTableTheme: WorkbenchDataTableTheme = {
+  accentDeep: "#552288",
+  background: "#000000",
+  buttonActiveBg: "#aaff00",
+  buttonActiveText: "#000000",
+  muted: "#bbaadd",
+  panelSoft: "#221133",
+  soft: "#9988aa",
+  surface: "#050510",
+  text: "#eeeeee",
+  warn: "#ffaa00",
+};
+const dataColumns: DataColumn<DataRow>[] = [
+  { id: "name", label: "Name", width: 8, sortable: true },
+  { id: "state", label: "State", width: 6, sortable: true },
+];
+const dataView: DataTableView<DataRow> = {
+  rows: [
+    { id: "one", name: "Data", state: "ready" },
+    { id: "two", name: "Logs", state: "warm" },
+  ],
+  totalRows: 2,
+  page: 0,
+  pageSize: 2,
+  pageCount: 1,
+  selectedIndex: 1,
+  selectedKey: "two",
+  selectedRow: { id: "two", name: "Logs", state: "warm" },
 };
 
 const directoryNode: FileExplorerNode = { id: "src", label: "src", kind: "directory", path: "src" };
@@ -240,6 +280,77 @@ Deno.test("workbench log rows trims stale retained rows", () => {
   const rows = workbenchLogRowsInto(target, [], { text: "#fff", surface: "#000" });
 
   assertEquals(rows.length, 0);
+});
+
+Deno.test("workbench data table projects header body spacer and footer rows", () => {
+  const rows = workbenchDataTableRowsInto([], {
+    view: dataView,
+    columns: dataColumns,
+    sort: { columnId: "state", direction: "desc" },
+    width: 80,
+    theme: dataTableTheme,
+    fit,
+    contrast: () => "#000000",
+    buffers: { textRows: [], bodyRows: [] },
+  });
+
+  assertEquals(rows[0], { text: "Name     State↓", fg: "#000000", bg: "#552288", bold: true });
+  assertEquals(rows[1], { text: "  Data     ready ", fg: "#eeeeee", bg: "#050510", bold: false });
+  assertEquals(rows[2], { text: "> Logs     warm  ", fg: "#000000", bg: "#ffaa00", bold: true });
+  assertEquals(rows[3], { text: "", bg: "#050510" });
+  assertEquals(rows[4], {
+    text: "page 1/1 selected two arrows/page keys S sort",
+    fg: "#bbaadd",
+    bg: "#221133",
+  });
+});
+
+Deno.test("workbench data table rows reuse caller-owned body buffers", () => {
+  const target: RowStyle[] = [];
+  const bodyRow: RowStyle = { text: "stale", fg: "x", bg: "y", bold: true };
+  const buffers: WorkbenchDataTableBuffers = { textRows: ["stale"], bodyRows: [bodyRow] };
+  const rows = workbenchDataTableRowsInto(target, {
+    view: { ...dataView, rows: dataView.rows.slice(0, 1), selectedIndex: 0 },
+    columns: dataColumns,
+    width: 80,
+    theme: dataTableTheme,
+    fit,
+    contrast: () => "#000000",
+    buffers,
+  });
+
+  assertEquals(rows === target, true);
+  assertEquals(buffers.bodyRows.length, 1);
+  assertEquals(buffers.bodyRows[0] === bodyRow, true);
+  assertEquals(rows[1] === bodyRow, true);
+  assertEquals(rows[1]?.text, "> Data     ready ");
+});
+
+Deno.test("workbench data table page size accounts for wrapped footer rows", () => {
+  assertEquals(
+    workbenchDataTablePageSize({
+      height: 8,
+      width: 80,
+      page: 1,
+      pageCount: 3,
+      selectedKey: "data",
+      theme: dataTableTheme,
+      fit,
+    }),
+    5,
+  );
+  assertEquals(
+    workbenchDataTablePageSize({
+      height: 8,
+      width: 10,
+      page: 1,
+      pageCount: 3,
+      selectedKey: "data",
+      theme: dataTableTheme,
+      fit,
+    }),
+    1,
+  );
 });
 
 Deno.test("workbenchWindowContentSize estimates built-in window content", () => {
