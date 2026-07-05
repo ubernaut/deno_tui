@@ -12,6 +12,24 @@ import {
   textWidth,
   UNICODE_CHAR_REGEXP,
 } from "../src/utils/strings.ts";
+import {
+  assertTerminalSnapshot,
+  canvasRowText,
+  canvasSnapshot,
+  compareTerminalSnapshot,
+  createTestCanvas,
+  createTestFocusable,
+  createTestKeyPress,
+  createTestMousePress,
+  createTestMouseScroll,
+  createTestStdout,
+  formatTerminalSnapshotDiff,
+  frameBufferToSnapshot,
+  normalizeTerminalSnapshot,
+  stripAnsi,
+  TestKeyPressTarget,
+  TestMouseTarget,
+} from "../src/testing/mod.ts";
 import { assert, assertEquals } from "./deps.ts";
 
 const unicodeString = "♥☭👀f🌏g⚠5✌💢✅💛🌻";
@@ -167,4 +185,117 @@ Deno.test("utils string helpers measure unicode and ANSI-styled cells", async (t
     assertEquals(cells[2], "\x1b[38;2;9;8;7;48;2;4;5;6m \x1b[0m");
     assertEquals(cells[3], "\x1b[38;2;9;8;7;48;2;7;8;9m \x1b[0m");
   });
+});
+
+Deno.test("testing helpers strip ANSI and normalize terminal snapshots", () => {
+  assertEquals(stripAnsi("\x1b[31mred\x1b[0m"), "red");
+  assertEquals(normalizeTerminalSnapshot("a   \n b  "), "a\n b");
+  assertEquals(frameBufferToSnapshot([["a", new TextEncoder().encode("b"), undefined]]), "ab");
+});
+
+Deno.test("testing stdout and canvas helpers expose render snapshots", () => {
+  const stdout = createTestStdout();
+  const data = new TextEncoder().encode("abc");
+
+  assertEquals(stdout.writeSync(data), 3);
+  assertEquals(stdout.chunks.length, 1);
+  assertEquals(stdout.text, "abc");
+
+  stdout.clear();
+  assertEquals(stdout.chunks.length, 0);
+  assertEquals(stdout.text, "");
+
+  const canvas = createTestCanvas({ size: { columns: 4, rows: 2 } });
+  canvas.frameBuffer[0] = ["a", "b"];
+  canvas.frameBuffer[1] = ["c"];
+  canvas.frameBuffer[1][2] = "d";
+
+  assertEquals(canvasRowText(canvas, 0), "ab  ");
+  assertEquals(canvasRowText(canvas, 1, 3), "c d");
+  assertEquals(canvasSnapshot(canvas), "ab\nc d");
+});
+
+Deno.test("terminal snapshot comparison reports bounded line diagnostics", () => {
+  const comparison = compareTerminalSnapshot("\x1b[32mabc\x1b[0m\nxyz", "abc\nxYz");
+
+  assertEquals(comparison.pass, false);
+  assertEquals(comparison.actual, "abc\nxyz");
+  assertEquals(comparison.expected, "abc\nxYz");
+  assertEquals(comparison.mismatches, [
+    { line: 2, column: 2, expected: "xYz", actual: "xyz" },
+  ]);
+
+  const bounded = compareTerminalSnapshot("a\nb\nc", "x\ny\nz", { maxMismatches: 2 });
+  assertEquals(bounded.mismatches.length, 2);
+  assertEquals(
+    formatTerminalSnapshotDiff(bounded),
+    [
+      "Terminal snapshot mismatch:",
+      "line 1, column 1",
+      '  expected: "x"',
+      '  actual:   "a"',
+      "line 2, column 1",
+      '  expected: "y"',
+      '  actual:   "b"',
+    ].join("\n"),
+  );
+});
+
+Deno.test("assertTerminalSnapshot throws helpful mismatch errors", () => {
+  assertTerminalSnapshot("ready  \n", "ready");
+
+  try {
+    assertTerminalSnapshot("ready", "done");
+    throw new Error("expected snapshot mismatch");
+  } catch (error) {
+    assertEquals(error instanceof Error, true);
+    assertEquals((error as Error).message.includes("line 1, column 1"), true);
+  }
+});
+
+Deno.test("testing input helpers create deterministic events and focusables", () => {
+  assertEquals(createTestKeyPress("tab", { shift: true }), {
+    key: "tab",
+    shift: true,
+    ctrl: false,
+    meta: false,
+    buffer: new Uint8Array(),
+  });
+  assertEquals(createTestMousePress({ x: 2, y: 3, button: 1 }).button, 1);
+  assertEquals(createTestMouseScroll(1).scroll, 1);
+  assertEquals(createTestFocusable("focused").state.peek(), "focused");
+});
+
+Deno.test("testing key and mouse targets emit and unsubscribe listeners", () => {
+  const keyTarget = new TestKeyPressTarget();
+  const keys: string[] = [];
+  const unsubscribe = keyTarget.on("keyPress", (event) => {
+    keys.push(event.key);
+  });
+
+  keyTarget.key("tab");
+  unsubscribe();
+  keyTarget.key("return");
+
+  assertEquals(keys, ["tab"]);
+  assertEquals(keyTarget.listenerCount(), 0);
+
+  const mouseTarget = new TestMouseTarget();
+  const mouse: string[] = [];
+  const stopPress = mouseTarget.on("mousePress", (event) => {
+    mouse.push(`press:${event.x}`);
+  });
+  const stopScroll = mouseTarget.on("mouseScroll", (event) => {
+    mouse.push(`scroll:${event.scroll}`);
+  });
+
+  mouseTarget.press({ x: 4 });
+  mouseTarget.scroll(-1);
+  stopPress();
+  stopScroll();
+  mouseTarget.press({ x: 9 });
+  mouseTarget.scroll(1);
+
+  assertEquals(mouse, ["press:4", "scroll:-1"]);
+  assertEquals(mouseTarget.listenerCount(), 0);
 });

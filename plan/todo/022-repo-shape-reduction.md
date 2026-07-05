@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `572`
+- Tracked files after the current consolidation passes: `571`
 - Tracked top-level file counts:
   - `src`: `296`
-  - `tests`: `76`
+  - `tests`: `75`
   - `app`: `29`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,000` lines across `25` files
   - `app`: `20,381` lines across `29` files
   - `examples`: `8,814` lines across `42` files
-  - `tests`: `49,648` lines across `76` files
+  - `tests`: `49,634` lines across `75` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -205,6 +205,8 @@ The library core is real and valuable, but it needs clearer boundaries:
 - Preserve meaningful assertions, but stop creating one test file per one tiny helper.
 - Completed first passes:
   - `tests/utils/*` are now `tests/utils.test.ts`
+  - `src/testing` helper assertions are now bundled into `tests/utils.test.ts`, keeping test-only snapshot, canvas,
+    stdout, and input-target utilities with the general utility suite.
   - API workbench explorer, inspector, and log projector tests are now `tests/workbench_panels.test.ts`
   - visualization Three fallback/signal and renderer fallback tests are now `tests/visualization_three.test.ts`
   - Neon Three scene catalog and geometry helper tests are now bundled into `tests/neon_suite.test.ts`
