@@ -52,7 +52,7 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
   assertEquals(WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS, WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 480_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 24_000);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 180_000);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 600_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerGrid, 2_500);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerSecond, 90_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowFpsRatio, WORKBENCH_THREE_PRESSURE_LOW_FPS_RATIO);
@@ -91,6 +91,7 @@ Deno.test("API workbench Three policy keeps live panes faster than idle panes", 
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(240, { live: true }), 1000 / 20);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(480, { live: true }), 1000 / 20);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(960, { live: true }), 1000 / 20);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(1_140, { live: true }), 1000 / 20);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(1_920, { live: true }), 1000 / 20);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: true }), 1000 / 20);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(7_680, { live: true }), 1000 / 15);
@@ -219,6 +220,22 @@ Deno.test("API workbench Three policy floors live caps to the visible tiled pane
 
   assertEquals(snapshot.effectiveMaxCells, 867);
   assertStrictEquals(snapshot.runtimeAscii, ascii);
+});
+
+Deno.test("API workbench Three policy raises live runtime ASCII to resized tiled pane area", () => {
+  const ascii = createDefaultWorkbenchAsciiOptions();
+  const snapshot = resolveWorkbenchThreeRuntimeBudgetSnapshot({
+    id: "three",
+    ascii,
+    liveMaxCells: 960,
+    liveViewport: { width: 71, height: 22 },
+    fullscreenMaxCells: 1_920,
+    viewport: { width: 220, height: 60 },
+  });
+
+  assertEquals(snapshot.effectiveMaxCells, 1_562);
+  assertEquals(snapshot.runtimeAscii.renderMaxCells, 1_562);
+  assertEquals(ascii.renderMaxCells, 960);
 });
 
 Deno.test("API workbench Three policy compares every runtime ASCII option", () => {
@@ -534,7 +551,7 @@ Deno.test("API workbench Three policy downshifts sustained 960-cell block output
   const sample = {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
     renderedThreeGrids: 1,
-    bytes: 12_000,
+    bytes: 30_000,
     durationMs: 0.05,
     sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(960, { live: true }),
   };

@@ -134,7 +134,23 @@ export function workbenchThreeFrameIntervalForCells(
 ): number {
   const intervals = options.live ? options.liveIntervals : options.idleIntervals;
   const fallback = options.live ? options.liveDefaultMs : options.idleDefaultMs;
-  return intervals.get(Math.max(1, Math.floor(cells))) ?? Math.max(1, fallback);
+  const current = Math.max(1, Math.floor(cells));
+  const exact = intervals.get(current);
+  if (exact !== undefined) return exact;
+  let nearestUpperCells = Number.POSITIVE_INFINITY;
+  let nearestUpperMs: number | undefined;
+  let nearestLowerCells = 0;
+  let nearestLowerMs: number | undefined;
+  for (const [tierCells, tierMs] of intervals) {
+    if (tierCells > current && tierCells < nearestUpperCells) {
+      nearestUpperCells = tierCells;
+      nearestUpperMs = tierMs;
+    } else if (tierCells < current && tierCells > nearestLowerCells) {
+      nearestLowerCells = tierCells;
+      nearestLowerMs = tierMs;
+    }
+  }
+  return nearestUpperMs ?? nearestLowerMs ?? Math.max(1, fallback);
 }
 
 /** Returns true when a visible Three workbench window should keep Three rendering interactive. */

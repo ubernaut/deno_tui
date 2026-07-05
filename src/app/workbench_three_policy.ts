@@ -26,7 +26,7 @@ export const WORKBENCH_THREE_PRESSURE_HIGH_BYTES = 480_000;
 export const WORKBENCH_THREE_PRESSURE_LOW_BYTES = 35_000;
 export const WORKBENCH_THREE_PRESSURE_HIGH_BYTES_PER_GRID = 24_000;
 export const WORKBENCH_THREE_PRESSURE_LOW_BYTES_PER_GRID = 2_500;
-export const WORKBENCH_THREE_PRESSURE_HIGH_BYTES_PER_SECOND = 180_000;
+export const WORKBENCH_THREE_PRESSURE_HIGH_BYTES_PER_SECOND = 600_000;
 export const WORKBENCH_THREE_PRESSURE_LOW_BYTES_PER_SECOND = 90_000;
 export const WORKBENCH_THREE_FULLSCREEN_PRESSURE_HIGH_BYTES_PER_GRID = Number.POSITIVE_INFINITY;
 export const WORKBENCH_THREE_FULLSCREEN_PRESSURE_LOW_BYTES_PER_GRID = 18_000;
@@ -235,16 +235,31 @@ export function resolveWorkbenchThreeRuntimeBudgetSnapshot<TId extends string>(
       fullscreenMinCells: fullscreenTargetCells,
     })
     : Math.max(liveViewportTargetCells, Math.floor(input.liveMaxCells));
-  return {
-    fullscreenViewportCells,
-    fullscreenTargetCells,
-    effectiveMaxCells,
-    runtimeAscii: resolveWorkbenchThreeFullscreenAsciiOptions({
+  const runtimeAscii = fullscreenThree
+    ? resolveWorkbenchThreeFullscreenAsciiOptions({
       id: input.id,
       fullscreenId: input.fullscreenId,
       ascii: input.ascii,
       fullscreenMinCells: fullscreenTargetCells,
-    }),
+    })
+    : resolveWorkbenchThreeLiveAsciiOptions(input.ascii, effectiveMaxCells);
+  return {
+    fullscreenViewportCells,
+    fullscreenTargetCells,
+    effectiveMaxCells,
+    runtimeAscii,
+  };
+}
+
+function resolveWorkbenchThreeLiveAsciiOptions(
+  ascii: ThreeAsciiConfigOptions,
+  liveMinCells: number,
+): ThreeAsciiConfigOptions {
+  const renderMaxCells = Math.max(1, Math.floor(liveMinCells));
+  if (ascii.renderMaxCells >= renderMaxCells) return ascii;
+  return {
+    ...ascii,
+    renderMaxCells,
   };
 }
 

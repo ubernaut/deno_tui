@@ -986,7 +986,7 @@ const threeViewportInteraction = new WorkbenchThreeViewportInteractionController
 
 tui.canvas.size.subscribe(() => {
   repaintPolicy.inspectScreenSize(tui.canvas.size.peek());
-  screenPainter.reset();
+  screenPainter.clearScreen();
   repaintPolicy.resetFullRepaintClock();
   requestResizeFullRepaintWindowAfterInitialObservation();
   scheduleDraw();

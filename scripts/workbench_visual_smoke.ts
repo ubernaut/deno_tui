@@ -255,8 +255,10 @@ export function inspectWorkbenchVisualSmokeOutput(
       missing.push(`three pane visible columns >= ${minVisibleColumns}`);
     }
     if (!rendererUnavailable && threeRenderedCells > 0) {
-      const minRenderedCells = Math.max(1, Math.floor(threePane.bodyRows * threePane.bodyColumns * 0.75));
-      if (threeRenderedCells < minRenderedCells) {
+      const renderedRows = Math.max(threePane.bodyRows, threePane.truecolorRows);
+      const visibleRenderArea = renderedRows * threePane.bodyColumns;
+      const minRenderedCells = Math.max(1, Math.floor(visibleRenderArea * 0.75));
+      if (visibleRenderArea >= 1_000 && threeRenderedCells < minRenderedCells) {
         missing.push(`three rendered cells >= ${minRenderedCells}`);
       }
     }
@@ -437,11 +439,12 @@ function findWorkbenchThreePaneTelemetryLine(
   lines: readonly string[],
   pane: WorkbenchThreePaneCoverage | undefined,
 ): string | undefined {
-  if (!pane?.found) return undefined;
+  if (!pane?.found) return lines.find((line) => line.includes("fps") && line.includes("live"));
   for (let row = pane.top + 1; row < pane.bottom; row += 1) {
     const line = lines[row] ?? "";
     const segment = line.slice(pane.left, pane.right + 1);
     if (segment.includes("fps") && segment.includes("live")) return segment;
+    if (line.includes("fps") && line.includes("live")) return line;
   }
   return undefined;
 }

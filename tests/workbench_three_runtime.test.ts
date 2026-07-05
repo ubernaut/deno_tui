@@ -477,6 +477,21 @@ Deno.test("resolveApiWorkbenchThreePressureChange reports steady pressure withou
   assertEquals(change.logMessage, undefined);
 });
 
+Deno.test("resolveApiWorkbenchThreePressureChange preserves viewport-promoted live cell budgets", () => {
+  const change = resolveApiWorkbenchThreePressureChange({
+    pressure: { currentCells: 1_140, highFrames: 0, lowFrames: 0 },
+    currentCells: 1_140,
+    frameIntervalMs: 1000 / 20,
+    stats: { changed: 8, bytes: 600, durationMs: 0.1 },
+    sample: { renderedThreeGrids: 1, renderedThreeRows: 18 },
+  });
+
+  assertEquals(change.pressure, { currentCells: 1_140, highFrames: 0, lowFrames: 0 });
+  assertEquals(change.changed, false);
+  assertEquals(change.nextCells, 1_140);
+  assertEquals(change.scoped, true);
+});
+
 Deno.test("resolveApiWorkbenchThreePressureChange projects downshift and log message", () => {
   const change = resolveApiWorkbenchThreePressureChange({
     pressure: { currentCells: 960, highFrames: 3, lowFrames: 0 },
