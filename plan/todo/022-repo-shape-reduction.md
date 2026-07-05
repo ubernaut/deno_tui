@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `611`
+- Tracked files after the current consolidation passes: `610`
 - Tracked top-level file counts:
   - `src`: `298`
-  - `tests`: `109`
+  - `tests`: `108`
   - `app`: `30`
   - `docs`: `50`
   - `examples`: `41`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `6,968` lines across `23` files
   - `app`: `20,341` lines across `30` files
   - `examples`: `8,729` lines across `41` files
-  - `tests`: `49,126` lines across `109` top-level test files
+  - `tests`: `49,122` lines across `108` top-level test files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -290,6 +290,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     those helpers from `src/app/*` directly, keeping the app facade focused on the view classes and factory.
   - app audio discovery and meter-failure assertions are now bundled into `tests/visualizations_dynamic.test.ts`,
     keeping app-only audio source behavior with the dynamic visualization/source-frame coverage that consumes it.
+  - visualization field renderer assertions are now bundled into `tests/visualization_primitives.test.ts`, keeping
+    bounded ASCII field coverage with the lower-level visualization drawing helpers.
 - Prefer subsystem-level runtime smoke coverage for workbench, Three ASCII, terminal shell, and web interaction.
 
 ### P1: Keep Three ASCII Performance Gated By Real Probes
