@@ -213,6 +213,7 @@ import {
 } from "../src/app/workbench_terminal.ts";
 import { AudioRegistry } from "./audio.ts";
 import {
+  type ApiWorkbenchBuiltInWindowId,
   apiWorkbenchColumns,
   apiWorkbenchDocs,
   apiWorkbenchLiveRowsInto,
@@ -220,8 +221,12 @@ import {
   type ApiWorkbenchProcessRow,
   apiWorkbenchRows,
   type ApiWorkbenchThemeSpec,
+  apiWorkbenchVisualizationSupportsThree,
   apiWorkbenchWindowTitle,
   createApiWorkbenchThemes,
+  createApiWorkbenchWindowCatalog,
+  TERMINAL_OUTPUT_WINDOW_ID,
+  TERMINAL_SHELL_WINDOW_ID,
 } from "./api_workbench_catalog.ts";
 import {
   expandedApiWorkbenchTouchHitRect,
@@ -232,13 +237,6 @@ import {
   resolveApiWorkbenchWindowVScrollbarOffset,
   resolveApiWorkbenchWorkspaceScrollbarOffset,
 } from "./api_workbench_hit.ts";
-import {
-  type ApiWorkbenchBuiltInWindowId,
-  apiWorkbenchVisualizationSupportsThree,
-  createApiWorkbenchWindowCatalog,
-  TERMINAL_OUTPUT_WINDOW_ID,
-  TERMINAL_SHELL_WINDOW_ID,
-} from "./api_workbench_windows.ts";
 import {
   apiWorkbenchButtonRowInto,
   type ApiWorkbenchCheckboxOption,
