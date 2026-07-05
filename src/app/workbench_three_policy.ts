@@ -7,7 +7,7 @@ import type { ThreeAsciiReadbackStrategy } from "../three_ascii/renderer_options
 
 export const WORKBENCH_THREE_LIVE_MAX_CELLS = 960;
 export const WORKBENCH_THREE_FULLSCREEN_MIN_CELLS = 3_840;
-export const WORKBENCH_THREE_FULLSCREEN_MAX_CELLS = 7_680;
+export const WORKBENCH_THREE_FULLSCREEN_MAX_CELLS = 15_400;
 export const WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS = WORKBENCH_THREE_FULLSCREEN_MIN_CELLS;
 export const WORKBENCH_THREE_RESCUE_CELLS = 30;
 export const WORKBENCH_THREE_EMERGENCY_CELLS = 60;
@@ -215,17 +215,18 @@ export function resolveWorkbenchThreeRuntimeBudgetSnapshot<TId extends string>(
   input: WorkbenchThreeRuntimeBudgetSnapshotInput<TId>,
 ): WorkbenchThreeRuntimeBudgetSnapshot {
   const padding = input.fullscreenViewportPadding ?? {};
-  const fullscreenViewport = {
+  const fullscreenThree = input.fullscreenId !== undefined && input.fullscreenId !== null &&
+    (input.isThreeWindow?.(input.fullscreenId) ?? input.fullscreenId === input.id);
+  const estimatedFullscreenViewport = {
     width: Math.max(0, input.viewport.width - Math.max(0, Math.floor(padding.columns ?? 0))),
     height: Math.max(0, input.viewport.height - Math.max(0, Math.floor(padding.rows ?? 0))),
   };
+  const fullscreenViewport = fullscreenThree && input.liveViewport ? input.liveViewport : estimatedFullscreenViewport;
   const fullscreenViewportCells = Math.max(
     1,
     Math.floor(fullscreenViewport.width) * Math.floor(fullscreenViewport.height),
   );
   const fullscreenTargetCells = workbenchThreeFullscreenRenderCells(fullscreenViewport);
-  const fullscreenThree = input.fullscreenId !== undefined && input.fullscreenId !== null &&
-    (input.isThreeWindow?.(input.fullscreenId) ?? input.fullscreenId === input.id);
   const liveViewportTargetCells = input.liveViewport
     ? workbenchThreeLiveRenderCells(input.liveViewport)
     : WORKBENCH_THREE_LIVE_MAX_CELLS;
@@ -298,6 +299,7 @@ export const WORKBENCH_THREE_FRAME_INTERVAL_BY_CELLS = new Map<number, number>([
   [WORKBENCH_THREE_LIVE_MAX_CELLS, 1000 / 20],
   [1_920, 1000 / 20],
   [3_840, 1000 / 20],
+  [7_680, 1000 / 15],
   [WORKBENCH_THREE_FULLSCREEN_MAX_CELLS, 1000 / 15],
 ]);
 
@@ -310,6 +312,7 @@ export const WORKBENCH_THREE_IDLE_FRAME_INTERVAL_BY_CELLS = new Map<number, numb
   [WORKBENCH_THREE_LIVE_MAX_CELLS, 1000 / 8],
   [1_920, 1000 / 6],
   [3_840, 1000 / 5],
+  [7_680, 1000 / 4],
   [WORKBENCH_THREE_FULLSCREEN_MAX_CELLS, 1000 / 4],
 ]);
 

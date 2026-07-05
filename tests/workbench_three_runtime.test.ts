@@ -190,8 +190,8 @@ Deno.test("ApiWorkbenchThreeRuntimeController promotes fullscreen budget on entr
     apiWorkbenchThreeFrameIntervalForCells(6_200, { live: true }),
   );
 
-  assertEquals(controller.syncFullscreenTargetCells(8_800, fullscreen), WORKBENCH_THREE_FULLSCREEN_MAX_CELLS);
-  assertEquals(controller.fullscreenMaxCells.peek(), WORKBENCH_THREE_FULLSCREEN_MAX_CELLS);
+  assertEquals(controller.syncFullscreenTargetCells(8_800, fullscreen), 8_800);
+  assertEquals(controller.fullscreenMaxCells.peek(), 8_800);
 
   controller.dispose();
 });

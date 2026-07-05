@@ -44,11 +44,11 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
   ]);
   assertEquals(Array.from(WORKBENCH_THREE_FULLSCREEN_PRESSURE_LEVELS), [
     3840,
-    7680,
+    15400,
   ]);
   assertEquals(WORKBENCH_THREE_INITIAL_CELLS, 960);
   assertEquals(WORKBENCH_THREE_FULLSCREEN_MIN_CELLS, 3_840);
-  assertEquals(WORKBENCH_THREE_FULLSCREEN_MAX_CELLS, 7_680);
+  assertEquals(WORKBENCH_THREE_FULLSCREEN_MAX_CELLS, 15_400);
   assertEquals(WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS, WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 480_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 24_000);
@@ -95,9 +95,11 @@ Deno.test("API workbench Three policy keeps live panes faster than idle panes", 
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(1_920, { live: true }), 1000 / 20);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: true }), 1000 / 20);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(7_680, { live: true }), 1000 / 15);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(15_400, { live: true }), 1000 / 15);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(240, { live: false }), 1000 / 8);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(3_840, { live: false }), 1000 / 5);
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(7_680, { live: false }), 1000 / 4);
+  assertEquals(apiWorkbenchThreeFrameIntervalForCells(15_400, { live: false }), 1000 / 4);
 });
 
 Deno.test("API workbench Three fullscreen render target follows viewport within policy bounds", () => {
@@ -187,6 +189,25 @@ Deno.test("API workbench Three policy projects viewport target cap and runtime A
   assertEquals(snapshot.effectiveMaxCells, 1_920);
   assertEquals(snapshot.runtimeAscii.renderMaxCells, 4_560);
   assertEquals(ascii.renderMaxCells, 960);
+});
+
+Deno.test("API workbench Three policy uses measured body size for active fullscreen panes", () => {
+  const ascii = createDefaultWorkbenchAsciiOptions();
+  const snapshot = resolveWorkbenchThreeRuntimeBudgetSnapshot({
+    id: "three",
+    fullscreenId: "three",
+    ascii,
+    liveMaxCells: 960,
+    liveViewport: { width: 177, height: 45 },
+    fullscreenMaxCells: 15_400,
+    viewport: { width: 180, height: 54 },
+    fullscreenViewportPadding: { columns: 6, rows: 10 },
+  });
+
+  assertEquals(snapshot.fullscreenViewportCells, 7_965);
+  assertEquals(snapshot.fullscreenTargetCells, 7_965);
+  assertEquals(snapshot.effectiveMaxCells, 15_400);
+  assertEquals(snapshot.runtimeAscii.renderMaxCells, 7_965);
 });
 
 Deno.test("API workbench Three policy keeps live cap outside fullscreen Three panes", () => {
