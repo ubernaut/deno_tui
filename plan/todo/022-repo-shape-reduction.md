@@ -155,6 +155,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     timing formatting, and CLI argument helpers in one probe-support module
   - Three ASCII panel probe summaries and validation are folded into `src/three_ascii/probe.ts`, keeping renderer and
     panel live-probe support together instead of split across tiny internal probe shards
+  - Three ASCII direct range copies now collapse repeated output cells through the existing range helper, reducing
+    per-cell work in block-heavy workbench panes without adding another renderer module
   - Workbench Three pressure probe support now lives in `src/app/workbench_three_pressure_probe.ts`, keeping
     app-specific terminal pressure analysis out of the reusable Three ASCII renderer package boundary
   - System metrics provider contracts and the Deno-backed provider are folded into `app/system_metrics_sources.ts`,

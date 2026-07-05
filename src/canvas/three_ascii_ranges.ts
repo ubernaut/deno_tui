@@ -72,9 +72,29 @@ function copyThreeAsciiRange(
   start: number,
   end: number,
 ): void {
+  if (frameRow.length < end) frameRow.length = end;
+  if (!outputRow) {
+    frameRow.fill(" ", start, end);
+    return;
+  }
+
+  let column = start;
   let sourceColumn = start - rectangleColumn;
-  for (let column = start; column < end; column += 1) {
-    frameRow[column] = outputRow?.[sourceColumn] ?? " ";
-    sourceColumn += 1;
+  while (column < end) {
+    const cell = outputRow[sourceColumn] ?? " ";
+    let nextColumn = column + 1;
+    let nextSourceColumn = sourceColumn + 1;
+    while (nextColumn < end && (outputRow[nextSourceColumn] ?? " ") === cell) {
+      nextColumn += 1;
+      nextSourceColumn += 1;
+    }
+
+    if (nextColumn - column === 1) {
+      frameRow[column] = cell;
+    } else {
+      frameRow.fill(cell, column, nextColumn);
+    }
+    column = nextColumn;
+    sourceColumn = nextSourceColumn;
   }
 }
