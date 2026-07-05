@@ -44,6 +44,7 @@ import {
   bindRuntimeRendererBackendCommands,
   bindRuntimeWorkloadCommands,
   createRuntimeProfilePlugin,
+  createRuntimeRendererBackendPlugin,
   runtimeProfileCommands,
   runtimeRendererBackendCommands,
   runtimeWorkloadCommands,
@@ -53,7 +54,6 @@ import type {
   RuntimeRendererBackendCommandAction,
   RuntimeWorkloadCommandAction,
 } from "../src/app/runtime_commands.ts";
-import { createRuntimeRendererBackendPlugin } from "../src/app/runtime_renderer_plugin.ts";
 import {
   bindDataTableSetting,
   bindRouteSetting,

@@ -1768,6 +1768,13 @@
     },
     {
       "module": "src/app/runtime_commands.ts",
+      "name": "createRuntimeRendererBackendPlugin",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/runtime_commands.ts",
       "name": "RuntimeProfileAppPlugin",
       "kind": "interface",
       "typeOnly": true,
@@ -1824,6 +1831,13 @@
     },
     {
       "module": "src/app/runtime_commands.ts",
+      "name": "RuntimeRendererBackendAppPlugin",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/runtime_commands.ts",
       "name": "RuntimeRendererBackendChangedPayload",
       "kind": "interface",
       "typeOnly": true,
@@ -1852,6 +1866,27 @@
     },
     {
       "module": "src/app/runtime_commands.ts",
+      "name": "RuntimeRendererBackendPluginInspection",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/runtime_commands.ts",
+      "name": "RuntimeRendererBackendPluginInstallContext",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/runtime_commands.ts",
+      "name": "RuntimeRendererBackendPluginOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/runtime_commands.ts",
       "name": "RuntimeWorkloadCommandAction",
       "kind": "type",
       "typeOnly": true,
@@ -1874,41 +1909,6 @@
     {
       "module": "src/app/runtime_commands.ts",
       "name": "RuntimeWorkloadReportedPayload",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/runtime_renderer_plugin.ts",
-      "name": "createRuntimeRendererBackendPlugin",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/runtime_renderer_plugin.ts",
-      "name": "RuntimeRendererBackendAppPlugin",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/runtime_renderer_plugin.ts",
-      "name": "RuntimeRendererBackendPluginInspection",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/runtime_renderer_plugin.ts",
-      "name": "RuntimeRendererBackendPluginInstallContext",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/runtime_renderer_plugin.ts",
-      "name": "RuntimeRendererBackendPluginOptions",
       "kind": "interface",
       "typeOnly": true,
       "documented": true

@@ -6,8 +6,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 ## Summary
 
 - Entrypoints: 9
-- Module visits: 509
-- Re-export declarations: 500
+- Module visits: 507
+- Re-export declarations: 498
 - Exported symbols: 5331
 - Documented symbols: 5331
 - Documentation coverage: 100.00%
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     227 |    2291 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     206 |    2143 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     226 |    2291 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     205 |    2143 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      87 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -39,8 +39,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 ### Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 227
-- Re-export declarations: 226
+- Modules: 226
+- Re-export declarations: 225
 - Exported symbols: 2291
 - Documented symbols: 2291
 - Documentation coverage: 100.00%
@@ -73,13 +73,12 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                             |          0 |       6 |          6 |
 | [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                       |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         42 |       0 |          0 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         41 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                       |          0 |      10 |         10 |
 | [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                           |          0 |       6 |          6 |
 | [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     |          0 |      17 |         17 |
 | [`src/app/router.ts`](#src-app-router-ts)                                                       |          0 |      14 |         14 |
-| [`src/app/runtime_commands.ts`](#src-app-runtime-commands-ts)                                   |          0 |      20 |         20 |
-| [`src/app/runtime_renderer_plugin.ts`](#src-app-runtime-renderer-plugin-ts)                     |          0 |       5 |          5 |
+| [`src/app/runtime_commands.ts`](#src-app-runtime-commands-ts)                                   |          0 |      25 |         25 |
 | [`src/app/scroll_area_commands.ts`](#src-app-scroll-area-commands-ts)                           |          0 |       6 |          6 |
 | [`src/app/selection_bindings.ts`](#src-app-selection-bindings-ts)                               |          0 |       8 |          8 |
 | [`src/app/settings_bindings.ts`](#src-app-settings-bindings-ts)                                 |          0 |      21 |         21 |
@@ -655,7 +654,6 @@ _No direct exported symbols._
 | `src/app/plugins.ts`                 | star | -     |
 | `src/app/router.ts`                  | star | -     |
 | `src/app/runtime_commands.ts`        | star | -     |
-| `src/app/runtime_renderer_plugin.ts` | star | -     |
 | `src/app/scroll_area_commands.ts`    | star | -     |
 | `src/app/selection_bindings.ts`      | star | -     |
 | `src/app/settings_bindings.ts`       | star | -     |
@@ -745,38 +743,33 @@ _No direct exported symbols._
 
 #### src/app/runtime_commands.ts
 
-| Symbol                                 | Kind      | Type Only | JSDoc |
-| -------------------------------------- | --------- | --------- | ----- |
-| `bindRuntimeProfileCommands`           | function  | no        | yes   |
-| `bindRuntimeRendererBackendCommands`   | function  | no        | yes   |
-| `bindRuntimeWorkloadCommands`          | function  | no        | yes   |
-| `createRuntimeProfilePlugin`           | function  | no        | yes   |
-| `RuntimeProfileAppPlugin`              | interface | yes       | yes   |
-| `RuntimeProfileChangedPayload`         | interface | yes       | yes   |
-| `RuntimeProfileCommandAction`          | type      | yes       | yes   |
-| `RuntimeProfileCommandOptions`         | interface | yes       | yes   |
-| `runtimeProfileCommands`               | function  | no        | yes   |
-| `RuntimeProfilePluginInspection`       | interface | yes       | yes   |
-| `RuntimeProfilePluginInstallContext`   | interface | yes       | yes   |
-| `RuntimeProfilePluginOptions`          | interface | yes       | yes   |
-| `RuntimeRendererBackendChangedPayload` | interface | yes       | yes   |
-| `RuntimeRendererBackendCommandAction`  | type      | yes       | yes   |
-| `RuntimeRendererBackendCommandOptions` | interface | yes       | yes   |
-| `runtimeRendererBackendCommands`       | function  | no        | yes   |
-| `RuntimeWorkloadCommandAction`         | type      | yes       | yes   |
-| `RuntimeWorkloadCommandOptions`        | interface | yes       | yes   |
-| `runtimeWorkloadCommands`              | function  | no        | yes   |
-| `RuntimeWorkloadReportedPayload`       | interface | yes       | yes   |
-
-#### src/app/runtime_renderer_plugin.ts
-
 | Symbol                                       | Kind      | Type Only | JSDoc |
 | -------------------------------------------- | --------- | --------- | ----- |
+| `bindRuntimeProfileCommands`                 | function  | no        | yes   |
+| `bindRuntimeRendererBackendCommands`         | function  | no        | yes   |
+| `bindRuntimeWorkloadCommands`                | function  | no        | yes   |
+| `createRuntimeProfilePlugin`                 | function  | no        | yes   |
 | `createRuntimeRendererBackendPlugin`         | function  | no        | yes   |
+| `RuntimeProfileAppPlugin`                    | interface | yes       | yes   |
+| `RuntimeProfileChangedPayload`               | interface | yes       | yes   |
+| `RuntimeProfileCommandAction`                | type      | yes       | yes   |
+| `RuntimeProfileCommandOptions`               | interface | yes       | yes   |
+| `runtimeProfileCommands`                     | function  | no        | yes   |
+| `RuntimeProfilePluginInspection`             | interface | yes       | yes   |
+| `RuntimeProfilePluginInstallContext`         | interface | yes       | yes   |
+| `RuntimeProfilePluginOptions`                | interface | yes       | yes   |
 | `RuntimeRendererBackendAppPlugin`            | interface | yes       | yes   |
+| `RuntimeRendererBackendChangedPayload`       | interface | yes       | yes   |
+| `RuntimeRendererBackendCommandAction`        | type      | yes       | yes   |
+| `RuntimeRendererBackendCommandOptions`       | interface | yes       | yes   |
+| `runtimeRendererBackendCommands`             | function  | no        | yes   |
 | `RuntimeRendererBackendPluginInspection`     | interface | yes       | yes   |
 | `RuntimeRendererBackendPluginInstallContext` | interface | yes       | yes   |
 | `RuntimeRendererBackendPluginOptions`        | interface | yes       | yes   |
+| `RuntimeWorkloadCommandAction`               | type      | yes       | yes   |
+| `RuntimeWorkloadCommandOptions`              | interface | yes       | yes   |
+| `runtimeWorkloadCommands`                    | function  | no        | yes   |
+| `RuntimeWorkloadReportedPayload`             | interface | yes       | yes   |
 
 #### src/app/scroll_area_commands.ts
 
@@ -3973,8 +3966,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 ### Summary
 
 - Entrypoint: `mod.web.ts`
-- Modules: 206
-- Re-export declarations: 205
+- Modules: 205
+- Re-export declarations: 204
 - Exported symbols: 2143
 - Documented symbols: 2143
 - Documentation coverage: 100.00%
@@ -4007,13 +4000,12 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                             |          0 |       6 |          6 |
 | [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                       |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         42 |       0 |          0 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         41 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                       |          0 |      10 |         10 |
 | [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                           |          0 |       6 |          6 |
 | [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     |          0 |      17 |         17 |
 | [`src/app/router.ts`](#src-app-router-ts)                                                       |          0 |      14 |         14 |
-| [`src/app/runtime_commands.ts`](#src-app-runtime-commands-ts)                                   |          0 |      20 |         20 |
-| [`src/app/runtime_renderer_plugin.ts`](#src-app-runtime-renderer-plugin-ts)                     |          0 |       5 |          5 |
+| [`src/app/runtime_commands.ts`](#src-app-runtime-commands-ts)                                   |          0 |      25 |         25 |
 | [`src/app/scroll_area_commands.ts`](#src-app-scroll-area-commands-ts)                           |          0 |       6 |          6 |
 | [`src/app/selection_bindings.ts`](#src-app-selection-bindings-ts)                               |          0 |       8 |          8 |
 | [`src/app/settings_bindings.ts`](#src-app-settings-bindings-ts)                                 |          0 |      21 |         21 |
@@ -4587,7 +4579,6 @@ _No direct exported symbols._
 | `src/app/plugins.ts`                 | star | -     |
 | `src/app/router.ts`                  | star | -     |
 | `src/app/runtime_commands.ts`        | star | -     |
-| `src/app/runtime_renderer_plugin.ts` | star | -     |
 | `src/app/scroll_area_commands.ts`    | star | -     |
 | `src/app/selection_bindings.ts`      | star | -     |
 | `src/app/settings_bindings.ts`       | star | -     |
@@ -4677,38 +4668,33 @@ _No direct exported symbols._
 
 #### src/app/runtime_commands.ts
 
-| Symbol                                 | Kind      | Type Only | JSDoc |
-| -------------------------------------- | --------- | --------- | ----- |
-| `bindRuntimeProfileCommands`           | function  | no        | yes   |
-| `bindRuntimeRendererBackendCommands`   | function  | no        | yes   |
-| `bindRuntimeWorkloadCommands`          | function  | no        | yes   |
-| `createRuntimeProfilePlugin`           | function  | no        | yes   |
-| `RuntimeProfileAppPlugin`              | interface | yes       | yes   |
-| `RuntimeProfileChangedPayload`         | interface | yes       | yes   |
-| `RuntimeProfileCommandAction`          | type      | yes       | yes   |
-| `RuntimeProfileCommandOptions`         | interface | yes       | yes   |
-| `runtimeProfileCommands`               | function  | no        | yes   |
-| `RuntimeProfilePluginInspection`       | interface | yes       | yes   |
-| `RuntimeProfilePluginInstallContext`   | interface | yes       | yes   |
-| `RuntimeProfilePluginOptions`          | interface | yes       | yes   |
-| `RuntimeRendererBackendChangedPayload` | interface | yes       | yes   |
-| `RuntimeRendererBackendCommandAction`  | type      | yes       | yes   |
-| `RuntimeRendererBackendCommandOptions` | interface | yes       | yes   |
-| `runtimeRendererBackendCommands`       | function  | no        | yes   |
-| `RuntimeWorkloadCommandAction`         | type      | yes       | yes   |
-| `RuntimeWorkloadCommandOptions`        | interface | yes       | yes   |
-| `runtimeWorkloadCommands`              | function  | no        | yes   |
-| `RuntimeWorkloadReportedPayload`       | interface | yes       | yes   |
-
-#### src/app/runtime_renderer_plugin.ts
-
 | Symbol                                       | Kind      | Type Only | JSDoc |
 | -------------------------------------------- | --------- | --------- | ----- |
+| `bindRuntimeProfileCommands`                 | function  | no        | yes   |
+| `bindRuntimeRendererBackendCommands`         | function  | no        | yes   |
+| `bindRuntimeWorkloadCommands`                | function  | no        | yes   |
+| `createRuntimeProfilePlugin`                 | function  | no        | yes   |
 | `createRuntimeRendererBackendPlugin`         | function  | no        | yes   |
+| `RuntimeProfileAppPlugin`                    | interface | yes       | yes   |
+| `RuntimeProfileChangedPayload`               | interface | yes       | yes   |
+| `RuntimeProfileCommandAction`                | type      | yes       | yes   |
+| `RuntimeProfileCommandOptions`               | interface | yes       | yes   |
+| `runtimeProfileCommands`                     | function  | no        | yes   |
+| `RuntimeProfilePluginInspection`             | interface | yes       | yes   |
+| `RuntimeProfilePluginInstallContext`         | interface | yes       | yes   |
+| `RuntimeProfilePluginOptions`                | interface | yes       | yes   |
 | `RuntimeRendererBackendAppPlugin`            | interface | yes       | yes   |
+| `RuntimeRendererBackendChangedPayload`       | interface | yes       | yes   |
+| `RuntimeRendererBackendCommandAction`        | type      | yes       | yes   |
+| `RuntimeRendererBackendCommandOptions`       | interface | yes       | yes   |
+| `runtimeRendererBackendCommands`             | function  | no        | yes   |
 | `RuntimeRendererBackendPluginInspection`     | interface | yes       | yes   |
 | `RuntimeRendererBackendPluginInstallContext` | interface | yes       | yes   |
 | `RuntimeRendererBackendPluginOptions`        | interface | yes       | yes   |
+| `RuntimeWorkloadCommandAction`               | type      | yes       | yes   |
+| `RuntimeWorkloadCommandOptions`              | interface | yes       | yes   |
+| `runtimeWorkloadCommands`                    | function  | no        | yes   |
+| `RuntimeWorkloadReportedPayload`             | interface | yes       | yes   |
 
 #### src/app/scroll_area_commands.ts
 

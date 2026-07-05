@@ -1,5 +1,9 @@
 // Copyright 2023 Im-Beast. MIT license.
-import type { RuntimeRendererBackendController } from "../runtime/renderer_backends.ts";
+import type {
+  RuntimeRendererBackendController,
+  RuntimeRendererBackendControllerOptions,
+} from "../runtime/renderer_backends.ts";
+import { createRuntimeRendererBackendController } from "../runtime/renderer_backends.ts";
 import type { RuntimeProfileController, RuntimeProfileControllerOptions } from "../runtime/profiles.ts";
 import { createRuntimeProfileController } from "../runtime/profiles.ts";
 import type { RuntimeWorkloadRegistry, RuntimeWorkloadReport } from "../runtime/telemetry.ts";
@@ -12,7 +16,9 @@ import type { Route } from "./router.ts";
 import type { SettingsController } from "./settings.ts";
 import {
   bindRuntimeProfileSetting,
+  bindRuntimeRendererBackendSetting,
   type RuntimeProfileSettingBindingOptions,
+  type RuntimeRendererBackendSettingBindingOptions,
   type SettingBinding,
 } from "./settings_bindings.ts";
 
@@ -242,6 +248,46 @@ export interface RuntimeRendererBackendCommandOptions {
   disableActiveBackend?: boolean;
 }
 
+/** Options for configuring the runtime renderer backend plugin. */
+export interface RuntimeRendererBackendPluginOptions {
+  id?: string;
+  label?: string;
+  controller?: RuntimeRendererBackendController;
+  controllerOptions?: RuntimeRendererBackendControllerOptions;
+  settings?: SettingsController;
+  persistBackend?: boolean | RuntimeRendererBackendSettingBindingOptions<unknown>;
+  commands?: boolean | RuntimeRendererBackendCommandOptions;
+  mirrorKeymap?: boolean | CommandKeymapBindingOptions;
+  install?: (context: RuntimeRendererBackendPluginInstallContext) => AppPluginDisposer;
+}
+
+/** Context object passed to runtime renderer backend plugin install callbacks. */
+export interface RuntimeRendererBackendPluginInstallContext {
+  app: TuiApp<Action, Route>;
+  controller: RuntimeRendererBackendController;
+  backendSetting?: SettingBinding<string, unknown>;
+}
+
+/** Serializable inspection snapshot for the runtime renderer backend plugin. */
+export interface RuntimeRendererBackendPluginInspection {
+  id?: string;
+  label?: string;
+  controller: ReturnType<RuntimeRendererBackendController["inspect"]>;
+  commandsEnabled: boolean;
+  settingsEnabled: boolean;
+  backendPersistenceEnabled: boolean;
+  keymapMirroringEnabled: boolean;
+}
+
+/** Public interface describing a runtime renderer backend app plugin. */
+export interface RuntimeRendererBackendAppPlugin<
+  TAction extends Action = RuntimeRendererBackendCommandAction,
+  TRoute extends Route = Route,
+> extends AppPlugin<TAction, TRoute> {
+  readonly controller: RuntimeRendererBackendController;
+  inspect(): RuntimeRendererBackendPluginInspection;
+}
+
 /** Builds command definitions for runtime Renderer Backend. */
 export function runtimeRendererBackendCommands(
   controller: RuntimeRendererBackendController,
@@ -342,6 +388,79 @@ export function bindRuntimeRendererBackendCommands<
   return registry.registerAll(runtimeRendererBackendCommands(controller, options) as unknown as Command<TAction>[]);
 }
 
+/** Creates a runtime renderer backend plugin. */
+export function createRuntimeRendererBackendPlugin<
+  TAction extends Action = RuntimeRendererBackendCommandAction,
+  TRoute extends Route = Route,
+>(
+  options: RuntimeRendererBackendPluginOptions = {},
+): RuntimeRendererBackendAppPlugin<TAction, TRoute> {
+  const controller = options.controller ?? createRuntimeRendererBackendController(options.controllerOptions);
+  const id = options.id ?? "runtime-renderer";
+  const label = options.label ?? "Runtime Renderer";
+
+  return {
+    id,
+    label,
+    controller,
+    install(app) {
+      const stack = new DisposableStack();
+      let backendSetting: SettingBinding<string, unknown> | undefined;
+
+      try {
+        const persistBackend = options.persistBackend ?? true;
+        if (options.settings && persistBackend) {
+          const binding = bindRuntimeRendererBackendSetting<unknown>(
+            controller,
+            options.settings,
+            runtimeRendererBackendSettingOptions(persistBackend),
+          );
+          backendSetting = binding;
+          stack.defer(binding.dispose);
+        }
+
+        if (options.commands ?? true) {
+          const commandOptions = runtimeRendererBackendCommandOptions(options.commands);
+          stack.defer(bindRuntimeRendererBackendCommands(app.commands, controller, commandOptions));
+          if (options.mirrorKeymap) {
+            stack.defer(
+              bindCommandKeymap(
+                app.commands,
+                app.keymap,
+                runtimeRendererBackendKeymapOptions(options.mirrorKeymap, commandOptions),
+              ),
+            );
+          }
+        }
+
+        stack.defer(
+          options.install?.({
+            app: app as unknown as TuiApp<Action, Route>,
+            controller,
+            backendSetting,
+          }),
+        );
+      } catch (error) {
+        stack.dispose();
+        throw error;
+      }
+
+      return stack.dispose;
+    },
+    inspect() {
+      return {
+        id,
+        label,
+        controller: controller.inspect(),
+        commandsEnabled: (options.commands ?? true) !== false,
+        settingsEnabled: options.settings !== undefined,
+        backendPersistenceEnabled: options.settings !== undefined && (options.persistBackend ?? true) !== false,
+        keymapMirroringEnabled: options.mirrorKeymap !== undefined && options.mirrorKeymap !== false,
+      };
+    },
+  };
+}
+
 /** Action union emitted by runtime Workload Command command helpers. */
 export type RuntimeWorkloadCommandAction = Action<"runtime.workloads.reported", RuntimeWorkloadReportedPayload>;
 
@@ -414,5 +533,22 @@ function runtimeProfileKeymapOptions(
 }
 
 function runtimeProfileSettingOptions<TOptions>(options: true | TOptions): TOptions {
+  return options === true ? {} as TOptions : options;
+}
+
+function runtimeRendererBackendCommandOptions(
+  options: boolean | RuntimeRendererBackendCommandOptions | undefined,
+): RuntimeRendererBackendCommandOptions {
+  return typeof options === "object" ? options : {};
+}
+
+function runtimeRendererBackendKeymapOptions(
+  options: true | CommandKeymapBindingOptions,
+  commandOptions: RuntimeRendererBackendCommandOptions,
+): CommandKeymapBindingOptions {
+  return options === true ? { group: commandOptions.group ?? "runtime" } : options;
+}
+
+function runtimeRendererBackendSettingOptions<TOptions>(options: true | TOptions): TOptions {
   return options === true ? {} as TOptions : options;
 }

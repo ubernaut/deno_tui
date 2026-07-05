@@ -7,9 +7,9 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `679`
+- Tracked files after the current consolidation passes: `678`
 - Tracked top-level file counts:
-  - `src`: `324`
+  - `src`: `323`
   - `tests`: `142`
   - `app`: `42`
   - `docs`: `50`
@@ -17,7 +17,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `scripts`: `27`
   - `plan`: `26`
 - Handwritten/code-heavy line counts:
-  - `src/app`: `24,270` lines across `92` files
+  - `src/app`: `24,257` lines across `91` files
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,261` lines across `43` files
   - `src/three_ascii`: `7,201` lines across `35` files
@@ -73,6 +73,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - data query params/result/table bindings are folded into `src/app/data_query_commands.ts`
   - route signal, index, and command bindings are folded into `src/app/router.ts`
   - runtime profile plugin wiring is folded into `src/app/runtime_commands.ts`
+  - runtime renderer backend plugin wiring is folded into `src/app/runtime_commands.ts`
   - API workbench control styles and wrapped-option projection are folded into `app/api_workbench_controls.ts`
   - API workbench primitive control ids and hit types are folded into `app/api_workbench_controls.ts`
   - API workbench control row projection is folded into `app/api_workbench_controls.ts`
@@ -171,9 +172,9 @@ The library core is real and valuable, but it needs clearer boundaries:
 - Continue using benchmark cases for hot helpers, but treat live probes as required evidence:
   - `deno task three-workbench:startup-probe`
   - `deno task three-ascii:live-probe -- --frames 45 --glyphs blocks --max-cells 960 --check --max-average-ms 40`
-- Latest workbench block-mode startup probe after the route-binding fold: `6.80ms` steady average, about `147.1 fps` at
-  `53x17` cells with the capped default-workbench probe. Latest standalone block-mode live probe: `18.69ms` steady
-  average, about `53.5 fps` at `31x15` cells.
+- Latest workbench block-mode startup probe after the runtime renderer plugin fold: `6.89ms` steady average, about
+  `145.1 fps` at `53x17` cells with the capped default-workbench probe. Latest standalone block-mode live probe:
+  `18.36ms` steady average, about `54.5 fps` at `31x15` cells.
 - Avoid speculative micro-optimizations unless they improve measured workbench/default-demo behavior.
 
 ### P2: Split Demo Framework From Library Framework
