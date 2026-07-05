@@ -7,11 +7,11 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `797`
+- Tracked files after the current consolidation passes: `796`
 - Tracked top-level file counts:
   - `src`: `368`
   - `tests`: `205`
-  - `app`: `53`
+  - `app`: `52`
   - `docs`: `50`
   - `examples`: `42`
   - `scripts`: `27`
@@ -21,7 +21,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,241` lines across `43` files
   - `src/three_ascii`: `7,195` lines across `45` files
-  - `app`: `20,442` lines across `53` files
+  - `app`: `20,437` lines across `52` files
   - `examples`: `8,732` lines across `42` files
   - `tests`: `49,398` lines across `205` files
 - Generated/docs weight:
@@ -60,6 +60,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - system metric diagnostics are folded into `app/system_metrics.ts`
   - API workbench control styles and wrapped-option projection are folded into `app/api_workbench_controls.ts`
   - API workbench primitive control ids and hit types are folded into `app/api_workbench_control_line.ts`
+  - Neon Three ASCII wire overlays are folded into `app/neon_three.ts`
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
