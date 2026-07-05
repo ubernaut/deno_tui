@@ -77,18 +77,29 @@ export function workbenchStatusLeft(options: WorkbenchStatusLeftOptions): string
 }
 
 /** Builds right-aligned shortcut text for the bottom workbench status bar. */
-export function workbenchStatusShortcuts(profile: WorkbenchStatusShortcutProfile = "terminal"): string {
-  return profile === "web"
-    ? "1-8 focus  T theme  H help  Q quit  click controls"
-    : "F10 menu  N new  Shift+T themes  G config  0 restore minimized";
+export function workbenchStatusShortcuts(
+  profile: WorkbenchStatusShortcutProfile = "terminal",
+  width = Number.POSITIVE_INFINITY,
+): string {
+  if (profile === "web") {
+    if (width < 40) return "";
+    if (width < 72) return "T theme  H help  Q quit";
+    if (width < 112) return "1-8 focus  T theme  H help  Q quit";
+    return "1-8 focus  T theme  H help  Q quit  click controls";
+  }
+  if (width < 40) return "";
+  if (width < 72) return "F10 menu  G config  Q quit";
+  if (width < 132) return "F10 menu  N new  G config  M/F/R  Q quit";
+  return "F10 menu  N new  Shift+T themes  G config  0 restore minimized";
 }
 
 /** Builds the fully-aligned workbench status-bar text shared by terminal and web adapters. */
 export function workbenchStatusLine(options: WorkbenchStatusLineOptions): string {
   return renderStatusBar(
     workbenchStatusLeft(options),
-    workbenchStatusShortcuts(options.shortcutProfile),
+    workbenchStatusShortcuts(options.shortcutProfile, options.width),
     options.width,
+    "right",
   );
 }
 

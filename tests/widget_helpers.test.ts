@@ -1946,8 +1946,10 @@ Deno.test("renderStatusBar keeps left and right content inside width", () => {
   assertEquals(renderStatusBar("READY", "12:00", 12), "READY  12:00");
   assertEquals(renderStatusBar("READY", "12:00", 10), "REA  12:00");
   assertEquals(renderStatusBar("LONG LEFT", "RIGHT", 8), "LONG LEF");
+  assertEquals(renderStatusBar("LONG LEFT", "RIGHT", 8, "right"), "L  RIGHT");
   assertEquals(renderStatusBar("READY", "12:00", 0), "");
   assertEquals(renderStatusBar("left segment", "right segment", 18), "left segme  right ");
+  assertEquals(renderStatusBar("left segment", "right segment", 18, "right"), "lef  right segment");
 });
 
 Deno.test("TextLineCache reuses line snapshots until text changes", () => {

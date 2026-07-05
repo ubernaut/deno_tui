@@ -36,6 +36,14 @@ Deno.test("workbench status helper exposes terminal and web shortcut profiles", 
     workbenchStatusShortcuts("web"),
     "1-8 focus  T theme  H help  Q quit  click controls",
   );
+  assertEquals(
+    workbenchStatusShortcuts("terminal", 118),
+    "F10 menu  N new  G config  M/F/R  Q quit",
+  );
+  assertEquals(
+    workbenchStatusShortcuts("web", 64),
+    "T theme  H help  Q quit",
+  );
 });
 
 Deno.test("workbench status helper composes aligned full status lines", () => {
@@ -57,7 +65,7 @@ Deno.test("workbench status helper composes aligned full status lines", () => {
       shortcutProfile: "web",
       width: 72,
     }),
-    "focus data | Unit-01 | tiles dense | diag   1-8 focus  T theme  H help  ",
+    "focus data | Unit-01 | tiles dense |  1-8 focus  T theme  H help  Q quit",
   );
 });
 
@@ -73,7 +81,7 @@ Deno.test("workbench status snapshot helper composes aligned status lines", () =
       width: 64,
       shortcutProfile: "web",
     }),
-    "focus Logs | Ghost Shell | tiles wide | slow fra  1-8 focus  T t",
+    "focus Logs | Ghost Shell | tiles wide |  T theme  H help  Q quit",
   );
 });
 
