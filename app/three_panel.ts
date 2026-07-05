@@ -52,6 +52,11 @@ import {
   type ThreePanelRenderSize,
 } from "../src/app/three_panel_policy.ts";
 import { defaultThreePanelRenderQueue, ThreePanelRenderQueue } from "../src/app/three_panel_render_queue.ts";
+import {
+  resolveOptionalThreePanelValue,
+  resolveThreePanelLiveValue,
+  resolveThreePanelValue,
+} from "../src/app/three_panel_values.ts";
 import type { AsciiOptions, Rect, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 
 export type { ThreePanelInteractionState } from "../src/app/three_panel_interaction.ts";
@@ -77,6 +82,14 @@ export {
   type ThreePanelRuntimeBudgetInput,
 } from "../src/app/three_panel_policy.ts";
 export { defaultThreePanelRenderQueue, ThreePanelRenderQueue } from "../src/app/three_panel_render_queue.ts";
+export {
+  resolveOptionalThreePanelValue,
+  resolveThreePanelLiveValue,
+  resolveThreePanelValue,
+  type ThreePanelResolvableLiveValue,
+  type ThreePanelResolvableValue,
+  type ThreePanelValueSignal,
+} from "../src/app/three_panel_values.ts";
 
 export interface ThreeSceneState {
   mode: ThreeSceneMode;
@@ -783,10 +796,10 @@ export class ThreePanelFrameView {
     return resolveThreePanelRuntimeBudget({
       interactive: this.isInteractive(),
       userMaxCells: ascii.renderMaxCells,
-      maxRenderCells: resolveThreePanelRenderCellsValue(this.options.maxRenderCells),
-      idleMaxRenderCells: resolveThreePanelRenderCellsValue(this.options.idleMaxRenderCells),
-      frameInterval: resolveThreePanelIntervalValue(this.frameInterval),
-      idleFrameInterval: resolveThreePanelOptionalIntervalValue(this.idleFrameInterval),
+      maxRenderCells: resolveOptionalThreePanelValue(this.options.maxRenderCells),
+      idleMaxRenderCells: resolveOptionalThreePanelValue(this.options.idleMaxRenderCells),
+      frameInterval: resolveThreePanelValue(this.frameInterval),
+      idleFrameInterval: resolveOptionalThreePanelValue(this.idleFrameInterval),
     }).requestedMaxCells;
   }
 
@@ -794,10 +807,10 @@ export class ThreePanelFrameView {
     return resolveThreePanelRuntimeBudget({
       interactive: this.isInteractive(),
       userMaxCells: this.options.ascii.peek().renderMaxCells,
-      maxRenderCells: resolveThreePanelRenderCellsValue(this.options.maxRenderCells),
-      idleMaxRenderCells: resolveThreePanelRenderCellsValue(this.options.idleMaxRenderCells),
-      frameInterval: resolveThreePanelIntervalValue(this.frameInterval),
-      idleFrameInterval: resolveThreePanelOptionalIntervalValue(this.idleFrameInterval),
+      maxRenderCells: resolveOptionalThreePanelValue(this.options.maxRenderCells),
+      idleMaxRenderCells: resolveOptionalThreePanelValue(this.options.idleMaxRenderCells),
+      frameInterval: resolveThreePanelValue(this.frameInterval),
+      idleFrameInterval: resolveOptionalThreePanelValue(this.idleFrameInterval),
     }).frameInterval;
   }
 
@@ -852,23 +865,4 @@ export class ThreePanelFrameView {
   private async clearGraphicsImage(): Promise<void> {
     await this.graphics.clear(this.resolveGraphicsSurface());
   }
-}
-
-function resolveThreePanelIntervalValue(value: ThreePanelIntervalValue): number {
-  return value instanceof Signal ? value.peek() : value;
-}
-
-function resolveThreePanelOptionalIntervalValue(value: ThreePanelIntervalValue | undefined): number | undefined {
-  return value === undefined ? undefined : resolveThreePanelIntervalValue(value);
-}
-
-function resolveThreePanelRenderCellsValue(value: ThreePanelRenderCellsValue | undefined): number | undefined {
-  return value instanceof Signal ? value.peek() : value;
-}
-
-function resolveThreePanelLiveValue(value: ThreePanelLiveValue | undefined): boolean {
-  if (value === undefined) return true;
-  if (value instanceof Signal) return value.peek();
-  if (typeof value === "function") return value();
-  return value;
 }

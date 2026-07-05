@@ -1197,3 +1197,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted Three panel grid publication and blank-grid reuse into `ThreePanelGridPublisher`, reducing inline state in
   `ThreePanelFrameView` while keeping redraw suppression and Kitty/ASCII blank publication behavior covered by direct
   grid tests plus the full Three panel frame suite.
+- Moved Three panel signal/literal/callback value resolution into `three_panel_values.ts`, reducing adapter-local
+  utility code and making live/interactivity, frame-interval, and render-cell cap normalization directly testable.
