@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `599`
+- Tracked files after the current consolidation passes: `598`
 - Tracked top-level file counts:
   - `src`: `296`
-  - `tests`: `103`
+  - `tests`: `102`
   - `app`: `29`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `6,991` lines across `23` files
   - `app`: `20,353` lines across `29` files
   - `examples`: `8,770` lines across `41` files
-  - `tests`: `49,365` lines across `103` files
+  - `tests`: `49,436` lines across `102` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -258,6 +258,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     `tests/graphics_surface.test.ts`
   - Simple grid solver helper assertions are now bundled into `tests/html_css_layout.test.ts`, keeping private grid
     placement coverage with the HTML/CSS simple solver behavior
+  - Split-pane rect, resize, ratio, and controller assertions are now bundled into `tests/responsive_layout.test.ts`,
+    keeping split-pane behavior with the rest of the layout primitive and window-manager coverage.
   - Workbench Three header telemetry assertions are now bundled into `tests/workbench_three_panel.test.ts`
   - flex layout assertions are now bundled into `tests/responsive_layout.test.ts`
   - Visualization panel defaults are now bundled into `tests/visualization_launcher.test.ts`
