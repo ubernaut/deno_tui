@@ -6,8 +6,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 ## Summary
 
 - Entrypoints: 9
-- Module visits: 517
-- Re-export declarations: 508
+- Module visits: 515
+- Re-export declarations: 506
 - Exported symbols: 5331
 - Documented symbols: 5331
 - Documentation coverage: 100.00%
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     231 |    2291 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     210 |    2143 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     230 |    2291 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     209 |    2143 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      87 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -39,8 +39,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 ### Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 231
-- Re-export declarations: 230
+- Modules: 230
+- Re-export declarations: 229
 - Exported symbols: 2291
 - Documented symbols: 2291
 - Documentation coverage: 100.00%
@@ -74,7 +74,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                             |          0 |       6 |          6 |
 | [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                       |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         46 |       0 |          0 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         45 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                       |          0 |      10 |         10 |
 | [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                           |          0 |       6 |          6 |
 | [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     |          0 |      17 |         17 |
@@ -92,8 +92,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                                         |          0 |       6 |          6 |
 | [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                                 |          0 |      29 |         29 |
 | [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                                       |          0 |      17 |         17 |
-| [`src/app/theme_commands.ts`](#src-app-theme-commands-ts)                                       |          0 |      15 |         15 |
-| [`src/app/theme_engine_commands.ts`](#src-app-theme-engine-commands-ts)                         |          0 |       9 |          9 |
+| [`src/app/theme_commands.ts`](#src-app-theme-commands-ts)                                       |          0 |      24 |         24 |
 | [`src/app/theme_plugin.ts`](#src-app-theme-plugin-ts)                                           |          0 |       8 |          8 |
 | [`src/app/theme_workspace_plugin.ts`](#src-app-theme-workspace-plugin-ts)                       |          0 |       5 |          5 |
 | [`src/app/toast_commands.ts`](#src-app-toast-commands-ts)                                       |          0 |       6 |          6 |
@@ -678,7 +677,6 @@ _No direct exported symbols._
 | `src/app/terminal_commands.ts`       | star | -     |
 | `src/app/terminal_input.ts`          | star | -     |
 | `src/app/theme_commands.ts`          | star | -     |
-| `src/app/theme_engine_commands.ts`   | star | -     |
 | `src/app/theme_plugin.ts`            | star | -     |
 | `src/app/theme_workspace_plugin.ts`  | star | -     |
 | `src/app/toast_commands.ts`          | star | -     |
@@ -961,11 +959,20 @@ _No direct exported symbols._
 | Symbol                            | Kind      | Type Only | JSDoc |
 | --------------------------------- | --------- | --------- | ----- |
 | `bindThemeCommands`               | function  | no        | yes   |
+| `bindThemeEngineCommands`         | function  | no        | yes   |
 | `bindThemePipelineCommands`       | function  | no        | yes   |
 | `ThemeChangedPayload`             | interface | yes       | yes   |
 | `ThemeCommandAction`              | type      | yes       | yes   |
 | `ThemeCommandOptions`             | interface | yes       | yes   |
 | `themeCommands`                   | function  | no        | yes   |
+| `themeEngineCatalogCommands`      | function  | no        | yes   |
+| `ThemeEngineCatalogPayload`       | interface | yes       | yes   |
+| `ThemeEngineCommandAction`        | type      | yes       | yes   |
+| `ThemeEngineCommandOptions`       | interface | yes       | yes   |
+| `themeEngineCommands`             | function  | no        | yes   |
+| `ThemeEngineCommandSource`        | type      | yes       | yes   |
+| `themeEngineFactoryCommands`      | function  | no        | yes   |
+| `ThemeEnginePreviewPayload`       | interface | yes       | yes   |
 | `ThemeLayerChangedPayload`        | interface | yes       | yes   |
 | `themeLayerCommands`              | function  | no        | yes   |
 | `ThemePipelineCommandAction`      | type      | yes       | yes   |
@@ -975,20 +982,6 @@ _No direct exported symbols._
 | `themePreviewCommands`            | function  | no        | yes   |
 | `ThemePreviewPayload`             | interface | yes       | yes   |
 | `themeSelectionCommands`          | function  | no        | yes   |
-
-#### src/app/theme_engine_commands.ts
-
-| Symbol                       | Kind      | Type Only | JSDoc |
-| ---------------------------- | --------- | --------- | ----- |
-| `bindThemeEngineCommands`    | function  | no        | yes   |
-| `themeEngineCatalogCommands` | function  | no        | yes   |
-| `ThemeEngineCatalogPayload`  | interface | yes       | yes   |
-| `ThemeEngineCommandAction`   | type      | yes       | yes   |
-| `ThemeEngineCommandOptions`  | interface | yes       | yes   |
-| `themeEngineCommands`        | function  | no        | yes   |
-| `ThemeEngineCommandSource`   | type      | yes       | yes   |
-| `themeEngineFactoryCommands` | function  | no        | yes   |
-| `ThemeEnginePreviewPayload`  | interface | yes       | yes   |
 
 #### src/app/theme_plugin.ts
 
@@ -4001,8 +3994,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 ### Summary
 
 - Entrypoint: `mod.web.ts`
-- Modules: 210
-- Re-export declarations: 209
+- Modules: 209
+- Re-export declarations: 208
 - Exported symbols: 2143
 - Documented symbols: 2143
 - Documentation coverage: 100.00%
@@ -4036,7 +4029,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                             |          0 |       6 |          6 |
 | [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                       |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         46 |       0 |          0 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         45 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                       |          0 |      10 |         10 |
 | [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                           |          0 |       6 |          6 |
 | [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     |          0 |      17 |         17 |
@@ -4054,8 +4047,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                                         |          0 |       6 |          6 |
 | [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                                 |          0 |      29 |         29 |
 | [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                                       |          0 |      17 |         17 |
-| [`src/app/theme_commands.ts`](#src-app-theme-commands-ts)                                       |          0 |      15 |         15 |
-| [`src/app/theme_engine_commands.ts`](#src-app-theme-engine-commands-ts)                         |          0 |       9 |          9 |
+| [`src/app/theme_commands.ts`](#src-app-theme-commands-ts)                                       |          0 |      24 |         24 |
 | [`src/app/theme_plugin.ts`](#src-app-theme-plugin-ts)                                           |          0 |       8 |          8 |
 | [`src/app/theme_workspace_plugin.ts`](#src-app-theme-workspace-plugin-ts)                       |          0 |       5 |          5 |
 | [`src/app/toast_commands.ts`](#src-app-toast-commands-ts)                                       |          0 |       6 |          6 |
@@ -4638,7 +4630,6 @@ _No direct exported symbols._
 | `src/app/terminal_commands.ts`       | star | -     |
 | `src/app/terminal_input.ts`          | star | -     |
 | `src/app/theme_commands.ts`          | star | -     |
-| `src/app/theme_engine_commands.ts`   | star | -     |
 | `src/app/theme_plugin.ts`            | star | -     |
 | `src/app/theme_workspace_plugin.ts`  | star | -     |
 | `src/app/toast_commands.ts`          | star | -     |
@@ -4921,11 +4912,20 @@ _No direct exported symbols._
 | Symbol                            | Kind      | Type Only | JSDoc |
 | --------------------------------- | --------- | --------- | ----- |
 | `bindThemeCommands`               | function  | no        | yes   |
+| `bindThemeEngineCommands`         | function  | no        | yes   |
 | `bindThemePipelineCommands`       | function  | no        | yes   |
 | `ThemeChangedPayload`             | interface | yes       | yes   |
 | `ThemeCommandAction`              | type      | yes       | yes   |
 | `ThemeCommandOptions`             | interface | yes       | yes   |
 | `themeCommands`                   | function  | no        | yes   |
+| `themeEngineCatalogCommands`      | function  | no        | yes   |
+| `ThemeEngineCatalogPayload`       | interface | yes       | yes   |
+| `ThemeEngineCommandAction`        | type      | yes       | yes   |
+| `ThemeEngineCommandOptions`       | interface | yes       | yes   |
+| `themeEngineCommands`             | function  | no        | yes   |
+| `ThemeEngineCommandSource`        | type      | yes       | yes   |
+| `themeEngineFactoryCommands`      | function  | no        | yes   |
+| `ThemeEnginePreviewPayload`       | interface | yes       | yes   |
 | `ThemeLayerChangedPayload`        | interface | yes       | yes   |
 | `themeLayerCommands`              | function  | no        | yes   |
 | `ThemePipelineCommandAction`      | type      | yes       | yes   |
@@ -4935,20 +4935,6 @@ _No direct exported symbols._
 | `themePreviewCommands`            | function  | no        | yes   |
 | `ThemePreviewPayload`             | interface | yes       | yes   |
 | `themeSelectionCommands`          | function  | no        | yes   |
-
-#### src/app/theme_engine_commands.ts
-
-| Symbol                       | Kind      | Type Only | JSDoc |
-| ---------------------------- | --------- | --------- | ----- |
-| `bindThemeEngineCommands`    | function  | no        | yes   |
-| `themeEngineCatalogCommands` | function  | no        | yes   |
-| `ThemeEngineCatalogPayload`  | interface | yes       | yes   |
-| `ThemeEngineCommandAction`   | type      | yes       | yes   |
-| `ThemeEngineCommandOptions`  | interface | yes       | yes   |
-| `themeEngineCommands`        | function  | no        | yes   |
-| `ThemeEngineCommandSource`   | type      | yes       | yes   |
-| `themeEngineFactoryCommands` | function  | no        | yes   |
-| `ThemeEnginePreviewPayload`  | interface | yes       | yes   |
 
 #### src/app/theme_plugin.ts
 

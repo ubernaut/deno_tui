@@ -2692,6 +2692,13 @@
     },
     {
       "module": "src/app/theme_commands.ts",
+      "name": "bindThemeEngineCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/theme_commands.ts",
       "name": "bindThemePipelineCommands",
       "kind": "function",
       "typeOnly": false,
@@ -2723,6 +2730,62 @@
       "name": "themeCommands",
       "kind": "function",
       "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/theme_commands.ts",
+      "name": "themeEngineCatalogCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/theme_commands.ts",
+      "name": "ThemeEngineCatalogPayload",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/theme_commands.ts",
+      "name": "ThemeEngineCommandAction",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/theme_commands.ts",
+      "name": "ThemeEngineCommandOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/theme_commands.ts",
+      "name": "themeEngineCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/theme_commands.ts",
+      "name": "ThemeEngineCommandSource",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/theme_commands.ts",
+      "name": "themeEngineFactoryCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/theme_commands.ts",
+      "name": "ThemeEnginePreviewPayload",
+      "kind": "interface",
+      "typeOnly": true,
       "documented": true
     },
     {
@@ -2786,69 +2849,6 @@
       "name": "themeSelectionCommands",
       "kind": "function",
       "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/theme_engine_commands.ts",
-      "name": "bindThemeEngineCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/theme_engine_commands.ts",
-      "name": "themeEngineCatalogCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/theme_engine_commands.ts",
-      "name": "ThemeEngineCatalogPayload",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/theme_engine_commands.ts",
-      "name": "ThemeEngineCommandAction",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/theme_engine_commands.ts",
-      "name": "ThemeEngineCommandOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/theme_engine_commands.ts",
-      "name": "themeEngineCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/theme_engine_commands.ts",
-      "name": "ThemeEngineCommandSource",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/theme_engine_commands.ts",
-      "name": "themeEngineFactoryCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/theme_engine_commands.ts",
-      "name": "ThemeEnginePreviewPayload",
-      "kind": "interface",
-      "typeOnly": true,
       "documented": true
     },
     {

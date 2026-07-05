@@ -1,7 +1,21 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { previewThemeProvider, type ThemeLayerStack, type ThemeProvider } from "../theme.ts";
-import type { ThemeProviderPreview, ThemeProviderPreviewOptions } from "../theme.ts";
+import type {
+  ThemeEngineOptions,
+  ThemeInspection,
+  ThemeProviderPreview,
+  ThemeProviderPreviewOptions,
+} from "../theme.ts";
+import {
+  formatThemeEngineFactoryCatalogMarkdown,
+  type ThemeEngineFactoryCatalogQuery,
+  type ThemeEngineFactoryCatalogReport,
+  type ThemeEngineFactoryCatalogReportOptions,
+  type ThemeEngineFactoryInspection,
+  type ThemeEngineFactoryRegistry,
+} from "../theme_engine_factory.ts";
 import type { ThemeEnginePipeline } from "../theme_engine_pipeline.ts";
+import type { ThemeWorkspace } from "../theme_workspace.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
@@ -32,11 +46,29 @@ export interface ThemePreviewPayload {
 /** Action union emitted by theme Pipeline Command command helpers. */
 export type ThemePipelineCommandAction = Action<"theme.pipeline.step.changed", ThemePipelineStepChangedPayload>;
 
+/** Action union emitted by theme Engine Command command helpers. */
+export type ThemeEngineCommandAction =
+  | Action<"theme.engine.previewed", ThemeEnginePreviewPayload>
+  | Action<"theme.engine.catalog.reported", ThemeEngineCatalogPayload>;
+
 /** Payload carried by theme Pipeline Step Changed actions. */
 export interface ThemePipelineStepChangedPayload {
   pipelineId: string;
   id: string;
   enabled: boolean;
+}
+
+/** Payload carried by theme Engine Preview actions. */
+export interface ThemeEnginePreviewPayload {
+  id: string;
+  inspection: ThemeEngineFactoryInspection;
+  engine: ThemeInspection;
+}
+
+/** Payload carried by theme Engine Catalog actions. */
+export interface ThemeEngineCatalogPayload {
+  report: ThemeEngineFactoryCatalogReport;
+  markdown?: string;
 }
 
 /** Options for configuring theme Command. */
@@ -63,6 +95,24 @@ export interface ThemePipelineCommandOptions {
   includeDisableCommands?: boolean;
   disableInactiveStepStates?: boolean;
 }
+
+/** Options for configuring theme Engine Command. */
+export interface ThemeEngineCommandOptions {
+  group?: string;
+  prefix?: string;
+  includeFactoryCommands?: boolean;
+  includeCatalogCommand?: boolean;
+  disableInvalidFactories?: boolean;
+  disableEmptyCatalog?: boolean;
+  query?: ThemeEngineFactoryCatalogQuery;
+  title?: string;
+  includeMarkdown?: boolean;
+  overrides?: ThemeEngineOptions;
+  pipelines?: Iterable<string> | false;
+}
+
+/** Public type alias for a theme Engine Command Source. */
+export type ThemeEngineCommandSource = ThemeWorkspace | ThemeEngineFactoryRegistry;
 
 /** Builds command definitions for theme. */
 export function themeCommands(
@@ -159,6 +209,100 @@ export function bindThemePipelineCommands<TAction extends Action = ThemePipeline
   options: ThemePipelineCommandOptions = {},
 ): () => void {
   return registry.registerAll(themePipelineCommands(pipeline, options) as unknown as Command<TAction>[]);
+}
+
+/** Builds command definitions for theme Engine. */
+export function themeEngineCommands(
+  source: ThemeEngineCommandSource,
+  options: ThemeEngineCommandOptions = {},
+): Command<ThemeEngineCommandAction>[] {
+  return [
+    ...themeEngineFactoryCommands(source, options),
+    ...themeEngineCatalogCommands(source, options),
+  ];
+}
+
+/** Binds theme Engine Commands behavior and returns a disposer when applicable. */
+export function bindThemeEngineCommands<TAction extends Action = ThemeEngineCommandAction>(
+  registry: CommandRegistry<TAction>,
+  source: ThemeEngineCommandSource,
+  options: ThemeEngineCommandOptions = {},
+): () => void {
+  return registry.registerAll(themeEngineCommands(source, options) as unknown as Command<TAction>[]);
+}
+
+/** Builds command definitions for theme Engine Factory. */
+export function themeEngineFactoryCommands(
+  source: ThemeEngineCommandSource,
+  options: ThemeEngineCommandOptions = {},
+): Command<ThemeEngineCommandAction>[] {
+  if (!(options.includeFactoryCommands ?? true)) return [];
+
+  const registry = factoryRegistry(source);
+  const group = options.group ?? "theme";
+  const prefix = options.prefix ?? "theme.engine";
+  const factories = registry.inspect();
+  const commands = new Array<Command<ThemeEngineCommandAction>>(factories.length);
+
+  for (let index = 0; index < factories.length; index += 1) {
+    const factory = factories[index]!;
+    commands[index] = {
+      id: `${prefix}.preview.${factory.id}`,
+      label: `Theme Engine: ${factory.label}`,
+      description: factory.description ?? `Preview the ${factory.label} theme engine.`,
+      group,
+      keywords: themeEngineFactoryKeywords(factory),
+      disabled: options.disableInvalidFactories ?? true ? () => !registry.get(factory.id)?.inspect().valid : false,
+      action: () => {
+        const engine = buildFactoryEngine(source, factory.id, options);
+        return {
+          type: "theme.engine.previewed",
+          payload: {
+            id: factory.id,
+            inspection: registry.get(factory.id)?.inspect() ?? factory,
+            engine: engine.inspect(),
+          },
+        };
+      },
+    };
+  }
+  return commands;
+}
+
+/** Builds command definitions for theme Engine Catalog. */
+export function themeEngineCatalogCommands(
+  source: ThemeEngineCommandSource,
+  options: ThemeEngineCommandOptions = {},
+): Command<ThemeEngineCommandAction>[] {
+  if (!(options.includeCatalogCommand ?? true)) return [];
+
+  const registry = factoryRegistry(source);
+  const group = options.group ?? "theme";
+  const prefix = options.prefix ?? "theme.engine";
+  return [
+    {
+      id: `${prefix}.catalog`,
+      label: "Theme Engine Catalog",
+      description: "Capture the registered theme engine factory catalog.",
+      group,
+      keywords: ["theme", "engine", "factory", "catalog", "palette", "preset"],
+      disabled: options.disableEmptyCatalog ?? true
+        ? () => registry.catalog(options.query).inspection.count === 0
+        : false,
+      action: () => {
+        const report = registry.catalog(options.query);
+        return {
+          type: "theme.engine.catalog.reported",
+          payload: {
+            report,
+            markdown: options.includeMarkdown ?? true
+              ? formatThemeEngineFactoryCatalogMarkdown(markdownOptions(source, options))
+              : undefined,
+          },
+        };
+      },
+    },
+  ];
 }
 
 /** Builds command definitions for theme Selection. */
@@ -309,4 +453,54 @@ function pipelineStepActive(pipeline: ThemeEnginePipeline, id: string): boolean 
     if (activeIds[index] === id) return true;
   }
   return false;
+}
+
+function factoryRegistry(source: ThemeEngineCommandSource): ThemeEngineFactoryRegistry {
+  return isThemeWorkspace(source) ? source.factories : source;
+}
+
+function buildFactoryEngine(
+  source: ThemeEngineCommandSource,
+  id: string,
+  options: Pick<ThemeEngineCommandOptions, "overrides" | "pipelines">,
+) {
+  if (isThemeWorkspace(source)) {
+    return source.factoryEngine(id, { overrides: options.overrides, pipelines: options.pipelines });
+  }
+  return source.build(id, options.overrides);
+}
+
+function isThemeWorkspace(source: ThemeEngineCommandSource): source is ThemeWorkspace {
+  return "factoryEngine" in source && typeof source.factoryEngine === "function";
+}
+
+function themeEngineFactoryKeywords(factory: ReturnType<ThemeEngineFactoryRegistry["inspect"]>[number]): string[] {
+  const keywords = [
+    "theme",
+    "engine",
+    "factory",
+    "preview",
+    factory.id,
+    factory.label,
+    factory.palette,
+  ];
+  for (const tag of factory.tags) keywords.push(tag);
+  for (const component of factory.components) keywords.push(component);
+  for (const variant in factory.variants) {
+    for (const state of factory.variants[variant]!) {
+      keywords.push(state);
+    }
+  }
+  return keywords;
+}
+
+function markdownOptions(
+  source: ThemeEngineCommandSource,
+  options: Pick<ThemeEngineCommandOptions, "query" | "title">,
+): ThemeEngineFactoryCatalogReportOptions & { title?: string } {
+  return {
+    factories: factoryRegistry(source).factories(),
+    query: options.query,
+    title: options.title ?? "Theme Engine Catalog",
+  };
 }
