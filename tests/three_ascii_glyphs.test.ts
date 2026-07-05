@@ -560,6 +560,11 @@ Deno.test("three ascii fallback grid omits duplicate or empty detail lines", () 
     "ASCII RENDERER OFFLINE",
     "CUSTOM RENDERER FAILURE",
   ]);
+
+  const oneRow = buildFallbackGrid(12, 1, "custom renderer failure");
+  assertEquals(oneRow.length, 1);
+  assertEquals(oneRow[0]!.length, 12);
+  assertEquals(oneRow.map((row) => row.join("").trim()).filter(Boolean), ["ASCII RENDER"]);
 });
 
 Deno.test("three ascii demo window reserves side panel only when useful", () => {

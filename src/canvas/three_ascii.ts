@@ -460,7 +460,7 @@ export function buildFallbackGrid(
   if (lineCount > 1) lines[1] = message;
   const startRow = Math.max(0, Math.floor((rows - lines.length) / 2));
 
-  for (let index = 0; index < lines.length; index += 1) {
+  for (let index = 0; index < lines.length && startRow + index < rows; index += 1) {
     const line = lines[index] ?? "";
     const startColumn = Math.max(0, Math.floor((columns - line.length) / 2));
     for (let column = 0; column < line.length && startColumn + column < columns; column += 1) {
