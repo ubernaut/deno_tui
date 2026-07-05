@@ -1221,3 +1221,7 @@ performance, shared terminal/web workbench projections, and oversized module red
   row storage. The existing `threeHeaderRows()` API remains as a wrapper, while the header benchmark improved from
   roughly `0.112ms` to `0.099ms` on this run; the default workbench resize visual smoke and Three block span flush
   benchmark stayed green.
+- Raised the API Workbench fullscreen Three render-cell ceiling to the same `30_720` tier exposed by the ASCII config,
+  inserted intermediate fullscreen pressure tiers, and added a large fullscreen resize visual-smoke task. PTY captures
+  at `190x54` and `246x72` now show real renderer telemetry (`8228c/8228c` and `15066c/15066c`) instead of an offline
+  fallback or visibly stretched lower-resolution source grid.

@@ -44,6 +44,7 @@
     "workbench-default-resize-visual-smoke": "deno run -A ./scripts/gpu_probe_lock_cli.ts -- deno run -A ./scripts/workbench_visual_smoke.ts --columns 100 --rows 30 --resize-columns 160 --resize-rows 48 --settle-ms 9000 --timeout-ms 26000",
     "workbench-fullscreen-visual-smoke": "deno run -A ./scripts/gpu_probe_lock_cli.ts -- deno run -A ./scripts/workbench_fullscreen_visual_smoke.ts",
     "workbench-fullscreen-resize-visual-smoke": "deno run -A ./scripts/gpu_probe_lock_cli.ts -- deno run -A ./scripts/workbench_fullscreen_visual_smoke.ts --columns 112 --rows 34 --resize-columns 154 --resize-rows 48 --settle-ms 2200 --timeout-ms 7000 --min-cells 3000 --min-truecolor-rows 24 --min-truecolor-columns 145",
+    "workbench-fullscreen-large-resize-visual-smoke": "deno run -A ./scripts/gpu_probe_lock_cli.ts -- deno run -A ./scripts/workbench_fullscreen_visual_smoke.ts --columns 180 --rows 56 --resize-columns 246 --resize-rows 72 --settle-ms 6000 --timeout-ms 30000 --min-cells 12000 --min-truecolor-rows 50 --min-truecolor-columns 220",
     "component-catalog": "deno run -A ./scripts/component_catalog.ts",
     "app-plugin-catalog": "deno run -A ./examples/app_plugin_catalog.ts",
     "adopter-workbench": "deno run -A ./examples/adopter_workbench.ts",
