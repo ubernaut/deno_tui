@@ -219,6 +219,11 @@ performance, shared terminal/web workbench projections, and oversized module red
   longer assembles pressure/cadence fields inline.
 - Added sustained byte-rate context to workbench Three pressure change logs so adaptive downshifts show the same signal
   used by policy decisions.
+- Re-verified Three renderer performance after the resize-budget fix: startup steady frames held around 9ms at the
+  960-cell workbench tier, resize steady frames held around 13ms at 6314 cells, and the `three-ascii-ansi-grid`
+  benchmark slice stayed well below thresholds.
+- Split API workbench control traversal/focus helpers into `api_workbench_control_traversal.ts` while preserving the
+  existing `api_workbench_controls.ts` facade export surface for terminal and browser callers.
 - Added a driven fullscreen visual smoke for the API Workbench default Three pane so future checks verify fullscreen
   render-cell scale and truecolor body repainting instead of relying on text-only ANSI replay.
 - Added exact repeated `--name` benchmark selectors so Three/workbench hot-path runs can target only the intended cases
