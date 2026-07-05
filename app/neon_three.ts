@@ -580,7 +580,7 @@ export function createNeonThreeScene(mode: ThreeSceneMode, options: NeonThreeSce
         rimLight.position.set(-3, 4, -2);
         scene.add(rimLight);
         scene.add(group);
-        camera.position.set(0, 1.4, 7);
+        camera.position.set(0, 1.18, 6.25);
 
         const torus = new THREE.Mesh(
           new THREE.TorusKnotGeometry(1.25, 0.45, 96, 18),
@@ -618,17 +618,10 @@ export function createNeonThreeScene(mode: ThreeSceneMode, options: NeonThreeSce
         block.rotation.set(0.5, 0.4, 0.2);
         group.add(block);
 
-        const floor = new THREE.Mesh(
-          new THREE.PlaneGeometry(18, 18, 1, 1),
-          new THREE.MeshPhongMaterial({
-            color: new THREE.Color("#12212a"),
-            specular: new THREE.Color("#0f4039"),
-            shininess: 14,
-          }),
-        );
-        floor.rotation.x = -Math.PI / 2;
-        floor.position.y = -0.45;
-        scene.add(floor);
+        const floorGrid = createGrid(7.2, 3.8, 14, 8, "#254a58");
+        floorGrid.rotation.x = -Math.PI / 2;
+        floorGrid.position.set(0, -0.76, 1.55);
+        scene.add(floorGrid);
 
         return {
           tick: (time: number, signal: ThreeSceneSignal) => {
@@ -640,6 +633,9 @@ export function createNeonThreeScene(mode: ThreeSceneMode, options: NeonThreeSce
             sphere.rotation.y += 0.055;
             block.rotation.x += 0.035 + signal.lift * 0.01;
             block.rotation.z += 0.025 + signal.twist * 0.01;
+            const wideAspect = Math.max(0, camera.aspect - 1.35);
+            camera.position.y = 1.18 - Math.min(0.22, wideAspect * 0.08);
+            camera.position.z = 6.25 - Math.min(0.35, wideAspect * 0.12);
           },
         };
       }

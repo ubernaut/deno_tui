@@ -253,6 +253,7 @@ Deno.test("workbench fullscreen visual smoke inspector verifies scale and trueco
   assertEquals(result.bodyTruecolorBackgroundMaxColumns, 2);
   assertEquals(result.bodyVisibleRows, 3);
   assertEquals(result.bodyVisibleMaxColumns, 2);
+  assertEquals(result.bodyVisibleCells, 6);
   assertEquals(countTruecolorBackgroundRows(output), 3);
 });
 
@@ -317,6 +318,7 @@ Deno.test("workbench fullscreen visual smoke accepts compact telemetry after shr
   assertEquals(result.bodyTruecolorBackgroundMaxColumns, 60);
   assertEquals(result.bodyVisibleRows, 3);
   assertEquals(result.bodyVisibleMaxColumns, 60);
+  assertEquals(result.bodyVisibleCells, 180);
 });
 
 Deno.test("workbench fullscreen visual smoke rejects narrow truecolor surfaces after resize", () => {

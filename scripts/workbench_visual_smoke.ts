@@ -56,6 +56,7 @@ export interface WorkbenchFullscreenVisualSmokeResult extends WorkbenchVisualSmo
   bodyTruecolorBackgroundMaxColumns: number;
   bodyVisibleRows: number;
   bodyVisibleMaxColumns: number;
+  bodyVisibleCells: number;
 }
 
 interface ReplayState {
@@ -371,6 +372,7 @@ export function inspectWorkbenchFullscreenVisualSmokeOutput(
     bodyTruecolorBackgroundMaxColumns: bodyTruecolor.maxColumns,
     bodyVisibleRows: bodyVisible.rows,
     bodyVisibleMaxColumns: bodyVisible.maxColumns,
+    bodyVisibleCells: bodyVisible.cells,
   };
 }
 
@@ -434,12 +436,13 @@ function findThreeBodyEndRow(lines: readonly string[], startRow: number): number
   return lines.length;
 }
 
-function threeBodyVisibleCoverage(lines: readonly string[]): { rows: number; maxColumns: number } {
+function threeBodyVisibleCoverage(lines: readonly string[]): { rows: number; maxColumns: number; cells: number } {
   const telemetryRow = lines.findIndex((line) => line.includes("fps") && line.includes("live"));
-  if (telemetryRow < 0) return { rows: 0, maxColumns: 0 };
+  if (telemetryRow < 0) return { rows: 0, maxColumns: 0, cells: 0 };
   const endRow = findThreeBodyEndRow(lines, telemetryRow + 1);
   let rows = 0;
   let maxColumns = 0;
+  let cells = 0;
   for (let row = telemetryRow + 1; row < endRow; row += 1) {
     const line = lines[row] ?? "";
     const leftBorder = line.indexOf("│");
@@ -452,8 +455,9 @@ function threeBodyVisibleCoverage(lines: readonly string[]): { rows: number; max
     }
     if (count > 0) rows += 1;
     maxColumns = Math.max(maxColumns, count);
+    cells += count;
   }
-  return { rows, maxColumns };
+  return { rows, maxColumns, cells };
 }
 
 export function formatWorkbenchVisualSmokeResult(result: WorkbenchVisualSmokeResult): string {

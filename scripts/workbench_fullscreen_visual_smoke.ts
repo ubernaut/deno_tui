@@ -235,6 +235,7 @@ export function formatWorkbenchFullscreenVisualSmokeResult(result: WorkbenchFull
     `Truecolor max columns: ${result.truecolorBackgroundMaxColumns}`,
     `Three body truecolor rows: ${result.bodyTruecolorBackgroundRows}`,
     `Three body truecolor max columns: ${result.bodyTruecolorBackgroundMaxColumns}`,
+    `Three body visible cells: ${result.bodyVisibleCells}`,
     `Three pane truecolor: ${
       result.threePane?.found
         ? `${result.threePane.truecolorRows} rows, ${result.threePane.truecolorMaxColumns}/${result.threePane.bodyColumns} columns`
