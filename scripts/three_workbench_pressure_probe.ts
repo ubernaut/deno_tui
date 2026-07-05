@@ -11,8 +11,10 @@ import { ThreePanelFrameView, type ThreeSceneState } from "../app/three_panel.ts
 import { writeWorkbenchThreeGrid } from "../src/app/workbench_three_grid.ts";
 import { createDefaultWorkbenchAsciiOptions } from "../src/app/workbench_ascii.ts";
 import {
+  API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY,
   API_WORKBENCH_THREE_PRESSURE_POLICY,
   apiWorkbenchThreeFrameIntervalForCells,
+  WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
   WORKBENCH_THREE_INITIAL_CELLS,
   WORKBENCH_THREE_READBACK_STRATEGY,
 } from "../src/app/workbench_three_policy.ts";
@@ -52,13 +54,23 @@ const {
   glyphs,
   readbackStrategy,
   adaptive,
+  fullscreen,
   check,
   minSteadyFrames,
   minGridUpdates,
   minAverageSourceChangedRows,
   minAverageObservedFps,
+  minLatestCells,
   intervalMs,
 } = options;
+const pressurePolicy = fullscreen
+  ? API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY
+  : API_WORKBENCH_THREE_PRESSURE_POLICY;
+if (fullscreen && maxCells < WORKBENCH_THREE_FULLSCREEN_MIN_CELLS) {
+  console.warn(
+    `fullscreen probe max-cells ${maxCells} is below fullscreen default ${WORKBENCH_THREE_FULLSCREEN_MIN_CELLS}`,
+  );
+}
 
 let bytesWritten = 0;
 const painter = new WorkbenchAnsiScreenPainter({
@@ -142,6 +154,7 @@ console.log(
       panelHeight,
       maxCells,
       adaptive,
+      fullscreen,
       intervalMs: frameInterval.peek(),
       totalBytes: bytesWritten,
     },
@@ -156,6 +169,7 @@ if (check) {
     minGridUpdates,
     minAverageSourceChangedRows,
     minAverageObservedFps,
+    minLatestCells,
   });
   if (!validation.ok) {
     console.error(`three-workbench pressure probe check failed: ${validation.errors.join("; ")}`);
@@ -195,7 +209,7 @@ function drawSample(index: number): WorkbenchThreePressureProbeSample {
   const cadenceInspection = cadence.inspect();
   if (adaptive) {
     const next = resolveWorkbenchThreeTerminalPressureUpdate(terminalPressure, {
-      ...API_WORKBENCH_THREE_PRESSURE_POLICY,
+      ...pressurePolicy,
       currentCells: cellsBeforePressureUpdate,
       renderedThreeGrids: projection ? 1 : 0,
       renderedThreeRows: projection?.targetHeight ?? 0,

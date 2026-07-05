@@ -75,6 +75,7 @@
     "three-workbench:pressure-probe": "deno run -A ./scripts/three_workbench_pressure_probe.ts",
     "three-workbench:startup-probe": "deno run -A ./scripts/three_panel_live_probe.ts --frames 90 --glyphs blocks --max-cells 960 --width 96 --height 32 --check --max-average-ms 40",
     "three-workbench:narrow-probe": "deno run -A ./scripts/three_panel_live_probe.ts --frames 90 --glyphs blocks --max-cells 960 --width 37 --height 5 --check --max-average-ms 40",
+    "three-workbench:fullscreen-probe": "deno run -A ./scripts/three_workbench_pressure_probe.ts --frames 36 --glyphs blocks --max-cells 3840 --ascii-cells 3840 --frame-width 168 --frame-height 54 --panel-width 136 --panel-height 36 --adaptive --fullscreen --check --min-steady-frames 3 --min-grid-updates 3 --min-source-rows 1 --min-latest-cells 480",
     "viz": "deno run -A ./app/main.ts",
     "viz:check": "deno check ./app/main.ts",
     "viz:test": "deno test",

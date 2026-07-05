@@ -44,6 +44,7 @@ export interface WorkbenchThreePressureProbeValidationOptions {
   minGridUpdates: number;
   minAverageSourceChangedRows: number;
   minAverageObservedFps?: number;
+  minLatestCells?: number;
 }
 
 export interface WorkbenchThreePressureProbeValidationResult {
@@ -62,6 +63,7 @@ export interface WorkbenchThreePressureProbeOptions {
   maxCells: number;
   asciiCells?: number;
   adaptive?: boolean;
+  fullscreen?: boolean;
   intervalMs: number;
   totalBytes: number;
 }
@@ -86,11 +88,13 @@ export interface WorkbenchThreePressureProbeCliOptions<Mode extends string> {
   glyphs: TerminalGlyphStyle;
   readbackStrategy: ThreeAsciiReadbackStrategy;
   adaptive: boolean;
+  fullscreen: boolean;
   check: boolean;
   minSteadyFrames: number;
   minGridUpdates: number;
   minAverageSourceChangedRows: number;
   minAverageObservedFps: number;
+  minLatestCells: number;
   intervalMs: number;
 }
 
@@ -111,11 +115,13 @@ export function parseWorkbenchThreePressureProbeCliOptions<Mode extends string>(
     glyphs: choiceArg(args, "--glyphs", "blocks" as TerminalGlyphStyle, ["blocks", "glyphs", "mixed"] as const),
     readbackStrategy: choiceArg(args, "--readback", defaults.readbackStrategy, ["blocking", "deferred"] as const),
     adaptive: args.includes("--adaptive"),
+    fullscreen: args.includes("--fullscreen"),
     check: args.includes("--check"),
     minSteadyFrames: numberArg(args, "--min-steady-frames", 3),
     minGridUpdates: numberArg(args, "--min-grid-updates", 2),
     minAverageSourceChangedRows: numberArg(args, "--min-source-rows", 1),
     minAverageObservedFps: numberArg(args, "--min-observed-fps", 0),
+    minLatestCells: numberArg(args, "--min-latest-cells", 0),
     intervalMs: numberArg(args, "--interval", defaults.frameIntervalForCells(maxCells)),
   };
 }
@@ -242,6 +248,10 @@ export function validateWorkbenchThreePressureProbeSummary(
   if (minAverageObservedFps > 0 && summary.averageObservedFps < minAverageObservedFps) {
     errors.push(`average observed FPS ${summary.averageObservedFps.toFixed(1)} < ${minAverageObservedFps}`);
   }
+  const minLatestCells = Math.max(0, options.minLatestCells ?? 0);
+  if (minLatestCells > 0 && (latest?.maxCells ?? 0) < minLatestCells) {
+    errors.push(`latest max cells ${latest?.maxCells ?? 0} < ${minLatestCells}`);
+  }
   return { ok: errors.length === 0, errors };
 }
 
@@ -266,7 +276,9 @@ export function formatWorkbenchThreePressureProbeSummaryLines(
       options.asciiCells === undefined || options.asciiCells === options.maxCells
         ? ""
         : ` asciiCells=${options.asciiCells}`
-    }${options.adaptive ? " adaptive" : ""} interval=${formatMs(options.intervalMs)}`,
+    }${options.adaptive ? " adaptive" : ""}${options.fullscreen ? " fullscreen" : ""} interval=${
+      formatMs(options.intervalMs)
+    }`,
     `warmup=${formatMs(summary.warmup?.rendererMs)} renderer=${formatMs(summary.averageRendererMs)} fps=${
       formatFps(summary.averageRendererMs)
     } observed=${formatObservedFps(summary.averageObservedFps)} flush=${formatMs(summary.averageFlushMs)} bytes=${

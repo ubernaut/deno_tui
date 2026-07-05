@@ -184,6 +184,30 @@ Deno.test("validateWorkbenchThreePressureProbe can reject low observed FPS", () 
   assertEquals(result.errors, ["average observed FPS 4.0 < 10"]);
 });
 
+Deno.test("validateWorkbenchThreePressureProbe can reject collapsed latest render caps", () => {
+  const result = validateWorkbenchThreePressureProbe([
+    sample({ index: 1, rendererMs: 10, maxCells: 3840, rows: 30, columns: 128, cells: 3840, gridUpdates: 1 }),
+    sample({
+      index: 2,
+      rendererMs: 8,
+      maxCells: 480,
+      rows: 16,
+      columns: 30,
+      cells: 480,
+      sourceChangedRows: 8,
+      gridUpdates: 2,
+    }),
+  ], {
+    minSteadyFrames: 1,
+    minGridUpdates: 2,
+    minAverageSourceChangedRows: 1,
+    minLatestCells: 960,
+  });
+
+  assertEquals(result.ok, false);
+  assertEquals(result.errors, ["latest max cells 480 < 960"]);
+});
+
 Deno.test("formatWorkbenchThreePressureProbeLines reports source changes and update counts", () => {
   const options = {
     mode: "studio",
@@ -194,6 +218,7 @@ Deno.test("formatWorkbenchThreePressureProbeLines reports source changes and upd
     panelWidth: 96,
     panelHeight: 32,
     maxCells: 960,
+    fullscreen: true,
     intervalMs: 50,
     totalBytes: 12345,
   };
@@ -224,7 +249,7 @@ Deno.test("formatWorkbenchThreePressureProbeLines reports source changes and upd
 
   assertEquals(lines[0], "three-workbench pressure probe");
   assertStringIncludes(lines[1], "mode=studio glyphs=blocks readback=deferred");
-  assertStringIncludes(lines[1], "frame=168x54 panel=96x32 maxCells=960 interval=50.00ms");
+  assertStringIncludes(lines[1], "frame=168x54 panel=96x32 maxCells=960 fullscreen interval=50.00ms");
   assertStringIncludes(lines[2], "renderer=12.00ms");
   assertStringIncludes(lines[2], "observed=12.5fps");
   assertStringIncludes(lines[2], "rate=200B/s");
@@ -263,6 +288,9 @@ Deno.test("parseWorkbenchThreePressureProbeCliOptions separates pressure and sav
       "2",
       "--min-observed-fps",
       "12",
+      "--fullscreen",
+      "--min-latest-cells",
+      "480",
     ],
     probeDefaults(),
   );
@@ -279,6 +307,8 @@ Deno.test("parseWorkbenchThreePressureProbeCliOptions separates pressure and sav
   assertEquals(options.minGridUpdates, 7);
   assertEquals(options.minAverageSourceChangedRows, 2);
   assertEquals(options.minAverageObservedFps, 12);
+  assertEquals(options.fullscreen, true);
+  assertEquals(options.minLatestCells, 480);
   assertEquals(options.intervalMs, 33);
 });
 
@@ -287,6 +317,8 @@ Deno.test("parseWorkbenchThreePressureProbeCliOptions falls back to pressure cel
 
   assertEquals(options.maxCells, 240);
   assertEquals(options.asciiCells, 240);
+  assertEquals(options.fullscreen, false);
+  assertEquals(options.minLatestCells, 0);
   assertEquals(options.intervalMs, 50);
 });
 
