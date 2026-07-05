@@ -66,6 +66,7 @@ import {
   workbenchEmptyWorkspaceMessage,
   type WorkbenchFrame,
   type WorkbenchFrameBoxLine,
+  workbenchFullscreenWindowRect,
   workbenchHeaderHelp,
   type WorkbenchHeaderLayout,
   type WorkbenchMenuBarHitLayout,
@@ -1290,14 +1291,14 @@ function renderWorkspace(frame: Frame): void {
   const hitStart = hitTargets.length;
   const max = maximized.peek();
   if (max) {
-    withWorkspacePlacement(bounds, offset, () => renderWindow(virtual, max, layout.bounds));
+    const fullscreenRect = workbenchFullscreenWindowRect(layout.bounds);
+    withWorkspacePlacement(bounds, 0, () => renderWindow(virtual, max, fullscreenRect));
     if (max !== "three") {
       hideBuiltinThreeRects();
     }
     hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
-    translateHitTargets(hitTargets, { startIndex: hitStart, rowDelta: bounds.row - offset, clip: bounds });
-    blitWorkspace(frame, virtual, bounds, offset, layout.bounds.width);
-    renderWorkspaceScrollbar(frame, bounds);
+    translateHitTargets(hitTargets, { startIndex: hitStart, rowDelta: bounds.row, clip: bounds });
+    blitWorkspace(frame, virtual, bounds, 0, layout.bounds.width);
     renderWindowTabs(frame);
     return;
   }

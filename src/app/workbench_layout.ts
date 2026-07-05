@@ -119,6 +119,16 @@ export interface WorkbenchVisibleWindowRectsOptions {
   viewport: Rectangle;
 }
 
+/** Returns the viewport-sized rectangle used when a workbench window is maximized. */
+export function workbenchFullscreenWindowRect(bounds: Rectangle): Rectangle {
+  return {
+    column: bounds.column,
+    row: bounds.row,
+    width: Math.max(0, bounds.width),
+    height: Math.max(0, bounds.height),
+  };
+}
+
 /** Coordinates workspace scroll sizing and active-window reveal behavior. */
 export class WorkbenchWorkspaceViewportController<Id extends string = string> {
   readonly scroll: WorkbenchWorkspaceScrollAdapter;

@@ -4,6 +4,7 @@ import {
   WorkbenchActiveRevealTracker,
   workbenchAdaptiveTileOptions,
   workbenchAdaptiveWindowLayout,
+  workbenchFullscreenWindowRect,
   workbenchHorizontalScrollbarCellsInto,
   workbenchVerticalScrollbarCellsInto,
   workbenchVerticalScrollbarRect,
@@ -90,6 +91,17 @@ Deno.test("workbenchAdaptiveWindowLayout runs managers with shared tile defaults
   }]);
   assertEquals(layout.contentHeight, 42);
   assertEquals(layout.rects.get("a"), { column: 2, row: 3, width: 40, height: 12 });
+});
+
+Deno.test("workbenchFullscreenWindowRect uses the visible viewport instead of virtual content height", () => {
+  assertEquals(
+    workbenchFullscreenWindowRect({ column: 0, row: 0, width: 119, height: 29 }),
+    { column: 0, row: 0, width: 119, height: 29 },
+  );
+  assertEquals(
+    workbenchFullscreenWindowRect({ column: 2, row: 3, width: -1, height: -4 }),
+    { column: 2, row: 3, width: 0, height: 0 },
+  );
 });
 
 Deno.test("workbenchVisibleWindowRectsInto filters virtual rects to viewport", () => {

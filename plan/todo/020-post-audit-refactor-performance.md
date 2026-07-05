@@ -1157,3 +1157,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   rendered-hint skip policy testable outside the retained terminal screen painter.
 - Reworked Three panel probe summarization to compute steady samples and averages in one pass instead of allocating
   slice/filter/map arrays for each metric, keeping renderer performance probes lightweight.
+- Fixed API Workbench fullscreen rendering to use a viewport-sized maximized rectangle with zero workspace scroll
+  offset, preventing stale virtual-layout offsets from clipping Three panes after fullscreen resize. Verified with a
+  real PTY resize capture at 150x44 and focused layout/Three tests.
