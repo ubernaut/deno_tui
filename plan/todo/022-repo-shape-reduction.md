@@ -258,6 +258,9 @@ The library core is real and valuable, but it needs clearer boundaries:
   - duplicate Three panel render-policy, render-size, and adaptive-budget assertions were removed from
     `tests/three_panel_frame.test.ts`; those pure policy behaviors remain covered in `tests/three_panel_policy.test.ts`,
     leaving the frame suite focused on live panel behavior and renderer lifecycle scenarios.
+  - terminal status tone color mapping is now resolved by the shared API Workbench catalog and covered in
+    `tests/api_workbench_catalog.test.ts`, removing another renderer-local presentation switch without widening the
+    stable package surface.
   - `app/three_panel.ts` no longer re-exports pure Three panel policy/core helpers for test convenience; tests import
     those helpers from `src/app/*` directly, keeping the app facade focused on the view classes and factory.
 - Prefer subsystem-level runtime smoke coverage for workbench, Three ASCII, terminal shell, and web interaction.

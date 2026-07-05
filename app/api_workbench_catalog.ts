@@ -7,6 +7,8 @@ import {
 } from "../src/app/workbench_window_registry.ts";
 import { grWizardThemePalettes } from "../src/grwizard_themes.ts";
 import { HTML_CSS_LAYOUT_OPTION_ID, HTML_CSS_LAYOUT_WINDOW_ID } from "../src/markup/demo_fixtures.ts";
+import type { ProcessSessionStatus } from "../src/runtime/process_session.ts";
+import { terminalStatusTone } from "../src/runtime/terminal_status.ts";
 
 export interface ApiWorkbenchThemeSpec {
   id: string;
@@ -40,6 +42,24 @@ export interface ApiWorkbenchProcessRow extends Record<string, unknown> {
   api: string;
   state: string;
   latency: number;
+}
+
+export function apiWorkbenchTerminalStatusToneColor(
+  status: ProcessSessionStatus | "starting" | undefined,
+  theme: ApiWorkbenchThemeSpec,
+): string {
+  switch (terminalStatusTone(status)) {
+    case "good":
+      return theme.good;
+    case "danger":
+      return theme.danger;
+    case "warning":
+      return theme.warn;
+    case "accent":
+      return theme.accent;
+    case "muted":
+      return theme.borderStrong;
+  }
 }
 
 export const apiWorkbenchPanelTitles: Record<string, string> = {

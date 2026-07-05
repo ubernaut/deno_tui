@@ -150,11 +150,7 @@ import {
   terminalMouseRoutingFromPrivateModes,
 } from "../src/app/terminal_input.ts";
 import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
-import {
-  formatProcessCommandLine,
-  ProcessSessionController,
-  type ProcessSessionStatus,
-} from "../src/runtime/process_session.ts";
+import { formatProcessCommandLine, ProcessSessionController } from "../src/runtime/process_session.ts";
 import { FrameScheduler } from "../src/runtime/render_loop.ts";
 import { type TerminalBackend } from "../src/runtime/terminal_backend.ts";
 import type { TerminalShellController } from "../src/runtime/terminal_shell.ts";
@@ -165,7 +161,6 @@ import {
   formatTerminalShellWindowTitle,
   summarizeTerminalStatus,
   terminalInputModeDisplayLabel,
-  terminalStatusTone,
 } from "../src/runtime/terminal_status.ts";
 import { shellTerminalTemplate } from "../src/runtime/terminal_templates.ts";
 import { Computed, Signal } from "../src/signals/mod.ts";
@@ -217,6 +212,7 @@ import {
   apiWorkbenchPanelTitle,
   type ApiWorkbenchProcessRow,
   apiWorkbenchRows,
+  apiWorkbenchTerminalStatusToneColor,
   type ApiWorkbenchThemeSpec,
   apiWorkbenchVisualizationSupportsThree,
   apiWorkbenchWindowTitle,
@@ -466,21 +462,6 @@ function terminalOutputLineStyle(
   if (source === "stderr") return { fg: t.danger, bg: t.surface, bold: true };
   if (source === "system") return { fg: t.warn, bg: t.panelSoft, bold: true };
   return { fg: t.text, bg: t.surface };
-}
-
-function terminalStatusToneColor(status: ProcessSessionStatus | "starting" | undefined, t: ThemeSpec): string {
-  switch (terminalStatusTone(status)) {
-    case "good":
-      return t.good;
-    case "danger":
-      return t.danger;
-    case "warning":
-      return t.warn;
-    case "accent":
-      return t.accent;
-    case "muted":
-      return t.borderStrong;
-  }
 }
 
 function terminalAnsiColor(code: number | undefined, t: ThemeSpec, background: boolean): string | undefined {
@@ -1973,7 +1954,7 @@ function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
   row = renderTerminalOutputToolbar(frame, rect, row);
   if (row >= rect.row + rect.height) return;
 
-  const statusTone = terminalStatusToneColor(inspection.status, t);
+  const statusTone = apiWorkbenchTerminalStatusToneColor(inspection.status, t);
   const statusSummary = summarizeTerminalStatus(inspection, {
     title: terminalInputModeLabel(),
     backendId: "process",
@@ -2075,7 +2056,7 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
     return;
   }
   const copyMode = inspection.scrollback.mode === "copy";
-  const statusTone = terminalStatusToneColor(inspection.status, t);
+  const statusTone = apiWorkbenchTerminalStatusToneColor(inspection.status, t);
   const mode = copyMode ? "COPY MODE" : terminalShellInputModeLabel();
   const headerRows = workbenchTerminalShellHeaderRowsInto(terminalShellHeaderRows, {
     status: {

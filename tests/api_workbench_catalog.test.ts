@@ -8,6 +8,7 @@ import {
   apiWorkbenchPanelTitle,
   apiWorkbenchRows,
   apiWorkbenchShortPanelTitle,
+  apiWorkbenchTerminalStatusToneColor,
   apiWorkbenchVisualizationSupportsThree,
   apiWorkbenchWindowTitle,
   createApiWorkbenchThemes,
@@ -79,6 +80,17 @@ Deno.test("api workbench catalog composes shared window titles", () => {
     }),
     "Shell WB bash",
   );
+});
+
+Deno.test("api workbench catalog maps terminal status tones through active theme colors", () => {
+  const theme = createApiWorkbenchThemes()[0]!;
+
+  assertEquals(apiWorkbenchTerminalStatusToneColor("running", theme), theme.good);
+  assertEquals(apiWorkbenchTerminalStatusToneColor("failed", theme), theme.danger);
+  assertEquals(apiWorkbenchTerminalStatusToneColor("cancelled", theme), theme.warn);
+  assertEquals(apiWorkbenchTerminalStatusToneColor("starting", theme), theme.accent);
+  assertEquals(apiWorkbenchTerminalStatusToneColor("idle", theme), theme.borderStrong);
+  assertEquals(apiWorkbenchTerminalStatusToneColor(undefined, theme), theme.borderStrong);
 });
 
 Deno.test("api workbench catalog exposes built-in window order", () => {
