@@ -6,6 +6,7 @@ import {
   inspectWorkbenchVisualSmokeOutput,
   parseWorkbenchVisualSmokeArgs,
   replayWorkbenchScreen,
+  replayWorkbenchStyledScreen,
 } from "../scripts/workbench_visual_smoke.ts";
 import { parseWorkbenchFullscreenVisualSmokeArgs } from "../scripts/workbench_fullscreen_visual_smoke.ts";
 
@@ -23,6 +24,39 @@ Deno.test("workbench visual smoke replay applies cursor movement and row clearin
   ]);
 });
 
+Deno.test("workbench visual smoke replay tracks final truecolor background cells", () => {
+  const replay = replayWorkbenchStyledScreen(
+    [
+      "\x1b[2J",
+      "\x1b[1;1Hplain",
+      "\x1b[2;1H\x1b[48;2;1;2;3m  \x1b[0m",
+      "\x1b[3;1H\x1b[48;2;4;5;6mxx\x1b[49m.",
+      "\x1b[2;1H\x1b[2K",
+    ].join(""),
+    { columns: 8, rows: 4 },
+  );
+
+  assertEquals(replay.screen.map((row) => row.join("").trimEnd()), ["plain", "", "xx.", ""]);
+  assertEquals(replay.truecolorBackgroundRows, 1);
+  assertEquals(replay.truecolorBackground[2]?.slice(0, 3), [true, true, false]);
+});
+
+Deno.test("workbench visual smoke inspector reports final truecolor rows", () => {
+  const output = [
+    "\x1b[2J",
+    "\x1b[1;1HAPI WORKBENCH",
+    "\x1b[2;1H\x1b[48;2;1;2;3m  \x1b[0m",
+    "\x1b[2;1H\x1b[2K",
+    "\x1b[4;1HTHREE ASCII",
+    "\x1b[5;1H6ms 333c live 20fps",
+    "\x1b[8;1Hfocus Three ASCII | Unit-01  F10 menu",
+  ].join("");
+  const result = inspectWorkbenchVisualSmokeOutput(output, { columns: 80, rows: 8 });
+
+  assertEquals(result.truecolorBackgroundWrites, 1);
+  assertEquals(result.finalTruecolorBackgroundRows, 0);
+});
+
 Deno.test("workbench visual smoke inspector finds workbench telemetry and collisions", () => {
   const output = [
     "\x1b[2J",
@@ -38,6 +72,7 @@ Deno.test("workbench visual smoke inspector finds workbench telemetry and collis
   assertEquals(result.missing, []);
   assertEquals(result.forbidden, []);
   assertEquals(result.truecolorBackgroundWrites, 1);
+  assertEquals(result.finalTruecolorBackgroundRows, 1);
   assertStringIncludes(result.threeLine, "20fps");
 });
 
@@ -75,6 +110,7 @@ Deno.test("workbench fullscreen visual smoke inspector verifies scale and trueco
   assertEquals(result.fullscreenCells, 3720);
   assertEquals(result.fullscreenCap, 3840);
   assertEquals(result.truecolorBackgroundRows, 3);
+  assertEquals(result.finalTruecolorBackgroundRows, 3);
   assertEquals(countTruecolorBackgroundRows(output), 3);
 });
 

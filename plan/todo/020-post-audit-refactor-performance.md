@@ -1191,3 +1191,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   preserving later terminal-pressure downshifts for the same target. The resized fullscreen PTY smoke now reports
   roughly `6825/6960` rendered cells at `180x50`, with matching header tier telemetry and truecolor rows across the
   resized surface.
+- Made the workbench PTY visual-smoke replay track final-screen truecolor background cells, so block-mode Three paint
+  and stale-window repaint issues are checked on the replayed final frame instead of only counting historical ANSI
+  bytes. Real captures showed `32` final truecolor rows in the default workbench and `49` after fullscreen resize.

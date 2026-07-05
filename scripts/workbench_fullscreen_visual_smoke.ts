@@ -185,6 +185,7 @@ export function formatWorkbenchFullscreenVisualSmokeResult(result: WorkbenchFull
     `Output: ${result.outputBytes} bytes`,
     `Fullscreen cells: ${result.fullscreenCells}/${result.fullscreenCap}`,
     `Truecolor rows: ${result.truecolorBackgroundRows}`,
+    `Final truecolor rows: ${result.finalTruecolorBackgroundRows}`,
     `Truecolor backgrounds: ${result.truecolorBackgroundWrites}`,
     `Nonblank rows: ${result.nonBlankRows}`,
     `Missing: ${result.missing.join(", ") || "-"}`,

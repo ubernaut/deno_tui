@@ -17,6 +17,7 @@ export interface WorkbenchVisualSmokeResult {
   nonBlankRows: number;
   outputBytes: number;
   truecolorBackgroundWrites: number;
+  finalTruecolorBackgroundRows: number;
 }
 
 export interface WorkbenchFullscreenVisualSmokeResult extends WorkbenchVisualSmokeResult {
@@ -29,6 +30,13 @@ export interface WorkbenchFullscreenVisualSmokeResult extends WorkbenchVisualSmo
 interface ReplayState {
   row: number;
   column: number;
+  truecolorBackground: boolean;
+}
+
+export interface WorkbenchStyledScreenReplay {
+  screen: string[][];
+  truecolorBackground: boolean[][];
+  truecolorBackgroundRows: number;
 }
 
 const DEFAULT_COMMAND = ["deno", "task", "api-workbench"] as const;
@@ -96,7 +104,8 @@ export function inspectWorkbenchVisualSmokeOutput(
   output: string,
   options: { columns: number; rows: number },
 ): WorkbenchVisualSmokeResult {
-  const screen = replayWorkbenchScreen(output, options);
+  const replay = replayWorkbenchStyledScreen(output, options);
+  const screen = replay.screen;
   const lines = screen.map((row) => row.join("").trimEnd());
   const text = lines.join("\n");
   const statusLine = lines.at(-1) ?? "";
@@ -119,6 +128,7 @@ export function inspectWorkbenchVisualSmokeOutput(
     nonBlankRows,
     outputBytes: new TextEncoder().encode(output).byteLength,
     truecolorBackgroundWrites,
+    finalTruecolorBackgroundRows: replay.truecolorBackgroundRows,
   };
 }
 
@@ -130,7 +140,7 @@ export function inspectWorkbenchFullscreenVisualSmokeOutput(
   const cellMatch = base.threeLine.match(FULLSCREEN_THREE_CELL_PATTERN);
   const fullscreenCells = cellMatch ? Number.parseInt(cellMatch[1]!, 10) : 0;
   const fullscreenCap = cellMatch ? Number.parseInt(cellMatch[2]!, 10) : 0;
-  const truecolorBackgroundRows = countTruecolorBackgroundRows(output);
+  const truecolorBackgroundRows = base.finalTruecolorBackgroundRows;
   const missing = [...base.missing];
   const minCells = Math.max(1, Math.floor(options.minCells ?? 1_800));
   const minTruecolorRows = Math.max(1, Math.floor(options.minTruecolorRows ?? Math.min(12, options.rows)));
@@ -156,6 +166,7 @@ export function formatWorkbenchVisualSmokeResult(result: WorkbenchVisualSmokeRes
     `Size: ${result.columns}x${result.rows}`,
     `Output: ${result.outputBytes} bytes`,
     `Truecolor backgrounds: ${result.truecolorBackgroundWrites}`,
+    `Final truecolor rows: ${result.finalTruecolorBackgroundRows}`,
     `Nonblank rows: ${result.nonBlankRows}`,
     `Missing: ${result.missing.join(", ") || "-"}`,
     `Forbidden: ${result.forbidden.join(", ") || "-"}`,
@@ -172,15 +183,23 @@ export function replayWorkbenchScreen(
   output: string,
   options: { columns: number; rows: number },
 ): string[][] {
+  return replayWorkbenchStyledScreen(output, options).screen;
+}
+
+export function replayWorkbenchStyledScreen(
+  output: string,
+  options: { columns: number; rows: number },
+): WorkbenchStyledScreenReplay {
   const columns = Math.max(1, Math.floor(options.columns));
   const rows = Math.max(1, Math.floor(options.rows));
   const screen = Array.from({ length: rows }, () => Array.from({ length: columns }, () => " "));
-  const state: ReplayState = { row: 0, column: 0 };
+  const truecolorBackground = Array.from({ length: rows }, () => Array.from({ length: columns }, () => false));
+  const state: ReplayState = { row: 0, column: 0, truecolorBackground: false };
   let index = 0;
   while (index < output.length) {
     const char = output[index]!;
     if (char === "\x1b") {
-      const skipped = skipEscape(output, index, screen, state);
+      const skipped = skipEscape(output, index, screen, truecolorBackground, state);
       if (skipped > index) {
         index = skipped;
         continue;
@@ -201,6 +220,7 @@ export function replayWorkbenchScreen(
     const glyph = String.fromCodePoint(codePoint);
     if (glyph >= " ") {
       screen[state.row]![state.column] = glyph;
+      truecolorBackground[state.row]![state.column] = state.truecolorBackground;
       state.column += 1;
       if (state.column >= columns) {
         state.column = columns - 1;
@@ -208,23 +228,39 @@ export function replayWorkbenchScreen(
     }
     index += codePoint > 0xffff ? 2 : 1;
   }
-  return screen;
+  return {
+    screen,
+    truecolorBackground,
+    truecolorBackgroundRows: truecolorBackground.filter((row) => row.some(Boolean)).length,
+  };
 }
 
-function skipEscape(output: string, start: number, screen: string[][], state: ReplayState): number {
+function skipEscape(
+  output: string,
+  start: number,
+  screen: string[][],
+  truecolorBackground: boolean[][],
+  state: ReplayState,
+): number {
   const next = output[start + 1];
-  if (next === "[") return applyCsi(output, start, screen, state);
+  if (next === "[") return applyCsi(output, start, screen, truecolorBackground, state);
   if (next === "]") return skipOsc(output, start);
   if (next === "P" || next === "_") return skipStringTerminatedEscape(output, start);
   return start + 1;
 }
 
-function applyCsi(output: string, start: number, screen: string[][], state: ReplayState): number {
+function applyCsi(
+  output: string,
+  start: number,
+  screen: string[][],
+  truecolorBackground: boolean[][],
+  state: ReplayState,
+): number {
   let index = start + 2;
   while (index < output.length) {
     const code = output.charCodeAt(index);
     if (code >= 0x40 && code <= 0x7e) {
-      applyCsiCommand(output.slice(start + 2, index), output[index]!, screen, state);
+      applyCsiCommand(output.slice(start + 2, index), output[index]!, screen, truecolorBackground, state);
       return index + 1;
     }
     index += 1;
@@ -232,7 +268,13 @@ function applyCsi(output: string, start: number, screen: string[][], state: Repl
   return output.length;
 }
 
-function applyCsiCommand(raw: string, command: string, screen: string[][], state: ReplayState): void {
+function applyCsiCommand(
+  raw: string,
+  command: string,
+  screen: string[][],
+  truecolorBackground: boolean[][],
+  state: ReplayState,
+): void {
   const params = raw.replace(/^\?/, "").split(";");
   const rows = screen.length;
   const columns = screen[0]?.length ?? 0;
@@ -258,13 +300,23 @@ function applyCsiCommand(raw: string, command: string, screen: string[][], state
       state.column = clamp(state.column - numberParam(params[0], 1), 0, columns - 1);
       return;
     case "J":
-      if (numberParam(params[0], 0) === 2 || numberParam(params[0], 0) === 3) clearScreen(screen);
+      if (numberParam(params[0], 0) === 2 || numberParam(params[0], 0) === 3) {
+        clearScreen(screen);
+        clearBooleanScreen(truecolorBackground);
+      }
       return;
     case "K":
       clearRow(screen[state.row]!, state.column, numberParam(params[0], 0));
+      clearBooleanRow(truecolorBackground[state.row]!, state.column, numberParam(params[0], 0));
+      return;
+    case "m":
+      state.truecolorBackground = nextTruecolorBackgroundState(raw, state.truecolorBackground);
       return;
   }
-  if (raw === "?1049h") clearScreen(screen);
+  if (raw === "?1049h") {
+    clearScreen(screen);
+    clearBooleanScreen(truecolorBackground);
+  }
 }
 
 function skipOsc(output: string, start: number): number {
@@ -294,10 +346,31 @@ function clearScreen(screen: string[][]): void {
   for (const row of screen) row.fill(" ");
 }
 
+function clearBooleanScreen(screen: boolean[][]): void {
+  for (const row of screen) row.fill(false);
+}
+
 function clearRow(row: string[], column: number, mode: number): void {
   const start = mode === 1 || mode === 2 ? 0 : Math.max(0, column);
   const end = mode === 0 || mode === 2 ? row.length : Math.min(row.length, column + 1);
   for (let index = start; index < end; index += 1) row[index] = " ";
+}
+
+function clearBooleanRow(row: boolean[], column: number, mode: number): void {
+  const start = mode === 1 || mode === 2 ? 0 : Math.max(0, column);
+  const end = mode === 0 || mode === 2 ? row.length : Math.min(row.length, column + 1);
+  for (let index = start; index < end; index += 1) row[index] = false;
+}
+
+function nextTruecolorBackgroundState(raw: string, current: boolean): boolean {
+  const params = raw.replace(/^\?/, "").split(";").map((value) => Number.parseInt(value, 10));
+  for (let index = 0; index < params.length; index += 1) {
+    const value = params[index];
+    if (value === 0) return false;
+    if (value === 49) current = false;
+    if (value === 48 && params[index + 1] === 2) current = true;
+  }
+  return current;
 }
 
 function numberParam(value: string | undefined, fallback: number): number {
