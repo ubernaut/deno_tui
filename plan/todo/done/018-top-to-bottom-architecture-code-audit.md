@@ -760,8 +760,8 @@ Work:
 - [x] Bound expensive process scans and support configurable process limits, sort keys, and refresh cadence.
   - [x] Replaced allocation-heavy `/proc/<pid>/stat` tail splitting with targeted field scanning for process state, CPU
         time, RSS, and processor id in the sampler hot path.
-  - [x] Extracted process stat parsing and process sort comparators into `app/system_metrics_process.ts` with focused
-        tests, keeping the main monitor module closer to sampling orchestration.
+  - [x] Optimized process stat parsing and process sort comparators with focused tests; this logic now lives in
+        `app/system_metrics.ts` with the sampler it supports.
 - [x] Add GPU provider abstraction for NVIDIA now and future AMD/Intel support later.
   - [x] Extracted the NVIDIA GPU provider, row parser, and unavailable GPU snapshot factory into
         `app/system_metrics_gpu.ts` with direct parser tests for nullable telemetry and clamped utilization.

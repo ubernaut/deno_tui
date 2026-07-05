@@ -1,6 +1,6 @@
 import { assertEquals } from "./deps.ts";
 import { emptyGpuSnapshot, parseNvidiaSmiGpuRow } from "../app/system_metrics_gpu.ts";
-import { insertTopProcessSnapshot, parseProcessStat, processComparator } from "../app/system_metrics_process.ts";
+import { insertTopProcessSnapshot, parseProcessStat, processComparator } from "../app/system_metrics.ts";
 import { collectAlerts, emptySnapshot, pushHistory } from "../app/system_metrics_snapshot.ts";
 import type { SystemMetricsNetworkInterface } from "../app/system_metrics_provider.ts";
 import { sampleNetworkStats } from "../app/system_metrics_sources.ts";
