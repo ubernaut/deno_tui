@@ -210,12 +210,19 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
       this.invalidateFrame();
       this.running = false;
       this.syncPending = true;
+      this.showStatusGrid("RESIZING", "ASCII RENDERER RESIZING");
       this.moved = true;
       this.updated = false;
       this.canvas.updateObjects.push(this);
       return;
     }
-    this.syncRendererSize(rectangle);
+    const resized = this.syncRendererSize(rectangle);
+    if (resized || this.failed || !this.running) {
+      this.showStatusGrid(
+        this.failed ? "GPU BACKEND UNAVAILABLE" : "RESIZING",
+        this.failed ? "ASCII RENDERER OFFLINE" : "ASCII RENDERER RESIZING",
+      );
+    }
     this.moved = true;
     this.updated = false;
     this.canvas.updateObjects.push(this);
@@ -360,13 +367,14 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
     }
   }
 
-  private syncRendererSize(rectangle: Rectangle): void {
+  private syncRendererSize(rectangle: Rectangle): boolean {
     const columns = Math.max(1, Math.floor(rectangle.width));
     const rows = Math.max(1, Math.floor(rectangle.height));
-    if (columns === this.rendererColumns && rows === this.rendererRows) return;
+    if (columns === this.rendererColumns && rows === this.rendererRows) return false;
     this.rendererColumns = columns;
     this.rendererRows = rows;
     this.renderer.setSize(columns, rows);
+    return true;
   }
 
   private queueChangedGridCells(grid: string[][], rectangle: Rectangle, gridRevision?: number): boolean {

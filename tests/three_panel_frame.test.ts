@@ -186,11 +186,11 @@ Deno.test("ThreePanelFrameView shows startup grid while first frame initializes"
 
   try {
     await waitFor(() => (renderer?.startCount ?? 0) >= 1);
-    assertEquals(panel.grid.peek().flat().join("").includes("ASCII RENDERER STARTING"), true);
+    assertEquals(gridCellsText(panel.grid.peek()).includes("ASCII RENDERER STARTING"), true);
     assertEquals(updates.at(-1), { rendererBacked: false, rows: 8, columns: 32 });
     assertEquals(frames, []);
     renderer?.completeFrame();
-    await waitFor(() => panel.grid.peek().flat().join("").includes("ASCII RENDERER STARTING") === false);
+    await waitFor(() => gridCellsText(panel.grid.peek()).includes("ASCII RENDERER STARTING") === false);
     assertEquals(frames.at(-1), { rendererBacked: true, rows: 8, columns: 32 });
     assertEquals(updates.at(-1), { rendererBacked: true, rows: 8, columns: 32 });
   } finally {
@@ -219,11 +219,11 @@ Deno.test("ThreePanelFrameView keeps startup grid across empty deferred frames",
 
   try {
     await waitFor(() => renderer !== undefined && renderer.renderCount >= 1);
-    assertEquals(panel.grid.peek().flat().join("").includes("ASCII RENDERER STARTING"), true);
+    assertEquals(gridCellsText(panel.grid.peek()).includes("ASCII RENDERER STARTING"), true);
 
     renderer!.completeEmptyFrame();
     await waitFor(() => (renderer?.renderCount ?? 0) >= 2);
-    assertEquals(panel.grid.peek().flat().join("").includes("ASCII RENDERER STARTING"), false);
+    assertEquals(gridCellsText(panel.grid.peek()).includes("ASCII RENDERER STARTING"), false);
     assertEquals(panel.grid.peek().length, 8);
     assertEquals(panel.grid.peek()[0]?.[0], "█");
   } finally {
@@ -851,7 +851,7 @@ Deno.test("ThreePanelFrameView defers resize while a frame is rendering", async 
     assertEquals(renderer?.setSizeDuringRender, 0);
     await waitFor(() => panel.grid.peek().length === 8);
     assertEquals(panel.grid.peek()[0]?.length, 20);
-    assertEquals(panel.grid.peek().flat().join("").includes("RESIZING"), true);
+    assertEquals(gridCellsText(panel.grid.peek()).includes("RESIZING"), true);
     renderer?.completeFrame();
 
     await waitFor(() => (renderer?.startCount ?? 0) >= 2);
@@ -1293,6 +1293,9 @@ Deno.test("ThreeAsciiObject defers resize while a frame is rendering", async () 
     rectangle.value = { column: 0, row: 0, width: 20, height: 8 };
     await new Promise((resolve) => setTimeout(resolve, 0));
 
+    assertEquals(object.grid.length, 8);
+    assertEquals(object.grid[0]?.length, 20);
+    assertEquals(gridText(object).includes("ASCII RENDER"), true);
     assertEquals(renderer?.setSizeDuringRender, 0);
     renderer?.completeFrame();
 
@@ -1301,6 +1304,42 @@ Deno.test("ThreeAsciiObject defers resize while a frame is rendering", async () 
     renderer?.completeFrame();
 
     await waitFor(() => renderer?.sizes.at(-1)?.[0] === 20 && renderer?.sizes.at(-1)?.[1] === 8);
+  } finally {
+    object.erase();
+    rectangle.dispose();
+  }
+});
+
+Deno.test("ThreeAsciiObject resizes offline fallback grids after renderer failure", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
+  const sink = new MemoryCanvasSink();
+  const canvas = new Canvas({ sink, size: { columns: 40, rows: 20 } });
+  let renderer: ThrowingGridRenderer | undefined;
+  const object = new ThreeAsciiObject({
+    canvas,
+    rectangle,
+    scene: {} as Scene,
+    camera: {} as Camera,
+    style: emptyStyle,
+    zIndex: 1,
+    frameInterval: 1000 / 30,
+    rendererFactory: (options) => renderer = new ThrowingGridRenderer(options.columns, options.rows),
+  });
+
+  object.draw();
+
+  try {
+    await waitFor(() => gridText(object).includes("GPU"));
+    assertEquals(object.grid.length, 6);
+    assertEquals(object.grid[0]?.length, 12);
+
+    rectangle.value = { column: 0, row: 0, width: 20, height: 8 };
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assertEquals(renderer?.sizes.at(-1), [20, 8]);
+    assertEquals(object.grid.length, 8);
+    assertEquals(object.grid[0]?.length, 20);
+    assertEquals(gridText(object).includes("ASCII RENDER"), true);
   } finally {
     object.erase();
     rectangle.dispose();
@@ -1422,11 +1461,11 @@ Deno.test("ThreeAsciiObject queues a startup grid before first frame completes",
   object.draw();
 
   try {
-    assertEquals(object.grid.flat().join("").includes("ASCII RENDERER STARTING"), true);
+    assertEquals(gridText(object).includes("ASCII RENDERER STARTING"), true);
     assert(queuedCellCount(object) > 0);
     await waitFor(() => (renderer?.startCount ?? 0) >= 1);
     renderer?.completeFrame();
-    await waitFor(() => object.grid.flat().join("").includes("ASCII RENDERER STARTING") === false);
+    await waitFor(() => gridText(object).includes("ASCII RENDERER STARTING") === false);
   } finally {
     object.erase();
     rectangle.dispose();
@@ -1486,7 +1525,7 @@ Deno.test("ThreeAsciiObject queues rerender cells only for changed ASCII grid ce
   try {
     await waitFor(() => (renderer?.startCount ?? 0) >= 1);
     renderer?.completeFrame();
-    await waitFor(() => queuedCellCount(object) === 3);
+    await waitFor(() => queuedCellCount(object) === 4);
 
     clearQueuedCells(object);
     await waitFor(() => (renderer?.startCount ?? 0) >= 2);
@@ -1604,6 +1643,14 @@ function queuedCellCount(object: ThreeAsciiObject): number {
     (total, row) => total + (row?.reduce((rowTotal, range) => rowTotal + range.endColumn - range.startColumn, 0) ?? 0),
     cellCount,
   );
+}
+
+function gridText(object: ThreeAsciiObject): string {
+  return gridCellsText(object.grid);
+}
+
+function gridCellsText(grid: readonly (readonly string[])[]): string {
+  return grid.flat().join("").replace(/\x1b\[[0-9;]*m/g, "");
 }
 
 function clearQueuedCells(object: ThreeAsciiObject): void {
@@ -1808,6 +1855,13 @@ class EmptyThenGridRenderer extends FakeGridRenderer {
     const release = this.releaseEmptyFrame;
     this.releaseEmptyFrame = undefined;
     release?.();
+  }
+}
+
+class ThrowingGridRenderer extends FakeGridRenderer {
+  override async renderToAnsiGrid(): Promise<string[][]> {
+    this.renderCount += 1;
+    throw new Error("GPU backend unavailable");
   }
 }
 
