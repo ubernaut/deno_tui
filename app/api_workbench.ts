@@ -650,6 +650,8 @@ const unsubscribeWorkbenchDiagnostics = subscribeWorkbenchDiagnosticLog(workbenc
 const dynamicVisualizationWindows = new Signal<Record<VisualizationWindowId, string>>({}, { deepObserve: true });
 const selectedCpuHexTiles = new Signal<Record<VisualizationWindowId, string>>({}, { deepObserve: true });
 const screenPainter = new WorkbenchAnsiScreenPainter(tui.stdout);
+const WORKBENCH_FULL_REPAINT_INTERVAL_MS = 5_000;
+let lastWorkbenchFullRepaintAt = performance.now();
 const hitTargets = new HitTargetStack<HitAction>();
 const screenFrame: Frame = [];
 const workspaceVirtualFrame: Frame = [];
@@ -1122,6 +1124,7 @@ draw();
 
 function draw(): void {
   syncTerminalSize();
+  const forceFullRepaint = shouldForceWorkbenchFullRepaint(performance.now());
   const width = currentWidth();
   const height = currentHeight();
   hitTargets.clear();
@@ -1134,11 +1137,21 @@ function draw(): void {
   renderStatus(frame);
   renderActiveDropdownOverlay(frame);
   renderModalOverlay(frame);
+  if (forceFullRepaint) screenPainter.reset();
   const flushStats = screenPainter.flush(frame, width, height, renderFrameRow, renderFrameSlice);
-  updateThreeTerminalPressure(flushStats);
+  updateThreeTerminalPressure(flushStats, { ignoreSample: forceFullRepaint });
 }
 
-function updateThreeTerminalPressure(stats: WorkbenchAnsiScreenFlushStats): void {
+function shouldForceWorkbenchFullRepaint(now: number): boolean {
+  if (now - lastWorkbenchFullRepaintAt < WORKBENCH_FULL_REPAINT_INTERVAL_MS) return false;
+  lastWorkbenchFullRepaintAt = now;
+  return true;
+}
+
+function updateThreeTerminalPressure(
+  stats: WorkbenchAnsiScreenFlushStats,
+  options: { ignoreSample?: boolean } = {},
+): void {
   const overlayOpen = modal.openState.peek() || screenDropdownOpen() || threeConfigOpen.peek();
   const pressureGate = workbenchThreeOverlayPressureGate.resolve(overlayOpen);
   if (pressureGate.resetCadence) {
@@ -1148,6 +1161,10 @@ function updateThreeTerminalPressure(stats: WorkbenchAnsiScreenFlushStats): void
     workbenchThreeRuntime.resetPressureCounters();
   }
   if (!pressureGate.updatePressure) {
+    return;
+  }
+  if (options.ignoreSample) {
+    workbenchThreeRuntime.resetPressureSample();
     return;
   }
   workbenchThreeRuntime.updatePressureFromCadence(stats, threeCadence.inspect());
