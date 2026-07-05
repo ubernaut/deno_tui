@@ -41,11 +41,7 @@ import {
   type ThreeAsciiEffectState,
   threeAsciiEffectStateFromSource,
 } from "./effect_state.ts";
-import {
-  createThreeAsciiRendererPerformance,
-  createThreeAsciiRendererSaturatedPerformance,
-  type ThreeAsciiRendererPerformance,
-} from "./performance.ts";
+import { type ThreeAsciiReadbackQueueInspection, type ThreeAsciiRendererPerformance } from "./performance.ts";
 import {
   assembleThreeAsciiReadbackGridWithContext,
   executeThreeAsciiReadbackCopyPlan,
@@ -419,7 +415,26 @@ export class ThreeAsciiRenderer {
   private sizeDirty = true;
   private computeDirty = true;
   private uniformDirty = true;
-  private lastPerformance?: ThreeAsciiRendererPerformance;
+  private readonly lastPerformance: ThreeAsciiRendererPerformance = {
+    columns: 0,
+    rows: 0,
+    cells: 0,
+    terminalGlyphStyle: "glyphs",
+    totalMs: 0,
+    initMs: 0,
+    sceneMs: 0,
+    sceneUpdateMs: undefined,
+    sceneRenderMs: undefined,
+    ansiMs: 0,
+    readbackMs: 0,
+    assemblyMs: 0,
+    deferredReadbackSlots: undefined,
+    deferredReadbackPending: undefined,
+    deferredReadbackUnresolved: undefined,
+    deferredReadbackResolved: undefined,
+    deferredReadbackSaturated: undefined,
+  };
+  private hasPerformance = false;
   private lastReadbackMs = 0;
   private lastAssemblyMs = 0;
   private gridRevision = 0;
@@ -489,7 +504,7 @@ export class ThreeAsciiRenderer {
   }
 
   inspectPerformance(): ThreeAsciiRendererPerformance | undefined {
-    return this.lastPerformance ? { ...this.lastPerformance } : undefined;
+    return this.hasPerformance ? { ...this.lastPerformance } : undefined;
   }
 
   setTerminalGlyphStyle(value: TerminalGlyphStyle): void {
@@ -550,7 +565,7 @@ export class ThreeAsciiRenderer {
       forceBlockingDeferredReadback = deferredFrame.forceBlockingReadback;
       if (deferredFrame.kind === "readbackUnavailable") {
         const frameEnd = performance.now();
-        this.lastPerformance = createThreeAsciiRendererPerformance({
+        this.writePerformance({
           columns: this.columns,
           rows: this.rows,
           terminalGlyphStyle: this.terminalGlyphStyle,
@@ -565,14 +580,14 @@ export class ThreeAsciiRenderer {
       if (deferredFrame.kind === "saturated") {
         if (!forceBlockingDeferredReadback) {
           const frameEnd = performance.now();
-          const previous = this.lastPerformance;
+          const previousFrameMs = this.hasPerformance ? this.lastPerformance.totalMs : undefined;
           const queue = deferredQueue ?? this.deferredReadbacks.inspect();
-          this.lastPerformance = createThreeAsciiRendererSaturatedPerformance({
+          this.writeSaturatedPerformance({
             columns: this.columns,
             rows: this.rows,
             terminalGlyphStyle: this.terminalGlyphStyle,
             frameMs: frameEnd - frameStart,
-            previousFrameMs: previous?.totalMs,
+            previousFrameMs,
             readbackMs: this.lastReadbackMs,
             queue,
           });
@@ -597,7 +612,7 @@ export class ThreeAsciiRenderer {
     }
     const frameEnd = performance.now();
     const queue = this.readbackStrategy === "deferred" ? this.deferredReadbacks.inspect() : undefined;
-    this.lastPerformance = createThreeAsciiRendererPerformance({
+    this.writePerformance({
       columns: this.columns,
       rows: this.rows,
       terminalGlyphStyle: this.terminalGlyphStyle,
@@ -613,6 +628,69 @@ export class ThreeAsciiRenderer {
     });
 
     return frame;
+  }
+
+  private writePerformance(input: {
+    columns: number;
+    rows: number;
+    terminalGlyphStyle: TerminalGlyphStyle;
+    frameMs: number;
+    initMs?: number;
+    sceneMs: number;
+    sceneUpdateMs?: number;
+    sceneRenderMs?: number;
+    ansiMs: number;
+    readbackMs: number;
+    assemblyMs: number;
+    queue?: ThreeAsciiReadbackQueueInspection;
+  }): void {
+    this.lastPerformance.columns = input.columns;
+    this.lastPerformance.rows = input.rows;
+    this.lastPerformance.cells = input.columns * input.rows;
+    this.lastPerformance.terminalGlyphStyle = input.terminalGlyphStyle;
+    this.lastPerformance.totalMs = input.frameMs;
+    this.lastPerformance.initMs = input.initMs ?? 0;
+    this.lastPerformance.sceneMs = input.sceneMs;
+    this.lastPerformance.sceneUpdateMs = input.sceneUpdateMs;
+    this.lastPerformance.sceneRenderMs = input.sceneRenderMs;
+    this.lastPerformance.ansiMs = input.ansiMs;
+    this.lastPerformance.readbackMs = input.readbackMs;
+    this.lastPerformance.assemblyMs = input.assemblyMs;
+    this.lastPerformance.deferredReadbackSlots = input.queue?.slotCount;
+    this.lastPerformance.deferredReadbackPending = input.queue?.pending;
+    this.lastPerformance.deferredReadbackUnresolved = input.queue?.unresolved;
+    this.lastPerformance.deferredReadbackResolved = input.queue?.resolved;
+    this.lastPerformance.deferredReadbackSaturated = input.queue?.saturated;
+    this.hasPerformance = true;
+  }
+
+  private writeSaturatedPerformance(input: {
+    columns: number;
+    rows: number;
+    terminalGlyphStyle: TerminalGlyphStyle;
+    frameMs: number;
+    previousFrameMs?: number;
+    readbackMs: number;
+    queue: Pick<ThreeAsciiReadbackQueueInspection, "slotCount" | "pending" | "unresolved" | "resolved">;
+  }): void {
+    this.lastPerformance.columns = input.columns;
+    this.lastPerformance.rows = input.rows;
+    this.lastPerformance.cells = input.columns * input.rows;
+    this.lastPerformance.terminalGlyphStyle = input.terminalGlyphStyle;
+    this.lastPerformance.totalMs = input.previousFrameMs ?? input.frameMs;
+    this.lastPerformance.initMs = 0;
+    this.lastPerformance.sceneMs = 0;
+    this.lastPerformance.sceneUpdateMs = 0;
+    this.lastPerformance.sceneRenderMs = 0;
+    this.lastPerformance.ansiMs = 0;
+    this.lastPerformance.readbackMs = input.readbackMs;
+    this.lastPerformance.assemblyMs = 0;
+    this.lastPerformance.deferredReadbackSlots = input.queue.slotCount;
+    this.lastPerformance.deferredReadbackPending = input.queue.pending;
+    this.lastPerformance.deferredReadbackUnresolved = input.queue.unresolved;
+    this.lastPerformance.deferredReadbackResolved = input.queue.resolved;
+    this.lastPerformance.deferredReadbackSaturated = true;
+    this.hasPerformance = true;
   }
 
   private async renderScene(

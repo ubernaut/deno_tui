@@ -1199,3 +1199,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   grid tests plus the full Three panel frame suite.
 - Moved Three panel signal/literal/callback value resolution into `three_panel_values.ts`, reducing adapter-local
   utility code and making live/interactivity, frame-interval, and render-cell cap normalization directly testable.
+- Reused a retained Three ASCII renderer performance record internally, preserving cloned `inspectPerformance()`
+  snapshots while removing per-render telemetry object replacement on the renderer hot path without widening the stable
+  API surface.
