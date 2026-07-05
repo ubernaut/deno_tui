@@ -238,6 +238,9 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Workbench button style assertions are now bundled into `tests/workbench_control_layout.test.ts`
   - Workbench ANSI span-diff assertions are now covered through `tests/workbench_ansi_screen.test.ts`, and the redundant
     private-helper microbenchmark was removed in favor of the retained screen-painter span flush benchmark
+  - duplicate Three panel lifecycle-state assertions were removed from `tests/three_panel_frame.test.ts`; the pure
+    helper behavior remains covered in `tests/three_panel_core.test.ts`, keeping frame tests focused on live view
+    behavior.
 - Prefer subsystem-level runtime smoke coverage for workbench, Three ASCII, terminal shell, and web interaction.
 
 ### P1: Keep Three ASCII Performance Gated By Real Probes
