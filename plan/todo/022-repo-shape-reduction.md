@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `587`
+- Tracked files after the current consolidation passes: `586`
 - Tracked top-level file counts:
   - `src`: `296`
-  - `tests`: `91`
+  - `tests`: `90`
   - `app`: `29`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,000` lines across `25` files
   - `app`: `20,381` lines across `29` files
   - `examples`: `8,814` lines across `42` files
-  - `tests`: `49,518` lines across `91` files
+  - `tests`: `49,529` lines across `90` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -333,6 +333,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     package reference coverage with the inventory script behavior that feeds it.
   - terminal sequence parser assertions are now bundled into `tests/terminal_screen.test.ts`, keeping low-level
     CSI/OSC/ESC parser coverage with the terminal screen replay behavior that consumes it.
+  - Terminal workspace session descriptor assertions are now bundled into `tests/terminal_workspace.test.ts`, keeping
+    template materialization, clone/duplicate behavior, and runtime-title adoption with terminal workspace behavior.
   - standalone visualization app layout and retained panel resize assertions are now bundled into
     `tests/visualization_primitives.test.ts`, keeping app-local monitor layout and panel rendering coverage with the
     lower-level visualization drawing helpers that use them.
