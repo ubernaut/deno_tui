@@ -6,6 +6,7 @@ import {
   type ThreePanelGridRenderer,
   type ThreeSceneState,
 } from "../app/three_panel.ts";
+import { WorkbenchThreeViewportInteractionController } from "../src/app/workbench_three_interaction.ts";
 import { applyWorkbenchThreePanelFrameDefaults } from "../src/app/workbench_three_policy.ts";
 import type { TerminalGlyphStyle } from "../src/three_ascii/glyphs.ts";
 import type {
@@ -61,6 +62,48 @@ Deno.test("applyWorkbenchThreePanelFrameDefaults preserves explicit overrides", 
   });
 });
 
+Deno.test("WorkbenchThreeViewportInteractionController starts and continues viewport drags", () => {
+  const harness = createInteractionHarness();
+
+  assertEquals(harness.controller.handlePress(press({ x: 3, y: 4 })).handled, true);
+  assertEquals(harness.controller.dragWindow, "three");
+  assertEquals(harness.focused, ["three"]);
+
+  assertEquals(
+    harness.controller.handlePress(press({ x: 9, y: 9, drag: true, movementX: 2, movementY: -1 })).handled,
+    true,
+  );
+  assertEquals(harness.panels.three.rotations, [[2, -1]]);
+  assertEquals(harness.focused, ["three", "three"]);
+});
+
+Deno.test("WorkbenchThreeViewportInteractionController clears drag on release or missing panel", () => {
+  const harness = createInteractionHarness();
+
+  harness.controller.handlePress(press({ x: 3, y: 4 }));
+  assertEquals(harness.controller.handlePress(press({ x: 3, y: 4, release: true })), {
+    handled: true,
+    dragWindow: null,
+  });
+
+  harness.panels.three.available = false;
+  harness.controller.handlePress(press({ x: 3, y: 4 }));
+  assertEquals(
+    harness.controller.handlePress(press({ x: 3, y: 4, drag: true, movementX: 1, movementY: 1 })),
+    { handled: true, dragWindow: "three" },
+  );
+  assertEquals(harness.panels.three.rotations, []);
+});
+
+Deno.test("WorkbenchThreeViewportInteractionController zooms hovered viewport", () => {
+  const harness = createInteractionHarness();
+
+  assertEquals(harness.controller.handleScroll({ x: 3, y: 4, scroll: -1 }), true);
+  assertEquals(harness.panels.three.zooms, [-1]);
+  assertEquals(harness.focused, ["three"]);
+  assertEquals(harness.controller.handleScroll({ x: 0, y: 0, scroll: 1 }), false);
+});
+
 function sceneState(): ThreeSceneState {
   return {
     mode: "studio",
@@ -83,6 +126,31 @@ async function waitFor(predicate: () => boolean): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
   throw new Error("Timed out waiting for workbench Three panel factory test condition.");
+}
+
+function createInteractionHarness() {
+  const panels = { three: new FakeInteractivePanel() };
+  const focused: string[] = [];
+  const controller = new WorkbenchThreeViewportInteractionController({
+    findHit: (x, y) => x === 3 && y === 4 ? { action: { type: "threeViewport", id: "three" } } : undefined,
+    panelForWindow: (id) => panels[id as "three"].available ? panels[id as "three"] : undefined,
+    focusWindow: (id) => focused.push(id),
+  });
+  return { controller, panels, focused };
+}
+
+function press(
+  options: Partial<Parameters<WorkbenchThreeViewportInteractionController<string>["handlePress"]>[0]>,
+): Parameters<WorkbenchThreeViewportInteractionController<string>["handlePress"]>[0] {
+  return {
+    x: 0,
+    y: 0,
+    drag: false,
+    release: false,
+    movementX: 0,
+    movementY: 0,
+    ...options,
+  };
 }
 
 class FactoryGridRenderer implements ThreePanelGridRenderer {
@@ -142,5 +210,19 @@ class FactoryGridRenderer implements ThreePanelGridRenderer {
 
   private grid(): string[][] {
     return Array.from({ length: this.rows }, () => Array.from({ length: this.columns }, () => "█"));
+  }
+}
+
+class FakeInteractivePanel {
+  available = true;
+  rotations: number[][] = [];
+  zooms: number[] = [];
+
+  rotateBy(deltaColumns: number, deltaRows: number): void {
+    this.rotations.push([deltaColumns, deltaRows]);
+  }
+
+  zoomBy(scrollSteps: number): void {
+    this.zooms.push(scrollSteps);
   }
 }
