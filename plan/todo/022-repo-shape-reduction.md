@@ -7,11 +7,11 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `703`
+- Tracked files after the current consolidation passes: `702`
 - Tracked top-level file counts:
   - `src`: `346`
   - `tests`: `142`
-  - `app`: `44`
+  - `app`: `43`
   - `docs`: `50`
   - `examples`: `42`
   - `scripts`: `27`
@@ -21,7 +21,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,261` lines across `43` files
   - `src/three_ascii`: `7,201` lines across `35` files
-  - `app`: `20,248` lines across `44` files
+  - `app`: `20,211` lines across `43` files
   - `examples`: `8,732` lines across `41` files
   - `tests`: `49,097` lines across `142` files
 - Generated/docs weight:
@@ -60,7 +60,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - system metric diagnostics are folded into `app/system_metrics.ts`
   - system metrics network parsing is folded into `app/system_metrics_sources.ts`
   - API workbench control styles and wrapped-option projection are folded into `app/api_workbench_controls.ts`
-  - API workbench primitive control ids and hit types are folded into `app/api_workbench_control_line.ts`
+  - API workbench primitive control ids and hit types are folded into `app/api_workbench_controls.ts`
   - API workbench control row projection is folded into `app/api_workbench_controls.ts`
   - API workbench textbox projection is folded into `app/api_workbench_controls.ts`
   - API workbench window catalog construction is folded into `app/api_workbench_catalog.ts`
@@ -92,6 +92,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - CPU monitor and CPU hex grid now share load-average and severity helpers through `app/visualization_primitives.ts`
   - source-frame detail formatting now reuses compact byte and nullable-number helpers from `app/styles.ts`
   - visualization panel source/alert summary helpers are folded into `app/visualization_primitives.ts`
+  - API workbench control-line projection is folded into `app/api_workbench_controls.ts`
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

@@ -17117,7 +17117,7 @@ var apiWorkbenchDocs = [
   "Use Tab or 1-8 to focus built-in windows; use M, F, R for window controls."
 ];
 
-// app/api_workbench_control_line.ts
+// app/api_workbench_controls.ts
 var apiWorkbenchControlIds = [
   "button",
   "genericButton",
@@ -17254,62 +17254,6 @@ function apiWorkbenchSliderSetHitInto(target, rect, row, track, options = {}) {
   target.index = void 0;
   return target;
 }
-function writeControlLineSegment(target, index, kind, text, column, row, width, active2) {
-  const segment = target[index] ?? {
-    kind: "line",
-    text: "",
-    column: 0,
-    row: 0,
-    width: 0,
-    active: false
-  };
-  segment.kind = kind;
-  segment.text = text;
-  segment.column = column;
-  segment.row = row;
-  segment.width = width;
-  segment.active = active2;
-  target[index] = segment;
-}
-function writeControlLineRenderCommand(target, index, options) {
-  const command = target[index] ?? {
-    kind: "segment",
-    role: "base",
-    text: "",
-    column: 0,
-    row: 0,
-    width: 0,
-    active: false
-  };
-  command.kind = options.kind;
-  command.role = options.role;
-  command.text = options.text;
-  command.column = options.column;
-  command.row = options.row;
-  command.width = options.width;
-  command.active = options.active;
-  target[index] = command;
-}
-function writeControlHit(target, index, source) {
-  const hit = target[index] ?? {
-    column: 0,
-    row: 0,
-    width: 0,
-    height: 1,
-    id: source.id,
-    action: source.action
-  };
-  hit.column = source.column;
-  hit.row = source.row;
-  hit.width = source.width;
-  hit.height = source.height;
-  hit.id = source.id;
-  hit.action = source.action;
-  hit.index = source.index;
-  target[index] = hit;
-}
-
-// app/api_workbench_controls.ts
 function apiWorkbenchControlBaseStyle(theme2, active2) {
   return {
     fg: active2 ? theme2.background : theme2.text,
@@ -17570,7 +17514,7 @@ function apiWorkbenchWrappedOptionsRenderCommandsInto(target, hits, options) {
     });
     for (let index = 0; index < line.tokens.length; index += 1) {
       const token = line.tokens[index];
-      writeControlHit2(hits, hitCount++, {
+      writeControlHit(hits, hitCount++, {
         column: column + token.columnOffset,
         row,
         width: token.width,
@@ -17652,7 +17596,43 @@ function writeWrappedOptionRenderCommand(target, index, options) {
   command.active = options.active;
   target[index] = command;
 }
-function writeControlHit2(target, index, source) {
+function writeControlLineSegment(target, index, kind, text, column, row, width, active2) {
+  const segment = target[index] ?? {
+    kind: "line",
+    text: "",
+    column: 0,
+    row: 0,
+    width: 0,
+    active: false
+  };
+  segment.kind = kind;
+  segment.text = text;
+  segment.column = column;
+  segment.row = row;
+  segment.width = width;
+  segment.active = active2;
+  target[index] = segment;
+}
+function writeControlLineRenderCommand(target, index, options) {
+  const command = target[index] ?? {
+    kind: "segment",
+    role: "base",
+    text: "",
+    column: 0,
+    row: 0,
+    width: 0,
+    active: false
+  };
+  command.kind = options.kind;
+  command.role = options.role;
+  command.text = options.text;
+  command.column = options.column;
+  command.row = options.row;
+  command.width = options.width;
+  command.active = options.active;
+  target[index] = command;
+}
+function writeControlHit(target, index, source) {
   const hit = target[index] ?? {
     column: 0,
     row: 0,
