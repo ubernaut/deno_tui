@@ -885,20 +885,6 @@
       "documented": true
     },
     {
-      "module": "src/app/form_bindings.ts",
-      "name": "bindFormField",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/form_bindings.ts",
-      "name": "FormFieldBindingOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
       "module": "src/app/form_commands.ts",
       "name": "bindFormCommands",
       "kind": "function",
@@ -949,6 +935,13 @@
     },
     {
       "module": "src/app/forms.ts",
+      "name": "bindFormField",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/forms.ts",
       "name": "FieldName",
       "kind": "type",
       "typeOnly": true,
@@ -985,6 +978,13 @@
     {
       "module": "src/app/forms.ts",
       "name": "FormField",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/forms.ts",
+      "name": "FormFieldBindingOptions",
       "kind": "interface",
       "typeOnly": true,
       "documented": true

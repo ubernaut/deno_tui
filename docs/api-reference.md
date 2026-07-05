@@ -6,8 +6,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 ## Summary
 
 - Entrypoints: 9
-- Module visits: 531
-- Re-export declarations: 522
+- Module visits: 529
+- Re-export declarations: 520
 - Exported symbols: 5331
 - Documented symbols: 5331
 - Documentation coverage: 100.00%
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     238 |    2291 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     217 |    2143 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     237 |    2291 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     216 |    2143 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      87 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -39,8 +39,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 ### Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 238
-- Re-export declarations: 237
+- Modules: 237
+- Re-export declarations: 236
 - Exported symbols: 2291
 - Documented symbols: 2291
 - Documentation coverage: 100.00%
@@ -65,9 +65,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/data_table_commands.ts`](#src-app-data-table-commands-ts)                             |          0 |       4 |          4 |
 | [`src/app/disposables.ts`](#src-app-disposables-ts)                                             |          0 |       6 |          6 |
 | [`src/app/focus_commands.ts`](#src-app-focus-commands-ts)                                       |          0 |       7 |          7 |
-| [`src/app/form_bindings.ts`](#src-app-form-bindings-ts)                                         |          0 |       2 |          2 |
 | [`src/app/form_commands.ts`](#src-app-form-commands-ts)                                         |          0 |       7 |          7 |
-| [`src/app/forms.ts`](#src-app-forms-ts)                                                         |          0 |      17 |         17 |
+| [`src/app/forms.ts`](#src-app-forms-ts)                                                         |          0 |      19 |         19 |
 | [`src/app/history_bindings.ts`](#src-app-history-bindings-ts)                                   |          0 |       6 |          6 |
 | [`src/app/history.ts`](#src-app-history-ts)                                                     |          0 |       5 |          5 |
 | [`src/app/hit_targets.ts`](#src-app-hit-targets-ts)                                             |          0 |       8 |          8 |
@@ -76,7 +75,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                             |          0 |       6 |          6 |
 | [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                       |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         53 |       0 |          0 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         52 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                       |          0 |      10 |         10 |
 | [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                           |          0 |       6 |          6 |
 | [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     |          0 |      17 |         17 |
@@ -523,13 +522,6 @@ _No direct exported symbols._
 | `focusCommands`       | function  | no        | yes   |
 | `FocusCommandTarget`  | interface | yes       | yes   |
 
-#### src/app/form_bindings.ts
-
-| Symbol                    | Kind      | Type Only | JSDoc |
-| ------------------------- | --------- | --------- | ----- |
-| `bindFormField`           | function  | no        | yes   |
-| `FormFieldBindingOptions` | interface | yes       | yes   |
-
 #### src/app/form_commands.ts
 
 | Symbol                       | Kind      | Type Only | JSDoc |
@@ -546,12 +538,14 @@ _No direct exported symbols._
 
 | Symbol                       | Kind      | Type Only | JSDoc |
 | ---------------------------- | --------- | --------- | ----- |
+| `bindFormField`              | function  | no        | yes   |
 | `FieldName`                  | type      | yes       | yes   |
 | `FieldValidator`             | type      | yes       | yes   |
 | `FormController`             | class     | no        | yes   |
 | `FormControllerOptions`      | interface | yes       | yes   |
 | `FormErrorSummaryItem`       | interface | yes       | yes   |
 | `FormField`                  | interface | yes       | yes   |
+| `FormFieldBindingOptions`    | interface | yes       | yes   |
 | `FormFieldInspection`        | interface | yes       | yes   |
 | `FormFieldState`             | type      | yes       | yes   |
 | `FormGroupInspection`        | interface | yes       | yes   |
@@ -668,7 +662,6 @@ _No direct exported symbols._
 | `src/app/data_query_plugin.ts`         | star | -     |
 | `src/app/data_table_commands.ts`       | star | -     |
 | `src/app/disposables.ts`               | star | -     |
-| `src/app/form_bindings.ts`             | star | -     |
 | `src/app/form_commands.ts`             | star | -     |
 | `src/app/focus_commands.ts`            | star | -     |
 | `src/app/forms.ts`                     | star | -     |
@@ -4050,8 +4043,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 ### Summary
 
 - Entrypoint: `mod.web.ts`
-- Modules: 217
-- Re-export declarations: 216
+- Modules: 216
+- Re-export declarations: 215
 - Exported symbols: 2143
 - Documented symbols: 2143
 - Documentation coverage: 100.00%
@@ -4076,9 +4069,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/data_table_commands.ts`](#src-app-data-table-commands-ts)                             |          0 |       4 |          4 |
 | [`src/app/disposables.ts`](#src-app-disposables-ts)                                             |          0 |       6 |          6 |
 | [`src/app/focus_commands.ts`](#src-app-focus-commands-ts)                                       |          0 |       7 |          7 |
-| [`src/app/form_bindings.ts`](#src-app-form-bindings-ts)                                         |          0 |       2 |          2 |
 | [`src/app/form_commands.ts`](#src-app-form-commands-ts)                                         |          0 |       7 |          7 |
-| [`src/app/forms.ts`](#src-app-forms-ts)                                                         |          0 |      17 |         17 |
+| [`src/app/forms.ts`](#src-app-forms-ts)                                                         |          0 |      19 |         19 |
 | [`src/app/history_bindings.ts`](#src-app-history-bindings-ts)                                   |          0 |       6 |          6 |
 | [`src/app/history.ts`](#src-app-history-ts)                                                     |          0 |       5 |          5 |
 | [`src/app/hit_targets.ts`](#src-app-hit-targets-ts)                                             |          0 |       8 |          8 |
@@ -4087,7 +4079,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                             |          0 |       6 |          6 |
 | [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                       |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         53 |       0 |          0 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         52 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                       |          0 |      10 |         10 |
 | [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                           |          0 |       6 |          6 |
 | [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     |          0 |      17 |         17 |
@@ -4532,13 +4524,6 @@ _No direct exported symbols._
 | `focusCommands`       | function  | no        | yes   |
 | `FocusCommandTarget`  | interface | yes       | yes   |
 
-#### src/app/form_bindings.ts
-
-| Symbol                    | Kind      | Type Only | JSDoc |
-| ------------------------- | --------- | --------- | ----- |
-| `bindFormField`           | function  | no        | yes   |
-| `FormFieldBindingOptions` | interface | yes       | yes   |
-
 #### src/app/form_commands.ts
 
 | Symbol                       | Kind      | Type Only | JSDoc |
@@ -4555,12 +4540,14 @@ _No direct exported symbols._
 
 | Symbol                       | Kind      | Type Only | JSDoc |
 | ---------------------------- | --------- | --------- | ----- |
+| `bindFormField`              | function  | no        | yes   |
 | `FieldName`                  | type      | yes       | yes   |
 | `FieldValidator`             | type      | yes       | yes   |
 | `FormController`             | class     | no        | yes   |
 | `FormControllerOptions`      | interface | yes       | yes   |
 | `FormErrorSummaryItem`       | interface | yes       | yes   |
 | `FormField`                  | interface | yes       | yes   |
+| `FormFieldBindingOptions`    | interface | yes       | yes   |
 | `FormFieldInspection`        | interface | yes       | yes   |
 | `FormFieldState`             | type      | yes       | yes   |
 | `FormGroupInspection`        | interface | yes       | yes   |
@@ -4677,7 +4664,6 @@ _No direct exported symbols._
 | `src/app/data_query_plugin.ts`         | star | -     |
 | `src/app/data_table_commands.ts`       | star | -     |
 | `src/app/disposables.ts`               | star | -     |
-| `src/app/form_bindings.ts`             | star | -     |
 | `src/app/form_commands.ts`             | star | -     |
 | `src/app/focus_commands.ts`            | star | -     |
 | `src/app/forms.ts`                     | star | -     |

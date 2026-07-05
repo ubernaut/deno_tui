@@ -1,9 +1,8 @@
 import { assertEquals } from "./deps.ts";
 import { Signal } from "../src/signals/mod.ts";
-import { bindFormField } from "../src/app/form_bindings.ts";
 import { bindFormCommands, formCommands } from "../src/app/form_commands.ts";
 import type { FormCommandAction } from "../src/app/form_commands.ts";
-import { FormController, type FormSnapshot, minLength, required } from "../src/app/forms.ts";
+import { bindFormField, FormController, type FormSnapshot, minLength, required } from "../src/app/forms.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
 
 interface SettingsForm extends Record<string, unknown> {

@@ -10,7 +10,6 @@ export * from "./data_query_commands.ts";
 export * from "./data_query_plugin.ts";
 export * from "./data_table_commands.ts";
 export * from "./disposables.ts";
-export * from "./form_bindings.ts";
 export * from "./form_commands.ts";
 export * from "./focus_commands.ts";
 export * from "./forms.ts";
