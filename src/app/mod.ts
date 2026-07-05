@@ -37,7 +37,6 @@ export * from "./settings_commands.ts";
 export * from "./settings_bindings.ts";
 export * from "./settings.ts";
 export * from "./split_pane_commands.ts";
-export * from "./surface_bindings.ts";
 export * from "./table_commands.ts";
 export * from "./tabs_commands.ts";
 export * from "./terminal_commands.ts";

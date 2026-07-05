@@ -2,6 +2,7 @@
 import type { Component } from "./component.ts";
 import { DisposableStack } from "./app/disposables.ts";
 import type { KeyPressEvent } from "./input_reader/types.ts";
+import type { Signal } from "./signals/mod.ts";
 
 /** Public interface describing a focusable. */
 export interface Focusable {
@@ -121,6 +122,12 @@ export interface FocusNavigationOptions {
   items?: readonly Focusable[];
 }
 
+/** Options for configuring modal Focus Binding. */
+export interface ModalFocusBindingOptions {
+  initialIndex?: number;
+  closeOnEscape?: boolean;
+}
+
 /** Binds focus Navigation behavior and returns a disposer when applicable. */
 export function bindFocusNavigation(
   target: FocusNavigationTarget,
@@ -185,4 +192,45 @@ export class FocusScope {
       this.manager.focus(this.previous);
     }
   }
+}
+
+/** Binds modal Focus behavior and returns a disposer when applicable. */
+export function bindModalFocus(
+  target: FocusNavigationTarget,
+  visible: Signal<boolean>,
+  manager: FocusManager,
+  items: readonly Focusable[],
+  options: ModalFocusBindingOptions = {},
+): () => void {
+  const scope = new FocusScope(manager, items);
+  const initialIndex = options.initialIndex ?? 0;
+  const closeOnEscape = options.closeOnEscape ?? true;
+  let active = false;
+
+  const sync = (nextVisible: boolean) => {
+    if (nextVisible && !active) {
+      scope.enter(initialIndex);
+      active = true;
+    } else if (!nextVisible && active) {
+      scope.exit();
+      active = false;
+    }
+  };
+
+  const unbindKeys = target.on("keyPress", (event) => {
+    if (!closeOnEscape || event.ctrl || event.meta || event.key !== "escape" || !visible.peek()) return;
+    visible.value = false;
+  });
+
+  sync(visible.peek());
+  visible.subscribe(sync);
+
+  return () => {
+    unbindKeys();
+    visible.unsubscribe(sync);
+    if (active) {
+      scope.exit();
+      active = false;
+    }
+  };
 }

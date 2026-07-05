@@ -2278,20 +2278,6 @@
       "documented": true
     },
     {
-      "module": "src/app/surface_bindings.ts",
-      "name": "bindModalFocus",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/surface_bindings.ts",
-      "name": "ModalFocusBindingOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
       "module": "src/app/table_commands.ts",
       "name": "bindTableCommands",
       "kind": "function",
@@ -8670,6 +8656,13 @@
     },
     {
       "module": "src/focus.ts",
+      "name": "bindModalFocus",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/focus.ts",
       "name": "Focusable",
       "kind": "interface",
       "typeOnly": true,
@@ -8708,6 +8701,13 @@
       "name": "FocusScope",
       "kind": "class",
       "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/focus.ts",
+      "name": "ModalFocusBindingOptions",
+      "kind": "interface",
+      "typeOnly": true,
       "documented": true
     },
     {

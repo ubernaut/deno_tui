@@ -1,8 +1,7 @@
 import { assertEquals } from "./deps.ts";
 import { bindFocusCommands, focusCommands } from "../src/app/focus_commands.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
-import { bindModalFocus } from "../src/app/surface_bindings.ts";
-import { bindFocusNavigation, type Focusable, FocusManager, FocusScope } from "../src/focus.ts";
+import { bindFocusNavigation, bindModalFocus, type Focusable, FocusManager, FocusScope } from "../src/focus.ts";
 import { Signal } from "../src/signals/mod.ts";
 import type { ComponentState } from "../src/component.ts";
 import type { KeyPressEvent } from "../src/input_reader/types.ts";

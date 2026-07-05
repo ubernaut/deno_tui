@@ -6,8 +6,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 ## Summary
 
 - Entrypoints: 9
-- Module visits: 533
-- Re-export declarations: 524
+- Module visits: 531
+- Re-export declarations: 522
 - Exported symbols: 5331
 - Documented symbols: 5331
 - Documentation coverage: 100.00%
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     239 |    2291 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     218 |    2143 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     238 |    2291 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     217 |    2143 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      87 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -39,8 +39,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 ### Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 239
-- Re-export declarations: 238
+- Modules: 238
+- Re-export declarations: 237
 - Exported symbols: 2291
 - Documented symbols: 2291
 - Documentation coverage: 100.00%
@@ -76,7 +76,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                             |          0 |       6 |          6 |
 | [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                       |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         54 |       0 |          0 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         53 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                       |          0 |      10 |         10 |
 | [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                           |          0 |       6 |          6 |
 | [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     |          0 |      17 |         17 |
@@ -93,7 +93,6 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/settings_commands.ts`](#src-app-settings-commands-ts)                                 |          0 |       5 |          5 |
 | [`src/app/settings.ts`](#src-app-settings-ts)                                                   |          0 |       5 |          5 |
 | [`src/app/split_pane_commands.ts`](#src-app-split-pane-commands-ts)                             |          0 |       7 |          7 |
-| [`src/app/surface_bindings.ts`](#src-app-surface-bindings-ts)                                   |          0 |       2 |          2 |
 | [`src/app/table_commands.ts`](#src-app-table-commands-ts)                                       |          0 |       6 |          6 |
 | [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                                         |          0 |       6 |          6 |
 | [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                                 |          0 |      24 |         24 |
@@ -183,7 +182,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/components/virtual_list.ts`](#src-components-virtual-list-ts)                             |          0 |       9 |          9 |
 | [`src/controls.ts`](#src-controls-ts)                                                           |          0 |       2 |          2 |
 | [`src/event_emitter.ts`](#src-event-emitter-ts)                                                 |          0 |       5 |          5 |
-| [`src/focus.ts`](#src-focus-ts)                                                                 |          0 |       7 |          7 |
+| [`src/focus.ts`](#src-focus-ts)                                                                 |          0 |       9 |          9 |
 | [`src/grwizard_themes.ts`](#src-grwizard-themes-ts)                                             |          0 |       5 |          5 |
 | [`src/input_reader/mod.ts`](#src-input-reader-mod-ts)                                           |          0 |       2 |          2 |
 | [`src/input.ts`](#src-input-ts)                                                                 |          0 |       1 |          1 |
@@ -696,7 +695,6 @@ _No direct exported symbols._
 | `src/app/settings_bindings.ts`         | star | -     |
 | `src/app/settings.ts`                  | star | -     |
 | `src/app/split_pane_commands.ts`       | star | -     |
-| `src/app/surface_bindings.ts`          | star | -     |
 | `src/app/table_commands.ts`            | star | -     |
 | `src/app/tabs_commands.ts`             | star | -     |
 | `src/app/terminal_commands.ts`         | star | -     |
@@ -918,13 +916,6 @@ _No direct exported symbols._
 | `SplitPaneCommandOptions`  | interface | yes       | yes   |
 | `splitPaneCommands`        | function  | no        | yes   |
 | `SplitPaneSnapshotPayload` | interface | yes       | yes   |
-
-#### src/app/surface_bindings.ts
-
-| Symbol                     | Kind      | Type Only | JSDoc |
-| -------------------------- | --------- | --------- | ----- |
-| `bindModalFocus`           | function  | no        | yes   |
-| `ModalFocusBindingOptions` | interface | yes       | yes   |
 
 #### src/app/table_commands.ts
 
@@ -2359,15 +2350,17 @@ _No direct exported symbols._
 
 #### src/focus.ts
 
-| Symbol                   | Kind      | Type Only | JSDoc |
-| ------------------------ | --------- | --------- | ----- |
-| `bindFocusNavigation`    | function  | no        | yes   |
-| `Focusable`              | interface | yes       | yes   |
-| `FocusManager`           | class     | no        | yes   |
-| `FocusManagerInspection` | interface | yes       | yes   |
-| `FocusNavigationOptions` | interface | yes       | yes   |
-| `FocusNavigationTarget`  | interface | yes       | yes   |
-| `FocusScope`             | class     | no        | yes   |
+| Symbol                     | Kind      | Type Only | JSDoc |
+| -------------------------- | --------- | --------- | ----- |
+| `bindFocusNavigation`      | function  | no        | yes   |
+| `bindModalFocus`           | function  | no        | yes   |
+| `Focusable`                | interface | yes       | yes   |
+| `FocusManager`             | class     | no        | yes   |
+| `FocusManagerInspection`   | interface | yes       | yes   |
+| `FocusNavigationOptions`   | interface | yes       | yes   |
+| `FocusNavigationTarget`    | interface | yes       | yes   |
+| `FocusScope`               | class     | no        | yes   |
+| `ModalFocusBindingOptions` | interface | yes       | yes   |
 
 #### src/grwizard_themes.ts
 
@@ -4057,8 +4050,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 ### Summary
 
 - Entrypoint: `mod.web.ts`
-- Modules: 218
-- Re-export declarations: 217
+- Modules: 217
+- Re-export declarations: 216
 - Exported symbols: 2143
 - Documented symbols: 2143
 - Documentation coverage: 100.00%
@@ -4094,7 +4087,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                             |          0 |       6 |          6 |
 | [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                       |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         54 |       0 |          0 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         53 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                       |          0 |      10 |         10 |
 | [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                           |          0 |       6 |          6 |
 | [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     |          0 |      17 |         17 |
@@ -4111,7 +4104,6 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/settings_commands.ts`](#src-app-settings-commands-ts)                                 |          0 |       5 |          5 |
 | [`src/app/settings.ts`](#src-app-settings-ts)                                                   |          0 |       5 |          5 |
 | [`src/app/split_pane_commands.ts`](#src-app-split-pane-commands-ts)                             |          0 |       7 |          7 |
-| [`src/app/surface_bindings.ts`](#src-app-surface-bindings-ts)                                   |          0 |       2 |          2 |
 | [`src/app/table_commands.ts`](#src-app-table-commands-ts)                                       |          0 |       6 |          6 |
 | [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                                         |          0 |       6 |          6 |
 | [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                                 |          0 |      24 |         24 |
@@ -4196,7 +4188,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/components/tree.ts`](#src-components-tree-ts)                                             |          0 |      11 |         11 |
 | [`src/components/virtual_list.ts`](#src-components-virtual-list-ts)                             |          0 |       9 |          9 |
 | [`src/event_emitter.ts`](#src-event-emitter-ts)                                                 |          0 |       5 |          5 |
-| [`src/focus.ts`](#src-focus-ts)                                                                 |          0 |       7 |          7 |
+| [`src/focus.ts`](#src-focus-ts)                                                                 |          0 |       9 |          9 |
 | [`src/grwizard_themes.ts`](#src-grwizard-themes-ts)                                             |          0 |       5 |          5 |
 | [`src/layout/engine.ts`](#src-layout-engine-ts)                                                 |          0 |       6 |          6 |
 | [`src/layout/errors.ts`](#src-layout-errors-ts)                                                 |          0 |       2 |          2 |
@@ -4712,7 +4704,6 @@ _No direct exported symbols._
 | `src/app/settings_bindings.ts`         | star | -     |
 | `src/app/settings.ts`                  | star | -     |
 | `src/app/split_pane_commands.ts`       | star | -     |
-| `src/app/surface_bindings.ts`          | star | -     |
 | `src/app/table_commands.ts`            | star | -     |
 | `src/app/tabs_commands.ts`             | star | -     |
 | `src/app/terminal_commands.ts`         | star | -     |
@@ -4934,13 +4925,6 @@ _No direct exported symbols._
 | `SplitPaneCommandOptions`  | interface | yes       | yes   |
 | `splitPaneCommands`        | function  | no        | yes   |
 | `SplitPaneSnapshotPayload` | interface | yes       | yes   |
-
-#### src/app/surface_bindings.ts
-
-| Symbol                     | Kind      | Type Only | JSDoc |
-| -------------------------- | --------- | --------- | ----- |
-| `bindModalFocus`           | function  | no        | yes   |
-| `ModalFocusBindingOptions` | interface | yes       | yes   |
 
 #### src/app/table_commands.ts
 
@@ -6329,15 +6313,17 @@ _No direct exported symbols._
 
 #### src/focus.ts
 
-| Symbol                   | Kind      | Type Only | JSDoc |
-| ------------------------ | --------- | --------- | ----- |
-| `bindFocusNavigation`    | function  | no        | yes   |
-| `Focusable`              | interface | yes       | yes   |
-| `FocusManager`           | class     | no        | yes   |
-| `FocusManagerInspection` | interface | yes       | yes   |
-| `FocusNavigationOptions` | interface | yes       | yes   |
-| `FocusNavigationTarget`  | interface | yes       | yes   |
-| `FocusScope`             | class     | no        | yes   |
+| Symbol                     | Kind      | Type Only | JSDoc |
+| -------------------------- | --------- | --------- | ----- |
+| `bindFocusNavigation`      | function  | no        | yes   |
+| `bindModalFocus`           | function  | no        | yes   |
+| `Focusable`                | interface | yes       | yes   |
+| `FocusManager`             | class     | no        | yes   |
+| `FocusManagerInspection`   | interface | yes       | yes   |
+| `FocusNavigationOptions`   | interface | yes       | yes   |
+| `FocusNavigationTarget`    | interface | yes       | yes   |
+| `FocusScope`               | class     | no        | yes   |
+| `ModalFocusBindingOptions` | interface | yes       | yes   |
 
 #### src/grwizard_themes.ts
 
