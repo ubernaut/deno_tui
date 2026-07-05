@@ -1,5 +1,8 @@
 // Copyright 2023 Im-Beast. MIT license.
 
+import { sleep } from "../src/utils/async.ts";
+import { clamp, fits, fitsInRectangle, normalize } from "../src/utils/numbers.ts";
+import { SortedArray } from "../src/utils/sorted_array.ts";
 import {
   characterWidth,
   cropToWidth,
@@ -8,14 +11,71 @@ import {
   stripStyles,
   textWidth,
   UNICODE_CHAR_REGEXP,
-} from "../../src/utils/strings.ts";
-import { assertEquals } from "../deps.ts";
+} from "../src/utils/strings.ts";
+import { assert, assertEquals } from "./deps.ts";
 
 const unicodeString = "♥☭👀f🌏g⚠5✌💢✅💛🌻";
 const fullWidths = ["０", "１", "２", "３", "４", "ｈ", "ｉ", "ｊ", "ｋ", "ｌ", "テ", "ク", "ワ"];
 const halfWidths = ["a", "b", "1", "ą", "ł", "､", "ﾝ", "ｼ"];
 
-Deno.test("utils/strings.ts", async (t) => {
+Deno.test("utils async helpers sleep for at least the requested interval", async () => {
+  const intervals = [0, 1, 33, 50, 100, 150];
+
+  for (const interval of intervals) {
+    const start = performance.now();
+    await sleep(interval);
+    const elapsed = performance.now() - start;
+    assert(elapsed >= Math.max(0, interval - 2), `sleep(${interval}) resolved too early after ${elapsed}ms`);
+    assert(elapsed <= interval + 100, `sleep(${interval}) resolved too late after ${elapsed}ms`);
+  }
+});
+
+Deno.test("utils number helpers clamp normalize and test bounds", () => {
+  assertEquals(clamp(-5, 0, 10), 0);
+  assertEquals(clamp(0, 0, 10), 0);
+  assertEquals(clamp(-1, 0, 10), 0);
+  assertEquals(clamp(5, 0, 10), 5);
+  assertEquals(clamp(10, 0, 10), 10);
+  assertEquals(clamp(10, 0, 11), 10);
+
+  assertEquals(fits(-1, 0, 1), false);
+  assertEquals(fits(0.1, 0, 1), true);
+  assertEquals(fits(0.9, 0, 1), true);
+  assertEquals(fits(0, 0, 1), true);
+  assertEquals(fits(1, 0, 1), true);
+
+  const rectangle = {
+    column: 5,
+    row: 5,
+    width: 10,
+    height: 10,
+  };
+
+  assertEquals(fitsInRectangle(0, 0, rectangle), false);
+  assertEquals(fitsInRectangle(5, 0, rectangle), false);
+  assertEquals(fitsInRectangle(0, 5, rectangle), false);
+  assertEquals(fitsInRectangle(13, 0, rectangle), false);
+  assertEquals(fitsInRectangle(13, 6, rectangle), true);
+  assertEquals(fitsInRectangle(5, 5, rectangle), true);
+  assertEquals(fitsInRectangle(14, 14, rectangle), true);
+  assertEquals(fitsInRectangle(15, 15, rectangle), false);
+
+  assertEquals(normalize(50, 0, 100), 0.5);
+  assertEquals(normalize(0, -100, 100), 0.5);
+});
+
+Deno.test("utils SortedArray keeps ordered values and supports removal", () => {
+  const array = new SortedArray<number>((a, b) => b - a);
+
+  array.push(1, 10, -5, -2, 11, 100, -1000);
+  assertEquals([...array], [100, 11, 10, 1, -2, -5, -1000]);
+  array.remove(11);
+  assertEquals([...array], [100, 10, 1, -2, -5, -1000]);
+  array.remove(404);
+  assertEquals([...array], [100, 10, 1, -2, -5, -1000]);
+});
+
+Deno.test("utils string helpers measure unicode and ANSI-styled cells", async (t) => {
   await t.step("UNICODE_CHAR_REGEXP", () => {
     const unicodeCharacters = unicodeString.match(UNICODE_CHAR_REGEXP)!;
 
