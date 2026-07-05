@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `738`
+- Tracked files after the current consolidation passes: `737`
 - Tracked top-level file counts:
   - `src`: `352`
-  - `tests`: `167`
+  - `tests`: `166`
   - `app`: `48`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,188` lines across `37` files
   - `app`: `20,429` lines across `48` files
   - `examples`: `8,732` lines across `41` files
-  - `tests`: `49,244` lines across `167` files
+  - `tests`: `49,243` lines across `166` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `24MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -113,6 +113,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Workbench styled-row render assertions are now bundled into `tests/workbench_rows.test.ts`
   - Workbench terminal style assertions are now bundled into `tests/workbench_terminal.test.ts`
   - Workbench viewport helper assertions are now bundled into `tests/workbench_layout.test.ts`
+  - App style helper assertions are now bundled into `tests/app_primitives.test.ts`
   - Three ASCII deferred readback staleness, submission, and failure assertions are now bundled into
     `tests/three_ascii_core.test.ts`
   - Three ASCII effect option and effect state assertions are now bundled into `tests/three_ascii_core.test.ts`
@@ -123,8 +124,8 @@ The library core is real and valuable, but it needs clearer boundaries:
 - Continue using benchmark cases for hot helpers, but treat live probes as required evidence:
   - `deno task three-workbench:startup-probe`
   - `deno task three-ascii:live-probe -- --frames 45 --glyphs blocks --max-cells 960 --check --max-average-ms 40`
-- Latest workbench block-mode startup probe after the workbench ANSI output consolidation: `6.82ms` steady average,
-  about `146.6 fps` at `53x17` cells with the capped default-workbench probe.
+- Latest workbench block-mode startup probe after the app styles test consolidation: `6.76ms` steady average, about
+  `148.0 fps` at `53x17` cells with the capped default-workbench probe.
 - Avoid speculative micro-optimizations unless they improve measured workbench/default-demo behavior.
 
 ### P2: Split Demo Framework From Library Framework
