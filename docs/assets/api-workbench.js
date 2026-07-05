@@ -18022,7 +18022,27 @@ function writeTextCommand(target, index, command) {
   return index + 1;
 }
 
-// app/workbench_modal_content.ts
+// src/app/workbench_rows.ts
+var THREE_HEADER_GEOMETRY = "torus knot \xB7 sphere \xB7 block \xB7 floor plane";
+var THREE_HEADER_GEOMETRY_WIDTH = textWidth(THREE_HEADER_GEOMETRY);
+function dataFooterRows(options) {
+  const selected = options.selectedKey ?? "-";
+  const full = compactSpaces(
+    `page ${options.page}/${options.pageCount}  selected ${selected}  arrows/page keys  S sort`
+  );
+  const texts = textWidth(full) <= options.width ? [full] : wrapPlainText(
+    `page ${options.page}/${options.pageCount} selected ${selected} arrows/page keys S sort`,
+    options.width,
+    options.fit
+  );
+  const rows2 = new Array(texts.length);
+  for (let index = 0; index < texts.length; index++) {
+    rows2[index] = { text: texts[index], fg: options.theme.muted, bg: options.theme.panelSoft };
+  }
+  return rows2;
+}
+
+// app/workbench_panels.ts
 function workbenchDemoModalContent(options = {}) {
   const web = options.profile === "web";
   return {
@@ -18100,28 +18120,6 @@ function workbenchModalConfirmedContent(options = {}) {
     actions: [{ id: "dismiss", label: "Dismiss", default: true }]
   };
 }
-
-// src/app/workbench_rows.ts
-var THREE_HEADER_GEOMETRY = "torus knot \xB7 sphere \xB7 block \xB7 floor plane";
-var THREE_HEADER_GEOMETRY_WIDTH = textWidth(THREE_HEADER_GEOMETRY);
-function dataFooterRows(options) {
-  const selected = options.selectedKey ?? "-";
-  const full = compactSpaces(
-    `page ${options.page}/${options.pageCount}  selected ${selected}  arrows/page keys  S sort`
-  );
-  const texts = textWidth(full) <= options.width ? [full] : wrapPlainText(
-    `page ${options.page}/${options.pageCount} selected ${selected} arrows/page keys S sort`,
-    options.width,
-    options.fit
-  );
-  const rows2 = new Array(texts.length);
-  for (let index = 0; index < texts.length; index++) {
-    rows2[index] = { text: texts[index], fg: options.theme.muted, bg: options.theme.panelSoft };
-  }
-  return rows2;
-}
-
-// app/workbench_panels.ts
 function workbenchDataTableRowsInto(target, options) {
   const { view, columns: columns2, width, theme: t, fit: fit2, contrast, buffers } = options;
   const textRows = renderDataTableRowsInto(buffers.textRows, view.rows, columns2, view.selectedIndex);

@@ -292,9 +292,14 @@ import {
   explorerTextRowsInto,
   workbenchDataTablePageSize,
   workbenchDataTableRowsInto,
+  workbenchDemoModalContent,
   workbenchExplorerRowsInto,
+  workbenchHelpModalContent,
   workbenchInspectorRowsInto,
   workbenchLogRowsFromSourcesInto,
+  workbenchModalConfirmedContent,
+  workbenchModalDetailsContent,
+  workbenchQuitModalContent,
   workbenchWindowContentSize,
 } from "./workbench_panels.ts";
 import { WorkbenchThreeGridProjectionCache, writeWorkbenchThreeGrid } from "../src/app/workbench_three_grid.ts";
@@ -339,13 +344,6 @@ import {
   workspaceRenamedModalContent,
   workspaceSavedModalContent,
 } from "../src/app/workbench_workspace_menu.ts";
-import {
-  workbenchDemoModalContent,
-  workbenchHelpModalContent,
-  workbenchModalConfirmedContent,
-  workbenchModalDetailsContent,
-  workbenchQuitModalContent,
-} from "./workbench_modal_content.ts";
 import { formatWorkbenchKittyGraphicsStatus, WorkbenchKittyGraphicsController } from "./workbench_kitty_graphics.ts";
 import {
   type WorkbenchFrameRenderCommand,

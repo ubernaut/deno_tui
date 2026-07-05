@@ -22,7 +22,7 @@ import {
   workbenchModalConfirmedContent,
   workbenchModalDetailsContent,
   workbenchQuitModalContent,
-} from "../app/workbench_modal_content.ts";
+} from "../app/workbench_panels.ts";
 
 Deno.test("workbench facade exposes renderer-neutral helpers", () => {
   assertEquals(buttonText("OK"), "[ OK ]");

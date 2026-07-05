@@ -161,6 +161,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     state projection with the monitor controller and removing another app-only helper shard
   - API workbench data-table row projection is folded into `app/workbench_panels.ts`, keeping panel content projection
     together and removing a single-purpose app helper used only by the console and browser workbench demos
+  - API workbench modal content helpers are folded into `app/workbench_panels.ts`, keeping shared terminal/browser
+    presentation helpers together and removing another single-purpose app helper shard
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

@@ -174,18 +174,16 @@ import {
   htmlCssVisibleLayoutBoxesInto,
 } from "../../app/html_css_layout_view.ts";
 import {
+  workbenchDataTablePageSize,
+  workbenchDataTableRowsInto,
   workbenchDemoModalContent,
+  workbenchExplorerRowsInto,
   workbenchHelpModalContent,
+  workbenchInspectorRowsInto,
+  workbenchLogRowsFromSourcesInto,
   workbenchModalConfirmedContent,
   workbenchModalDetailsContent,
   workbenchQuitModalContent,
-} from "../../app/workbench_modal_content.ts";
-import {
-  workbenchDataTablePageSize,
-  workbenchDataTableRowsInto,
-  workbenchExplorerRowsInto,
-  workbenchInspectorRowsInto,
-  workbenchLogRowsFromSourcesInto,
 } from "../../app/workbench_panels.ts";
 import {
   type WorkbenchFrameRenderCommand,
