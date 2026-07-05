@@ -207,6 +207,7 @@ import {
   apiWorkbenchPanelTitle,
   type ApiWorkbenchProcessRow,
   apiWorkbenchRows,
+  apiWorkbenchTerminalCellStyle,
   apiWorkbenchTerminalOutputLineStyle,
   apiWorkbenchTerminalStatusToneColor,
   type ApiWorkbenchThemeSpec,
@@ -438,11 +439,6 @@ type TerminalShellAction = WorkbenchTerminalToolbarAction;
 type ButtonTone = WorkbenchButtonTone;
 
 type ThemeSpec = ApiWorkbenchThemeSpec;
-interface TerminalCellStyleInput {
-  foreground?: number;
-  background?: number;
-  bold?: boolean;
-}
 type ProcessRow = ApiWorkbenchProcessRow;
 
 type NewWindowOption = WorkbenchWindowOption;
@@ -451,44 +447,6 @@ type SavedWorkspace = WorkbenchWorkspace<AsciiOptions>;
 type SavedWorkspaceWindow = WorkbenchWorkspaceWindow<AsciiOptions>;
 
 type WorkspaceNameMode = "save" | "rename";
-
-function terminalAnsiColor(code: number | undefined, t: ThemeSpec, background: boolean): string | undefined {
-  if (code === undefined) return undefined;
-  const normalized = background ? code - 40 : code - 30;
-  switch (normalized) {
-    case 0:
-      return t.background;
-    case 1:
-      return t.danger;
-    case 2:
-      return t.good;
-    case 3:
-      return t.warn;
-    case 4:
-      return t.accent;
-    case 5:
-      return t.borderStrong;
-    case 6:
-      return t.accent;
-    case 7:
-      return t.text;
-    default:
-      return undefined;
-  }
-}
-
-function terminalCellStyle(
-  cell: TerminalCellStyleInput,
-  t: ThemeSpec,
-  cursor: boolean,
-): { fg: string; bg: string; bold?: boolean } {
-  if (cursor) return { fg: t.background, bg: t.accent, bold: true };
-  return {
-    fg: terminalAnsiColor(cell.foreground, t, false) ?? t.text,
-    bg: terminalAnsiColor(cell.background, t, true) ?? t.surface,
-    bold: cell.bold,
-  };
-}
 
 const terminalOutputButtonBuffers = new WorkbenchButtonRowBufferCache<TerminalOutputAction>();
 const terminalShellButtonBuffers = new WorkbenchButtonRowBufferCache<TerminalShellAction>();
@@ -2206,7 +2164,7 @@ function renderTerminalShellPane(
     for (let column = 0; column < content.width; column += 1) {
       const cell = cells[column] ?? { char: " " };
       const atCursor = cursorActive && cursor.row === screenRow && cursor.column === column;
-      const style = terminalCellStyle(cell, t, atCursor);
+      const style = apiWorkbenchTerminalCellStyle(cell, t, atCursor);
       const char = atCursor && cell.char === " " ? " " : cell.char;
       write(frame, content.row + screenRow, content.column + column, paint(char, style));
     }

@@ -258,6 +258,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   testing showed collapsed visible Three cadence still needs to downshift even when other rows changed too.
 - Optimized workbench frame-row background-space detection with direct suffix checks, keeping Three block-mode span
   flushes benchmarked without adding per-cell cache overhead.
+- Extracted API Workbench terminal ANSI color and shell-cell style projection into the catalog helper with direct tests,
+  removing another pure presentation branch from the oversized terminal adapter.
 - Extracted process-output row formatting into the shared workbench terminal helper so terminal content sizing and
   future adapters reuse caller-owned row projection instead of local loops.
 - Routed the terminal-output window render path through the same shared process-output row projector, keeping visible

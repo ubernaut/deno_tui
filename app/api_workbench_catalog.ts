@@ -44,6 +44,12 @@ export interface ApiWorkbenchProcessRow extends Record<string, unknown> {
   latency: number;
 }
 
+export interface ApiWorkbenchTerminalCellStyleInput {
+  foreground?: number;
+  background?: number;
+  bold?: boolean;
+}
+
 export function apiWorkbenchTerminalStatusToneColor(
   status: ProcessSessionStatus | "starting" | undefined,
   theme: ApiWorkbenchThemeSpec,
@@ -69,6 +75,48 @@ export function apiWorkbenchTerminalOutputLineStyle(
   if (source === "stderr") return { fg: theme.danger, bg: theme.surface, bold: true };
   if (source === "system") return { fg: theme.warn, bg: theme.panelSoft, bold: true };
   return { fg: theme.text, bg: theme.surface };
+}
+
+export function apiWorkbenchTerminalAnsiColor(
+  code: number | undefined,
+  theme: ApiWorkbenchThemeSpec,
+  background: boolean,
+): string | undefined {
+  if (code === undefined) return undefined;
+  const normalized = background ? code - 40 : code - 30;
+  switch (normalized) {
+    case 0:
+      return theme.background;
+    case 1:
+      return theme.danger;
+    case 2:
+      return theme.good;
+    case 3:
+      return theme.warn;
+    case 4:
+      return theme.accent;
+    case 5:
+      return theme.borderStrong;
+    case 6:
+      return theme.accent;
+    case 7:
+      return theme.text;
+    default:
+      return undefined;
+  }
+}
+
+export function apiWorkbenchTerminalCellStyle(
+  cell: ApiWorkbenchTerminalCellStyleInput,
+  theme: ApiWorkbenchThemeSpec,
+  cursor: boolean,
+): { fg: string; bg: string; bold?: boolean } {
+  if (cursor) return { fg: theme.background, bg: theme.accent, bold: true };
+  return {
+    fg: apiWorkbenchTerminalAnsiColor(cell.foreground, theme, false) ?? theme.text,
+    bg: apiWorkbenchTerminalAnsiColor(cell.background, theme, true) ?? theme.surface,
+    bold: cell.bold,
+  };
 }
 
 export const apiWorkbenchPanelTitles: Record<string, string> = {
