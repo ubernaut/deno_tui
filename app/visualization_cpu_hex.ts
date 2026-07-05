@@ -1,6 +1,6 @@
 import { clamp, formatPercent } from "./styles.ts";
 import { buildVisualizationDrive } from "./visualization_drive.ts";
-import { crop } from "./visualization_primitives.ts";
+import { crop, formatLoadAverage, severityForValue } from "./visualization_primitives.ts";
 import type { PanelRender, RenderContext, Severity } from "./types.ts";
 
 type CpuCoreSnapshot = RenderContext["system"]["cpuCores"][number];
@@ -219,7 +219,7 @@ export function renderCpuHexGrid(context: RenderContext): PanelRender {
   if (cores.length === 0) {
     return {
       body: "NO CORE DATA",
-      footer: `HOST ${system.hostname.toUpperCase()}  LOAD ${formatLoadAverage(system.loadavg)}`,
+      footer: `HOST ${system.hostname.toUpperCase()}  LOAD ${formatLoadAverage(system.loadavg, "/")}`,
       alert: "",
       accent: "signal",
       severity: "info",
@@ -513,24 +513,4 @@ function cpuHexProcessLine(process: RenderContext["system"]["processes"][number]
     }% ${name}`,
     width,
   );
-}
-
-function formatLoadAverage(loadavg: readonly number[]): string {
-  if (loadavg.length === 0) return "";
-  let text = "";
-  for (let index = 0; index < loadavg.length; index += 1) {
-    if (index > 0) text += "/";
-    text += loadavg[index]!.toFixed(2);
-  }
-  return text;
-}
-
-function severityForValue(value: number, warning: number, alarm: number): Severity {
-  if (value >= alarm) {
-    return "alarm";
-  }
-  if (value >= warning) {
-    return "warning";
-  }
-  return "info";
 }

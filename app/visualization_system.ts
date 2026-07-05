@@ -1,6 +1,6 @@
 import { formatBytes, formatDuration, formatPercent } from "./styles.ts";
 import { buildVisualizationDrive, type VisualizationDrive } from "./visualization_drive.ts";
-import { crop } from "./visualization_primitives.ts";
+import { crop, formatLoadAverage, severityForValue } from "./visualization_primitives.ts";
 import type { Accent, PanelRender, RenderContext, Severity } from "./types.ts";
 
 export interface SystemMonitorRenderDependencies {
@@ -212,15 +212,6 @@ function topCpuCores(
   return top;
 }
 
-function formatLoadAverage(values: readonly number[]): string {
-  if (values.length === 0) return "";
-  const parts = new Array<string>(values.length);
-  for (let index = 0; index < values.length; index += 1) {
-    parts[index] = values[index]!.toFixed(2);
-  }
-  return parts.join(" / ");
-}
-
 function temperatureRows(
   temperatures: RenderContext["system"]["temperatures"],
   limit: number,
@@ -313,8 +304,4 @@ function heatMeter(value: number, heat: number, dependencies: SystemMonitorRende
 function alertText(context: RenderContext) {
   const alert = context.system.alerts[0];
   return alert ? `${alert.title} / ${alert.detail}` : "";
-}
-
-function severityForValue(value: number, warning: number, alarm: number): Severity {
-  return value >= alarm ? "alarm" : value >= warning ? "warning" : "info";
 }

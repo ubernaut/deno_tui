@@ -18,11 +18,13 @@ import {
   crop,
   drawEllipse,
   drawLine,
+  formatLoadAverage,
   gridify,
   miniMeter,
   plotHistory,
   renderMatrix,
   setCell,
+  severityForValue,
   signalChart,
 } from "../app/visualization_primitives.ts";
 import type { RenderContext, SourceFrame } from "../app/types.ts";
@@ -72,6 +74,10 @@ Deno.test("visualization primitives crop and gridify text cells", () => {
   const grid = gridify(["alpha", "beta", "gamma"], 36);
   assertStringIncludes(grid, "alpha");
   assertStringIncludes(grid, "gamma");
+  assertEquals(formatLoadAverage([1, 2.345, 0]), "1.00 / 2.35 / 0.00");
+  assertEquals(severityForValue(71, 72, 88), "info");
+  assertEquals(severityForValue(72, 72, 88), "warning");
+  assertEquals(severityForValue(88, 72, 88), "alarm");
 });
 
 Deno.test("visualization primitives render meters and charts", () => {

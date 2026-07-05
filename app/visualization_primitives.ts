@@ -1,6 +1,6 @@
 import { clamp } from "./styles.ts";
 import { sampleSeries, type VisualizationDrive } from "./visualization_drive.ts";
-import type { Accent } from "./types.ts";
+import type { Accent, Severity } from "./types.ts";
 
 export function monitorGlyph(drive: VisualizationDrive, accent: Accent) {
   if (drive.hazard >= 0.9) {
@@ -86,6 +86,19 @@ export function crop(text: string, width: number) {
     return text;
   }
   return `${text.slice(0, Math.max(0, width - 1))}…`;
+}
+
+export function formatLoadAverage(values: readonly number[], separator = " / "): string {
+  if (values.length === 0) return "";
+  const parts = new Array<string>(values.length);
+  for (let index = 0; index < values.length; index += 1) {
+    parts[index] = values[index]!.toFixed(2);
+  }
+  return parts.join(separator);
+}
+
+export function severityForValue(value: number, warning: number, alarm: number): Severity {
+  return value >= alarm ? "alarm" : value >= warning ? "warning" : "info";
 }
 
 export function createMatrix(width: number, height: number, fill = " ") {
