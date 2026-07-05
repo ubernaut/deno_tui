@@ -4,28 +4,26 @@ import { emptySnapshot } from "../app/system_metrics_snapshot.ts";
 import { buildVisualizationDrive } from "../app/visualization_drive.ts";
 import {
   alertText,
-  driveAlert,
-  hottestAccent,
-  sceneAlert,
-  sourceDetailFooter,
-  sourceFooter,
-  sourceNameMatrix,
-  sourceWarnings,
-} from "../app/visualization_panel_helpers.ts";
-import {
   barChart,
   createMatrix,
   crop,
   drawEllipse,
   drawLine,
+  driveAlert,
   formatLoadAverage,
   gridify,
+  hottestAccent,
   miniMeter,
   plotHistory,
   renderMatrix,
+  sceneAlert,
   setCell,
   severityForValue,
   signalChart,
+  sourceDetailFooter,
+  sourceFooter,
+  sourceNameMatrix,
+  sourceWarnings,
 } from "../app/visualization_primitives.ts";
 import type { RenderContext, SourceFrame } from "../app/types.ts";
 

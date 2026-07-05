@@ -3,8 +3,7 @@ import { clamp } from "./styles.ts";
 import type { RenderContext, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 import type { VisualizationDrive } from "./visualization_drive.ts";
 import { circularField, harmonicField, heatmap, psychograph, routeBoard } from "./visualization_fields.ts";
-import { sourceNameMatrix } from "./visualization_panel_helpers.ts";
-import { crop, monitorGlyph, signalChart } from "./visualization_primitives.ts";
+import { crop, monitorGlyph, signalChart, sourceNameMatrix } from "./visualization_primitives.ts";
 
 export const THREE_FALLBACK_BLOCKS = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"] as const;
 

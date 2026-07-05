@@ -31,15 +31,18 @@ import { renderGpuChipMonitor, renderGpuCombinedMonitor, renderGpuMemoryMonitor 
 import { renderNetworkMonitor } from "./visualization_network.ts";
 import {
   alertText,
+  barChart,
   driveAlert,
   hottestAccent,
+  miniMeter,
+  monitorGlyph,
+  plotHistory,
   sceneAlert,
   sourceDetailFooter,
   sourceFooter,
   sourceNameMatrix,
   sourceWarnings,
-} from "./visualization_panel_helpers.ts";
-import { barChart, miniMeter, monitorGlyph, plotHistory } from "./visualization_primitives.ts";
+} from "./visualization_primitives.ts";
 import {
   appendThreeSceneFooter,
   driveThreeSignal,

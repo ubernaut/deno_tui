@@ -7,11 +7,11 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `704`
+- Tracked files after the current consolidation passes: `703`
 - Tracked top-level file counts:
   - `src`: `346`
   - `tests`: `142`
-  - `app`: `45`
+  - `app`: `44`
   - `docs`: `50`
   - `examples`: `42`
   - `scripts`: `27`
@@ -21,9 +21,9 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,261` lines across `43` files
   - `src/three_ascii`: `7,201` lines across `35` files
-  - `app`: `20,249` lines across `45` files
+  - `app`: `20,248` lines across `44` files
   - `examples`: `8,732` lines across `41` files
-  - `tests`: `49,099` lines across `142` files
+  - `tests`: `49,097` lines across `142` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `24MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -91,6 +91,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Neon showcase and Neon Exodus now share their empty panel fallback through `app/neon_suite.ts`
   - CPU monitor and CPU hex grid now share load-average and severity helpers through `app/visualization_primitives.ts`
   - source-frame detail formatting now reuses compact byte and nullable-number helpers from `app/styles.ts`
+  - visualization panel source/alert summary helpers are folded into `app/visualization_primitives.ts`
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
