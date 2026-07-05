@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `595`
+- Tracked files after the current consolidation passes: `594`
 - Tracked top-level file counts:
   - `src`: `296`
-  - `tests`: `99`
+  - `tests`: `98`
   - `app`: `29`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `6,991` lines across `23` files
   - `app`: `20,353` lines across `29` files
   - `examples`: `8,770` lines across `41` files
-  - `tests`: `49,419` lines across `99` files
+  - `tests`: `49,417` lines across `98` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -266,6 +266,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     `tests/workbench_panels.test.ts`, keeping data-table panel rows with the rest of the workbench panel projectors.
   - Workbench titlebar layout and button render-command assertions are now bundled into `tests/workbench_frame.test.ts`,
     keeping renderer-neutral window chrome coverage with frame and frame-box projection behavior.
+  - Workbench full-repaint and terminal-size synchronization assertions are now bundled into
+    `tests/workbench_layout.test.ts`, keeping resize/repaint policy checks with the workbench viewport and layout suite.
   - Workbench Three header telemetry assertions are now bundled into `tests/workbench_three_panel.test.ts`
   - flex layout assertions are now bundled into `tests/responsive_layout.test.ts`
   - Visualization panel defaults are now bundled into `tests/visualization_launcher.test.ts`
