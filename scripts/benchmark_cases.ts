@@ -74,6 +74,14 @@ import {
   createWorkbenchThreeTerminalPressureState,
   resolveWorkbenchThreeTerminalPressureBudget,
 } from "../src/app/workbench_three_terminal_pressure.ts";
+import {
+  API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY,
+  apiWorkbenchThreeFrameIntervalForCells,
+  WORKBENCH_THREE_FULLSCREEN_MAX_CELLS,
+  WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
+  WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS,
+  WORKBENCH_THREE_FULLSCREEN_PRESSURE_HIGH_BYTES_PER_SECOND,
+} from "../src/app/workbench_three_policy.ts";
 import { resolveThreePanelAdaptiveRenderBudget } from "../src/app/three_panel_adaptive.ts";
 import { LayoutMeasurementCache, simpleLayoutSolver } from "../src/layout/mod.ts";
 import { TerminalScreenController } from "../src/runtime/terminal_screen.ts";
@@ -200,7 +208,11 @@ const workbenchThreeHeaderPerformance: ThreeHeaderPerformance = {
 };
 const workbenchThreePressureLevels = [120, 240, 480, 960] as const;
 const workbenchThreePressureState = createWorkbenchThreeTerminalPressureState(960);
+const workbenchThreeFullscreenPressureState = createWorkbenchThreeTerminalPressureState(
+  WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
+);
 let workbenchThreePressureChecksum = 0;
+let workbenchThreeFullscreenPressureChecksum = 0;
 let threePanelAdaptiveChecksum = 0;
 const terminalInputEncoder = new TextEncoder();
 const terminalInputDecodeBatch = terminalInputEncoder.encode(
@@ -1239,6 +1251,41 @@ function runWorkbenchThreePressurePolicyWorkload(): void {
   }
 }
 
+function runWorkbenchThreeFullscreenPressurePolicyWorkload(): void {
+  const frameIntervalMs = apiWorkbenchThreeFrameIntervalForCells(
+    workbenchThreeFullscreenPressureState.currentCells,
+    { live: true },
+  );
+  for (let index = 0; index < 64; index += 1) {
+    const quiet = index % 17 === 0;
+    const next = resolveWorkbenchThreeTerminalPressureBudget(workbenchThreeFullscreenPressureState, {
+      ...API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY,
+      renderedThreeGrids: 1,
+      bytes: quiet ? 12_000 : 30_000 + (index % 9) * 2_000,
+      durationMs: 0.35,
+      sampleDurationMs: frameIntervalMs,
+    });
+    workbenchThreeFullscreenPressureState.currentCells = next.currentCells;
+    workbenchThreeFullscreenPressureState.highFrames = next.highFrames;
+    workbenchThreeFullscreenPressureState.lowFrames = next.lowFrames;
+    if (next.currentCells < WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS) {
+      throw new Error("fullscreen Three pressure collapsed below the visual floor");
+    }
+    if (WORKBENCH_THREE_FULLSCREEN_PRESSURE_HIGH_BYTES_PER_SECOND < 1_000_000) {
+      throw new Error("fullscreen Three pressure byte-rate ceiling is below the interactive block-frame target");
+    }
+    workbenchThreeFullscreenPressureChecksum = (
+      workbenchThreeFullscreenPressureChecksum + next.currentCells + next.highFrames + next.lowFrames
+    ) % 1_000_000;
+  }
+  if (
+    !Number.isFinite(workbenchThreeFullscreenPressureChecksum) ||
+    workbenchThreeFullscreenPressureState.currentCells > WORKBENCH_THREE_FULLSCREEN_MAX_CELLS
+  ) {
+    throw new Error("workbench fullscreen Three pressure policy workload failed");
+  }
+}
+
 function runThreePanelAdaptiveBudgetWorkload(): void {
   let currentMaxCells: number | undefined;
   let slowFrames = 0;
@@ -1723,6 +1770,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 2_000,
     maxAverageMs: 1,
     run: runWorkbenchThreePressurePolicyWorkload,
+  },
+  {
+    name: "render/workbench-three-fullscreen-pressure-policy",
+    category: "render",
+    description: "Resolve fullscreen Three pressure samples without collapsing interactive block-frame cadence.",
+    tags: ["render", "workbench", "three", "pressure", "terminal", "fullscreen"],
+    iterations: 2_000,
+    maxAverageMs: 1,
+    run: runWorkbenchThreeFullscreenPressurePolicyWorkload,
   },
   {
     name: "render/three-panel-adaptive-budget",
