@@ -7,6 +7,8 @@ import {
   layoutWrappedControlOptions,
   type WorkbenchButtonRowPlacement,
   workbenchButtonRowRenderCommandsInto,
+  type WorkbenchMobileCommandAction,
+  workbenchMobileCommandStripItemsInto,
   wrappedControlOptionRowCount,
 } from "../src/app/workbench_control_layout.ts";
 
@@ -206,4 +208,47 @@ Deno.test("workbenchButtonRowRenderCommandsInto reuses caller-owned command obje
   assertEquals(commands[0]?.text, "[ Second ]");
   assertEquals(commands[0]?.rect, { column: 2, row: 3, width: 10, height: 1 });
   assertEquals(commands[0]?.state, "active");
+});
+
+Deno.test("workbench mobile command strip projects stable touch actions", () => {
+  const target = workbenchMobileCommandStripItemsInto([], {
+    activeTitle: "Data",
+    controlsActive: true,
+    themeActive: false,
+  });
+
+  assertEquals(target.map((item) => item.action), ["next", "controls", "theme", "help", "restore", "wide", "dense"]);
+  assertEquals(target.map((item) => item.label), [
+    "Next Data",
+    "Controls",
+    "Theme",
+    "Help",
+    "Restore",
+    "Wide",
+    "Dense",
+  ]);
+  assertEquals(target[1]!.active, true);
+  assertEquals(target[2]!.active, false);
+  assertEquals(target.slice(4).map((item) => item.tone), ["muted", "muted", "muted"]);
+});
+
+Deno.test("workbench mobile command strip uses shared wrapped button layout", () => {
+  const items = workbenchMobileCommandStripItemsInto([], {
+    activeTitle: "Inspector",
+    themeActive: true,
+  });
+  const placements: WorkbenchButtonRowPlacement<WorkbenchMobileCommandAction>[] = [];
+  const nextRow = layoutWorkbenchButtonRowInto(
+    placements,
+    items,
+    { column: 1, row: 1, width: 28, height: 2 },
+    1,
+  );
+
+  assertEquals(nextRow, 3);
+  assertEquals(placements.map((placement) => [placement.item.action, placement.rect.row, placement.state]), [
+    ["next", 1, "base"],
+    ["controls", 2, "base"],
+    ["theme", 2, "active"],
+  ]);
 });

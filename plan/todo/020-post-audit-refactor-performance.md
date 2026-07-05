@@ -102,8 +102,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   leaving the new window shell math embedded in the demo.
 - Extracted Three ASCII changed-cell diff state and visible rerender queueing into a reusable canvas helper with direct
   tests, preserving the object behavior while making the frame-diff hot path easier to optimize independently.
-- Extracted the web workbench mobile command-strip action projection into an internal shared helper and routed it
-  through the existing button-row layout so touch/mobile controls no longer carry bespoke wrapping logic.
+- Folded the web workbench mobile command-strip action projection into the shared control-layout helper so touch/mobile
+  controls use the same button-row wrapping surface without a standalone helper shard.
 - Extracted the API Workbench process-output terminal toolbar into a shared renderer-neutral projection helper so
   console rendering no longer mutates fixed local button slots before layout.
 - Added a reusable workbench button-row render-command projection and routed terminal/web toolbar and modal button

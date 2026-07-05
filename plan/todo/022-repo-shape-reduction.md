@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `707`
+- Tracked files after the current consolidation passes: `706`
 - Tracked top-level file counts:
   - `src`: `346`
-  - `tests`: `143`
+  - `tests`: `142`
   - `app`: `47`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,201` lines across `35` files
   - `app`: `20,426` lines across `47` files
   - `examples`: `8,732` lines across `41` files
-  - `tests`: `49,081` lines across `143` files
+  - `tests`: `49,077` lines across `142` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `24MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -138,6 +138,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Three ASCII readback assembly adapter assertions are now bundled into `tests/three_ascii_readback.test.ts`
   - Public flex layout export assertions are now bundled into `tests/flex_layout.test.ts`
   - Visualization panel defaults are now bundled into `tests/visualization_launcher.test.ts`
+  - Workbench mobile command strip assertions are now bundled into `tests/workbench_control_layout.test.ts`
 - Prefer subsystem-level runtime smoke coverage for workbench, Three ASCII, terminal shell, and web interaction.
 
 ### P1: Keep Three ASCII Performance Gated By Real Probes
