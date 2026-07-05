@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `711`
+- Tracked files after the current consolidation passes: `710`
 - Tracked top-level file counts:
   - `src`: `349`
-  - `tests`: `144`
+  - `tests`: `143`
   - `app`: `47`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,188` lines across `37` files
   - `app`: `20,426` lines across `47` files
   - `examples`: `8,732` lines across `41` files
-  - `tests`: `49,080` lines across `144` files
+  - `tests`: `49,081` lines across `143` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `24MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -125,7 +125,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Workbench Three fullscreen/runtime ASCII budget assertions are now bundled into
     `tests/workbench_three_policy.test.ts`
   - App style helper assertions are now bundled into `tests/app_primitives.test.ts`
-  - Three ASCII deferred readback staleness, submission, and failure assertions are now bundled into
+  - Three ASCII deferred pre-scene, staleness, submission, and failure assertions are now bundled into
     `tests/three_ascii_core.test.ts`
   - Three ASCII effect option and effect state assertions are now bundled into `tests/three_ascii_core.test.ts`
   - Three ASCII compute pipeline assertions are now bundled into `tests/three_ascii_core.test.ts`
