@@ -218,6 +218,9 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Moved workbench Three header runtime telemetry composition into the shared header helper so the terminal adapter no
   longer assembles pressure/cadence fields inline.
 - Added sustained byte-rate context to workbench Three pressure change logs so adaptive downshifts show the same signal
+  used by policy decisions.
+- Added a driven fullscreen visual smoke for the API Workbench default Three pane so future checks verify fullscreen
+  render-cell scale and truecolor body repainting instead of relying on text-only ANSI replay.
   used by the policy.
 - Lowered the workbench Three sustained terminal byte-rate pressure threshold to make the default block renderer back
   off from 480 to 240 cells after measured ~104KB/s output repeats on slower terminal sessions.

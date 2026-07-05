@@ -18,6 +18,13 @@ export interface WorkbenchVisualSmokeResult {
   truecolorBackgroundWrites: number;
 }
 
+export interface WorkbenchFullscreenVisualSmokeResult extends WorkbenchVisualSmokeResult {
+  fullscreen: boolean;
+  fullscreenCells: number;
+  fullscreenCap: number;
+  truecolorBackgroundRows: number;
+}
+
 interface ReplayState {
   row: number;
   column: number;
@@ -26,6 +33,7 @@ interface ReplayState {
 const DEFAULT_COMMAND = ["deno", "task", "api-workbench"] as const;
 const REQUIRED_TOKENS: readonly string[] = ["API WORKBENCH", "THREE ASCII", "live", "fps"];
 const FORBIDDEN_TOKENS: readonly string[] = ["ReferenceError", "RangeError", "Maximum call stack", ")F10"];
+const FULLSCREEN_THREE_CELL_PATTERN = /(\d+)c cap (\d+)c/;
 
 if (import.meta.main) {
   const result = await runWorkbenchVisualSmoke();
@@ -91,6 +99,32 @@ export function inspectWorkbenchVisualSmokeOutput(
     nonBlankRows,
     outputBytes: new TextEncoder().encode(output).byteLength,
     truecolorBackgroundWrites,
+  };
+}
+
+export function inspectWorkbenchFullscreenVisualSmokeOutput(
+  output: string,
+  options: { columns: number; rows: number; minCells?: number; minTruecolorRows?: number },
+): WorkbenchFullscreenVisualSmokeResult {
+  const base = inspectWorkbenchVisualSmokeOutput(output, options);
+  const cellMatch = base.threeLine.match(FULLSCREEN_THREE_CELL_PATTERN);
+  const fullscreenCells = cellMatch ? Number.parseInt(cellMatch[1]!, 10) : 0;
+  const fullscreenCap = cellMatch ? Number.parseInt(cellMatch[2]!, 10) : 0;
+  const truecolorBackgroundRows = countTruecolorBackgroundRows(output);
+  const missing = [...base.missing];
+  const minCells = Math.max(1, Math.floor(options.minCells ?? 1_800));
+  const minTruecolorRows = Math.max(1, Math.floor(options.minTruecolorRows ?? Math.min(12, options.rows)));
+  if (fullscreenCells < minCells) missing.push(`fullscreen three cells >= ${minCells}`);
+  if (truecolorBackgroundRows < minTruecolorRows) missing.push(`truecolor rows >= ${minTruecolorRows}`);
+  const fullscreen = fullscreenCells >= minCells && truecolorBackgroundRows >= minTruecolorRows;
+  return {
+    ...base,
+    passed: base.forbidden.length === 0 && missing.length === 0,
+    missing,
+    fullscreen,
+    fullscreenCells,
+    fullscreenCap,
+    truecolorBackgroundRows,
   };
 }
 
@@ -265,4 +299,52 @@ function countOccurrences(value: string, needle: string): number {
     count += 1;
     index += needle.length;
   }
+}
+
+export function countTruecolorBackgroundRows(output: string): number {
+  const rows = new Set<number>();
+  let row = 1;
+  let index = 0;
+  while (index < output.length) {
+    const char = output[index]!;
+    if (char === "\x1b") {
+      const applied = applyTruecolorRowCsi(output, index, rows, row);
+      if (applied.next > index) {
+        row = applied.row;
+        index = applied.next;
+        continue;
+      }
+    }
+    if (output.startsWith("\x1b[48;2;", index)) rows.add(row);
+    if (char === "\n") row += 1;
+    index += 1;
+  }
+  return rows.size;
+}
+
+function applyTruecolorRowCsi(
+  output: string,
+  start: number,
+  rows: Set<number>,
+  currentRow: number,
+): { row: number; next: number } {
+  if (output[start + 1] !== "[") return { row: currentRow, next: start };
+  let index = start + 2;
+  while (index < output.length) {
+    const code = output.charCodeAt(index);
+    if (code >= 0x40 && code <= 0x7e) {
+      const command = output[index]!;
+      const raw = output.slice(start + 2, index);
+      if (command === "H" || command === "f") {
+        const row = numberParam(raw.replace(/^\?/, "").split(";")[0], 1);
+        return { row, next: index + 1 };
+      }
+      if (command === "B") return { row: currentRow + numberParam(raw, 1), next: index + 1 };
+      if (command === "A") return { row: Math.max(1, currentRow - numberParam(raw, 1)), next: index + 1 };
+      if (command === "m" && raw.includes("48;2;")) rows.add(currentRow);
+      return { row: currentRow, next: index + 1 };
+    }
+    index += 1;
+  }
+  return { row: currentRow, next: output.length };
 }
