@@ -22,6 +22,8 @@ import {
   rgbToAnsiForeground,
 } from "../src/three_ascii/colors.ts";
 import { resolveThreeAsciiComputeMode } from "../src/three_ascii/compute_mode.ts";
+import { createThreeAsciiComputeBindGroups } from "../src/three_ascii/compute_bind_groups.ts";
+import { encodeThreeAsciiComputeDispatchCommands } from "../src/three_ascii/compute_commands.ts";
 import {
   createThreeAsciiComputeDispatchPlan,
   ThreeAsciiComputeDispatchPlanCache,
@@ -1334,6 +1336,228 @@ Deno.test("applyThreeAsciiComputeResourcePlanState clears stale edge bind groups
   );
 });
 
+Deno.test("encodeThreeAsciiComputeDispatchCommands encodes fill and color passes", () => {
+  const encoder = new FakeCommandEncoder();
+  const resources = new FakeDispatchResources();
+  encodeThreeAsciiComputeDispatchCommands(
+    encoder,
+    createThreeAsciiComputeDispatchPlan({ columns: 17, rows: 9, workgroupSize: 8, includeEdges: false }),
+    resources,
+  );
+
+  assertEquals(encoder.records, [
+    {
+      label: "deno_tui.three_ascii.fill",
+      pipeline: "pipeline:fill",
+      bindGroup: "bind-group:fill",
+      workgroups: [3, 2, 1],
+      ended: true,
+    },
+    {
+      label: "deno_tui.three_ascii.color",
+      pipeline: "pipeline:color",
+      bindGroup: "bind-group:color",
+      workgroups: [3, 2, 1],
+      ended: true,
+    },
+  ]);
+  assertEquals(resources.pipelineLookups, ["fill", "color"]);
+  assertEquals(resources.bindGroupLookups, ["fill", "color"]);
+});
+
+Deno.test("encodeThreeAsciiComputeDispatchCommands encodes color-only passes", () => {
+  const encoder = new FakeCommandEncoder();
+  const resources = new FakeDispatchResources();
+  encodeThreeAsciiComputeDispatchCommands(
+    encoder,
+    createThreeAsciiComputeDispatchPlan({
+      columns: 17,
+      rows: 9,
+      workgroupSize: 8,
+      includeFill: false,
+      includeEdges: false,
+    }),
+    resources,
+  );
+
+  assertEquals(encoder.records, [
+    {
+      label: "deno_tui.three_ascii.color",
+      pipeline: "pipeline:color",
+      bindGroup: "bind-group:color",
+      workgroups: [3, 2, 1],
+      ended: true,
+    },
+  ]);
+  assertEquals(resources.pipelineLookups, ["color"]);
+  assertEquals(resources.bindGroupLookups, ["color"]);
+});
+
+Deno.test("encodeThreeAsciiComputeDispatchCommands includes edge pass when planned", () => {
+  const encoder = new FakeCommandEncoder();
+  const resources = new FakeDispatchResources();
+  encodeThreeAsciiComputeDispatchCommands(
+    encoder,
+    createThreeAsciiComputeDispatchPlan({ columns: 8, rows: 8, workgroupSize: 8, includeEdges: true }),
+    resources,
+  );
+
+  assertEquals(encoder.records.map((record) => record.label), [
+    "deno_tui.three_ascii.fill",
+    "deno_tui.three_ascii.edge",
+    "deno_tui.three_ascii.color",
+  ]);
+  assertEquals(encoder.records.map((record) => record.workgroups), [
+    [1, 1, 1],
+    [1, 1, 1],
+    [1, 1, 1],
+  ]);
+});
+
+Deno.test("createThreeAsciiComputeBindGroups creates fill and color bindings without edges", () => {
+  const device = new FakeBindGroupDevice();
+  const groups = createThreeAsciiComputeBindGroups({
+    device,
+    paramsBuffer: fakeBuffer("params"),
+    fillPipeline: fakePipeline("fill-layout"),
+    colorPipeline: fakePipeline("color-layout"),
+    fillOutput: fakeBuffer("fill"),
+    colorOutput: fakeBuffer("color"),
+    downscaleTexture: fakeTexture("downscale"),
+    includeEdges: false,
+    colorUsesDepthTexture: false,
+  });
+
+  assertEquals(groups.fillBindGroup, "deno_tui.three_ascii.fill.bindings" as unknown as GPUBindGroup);
+  assertEquals(groups.edgeBindGroup, undefined);
+  assertEquals(groups.colorBindGroup, "deno_tui.three_ascii.color.bindings" as unknown as GPUBindGroup);
+  assertEquals(device.labels(), [
+    "deno_tui.three_ascii.fill.bindings",
+    "deno_tui.three_ascii.color.bindings",
+  ]);
+  assertEquals(device.created[0]?.entries.map((entry) => entry.binding), [0, 1, 2]);
+  assertEquals(device.created[1]?.entries.map((entry) => entry.binding), [0, 1, 2]);
+});
+
+Deno.test("createThreeAsciiComputeBindGroups can create color-only bindings", () => {
+  const device = new FakeBindGroupDevice();
+  const groups = createThreeAsciiComputeBindGroups({
+    device,
+    paramsBuffer: fakeBuffer("params"),
+    colorPipeline: fakePipeline("color-layout"),
+    colorOutput: fakeBuffer("color"),
+    downscaleTexture: fakeTexture("downscale"),
+    includeFill: false,
+    includeEdges: false,
+    colorUsesDepthTexture: false,
+  });
+
+  assertEquals(groups.fillBindGroup, undefined);
+  assertEquals(groups.edgeBindGroup, undefined);
+  assertEquals(groups.colorBindGroup, "deno_tui.three_ascii.color.bindings" as unknown as GPUBindGroup);
+  assertEquals(device.labels(), ["deno_tui.three_ascii.color.bindings"]);
+  assertEquals(device.created[0]?.entries.map((entry) => entry.binding), [0, 1, 2]);
+});
+
+Deno.test("createThreeAsciiComputeBindGroups rejects missing requested fill resources", () => {
+  assertThrows(
+    () =>
+      createThreeAsciiComputeBindGroups({
+        device: new FakeBindGroupDevice(),
+        paramsBuffer: fakeBuffer("params"),
+        colorPipeline: fakePipeline("color-layout"),
+        colorOutput: fakeBuffer("color"),
+        downscaleTexture: fakeTexture("downscale"),
+        includeFill: true,
+        includeEdges: false,
+        colorUsesDepthTexture: false,
+      }),
+    Error,
+    "fill compute resources",
+  );
+});
+
+Deno.test("createThreeAsciiComputeBindGroups creates edge bindings when requested", () => {
+  const device = new FakeBindGroupDevice();
+  const groups = createThreeAsciiComputeBindGroups({
+    device,
+    paramsBuffer: fakeBuffer("params"),
+    fillPipeline: fakePipeline("fill-layout"),
+    edgePipeline: fakePipeline("edge-layout"),
+    colorPipeline: fakePipeline("color-layout"),
+    fillOutput: fakeBuffer("fill"),
+    edgeOutput: fakeBuffer("edge"),
+    colorOutput: fakeBuffer("color"),
+    downscaleTexture: fakeTexture("downscale"),
+    sobelTexture: fakeTexture("sobel"),
+    includeEdges: true,
+    colorUsesDepthTexture: false,
+  });
+
+  assertEquals(groups.edgeBindGroup, "deno_tui.three_ascii.edge.bindings" as unknown as GPUBindGroup);
+  assertEquals(device.labels(), [
+    "deno_tui.three_ascii.fill.bindings",
+    "deno_tui.three_ascii.edge.bindings",
+    "deno_tui.three_ascii.color.bindings",
+  ]);
+});
+
+Deno.test("createThreeAsciiComputeBindGroups rejects incomplete edge resources", () => {
+  assertThrows(
+    () =>
+      createThreeAsciiComputeBindGroups({
+        device: new FakeBindGroupDevice(),
+        paramsBuffer: fakeBuffer("params"),
+        fillPipeline: fakePipeline("fill-layout"),
+        colorPipeline: fakePipeline("color-layout"),
+        fillOutput: fakeBuffer("fill"),
+        colorOutput: fakeBuffer("color"),
+        downscaleTexture: fakeTexture("downscale"),
+        includeEdges: true,
+        colorUsesDepthTexture: false,
+      }),
+    Error,
+    "edge compute resources",
+  );
+});
+
+Deno.test("createThreeAsciiComputeBindGroups binds normals only for depth color", () => {
+  const device = new FakeBindGroupDevice();
+  createThreeAsciiComputeBindGroups({
+    device,
+    paramsBuffer: fakeBuffer("params"),
+    fillPipeline: fakePipeline("fill-layout"),
+    colorPipeline: fakePipeline("color-layout"),
+    fillOutput: fakeBuffer("fill"),
+    colorOutput: fakeBuffer("color"),
+    downscaleTexture: fakeTexture("downscale"),
+    normalsTexture: fakeTexture("normals"),
+    includeEdges: false,
+    colorUsesDepthTexture: true,
+  });
+
+  assertEquals(device.created[1]?.entries.map((entry) => entry.binding), [0, 1, 2, 3]);
+});
+
+Deno.test("createThreeAsciiComputeBindGroups rejects missing depth color resources", () => {
+  assertThrows(
+    () =>
+      createThreeAsciiComputeBindGroups({
+        device: new FakeBindGroupDevice(),
+        paramsBuffer: fakeBuffer("params"),
+        fillPipeline: fakePipeline("fill-layout"),
+        colorPipeline: fakePipeline("color-layout"),
+        fillOutput: fakeBuffer("fill"),
+        colorOutput: fakeBuffer("color"),
+        downscaleTexture: fakeTexture("downscale"),
+        includeEdges: false,
+        colorUsesDepthTexture: true,
+      }),
+    Error,
+    "depth color resources",
+  );
+});
+
 class FakeGpuBuffer implements ThreeAsciiGpuBuffer {
   destroyed = false;
 
@@ -1384,4 +1608,79 @@ class FakeComputePipelineDevice {
     });
     return `pipeline:${String(descriptor.label)}` as unknown as GPUComputePipeline;
   }
+}
+
+interface ComputePassRecord {
+  label: string;
+  pipeline?: string;
+  bindGroup?: string;
+  workgroups?: [number, number, number];
+  ended: boolean;
+}
+
+class FakeCommandEncoder {
+  readonly records: ComputePassRecord[] = [];
+
+  beginComputePass(descriptor: GPUComputePassDescriptor): GPUComputePassEncoder {
+    const record: ComputePassRecord = { label: String(descriptor.label), ended: false };
+    this.records.push(record);
+    return {
+      setPipeline: (pipeline: GPUComputePipeline) => {
+        record.pipeline = String(pipeline);
+      },
+      setBindGroup: (_index: number, bindGroup: GPUBindGroup) => {
+        record.bindGroup = String(bindGroup);
+      },
+      dispatchWorkgroups: (x: number, y: number, z: number) => {
+        record.workgroups = [x, y, z];
+      },
+      end: () => {
+        record.ended = true;
+      },
+    } as unknown as GPUComputePassEncoder;
+  }
+}
+
+class FakeDispatchResources {
+  readonly pipelineLookups: string[] = [];
+  readonly bindGroupLookups: string[] = [];
+
+  pipelineForPass(kind: "fill" | "edge" | "color"): GPUComputePipeline {
+    this.pipelineLookups.push(kind);
+    return `pipeline:${kind}` as unknown as GPUComputePipeline;
+  }
+
+  bindGroupForPass(kind: "fill" | "edge" | "color"): GPUBindGroup {
+    this.bindGroupLookups.push(kind);
+    return `bind-group:${kind}` as unknown as GPUBindGroup;
+  }
+}
+
+class FakeBindGroupDevice {
+  readonly created: GPUBindGroupDescriptor[] = [];
+
+  createBindGroup(descriptor: GPUBindGroupDescriptor): GPUBindGroup {
+    this.created.push(descriptor);
+    return descriptor.label as unknown as GPUBindGroup;
+  }
+
+  labels(): string[] {
+    return this.created.map((descriptor) => String(descriptor.label));
+  }
+}
+
+function fakePipeline(layout: string): Pick<GPUComputePipeline, "getBindGroupLayout"> {
+  return {
+    getBindGroupLayout: () => layout as unknown as GPUBindGroupLayout,
+  };
+}
+
+function fakeTexture(label: string): Pick<GPUTexture, "createView"> {
+  return {
+    createView: () => `${label}-view` as unknown as GPUTextureView,
+  };
+}
+
+function fakeBuffer(label: string): GPUBuffer {
+  return label as unknown as GPUBuffer;
 }
