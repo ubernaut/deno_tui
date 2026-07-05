@@ -362,6 +362,18 @@ export class ThreeAsciiRenderer {
     includeFill: true,
     includeEdges: false,
   };
+  private readonly readbackLayoutModes = {
+    includeFill: true,
+    includeEdges: false,
+  };
+  private readonly readbackCopyPlanOptions = {
+    fill: this.readbackCopyFillSource,
+    edge: undefined as ThreeAsciiReadbackCopySource | undefined,
+    color: this.readbackCopyColorSource,
+    includeFill: true,
+    includeEdges: false,
+    layout: undefined as unknown as ThreeAsciiReadbackLayout,
+  };
   private readonly readbackByteLengths = {
     fillByteLength: 0,
     edgeByteLength: 0,
@@ -771,20 +783,20 @@ export class ThreeAsciiRenderer {
     this.readbackByteLengths.fillByteLength = this.fillOutput?.byteLength ?? 0;
     this.readbackByteLengths.edgeByteLength = this.edgeOutput?.byteLength ?? 0;
     this.readbackByteLengths.colorByteLength = this.colorOutput!.byteLength;
-    writeThreeAsciiReadbackLayoutOptions(this.readbackLayoutOptions, this.readbackByteLengths, {
-      includeFill: computeMode.includeFillReadback,
-      includeEdges: computeMode.includeEdges,
-    });
+    this.readbackLayoutModes.includeFill = computeMode.includeFillReadback;
+    this.readbackLayoutModes.includeEdges = computeMode.includeEdges;
+    writeThreeAsciiReadbackLayoutOptions(
+      this.readbackLayoutOptions,
+      this.readbackByteLengths,
+      this.readbackLayoutModes,
+    );
     const readbackLayout = this.readbackLayoutCache.resolve(this.readbackLayoutOptions);
     writeThreeAsciiReadbackCopySourceDescriptors(this.readbackCopySourceDescriptors, this.readbackByteLengths);
-    const readbackCopyPlan = this.readbackCopyPlanCache.resolve({
-      fill: this.readbackCopyFillSource,
-      edge: this.edgeOutput ? this.readbackCopyEdgeSource : undefined,
-      color: this.readbackCopyColorSource,
-      includeFill: computeMode.includeFillReadback,
-      includeEdges: computeMode.includeEdges,
-      layout: readbackLayout,
-    });
+    this.readbackCopyPlanOptions.edge = this.edgeOutput ? this.readbackCopyEdgeSource : undefined;
+    this.readbackCopyPlanOptions.includeFill = computeMode.includeFillReadback;
+    this.readbackCopyPlanOptions.includeEdges = computeMode.includeEdges;
+    this.readbackCopyPlanOptions.layout = readbackLayout;
+    const readbackCopyPlan = this.readbackCopyPlanCache.resolve(this.readbackCopyPlanOptions);
 
     if (this.readbackStrategy === "deferred" && !forceBlockingDeferredReadback) {
       return this.deferAnsiGridReadback(

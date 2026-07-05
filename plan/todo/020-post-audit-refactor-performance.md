@@ -1202,3 +1202,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Reused a retained Three ASCII renderer performance record internally, preserving cloned `inspectPerformance()`
   snapshots while removing per-render telemetry object replacement on the renderer hot path without widening the stable
   API surface.
+- Reused retained Three ASCII readback layout-mode and copy-plan option records in the renderer, removing two small
+  per-ANSI-frame object allocations before readback cache resolution while preserving the public readback APIs.
