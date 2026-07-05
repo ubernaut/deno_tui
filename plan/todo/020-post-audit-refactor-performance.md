@@ -1256,3 +1256,5 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Made exact benchmark `--name` selectors fail fast when any requested case is missing, preventing partial
   Three/workbench hot-path benchmark runs from looking green after a typo. The CLI still supports broad
   query/category/tag discovery, while repeated exact names now report unknown selectors before executing any subset.
+- Removed web API Workbench terminal session-id/title forwarding wrappers so the browser adapter calls the same shared
+  terminal session helpers directly as the console adapter.

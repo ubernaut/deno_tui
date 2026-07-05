@@ -1462,8 +1462,8 @@ function syncWebTerminalScreen(sessionId: string | undefined, width: number, hei
 function applyWebTerminalAction(action: WebTerminalAction): void {
   const inspection = webTerminalWorkspace.inspect();
   if (action === "new") {
-    const id = nextWebTerminalSessionId();
-    const title = webTerminalSessionTitle(id);
+    const id = nextWorkbenchTerminalSessionId(webTerminalWorkspace.inspect().sessions, { prefix: "pages-shell" });
+    const title = workbenchTerminalSessionTitleFromId(id, { prefix: "pages-shell", label: "Pages Shell" });
     webTerminalWorkspace.add({
       id,
       title,
@@ -1489,8 +1489,8 @@ function applyWebTerminalAction(action: WebTerminalAction): void {
       push("terminal session closed");
     }
   } else if (action === "splitRow" || action === "splitColumn") {
-    const id = nextWebTerminalSessionId();
-    const title = webTerminalSessionTitle(id);
+    const id = nextWorkbenchTerminalSessionId(webTerminalWorkspace.inspect().sessions, { prefix: "pages-shell" });
+    const title = workbenchTerminalSessionTitleFromId(id, { prefix: "pages-shell", label: "Pages Shell" });
     const descriptor = webTerminalWorkspace.add({
       id,
       title,
@@ -1540,14 +1540,6 @@ function applyWebTerminalAction(action: WebTerminalAction): void {
   }
   webTerminalScreenKeys.clear();
   active.value = "terminal";
-}
-
-function nextWebTerminalSessionId(): string {
-  return nextWorkbenchTerminalSessionId(webTerminalWorkspace.inspect().sessions, { prefix: "pages-shell" });
-}
-
-function webTerminalSessionTitle(id: string): string {
-  return workbenchTerminalSessionTitleFromId(id, { prefix: "pages-shell", label: "Pages Shell" });
 }
 
 function ensureLines(): void {
