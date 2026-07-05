@@ -1206,3 +1206,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   per-ANSI-frame object allocations before readback cache resolution while preserving the public readback APIs.
 - Moved deferred Three ASCII background-color snapshots into queue-owned per-slot `Color` instances so deferred frames
   keep stable assembly colors without allocating a new `Color` clone for every submitted readback.
+- Avoided the renderer-owned Three ASCII reusable grid row-length reset when frame dimensions are unchanged, keeping
+  stable-size frames on the direct overwrite path instead of touching every row before assembly.

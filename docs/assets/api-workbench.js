@@ -4145,6 +4145,7 @@ var ThreeAsciiAnsiGridAssembler = class {
   colorKeyCache = new ThreeAsciiAnsiColorKeyCache();
   reuseGrid;
   reusableGrid = [];
+  reusableGridColumns = 0;
   cachedCellForegroundKeys = new Int32Array(0);
   cachedCellGlyphKeys = new Int32Array(0);
   cachedCellStrings = [];
@@ -4260,6 +4261,7 @@ var ThreeAsciiAnsiGridAssembler = class {
     this.foregroundAnsiCache.clear();
     this.cellCache.clear();
     this.reusableGrid = [];
+    this.reusableGridColumns = 0;
     this.background.clear();
     this.colorKeyCache.clear();
     this.cachedCellForegroundKeys = new Int32Array(0);
@@ -4636,11 +4638,15 @@ var ThreeAsciiAnsiGridAssembler = class {
   }
   prepareReusableGrid(rows2, columns2) {
     const grid = this.reusableGrid;
+    if (grid.length === rows2 && this.reusableGridColumns === columns2) {
+      return grid;
+    }
     grid.length = rows2;
     for (let row = 0; row < rows2; row += 1) {
       grid[row] ??= [];
       grid[row].length = columns2;
     }
+    this.reusableGridColumns = columns2;
     return grid;
   }
   prepareFrameCaches(cellCount, terminalGlyphMode) {
