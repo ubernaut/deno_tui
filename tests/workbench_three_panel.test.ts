@@ -3,7 +3,7 @@ import { Signal } from "../src/signals/mod.ts";
 import { createDefaultAsciiOptions } from "../app/ascii_options.ts";
 import { createWorkbenchThreePanelFrameView } from "../app/workbench_three_panel.ts";
 import type { ThreePanelGridRenderer, ThreeSceneState } from "../app/three_panel.ts";
-import { applyWorkbenchThreePanelFrameDefaults } from "../src/app/workbench/mod.ts";
+import { applyWorkbenchThreePanelFrameDefaults } from "../src/app/workbench_three_panel_defaults.ts";
 import type { TerminalGlyphStyle } from "../src/three_ascii/glyphs.ts";
 import type {
   ThreeAsciiRendererOptions,

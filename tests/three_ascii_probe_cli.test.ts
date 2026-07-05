@@ -1,5 +1,13 @@
 import { assertEquals } from "./deps.ts";
-import { average, averageWhere, choiceArg, formatFps, formatMs, numberArg, stringArg } from "../src/three_ascii/probe_cli.ts";
+import {
+  average,
+  averageWhere,
+  choiceArg,
+  formatFps,
+  formatMs,
+  numberArg,
+  stringArg,
+} from "../src/three_ascii/probe_cli.ts";
 
 Deno.test("Three ASCII probe CLI helpers parse typed arguments", () => {
   const args = ["--frames=24", "--mode=studio", "--name=demo"];

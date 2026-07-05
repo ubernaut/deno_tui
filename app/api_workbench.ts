@@ -13,16 +13,12 @@ import { SliderController } from "../src/components/slider.ts";
 import { StepperController } from "../src/components/stepper.ts";
 import { TextBoxController, type TextBoxVisualLine } from "../src/components/textbox.ts";
 import {
-  API_WORKBENCH_WORKSPACE_STORE_KEY,
-  apiWorkbenchWorkspaceStorageOptions,
   appendBoundedWorkbenchLogRow,
   blitWorkbenchFrameCells,
   buttonText,
   centerCellText as centerText,
   clampWorkbenchTileDensity,
   contrastText,
-  createApiWorkbenchWorkspaceStore,
-  createWorkbenchThreeWindowState,
   dispatchWorkbenchTextPromptInput,
   fillFrameRect,
   fillFrameRow,
@@ -54,9 +50,7 @@ import {
   resolveWorkbenchScreenDropdownKey,
   resolveWorkbenchTerminalOutputKeyAction,
   resolveWorkbenchTerminalShellKeyAction,
-  resolveWorkbenchThreeWindowStateInto,
   subscribeWorkbenchDiagnosticLog,
-  syncWorkbenchTerminalSize,
   translateHitTargets,
   workbenchAdaptiveWindowLayout,
   type WorkbenchAnsiScreenFlushStats,
@@ -70,15 +64,12 @@ import {
   workbenchEmptyWorkspaceMessage,
   type WorkbenchFrame,
   type WorkbenchFrameBoxLine,
-  WorkbenchFullRepaintPolicy,
   workbenchFullscreenWindowRect,
   workbenchHeaderHelp,
   type WorkbenchHeaderLayout,
   type WorkbenchMenuBarHitLayout,
   workbenchModalActionButtonsInto,
   workbenchModalRowRenderCommandsInto,
-  workbenchScreenHeight,
-  workbenchScreenWidth,
   type WorkbenchScrollbarRenderCommand,
   workbenchShelfEntriesInto,
   workbenchShelfRenderCommandsInto,
@@ -91,9 +82,6 @@ import {
   workbenchTerminalOutputToolbarItemsInto,
   type WorkbenchTerminalOutputWindowRow,
   workbenchTerminalOutputWindowRowsInto,
-  WorkbenchThreeOverlayPressureGate,
-  type WorkbenchThreeWindowState,
-  workbenchThreeWindowStateIsInteractive,
   workbenchTitlebarButtonRenderCommandsInto,
   workbenchVisibleWindowRectsInto,
   workbenchVisualizationIdFromWindowId,
@@ -111,6 +99,24 @@ import {
   workbenchWorkspaceWindowEntries,
   writeFrame,
 } from "../src/app/workbench/mod.ts";
+import { WorkbenchFullRepaintPolicy } from "../src/app/workbench_repaint_policy.ts";
+import {
+  syncWorkbenchTerminalSize,
+  workbenchScreenHeight,
+  workbenchScreenWidth,
+} from "../src/app/workbench_screen_size.ts";
+import { WorkbenchThreeOverlayPressureGate } from "../src/app/workbench_three_overlay_pressure.ts";
+import {
+  createWorkbenchThreeWindowState,
+  resolveWorkbenchThreeWindowStateInto,
+  type WorkbenchThreeWindowState,
+  workbenchThreeWindowStateIsInteractive,
+} from "../src/app/workbench_three_window_state.ts";
+import {
+  API_WORKBENCH_WORKSPACE_STORE_KEY,
+  apiWorkbenchWorkspaceStorageOptions,
+  createApiWorkbenchWorkspaceStore,
+} from "../src/app/workbench_workspace_config.ts";
 import {
   inspectWorkbenchWindowSignalState,
   WorkbenchController,

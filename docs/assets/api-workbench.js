@@ -1814,6 +1814,8 @@ function getPlainAsciiCharacters(text) {
   return cells;
 }
 function getStyledCharacters(text) {
+  const simpleStyledAscii = getSimpleStyledAsciiCharacters(text);
+  if (simpleStyledAscii) return simpleStyledAscii;
   const cells = [];
   let style2 = "";
   let lastStyle = "";
@@ -1843,6 +1845,53 @@ function getStyledCharacters(text) {
   }
   return cells;
 }
+function getSimpleStyledAsciiCharacters(text) {
+  if (text.charCodeAt(0) !== 27) return void 0;
+  let style2 = "";
+  let bodyStart = 0;
+  for (let index = 0; index < text.length; ) {
+    const sequence = readCsiSequenceAt2(text, index);
+    if (!sequence || !sequence.endsWith("m")) break;
+    style2 = mergeSgrStyle(style2, sequence);
+    index += sequence.length;
+    bodyStart = index;
+  }
+  if (bodyStart <= 0 || bodyStart >= text.length) return void 0;
+  let bodyEnd = text.length;
+  while (bodyEnd > bodyStart) {
+    const resetStart = previousCsiSequenceStart(text, bodyEnd);
+    if (resetStart === void 0 || resetStart < bodyStart) break;
+    const sequence = text.slice(resetStart, bodyEnd);
+    if (!sequence.endsWith("m") || !isSgrReset(sequence)) break;
+    bodyEnd = resetStart;
+  }
+  if (bodyEnd <= bodyStart) return void 0;
+  for (let index = bodyStart; index < bodyEnd; index += 1) {
+    const code = text.charCodeAt(index);
+    if (code === 27 || code >= 128) return void 0;
+  }
+  const bodyLength = bodyEnd - bodyStart;
+  const cells = new Array(bodyLength);
+  if (!style2) {
+    for (let index = 0; index < bodyLength; index += 1) {
+      cells[index] = text[bodyStart + index] ?? "";
+    }
+    return cells;
+  }
+  let lastChar = "";
+  let lastCell = "";
+  for (let index = 0; index < bodyLength; index += 1) {
+    const char = text[bodyStart + index] ?? "";
+    if (char === lastChar) {
+      cells[index] = lastCell;
+      continue;
+    }
+    lastChar = char;
+    lastCell = `${style2}${char}\x1B[0m`;
+    cells[index] = lastCell;
+  }
+  return cells;
+}
 function stripStyles(string) {
   return string.replace(STRIP_CSI_SEQUENCE_REGEXP, "").replace(STRIP_OSC_SEQUENCE_REGEXP, "");
 }
@@ -1853,6 +1902,8 @@ function textWidth(text, start = 0) {
   if (!text) return 0;
   const asciiWidth = plainAsciiWidth(text, start);
   if (asciiWidth !== void 0) return asciiWidth;
+  const narrowAnsiWidth = narrowAnsiTextWidth(text, start);
+  if (narrowAnsiWidth !== void 0) return narrowAnsiWidth;
   let width = 0;
   for (let index = Math.max(0, Math.floor(start)); index < text.length; ) {
     if (text.charCodeAt(index) === 27) {
@@ -1872,6 +1923,8 @@ function textWidth(text, start = 0) {
 function cropToWidth(text, width) {
   const asciiCropped = cropPlainAsciiToWidth(text, width);
   if (asciiCropped !== void 0) return asciiCropped;
+  const narrowAnsiCropped = cropNarrowAnsiToWidth(text, width);
+  if (narrowAnsiCropped !== void 0) return narrowAnsiCropped;
   let cropped = "";
   let croppedWidth = 0;
   let prefix = "";
@@ -1927,6 +1980,58 @@ function cropPlainAsciiToWidth(text, width) {
   }
   return text.length <= safeWidth ? text : text.slice(0, limit);
 }
+function narrowAnsiTextWidth(text, start = 0) {
+  let width = 0;
+  for (let index = Math.max(0, Math.floor(start)); index < text.length; ) {
+    const code = text.charCodeAt(index);
+    if (code === 10) return width;
+    if (code === 27) {
+      const sequence = readAnsiSequenceAt(text, index);
+      if (!sequence) return void 0;
+      index += sequence.length;
+      continue;
+    }
+    if (isFastNarrowCodePoint(code)) {
+      width += 1;
+      index += 1;
+      continue;
+    }
+    return void 0;
+  }
+  return width;
+}
+function cropNarrowAnsiToWidth(text, width) {
+  const safeWidth = Math.max(0, Math.floor(width));
+  let cropped = "";
+  let croppedWidth = 0;
+  let prefix = "";
+  for (let index = 0; index < text.length; ) {
+    const code = text.charCodeAt(index);
+    if (code === 27) {
+      const sequence = readAnsiSequenceAt(text, index);
+      if (!sequence) return void 0;
+      prefix += sequence;
+      index += sequence.length;
+      continue;
+    }
+    if (code === 10) break;
+    if (!isFastNarrowCodePoint(code)) return void 0;
+    if (croppedWidth + 1 > safeWidth) {
+      if (prefix && isAnsiResetOnly(prefix)) cropped += prefix;
+      prefix = "";
+      break;
+    }
+    cropped += prefix + (text[index] ?? "");
+    prefix = "";
+    croppedWidth += 1;
+    index += 1;
+  }
+  if (prefix) cropped += prefix;
+  return cropped;
+}
+function isFastNarrowCodePoint(code) {
+  return code >= 32 && code < 127 || code === 9608 || code === 9607;
+}
 function nextTextCharacter(text, index) {
   const codeUnit = text.charCodeAt(index);
   if (codeUnit < 128) return text[index] ?? "";
@@ -1970,6 +2075,12 @@ function readCsiSequenceAt2(value, start) {
   const finalCode = value.charCodeAt(index);
   if (!(finalCode >= 64 && finalCode <= 126)) return void 0;
   return value.slice(start, index + 1);
+}
+function previousCsiSequenceStart(value, end) {
+  const start = value.lastIndexOf("\x1B[", end - 1);
+  if (start < 0) return void 0;
+  const sequence = readCsiSequenceAt2(value, start);
+  return sequence && start + sequence.length === end ? start : void 0;
 }
 function readOscSequenceAt(value, start) {
   if (!value.startsWith("\x1B]", start)) return void 0;
@@ -2039,6 +2150,7 @@ function isEmojiSymbol(codePoint) {
 // src/canvas/dirty_region.ts
 var DirtyRegion = class _DirtyRegion {
   #rows = /* @__PURE__ */ new Map();
+  #segments = 0;
   /** Creates a dirty region from rectangle bounds. */
   static fromRectangles(rectangles) {
     const region = new _DirtyRegion();
@@ -2047,7 +2159,7 @@ var DirtyRegion = class _DirtyRegion {
   }
   /** Replaces the region contents with merged rectangle bounds. */
   resetFromRectangles(rectangles) {
-    this.clear();
+    this.clearRetainingRows();
     for (const rectangle of rectangles) {
       this.addRectangleUnmerged(rectangle);
     }
@@ -2084,19 +2196,23 @@ var DirtyRegion = class _DirtyRegion {
     if (end <= start) return;
     const segments = this.#rows.get(normalizedRow);
     if (segments) {
+      const before = segments.length;
       segments.push({ row: normalizedRow, startColumn: start, endColumn: end });
       mergeDirtyRowSegmentsInPlace(segments);
+      this.#segments += segments.length - before;
     } else {
       this.#rows.set(normalizedRow, [{ row: normalizedRow, startColumn: start, endColumn: end }]);
+      this.#segments += 1;
     }
   }
   /** Removes all row segments from the dirty region. */
   clear() {
     this.#rows.clear();
+    this.#segments = 0;
   }
   /** Returns true when the dirty region has no row segments. */
   isEmpty() {
-    return this.#rows.size === 0;
+    return this.#segments === 0;
   }
   /** Returns cloned row segments sorted by row then start column. */
   inspect() {
@@ -2169,9 +2285,16 @@ var DirtyRegion = class _DirtyRegion {
     }
   }
   mergeRows() {
+    let segmentCount = 0;
     for (const segments of this.#rows.values()) {
       mergeDirtyRowSegmentsInPlace(segments);
+      segmentCount += segments.length;
     }
+    this.#segments = segmentCount;
+  }
+  clearRetainingRows() {
+    for (const segments of this.#rows.values()) segments.length = 0;
+    this.#segments = 0;
   }
 };
 function mergeDirtyRowSegmentsInPlace(ranges) {
@@ -2359,10 +2482,10 @@ var TextObject = class extends DrawObject {
       return;
     }
     const rowBuffer = frameBuffer[row] ??= [];
-    const rerenderQueueRow = rerenderQueue[row] ??= /* @__PURE__ */ new Set();
     if (ranges?.length) {
       mergeDirtyRowSegmentsInPlace(ranges);
       const directRanges = omitColumns?.size ? void 0 : canvas.rerenderRanges[row] ??= [];
+      let rerenderQueueRow;
       for (const range of ranges) {
         const start = Math.max(range.startColumn, rectangle.column);
         const end = Math.min(range.endColumn, columnRange);
@@ -2370,13 +2493,17 @@ var TextObject = class extends DrawObject {
         for (let column = start; column < end; column += 1) {
           if (omitColumns?.has(column)) continue;
           rowBuffer[column] = style2(valueChars[column - rectangle.column] ?? " ");
-          if (!directRanges) rerenderQueueRow.add(column);
+          if (!directRanges) {
+            rerenderQueueRow ??= rerenderQueue[row] ??= /* @__PURE__ */ new Set();
+            rerenderQueueRow.add(column);
+          }
         }
         if (directRanges) directRanges.push({ row, startColumn: start, endColumn: end });
       }
       ranges.length = 0;
     }
     if (rerenderColumns?.size) {
+      const rerenderQueueRow = rerenderQueue[row] ??= /* @__PURE__ */ new Set();
       for (const column of rerenderColumns) {
         if (column >= columnRange || column < rectangle.column || omitColumns?.has(column)) {
           continue;
@@ -2737,11 +2864,11 @@ function style(spec) {
   });
 }
 function hexRgb(value) {
-  const hex2 = value.replace(/^#/, "");
+  const hex = value.replace(/^#/, "");
   return [
-    Number.parseInt(hex2.slice(0, 2), 16),
-    Number.parseInt(hex2.slice(2, 4), 16),
-    Number.parseInt(hex2.slice(4, 6), 16)
+    Number.parseInt(hex.slice(0, 2), 16),
+    Number.parseInt(hex.slice(2, 4), 16),
+    Number.parseInt(hex.slice(4, 6), 16)
   ];
 }
 
@@ -2828,7 +2955,7 @@ var BoxObject = class extends DrawObject {
   }
   rerender() {
     const { canvas, rerenderCells, rerenderRanges, omitCells } = this;
-    const { frameBuffer, rerenderQueue } = canvas;
+    const { frameBuffer, rerenderQueue, rerenderRanges: canvasRerenderRanges } = canvas;
     const { rows: rows2, columns: columns2 } = canvas.size.peek();
     const rectangle = this.rectangle.peek();
     const style2 = this.style.peek();
@@ -2855,12 +2982,20 @@ var BoxObject = class extends DrawObject {
         continue;
       }
       const rowBuffer = frameBuffer[row] ??= [];
-      const rerenderQueueRow = rerenderQueue[row] ??= /* @__PURE__ */ new Set();
       if (ranges?.length) {
         mergeDirtyRowSegmentsInPlace(ranges);
+        const directRanges = omitColumns?.size ? void 0 : canvasRerenderRanges[row] ??= [];
+        const rerenderQueueRow = directRanges ? void 0 : rerenderQueue[row] ??= /* @__PURE__ */ new Set();
         for (const range of ranges) {
           const start = Math.max(range.startColumn, rectangle.column);
           const end = Math.min(range.endColumn, columnRange);
+          if (directRanges) {
+            for (let column = start; column < end; column += 1) {
+              rowBuffer[column] = styledFiller;
+            }
+            directRanges.push({ row, startColumn: start, endColumn: end });
+            continue;
+          }
           for (let column = start; column < end; column += 1) {
             if (omitColumns?.has(column)) continue;
             rowBuffer[column] = styledFiller;
@@ -2870,6 +3005,7 @@ var BoxObject = class extends DrawObject {
         ranges.length = 0;
       }
       if (rerenderColumns?.size) {
+        const rerenderQueueRow = rerenderQueue[row] ??= /* @__PURE__ */ new Set();
         for (const column of rerenderColumns) {
           if (omitColumns?.has(column) || column < rectangle.column || column >= columnRange) {
             continue;
@@ -2889,12 +3025,16 @@ var DrawObjectSpatialIndex = class _DrawObjectSpatialIndex {
   #objects = /* @__PURE__ */ new Set();
   #querySeen = /* @__PURE__ */ new Set();
   #rowEntries = 0;
+  #activeRows = 0;
   static fromObjects(objects) {
     const index = new _DrawObjectSpatialIndex();
-    for (const object of objects) {
-      index.add(object);
-    }
-    return index;
+    return index.resetFromObjects(objects);
+  }
+  /** Clears and rebuilds this index from a current draw-object collection. */
+  resetFromObjects(objects) {
+    this.clearRetainingRows();
+    for (const object of objects) this.add(object);
+    return this;
   }
   add(object) {
     if (object.outOfBounds) return;
@@ -2908,9 +3048,11 @@ var DrawObjectSpatialIndex = class _DrawObjectSpatialIndex {
     for (let row = startRow; row < endRow; row += 1) {
       const rowObjects = this.#rows.get(row);
       if (rowObjects) {
+        if (rowObjects.length === 0) this.#activeRows += 1;
         rowObjects.push(object);
       } else {
         this.#rows.set(row, [object]);
+        this.#activeRows += 1;
       }
       this.#rowEntries += 1;
     }
@@ -2968,9 +3110,23 @@ var DrawObjectSpatialIndex = class _DrawObjectSpatialIndex {
   inspect() {
     return {
       objects: this.#objects.size,
-      rows: this.#rows.size,
+      rows: this.#activeRows,
       rowEntries: this.#rowEntries
     };
+  }
+  clear() {
+    this.#rows.clear();
+    this.#objects.clear();
+    this.#querySeen.clear();
+    this.#rowEntries = 0;
+    this.#activeRows = 0;
+  }
+  clearRetainingRows() {
+    for (const rowObjects of this.#rows.values()) rowObjects.length = 0;
+    this.#objects.clear();
+    this.#querySeen.clear();
+    this.#rowEntries = 0;
+    this.#activeRows = 0;
   }
 };
 
@@ -3045,7 +3201,19 @@ function compactAnsiUpdateSpan(updates, start) {
   };
 }
 function compactAnsiCellSpan(values, start) {
-  const first = splitAnsiCellValue(values[start]);
+  const firstValue = values[start];
+  const first = splitAnsiCellValue(firstValue);
+  let repeatedCells = 1;
+  while (start + repeatedCells < values.length && values[start + repeatedCells] === firstValue) {
+    repeatedCells += 1;
+  }
+  if (repeatedCells > 1) {
+    return {
+      text: `${first.prefix}${first.text.repeat(repeatedCells)}${first.suffix}`,
+      cells: repeatedCells,
+      first
+    };
+  }
   let text = first.text;
   let index = start + 1;
   while (index < values.length) {
@@ -3056,7 +3224,8 @@ function compactAnsiCellSpan(values, start) {
   }
   return {
     text: `${first.prefix}${text}${first.suffix}`,
-    cells: index - start
+    cells: index - start,
+    first
   };
 }
 function compactAnsiCellRange(values) {
@@ -3066,7 +3235,7 @@ function compactAnsiCellRange(values) {
   let needsReset = false;
   for (let index = 0; index < values.length; ) {
     const span = compactAnsiCellSpan(values, index);
-    const first = splitAnsiCellValue(values[index]);
+    const { first } = span;
     if (first.prefix !== activePrefix) {
       const nextState = ansiPrefixState(first.prefix);
       if (needsReset && !ansiPrefixCanOverrideActive(activeState, nextState)) {
@@ -3216,6 +3385,7 @@ var Canvas = class extends EventEmitter {
   dirtyCandidatesBuffer;
   intersectionCandidatesBuffer;
   dirtyRegionBuffer;
+  spatialIndexBuffer;
   constructor(options) {
     super();
     this.frameBuffer = [];
@@ -3248,6 +3418,7 @@ var Canvas = class extends EventEmitter {
     this.dirtyCandidatesBuffer = [];
     this.intersectionCandidatesBuffer = [];
     this.dirtyRegionBuffer = new DirtyRegion();
+    this.spatialIndexBuffer = new DrawObjectSpatialIndex();
     this.size = signalify(options.size, { deepObserve: true });
     this.size.subscribe(() => {
       this.resizeNeeded = true;
@@ -3367,7 +3538,7 @@ var Canvas = class extends EventEmitter {
     }
     const dirtyRegion = this.dirtyRegionBuffer;
     dirtyRegion.resetFromRectangles(dirtyRectangles);
-    const spatialIndex = intersectionsDirty ? DrawObjectSpatialIndex.fromObjects(this.drawnObjects) : void 0;
+    const spatialIndex = intersectionsDirty ? this.spatialIndexBuffer.resetFromObjects(this.drawnObjects) : void 0;
     const objectsToRender = intersectionsDirty ? affectedDrawObjects(
       this.drawnObjects,
       dirtyRegion,
@@ -3548,6 +3719,13 @@ function queueDirtyRegion(object, dirtyRegion) {
   });
 }
 function appendCanvasRowRangeUpdates(row, startColumn, endColumn, rowBuffer, rowRanges, cellUpdates) {
+  if (!cellUpdates) {
+    const values = sliceDefinedRowRange(rowBuffer, startColumn, endColumn);
+    if (values) {
+      rowRanges.push({ row, startColumn, values });
+      return values.length;
+    }
+  }
   let flushedCells = 0;
   let activeValues;
   let activeStart = startColumn;
@@ -3555,7 +3733,7 @@ function appendCanvasRowRangeUpdates(row, startColumn, endColumn, rowBuffer, row
     const value = rowBuffer[column];
     if (value === void 0) {
       if (activeValues?.length) {
-        rowRanges.push({ row, startColumn: activeStart, values: activeValues });
+        if (!cellUpdates) rowRanges.push({ row, startColumn: activeStart, values: activeValues });
       }
       activeValues = void 0;
       continue;
@@ -3569,9 +3747,15 @@ function appendCanvasRowRangeUpdates(row, startColumn, endColumn, rowBuffer, row
     flushedCells += 1;
   }
   if (activeValues?.length) {
-    rowRanges.push({ row, startColumn: activeStart, values: activeValues });
+    if (!cellUpdates) rowRanges.push({ row, startColumn: activeStart, values: activeValues });
   }
   return flushedCells;
+}
+function sliceDefinedRowRange(rowBuffer, startColumn, endColumn) {
+  for (let column = startColumn; column < endColumn; column += 1) {
+    if (rowBuffer[column] === void 0) return void 0;
+  }
+  return rowBuffer.slice(startColumn, endColumn);
 }
 
 // src/three_ascii/renderer.ts
@@ -3991,13 +4175,6 @@ var ThreeAsciiAnsiGridAssembler = class {
     }
     this.prepareFrameCaches(cellCount, terminalGlyphMode);
     this.pruneCaches();
-    let lastForegroundKey = -1;
-    let lastGlyphKey = -1;
-    let lastCell = "";
-    let lastRawRed = Number.NaN;
-    let lastRawGreen = Number.NaN;
-    let lastRawBlue = Number.NaN;
-    let lastFillGlyphIndex = -1;
     const grid = this.reuseGrid ? this.prepareReusableGrid(rows2, columns2) : createStringGrid(rows2, columns2);
     if (!hasEdges) {
       if (terminalGlyphMode === GLYPH_MODE_BLOCKS) {
@@ -4008,40 +4185,19 @@ var ThreeAsciiAnsiGridAssembler = class {
       }
       const terminalFillGlyphKeys2 = terminalFillGlyphKeysForMode(terminalGlyphMode);
       if (denseFill && denseColors) {
-        return this.buildDenseFillOnlyGrid(
-          grid,
-          columns2,
-          rows2,
-          fillGlyphs,
-          colors,
-          terminalFillGlyphKeys2,
-          lastForegroundKey,
-          lastGlyphKey,
-          lastCell,
-          lastRawRed,
-          lastRawGreen,
-          lastRawBlue,
-          lastFillGlyphIndex
-        );
+        return this.buildDenseFillOnlyGrid(grid, columns2, rows2, fillGlyphs, colors, terminalFillGlyphKeys2);
       }
-      return this.buildFillOnlyGrid(
-        grid,
-        columns2,
-        rows2,
-        fillGlyphs,
-        colors,
-        terminalFillGlyphKeys2,
-        lastForegroundKey,
-        lastGlyphKey,
-        lastCell,
-        lastRawRed,
-        lastRawGreen,
-        lastRawBlue,
-        lastFillGlyphIndex
-      );
+      return this.buildFillOnlyGrid(grid, columns2, rows2, fillGlyphs, colors, terminalFillGlyphKeys2);
     }
     const terminalFillGlyphKeys = terminalFillGlyphKeysForMode(terminalGlyphMode);
     const terminalEdgeBias = Math.max(0.5, input2.terminalEdgeBias ?? DEFAULT_TERMINAL_EDGE_BIAS2);
+    let lastForegroundKey = -1;
+    let lastGlyphKey = -1;
+    let lastCell = "";
+    let lastRawRed = Number.NaN;
+    let lastRawGreen = Number.NaN;
+    let lastRawBlue = Number.NaN;
+    let lastFillGlyphIndex = -1;
     for (let row = 0; row < rows2; row += 1) {
       const outputRow = grid[row];
       const rowOffset = row * columns2;
@@ -4318,7 +4474,14 @@ var ThreeAsciiAnsiGridAssembler = class {
     }
     return grid;
   }
-  buildFillOnlyGrid(grid, columns2, rows2, fillGlyphs, colors, terminalFillGlyphKeys, lastForegroundKey, lastGlyphKey, lastCell, lastRawRed, lastRawGreen, lastRawBlue, lastFillGlyphIndex) {
+  buildFillOnlyGrid(grid, columns2, rows2, fillGlyphs, colors, terminalFillGlyphKeys) {
+    let lastForegroundKey = -1;
+    let lastGlyphKey = -1;
+    let lastCell = "";
+    let lastRawRed = Number.NaN;
+    let lastRawGreen = Number.NaN;
+    let lastRawBlue = Number.NaN;
+    let lastFillGlyphIndex = -1;
     for (let row = 0; row < rows2; row += 1) {
       const outputRow = grid[row];
       const rowOffset = row * columns2;
@@ -4376,7 +4539,14 @@ var ThreeAsciiAnsiGridAssembler = class {
     }
     return grid;
   }
-  buildDenseFillOnlyGrid(grid, columns2, rows2, fillGlyphs, colors, terminalFillGlyphKeys, lastForegroundKey, lastGlyphKey, lastCell, lastRawRed, lastRawGreen, lastRawBlue, lastFillGlyphIndex) {
+  buildDenseFillOnlyGrid(grid, columns2, rows2, fillGlyphs, colors, terminalFillGlyphKeys) {
+    let lastForegroundKey = -1;
+    let lastGlyphKey = -1;
+    let lastCell = "";
+    let lastRawRed = Number.NaN;
+    let lastRawGreen = Number.NaN;
+    let lastRawBlue = Number.NaN;
+    let lastFillGlyphIndex = -1;
     for (let row = 0; row < rows2; row += 1) {
       const outputRow = grid[row];
       const rowOffset = row * columns2;
@@ -10972,11 +11142,18 @@ var ProgressBarController = class {
 // src/components/statusbar.ts
 function renderStatusBar(left, right, width) {
   const safeWidth = Math.max(0, width);
-  const leftText = left.slice(0, safeWidth);
+  let leftText = left.slice(0, safeWidth);
   const remaining = safeWidth - leftText.length;
   if (remaining <= 0) return leftText;
-  const rightText = right.slice(0, remaining);
-  const gap = Math.max(0, safeWidth - leftText.length - rightText.length);
+  const minGap = leftText.length > 0 && right.length > 0 ? Math.min(2, safeWidth) : 0;
+  let rightText = right.slice(0, remaining);
+  let gap = Math.max(0, safeWidth - leftText.length - rightText.length);
+  if (rightText.length > 0 && gap < minGap) {
+    const trim = Math.min(leftText.length, minGap - gap);
+    leftText = leftText.slice(0, leftText.length - trim);
+    rightText = right.slice(0, Math.max(0, safeWidth - leftText.length - minGap));
+    gap = rightText.length > 0 ? Math.max(minGap, safeWidth - leftText.length - rightText.length) : 0;
+  }
   return `${leftText}${" ".repeat(gap)}${rightText}`;
 }
 
@@ -11785,6 +11962,7 @@ var RESET3 = "\x1B[0m";
 var MAX_FRAME_CELL_PARTS_CACHE_SIZE = 32768;
 var frameCellPartsCache = /* @__PURE__ */ new Map();
 var plainAsciiCellPartsCache = [];
+var runRenderResult = { value: "", nextColumn: 0 };
 function toStyledCells(value) {
   const cells = [];
   let style2 = "";
@@ -11831,6 +12009,13 @@ function renderFrameArrayCells(cells, start, width) {
   let row = "";
   for (let column = 0; column < columns2; ) {
     const firstCell = cells[offset + column] ?? " ";
+    const backgroundSpacePrefix = frameCellBackgroundSpacePrefix(firstCell);
+    if (backgroundSpacePrefix !== void 0) {
+      const styled = renderBackgroundSpaceRun(cells, offset, column, columns2, firstCell, backgroundSpacePrefix);
+      row += styled.value;
+      column = styled.nextColumn;
+      continue;
+    }
     const first = splitFrameCell(firstCell);
     if (isBackgroundStyledFrameCell(first)) {
       const styled = renderBackgroundStyledRun(cells, offset, column, columns2, firstCell, first);
@@ -11858,6 +12043,37 @@ function renderFrameArrayCells(cells, start, width) {
     column = next;
   }
   return row;
+}
+function renderBackgroundSpaceRun(cells, start, startColumn, width, firstCell, firstPrefix) {
+  let next = startColumn;
+  let value = "";
+  let currentCell = firstCell;
+  let currentPrefix = firstPrefix;
+  while (next < width && currentPrefix !== void 0) {
+    let repeatEnd = next + 1;
+    while (repeatEnd < width && (cells[start + repeatEnd] ?? " ") === currentCell) {
+      repeatEnd += 1;
+    }
+    value += `${currentPrefix}${" ".repeat(repeatEnd - next)}`;
+    next = repeatEnd;
+    while (next < width) {
+      const nextCell = cells[start + next] ?? " ";
+      const nextPrefix = frameCellBackgroundSpacePrefix(nextCell);
+      if (nextPrefix === void 0 || nextPrefix !== currentPrefix) break;
+      let samePrefixEnd = next + 1;
+      while (samePrefixEnd < width && (cells[start + samePrefixEnd] ?? " ") === nextCell) {
+        samePrefixEnd += 1;
+      }
+      value += " ".repeat(samePrefixEnd - next);
+      next = samePrefixEnd;
+    }
+    if (next >= width) break;
+    currentCell = cells[start + next] ?? " ";
+    currentPrefix = frameCellBackgroundSpacePrefix(currentCell);
+  }
+  runRenderResult.value = `${value}${RESET3}`;
+  runRenderResult.nextColumn = next;
+  return runRenderResult;
 }
 function renderBackgroundStyledRun(cells, start, startColumn, width, firstCell, first) {
   let next = startColumn;
@@ -11888,7 +12104,9 @@ function renderBackgroundStyledRun(cells, start, startColumn, width, firstCell, 
     current = splitFrameCell(currentCell);
     if (!isBackgroundStyledFrameCell(current)) break;
   }
-  return { value: `${value}${RESET3}`, nextColumn: next };
+  runRenderResult.value = `${value}${RESET3}`;
+  runRenderResult.nextColumn = next;
+  return runRenderResult;
 }
 function isBackgroundStyledFrameCell(cell) {
   return cell.backgroundStyled;
@@ -11900,6 +12118,8 @@ function splitFrameCell(cell) {
       return plainAsciiCellPartsCache[code] ??= plainFrameCellParts(cell);
     }
   }
+  const backgroundSpace = splitBackgroundSpaceFrameCell(cell);
+  if (backgroundSpace) return backgroundSpace;
   if (!cell.includes("\x1B[") || !cell.endsWith("\x1B[0m")) {
     return plainFrameCellParts(cell);
   }
@@ -11915,6 +12135,31 @@ function splitFrameCell(cell) {
   }
   frameCellPartsCache.set(cell, split);
   return split;
+}
+function splitBackgroundSpaceFrameCell(cell) {
+  const prefix = frameCellBackgroundSpacePrefix(cell);
+  if (prefix === void 0) return void 0;
+  return {
+    prefix,
+    text: " ",
+    suffix: RESET3,
+    backgroundStyled: true
+  };
+}
+function frameCellBackgroundSpacePrefix(cell) {
+  if (cell.charCodeAt(0) !== 27 || cell.length < RESET3.length + 2) return void 0;
+  const resetStart = cell.length - RESET3.length;
+  const textIndex = resetStart - 1;
+  if (cell.charCodeAt(textIndex) !== 32 || cell.charCodeAt(textIndex - 1) !== 109) return void 0;
+  for (let index = 0; index < RESET3.length; index += 1) {
+    if (cell.charCodeAt(resetStart + index) !== RESET3.charCodeAt(index)) return void 0;
+  }
+  const prefix = cell.slice(0, textIndex);
+  if (!hasBackgroundSgr(prefix)) return void 0;
+  return prefix;
+}
+function hasBackgroundSgr(prefix) {
+  return prefix.includes("[48;") || prefix.includes(";48;");
 }
 function splitFrameCellBody(body) {
   if (body.length === 0) return void 0;
@@ -11937,13 +12182,18 @@ function styledFrameCellParts(prefix, text) {
     prefix,
     text,
     suffix: RESET3,
-    backgroundStyled: prefix.length > 0 && (prefix.includes("[48;") || prefix.includes(";48;"))
+    backgroundStyled: prefix.length > 0 && hasBackgroundSgr(prefix)
   };
 }
 
 // src/app/workbench_frame.ts
 var lineSignalRowCache = /* @__PURE__ */ new WeakMap();
+var frameRowMetadata = /* @__PURE__ */ new WeakMap();
+var RESET4 = "\x1B[0m";
 function renderFrameRow2(cells, width) {
+  const columns2 = Math.max(0, Math.floor(width));
+  const hint = frameRowMetadata.get(cells)?.renderedHint;
+  if (hint?.width === columns2) return hint.line;
   return renderFrameRow(cells, width);
 }
 function renderFrameSlice2(cells, start, width) {
@@ -11968,8 +12218,16 @@ function updateWorkbenchStringLineSignals(signals, frame, width, height) {
   let cleared = 0;
   for (let row = 0; row < rows2; row += 1) {
     const signal = signals[row];
-    const nextLine = fitCellText(frame[row] ?? "", columns2);
+    const raw = frame[row] ?? "";
     const cached = lineSignalRowCache.get(signal);
+    if (cached?.width === columns2 && cached.raw === raw) {
+      if (signal.peek() !== cached.line) {
+        signal.value = cached.line;
+        changed += 1;
+      }
+      continue;
+    }
+    const nextLine = fitCellText(raw, columns2);
     const fingerprint = fallbackLineFingerprint(nextLine, columns2);
     if (cached?.width === columns2 && cached.fingerprint === fingerprint) {
       if (signal.peek() !== cached.line) {
@@ -11978,7 +12236,7 @@ function updateWorkbenchStringLineSignals(signals, frame, width, height) {
       }
       continue;
     }
-    lineSignalRowCache.set(signal, { width: columns2, fingerprint, line: nextLine });
+    lineSignalRowCache.set(signal, { width: columns2, fingerprint, line: nextLine, raw });
     if (signal.peek() !== nextLine) {
       signal.value = nextLine;
       changed += 1;
@@ -12004,6 +12262,11 @@ function fallbackLineFingerprint(line, width) {
 }
 function writeStringFrameRow(frame, width, row, column, value) {
   if (row < 0 || row >= frame.length || column >= width) return;
+  const fullRow = fullRowStringLine(value, width, column);
+  if (fullRow !== void 0) {
+    frame[row] = fullRow;
+    return;
+  }
   const valueCells = toStyledCells2(value);
   if (column <= 0 && column + valueCells.length >= width) {
     frame[row] = renderFrameSlice2(valueCells, -column, width);
@@ -12016,6 +12279,30 @@ function writeStringFrameRow(frame, width, row, column, value) {
     targetColumn += 1;
   }
   frame[row] = renderFrameRow2(cells, width);
+}
+function fullRowStringLine(value, width, column) {
+  const columns2 = Math.max(0, Math.floor(width));
+  const sourceColumn = Math.floor(column);
+  if (columns2 <= 0 || sourceColumn > 0) return void 0;
+  if (!value.includes("\x1B")) {
+    return sourceColumn === 0 && value.length === columns2 ? value : void 0;
+  }
+  let style2 = "";
+  let index = 0;
+  while (index < value.length) {
+    const sequence = readSgrSequenceAt(value, index);
+    if (!sequence) break;
+    style2 = mergeSgrStyle(style2, sequence);
+    index += sequence.length;
+  }
+  if (!style2 || !value.endsWith(RESET4)) return void 0;
+  const resetStart = value.length - RESET4.length;
+  if (value.indexOf("\x1B", index) !== resetStart) return void 0;
+  const text = value.slice(index, resetStart);
+  const start = Math.max(0, -sourceColumn);
+  const body = text.slice(start, start + columns2);
+  if (body.length !== columns2) return void 0;
+  return style2 ? `${style2}${body}${RESET4}` : body;
 }
 function fillStringFrameRect(frame, width, rect, value) {
   for (let row = rect.row; row < rect.row + rect.height; row += 1) {
@@ -12651,6 +12938,22 @@ function wrapPlainTextInto(rows2, value, width, fit2) {
   rows2.length = rowCount;
   return rows2;
 }
+function visibleMenuSliceInto(target, items, selectedIndex, maxItems) {
+  return visibleProjectedMenuSliceInto(target, items, selectedIndex, maxItems, (item) => item);
+}
+function visibleProjectedMenuSliceInto(target, items, selectedIndex, maxItems, project) {
+  const count = Math.max(1, maxItems);
+  const visibleCount = Math.min(items.length, count);
+  const start = items.length <= count ? 0 : Math.max(0, Math.min(selectedIndex - Math.floor(count / 2), items.length - count));
+  target.items.length = visibleCount;
+  target.indexes.length = visibleCount;
+  for (let offset = 0; offset < visibleCount; offset += 1) {
+    const index = start + offset;
+    target.items[offset] = project(items[index], index);
+    target.indexes[offset] = index;
+  }
+  return target;
+}
 
 // src/app/workbench_menu.ts
 var WorkbenchTopMenuController = class {
@@ -12692,8 +12995,35 @@ var WorkbenchTopMenuController = class {
 function isWorkbenchMenuActivationKey(key) {
   return key === "return" || key === "space";
 }
-function isWorkbenchMenuCloseKey(key) {
-  return key === "escape" || key === "tab";
+function resolveWorkbenchScreenDropdownKey(options) {
+  const { event } = options;
+  if (event.ctrl || event.meta) return { kind: "ignore" };
+  switch (event.key) {
+    case "q":
+      return { kind: "quit" };
+    case "?":
+    case "h":
+      return { kind: "help" };
+    case "escape":
+      return { kind: "close" };
+    case "tab":
+      return { kind: "focusWindow", delta: event.shift ? -1 : 1 };
+    case "left":
+      return { kind: "moveTopMenu", delta: -1 };
+    case "right":
+      return { kind: "moveTopMenu", delta: 1 };
+  }
+  const menuId = options.openId;
+  if (!menuId) return { kind: "ignore" };
+  const count = Math.max(0, Math.floor(options.counts[menuId] ?? 0));
+  if (count <= 0) return { kind: "ignore" };
+  const current = options.indexes[menuId] ?? 0;
+  return {
+    kind: "menuItem",
+    menuId,
+    index: moveWorkbenchMenuIndex(current, count, event),
+    activate: isWorkbenchMenuActivationKey(event.key)
+  };
 }
 function moveWorkbenchMenuIndex(current, count, event, options = {}) {
   if (count <= 0) return 0;
@@ -12744,6 +13074,49 @@ function layoutWorkbenchTopMenuItemRect(options) {
     height: preferredHeight
   };
 }
+function workbenchTopMenuDropdownOverlayInto(visible, options) {
+  const measureText = options.measureText ?? ((value) => value.length);
+  const maxVisibleItems = Math.max(0, Math.floor(options.maxVisibleItems ?? options.labels.length));
+  const selectedIndex = clampMenuSelection(options.selectedIndex ?? 0, options.labels.length);
+  visibleMenuSliceInto(visible, options.labels, selectedIndex, maxVisibleItems);
+  const rect = layoutWorkbenchTopMenuItemRect({
+    menuStart: options.menuStart,
+    itemId: options.itemId,
+    items: options.menuItems,
+    activeIndex: options.menuActiveIndex,
+    preferredWidth: Math.max(options.preferredWidth, maxMeasuredTextWidth(options.labels, measureText) + 6),
+    preferredHeight: visible.items.length + 2,
+    maxWidth: options.maxWidth,
+    measureText
+  });
+  return {
+    kind: options.menuId,
+    coordinate: "screen",
+    rect,
+    items: visible.items,
+    itemIndexes: visible.indexes,
+    selectedIndex: visible.indexes.indexOf(selectedIndex)
+  };
+}
+function workbenchStandardTopMenuDropdownOverlayInto(options) {
+  const openId = options.openId;
+  if (!openId) return null;
+  const entry = options.entries[openId];
+  if (!entry) return null;
+  return workbenchTopMenuDropdownOverlayInto(entry.visible, {
+    menuStart: options.menuStart,
+    menuId: openId,
+    itemId: entry.itemId ?? workbenchTopMenuItemIdForStandardMenu(openId),
+    menuItems: options.menuItems,
+    menuActiveIndex: options.menuActiveIndex,
+    labels: entry.labels,
+    selectedIndex: entry.selectedIndex,
+    preferredWidth: entry.preferredWidth,
+    maxWidth: options.maxWidth,
+    maxVisibleItems: entry.maxVisibleItems,
+    measureText: options.measureText
+  });
+}
 function layoutWorkbenchMenuBarHitsInto(target, options) {
   const measureText = options.measureText ?? ((value) => value.length);
   const start = Math.max(0, Math.floor(options.column));
@@ -12788,6 +13161,18 @@ function layoutWorkbenchHeaderInto(target, options) {
     target.close = void 0;
   }
   return target;
+}
+function workbenchTopMenuItemIdForStandardMenu(menuId) {
+  return menuId === "newWindow" ? "new" : menuId;
+}
+function clampMenuSelection(index, count) {
+  if (count <= 0) return 0;
+  return Math.max(0, Math.min(count - 1, Math.floor(index)));
+}
+function maxMeasuredTextWidth(values, measureText) {
+  let width = 0;
+  for (const value of values) width = Math.max(width, measureText(value));
+  return width;
 }
 
 // src/app/workbench_overlay.ts
@@ -13219,6 +13604,16 @@ function workbenchStatusLine(options) {
     workbenchStatusShortcuts(options.shortcutProfile),
     options.width
   );
+}
+function workbenchStatusSnapshotLine(options) {
+  return workbenchStatusLine({
+    focus: options.snapshot.focus,
+    theme: options.snapshot.theme,
+    tileDensity: options.snapshot.tileDensity,
+    diagnostics: options.snapshot.diagnostics,
+    width: options.width,
+    shortcutProfile: options.shortcutProfile
+  });
 }
 function workbenchEmptyWorkspaceMessage(options) {
   let minimizedCount = 0;
@@ -17286,6 +17681,39 @@ function nextApiWorkbenchControlId(current, delta, options = {}) {
   return apiWorkbenchControlIds[(next % apiWorkbenchControlIds.length + apiWorkbenchControlIds.length) % apiWorkbenchControlIds.length];
 }
 
+// app/api_workbench_hit.ts
+function isApiWorkbenchTouchOptimizedLayout(input2) {
+  return Boolean(input2.coarsePointer) || input2.columns < 92 || input2.rows < 30;
+}
+function expandedApiWorkbenchTouchHitRect(input2) {
+  const { rect, bounds } = input2;
+  const minimumWidth = rect.width <= 3 ? 6 : rect.width <= 10 ? Math.max(10, rect.width) : rect.width;
+  const minimumHeight = rect.height <= 1 ? 3 : rect.height;
+  const growColumns = Math.max(0, minimumWidth - rect.width);
+  const growRows = Math.max(0, minimumHeight - rect.height);
+  return clipApiWorkbenchRect(
+    {
+      column: rect.column - Math.floor(growColumns / 2),
+      row: rect.row - Math.floor(growRows / 2),
+      width: rect.width + growColumns,
+      height: rect.height + growRows
+    },
+    bounds
+  );
+}
+function clipApiWorkbenchRect(rect, bounds) {
+  const column = Math.max(bounds.column, rect.column);
+  const row = Math.max(bounds.row, rect.row);
+  const right = Math.min(bounds.column + bounds.width, rect.column + rect.width);
+  const bottom = Math.min(bounds.row + bounds.height, rect.row + rect.height);
+  return {
+    column,
+    row,
+    width: Math.max(0, right - column),
+    height: Math.max(0, bottom - row)
+  };
+}
+
 // app/html_css_layout_view.ts
 function htmlCssLayoutSummaryRows(profile = "terminal") {
   if (profile === "web") {
@@ -17570,7 +17998,7 @@ function workbenchModalConfirmedContent(options = {}) {
   };
 }
 
-// app/workbench_rows.ts
+// src/app/workbench_rows.ts
 var THREE_HEADER_GEOMETRY = "torus knot \xB7 sphere \xB7 block \xB7 floor plane";
 var THREE_HEADER_GEOMETRY_WIDTH = textWidth(THREE_HEADER_GEOMETRY);
 function dataFooterRows(options) {
@@ -17722,7 +18150,7 @@ function workbenchLogRowsFromSourcesInto(target, sources, theme2) {
   return target;
 }
 
-// app/workbench_frame_render.ts
+// src/app/workbench_frame_render.ts
 function workbenchFrameRenderCommandsInto(target, lineBuffer, options) {
   if (options.rect.width <= 0 || options.rect.height <= 0) {
     target.length = 0;
@@ -17791,7 +18219,7 @@ function writeTextCommand2(target, line, style2) {
   return target;
 }
 
-// app/workbench_row_render.ts
+// src/app/workbench_row_render.ts
 function workbenchStyledRowsRenderCommandsInto(target, options) {
   target.length = 0;
   if (options.rect.width <= 0 || options.rect.height <= 0) return target;
@@ -18449,8 +18877,8 @@ function clampMenuIndex2(index, itemCount) {
 }
 
 // app/styles.ts
-function hexToRgb(hex2) {
-  const normalized = hex2.replace(/^#/, "");
+function hexToRgb(hex) {
+  const normalized = hex.replace(/^#/, "");
   const value = normalized.length === 3 ? expandShortHex(normalized) : normalized;
   const intValue = Number.parseInt(value, 16);
   return {
@@ -18646,6 +19074,7 @@ var controlSliderSetHit = {
 var controlStepperHitPlacements = [];
 var modalBuffers = new WorkbenchModalBufferCache();
 var dropdownOverlayRenderCommands = [];
+var themeMenuSlice = { items: [], indexes: [] };
 var dropdownOverlay = null;
 var pointerDrag = null;
 themeIndex.subscribe((index) => persistThemeIndex(index));
@@ -18770,7 +19199,7 @@ new BoxObject({
   canvas: host.canvas,
   rectangle: new Computed(() => ({ column: 0, row: 0, width: cols(), height: rowsCount() })),
   filler: " ",
-  style: new Computed(() => createAnsiStyle2({ background: hex(theme().background) })),
+  style: new Computed(() => createAnsiStyle2({ background: parseHexColor(theme().background) ?? [0, 0, 0] })),
   zIndex: -2
 }).draw();
 ensureLines();
@@ -18936,19 +19365,22 @@ function draw() {
     writeButton(frame, header.close.row, header.close.column, "x", { compact: true, tone: "danger" });
     hitTargets.add(header.close, { type: "quit" });
   }
-  if (themeMenuOpen.peek()) {
-    dropdownOverlay = {
-      kind: "theme",
-      rect: menuItemRect(
-        17,
-        "theme",
-        themeMenuWidth,
-        themes.length + 2
-      ),
-      items: themeLabels,
-      selectedIndex: themeIndex.peek()
-    };
-  }
+  dropdownOverlay = workbenchStandardTopMenuDropdownOverlayInto({
+    openId: topMenus.inspect().openId,
+    menuStart: header.menu.column,
+    menuItems: menu.items.peek(),
+    menuActiveIndex: menu.activeIndex.peek(),
+    maxWidth: width,
+    entries: {
+      theme: {
+        visible: themeMenuSlice,
+        labels: themeLabels,
+        selectedIndex: themeIndex.peek(),
+        preferredWidth: themeMenuWidth
+      }
+    },
+    measureText: textWidth
+  });
   renderMobileCommandStrip(frame);
   const body = { column: 1, row: 3, width: Math.max(10, width - 2), height: Math.max(6, height - 5) };
   const layout = workspaceLayout({
@@ -19005,11 +19437,13 @@ function draw() {
   renderModalOverlay(frame);
   frame[height - 1] = fit(
     paint(
-      workbenchStatusLine({
-        focus: active.peek(),
-        theme: theme().label,
-        tileDensity: tileDensity.peek(),
-        diagnostics: formatWorkbenchDiagnosticStatus(webDiagnostics),
+      workbenchStatusSnapshotLine({
+        snapshot: {
+          focus: active.peek(),
+          theme: theme().label,
+          tileDensity: tileDensity.peek(),
+          diagnostics: formatWorkbenchDiagnosticStatus(webDiagnostics)
+        },
         width,
         shortcutProfile: "web"
       }),
@@ -19082,18 +19516,6 @@ function renderMobileCommandStrip(frame) {
     );
     hitTargets.add(command.hitRect, { type: "mobileAction", action: command.item.action });
   }
-}
-function menuItemRect(menuStart, itemId, preferredWidth, preferredHeight) {
-  return layoutWorkbenchTopMenuItemRect({
-    menuStart,
-    itemId,
-    items: menu.items.peek(),
-    activeIndex: menu.activeIndex.peek(),
-    preferredWidth,
-    preferredHeight,
-    maxWidth: cols(),
-    measureText: textWidth
-  });
 }
 function renderWindowTabs(frame) {
   const row = rowsCount() - 2;
@@ -19849,12 +20271,37 @@ function setTheme(index) {
   push(`theme ${theme().label}`);
 }
 function handleThemeMenuKey(event) {
-  if (isWorkbenchMenuCloseKey(event.key)) {
-    closeThemeMenu();
-    return;
+  const action = resolveWorkbenchScreenDropdownKey({
+    event,
+    openId: topMenus.inspect().openId,
+    indexes: { theme: themeIndex.peek() },
+    counts: { theme: themes.length }
+  });
+  switch (action.kind) {
+    case "ignore":
+      return;
+    case "quit":
+      openQuitModal();
+      return;
+    case "help":
+      closeThemeMenu();
+      openHelpModal();
+      return;
+    case "close":
+      closeThemeMenu();
+      return;
+    case "focusWindow":
+      closeThemeMenu();
+      action.delta < 0 ? focusPrevious() : focusNext();
+      return;
+    case "moveTopMenu":
+      return;
+    case "menuItem":
+      if (action.menuId !== "theme") return;
+      themeIndex.value = action.index;
+      if (action.activate) setTheme(action.index);
+      return;
   }
-  themeIndex.value = moveWorkbenchMenuIndex(themeIndex.peek(), themes.length, event);
-  if (isWorkbenchMenuActivationKey(event.key)) setTheme(themeIndex.peek());
 }
 function toggleThemeMenu() {
   topMenus.toggle("theme");
@@ -20718,34 +21165,18 @@ function findHit(x, y) {
   const target = hitTargets.find(x, y);
   if (target) return target;
   if (!isTouchOptimizedLayout()) return void 0;
-  return hitTargets.findExpanded(x, y, (rect) => expandedTouchHitRect(rect));
+  return hitTargets.findExpanded(x, y, (rect) => expandedApiWorkbenchTouchHitRect({
+    rect,
+    bounds: { column: 0, row: 0, width: cols(), height: rowsCount() }
+  }));
 }
 function isTouchOptimizedLayout() {
   const coarsePointer = globalThis.matchMedia?.("(pointer: coarse)")?.matches ?? false;
-  return coarsePointer || cols() < 92 || rowsCount() < 30;
-}
-function expandedTouchHitRect(rect) {
-  const minimumWidth = rect.width <= 3 ? 6 : rect.width <= 10 ? Math.max(10, rect.width) : rect.width;
-  const minimumHeight = rect.height <= 1 ? 3 : rect.height;
-  const growColumns = Math.max(0, minimumWidth - rect.width);
-  const growRows = Math.max(0, minimumHeight - rect.height);
-  return clipRect(
-    {
-      column: rect.column - Math.floor(growColumns / 2),
-      row: rect.row - Math.floor(growRows / 2),
-      width: rect.width + growColumns,
-      height: rect.height + growRows
-    },
-    { column: 0, row: 0, width: cols(), height: rowsCount() }
-  );
-}
-function hex(value) {
-  const color = value.replace("#", "");
-  return [
-    Number.parseInt(color.slice(0, 2), 16),
-    Number.parseInt(color.slice(2, 4), 16),
-    Number.parseInt(color.slice(4, 6), 16)
-  ];
+  return isApiWorkbenchTouchOptimizedLayout({
+    coarsePointer,
+    columns: cols(),
+    rows: rowsCount()
+  });
 }
 function initialThemeIndex() {
   try {

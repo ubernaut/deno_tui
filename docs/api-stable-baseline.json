@@ -3805,6 +3805,13 @@
     },
     {
       "module": "src/app/workbench_frame.ts",
+      "name": "workbenchFrameRowRenderedHint",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_frame.ts",
       "name": "WorkbenchFrameStyle",
       "kind": "type",
       "typeOnly": true,
@@ -3955,6 +3962,13 @@
       "name": "WorkbenchAdaptiveWindowLayoutOptions",
       "kind": "interface",
       "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
+      "name": "workbenchFullscreenWindowRect",
+      "kind": "function",
+      "typeOnly": false,
       "documented": true
     },
     {
@@ -4254,6 +4268,27 @@
     {
       "module": "src/app/workbench_menu.ts",
       "name": "WorkbenchScreenDropdownKeyOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_menu.ts",
+      "name": "WorkbenchStandardTopMenuDropdownEntry",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_menu.ts",
+      "name": "workbenchStandardTopMenuDropdownOverlayInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_menu.ts",
+      "name": "WorkbenchStandardTopMenuDropdownOverlayOptions",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
@@ -4750,6 +4785,27 @@
     },
     {
       "module": "src/app/workbench_status.ts",
+      "name": "WorkbenchStatusSnapshot",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "workbenchStatusSnapshotLine",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
+      "name": "WorkbenchStatusSnapshotLineOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_status.ts",
       "name": "workbenchTileDensityLabel",
       "kind": "function",
       "typeOnly": false,
@@ -4760,6 +4816,13 @@
       "name": "WorkbenchTileDensityLabel",
       "kind": "type",
       "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "applyWorkbenchTerminalSearchPromptInput",
+      "kind": "function",
+      "typeOnly": false,
       "documented": true
     },
     {
@@ -4911,6 +4974,20 @@
     },
     {
       "module": "src/app/workbench_terminal.ts",
+      "name": "workbenchTerminalOutputRowsInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchTerminalOutputRowsOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
       "name": "WorkbenchTerminalOutputToolbarAction",
       "kind": "type",
       "typeOnly": true,
@@ -4933,6 +5010,27 @@
     {
       "module": "src/app/workbench_terminal.ts",
       "name": "WorkbenchTerminalOutputToolbarState",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchTerminalOutputWindowRow",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "workbenchTerminalOutputWindowRowsInto",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchTerminalOutputWindowRowsOptions",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
@@ -5017,6 +5115,13 @@
     {
       "module": "src/app/workbench_terminal.ts",
       "name": "WorkbenchTerminalSearchModalScrollbackState",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_terminal.ts",
+      "name": "WorkbenchTerminalSearchPromptInputOptions",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
@@ -15286,6 +15391,13 @@
     {
       "module": "src/three_ascii/render_profile.ts",
       "name": "resolveThreeAsciiRenderProfile",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/three_ascii/render_profile.ts",
+      "name": "resolveThreeAsciiRenderProfileInto",
       "kind": "function",
       "typeOnly": false,
       "documented": true

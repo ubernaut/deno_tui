@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TerminalOutputController, TerminalOutputInspection } from "../components/terminal_output.ts";
 import type { ProcessSessionController, ProcessSessionInspection } from "../runtime/process_session.ts";
+import type { TerminalScrollbackController } from "../runtime/terminal_scrollback.ts";
 import type {
   TerminalShellWorkspaceController,
   TerminalShellWorkspaceInspection,
@@ -13,8 +14,43 @@ import type {
 } from "../runtime/terminal_workspace.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
+import {
+  bindTerminalScrollbackCommands as bindTerminalScrollbackCommandsImpl,
+  type TerminalScrollbackCommandAction as TerminalScrollbackCommandActionImpl,
+  type TerminalScrollbackCommandKind as TerminalScrollbackCommandKindImpl,
+  type TerminalScrollbackCommandOptions as TerminalScrollbackCommandOptionsImpl,
+  type TerminalScrollbackCommandPayload as TerminalScrollbackCommandPayloadImpl,
+  terminalScrollbackCommands as terminalScrollbackCommandsImpl,
+} from "./terminal_scrollback_commands.ts";
 
-export * from "./terminal_scrollback_commands.ts";
+/** Identifier union for terminal scrollback/copy-mode command variants. */
+export type TerminalScrollbackCommandKind = TerminalScrollbackCommandKindImpl;
+
+/** Action union emitted by terminal scrollback command helpers. */
+export type TerminalScrollbackCommandAction = TerminalScrollbackCommandActionImpl;
+
+/** Payload carried by terminal scrollback command actions. */
+export interface TerminalScrollbackCommandPayload extends TerminalScrollbackCommandPayloadImpl {}
+
+/** Options for configuring terminal scrollback/copy-mode commands. */
+export interface TerminalScrollbackCommandOptions extends TerminalScrollbackCommandOptionsImpl {}
+
+/** Builds command definitions for terminal scrollback and copy-mode navigation. */
+export function terminalScrollbackCommands<TAction extends Action = TerminalScrollbackCommandAction>(
+  scrollback: TerminalScrollbackController,
+  options: TerminalScrollbackCommandOptions = {},
+): Command<TAction>[] {
+  return terminalScrollbackCommandsImpl<TAction>(scrollback, options);
+}
+
+/** Binds terminal scrollback command helpers to a registry and returns the registered commands. */
+export function bindTerminalScrollbackCommands<TAction extends Action = TerminalScrollbackCommandAction>(
+  registry: CommandRegistry<TAction>,
+  scrollback: TerminalScrollbackController,
+  options: TerminalScrollbackCommandOptions = {},
+): () => void {
+  return bindTerminalScrollbackCommandsImpl<TAction>(registry, scrollback, options);
+}
 
 /** Identifier union for terminal process command variants. */
 export type TerminalCommandKind = "run" | "stop" | "restart" | "clear" | "toggleFollow" | "copyCommand";

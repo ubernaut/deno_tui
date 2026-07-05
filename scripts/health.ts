@@ -65,7 +65,7 @@ export const defaultHealthSteps: readonly HealthStep[] = [
   { name: "showcase", command: ["deno", "task", "showcase:check"] },
   { name: "api-workbench", command: ["deno", "task", "api-workbench:check"] },
   { name: "benchmarks", command: ["deno", "task", "benchmark"] },
-  { name: "tests", command: ["deno", "test"] },
+  { name: "tests", command: ["deno", "test", "-A"] },
   { name: "web-tests", command: ["deno", "task", "web:test"] },
   { name: "worker-tests", command: ["deno", "task", "test:workers"] },
 ];

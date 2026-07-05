@@ -1,43 +1,18 @@
 import { assertEquals } from "./deps.ts";
 import {
-  apiWorkbenchThreeFrameIntervalForCells,
-  ApiWorkbenchThreeRuntimeController,
-  applyWorkbenchThreePanelFrameDefaults,
   buttonText,
-  createApiWorkbenchWorkspaceStore,
   createWorkbenchShellSession,
-  hideWorkbenchThreeRect,
   HitTargetStack,
   layoutWorkbenchButtonRow,
   layoutWorkbenchModal,
   layoutWorkbenchTitlebar,
-  resolveThreePanelAdaptiveRenderBudget,
-  resolveThreePanelRenderPolicy,
   resolveWorkbenchShellBackend,
-  resolveWorkbenchThreeGridProjection,
   resolveWorkbenchThreeTerminalPressureBudget,
-  setWorkbenchThreeRect,
-  threeHeaderRows,
-  threePanelBlankGrid,
-  ThreePanelGraphicsImageController,
-  ThreePanelInteractionController,
-  threePanelRendererStateMatches,
-  ThreePanelRenderQueue,
-  threePanelSlowFrameDiagnostic,
   translateHitTargets,
-  workbenchAnsiSpanRowCleanCacheMatches,
   workbenchContentViewport,
-  workbenchFrameRenderCommandsInto,
   workbenchStandardTopMenuDropdownOverlayInto,
   workbenchStatusSnapshotLine,
-  workbenchStudioScene,
-  workbenchStyledRowsRenderCommandsInto,
-  WorkbenchThreeCadenceMeter,
-  WorkbenchThreePanelRegistry,
-  WorkbenchThreeViewportInteractionController,
   WorkbenchTopMenuController,
-  workbenchWindowContentSize,
-  workspaceMenuLabels,
 } from "../src/app/workbench/mod.ts";
 
 Deno.test("workbench facade exposes renderer-neutral helpers", () => {
@@ -72,35 +47,10 @@ Deno.test("workbench facade exposes renderer-neutral helpers", () => {
   );
   assertEquals(typeof resolveWorkbenchShellBackend, "function");
   assertEquals(typeof createWorkbenchShellSession, "function");
-  assertEquals(typeof threePanelBlankGrid, "function");
-  assertEquals(typeof ThreePanelGraphicsImageController, "function");
-  assertEquals(typeof ThreePanelInteractionController, "function");
-  assertEquals(typeof resolveThreePanelAdaptiveRenderBudget, "function");
-  assertEquals(typeof resolveThreePanelRenderPolicy, "function");
-  assertEquals(typeof threePanelSlowFrameDiagnostic, "function");
-  assertEquals(typeof threePanelRendererStateMatches, "function");
-  assertEquals(typeof ThreePanelRenderQueue, "function");
   assertEquals(typeof resolveWorkbenchThreeTerminalPressureBudget, "function");
-  assertEquals(typeof workbenchFrameRenderCommandsInto, "function");
-  assertEquals(typeof workbenchStyledRowsRenderCommandsInto, "function");
-  assertEquals(typeof threeHeaderRows, "function");
-  assertEquals(typeof apiWorkbenchThreeFrameIntervalForCells, "function");
-  assertEquals(typeof applyWorkbenchThreePanelFrameDefaults, "function");
-  assertEquals(typeof setWorkbenchThreeRect, "function");
-  assertEquals(typeof hideWorkbenchThreeRect, "function");
-  assertEquals(typeof resolveWorkbenchThreeGridProjection, "function");
-  assertEquals(typeof ApiWorkbenchThreeRuntimeController, "function");
-  assertEquals(typeof WorkbenchThreeCadenceMeter, "function");
-  assertEquals(typeof WorkbenchThreePanelRegistry, "function");
-  assertEquals(typeof WorkbenchThreeViewportInteractionController, "function");
-  assertEquals(typeof workbenchStudioScene, "function");
-  assertEquals(typeof workbenchWindowContentSize, "function");
-  assertEquals(typeof workspaceMenuLabels, "function");
-  assertEquals(typeof createApiWorkbenchWorkspaceStore, "function");
   assertEquals(typeof workbenchStandardTopMenuDropdownOverlayInto, "function");
   assertEquals(typeof workbenchStatusSnapshotLine, "function");
   assertEquals(typeof WorkbenchTopMenuController, "function");
-  assertEquals(typeof workbenchAnsiSpanRowCleanCacheMatches, "function");
   assertEquals(
     layoutWorkbenchButtonRow([{ label: "OK", action: "ok" }], { column: 0, row: 0, width: 10, height: 1 }, 0)
       .placements[0]?.rect,
