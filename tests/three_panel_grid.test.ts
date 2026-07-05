@@ -1,8 +1,10 @@
-import { assertEquals, assertNotEquals } from "./deps.ts";
+import { assertEquals, assertNotEquals, assertNotStrictEquals } from "./deps.ts";
 import {
   fingerprintThreePanelGrid,
+  hasThreePanelGridCells,
   threePanelBlankGrid,
   ThreePanelGridPublicationCache,
+  ThreePanelGridPublisher,
 } from "../src/app/three_panel_grid.ts";
 
 Deno.test("threePanelBlankGrid creates stable space-filled rows", () => {
@@ -54,4 +56,50 @@ Deno.test("ThreePanelGridPublicationCache reset allows a matching grid to publis
   assertEquals(cache.shouldPublish({ grid: [["A"]] }), false);
   cache.reset();
   assertEquals(cache.shouldPublish({ grid: [["A"]] }), true);
+});
+
+Deno.test("ThreePanelGridPublisher reuses blank grids and resets buffers", () => {
+  const publisher = new ThreePanelGridPublisher();
+  const first = publisher.blankGridFor(3, 2);
+
+  assertEquals(first, [
+    [" ", " ", " "],
+    [" ", " ", " "],
+  ]);
+  assertEquals(publisher.blankGridFor(3, 2), first);
+
+  const resized = publisher.blankGridFor(2, 1);
+  assertEquals(resized, [[" ", " "]]);
+  assertNotEquals(resized, first);
+
+  publisher.reset();
+  assertNotStrictEquals(publisher.blankGridFor(2, 1), resized);
+});
+
+Deno.test("ThreePanelGridPublisher projects publication decisions with renderer-backed state", () => {
+  const publisher = new ThreePanelGridPublisher();
+  const grid = [["A"]];
+
+  assertEquals(publisher.shouldPublish({ grid, currentGrid: [], rendererBacked: true }), {
+    publish: true,
+    grid,
+    rendererBacked: true,
+  });
+  assertEquals(publisher.shouldPublish({ grid: [["A"]], currentGrid: grid, rendererBacked: true }), {
+    publish: false,
+    grid: [["A"]],
+    rendererBacked: true,
+  });
+  assertEquals(publisher.shouldPublish({ grid: [["B"]], currentGrid: grid }), {
+    publish: true,
+    grid: [["B"]],
+    rendererBacked: false,
+  });
+});
+
+Deno.test("hasThreePanelGridCells reports visible grid dimensions", () => {
+  assertEquals(hasThreePanelGridCells([]), false);
+  assertEquals(hasThreePanelGridCells([[]]), false);
+  assertEquals(hasThreePanelGridCells([undefined]), false);
+  assertEquals(hasThreePanelGridCells([[" "]]), true);
 });

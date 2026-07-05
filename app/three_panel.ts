@@ -43,7 +43,7 @@ import {
   type ThreePanelRendererStateSnapshot,
 } from "../src/app/three_panel_effect.ts";
 import { type ThreePanelFrameUpdate, threePanelFrameUpdate } from "../src/app/three_panel_frame_update.ts";
-import { threePanelBlankGrid, ThreePanelGridPublicationCache } from "../src/app/three_panel_grid.ts";
+import { hasThreePanelGridCells, ThreePanelGridPublisher } from "../src/app/three_panel_grid.ts";
 import {
   resolveThreePanelRenderPolicy,
   resolveThreePanelRenderSize,
@@ -266,12 +266,9 @@ export class ThreePanelFrameView {
   private readonly graphics: ThreePanelGraphicsImageController;
   private lastGraphicsUnavailableKey?: string;
   private appliedRendererState: ThreePanelRendererStateSnapshot = emptyThreePanelRendererState();
-  private blankGridCache: string[][] = [];
-  private blankGridColumns = -1;
-  private blankGridRows = -1;
   private lastSlowFrameReportTime = 0;
   private readonly adaptiveBudget = new ThreePanelAdaptiveRenderBudgetController();
-  private readonly gridPublication = new ThreePanelGridPublicationCache();
+  private readonly gridPublisher = new ThreePanelGridPublisher();
 
   constructor(
     private readonly options: {
@@ -527,7 +524,7 @@ export class ThreePanelFrameView {
       const renderSize = this.renderSizeFor(rect, ascii);
       const nextGrid = policy.renderAscii ? frame.grid ?? [] : this.blankGridFor(renderSize.columns, renderSize.rows);
       this.onFrame?.(threePanelFrameUpdate(nextGrid, true));
-      if (!policy.renderAscii || this.hasGridCells(nextGrid)) {
+      if (!policy.renderAscii || hasThreePanelGridCells(nextGrid)) {
         this.setGrid(
           nextGrid,
           policy.renderAscii,
@@ -618,30 +615,19 @@ export class ThreePanelFrameView {
 
   private setGrid(grid: string[][], rendererBacked = false, revision?: number): void {
     if (this.disposed) return;
-    if (
-      !this.gridPublication.shouldPublish({
-        grid,
-        currentGrid: this.grid.peek(),
-        forceUpdate: rendererBacked,
-        revision,
-      })
-    ) {
-      return;
-    }
-    this.grid.jink(grid);
-    this.onUpdate?.(threePanelFrameUpdate(grid, rendererBacked));
+    const decision = this.gridPublisher.shouldPublish({
+      grid,
+      currentGrid: this.grid.peek(),
+      rendererBacked,
+      revision,
+    });
+    if (!decision.publish) return;
+    this.grid.jink(decision.grid);
+    this.onUpdate?.(threePanelFrameUpdate(decision.grid, decision.rendererBacked));
   }
 
   private blankGridFor(columns: number, rows: number): string[][] {
-    if (this.blankGridColumns === columns && this.blankGridRows === rows) return this.blankGridCache;
-    this.blankGridColumns = columns;
-    this.blankGridRows = rows;
-    this.blankGridCache = threePanelBlankGrid(columns, rows);
-    return this.blankGridCache;
-  }
-
-  private hasGridCells(grid: readonly (readonly string[] | undefined)[]): boolean {
-    return grid.length > 0 && (grid[0]?.length ?? 0) > 0;
+    return this.gridPublisher.blankGridFor(columns, rows);
   }
 
   private invalidateFrame(): void {

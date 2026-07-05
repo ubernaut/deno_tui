@@ -1194,3 +1194,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Made the workbench PTY visual-smoke replay track final-screen truecolor background cells, so block-mode Three paint
   and stale-window repaint issues are checked on the replayed final frame instead of only counting historical ANSI
   bytes. Real captures showed `32` final truecolor rows in the default workbench and `49` after fullscreen resize.
+- Extracted Three panel grid publication and blank-grid reuse into `ThreePanelGridPublisher`, reducing inline state in
+  `ThreePanelFrameView` while keeping redraw suppression and Kitty/ASCII blank publication behavior covered by direct
+  grid tests plus the full Three panel frame suite.

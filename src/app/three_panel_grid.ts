@@ -65,6 +65,60 @@ export class ThreePanelGridPublicationCache {
   }
 }
 
+export interface ThreePanelGridPublishRequest {
+  grid: string[][];
+  currentGrid?: readonly (readonly string[] | undefined)[];
+  rendererBacked?: boolean;
+  revision?: number;
+}
+
+export interface ThreePanelGridPublishDecision {
+  publish: boolean;
+  grid: string[][];
+  rendererBacked: boolean;
+}
+
+/** Owns reusable Three panel grid buffers and publication filtering. */
+export class ThreePanelGridPublisher {
+  readonly publication = new ThreePanelGridPublicationCache();
+  #blankGridCache: string[][] = [];
+  #blankGridColumns = -1;
+  #blankGridRows = -1;
+
+  blankGridFor(columns: number, rows: number): string[][] {
+    if (this.#blankGridColumns === columns && this.#blankGridRows === rows) return this.#blankGridCache;
+    this.#blankGridColumns = columns;
+    this.#blankGridRows = rows;
+    this.#blankGridCache = threePanelBlankGrid(columns, rows);
+    return this.#blankGridCache;
+  }
+
+  shouldPublish(input: ThreePanelGridPublishRequest): ThreePanelGridPublishDecision {
+    const rendererBacked = input.rendererBacked ?? false;
+    return {
+      publish: this.publication.shouldPublish({
+        grid: input.grid,
+        currentGrid: input.currentGrid,
+        forceUpdate: rendererBacked,
+        revision: input.revision,
+      }),
+      grid: input.grid,
+      rendererBacked,
+    };
+  }
+
+  reset(): void {
+    this.publication.reset();
+    this.#blankGridCache = [];
+    this.#blankGridColumns = -1;
+    this.#blankGridRows = -1;
+  }
+}
+
+export function hasThreePanelGridCells(grid: readonly (readonly string[] | undefined)[]): boolean {
+  return grid.length > 0 && (grid[0]?.length ?? 0) > 0;
+}
+
 function mixThreePanelGridHash(hash: number, value: number): number {
   return Math.imul((hash ^ value) >>> 0, 16777619) >>> 0;
 }
