@@ -348,15 +348,17 @@ import {
 } from "../src/app/workbench_row_render.ts";
 import { type RowStyle, type ThreeHeaderPerformance, threeHeaderRows } from "../src/app/workbench_rows.ts";
 import { writeThreeHeaderRuntimePerformance } from "../src/app/workbench_three_header.ts";
-import { resolveWorkbenchThreeFullscreenAsciiOptions } from "../src/app/workbench_three_fullscreen.ts";
+import {
+  resolveWorkbenchThreeFullscreenAsciiOptions,
+  resolveWorkbenchThreeRuntimeBudgetSnapshot,
+  sameWorkbenchThreeAsciiOptions,
+} from "../src/app/workbench_three_fullscreen.ts";
 import { shouldCountWorkbenchThreeGridPressure } from "../src/app/workbench_three_terminal_pressure.ts";
 import {
-  apiWorkbenchThreeEffectiveMaxCells,
   apiWorkbenchThreeFrameIntervalForCells,
   WORKBENCH_THREE_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
   WORKBENCH_THREE_INITIAL_CELLS,
-  workbenchThreeFullscreenRenderCells,
 } from "../src/app/workbench_three_policy.ts";
 import {
   type WorkbenchThreePanelEntry,
@@ -890,7 +892,7 @@ const threeGraphicsRect = new Signal<Rectangle>({ column: 0, row: 0, width: 0, h
 const workbenchThreeFullscreenTargetCells = new Signal(WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
 const workbenchThreeEffectiveMaxCells = new Signal(WORKBENCH_THREE_INITIAL_CELLS);
 const threeCadence = new WorkbenchThreeCadenceMeter();
-const threeRuntimeAscii = new Signal<AsciiOptions>(resolveBuiltinThreeRuntimeAscii());
+const threeRuntimeAscii = new Signal<AsciiOptions>(ascii.peek());
 const threeScene = new Computed<WorkbenchThreeScene | null>(() =>
   workbenchStudioScene({
     blocked: false,
@@ -1144,54 +1146,25 @@ function shouldForceWorkbenchFullRepaint(now: number): boolean {
 }
 
 function syncWorkbenchThreeRuntimeBudget(width: number, height: number): void {
-  const next = workbenchThreeFullscreenRenderCells({
-    width: Math.max(0, width - 6),
-    height: Math.max(0, height - 10),
-  });
-  if (workbenchThreeFullscreenTargetCells.peek() !== next) workbenchThreeFullscreenTargetCells.value = next;
-  const fullscreenId = maximized.peek();
-  const effectiveMaxCells = fullscreenId && isThreeRenderedWindow(fullscreenId)
-    ? apiWorkbenchThreeEffectiveMaxCells(workbenchThreeFullscreenMaxCells.peek(), {
-      fullscreenThree: true,
-      fullscreenMinCells: workbenchThreeFullscreenTargetCells.peek(),
-    })
-    : workbenchThreeLiveMaxCells.peek();
-  if (workbenchThreeEffectiveMaxCells.peek() !== effectiveMaxCells) {
-    workbenchThreeEffectiveMaxCells.value = effectiveMaxCells;
-  }
-  const runtimeAscii = resolveBuiltinThreeRuntimeAscii();
-  if (!sameAsciiOptions(threeRuntimeAscii.peek(), runtimeAscii)) threeRuntimeAscii.value = runtimeAscii;
-}
-
-function resolveBuiltinThreeRuntimeAscii(): AsciiOptions {
-  return resolveWorkbenchThreeFullscreenAsciiOptions({
+  const snapshot = resolveWorkbenchThreeRuntimeBudgetSnapshot({
     id: "three",
     fullscreenId: maximized.peek(),
     ascii: ascii.peek(),
-    fullscreenMinCells: workbenchThreeFullscreenTargetCells.peek(),
+    liveMaxCells: workbenchThreeLiveMaxCells.peek(),
+    fullscreenMaxCells: workbenchThreeFullscreenMaxCells.peek(),
+    viewport: { width, height },
+    fullscreenViewportPadding: { columns: 6, rows: 10 },
+    isThreeWindow: (id) => isThreeRenderedWindow(id),
   });
-}
-
-function sameAsciiOptions(left: AsciiOptions, right: AsciiOptions): boolean {
-  return left.preset === right.preset && left.border === right.border &&
-    left.terminalGlyphStyle === right.terminalGlyphStyle &&
-    left.terminalEdgeBias === right.terminalEdgeBias &&
-    left.edgeThreshold === right.edgeThreshold &&
-    left.normalThreshold === right.normalThreshold &&
-    left.depthThreshold === right.depthThreshold &&
-    left.exposure === right.exposure &&
-    left.attenuation === right.attenuation &&
-    left.blendWithBase === right.blendWithBase &&
-    left.depthFalloff === right.depthFalloff &&
-    left.depthOffset === right.depthOffset &&
-    left.wireframeThickness === right.wireframeThickness &&
-    left.renderMaxCells === right.renderMaxCells &&
-    left.deferredReadbackSlots === right.deferredReadbackSlots &&
-    left.edges === right.edges &&
-    left.fill === right.fill &&
-    left.invertLuminance === right.invertLuminance &&
-    left.kittyGraphics === right.kittyGraphics &&
-    left.kittyDisableAscii === right.kittyDisableAscii;
+  if (workbenchThreeFullscreenTargetCells.peek() !== snapshot.fullscreenTargetCells) {
+    workbenchThreeFullscreenTargetCells.value = snapshot.fullscreenTargetCells;
+  }
+  if (workbenchThreeEffectiveMaxCells.peek() !== snapshot.effectiveMaxCells) {
+    workbenchThreeEffectiveMaxCells.value = snapshot.effectiveMaxCells;
+  }
+  if (!sameWorkbenchThreeAsciiOptions(threeRuntimeAscii.peek(), snapshot.runtimeAscii)) {
+    threeRuntimeAscii.value = snapshot.runtimeAscii;
+  }
 }
 
 function updateThreeTerminalPressure(
