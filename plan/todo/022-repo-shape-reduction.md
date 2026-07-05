@@ -7,10 +7,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `579`
+- Tracked files after the current consolidation passes: `578`
 - Tracked top-level file counts:
   - `src`: `296`
-  - `tests`: `83`
+  - `tests`: `82`
   - `app`: `29`
   - `docs`: `50`
   - `examples`: `42`
@@ -23,7 +23,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/three_ascii`: `7,000` lines across `25` files
   - `app`: `20,381` lines across `29` files
   - `examples`: `8,814` lines across `42` files
-  - `tests`: `49,580` lines across `83` files
+  - `tests`: `49,632` lines across `82` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -259,7 +259,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     `tests/three_ascii_core.test.ts`
   - Three ASCII compute dispatch and resource-plan assertions are now bundled into `tests/three_ascii_core.test.ts`
   - Three ASCII compute command and bind-group assertions are now bundled into `tests/three_ascii_core.test.ts`
-  - Three ASCII readback assembly adapter assertions are now bundled into `tests/three_ascii_readback.test.ts`
+  - Three ASCII readback layout, copy-plan, view-cache, and assembly adapter assertions are now bundled into
+    `tests/three_ascii_core.test.ts`
   - Three ASCII canvas rerender range assertions are now bundled into `tests/three_ascii_diff.test.ts`
   - Three ASCII deferred readback queue assertions are now bundled into `tests/three_ascii_core.test.ts`
   - layout recipe, breakpoint markdown, slot inspection, and signal-backed recipe controller assertions are now bundled
