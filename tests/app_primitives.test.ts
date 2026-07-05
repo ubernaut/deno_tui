@@ -34,8 +34,7 @@ import {
   inspectAppPluginDefinition,
   queryAppPluginDefinitions,
 } from "../src/app/plugins.ts";
-import { bindRouteCommands, bindRouteIndex, bindRouteSignal, routeCommands } from "../src/app/route_bindings.ts";
-import { RouteManager } from "../src/app/router.ts";
+import { bindRouteCommands, bindRouteIndex, bindRouteSignal, routeCommands, RouteManager } from "../src/app/router.ts";
 import { bindSettingsCommands, settingsCommands, SettingsController } from "../src/app/settings.ts";
 import type { SettingsCommandAction } from "../src/app/settings.ts";
 import { bindSplitPaneCommands, splitPaneCommands } from "../src/app/split_pane_commands.ts";

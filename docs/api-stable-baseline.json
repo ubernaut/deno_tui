@@ -1641,71 +1641,64 @@
       "documented": true
     },
     {
-      "module": "src/app/route_bindings.ts",
+      "module": "src/app/router.ts",
       "name": "bindRouteCommands",
       "kind": "function",
       "typeOnly": false,
       "documented": true
     },
     {
-      "module": "src/app/route_bindings.ts",
+      "module": "src/app/router.ts",
       "name": "bindRouteIndex",
       "kind": "function",
       "typeOnly": false,
       "documented": true
     },
     {
-      "module": "src/app/route_bindings.ts",
+      "module": "src/app/router.ts",
       "name": "bindRouteSignal",
       "kind": "function",
       "typeOnly": false,
       "documented": true
     },
     {
-      "module": "src/app/route_bindings.ts",
-      "name": "RouteCommandKind",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/route_bindings.ts",
-      "name": "RouteCommandOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/route_bindings.ts",
-      "name": "routeCommands",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/route_bindings.ts",
-      "name": "RouteIdSource",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/route_bindings.ts",
-      "name": "RouteIndexBindingOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/route_bindings.ts",
-      "name": "RouteSignalBindingOptions",
+      "module": "src/app/router.ts",
+      "name": "Route",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
     },
     {
       "module": "src/app/router.ts",
-      "name": "Route",
+      "name": "RouteCommandKind",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/router.ts",
+      "name": "RouteCommandOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/router.ts",
+      "name": "routeCommands",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/router.ts",
+      "name": "RouteIdSource",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/router.ts",
+      "name": "RouteIndexBindingOptions",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
@@ -1727,6 +1720,13 @@
     {
       "module": "src/app/router.ts",
       "name": "RouteRegisterOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/router.ts",
+      "name": "RouteSignalBindingOptions",
       "kind": "interface",
       "typeOnly": true,
       "documented": true

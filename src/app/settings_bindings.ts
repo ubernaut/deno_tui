@@ -15,8 +15,7 @@ import type { RuntimeProfileController } from "../runtime/profiles.ts";
 import type { RuntimeRendererBackendController } from "../runtime/renderer_backends.ts";
 import type { SplitPaneController, SplitPaneControllerOptions } from "../layout/mod.ts";
 import { canSortColumn, type DataTableController, type DataTableState } from "../components/data_table.ts";
-import { bindRouteSignal, type RouteSignalBindingOptions } from "./route_bindings.ts";
-import type { Route, RouteManager } from "./router.ts";
+import { bindRouteSignal, type Route, type RouteManager, type RouteSignalBindingOptions } from "./router.ts";
 import type { AppSettingDefinition, SettingsController } from "./settings.ts";
 
 /** Public interface describing a setting Binding. */

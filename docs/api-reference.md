@@ -6,8 +6,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 ## Summary
 
 - Entrypoints: 9
-- Module visits: 513
-- Re-export declarations: 504
+- Module visits: 511
+- Re-export declarations: 502
 - Exported symbols: 5331
 - Documented symbols: 5331
 - Documentation coverage: 100.00%
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     229 |    2291 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     208 |    2143 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     228 |    2291 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     207 |    2143 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      87 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -39,8 +39,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 ### Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 229
-- Re-export declarations: 228
+- Modules: 228
+- Re-export declarations: 227
 - Exported symbols: 2291
 - Documented symbols: 2291
 - Documentation coverage: 100.00%
@@ -73,12 +73,11 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                             |          0 |       6 |          6 |
 | [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                       |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         44 |       0 |          0 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         43 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                       |          0 |      10 |         10 |
 | [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                           |          0 |       6 |          6 |
 | [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     |          0 |      17 |         17 |
-| [`src/app/route_bindings.ts`](#src-app-route-bindings-ts)                                       |          0 |       9 |          9 |
-| [`src/app/router.ts`](#src-app-router-ts)                                                       |          0 |       5 |          5 |
+| [`src/app/router.ts`](#src-app-router-ts)                                                       |          0 |      14 |         14 |
 | [`src/app/runtime_commands.ts`](#src-app-runtime-commands-ts)                                   |          0 |      15 |         15 |
 | [`src/app/runtime_profile_plugin.ts`](#src-app-runtime-profile-plugin-ts)                       |          0 |       5 |          5 |
 | [`src/app/runtime_renderer_plugin.ts`](#src-app-runtime-renderer-plugin-ts)                     |          0 |       5 |          5 |
@@ -655,7 +654,6 @@ _No direct exported symbols._
 | `src/app/mouse_bindings.ts`          | star | -     |
 | `src/app/pad_commands.ts`            | star | -     |
 | `src/app/plugins.ts`                 | star | -     |
-| `src/app/route_bindings.ts`          | star | -     |
 | `src/app/router.ts`                  | star | -     |
 | `src/app/runtime_commands.ts`        | star | -     |
 | `src/app/runtime_profile_plugin.ts`  | star | -     |
@@ -728,29 +726,24 @@ _No direct exported symbols._
 | `inspectAppPluginDefinition`            | function  | no        | yes   |
 | `queryAppPluginDefinitions`             | function  | no        | yes   |
 
-#### src/app/route_bindings.ts
+#### src/app/router.ts
 
 | Symbol                      | Kind      | Type Only | JSDoc |
 | --------------------------- | --------- | --------- | ----- |
 | `bindRouteCommands`         | function  | no        | yes   |
 | `bindRouteIndex`            | function  | no        | yes   |
 | `bindRouteSignal`           | function  | no        | yes   |
+| `Route`                     | interface | yes       | yes   |
 | `RouteCommandKind`          | type      | yes       | yes   |
 | `RouteCommandOptions`       | interface | yes       | yes   |
 | `routeCommands`             | function  | no        | yes   |
 | `RouteIdSource`             | type      | yes       | yes   |
 | `RouteIndexBindingOptions`  | interface | yes       | yes   |
+| `RouteInspection`           | interface | yes       | yes   |
+| `RouteManager`              | class     | no        | yes   |
+| `RouteRegisterOptions`      | interface | yes       | yes   |
 | `RouteSignalBindingOptions` | interface | yes       | yes   |
-
-#### src/app/router.ts
-
-| Symbol                   | Kind      | Type Only | JSDoc |
-| ------------------------ | --------- | --------- | ----- |
-| `Route`                  | interface | yes       | yes   |
-| `RouteInspection`        | interface | yes       | yes   |
-| `RouteManager`           | class     | no        | yes   |
-| `RouteRegisterOptions`   | interface | yes       | yes   |
-| `RouteUnregisterOptions` | interface | yes       | yes   |
+| `RouteUnregisterOptions`    | interface | yes       | yes   |
 
 #### src/app/runtime_commands.ts
 
@@ -3987,8 +3980,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 ### Summary
 
 - Entrypoint: `mod.web.ts`
-- Modules: 208
-- Re-export declarations: 207
+- Modules: 207
+- Re-export declarations: 206
 - Exported symbols: 2143
 - Documented symbols: 2143
 - Documentation coverage: 100.00%
@@ -4021,12 +4014,11 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                             |          0 |       6 |          6 |
 | [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                                 |          0 |       6 |          6 |
 | [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                       |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         44 |       0 |          0 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                                             |         43 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                       |          0 |      10 |         10 |
 | [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                           |          0 |       6 |          6 |
 | [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     |          0 |      17 |         17 |
-| [`src/app/route_bindings.ts`](#src-app-route-bindings-ts)                                       |          0 |       9 |          9 |
-| [`src/app/router.ts`](#src-app-router-ts)                                                       |          0 |       5 |          5 |
+| [`src/app/router.ts`](#src-app-router-ts)                                                       |          0 |      14 |         14 |
 | [`src/app/runtime_commands.ts`](#src-app-runtime-commands-ts)                                   |          0 |      15 |         15 |
 | [`src/app/runtime_profile_plugin.ts`](#src-app-runtime-profile-plugin-ts)                       |          0 |       5 |          5 |
 | [`src/app/runtime_renderer_plugin.ts`](#src-app-runtime-renderer-plugin-ts)                     |          0 |       5 |          5 |
@@ -4601,7 +4593,6 @@ _No direct exported symbols._
 | `src/app/mouse_bindings.ts`          | star | -     |
 | `src/app/pad_commands.ts`            | star | -     |
 | `src/app/plugins.ts`                 | star | -     |
-| `src/app/route_bindings.ts`          | star | -     |
 | `src/app/router.ts`                  | star | -     |
 | `src/app/runtime_commands.ts`        | star | -     |
 | `src/app/runtime_profile_plugin.ts`  | star | -     |
@@ -4674,29 +4665,24 @@ _No direct exported symbols._
 | `inspectAppPluginDefinition`            | function  | no        | yes   |
 | `queryAppPluginDefinitions`             | function  | no        | yes   |
 
-#### src/app/route_bindings.ts
+#### src/app/router.ts
 
 | Symbol                      | Kind      | Type Only | JSDoc |
 | --------------------------- | --------- | --------- | ----- |
 | `bindRouteCommands`         | function  | no        | yes   |
 | `bindRouteIndex`            | function  | no        | yes   |
 | `bindRouteSignal`           | function  | no        | yes   |
+| `Route`                     | interface | yes       | yes   |
 | `RouteCommandKind`          | type      | yes       | yes   |
 | `RouteCommandOptions`       | interface | yes       | yes   |
 | `routeCommands`             | function  | no        | yes   |
 | `RouteIdSource`             | type      | yes       | yes   |
 | `RouteIndexBindingOptions`  | interface | yes       | yes   |
+| `RouteInspection`           | interface | yes       | yes   |
+| `RouteManager`              | class     | no        | yes   |
+| `RouteRegisterOptions`      | interface | yes       | yes   |
 | `RouteSignalBindingOptions` | interface | yes       | yes   |
-
-#### src/app/router.ts
-
-| Symbol                   | Kind      | Type Only | JSDoc |
-| ------------------------ | --------- | --------- | ----- |
-| `Route`                  | interface | yes       | yes   |
-| `RouteInspection`        | interface | yes       | yes   |
-| `RouteManager`           | class     | no        | yes   |
-| `RouteRegisterOptions`   | interface | yes       | yes   |
-| `RouteUnregisterOptions` | interface | yes       | yes   |
+| `RouteUnregisterOptions`    | interface | yes       | yes   |
 
 #### src/app/runtime_commands.ts
 

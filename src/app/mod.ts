@@ -21,7 +21,6 @@ export * from "./metric_series_commands.ts";
 export * from "./mouse_bindings.ts";
 export * from "./pad_commands.ts";
 export * from "./plugins.ts";
-export * from "./route_bindings.ts";
 export * from "./router.ts";
 export * from "./runtime_commands.ts";
 export * from "./runtime_profile_plugin.ts";
