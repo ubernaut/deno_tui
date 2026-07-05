@@ -1924,7 +1924,7 @@ function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
 
   const statusTone = apiWorkbenchTerminalStatusToneColor(inspection.status, t);
   const statusSummary = summarizeTerminalStatus(inspection, {
-    title: terminalInputModeLabel(),
+    title: terminalInputModeDisplayLabel(terminalInputMode.peek()),
     backendId: "process",
     width: rect.width,
   });
@@ -1989,10 +1989,6 @@ function renderTerminalOutputToolbar(frame: Frame, rect: Rectangle, startRow: nu
   return nextRow;
 }
 
-function terminalInputModeLabel(): string {
-  return terminalInputModeDisplayLabel(terminalInputMode.peek());
-}
-
 function toggleTerminalInputMode(): void {
   const next = resolveWorkbenchTerminalProcessInputModeToggle({
     mode: terminalInputMode.peek(),
@@ -2025,7 +2021,9 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
   }
   const copyMode = inspection.scrollback.mode === "copy";
   const statusTone = apiWorkbenchTerminalStatusToneColor(inspection.status, t);
-  const mode = copyMode ? "COPY MODE" : terminalShellInputModeLabel();
+  const mode = copyMode ? "COPY MODE" : terminalInputModeDisplayLabel(terminalShellInputMode.peek(), {
+    rawLabel: "RAW SHELL",
+  });
   const headerRows = workbenchTerminalShellHeaderRowsInto(terminalShellHeaderRows, {
     status: {
       mode,
@@ -2253,10 +2251,6 @@ function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: num
   return renderTerminalShellSessionTabs(frame, rect, nextRow, workspaceInspection);
 }
 
-function terminalShellInputModeLabel(): string {
-  return terminalInputModeDisplayLabel(terminalShellInputMode.peek(), { rawLabel: "RAW SHELL" });
-}
-
 function toggleTerminalShellInputMode(): void {
   const next = resolveWorkbenchTerminalShellInputModeToggle({
     mode: terminalShellInputMode.peek(),
@@ -2357,17 +2351,9 @@ function activeTerminalShell(): TerminalShellController | undefined {
   return terminalShell.activeShell;
 }
 
-function nextWorkbenchShellSessionId(): string {
-  return nextWorkbenchTerminalSessionId(terminalShell.inspect().sessions);
-}
-
-function sessionTitleFromId(id: string): string {
-  return workbenchTerminalSessionTitleFromId(id);
-}
-
 function addSplitTerminalShell(direction: "row" | "column") {
-  const id = nextWorkbenchShellSessionId();
-  const descriptor = terminalShell.add(shellTerminalTemplate({ id, title: sessionTitleFromId(id) }), {
+  const id = nextWorkbenchTerminalSessionId(terminalShell.inspect().sessions);
+  const descriptor = terminalShell.add(shellTerminalTemplate({ id, title: workbenchTerminalSessionTitleFromId(id) }), {
     activate: false,
   });
   terminalShell.workspace.splitActive(direction, descriptor.id, { title: descriptor.title });
@@ -3745,11 +3731,14 @@ async function applyTerminalShellAction(action: TerminalShellAction): Promise<vo
   focus(TERMINAL_SHELL_WINDOW_ID);
   const shell = activeTerminalShell();
   if (action === "new") {
-    const id = nextWorkbenchShellSessionId();
-    const descriptor = terminalShell.add(shellTerminalTemplate({ id, title: sessionTitleFromId(id) }), {
-      activate: true,
-      start: true,
-    });
+    const id = nextWorkbenchTerminalSessionId(terminalShell.inspect().sessions);
+    const descriptor = terminalShell.add(
+      shellTerminalTemplate({ id, title: workbenchTerminalSessionTitleFromId(id) }),
+      {
+        activate: true,
+        start: true,
+      },
+    );
     terminalShellInputMode.value = "raw";
     pushLog(`shell add ${descriptor.title}`);
   } else if (action === "previous") {

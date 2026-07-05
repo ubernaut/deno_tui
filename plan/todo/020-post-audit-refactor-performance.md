@@ -262,6 +262,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   removing another pure presentation branch from the oversized terminal adapter.
 - Routed API Workbench workspace-name modal storage labeling through the shared workspace storage helper instead of a
   terminal-adapter-local IndexedDB/Deno fallback branch.
+- Removed single-use API Workbench terminal label/session forwarding wrappers so the adapter calls shared terminal
+  status/session helpers directly.
 - Extracted process-output row formatting into the shared workbench terminal helper so terminal content sizing and
   future adapters reuse caller-owned row projection instead of local loops.
 - Routed the terminal-output window render path through the same shared process-output row projector, keeping visible
