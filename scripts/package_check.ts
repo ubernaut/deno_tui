@@ -28,6 +28,7 @@ export interface StableAppExportValidation {
   ok: boolean;
   legacyAllowedModules: string[];
   unexpectedModules: string[];
+  staleAllowedModules: string[];
 }
 
 export interface StableAppExportPolicy {
@@ -156,16 +157,25 @@ export function validateStableAppExports(
 ): StableAppExportValidation {
   const legacyAllowedModules = [...(options.legacyAllowedModules ?? [])].sort();
   const allowed = new Set(legacyAllowedModules);
+  const stableAppModules = inventory.modules
+    .map((entry) => entry.module)
+    .filter((module) => module.startsWith("src/app/"))
+    .sort();
+  const exported = new Set(stableAppModules);
   const unexpectedModules = inventory.modules
     .map((entry) => entry.module)
     .filter((module) => module.startsWith("src/app/"))
     .filter((module) => !allowed.has(module))
     .sort();
+  const staleAllowedModules = legacyAllowedModules
+    .filter((module) => !exported.has(module))
+    .sort();
 
   return {
-    ok: unexpectedModules.length === 0,
+    ok: unexpectedModules.length === 0 && staleAllowedModules.length === 0,
     legacyAllowedModules,
     unexpectedModules,
+    staleAllowedModules,
   };
 }
 
@@ -218,6 +228,9 @@ export function formatStableAppExportValidation(validation: StableAppExportValid
   lines.push(`legacy app modules allowed: ${validation.legacyAllowedModules.length}`);
   for (const module of validation.unexpectedModules) {
     lines.push(`unexpected stable app export: ${module}`);
+  }
+  for (const module of validation.staleAllowedModules) {
+    lines.push(`stale stable app allowlist entry: ${module}`);
   }
   return lines.join("\n");
 }

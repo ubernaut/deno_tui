@@ -106,7 +106,8 @@ reports drift separately for stable, beta, experimental, and internal tiers, and
 leaking through the stable root entrypoint unless the legacy app-module allowlist in `docs/api-stable-app-modules.json`
 is intentionally updated. The current stable root still exposes older app and Workbench helper modules for
 compatibility; new Workbench implementation helpers should stay behind focused modules or app-local imports until they
-are intentionally promoted.
+are intentionally promoted. Stale entries in the app-module allowlist also fail the package check, so removing a stable
+app export must remove its compatibility-policy entry in the same change.
 `deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1
 --baseline=docs/api-stable-baseline.json`
 enforces a duplicate-free stable re-export graph with 100% JSDoc coverage and fails if the stable root API changes

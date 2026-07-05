@@ -238,7 +238,8 @@ The library core is real and valuable, but it needs clearer boundaries:
   through `src/app/workbench/mod.ts` unless they are intentionally public.
 - Package checks now grandfather the current stable `src/app/*` module set in `docs/api-stable-app-modules.json` and
   fail future stable root leaks of new app or Workbench implementation modules unless the allowlist is intentionally
-  updated with migration rationale.
+  updated with migration rationale. The same check now fails stale allowlist entries so compatibility policy shrinks
+  with future export cleanup.
 
 ## Acceptance Checks
 

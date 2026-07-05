@@ -215,6 +215,7 @@ Deno.test("package check guards stable entrypoint against new app and workbench 
   });
 
   assertEquals(current.ok, true);
+  assertEquals(current.staleAllowedModules, []);
   assertEquals(
     formatStableAppExportValidation(current),
     [
@@ -243,9 +244,32 @@ Deno.test("package check guards stable entrypoint against new app and workbench 
     "src/app/workbench/new_internal_helper.ts",
     "src/app/workbench_z_layer_experiment.ts",
   ]);
+  assertEquals(drift.staleAllowedModules, []);
   assertEquals(
     formatStableAppExportValidation(drift).includes(
       "unexpected stable app export: src/app/workbench/new_internal_helper.ts",
+    ),
+    true,
+  );
+
+  const stale = validateStableAppExports({
+    modules: [
+      { module: "mod.ts" },
+      { module: "src/app/actions.ts" },
+    ],
+  }, {
+    legacyAllowedModules: [
+      "src/app/actions.ts",
+      "src/app/workbench_removed_helper.ts",
+    ],
+  });
+
+  assertEquals(stale.ok, false);
+  assertEquals(stale.unexpectedModules, []);
+  assertEquals(stale.staleAllowedModules, ["src/app/workbench_removed_helper.ts"]);
+  assertEquals(
+    formatStableAppExportValidation(stale).includes(
+      "stale stable app allowlist entry: src/app/workbench_removed_helper.ts",
     ),
     true,
   );
