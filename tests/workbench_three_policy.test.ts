@@ -34,10 +34,6 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
     960,
   ]);
   assertEquals(Array.from(WORKBENCH_THREE_FULLSCREEN_PRESSURE_LEVELS), [
-    30,
-    60,
-    120,
-    240,
     480,
     960,
     1920,
@@ -140,6 +136,25 @@ Deno.test("API workbench Three policy backs off after sustained high-pressure te
     Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
   }
   assertEquals(state.currentCells, 240);
+  assertEquals(state.highFrames, 0);
+});
+
+Deno.test("API workbench Three fullscreen pressure keeps a useful visual floor", () => {
+  const state = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
+  const sample = {
+    ...API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY,
+    renderedThreeGrids: 1,
+    bytes: 180_000,
+    durationMs: 0.05,
+    sampleDurationMs: apiWorkbenchThreeFrameIntervalForCells(WORKBENCH_THREE_FULLSCREEN_MIN_CELLS, { live: true }),
+  };
+
+  const frames = (API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY.highFrameThreshold ?? 1) * 8;
+  for (let index = 0; index < frames; index += 1) {
+    Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
+  }
+
+  assertEquals(state.currentCells, WORKBENCH_THREE_INITIAL_CELLS);
   assertEquals(state.highFrames, 0);
 });
 
