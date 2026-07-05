@@ -1,5 +1,5 @@
 import type { CanvasStdout } from "../canvas/sink.ts";
-import { WorkbenchAnsiCursorCache } from "./workbench_ansi_cursor.ts";
+import { moveCursor } from "../utils/ansi_codes.ts";
 import { type WorkbenchAnsiScreenFlushStats, writeWorkbenchAnsiScreenOutput } from "./workbench_ansi_output.ts";
 import {
   cleanWorkbenchFrameRowFingerprint,
@@ -8,11 +8,6 @@ import {
   workbenchFrameRowRenderedHint,
 } from "./workbench_frame.ts";
 import { type ChangedSpan, changedSpansInto, snapshotChangedSpans, snapshotFrameRow } from "./workbench_ansi_spans.ts";
-import {
-  type WorkbenchAnsiScreenSpanRowCache,
-  workbenchAnsiSpanRowCleanCacheMatches,
-  workbenchAnsiSpanRowRenderedHintCacheMatches,
-} from "./workbench_ansi_span_cache.ts";
 
 interface WorkbenchAnsiScreenRowCache {
   width: number;
@@ -21,6 +16,46 @@ interface WorkbenchAnsiScreenRowCache {
 }
 
 const CLEAR_TO_END_OF_LINE = "\x1b[K";
+
+/** Small cache for repeated terminal cursor-position escape sequences. */
+class WorkbenchAnsiCursorCache {
+  #rows: string[][] = [];
+
+  move(row: number, column: number): string {
+    const safeRow = Math.max(0, Math.floor(row));
+    const safeColumn = Math.max(0, Math.floor(column));
+    const rowCache = this.#rows[safeRow] ??= [];
+    return rowCache[safeColumn] ??= moveCursor(safeRow, safeColumn);
+  }
+
+  clear(): void {
+    this.#rows.length = 0;
+  }
+}
+
+interface WorkbenchAnsiScreenSpanRowCache {
+  width: number;
+  fingerprint: string;
+  line?: string;
+}
+
+function workbenchAnsiSpanRowCleanCacheMatches(
+  cache: WorkbenchAnsiScreenSpanRowCache | undefined,
+  width: number,
+  fingerprint: string | undefined,
+): boolean {
+  return fingerprint !== undefined && cache?.width === Math.max(0, Math.floor(width)) &&
+    cache.fingerprint === fingerprint;
+}
+
+function workbenchAnsiSpanRowRenderedHintCacheMatches(
+  cache: WorkbenchAnsiScreenSpanRowCache | undefined,
+  width: number,
+  renderedHint: string | undefined,
+): boolean {
+  return renderedHint !== undefined && cache?.width === Math.max(0, Math.floor(width)) &&
+    cache.line === renderedHint;
+}
 
 export type { WorkbenchAnsiScreenFlushStats } from "./workbench_ansi_output.ts";
 
