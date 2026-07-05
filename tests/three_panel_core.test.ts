@@ -11,8 +11,8 @@ import {
   resolveOptionalThreePanelValue,
   resolveThreePanelLiveValue,
   resolveThreePanelValue,
+  ThreePanelRenderQueue,
 } from "../src/app/three_panel_core.ts";
-import { ThreePanelRenderQueue } from "../src/app/three_panel_render_queue.ts";
 import { WorkbenchThreeCadenceMeter } from "../src/app/workbench_three_cadence.ts";
 import { Signal } from "../src/signals/mod.ts";
 

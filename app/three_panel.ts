@@ -21,10 +21,12 @@ import {
   type ThreePanelInteractionState,
 } from "../src/app/three_panel_interaction.ts";
 import {
+  defaultThreePanelRenderQueue,
   isCurrentThreePanelFrame,
   ownsThreePanelFrame,
   resolveThreePanelLifecycleState,
   type ThreePanelLifecycleState,
+  ThreePanelRenderQueue,
 } from "../src/app/three_panel_core.ts";
 import {
   threePanelAdaptiveRenderCellsDiagnostic,
@@ -52,7 +54,6 @@ import {
   type ThreePanelRenderSize,
 } from "../src/app/three_panel_policy.ts";
 import { applyWorkbenchThreePanelFrameDefaults } from "../src/app/workbench_three_policy.ts";
-import { defaultThreePanelRenderQueue, ThreePanelRenderQueue } from "../src/app/three_panel_render_queue.ts";
 import {
   resolveOptionalThreePanelValue,
   resolveThreePanelLiveValue,
@@ -82,11 +83,12 @@ export {
   type ThreePanelRuntimeBudget,
   type ThreePanelRuntimeBudgetInput,
 } from "../src/app/three_panel_policy.ts";
-export { defaultThreePanelRenderQueue, ThreePanelRenderQueue } from "../src/app/three_panel_render_queue.ts";
 export {
+  defaultThreePanelRenderQueue,
   resolveOptionalThreePanelValue,
   resolveThreePanelLiveValue,
   resolveThreePanelValue,
+  ThreePanelRenderQueue,
   type ThreePanelResolvableLiveValue,
   type ThreePanelResolvableValue,
   type ThreePanelValueSignal,
