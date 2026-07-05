@@ -1183,8 +1183,8 @@ Work:
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
   - [x] Added supported Three scene metadata and labels for demo/NGE catalog data; this was later folded into
         `app/neon_three.ts` so labels and the scene factory share one ownership boundary.
-  - [x] Extracted NGE/Neon Three primitive geometry builders into `app/neon_three_geometry.ts`, keeping scene assembly
-        separate from reusable mesh/line/group construction with focused structural tests.
+  - [x] Folded NGE/Neon Three primitive geometry builders into `app/neon_three.ts`, keeping scene assembly and reusable
+        mesh/line/group construction under one demo-scene ownership boundary with focused structural tests.
   - [x] Extracted API Workbench synthetic visualization sources, source-id routing, and demo system snapshots into
         `app/workbench_synthetic.ts`, keeping fixture data out of the terminal renderer and under focused tests.
 

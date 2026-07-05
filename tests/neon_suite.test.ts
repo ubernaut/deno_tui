@@ -12,6 +12,7 @@ import {
   createHexTile,
   createLissajousTrace,
   createMapSlabMesh,
+  createNeonThreeScene,
   createPointsShell,
   createPolyline,
   createReticle,
@@ -19,8 +20,9 @@ import {
   createTopologyNode,
   createWaveRibbon,
   neonLine,
-} from "../app/neon_three_geometry.ts";
-import { createNeonThreeScene, neonThreeSceneCatalog, neonThreeSceneModeLabel } from "../app/neon_three.ts";
+  neonThreeSceneCatalog,
+  neonThreeSceneModeLabel,
+} from "../app/neon_three.ts";
 import { demos } from "../app/neon_theme.ts";
 import { colors } from "../app/neon_theme.ts";
 import {

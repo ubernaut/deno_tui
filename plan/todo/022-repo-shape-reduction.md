@@ -163,6 +163,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     together and removing a single-purpose app helper used only by the console and browser workbench demos
   - API workbench modal content helpers are folded into `app/workbench_panels.ts`, keeping shared terminal/browser
     presentation helpers together and removing another single-purpose app helper shard
+  - Neon Three geometry helpers are folded into `app/neon_three.ts`, keeping primitive scene builders with the scene
+    factory that owns them and removing a standalone app-only geometry shard
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
