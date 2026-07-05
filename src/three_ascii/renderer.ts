@@ -23,10 +23,10 @@ import {
   type ThreeAsciiComputeDispatchPlanInput,
   type ThreeAsciiComputeDispatchResources,
 } from "./compute_plan.ts";
-import { createThreeAsciiComputePipeline } from "./compute_pipeline.ts";
 import {
   applyThreeAsciiComputeResourcePlanState,
   createThreeAsciiComputeBindGroups,
+  createThreeAsciiComputePipeline,
   createThreeAsciiComputeResourcePlan,
   type ThreeAsciiComputeResourcePlanInput,
 } from "./compute_resources.ts";

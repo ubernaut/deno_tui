@@ -133,6 +133,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     `resolveSourceFramesInto` buffer API directly
   - Three ASCII compute-mode resolution is folded into `src/three_ascii/effect_state.ts`, removing an internal renderer
     shard while keeping the compute pass decision covered by the existing Three ASCII core tests
+  - Three ASCII compute-pipeline creation and caching is folded into `src/three_ascii/compute_resources.ts`, keeping
+    WebGPU pipeline and bind-group resource helpers together instead of in a standalone internal shard
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

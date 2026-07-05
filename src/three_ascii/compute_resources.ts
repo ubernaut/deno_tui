@@ -38,8 +38,18 @@ export interface ThreeAsciiComputeResourceStateResult {
 }
 
 type ThreeAsciiComputeDeviceLike = Pick<GPUDevice, "createBindGroup">;
+type ThreeAsciiComputePipelineDeviceLike = Pick<GPUDevice, "createShaderModule" | "createComputePipeline">;
 type ThreeAsciiComputePipelineLike = Pick<GPUComputePipeline, "getBindGroupLayout">;
 type ThreeAsciiComputeTextureLike = Pick<GPUTexture, "createView">;
+
+const pipelineCache = new WeakMap<object, Map<string, GPUComputePipeline>>();
+
+export interface ThreeAsciiComputePipelineOptions {
+  device: ThreeAsciiComputePipelineDeviceLike;
+  label: string;
+  code: string;
+  entryPoint?: string;
+}
 
 export interface ThreeAsciiComputeBindGroupInput {
   device: ThreeAsciiComputeDeviceLike;
@@ -106,6 +116,29 @@ export function applyThreeAsciiComputeResourcePlanState(
   };
 }
 
+export function createThreeAsciiComputePipeline(options: ThreeAsciiComputePipelineOptions): GPUComputePipeline {
+  const cache = pipelineCacheForDevice(options.device);
+  const key = computePipelineCacheKey(options);
+  const cached = cache.get(key);
+  if (cached) return cached;
+
+  const module = options.device.createShaderModule({
+    label: `${options.label}.wgsl`,
+    code: options.code,
+  });
+
+  const pipeline = options.device.createComputePipeline({
+    label: options.label,
+    layout: "auto",
+    compute: {
+      module,
+      entryPoint: options.entryPoint ?? "main",
+    },
+  });
+  cache.set(key, pipeline);
+  return pipeline;
+}
+
 export function createThreeAsciiComputeBindGroups(
   input: ThreeAsciiComputeBindGroupInput,
 ): ThreeAsciiComputeBindGroups {
@@ -116,6 +149,20 @@ export function createThreeAsciiComputeBindGroups(
   const colorBindGroup = createThreeAsciiColorBindGroup(input, downscaleView);
 
   return { fillBindGroup, edgeBindGroup, colorBindGroup };
+}
+
+function pipelineCacheForDevice(device: ThreeAsciiComputePipelineDeviceLike): Map<string, GPUComputePipeline> {
+  const key = device as object;
+  let cache = pipelineCache.get(key);
+  if (!cache) {
+    cache = new Map();
+    pipelineCache.set(key, cache);
+  }
+  return cache;
+}
+
+function computePipelineCacheKey(options: Pick<ThreeAsciiComputePipelineOptions, "code" | "entryPoint">): string {
+  return `${options.entryPoint ?? "main"}\n${options.code}`;
 }
 
 function createThreeAsciiFillBindGroup(

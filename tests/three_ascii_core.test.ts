@@ -26,10 +26,10 @@ import {
   encodeThreeAsciiComputeDispatchCommands,
   ThreeAsciiComputeDispatchPlanCache,
 } from "../src/three_ascii/compute_plan.ts";
-import { createThreeAsciiComputePipeline } from "../src/three_ascii/compute_pipeline.ts";
 import {
   applyThreeAsciiComputeResourcePlanState,
   createThreeAsciiComputeBindGroups,
+  createThreeAsciiComputePipeline,
   createThreeAsciiComputeResourcePlan,
 } from "../src/three_ascii/compute_resources.ts";
 import {
