@@ -226,6 +226,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   existing `api_workbench_controls.ts` facade export surface for terminal and browser callers.
 - Split API workbench sortable table-column traversal into `api_workbench_table_navigation.ts`, removing the data-table
   type dependency from the controls facade while preserving existing terminal/browser imports.
+- Split API workbench dropdown popover rectangle geometry into `api_workbench_dropdown_popover.ts`, leaving the controls
+  facade to re-export it for existing terminal/browser callers.
 - Added a driven fullscreen visual smoke for the API Workbench default Three pane so future checks verify fullscreen
   render-cell scale and truecolor body repainting instead of relying on text-only ANSI replay.
 - Added exact repeated `--name` benchmark selectors so Three/workbench hot-path runs can target only the intended cases
