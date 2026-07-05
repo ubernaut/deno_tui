@@ -4,7 +4,7 @@ import {
   projectedTextWidth,
   workbenchDataContentWidth,
   workbenchWindowContentSize,
-} from "../src/app/workbench_content_size.ts";
+} from "../app/workbench_panels.ts";
 
 const base = {
   id: "inspector",

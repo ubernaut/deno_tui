@@ -291,11 +291,12 @@ import { requireInteractiveTerminal } from "./terminal_guard.ts";
 import { ThreePanelFrameView } from "./three_panel.ts";
 import { createWorkbenchThreePanelFrameView } from "./three_panel.ts";
 import { workbenchDataTablePageSize, workbenchDataTableRowsInto } from "./workbench_data_table.ts";
-import { explorerTextRowsInto, workbenchWindowContentSize } from "../src/app/workbench_content_size.ts";
 import {
+  explorerTextRowsInto,
   workbenchExplorerRowsInto,
   workbenchInspectorRowsInto,
   workbenchLogRowsFromSourcesInto,
+  workbenchWindowContentSize,
 } from "./workbench_panels.ts";
 import { WorkbenchThreeGridProjectionCache, writeWorkbenchThreeGrid } from "../src/app/workbench_three_grid.ts";
 import {
