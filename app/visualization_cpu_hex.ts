@@ -1,5 +1,6 @@
 import { clamp, formatPercent } from "./styles.ts";
 import { buildVisualizationDrive } from "./visualization_drive.ts";
+import { crop } from "./visualization_primitives.ts";
 import type { PanelRender, RenderContext, Severity } from "./types.ts";
 
 type CpuCoreSnapshot = RenderContext["system"]["cpuCores"][number];
@@ -512,11 +513,6 @@ function cpuHexProcessLine(process: RenderContext["system"]["processes"][number]
     }% ${name}`,
     width,
   );
-}
-
-function crop(text: string, width: number) {
-  if (width <= 0) return "";
-  return text.length > width ? text.slice(0, Math.max(0, width - 1)) + "…" : text;
 }
 
 function formatLoadAverage(loadavg: readonly number[]): string {

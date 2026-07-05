@@ -1,5 +1,6 @@
 import { formatBytes, formatDuration, formatPercent } from "./styles.ts";
 import { buildVisualizationDrive, type VisualizationDrive } from "./visualization_drive.ts";
+import { crop } from "./visualization_primitives.ts";
 import type { Accent, PanelRender, RenderContext, Severity } from "./types.ts";
 
 export interface SystemMonitorRenderDependencies {
@@ -316,9 +317,4 @@ function alertText(context: RenderContext) {
 
 function severityForValue(value: number, warning: number, alarm: number): Severity {
   return value >= alarm ? "alarm" : value >= warning ? "warning" : "info";
-}
-
-function crop(text: string, width: number) {
-  if (width <= 0) return "";
-  return text.length > width ? text.slice(0, Math.max(0, width - 1)) + "…" : text;
 }

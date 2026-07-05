@@ -21,7 +21,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,261` lines across `43` files
   - `src/three_ascii`: `7,201` lines across `35` files
-  - `app`: `20,294` lines across `45` files
+  - `app`: `20,278` lines across `45` files
   - `examples`: `8,732` lines across `41` files
   - `tests`: `49,077` lines across `142` files
 - Generated/docs weight:
@@ -87,6 +87,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Visualization slot default ordering now lives with the visualization catalog in `app/visualization_catalog.ts`
   - System monitor process parsing and sorting now live in `app/system_metrics.ts`
   - Showcase demo rendering now reuses the Neon suite render context and synthetic snapshot path in `app/neon_suite.ts`
+  - Monitor visualization renderers now share the truncation helper from `app/visualization_primitives.ts`
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

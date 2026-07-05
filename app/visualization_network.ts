@@ -1,5 +1,6 @@
 import { formatRate } from "./styles.ts";
 import { buildVisualizationDrive, sampleSeriesValue, type VisualizationDrive } from "./visualization_drive.ts";
+import { crop } from "./visualization_primitives.ts";
 import type { Accent, PanelRender, RenderContext } from "./types.ts";
 
 export interface NetworkMonitorRenderDependencies {
@@ -219,9 +220,4 @@ function busiestNetwork(networks: RenderContext["system"]["networks"]) {
     }
     return network.rxRate + network.txRate > busiest.rxRate + busiest.txRate ? network : busiest;
   }, undefined);
-}
-
-function crop(text: string, width: number) {
-  if (width <= 0) return "";
-  return text.length > width ? text.slice(0, Math.max(0, width - 1)) + "…" : text;
 }
