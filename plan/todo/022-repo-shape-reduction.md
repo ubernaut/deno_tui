@@ -235,6 +235,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Three ASCII deferred readback queue assertions are now bundled into `tests/three_ascii_core.test.ts`
   - Three ASCII WebGPU compatibility retry/lost-device assertions are now bundled into `tests/three_ascii_core.test.ts`
   - Three ASCII preset/default option assertions are now bundled into `tests/workbench_ascii.test.ts`
+  - Standalone Three ASCII demo window geometry assertions are now bundled into `tests/three_ascii_glyphs.test.ts`
   - Workbench Kitty graphics status and tmux passthrough assertions are now bundled into `tests/kitty_graphics.test.ts`
   - Workbench Three header telemetry assertions are now bundled into `tests/workbench_three_panel.test.ts`
   - Public flex layout export assertions are now bundled into `tests/flex_layout.test.ts`
