@@ -4,6 +4,7 @@ import {
   formatWorkbenchVisualSmokeResult,
   inspectWorkbenchFullscreenVisualSmokeOutput,
   inspectWorkbenchVisualSmokeOutput,
+  parseWorkbenchVisualSmokeArgs,
   replayWorkbenchScreen,
 } from "../scripts/workbench_visual_smoke.ts";
 import { parseWorkbenchFullscreenVisualSmokeArgs } from "../scripts/workbench_fullscreen_visual_smoke.ts";
@@ -98,5 +99,12 @@ Deno.test("workbench fullscreen visual smoke parser accepts resize flags", () =>
       minCells: 1800,
       minTruecolorRows: 24,
     },
+  );
+});
+
+Deno.test("workbench visual smoke parser accepts viewport flags", () => {
+  assertEquals(
+    parseWorkbenchVisualSmokeArgs(["--columns", "160", "--rows=48", "--timeout-ms", "9000"]),
+    { columns: 160, rows: 48, timeoutMs: 9000 },
   );
 });

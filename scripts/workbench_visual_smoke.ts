@@ -37,9 +37,26 @@ const FORBIDDEN_TOKENS: readonly string[] = ["ReferenceError", "RangeError", "Ma
 const FULLSCREEN_THREE_CELL_PATTERN = /(\d+)c cap (\d+)c/;
 
 if (import.meta.main) {
-  const result = await runWorkbenchVisualSmoke();
+  const result = await runWorkbenchVisualSmoke(parseWorkbenchVisualSmokeArgs(Deno.args));
   console.log(formatWorkbenchVisualSmokeResult(result));
   if (!result.passed) Deno.exit(1);
+}
+
+export function parseWorkbenchVisualSmokeArgs(args: readonly string[]): WorkbenchVisualSmokeOptions {
+  const options: WorkbenchVisualSmokeOptions = {};
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index]!;
+    const [name, inlineValue] = arg.split("=", 2);
+    const value = inlineValue ?? args[index + 1];
+    if (inlineValue === undefined && name.startsWith("--")) index += 1;
+    if (value === undefined) continue;
+    const number = Number.parseInt(value, 10);
+    if (!Number.isFinite(number)) continue;
+    if (name === "--columns") options.columns = number;
+    else if (name === "--rows") options.rows = number;
+    else if (name === "--timeout-ms") options.timeoutMs = number;
+  }
+  return options;
 }
 
 export async function runWorkbenchVisualSmoke(
