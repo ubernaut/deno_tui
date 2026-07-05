@@ -2,14 +2,16 @@ import { assert, assertEquals } from "./deps.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import {
-  resolveThreePanelRenderSize,
-  ThreePanelAdaptiveRenderBudgetController,
   type ThreePanelFrameUpdate,
   ThreePanelFrameView,
   type ThreePanelGridRenderer,
-  ThreePanelRenderQueue,
   type ThreeSceneState,
 } from "../app/three_panel.ts";
+import { ThreePanelRenderQueue } from "../src/app/three_panel_core.ts";
+import {
+  resolveThreePanelRenderSize,
+  ThreePanelAdaptiveRenderBudgetController,
+} from "../src/app/three_panel_policy.ts";
 import { Canvas, MemoryCanvasSink, type ThreeAsciiGridRenderer, ThreeAsciiObject } from "../src/canvas/mod.ts";
 import type {
   GraphicsDeleteMode,

@@ -25,9 +25,14 @@ import {
   hasThreePanelGridCells,
   isCurrentThreePanelFrame,
   ownsThreePanelFrame,
+  resolveOptionalThreePanelValue,
   resolveThreePanelLifecycleState,
+  resolveThreePanelLiveValue,
   resolveThreePanelRendererStateUpdate,
+  resolveThreePanelValue,
   threePanelAdaptiveRenderCellsDiagnostic,
+  type ThreePanelFrameUpdate,
+  threePanelFrameUpdate,
   threePanelGraphicsFallbackDiagnostic,
   threePanelGraphicsFallbackReason,
   ThreePanelGraphicsImageController,
@@ -38,7 +43,6 @@ import {
   ThreePanelRenderQueue,
   threePanelSlowFrameDiagnostic,
 } from "../src/app/three_panel_core.ts";
-import { type ThreePanelFrameUpdate, threePanelFrameUpdate } from "../src/app/three_panel_core.ts";
 import {
   resolveThreePanelAdaptiveRenderBudget,
   resolveThreePanelRenderPolicy,
@@ -49,45 +53,10 @@ import {
   type ThreePanelRenderSize,
 } from "../src/app/three_panel_policy.ts";
 import { applyWorkbenchThreePanelFrameDefaults } from "../src/app/workbench_three_policy.ts";
-import {
-  resolveOptionalThreePanelValue,
-  resolveThreePanelLiveValue,
-  resolveThreePanelValue,
-} from "../src/app/three_panel_core.ts";
 import type { AsciiOptions, Rect, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 
 export type { ThreePanelInteractionState } from "../src/app/three_panel_interaction.ts";
 export type { ThreePanelFrameUpdate } from "../src/app/three_panel_core.ts";
-export {
-  resolveThreePanelAdaptiveRenderBudget,
-  ThreePanelAdaptiveRenderBudgetController,
-  type ThreePanelAdaptiveRenderBudgetInput,
-  type ThreePanelAdaptiveRenderBudgetResult,
-  type ThreePanelAdaptiveRenderBudgetUpdateInput,
-  type ThreePanelAdaptiveRenderBudgetUpdateResult,
-} from "../src/app/three_panel_policy.ts";
-export {
-  resolveThreePanelFrameInterval,
-  resolveThreePanelRenderPolicy,
-  resolveThreePanelRenderSize,
-  resolveThreePanelRequestedMaxCells,
-  resolveThreePanelRuntimeBudget,
-  type ThreePanelRenderPolicy,
-  type ThreePanelRenderPolicyInput,
-  type ThreePanelRenderSize,
-  type ThreePanelRuntimeBudget,
-  type ThreePanelRuntimeBudgetInput,
-} from "../src/app/three_panel_policy.ts";
-export {
-  defaultThreePanelRenderQueue,
-  resolveOptionalThreePanelValue,
-  resolveThreePanelLiveValue,
-  resolveThreePanelValue,
-  ThreePanelRenderQueue,
-  type ThreePanelResolvableLiveValue,
-  type ThreePanelResolvableValue,
-  type ThreePanelValueSignal,
-} from "../src/app/three_panel_core.ts";
 
 export interface ThreeSceneState {
   mode: ThreeSceneMode;
