@@ -2,6 +2,7 @@ import { assertEquals } from "./deps.ts";
 import { createApp } from "../src/app/app.ts";
 import { ActionBus } from "../src/app/actions.ts";
 import type { Action } from "../src/app/actions.ts";
+import { type EmitterEvent, EventEmitter } from "../src/event_emitter.ts";
 import {
   bindCommandKeymap,
   bindCommandKeys,
@@ -103,6 +104,11 @@ import { createThemeWorkspace } from "../src/theme_workspace.ts";
 import type { Tui } from "../src/tui.ts";
 import { formatBytes, formatCompactBytes, formatOptionalNumber, makeStyle } from "../app/styles.ts";
 
+type TestEmitterEvents = {
+  test: EmitterEvent<[string]>;
+  other: EmitterEvent<[]>;
+};
+
 Deno.test("makeStyle expands short hex colors without changing ANSI output", () => {
   const style = makeStyle({ fg: "#0f8", bg: "123", bold: true });
 
@@ -153,6 +159,67 @@ Deno.test("ActionBus can subscribe to a single action type", async () => {
   await bus.dispatch({ type: "append", payload: "b" });
 
   assertEquals(seen, ["a"]);
+});
+
+Deno.test("EventEmitter emits persistent and once listeners", () => {
+  const emitter = new EventEmitter<TestEmitterEvents>();
+  const seen: string[] = [];
+
+  emitter.on("test", (value) => {
+    seen.push(`on:${value}`);
+  });
+  emitter.once("test", (value) => {
+    seen.push(`once:${value}`);
+  });
+
+  emitter.emit("test", "a");
+  emitter.emit("test", "b");
+
+  assertEquals(seen, ["on:a", "once:a", "on:b"]);
+  assertEquals(emitter.listenerCount("test"), 1);
+});
+
+Deno.test("EventEmitter disposers only remove matching listeners", () => {
+  const emitter = new EventEmitter<TestEmitterEvents>();
+  const first = () => undefined;
+  const second = () => undefined;
+  const disposeFirst = emitter.on("other", first);
+  emitter.on("other", second);
+
+  emitter.off("other", (() => undefined) as typeof first);
+  assertEquals(emitter.listenerCount("other"), 2);
+
+  disposeFirst();
+  disposeFirst();
+  assertEquals(emitter.listenerCount("other"), 1);
+});
+
+Deno.test("EventEmitter exposes event names counts and inspection", () => {
+  const emitter = new EventEmitter<TestEmitterEvents>();
+  emitter.on("test", () => undefined);
+  emitter.on("test", () => undefined);
+  emitter.on("other", () => undefined);
+
+  assertEquals(emitter.listenerCount(), 3);
+  assertEquals(emitter.eventNames(), ["test", "other"]);
+  assertEquals(emitter.inspect(), {
+    eventCount: 2,
+    listenerCount: 3,
+    events: [
+      { type: "other", listenerCount: 1 },
+      { type: "test", listenerCount: 2 },
+    ],
+  });
+
+  emitter.off("test");
+  assertEquals(emitter.inspect(), {
+    eventCount: 1,
+    listenerCount: 1,
+    events: [{ type: "other", listenerCount: 1 }],
+  });
+
+  emitter.off();
+  assertEquals(emitter.inspect(), { eventCount: 0, listenerCount: 0, events: [] });
 });
 
 Deno.test("DisposableStack defers idempotent reverse-order cleanup", () => {

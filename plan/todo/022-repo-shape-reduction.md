@@ -7,23 +7,23 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `604`
+- Tracked files after the current consolidation passes: `603`
 - Tracked top-level file counts:
   - `src`: `296`
-  - `tests`: `108`
+  - `tests`: `107`
   - `app`: `29`
   - `docs`: `50`
   - `examples`: `42`
   - `scripts`: `27`
   - `plan`: `26`
 - Handwritten/code-heavy line counts:
-  - `src/app`: `24,438` lines across `75` files
-  - `src/runtime`: `11,118` lines across `34` files
-  - `src/components`: `10,261` lines across `43` files
-  - `src/three_ascii`: `6,968` lines across `23` files
-  - `app`: `20,324` lines across `29` files
-  - `examples`: `5,077` lines across `34` files
-  - `tests`: `49,198` lines across `106` top-level test files
+  - `src/app`: `24,756` lines across `77` files
+  - `src/runtime`: `11,152` lines across `34` files
+  - `src/components`: `10,304` lines across `43` files
+  - `src/three_ascii`: `6,991` lines across `23` files
+  - `app`: `20,353` lines across `29` files
+  - `examples`: `8,770` lines across `41` files
+  - `tests`: `49,371` lines across `107` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -218,6 +218,8 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Three panel cadence and render-queue helper tests are now bundled into `tests/three_panel_core.test.ts`
   - Three ASCII probe CLI helper tests are now bundled into `tests/three_ascii_probe.test.ts`
   - generic visual smoke assertions are now bundled into `tests/workbench_visual_smoke.test.ts`
+  - EventEmitter behavior tests are now bundled into `tests/app_primitives.test.ts`, removing the standalone root
+    primitive test shard without adding narrower coverage.
   - system metrics GPU, network, process, and snapshot helper tests are now `tests/system_metrics_core.test.ts`
   - small Three ASCII renderer option/profile/frame/cache helper shards are now bundled into
     `tests/three_ascii_core.test.ts`
