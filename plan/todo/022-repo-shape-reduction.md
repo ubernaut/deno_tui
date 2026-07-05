@@ -208,6 +208,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Three ASCII compute command and bind-group assertions are now bundled into `tests/three_ascii_core.test.ts`
   - Three ASCII readback assembly adapter assertions are now bundled into `tests/three_ascii_readback.test.ts`
   - Three ASCII canvas rerender range assertions are now bundled into `tests/three_ascii_diff.test.ts`
+  - Three ASCII deferred readback queue assertions are now bundled into `tests/three_ascii_core.test.ts`
   - Public flex layout export assertions are now bundled into `tests/flex_layout.test.ts`
   - Visualization panel defaults are now bundled into `tests/visualization_launcher.test.ts`
   - Workbench mobile command strip assertions are now bundled into `tests/workbench_control_layout.test.ts`
