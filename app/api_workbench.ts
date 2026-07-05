@@ -346,10 +346,12 @@ import {
   workbenchThreeWindowIsInteractive,
 } from "../src/app/workbench_three_terminal_pressure.ts";
 import {
+  apiWorkbenchThreeEffectiveMaxCells,
   apiWorkbenchThreeFrameIntervalForCells,
   WORKBENCH_THREE_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
   WORKBENCH_THREE_INITIAL_CELLS,
+  WORKBENCH_THREE_LIVE_MAX_CELLS,
 } from "../src/app/workbench_three_policy.ts";
 import {
   type WorkbenchThreePanelEntry,
@@ -687,7 +689,10 @@ const workbenchThreeFullscreenMaxCells = workbenchThreeRuntime.fullscreenMaxCell
 const workbenchThreeEffectiveMaxCells = new Computed(() => {
   const fullscreenId = maximized.value;
   if (fullscreenId && isThreeRenderedWindow(fullscreenId)) {
-    return workbenchThreeFullscreenMaxCells.value;
+    return apiWorkbenchThreeEffectiveMaxCells(workbenchThreeFullscreenMaxCells.value, {
+      fullscreenThree: true,
+      fullscreenMinCells: WORKBENCH_THREE_LIVE_MAX_CELLS,
+    });
   }
   return workbenchThreeLiveMaxCells.value;
 });
