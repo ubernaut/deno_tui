@@ -15,7 +15,6 @@ export * from "../workbench_keymap.ts";
 export * from "../workbench_menu.ts";
 export * from "../workbench_overlay.ts";
 export * from "../workbench_panel_workspace_store.ts";
-export * from "../workbench_prompt_input.ts";
 export * from "../workbench_shelf.ts";
 export * from "../workbench_status.ts";
 export * from "../workbench_terminal.ts";

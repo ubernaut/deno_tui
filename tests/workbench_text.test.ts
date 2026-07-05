@@ -1,8 +1,9 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { assertEquals } from "./deps.ts";
-import { applyWorkbenchTextPromptInput, dispatchWorkbenchTextPromptInput } from "../src/app/workbench_prompt_input.ts";
 import {
+  applyWorkbenchTextPromptInput,
   compactSpaces,
+  dispatchWorkbenchTextPromptInput,
   maxTextWidth,
   maxTextWidthBy,
   maxTrimmedTextWidth,

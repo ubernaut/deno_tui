@@ -4497,55 +4497,6 @@
       "documented": true
     },
     {
-      "module": "src/app/workbench_prompt_input.ts",
-      "name": "applyWorkbenchTextPromptInput",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/workbench_prompt_input.ts",
-      "name": "dispatchWorkbenchTextPromptInput",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/workbench_prompt_input.ts",
-      "name": "WorkbenchTextPromptInputAction",
-      "kind": "type",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/workbench_prompt_input.ts",
-      "name": "WorkbenchTextPromptInputEvent",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/workbench_prompt_input.ts",
-      "name": "WorkbenchTextPromptInputHandlers",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/workbench_prompt_input.ts",
-      "name": "WorkbenchTextPromptInputOptions",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/workbench_prompt_input.ts",
-      "name": "WorkbenchTextPromptInputResult",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
       "module": "src/app/workbench_shelf.ts",
       "name": "createWorkbenchShelfLayoutBuffers",
       "kind": "function",
@@ -5331,7 +5282,21 @@
     },
     {
       "module": "src/app/workbench_text.ts",
+      "name": "applyWorkbenchTextPromptInput",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_text.ts",
       "name": "compactSpaces",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_text.ts",
+      "name": "dispatchWorkbenchTextPromptInput",
       "kind": "function",
       "typeOnly": false,
       "documented": true
@@ -5383,6 +5348,41 @@
       "name": "visibleProjectedMenuSliceInto",
       "kind": "function",
       "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_text.ts",
+      "name": "WorkbenchTextPromptInputAction",
+      "kind": "type",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_text.ts",
+      "name": "WorkbenchTextPromptInputEvent",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_text.ts",
+      "name": "WorkbenchTextPromptInputHandlers",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_text.ts",
+      "name": "WorkbenchTextPromptInputOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_text.ts",
+      "name": "WorkbenchTextPromptInputResult",
+      "kind": "interface",
+      "typeOnly": true,
       "documented": true
     },
     {

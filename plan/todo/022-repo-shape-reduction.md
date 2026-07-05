@@ -181,6 +181,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     preserving the existing Neon scene facade
   - Workbench navigation help rows are folded into `src/app/workbench_status.ts`, keeping shortcut/help copy with the
     status presentation helpers while preserving the public workbench facade export
+  - Workbench prompt-input helpers are folded into `src/app/workbench_text.ts`, keeping single-line prompt editing with
+    the shared text utilities that already own the corresponding tests and facade export
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

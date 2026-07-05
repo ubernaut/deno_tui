@@ -24,7 +24,7 @@ import {
   applyWorkbenchTextPromptInput,
   type WorkbenchTextPromptInputEvent,
   type WorkbenchTextPromptInputResult,
-} from "./workbench_prompt_input.ts";
+} from "./workbench_text.ts";
 
 type MaybePromise<T> = T | Promise<T>;
 

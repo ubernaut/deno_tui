@@ -6,8 +6,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 ## Summary
 
 - Entrypoints: 9
-- Module visits: 501
-- Re-export declarations: 492
+- Module visits: 499
+- Re-export declarations: 490
 - Exported symbols: 5338
 - Documented symbols: 5338
 - Documentation coverage: 100.00%
@@ -18,8 +18,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     223 |    2294 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     202 |    2146 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     222 |    2294 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     201 |    2146 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      87 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
@@ -39,8 +39,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 ### Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 223
-- Re-export declarations: 222
+- Modules: 222
+- Re-export declarations: 221
 - Exported symbols: 2294
 - Documented symbols: 2294
 - Documentation coverage: 100.00%
@@ -102,17 +102,16 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                                       |          0 |      36 |         36 |
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                                 |          0 |      13 |         13 |
 | [`src/app/workbench_panel_workspace_store.ts`](#src-app-workbench-panel-workspace-store-ts)     |          0 |       8 |          8 |
-| [`src/app/workbench_prompt_input.ts`](#src-app-workbench-prompt-input-ts)                       |          0 |       7 |          7 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                                     |          0 |      20 |         20 |
 | [`src/app/workbench_status.ts`](#src-app-workbench-status-ts)                                   |          0 |      26 |         26 |
 | [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                               |          0 |      66 |         66 |
-| [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                                       |          0 |      10 |         10 |
+| [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                                       |          0 |      17 |         17 |
 | [`src/app/workbench_three_terminal_pressure.ts`](#src-app-workbench-three-terminal-pressure-ts) |          0 |      25 |         25 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                               |          0 |      10 |         10 |
 | [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)                 |          0 |      27 |         27 |
 | [`src/app/workbench_workspace_store.ts`](#src-app-workbench-workspace-store-ts)                 |          0 |       6 |          6 |
 | [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)                             |          0 |      18 |         18 |
-| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                         |         20 |       0 |          0 |
+| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                         |         19 |       0 |          0 |
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                                       |          0 |       2 |          2 |
 | [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                                 |          0 |       4 |          4 |
 | [`src/canvas/dirty_region.ts`](#src-canvas-dirty-region-ts)                                     |          0 |       3 |          3 |
@@ -1250,18 +1249,6 @@ _No direct exported symbols._
 | `WorkbenchPanelWorkspaceCache`               | interface | yes       | yes   |
 | `WorkbenchPanelWorkspaceStorageDiagnostics`  | interface | yes       | yes   |
 
-#### src/app/workbench_prompt_input.ts
-
-| Symbol                             | Kind      | Type Only | JSDoc |
-| ---------------------------------- | --------- | --------- | ----- |
-| `applyWorkbenchTextPromptInput`    | function  | no        | yes   |
-| `dispatchWorkbenchTextPromptInput` | function  | no        | yes   |
-| `WorkbenchTextPromptInputAction`   | type      | yes       | yes   |
-| `WorkbenchTextPromptInputEvent`    | interface | yes       | yes   |
-| `WorkbenchTextPromptInputHandlers` | interface | yes       | yes   |
-| `WorkbenchTextPromptInputOptions`  | interface | yes       | yes   |
-| `WorkbenchTextPromptInputResult`   | interface | yes       | yes   |
-
 #### src/app/workbench_shelf.ts
 
 | Symbol                                | Kind      | Type Only | JSDoc |
@@ -1391,18 +1378,25 @@ _No direct exported symbols._
 
 #### src/app/workbench_text.ts
 
-| Symbol                          | Kind      | Type Only | JSDoc |
-| ------------------------------- | --------- | --------- | ----- |
-| `compactSpaces`                 | function  | no        | yes   |
-| `maxTextWidth`                  | function  | no        | yes   |
-| `maxTextWidthBy`                | function  | no        | yes   |
-| `maxTrimmedTextWidth`           | function  | no        | yes   |
-| `visibleMenuSlice`              | function  | no        | yes   |
-| `VisibleMenuSlice`              | interface | yes       | yes   |
-| `visibleMenuSliceInto`          | function  | no        | yes   |
-| `visibleProjectedMenuSliceInto` | function  | no        | yes   |
-| `wrapPlainText`                 | function  | no        | yes   |
-| `wrapPlainTextInto`             | function  | no        | yes   |
+| Symbol                             | Kind      | Type Only | JSDoc |
+| ---------------------------------- | --------- | --------- | ----- |
+| `applyWorkbenchTextPromptInput`    | function  | no        | yes   |
+| `compactSpaces`                    | function  | no        | yes   |
+| `dispatchWorkbenchTextPromptInput` | function  | no        | yes   |
+| `maxTextWidth`                     | function  | no        | yes   |
+| `maxTextWidthBy`                   | function  | no        | yes   |
+| `maxTrimmedTextWidth`              | function  | no        | yes   |
+| `visibleMenuSlice`                 | function  | no        | yes   |
+| `VisibleMenuSlice`                 | interface | yes       | yes   |
+| `visibleMenuSliceInto`             | function  | no        | yes   |
+| `visibleProjectedMenuSliceInto`    | function  | no        | yes   |
+| `WorkbenchTextPromptInputAction`   | type      | yes       | yes   |
+| `WorkbenchTextPromptInputEvent`    | interface | yes       | yes   |
+| `WorkbenchTextPromptInputHandlers` | interface | yes       | yes   |
+| `WorkbenchTextPromptInputOptions`  | interface | yes       | yes   |
+| `WorkbenchTextPromptInputResult`   | interface | yes       | yes   |
+| `wrapPlainText`                    | function  | no        | yes   |
+| `wrapPlainTextInto`                | function  | no        | yes   |
 
 #### src/app/workbench_three_terminal_pressure.ts
 
@@ -1529,7 +1523,6 @@ _No direct exported symbols._
 | `src/app/workbench_menu.ts`                    | star | -     |
 | `src/app/workbench_overlay.ts`                 | star | -     |
 | `src/app/workbench_panel_workspace_store.ts`   | star | -     |
-| `src/app/workbench_prompt_input.ts`            | star | -     |
 | `src/app/workbench_shelf.ts`                   | star | -     |
 | `src/app/workbench_status.ts`                  | star | -     |
 | `src/app/workbench_terminal.ts`                | star | -     |
@@ -3948,8 +3941,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 ### Summary
 
 - Entrypoint: `mod.web.ts`
-- Modules: 202
-- Re-export declarations: 201
+- Modules: 201
+- Re-export declarations: 200
 - Exported symbols: 2146
 - Documented symbols: 2146
 - Documentation coverage: 100.00%
@@ -4011,17 +4004,16 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                                       |          0 |      36 |         36 |
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                                 |          0 |      13 |         13 |
 | [`src/app/workbench_panel_workspace_store.ts`](#src-app-workbench-panel-workspace-store-ts)     |          0 |       8 |          8 |
-| [`src/app/workbench_prompt_input.ts`](#src-app-workbench-prompt-input-ts)                       |          0 |       7 |          7 |
 | [`src/app/workbench_shelf.ts`](#src-app-workbench-shelf-ts)                                     |          0 |      20 |         20 |
 | [`src/app/workbench_status.ts`](#src-app-workbench-status-ts)                                   |          0 |      26 |         26 |
 | [`src/app/workbench_terminal.ts`](#src-app-workbench-terminal-ts)                               |          0 |      66 |         66 |
-| [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                                       |          0 |      10 |         10 |
+| [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                                       |          0 |      17 |         17 |
 | [`src/app/workbench_three_terminal_pressure.ts`](#src-app-workbench-three-terminal-pressure-ts) |          0 |      25 |         25 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                               |          0 |      10 |         10 |
 | [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)                 |          0 |      27 |         27 |
 | [`src/app/workbench_workspace_store.ts`](#src-app-workbench-workspace-store-ts)                 |          0 |       6 |          6 |
 | [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)                             |          0 |      18 |         18 |
-| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                         |         20 |       0 |          0 |
+| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                         |         19 |       0 |          0 |
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                                       |          0 |       2 |          2 |
 | [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                                 |          0 |       4 |          4 |
 | [`src/canvas/draw_object.ts`](#src-canvas-draw-object-ts)                                       |          0 |       2 |          2 |
@@ -5157,18 +5149,6 @@ _No direct exported symbols._
 | `WorkbenchPanelWorkspaceCache`               | interface | yes       | yes   |
 | `WorkbenchPanelWorkspaceStorageDiagnostics`  | interface | yes       | yes   |
 
-#### src/app/workbench_prompt_input.ts
-
-| Symbol                             | Kind      | Type Only | JSDoc |
-| ---------------------------------- | --------- | --------- | ----- |
-| `applyWorkbenchTextPromptInput`    | function  | no        | yes   |
-| `dispatchWorkbenchTextPromptInput` | function  | no        | yes   |
-| `WorkbenchTextPromptInputAction`   | type      | yes       | yes   |
-| `WorkbenchTextPromptInputEvent`    | interface | yes       | yes   |
-| `WorkbenchTextPromptInputHandlers` | interface | yes       | yes   |
-| `WorkbenchTextPromptInputOptions`  | interface | yes       | yes   |
-| `WorkbenchTextPromptInputResult`   | interface | yes       | yes   |
-
 #### src/app/workbench_shelf.ts
 
 | Symbol                                | Kind      | Type Only | JSDoc |
@@ -5298,18 +5278,25 @@ _No direct exported symbols._
 
 #### src/app/workbench_text.ts
 
-| Symbol                          | Kind      | Type Only | JSDoc |
-| ------------------------------- | --------- | --------- | ----- |
-| `compactSpaces`                 | function  | no        | yes   |
-| `maxTextWidth`                  | function  | no        | yes   |
-| `maxTextWidthBy`                | function  | no        | yes   |
-| `maxTrimmedTextWidth`           | function  | no        | yes   |
-| `visibleMenuSlice`              | function  | no        | yes   |
-| `VisibleMenuSlice`              | interface | yes       | yes   |
-| `visibleMenuSliceInto`          | function  | no        | yes   |
-| `visibleProjectedMenuSliceInto` | function  | no        | yes   |
-| `wrapPlainText`                 | function  | no        | yes   |
-| `wrapPlainTextInto`             | function  | no        | yes   |
+| Symbol                             | Kind      | Type Only | JSDoc |
+| ---------------------------------- | --------- | --------- | ----- |
+| `applyWorkbenchTextPromptInput`    | function  | no        | yes   |
+| `compactSpaces`                    | function  | no        | yes   |
+| `dispatchWorkbenchTextPromptInput` | function  | no        | yes   |
+| `maxTextWidth`                     | function  | no        | yes   |
+| `maxTextWidthBy`                   | function  | no        | yes   |
+| `maxTrimmedTextWidth`              | function  | no        | yes   |
+| `visibleMenuSlice`                 | function  | no        | yes   |
+| `VisibleMenuSlice`                 | interface | yes       | yes   |
+| `visibleMenuSliceInto`             | function  | no        | yes   |
+| `visibleProjectedMenuSliceInto`    | function  | no        | yes   |
+| `WorkbenchTextPromptInputAction`   | type      | yes       | yes   |
+| `WorkbenchTextPromptInputEvent`    | interface | yes       | yes   |
+| `WorkbenchTextPromptInputHandlers` | interface | yes       | yes   |
+| `WorkbenchTextPromptInputOptions`  | interface | yes       | yes   |
+| `WorkbenchTextPromptInputResult`   | interface | yes       | yes   |
+| `wrapPlainText`                    | function  | no        | yes   |
+| `wrapPlainTextInto`                | function  | no        | yes   |
 
 #### src/app/workbench_three_terminal_pressure.ts
 
@@ -5436,7 +5423,6 @@ _No direct exported symbols._
 | `src/app/workbench_menu.ts`                    | star | -     |
 | `src/app/workbench_overlay.ts`                 | star | -     |
 | `src/app/workbench_panel_workspace_store.ts`   | star | -     |
-| `src/app/workbench_prompt_input.ts`            | star | -     |
 | `src/app/workbench_shelf.ts`                   | star | -     |
 | `src/app/workbench_status.ts`                  | star | -     |
 | `src/app/workbench_terminal.ts`                | star | -     |
