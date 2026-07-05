@@ -103,7 +103,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Workbench Three fullscreen/runtime ASCII budget policy now lives in `src/app/workbench_three_policy.ts`
   - Neon Three scene catalog labels now live with the scene factory in `app/neon_three.ts`
   - Workbench mobile command strip projection now lives in `src/app/workbench_control_layout.ts`
-  - Visualization slot default ordering now lives with the visualization catalog in `app/visualization_catalog.ts`
+  - Visualization slot default ordering now lives with the visualization facade in `app/visualizations.ts`
   - System monitor process parsing and sorting now live in `app/system_metrics.ts`
   - Showcase demo rendering now reuses the Neon suite render context and synthetic snapshot path in `app/neon_suite.ts`
   - Monitor visualization renderers now share the truncation helper from `app/visualization_primitives.ts`
@@ -165,6 +165,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     presentation helpers together and removing another single-purpose app helper shard
   - Neon Three geometry helpers are folded into `app/neon_three.ts`, keeping primitive scene builders with the scene
     factory that owns them and removing a standalone app-only geometry shard
+  - Visualization catalog metadata and slot ordering are folded into `app/visualizations.ts`, keeping catalog, family
+    lookup, ordering, and render dispatch behind one stable visualization facade
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

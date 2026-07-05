@@ -12,10 +12,12 @@ import {
   renderVisualization,
   selectedCpuHexTilesWith,
   topCpuProcessLabelForCpu,
+  visualizationCatalog,
+  visualizationFamily,
   visualizations,
+  visualizationsByFamily,
   visualizationUsesThreeRenderer,
 } from "../app/visualizations.ts";
-import { visualizationCatalog, visualizationFamily, visualizationsByFamily } from "../app/visualization_catalog.ts";
 import type { RenderContext, SlotConfig, SourceFrame, SystemSnapshot } from "../app/types.ts";
 import { createWorkbenchVisualizationWindowOptions } from "../src/app/workbench_window_registry.ts";
 import { stripStyles, textWidth } from "../src/utils/strings.ts";
