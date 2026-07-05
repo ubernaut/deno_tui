@@ -38,25 +38,6 @@ import {
   workbenchTerminalToolbarItemsInto,
   workbenchTerminalToolbarStateFromSnapshot,
 } from "../src/app/workbench/mod.ts";
-import {
-  terminalAnsiColor,
-  terminalCellStyle,
-  terminalOutputLineStyle,
-  terminalStatusToneColor,
-  type WorkbenchTerminalTheme,
-} from "../src/app/workbench_terminal_style.ts";
-
-const terminalTheme: WorkbenchTerminalTheme = {
-  accent: "#66d9ef",
-  background: "#090909",
-  borderStrong: "#ae81ff",
-  danger: "#f92672",
-  good: "#a6e22e",
-  panelSoft: "#202020",
-  surface: "#111111",
-  text: "#f8f8f2",
-  warn: "#e6db74",
-};
 
 Deno.test("resolveWorkbenchTerminalProcessInputModeToggle leaves workbench mode when process is stopped", () => {
   assertEquals(resolveWorkbenchTerminalProcessInputModeToggle({ mode: "workbench", running: false }), {
@@ -64,60 +45,6 @@ Deno.test("resolveWorkbenchTerminalProcessInputModeToggle leaves workbench mode 
     changed: false,
     message: "terminal raw input requires running process",
   });
-});
-
-Deno.test("terminalAnsiColor maps foreground and background ANSI codes to theme colors", () => {
-  assertEquals(terminalAnsiColor(30, terminalTheme, false), terminalTheme.background);
-  assertEquals(terminalAnsiColor(31, terminalTheme, false), terminalTheme.danger);
-  assertEquals(terminalAnsiColor(32, terminalTheme, false), terminalTheme.good);
-  assertEquals(terminalAnsiColor(33, terminalTheme, false), terminalTheme.warn);
-  assertEquals(terminalAnsiColor(34, terminalTheme, false), terminalTheme.accent);
-  assertEquals(terminalAnsiColor(35, terminalTheme, false), terminalTheme.borderStrong);
-  assertEquals(terminalAnsiColor(36, terminalTheme, false), terminalTheme.accent);
-  assertEquals(terminalAnsiColor(37, terminalTheme, false), terminalTheme.text);
-  assertEquals(terminalAnsiColor(44, terminalTheme, true), terminalTheme.accent);
-  assertEquals(terminalAnsiColor(undefined, terminalTheme, false), undefined);
-  assertEquals(terminalAnsiColor(99, terminalTheme, false), undefined);
-});
-
-Deno.test("terminalCellStyle uses defaults, ANSI colors, bold, and cursor override", () => {
-  assertEquals(terminalCellStyle({}, terminalTheme, false), {
-    fg: terminalTheme.text,
-    bg: terminalTheme.surface,
-    bold: undefined,
-  });
-  assertEquals(terminalCellStyle({ foreground: 31, background: 42, bold: true }, terminalTheme, false), {
-    fg: terminalTheme.danger,
-    bg: terminalTheme.good,
-    bold: true,
-  });
-  assertEquals(terminalCellStyle({ foreground: 31, background: 42 }, terminalTheme, true), {
-    fg: terminalTheme.background,
-    bg: terminalTheme.accent,
-    bold: true,
-  });
-});
-
-Deno.test("terminalOutputLineStyle maps process streams to readable theme styles", () => {
-  assertEquals(terminalOutputLineStyle("stdout", terminalTheme), { fg: terminalTheme.text, bg: terminalTheme.surface });
-  assertEquals(terminalOutputLineStyle("stderr", terminalTheme), {
-    fg: terminalTheme.danger,
-    bg: terminalTheme.surface,
-    bold: true,
-  });
-  assertEquals(terminalOutputLineStyle("system", terminalTheme), {
-    fg: terminalTheme.warn,
-    bg: terminalTheme.panelSoft,
-    bold: true,
-  });
-});
-
-Deno.test("terminalStatusToneColor maps runtime terminal states to theme colors", () => {
-  assertEquals(terminalStatusToneColor("running", terminalTheme), terminalTheme.good);
-  assertEquals(terminalStatusToneColor("failed", terminalTheme), terminalTheme.danger);
-  assertEquals(terminalStatusToneColor("cancelled", terminalTheme), terminalTheme.warn);
-  assertEquals(terminalStatusToneColor("starting", terminalTheme), terminalTheme.accent);
-  assertEquals(terminalStatusToneColor("idle", terminalTheme), terminalTheme.borderStrong);
 });
 
 Deno.test("resolveWorkbenchTerminalProcessInputModeToggle enters and exits raw mode", () => {

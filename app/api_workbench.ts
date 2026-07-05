@@ -153,7 +153,11 @@ import {
   terminalMouseRoutingFromPrivateModes,
 } from "../src/app/terminal_input.ts";
 import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
-import { formatProcessCommandLine, ProcessSessionController } from "../src/runtime/process_session.ts";
+import {
+  formatProcessCommandLine,
+  ProcessSessionController,
+  type ProcessSessionStatus,
+} from "../src/runtime/process_session.ts";
 import { FrameScheduler } from "../src/runtime/render_loop.ts";
 import { type TerminalBackend } from "../src/runtime/terminal_backend.ts";
 import type { TerminalShellController } from "../src/runtime/terminal_shell.ts";
@@ -164,13 +168,9 @@ import {
   formatTerminalShellWindowTitle,
   summarizeTerminalStatus,
   terminalInputModeDisplayLabel,
+  terminalStatusTone,
 } from "../src/runtime/terminal_status.ts";
 import { shellTerminalTemplate } from "../src/runtime/terminal_templates.ts";
-import {
-  terminalCellStyle,
-  terminalOutputLineStyle,
-  terminalStatusToneColor,
-} from "../src/app/workbench_terminal_style.ts";
 import { Computed, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
 import { Tui } from "../src/tui.ts";
@@ -451,6 +451,11 @@ type TerminalShellAction = WorkbenchTerminalToolbarAction;
 type ButtonTone = WorkbenchButtonTone;
 
 type ThemeSpec = ApiWorkbenchThemeSpec;
+interface TerminalCellStyleInput {
+  foreground?: number;
+  background?: number;
+  bold?: boolean;
+}
 type ProcessRow = ApiWorkbenchProcessRow;
 
 type NewWindowOption = WorkbenchWindowOption;
@@ -459,6 +464,69 @@ type SavedWorkspace = WorkbenchWorkspace<AsciiOptions>;
 type SavedWorkspaceWindow = WorkbenchWorkspaceWindow<AsciiOptions>;
 
 type WorkspaceNameMode = "save" | "rename";
+
+function terminalOutputLineStyle(
+  source: "stdout" | "stderr" | "system",
+  t: ThemeSpec,
+): { fg: string; bg: string; bold?: boolean } {
+  if (source === "stderr") return { fg: t.danger, bg: t.surface, bold: true };
+  if (source === "system") return { fg: t.warn, bg: t.panelSoft, bold: true };
+  return { fg: t.text, bg: t.surface };
+}
+
+function terminalStatusToneColor(status: ProcessSessionStatus | "starting" | undefined, t: ThemeSpec): string {
+  switch (terminalStatusTone(status)) {
+    case "good":
+      return t.good;
+    case "danger":
+      return t.danger;
+    case "warning":
+      return t.warn;
+    case "accent":
+      return t.accent;
+    case "muted":
+      return t.borderStrong;
+  }
+}
+
+function terminalAnsiColor(code: number | undefined, t: ThemeSpec, background: boolean): string | undefined {
+  if (code === undefined) return undefined;
+  const normalized = background ? code - 40 : code - 30;
+  switch (normalized) {
+    case 0:
+      return t.background;
+    case 1:
+      return t.danger;
+    case 2:
+      return t.good;
+    case 3:
+      return t.warn;
+    case 4:
+      return t.accent;
+    case 5:
+      return t.borderStrong;
+    case 6:
+      return t.accent;
+    case 7:
+      return t.text;
+    default:
+      return undefined;
+  }
+}
+
+function terminalCellStyle(
+  cell: TerminalCellStyleInput,
+  t: ThemeSpec,
+  cursor: boolean,
+): { fg: string; bg: string; bold?: boolean } {
+  if (cursor) return { fg: t.background, bg: t.accent, bold: true };
+  return {
+    fg: terminalAnsiColor(cell.foreground, t, false) ?? t.text,
+    bg: terminalAnsiColor(cell.background, t, true) ?? t.surface,
+    bold: cell.bold,
+  };
+}
+
 const terminalOutputButtonBuffers = new WorkbenchButtonRowBufferCache<TerminalOutputAction>();
 const terminalShellButtonBuffers = new WorkbenchButtonRowBufferCache<TerminalShellAction>();
 const terminalShellSessionTabBuffers = new WorkbenchTerminalSessionTabBufferCache();

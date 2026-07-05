@@ -7,9 +7,9 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `655`
+- Tracked files after the current consolidation passes: `654`
 - Tracked top-level file counts:
-  - `src`: `317`
+  - `src`: `316`
   - `tests`: `130`
   - `app`: `38`
   - `docs`: `49`
@@ -17,13 +17,13 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `scripts`: `27`
   - `plan`: `26`
 - Handwritten/code-heavy line counts:
-  - `src/app`: `24,229` lines across `85` files
+  - `src/app`: `24,133` lines across `84` files
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,261` lines across `43` files
   - `src/three_ascii`: `7,201` lines across `35` files
-  - `app`: `20,302` lines across `38` files
+  - `app`: `20,371` lines across `38` files
   - `examples`: `8,732` lines across `41` files
-  - `tests`: `49,056` lines across `127` top-level test files
+  - `tests`: `48,983` lines across `127` top-level test files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `26MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -127,6 +127,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     menu behavior and persistence policy together instead of in a separate app-only config shard
   - Three panel graphics-handle and grid-publication helpers are folded into `src/app/three_panel_core.ts`, keeping
     frame ownership, grid publishing, and raster-image lifecycle logic in one Three panel core module
+  - API workbench terminal paint helpers are now private to `app/api_workbench.ts`, avoiding a reusable `src/app` shard
+    for renderer-specific color mapping that is not part of the public terminal API
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
