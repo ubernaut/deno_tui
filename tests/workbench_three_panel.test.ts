@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "./deps.ts";
+import { assert, assertEquals, assertStrictEquals } from "./deps.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import {
@@ -7,7 +7,12 @@ import {
   type ThreeSceneState,
 } from "../app/three_panel.ts";
 import { WorkbenchThreeViewportInteractionController } from "../src/app/workbench_three_interaction.ts";
+import {
+  type WorkbenchThreePanelEntry,
+  WorkbenchThreePanelRegistry,
+} from "../src/app/workbench_three_panel_registry.ts";
 import { applyWorkbenchThreePanelFrameDefaults } from "../src/app/workbench_three_policy.ts";
+import type { WorkbenchThreeScene } from "../src/app/workbench_three_scene.ts";
 import type { TerminalGlyphStyle } from "../src/three_ascii/glyphs.ts";
 import type {
   ThreeAsciiRendererOptions,
@@ -104,6 +109,52 @@ Deno.test("WorkbenchThreeViewportInteractionController zooms hovered viewport", 
   assertEquals(harness.controller.handleScroll({ x: 0, y: 0, scroll: 1 }), false);
 });
 
+Deno.test("WorkbenchThreePanelRegistry lazily creates and reuses panel entries", () => {
+  let created = 0;
+  const registry = new WorkbenchThreePanelRegistry((id: string) => {
+    created += 1;
+    return fakeRegistryEntry(id);
+  });
+
+  const first = registry.ensure("viz:one");
+  const second = registry.ensure("viz:one");
+
+  assertStrictEquals(first, second);
+  assertEquals(created, 1);
+  assertEquals(registry.get("viz:one"), first);
+});
+
+Deno.test("WorkbenchThreePanelRegistry hides panels outside the visible set", () => {
+  const registry = new WorkbenchThreePanelRegistry(fakeRegistryEntry);
+  const visible = registry.ensure("viz:visible");
+  const hidden = registry.ensure("viz:hidden");
+
+  registry.hideExcept(new Set(["viz:visible"]));
+
+  assertEquals(visible.scene.peek()?.mode, "studio");
+  assertEquals(visible.rectangle.peek(), { column: 2, row: 3, width: 4, height: 5 });
+  assertEquals(hidden.scene.peek(), null);
+  assertEquals(hidden.rectangle.peek(), { column: 0, row: 0, width: 0, height: 0 });
+  assertEquals(hidden.graphicsRectangle.peek(), { column: 0, row: 0, width: 0, height: 0 });
+});
+
+Deno.test("WorkbenchThreePanelRegistry disposes individual entries and clears all entries", () => {
+  const registry = new WorkbenchThreePanelRegistry(fakeRegistryEntry);
+  const one = registry.ensure("viz:one");
+  const two = registry.ensure("viz:two");
+
+  registry.dispose("viz:one");
+  assertEquals(one.panel.disposed, 1);
+  assertEquals((one.scene as FakeRegistrySignal<WorkbenchThreeScene | null>).disposed, 1);
+  assertEquals(registry.get("viz:one"), undefined);
+  assertEquals(two.panel.disposed, 0);
+
+  registry.clear();
+  assertEquals(two.panel.disposed, 1);
+  assertEquals((two.scene as FakeRegistrySignal<WorkbenchThreeScene | null>).disposed, 1);
+  assertEquals(registry.entries.size, 0);
+});
+
 function sceneState(): ThreeSceneState {
   return {
     mode: "studio",
@@ -150,6 +201,27 @@ function press(
     movementX: 0,
     movementY: 0,
     ...options,
+  };
+}
+
+function fakeRegistryEntry(id: string): WorkbenchThreePanelEntry<FakeRegistryPanel, WorkbenchThreeScene> {
+  return {
+    rectangle: new FakeRegistrySignal({ column: 2, row: 3, width: 4, height: 5 }),
+    graphicsRectangle: new FakeRegistrySignal({ column: 8, row: 9, width: 10, height: 11 }),
+    scene: new FakeRegistrySignal<WorkbenchThreeScene | null>({
+      mode: "studio",
+      signal: {
+        x: id.length,
+        y: 0,
+        depth: 0,
+        twist: 0,
+        lift: 0,
+        pulse: 0,
+        active: true,
+        pressed: false,
+      },
+    }),
+    panel: new FakeRegistryPanel(),
   };
 }
 
@@ -224,5 +296,31 @@ class FakeInteractivePanel {
 
   zoomBy(scrollSteps: number): void {
     this.zooms.push(scrollSteps);
+  }
+}
+
+class FakeRegistryPanel {
+  disposed = 0;
+
+  dispose(): void {
+    this.disposed += 1;
+  }
+}
+
+class FakeRegistrySignal<T> {
+  disposed = 0;
+
+  constructor(private current: T) {}
+
+  peek(): T {
+    return this.current;
+  }
+
+  set value(next: T) {
+    this.current = next;
+  }
+
+  dispose(): void {
+    this.disposed += 1;
   }
 }
