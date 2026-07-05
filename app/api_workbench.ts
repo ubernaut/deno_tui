@@ -54,6 +54,7 @@ import {
   resolveWorkbenchTerminalOutputKeyAction,
   resolveWorkbenchTerminalShellKeyAction,
   subscribeWorkbenchDiagnosticLog,
+  syncWorkbenchTerminalSize,
   translateHitTargets,
   workbenchAdaptiveWindowLayout,
   type WorkbenchAnsiScreenFlushStats,
@@ -73,6 +74,8 @@ import {
   type WorkbenchMenuBarHitLayout,
   workbenchModalActionButtonsInto,
   workbenchModalRowRenderCommandsInto,
+  workbenchScreenHeight,
+  workbenchScreenWidth,
   type WorkbenchScrollbarRenderCommand,
   workbenchShelfEntriesInto,
   workbenchShelfRenderCommandsInto,
@@ -4665,22 +4668,16 @@ function theme(): ThemeSpec {
 }
 
 function currentWidth(): number {
-  return Math.max(1, tui.rectangle.value.width);
+  return workbenchScreenWidth(tui.rectangle.value);
 }
 
 function currentHeight(): number {
-  return Math.max(1, tui.rectangle.value.height);
+  return workbenchScreenHeight(tui.rectangle.value);
 }
 
 function syncTerminalSize(): boolean {
-  try {
-    const { columns, rows } = Deno.consoleSize();
-    const size = tui.canvas.size.peek();
-    if (size.columns === columns && size.rows === rows) return false;
-    tui.canvas.size.value = { columns, rows };
-    screenPainter.reset();
-    return true;
-  } catch {
-    return false;
-  }
+  const result = syncWorkbenchTerminalSize(tui.canvas.size);
+  if (!result.changed) return false;
+  screenPainter.reset();
+  return true;
 }

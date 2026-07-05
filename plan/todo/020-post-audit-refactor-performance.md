@@ -223,7 +223,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   render-cell scale and truecolor body repainting instead of relying on text-only ANSI replay.
 - Added exact repeated `--name` benchmark selectors so Three/workbench hot-path runs can target only the intended cases
   instead of accidentally running the full catalog.
-  used by the policy.
+- Extracted API Workbench terminal screen-size synchronization into a tested helper so resize polling, clamping, and
+  console-size failures are covered outside the oversized terminal workbench renderer.
 - Lowered the workbench Three sustained terminal byte-rate pressure threshold to make the default block renderer back
   off from 480 to 240 cells after measured ~104KB/s output repeats on slower terminal sessions.
 - Added an adaptive mode to the workbench Three pressure probe so it can run the same closed-loop terminal pressure
