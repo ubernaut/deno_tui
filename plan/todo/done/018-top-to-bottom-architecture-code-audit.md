@@ -131,8 +131,8 @@ Work:
         browser adapters no longer maintain duplicate demo model fixtures.
   - [x] Reused the web API Workbench's long-lived `WorkbenchController.windows` for workspace layout instead of
         constructing and disposing a `WindowManagerController` during every draw.
-  - [x] Promoted immutable bounded log-row append into `workbench_status.ts` and moved terminal/web workbench
-        command logs off local spread/slice trimming.
+  - [x] Promoted immutable bounded log-row append into `workbench_status.ts` and moved terminal/web workbench command
+        logs off local spread/slice trimming.
   - [x] Extracted per-window content scrollbar rectangle projection into the shared workbench layout module so terminal
         and future browser window adapters use one geometry contract for vertical and horizontal overflow chrome.
   - [x] Added shared string-backed frame row writing in `workbench_frame.ts` and moved the web API Workbench off its
@@ -1181,8 +1181,8 @@ Work:
   - [x] Reworked workbench ASCII config helper formatting and closest-value lookup to avoid iterator tuple and map/join
         allocation in modal redraw paths.
 - [x] Make demo-only assets and NGE-inspired primitives clearly separate from library APIs.
-  - [x] Added `app/neon_three_catalog.ts` for supported Three scene metadata and labels, keeping demo/NGE catalog data
-        separate from the monolithic scene factory and shared by visualization footers plus scene coverage tests.
+  - [x] Added supported Three scene metadata and labels for demo/NGE catalog data; this was later folded into
+        `app/neon_three.ts` so labels and the scene factory share one ownership boundary.
   - [x] Extracted NGE/Neon Three primitive geometry builders into `app/neon_three_geometry.ts`, keeping scene assembly
         separate from reusable mesh/line/group construction with focused structural tests.
   - [x] Extracted API Workbench synthetic visualization sources, source-id routing, and demo system snapshots into

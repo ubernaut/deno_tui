@@ -1,4 +1,4 @@
-import { neonThreeSceneModeLabel } from "./neon_three_catalog.ts";
+import { neonThreeSceneModeLabel } from "./neon_three.ts";
 import { clamp } from "./styles.ts";
 import type { RenderContext, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 import type { VisualizationDrive } from "./visualization_drive.ts";

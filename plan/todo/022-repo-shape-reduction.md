@@ -7,11 +7,11 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `732`
+- Tracked files after the current consolidation passes: `731`
 - Tracked top-level file counts:
   - `src`: `349`
   - `tests`: `164`
-  - `app`: `48`
+  - `app`: `47`
   - `docs`: `50`
   - `examples`: `42`
   - `scripts`: `27`
@@ -21,7 +21,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,261` lines across `43` files
   - `src/three_ascii`: `7,188` lines across `37` files
-  - `app`: `20,427` lines across `48` files
+  - `app`: `20,426` lines across `47` files
   - `examples`: `8,732` lines across `41` files
   - `tests`: `49,244` lines across `164` files
 - Generated/docs weight:
@@ -80,6 +80,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Workbench diagnostic status/log formatting now lives in `src/app/workbench_status.ts`
   - Workbench Three window-state resolution now lives in `src/app/workbench_three_policy.ts`
   - Workbench Three fullscreen/runtime ASCII budget policy now lives in `src/app/workbench_three_policy.ts`
+  - Neon Three scene catalog labels now live with the scene factory in `app/neon_three.ts`
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
@@ -130,9 +131,9 @@ The library core is real and valuable, but it needs clearer boundaries:
 - Continue using benchmark cases for hot helpers, but treat live probes as required evidence:
   - `deno task three-workbench:startup-probe`
   - `deno task three-ascii:live-probe -- --frames 45 --glyphs blocks --max-cells 960 --check --max-average-ms 40`
-- Latest workbench block-mode startup probe after the workbench Three policy consolidation: `6.86ms` steady average,
-  about `145.8 fps` at `53x17` cells with the capped default-workbench probe. Latest standalone block-mode live probe:
-  `18.88ms` steady average, about `53.0 fps` at `31x15` cells.
+- Latest workbench block-mode startup probe after the Neon Three catalog consolidation: `7.65ms` steady average, about
+  `130.7 fps` at `53x17` cells with the capped default-workbench probe. Latest standalone block-mode live probe:
+  `18.12ms` steady average, about `55.2 fps` at `31x15` cells.
 - Avoid speculative micro-optimizations unless they improve measured workbench/default-demo behavior.
 
 ### P2: Split Demo Framework From Library Framework

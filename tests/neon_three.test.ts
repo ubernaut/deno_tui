@@ -1,7 +1,6 @@
 import { assert } from "./deps.ts";
 import type { Object3D } from "npm:three@0.183.2";
-import { createNeonThreeScene } from "../app/neon_three.ts";
-import { neonThreeSceneCatalog, neonThreeSceneModeLabel } from "../app/neon_three_catalog.ts";
+import { createNeonThreeScene, neonThreeSceneCatalog, neonThreeSceneModeLabel } from "../app/neon_three.ts";
 import { threeSceneModes, type ThreeSceneSignal } from "../app/types.ts";
 
 const signal: ThreeSceneSignal = {
