@@ -1,9 +1,10 @@
 import { assertEquals } from "./deps.ts";
-import { layoutWorkbenchButtonRowInto, type WorkbenchButtonRowPlacement } from "../src/app/workbench_control_layout.ts";
 import {
+  layoutWorkbenchButtonRowInto,
+  type WorkbenchButtonRowPlacement,
   type WorkbenchMobileCommandAction,
   workbenchMobileCommandStripItemsInto,
-} from "../src/app/workbench_mobile.ts";
+} from "../src/app/workbench_control_layout.ts";
 
 Deno.test("workbench mobile command strip projects stable touch actions", () => {
   const target = workbenchMobileCommandStripItemsInto([], {

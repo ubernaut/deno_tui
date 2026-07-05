@@ -7,9 +7,9 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `708`
+- Tracked files after the current consolidation passes: `707`
 - Tracked top-level file counts:
-  - `src`: `347`
+  - `src`: `346`
   - `tests`: `143`
   - `app`: `47`
   - `docs`: `50`
@@ -17,10 +17,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `scripts`: `27`
   - `plan`: `26`
 - Handwritten/code-heavy line counts:
-  - `src/app`: `24,497` lines across `115` files
+  - `src/app`: `24,495` lines across `114` files
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,261` lines across `43` files
-  - `src/three_ascii`: `7,189` lines across `35` files
+  - `src/three_ascii`: `7,201` lines across `35` files
   - `app`: `20,426` lines across `47` files
   - `examples`: `8,732` lines across `41` files
   - `tests`: `49,081` lines across `143` files
@@ -83,6 +83,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Workbench Three window-state resolution now lives in `src/app/workbench_three_policy.ts`
   - Workbench Three fullscreen/runtime ASCII budget policy now lives in `src/app/workbench_three_policy.ts`
   - Neon Three scene catalog labels now live with the scene factory in `app/neon_three.ts`
+  - Workbench mobile command strip projection now lives in `src/app/workbench_control_layout.ts`
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

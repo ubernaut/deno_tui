@@ -198,7 +198,7 @@ import { workbenchThreePreviewRowsInto } from "../../app/workbench_visualization
 import {
   type WorkbenchMobileCommandAction,
   workbenchMobileCommandStripItemsInto,
-} from "../../src/app/workbench_mobile.ts";
+} from "../../src/app/workbench_control_layout.ts";
 import {
   defaultWebTerminalWorkspaceSnapshot,
   normalizeWebTerminalWorkspaceSnapshot as normalizeWebTerminalWorkspaceSnapshotSource,

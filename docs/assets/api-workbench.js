@@ -12511,6 +12511,17 @@ function workbenchButtonRowRenderCommandsInto(target, placements, options = {}) 
   target.length = written;
   return target;
 }
+function workbenchMobileCommandStripItemsInto(target, options) {
+  target.length = 7;
+  target[0] = { action: "next", label: `Next ${options.activeTitle}` };
+  target[1] = { action: "controls", label: "Controls", active: options.controlsActive === true };
+  target[2] = { action: "theme", label: "Theme", active: options.themeActive === true };
+  target[3] = { action: "help", label: "Help" };
+  target[4] = { action: "restore", label: "Restore", tone: "muted" };
+  target[5] = { action: "wide", label: "Wide", tone: "muted" };
+  target[6] = { action: "dense", label: "Dense", tone: "muted" };
+  return target;
+}
 function layoutWorkbenchControlButtonLine(prefix, value, width) {
   const safeWidth = Math.max(0, Math.floor(width));
   const segments = [];
@@ -18544,19 +18555,6 @@ function asciiOrbInto(target, width, height, phase) {
     }
     return line;
   });
-}
-
-// src/app/workbench_mobile.ts
-function workbenchMobileCommandStripItemsInto(target, options) {
-  target.length = 7;
-  target[0] = { action: "next", label: `Next ${options.activeTitle}` };
-  target[1] = { action: "controls", label: "Controls", active: options.controlsActive === true };
-  target[2] = { action: "theme", label: "Theme", active: options.themeActive === true };
-  target[3] = { action: "help", label: "Help" };
-  target[4] = { action: "restore", label: "Restore", tone: "muted" };
-  target[5] = { action: "wide", label: "Wide", tone: "muted" };
-  target[6] = { action: "dense", label: "Dense", tone: "muted" };
-  return target;
 }
 
 // examples/web/api_workbench_terminal_workspace.ts
