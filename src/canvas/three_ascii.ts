@@ -449,7 +449,7 @@ export function buildFallbackGrid(
   for (let row = 0; row < rows; row += 1) {
     const gridRow = new Array<string>(columns);
     for (let column = 0; column < columns; column += 1) {
-      gridRow[column] = " ";
+      gridRow[column] = fallbackGridCell(row, column);
     }
     grid[row] = gridRow;
   }
@@ -464,11 +464,20 @@ export function buildFallbackGrid(
     const line = lines[index] ?? "";
     const startColumn = Math.max(0, Math.floor((columns - line.length) / 2));
     for (let column = 0; column < line.length && startColumn + column < columns; column += 1) {
-      grid[startRow + index]![startColumn + column] = line[column] ?? " ";
+      grid[startRow + index]![startColumn + column] = fallbackMessageCell(line[column] ?? " ");
     }
   }
 
   return grid;
+}
+
+function fallbackGridCell(row: number, column: number): string {
+  const band = (Math.floor(row / 2) + Math.floor(column / 8)) % 2;
+  return band === 0 ? "\x1b[48;2;18;10;28m \x1b[0m" : "\x1b[48;2;28;14;44m \x1b[0m";
+}
+
+function fallbackMessageCell(glyph: string): string {
+  return `\x1b[38;2;244;232;255m\x1b[48;2;74;36;112m${glyph}\x1b[0m`;
 }
 
 function cropMessage(message: string, width: number): string {

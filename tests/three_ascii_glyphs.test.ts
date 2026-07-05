@@ -550,13 +550,13 @@ Deno.test("three ascii fallback detail hides raw GPU validation text", () => {
 
 Deno.test("three ascii fallback grid omits duplicate or empty detail lines", () => {
   const blank = buildFallbackGrid(24, 3, "");
-  assertEquals(blank.map((row) => row.join("").trim()).filter(Boolean), ["ASCII RENDERER OFFLINE"]);
+  assertEquals(fallbackTextRows(blank), ["ASCII RENDERER OFFLINE"]);
 
   const duplicate = buildFallbackGrid(24, 3, "ASCII RENDERER OFFLINE");
-  assertEquals(duplicate.map((row) => row.join("").trim()).filter(Boolean), ["ASCII RENDERER OFFLINE"]);
+  assertEquals(fallbackTextRows(duplicate), ["ASCII RENDERER OFFLINE"]);
 
   const detailed = buildFallbackGrid(24, 4, "custom renderer failure");
-  assertEquals(detailed.map((row) => row.join("").trim()).filter(Boolean), [
+  assertEquals(fallbackTextRows(detailed), [
     "ASCII RENDERER OFFLINE",
     "CUSTOM RENDERER FAILURE",
   ]);
@@ -564,8 +564,24 @@ Deno.test("three ascii fallback grid omits duplicate or empty detail lines", () 
   const oneRow = buildFallbackGrid(12, 1, "custom renderer failure");
   assertEquals(oneRow.length, 1);
   assertEquals(oneRow[0]!.length, 12);
-  assertEquals(oneRow.map((row) => row.join("").trim()).filter(Boolean), ["ASCII RENDER"]);
+  assertEquals(fallbackTextRows(oneRow), ["ASCII RENDER"]);
 });
+
+Deno.test("three ascii fallback grid paints every cell with truecolor backgrounds", () => {
+  const grid = buildFallbackGrid(18, 5, "custom renderer failure");
+
+  assertEquals(grid.length, 5);
+  assertEquals(grid.every((row) => row.length === 18), true);
+  assertEquals(grid.every((row) => row.every((cell) => cell.includes("\x1b[48;2;"))), true);
+});
+
+function fallbackTextRows(grid: readonly (readonly string[])[]): string[] {
+  return grid.map((row) => stripAnsi(row.join("")).trim()).filter(Boolean);
+}
+
+function stripAnsi(value: string): string {
+  return value.replace(/\x1b\[[0-9;]*m/g, "");
+}
 
 Deno.test("three ascii demo window reserves side panel only when useful", () => {
   assertEquals(threeAsciiDemoSidePanelVisible({ menuVisible: true, minimized: false, maximized: false }), true);
