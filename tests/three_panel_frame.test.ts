@@ -1437,6 +1437,63 @@ Deno.test("ThreeAsciiObject defers resize while a frame is rendering", async () 
   }
 });
 
+Deno.test("ThreeAsciiObject skips redundant renderer size sync on steady frames", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
+  const sink = new MemoryCanvasSink();
+  const canvas = new Canvas({ sink, size: { columns: 40, rows: 20 } });
+  let renderer: FakeGridRenderer | undefined;
+  const object = new ThreeAsciiObject({
+    canvas,
+    rectangle,
+    scene: {} as Scene,
+    camera: {} as Camera,
+    style: emptyStyle,
+    zIndex: 1,
+    frameInterval: 5,
+    rendererFactory: (options) => renderer = new FakeGridRenderer(options.columns, options.rows),
+  });
+
+  object.draw();
+
+  try {
+    await waitFor(() => (renderer?.renderCount ?? 0) >= 3);
+    assertEquals(renderer?.setSizeCalls, 0);
+    assertEquals(renderer?.sizes, [[12, 6]]);
+  } finally {
+    object.erase();
+    rectangle.dispose();
+  }
+});
+
+Deno.test("ThreeAsciiObject syncs renderer size changed before draw", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
+  const sink = new MemoryCanvasSink();
+  const canvas = new Canvas({ sink, size: { columns: 40, rows: 20 } });
+  let renderer: FakeGridRenderer | undefined;
+  const object = new ThreeAsciiObject({
+    canvas,
+    rectangle,
+    scene: {} as Scene,
+    camera: {} as Camera,
+    style: emptyStyle,
+    zIndex: 1,
+    frameInterval: 5,
+    rendererFactory: (options) => renderer = new FakeGridRenderer(options.columns, options.rows),
+  });
+
+  rectangle.value = { column: 0, row: 0, width: 20, height: 8 };
+  object.draw();
+
+  try {
+    await waitFor(() => (renderer?.renderCount ?? 0) >= 1);
+    assertEquals(renderer?.setSizeCalls, 1);
+    assertEquals(renderer?.sizes, [[12, 6], [20, 8]]);
+  } finally {
+    object.erase();
+    rectangle.dispose();
+  }
+});
+
 Deno.test("ThreeAsciiObject defaults to deferred readback and preserves explicit blocking", () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
   const sink = new MemoryCanvasSink();

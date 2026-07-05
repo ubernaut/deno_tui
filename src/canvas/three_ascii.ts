@@ -88,17 +88,22 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   private readonly previousGrid = createThreeAsciiGridDiffState();
   private lastQueuedGridRevision: number | undefined;
   private lastQueuedGridKey = "";
+  private rendererColumns: number;
+  private rendererRows: number;
 
   constructor(options: ThreeAsciiObjectOptions) {
     super("three_ascii", { ...options, style: emptyStyle });
 
     this.rectangle = signalify(options.rectangle, { deepObserve: true });
     const rendererFactory = options.rendererFactory ?? ((rendererOptions) => new ThreeAsciiRenderer(rendererOptions));
+    const initialRectangle = options.rectangle instanceof Signal ? options.rectangle.peek() : options.rectangle;
+    this.rendererColumns = initialRectangle.width;
+    this.rendererRows = initialRectangle.height;
     this.renderer = rendererFactory({
       scene: options.scene,
       camera: options.camera,
-      columns: options.rectangle instanceof Signal ? options.rectangle.peek().width : options.rectangle.width,
-      rows: options.rectangle instanceof Signal ? options.rectangle.peek().height : options.rectangle.height,
+      columns: this.rendererColumns,
+      rows: this.rendererRows,
       pixelAspectRatio: options.pixelAspectRatio,
       terminalEdgeBias: options.terminalEdgeBias,
       terminalGlyphStyle: options.terminalGlyphStyle,
@@ -118,6 +123,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
     this.failed = false;
     this.destroyPending = false;
     this.syncPending = false;
+    this.syncRendererSize(this.rectangle.peek());
     super.draw();
     this.showStatusGrid("INITIALIZING", "ASCII RENDERER STARTING");
     queueMicrotask(() => void this.renderLoop());
@@ -209,7 +215,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
       this.canvas.updateObjects.push(this);
       return;
     }
-    this.renderer.setSize(rectangle.width, rectangle.height);
+    this.syncRendererSize(rectangle);
     this.moved = true;
     this.updated = false;
     this.canvas.updateObjects.push(this);
@@ -275,7 +281,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
         this.lastFrameTime = frameStartedAt;
 
         this.flushPendingRendererOptions();
-        renderer.setSize(rectangle.width, rectangle.height);
+        this.syncRendererSize(rectangle);
         const frame = renderer.renderFrame
           ? await renderer.renderFrame(deltaTime, this.onFrame, { ansi: true })
           : { grid: await renderer.renderToAnsiGrid(deltaTime, this.onFrame) };
@@ -352,6 +358,15 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
       this.renderer.setTerminalGlyphStyle(this.pendingTerminalGlyphStyle);
       this.pendingTerminalGlyphStyle = undefined;
     }
+  }
+
+  private syncRendererSize(rectangle: Rectangle): void {
+    const columns = Math.max(1, Math.floor(rectangle.width));
+    const rows = Math.max(1, Math.floor(rectangle.height));
+    if (columns === this.rendererColumns && rows === this.rendererRows) return;
+    this.rendererColumns = columns;
+    this.rendererRows = rows;
+    this.renderer.setSize(columns, rows);
   }
 
   private queueChangedGridCells(grid: string[][], rectangle: Rectangle, gridRevision?: number): boolean {
