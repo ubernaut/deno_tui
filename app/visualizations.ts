@@ -26,7 +26,6 @@ import {
   tacticalMap,
   telemetryRack,
 } from "./visualization_fields.ts";
-import { renderGpuChipMonitor, renderGpuCombinedMonitor, renderGpuMemoryMonitor } from "./visualization_gpu.ts";
 import {
   alertText,
   barChart,
@@ -57,6 +56,9 @@ import {
   renderCpuLegend,
   renderCpuMonitor,
   renderDiskMonitor,
+  renderGpuChipMonitor,
+  renderGpuCombinedMonitor,
+  renderGpuMemoryMonitor,
   renderMemoryMonitor,
   renderProcessMonitor,
   renderTemperatureMonitor,

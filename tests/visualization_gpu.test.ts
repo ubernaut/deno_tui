@@ -8,7 +8,7 @@ import {
   renderGpuChipMonitor,
   renderGpuCombinedMonitor,
   renderGpuMemoryMonitor,
-} from "../app/visualization_gpu.ts";
+} from "../app/visualization_system.ts";
 import type { RenderContext, SlotConfig, SystemSnapshot } from "../app/types.ts";
 
 const dependencies: GpuMonitorRenderDependencies = {
