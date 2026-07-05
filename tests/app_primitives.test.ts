@@ -39,11 +39,11 @@ import { bindSettingsCommands, settingsCommands, SettingsController } from "../s
 import type { SettingsCommandAction } from "../src/app/settings.ts";
 import { bindSplitPaneCommands, splitPaneCommands } from "../src/app/split_pane_commands.ts";
 import type { SplitPaneCommandAction } from "../src/app/split_pane_commands.ts";
-import { createRuntimeProfilePlugin } from "../src/app/runtime_profile_plugin.ts";
 import {
   bindRuntimeProfileCommands,
   bindRuntimeRendererBackendCommands,
   bindRuntimeWorkloadCommands,
+  createRuntimeProfilePlugin,
   runtimeProfileCommands,
   runtimeRendererBackendCommands,
   runtimeWorkloadCommands,

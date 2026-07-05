@@ -1,9 +1,20 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { RuntimeRendererBackendController } from "../runtime/renderer_backends.ts";
-import type { RuntimeProfileController } from "../runtime/profiles.ts";
+import type { RuntimeProfileController, RuntimeProfileControllerOptions } from "../runtime/profiles.ts";
+import { createRuntimeProfileController } from "../runtime/profiles.ts";
 import type { RuntimeWorkloadRegistry, RuntimeWorkloadReport } from "../runtime/telemetry.ts";
 import type { Action } from "./actions.ts";
+import type { AppPlugin, AppPluginDisposer, TuiApp } from "./app.ts";
+import { bindCommandKeymap, type CommandKeymapBindingOptions } from "./command_bindings.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
+import { DisposableStack } from "./disposables.ts";
+import type { Route } from "./router.ts";
+import type { SettingsController } from "./settings.ts";
+import {
+  bindRuntimeProfileSetting,
+  type RuntimeProfileSettingBindingOptions,
+  type SettingBinding,
+} from "./settings_bindings.ts";
 
 /** Action union emitted by runtime Profile Command command helpers. */
 export type RuntimeProfileCommandAction = Action<"runtime.profile.changed", RuntimeProfileChangedPayload>;
@@ -22,6 +33,46 @@ export interface RuntimeProfileCommandOptions {
   includeCycleCommands?: boolean;
   includeProfileCommands?: boolean;
   disableActiveProfile?: boolean;
+}
+
+/** Options for configuring the runtime profile plugin. */
+export interface RuntimeProfilePluginOptions {
+  id?: string;
+  label?: string;
+  controller?: RuntimeProfileController;
+  controllerOptions?: RuntimeProfileControllerOptions;
+  settings?: SettingsController;
+  persistProfile?: boolean | RuntimeProfileSettingBindingOptions<unknown>;
+  commands?: boolean | RuntimeProfileCommandOptions;
+  mirrorKeymap?: boolean | CommandKeymapBindingOptions;
+  install?: (context: RuntimeProfilePluginInstallContext) => AppPluginDisposer;
+}
+
+/** Context object passed to runtime profile plugin install callbacks. */
+export interface RuntimeProfilePluginInstallContext {
+  app: TuiApp<Action, Route>;
+  controller: RuntimeProfileController;
+  profileSetting?: SettingBinding<string, unknown>;
+}
+
+/** Serializable inspection snapshot for the runtime profile plugin. */
+export interface RuntimeProfilePluginInspection {
+  id?: string;
+  label?: string;
+  controller: ReturnType<RuntimeProfileController["inspect"]>;
+  commandsEnabled: boolean;
+  settingsEnabled: boolean;
+  profilePersistenceEnabled: boolean;
+  keymapMirroringEnabled: boolean;
+}
+
+/** Public interface describing a runtime profile app plugin. */
+export interface RuntimeProfileAppPlugin<
+  TAction extends Action = RuntimeProfileCommandAction,
+  TRoute extends Route = Route,
+> extends AppPlugin<TAction, TRoute> {
+  readonly controller: RuntimeProfileController;
+  inspect(): RuntimeProfilePluginInspection;
 }
 
 /** Builds command definitions for runtime Profile. */
@@ -92,6 +143,79 @@ export function bindRuntimeProfileCommands<TAction extends Action = RuntimeProfi
   options: RuntimeProfileCommandOptions = {},
 ): () => void {
   return registry.registerAll(runtimeProfileCommands(controller, options) as unknown as Command<TAction>[]);
+}
+
+/** Creates a runtime profile plugin. */
+export function createRuntimeProfilePlugin<
+  TAction extends Action = RuntimeProfileCommandAction,
+  TRoute extends Route = Route,
+>(
+  options: RuntimeProfilePluginOptions = {},
+): RuntimeProfileAppPlugin<TAction, TRoute> {
+  const controller = options.controller ?? createRuntimeProfileController(options.controllerOptions);
+  const id = options.id ?? "runtime-profile";
+  const label = options.label ?? "Runtime Profile";
+
+  return {
+    id,
+    label,
+    controller,
+    install(app) {
+      const stack = new DisposableStack();
+      let profileSetting: SettingBinding<string, unknown> | undefined;
+
+      try {
+        const persistProfile = options.persistProfile ?? true;
+        if (options.settings && persistProfile) {
+          const binding = bindRuntimeProfileSetting<unknown>(
+            controller,
+            options.settings,
+            runtimeProfileSettingOptions(persistProfile),
+          );
+          profileSetting = binding;
+          stack.defer(binding.dispose);
+        }
+
+        if (options.commands ?? true) {
+          const commandOptions = runtimeProfileCommandOptions(options.commands);
+          stack.defer(bindRuntimeProfileCommands(app.commands, controller, commandOptions));
+          if (options.mirrorKeymap) {
+            stack.defer(
+              bindCommandKeymap(
+                app.commands,
+                app.keymap,
+                runtimeProfileKeymapOptions(options.mirrorKeymap, commandOptions),
+              ),
+            );
+          }
+        }
+
+        stack.defer(
+          options.install?.({
+            app: app as unknown as TuiApp<Action, Route>,
+            controller,
+            profileSetting,
+          }),
+        );
+      } catch (error) {
+        stack.dispose();
+        throw error;
+      }
+
+      return stack.dispose;
+    },
+    inspect() {
+      return {
+        id,
+        label,
+        controller: controller.inspect(),
+        commandsEnabled: (options.commands ?? true) !== false,
+        settingsEnabled: options.settings !== undefined,
+        profilePersistenceEnabled: options.settings !== undefined && (options.persistProfile ?? true) !== false,
+        keymapMirroringEnabled: options.mirrorKeymap !== undefined && options.mirrorKeymap !== false,
+      };
+    },
+  };
 }
 
 /** Action union emitted by runtime Renderer Backend Command command helpers. */
@@ -274,4 +398,21 @@ export function bindRuntimeWorkloadCommands<TAction extends Action = RuntimeWork
   options: RuntimeWorkloadCommandOptions = {},
 ): () => void {
   return registry.registerAll(runtimeWorkloadCommands(workloads, options) as unknown as Command<TAction>[]);
+}
+
+function runtimeProfileCommandOptions(
+  options: boolean | RuntimeProfileCommandOptions | undefined,
+): RuntimeProfileCommandOptions {
+  return typeof options === "object" ? options : {};
+}
+
+function runtimeProfileKeymapOptions(
+  options: true | CommandKeymapBindingOptions,
+  commandOptions: RuntimeProfileCommandOptions,
+): CommandKeymapBindingOptions {
+  return options === true ? { group: commandOptions.group ?? "runtime" } : options;
+}
+
+function runtimeProfileSettingOptions<TOptions>(options: true | TOptions): TOptions {
+  return options === true ? {} as TOptions : options;
 }

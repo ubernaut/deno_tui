@@ -23,7 +23,6 @@ export * from "./pad_commands.ts";
 export * from "./plugins.ts";
 export * from "./router.ts";
 export * from "./runtime_commands.ts";
-export * from "./runtime_profile_plugin.ts";
 export * from "./runtime_renderer_plugin.ts";
 export * from "./scroll_area_commands.ts";
 export * from "./selection_bindings.ts";

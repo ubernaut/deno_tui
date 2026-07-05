@@ -1761,6 +1761,20 @@
     },
     {
       "module": "src/app/runtime_commands.ts",
+      "name": "createRuntimeProfilePlugin",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/runtime_commands.ts",
+      "name": "RuntimeProfileAppPlugin",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/runtime_commands.ts",
       "name": "RuntimeProfileChangedPayload",
       "kind": "interface",
       "typeOnly": true,
@@ -1785,6 +1799,27 @@
       "name": "runtimeProfileCommands",
       "kind": "function",
       "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/runtime_commands.ts",
+      "name": "RuntimeProfilePluginInspection",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/runtime_commands.ts",
+      "name": "RuntimeProfilePluginInstallContext",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/app/runtime_commands.ts",
+      "name": "RuntimeProfilePluginOptions",
+      "kind": "interface",
+      "typeOnly": true,
       "documented": true
     },
     {
@@ -1839,41 +1874,6 @@
     {
       "module": "src/app/runtime_commands.ts",
       "name": "RuntimeWorkloadReportedPayload",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/runtime_profile_plugin.ts",
-      "name": "createRuntimeProfilePlugin",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/runtime_profile_plugin.ts",
-      "name": "RuntimeProfileAppPlugin",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/runtime_profile_plugin.ts",
-      "name": "RuntimeProfilePluginInspection",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/runtime_profile_plugin.ts",
-      "name": "RuntimeProfilePluginInstallContext",
-      "kind": "interface",
-      "typeOnly": true,
-      "documented": true
-    },
-    {
-      "module": "src/app/runtime_profile_plugin.ts",
-      "name": "RuntimeProfilePluginOptions",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
