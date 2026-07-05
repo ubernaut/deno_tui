@@ -250,11 +250,10 @@ export class TextObject extends DrawObject<"text"> {
 
     const rowBuffer = frameBuffer[row] ??= [];
 
-    const rerenderQueueRow = rerenderQueue[row] ??= new Set();
-
     if (ranges?.length) {
       mergeDirtyRowSegmentsInPlace(ranges);
       const directRanges = omitColumns?.size ? undefined : canvas.rerenderRanges[row] ??= [];
+      let rerenderQueueRow: Set<number> | undefined;
       for (const range of ranges) {
         const start = Math.max(range.startColumn, rectangle.column);
         const end = Math.min(range.endColumn, columnRange);
@@ -262,7 +261,10 @@ export class TextObject extends DrawObject<"text"> {
         for (let column = start; column < end; column += 1) {
           if (omitColumns?.has(column)) continue;
           rowBuffer[column] = style(valueChars[column - rectangle.column] ?? " ");
-          if (!directRanges) rerenderQueueRow.add(column);
+          if (!directRanges) {
+            rerenderQueueRow ??= rerenderQueue[row] ??= new Set();
+            rerenderQueueRow.add(column);
+          }
         }
         if (directRanges) directRanges.push({ row, startColumn: start, endColumn: end });
       }
@@ -270,6 +272,7 @@ export class TextObject extends DrawObject<"text"> {
     }
 
     if (rerenderColumns?.size) {
+      const rerenderQueueRow = rerenderQueue[row] ??= new Set();
       for (const column of rerenderColumns) {
         if (
           column >= columnRange ||

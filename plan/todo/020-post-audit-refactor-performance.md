@@ -187,6 +187,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   pressure against adaptive policy thresholds directly.
 - Routed unobstructed `BoxObject` repaint ranges into the canvas range queue instead of expanding every dirty column
   through a per-row `Set`, keeping overlap/modal churn on the range-aware path.
+- Fixed duplicated row-range reporting when a sink requests both range and compatibility cell updates, and made
+  `TextObject` allocate legacy per-row dirty `Set`s lazily only when a range-aware direct flush is not available.
 - Cached normalized command search fields per command object with source-change checks, bringing repeated direct
   command-surface searches in line with the indexed command-search benchmark while preserving mutation refresh.
 - Kept API Workbench Three scenes alive behind generic modals and changed fullscreen Three panes to fill-scale their

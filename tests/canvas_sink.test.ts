@@ -150,6 +150,7 @@ Deno.test("text renderer flushes changed overwrite spans as contiguous ranges", 
   assertEquals(sink.flushCalls, 0);
   assertEquals(sink.ranges, [{ row: 0, startColumn: 0, values: ["b", "e", "t", "a", " "] }]);
   assertEquals(sink.updates.length, 0);
+  assertEquals(canvas.rerenderQueue[0], undefined);
   assertEquals(sink.stats?.dirtyRowRanges, 1);
 });
 

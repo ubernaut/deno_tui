@@ -506,7 +506,7 @@ function appendCanvasRowRangeUpdates(
     const value = rowBuffer[column];
     if (value === undefined) {
       if (activeValues?.length) {
-        rowRanges.push({ row, startColumn: activeStart, values: activeValues });
+        if (!cellUpdates) rowRanges.push({ row, startColumn: activeStart, values: activeValues });
       }
       activeValues = undefined;
       continue;
@@ -522,7 +522,7 @@ function appendCanvasRowRangeUpdates(
   }
 
   if (activeValues?.length) {
-    rowRanges.push({ row, startColumn: activeStart, values: activeValues });
+    if (!cellUpdates) rowRanges.push({ row, startColumn: activeStart, values: activeValues });
   }
   return flushedCells;
 }
