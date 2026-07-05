@@ -1,8 +1,9 @@
 import { assertEquals } from "./deps.ts";
 import { flexRects } from "../src/layout/flex_layout.ts";
-import type { Rect } from "../app/types.ts";
+import { flexRects as publicFlexRects } from "../src/layout/mod.ts";
+import type { Rectangle } from "../src/types.ts";
 
-const bounds: Rect = {
+const bounds: Rectangle = {
   column: 2,
   row: 4,
   width: 40,
@@ -52,4 +53,13 @@ Deno.test("flexRects maps columns into vertical slices", () => {
     width: 40,
     height: 5,
   });
+});
+
+Deno.test("public flexRects export preserves implementation behavior", () => {
+  const items = [
+    { id: "left", basis: 10, grow: 1 },
+    { id: "right", basis: 10, grow: 3 },
+  ];
+
+  assertEquals(publicFlexRects(bounds, "row", items, 2), flexRects(bounds, "row", items, 2));
 });
