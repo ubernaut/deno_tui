@@ -43,9 +43,9 @@ Deno.test("API workbench Three policy exposes ordered pressure levels", () => {
   assertEquals(WORKBENCH_THREE_FULLSCREEN_MIN_CELLS, 3_840);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytes, 480_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerGrid, 24_000);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 100_000);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highBytesPerSecond, 60_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerGrid, 2_500);
-  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerSecond, 50_000);
+  assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowBytesPerSecond, 30_000);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.lowFpsRatio, WORKBENCH_THREE_PRESSURE_LOW_FPS_RATIO);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.minObservedFpsFrames, WORKBENCH_THREE_PRESSURE_MIN_FPS_FRAMES);
   assertEquals(API_WORKBENCH_THREE_PRESSURE_POLICY.highFrameThreshold, 3);
@@ -158,7 +158,7 @@ Deno.test("API workbench Three fullscreen pressure keeps a useful visual floor",
   assertEquals(state.highFrames, 0);
 });
 
-Deno.test("API workbench Three policy keeps ordinary startup block frames at the initial tier", () => {
+Deno.test("API workbench Three policy backs off ordinary startup block frames over the byte-rate ceiling", () => {
   const state = createWorkbenchThreeTerminalPressureState(WORKBENCH_THREE_INITIAL_CELLS);
   const sample = {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
@@ -173,7 +173,7 @@ Deno.test("API workbench Three policy keeps ordinary startup block frames at the
     Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
   }
 
-  assertEquals(state.currentCells, WORKBENCH_THREE_INITIAL_CELLS);
+  assertEquals(state.currentCells, 240);
   assertEquals(state.highFrames, 0);
 });
 
@@ -365,7 +365,7 @@ Deno.test("API workbench Three policy downshifts sustained 960-cell block output
   assertEquals(state.highFrames, 0);
 });
 
-Deno.test("API workbench Three policy allows 480-cell block output to hold steady", () => {
+Deno.test("API workbench Three policy pushes 480-cell output down when byte rate stays high", () => {
   const state = createWorkbenchThreeTerminalPressureState(480);
   const sample = {
     ...API_WORKBENCH_THREE_PRESSURE_POLICY,
@@ -379,8 +379,8 @@ Deno.test("API workbench Three policy allows 480-cell block output to hold stead
     Object.assign(state, resolveWorkbenchThreeTerminalPressureBudget(state, sample));
   }
 
-  assertEquals(state.currentCells, 480);
-  assertEquals(state.highFrames, 0);
+  assertEquals(state.currentCells, 60);
+  assertEquals(state.highFrames, 1);
   assertEquals(state.lowFrames, 0);
 });
 

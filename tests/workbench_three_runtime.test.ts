@@ -244,7 +244,7 @@ Deno.test("ApiWorkbenchThreeRuntimeController backs off when observed cadence is
   controller.dispose();
 });
 
-Deno.test("ApiWorkbenchThreeRuntimeController preserves default Three budget during startup ramp", () => {
+Deno.test("ApiWorkbenchThreeRuntimeController downshifts startup output that exceeds byte-rate budget", () => {
   const controller = new ApiWorkbenchThreeRuntimeController({
     hasLiveThreeWindow: () => true,
   });
@@ -259,7 +259,7 @@ Deno.test("ApiWorkbenchThreeRuntimeController preserves default Three budget dur
     });
   }
 
-  assertEquals(controller.liveMaxCells.peek(), WORKBENCH_THREE_INITIAL_CELLS);
+  assertEquals(controller.liveMaxCells.peek(), 60);
   assertEquals(controller.inspectPressure().highFrames, 0);
 
   controller.dispose();
