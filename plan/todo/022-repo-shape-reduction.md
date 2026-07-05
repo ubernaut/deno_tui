@@ -147,6 +147,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     mutation, uniform dirtiness, and compute-mode decisions in one internal effect module
   - Three ASCII deferred pre-scene and stale-frame policy is folded into `src/three_ascii/deferred_readback.ts`, keeping
     deferred queue ownership and readback freshness decisions in one internal module
+  - Three ASCII ANSI background state is folded into `src/three_ascii/colors.ts`, keeping truecolor conversion,
+    background SGR state, and color-key caches in one internal color module
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

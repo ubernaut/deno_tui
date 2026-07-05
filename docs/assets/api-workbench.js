@@ -3812,6 +3812,7 @@ import {
 // src/three_ascii/colors.ts
 import { Color } from "https://esm.sh/three@0.183.2";
 var MAX_LINEAR_BYTE_CACHE_SIZE = 65536;
+var RESET = "\x1B[0m";
 function colorValue(input2, fallback) {
   return input2 instanceof Color ? input2 : new Color(input2 ?? fallback);
 }
@@ -3877,6 +3878,70 @@ var ThreeAsciiAnsiColorKeyCache = class {
     this.rawGreen = new Float64Array(0);
     this.rawBlue = new Float64Array(0);
     this.byteKeys = new Uint32Array(0);
+  }
+};
+var ThreeAsciiAnsiBackgroundState = class {
+  key = -1;
+  ansi = "";
+  blankAnsi = "";
+  red = 0;
+  green = 0;
+  blue = 0;
+  stableInput;
+  hasStableInput = false;
+  stableColorRef;
+  stableColorRed = Number.NaN;
+  stableColorGreen = Number.NaN;
+  stableColorBlue = Number.NaN;
+  set(backgroundColor) {
+    if (!(backgroundColor instanceof Color)) {
+      const stableInput = backgroundColor ?? 0;
+      if (this.hasStableInput && this.stableInput === stableInput) {
+        return false;
+      }
+      this.hasStableInput = true;
+      this.stableInput = stableInput;
+      this.stableColorRef = void 0;
+      return this.setColor(colorValue(backgroundColor, 0));
+    }
+    this.hasStableInput = false;
+    this.stableInput = void 0;
+    if (this.stableColorRef === backgroundColor && this.stableColorRed === backgroundColor.r && this.stableColorGreen === backgroundColor.g && this.stableColorBlue === backgroundColor.b) {
+      return false;
+    }
+    this.stableColorRef = backgroundColor;
+    this.stableColorRed = backgroundColor.r;
+    this.stableColorGreen = backgroundColor.g;
+    this.stableColorBlue = backgroundColor.b;
+    return this.setColor(backgroundColor);
+  }
+  clear() {
+    this.key = -1;
+    this.ansi = "";
+    this.blankAnsi = "";
+    this.red = 0;
+    this.green = 0;
+    this.blue = 0;
+    this.hasStableInput = false;
+    this.stableInput = void 0;
+    this.stableColorRef = void 0;
+    this.stableColorRed = Number.NaN;
+    this.stableColorGreen = Number.NaN;
+    this.stableColorBlue = Number.NaN;
+  }
+  setColor(backgroundColor) {
+    const [red, green, blue] = colorToBytes(backgroundColor);
+    const key = red << 16 | green << 8 | blue;
+    if (key === this.key) {
+      return false;
+    }
+    this.key = key;
+    this.red = red;
+    this.green = green;
+    this.blue = blue;
+    this.ansi = rgbToAnsiBackground(red, green, blue);
+    this.blankAnsi = `${this.ansi} ${RESET}`;
+    return true;
   }
 };
 function linearUnitToByte(value) {
@@ -4064,74 +4129,6 @@ function shouldUseGohu11EdgeGlyph(edgeGlyphIndex, dominantCount, totalCount, sec
   const minCoverage = 0.09 + fillCoverage * 0.14 + mismatchWeight * 0.08 + biasOffset * 0.06;
   return directionShare >= clampUnit(minShare) && separation >= clampUnit(minSeparation) && dominantCoverage >= clampUnit(minCoverage);
 }
-
-// src/three_ascii/ansi_background.ts
-import { Color as Color3 } from "https://esm.sh/three@0.183.2";
-var RESET = "\x1B[0m";
-var ThreeAsciiAnsiBackgroundState = class {
-  key = -1;
-  ansi = "";
-  blankAnsi = "";
-  red = 0;
-  green = 0;
-  blue = 0;
-  stableInput;
-  hasStableInput = false;
-  stableColorRef;
-  stableColorRed = Number.NaN;
-  stableColorGreen = Number.NaN;
-  stableColorBlue = Number.NaN;
-  set(backgroundColor) {
-    if (!(backgroundColor instanceof Color3)) {
-      const stableInput = backgroundColor ?? 0;
-      if (this.hasStableInput && this.stableInput === stableInput) {
-        return false;
-      }
-      this.hasStableInput = true;
-      this.stableInput = stableInput;
-      this.stableColorRef = void 0;
-      return this.setColor(colorValue(backgroundColor, 0));
-    }
-    this.hasStableInput = false;
-    this.stableInput = void 0;
-    if (this.stableColorRef === backgroundColor && this.stableColorRed === backgroundColor.r && this.stableColorGreen === backgroundColor.g && this.stableColorBlue === backgroundColor.b) {
-      return false;
-    }
-    this.stableColorRef = backgroundColor;
-    this.stableColorRed = backgroundColor.r;
-    this.stableColorGreen = backgroundColor.g;
-    this.stableColorBlue = backgroundColor.b;
-    return this.setColor(backgroundColor);
-  }
-  clear() {
-    this.key = -1;
-    this.ansi = "";
-    this.blankAnsi = "";
-    this.red = 0;
-    this.green = 0;
-    this.blue = 0;
-    this.hasStableInput = false;
-    this.stableInput = void 0;
-    this.stableColorRef = void 0;
-    this.stableColorRed = Number.NaN;
-    this.stableColorGreen = Number.NaN;
-    this.stableColorBlue = Number.NaN;
-  }
-  setColor(backgroundColor) {
-    const [red, green, blue] = colorToBytes(backgroundColor);
-    const key = red << 16 | green << 8 | blue;
-    if (key === this.key) {
-      return false;
-    }
-    this.key = key;
-    this.red = red;
-    this.green = green;
-    this.blue = blue;
-    this.ansi = rgbToAnsiBackground(red, green, blue);
-    this.blankAnsi = `${this.ansi} ${RESET}`;
-    return true;
-  }
-};
 
 // src/three_ascii/ansi_grid.ts
 var DEFAULT_TERMINAL_EDGE_BIAS2 = 1;

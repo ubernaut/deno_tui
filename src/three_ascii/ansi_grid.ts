@@ -12,8 +12,12 @@ import {
   type TerminalGlyphMode,
   terminalGlyphModeForStyle,
 } from "./ansi_glyph_keys.ts";
-import { ThreeAsciiAnsiBackgroundState } from "./ansi_background.ts";
-import { rgbToAnsiBackground, rgbToAnsiForeground, ThreeAsciiAnsiColorKeyCache } from "./colors.ts";
+import {
+  rgbToAnsiBackground,
+  rgbToAnsiForeground,
+  ThreeAsciiAnsiBackgroundState,
+  ThreeAsciiAnsiColorKeyCache,
+} from "./colors.ts";
 import type { TerminalGlyphStyle } from "./glyphs.ts";
 
 const DEFAULT_TERMINAL_EDGE_BIAS = 1;

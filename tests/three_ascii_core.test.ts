@@ -2,7 +2,6 @@
 import { Color } from "npm:three@0.183.2";
 
 import { assertEquals, assertNotStrictEquals, assertStrictEquals, assertStringIncludes, assertThrows } from "./deps.ts";
-import { ThreeAsciiAnsiBackgroundState } from "../src/three_ascii/ansi_background.ts";
 import {
   fillGlyphKeyForIndex,
   GLYPH_MODE_BLOCKS,
@@ -19,6 +18,7 @@ import {
   linearUnitToByte,
   rgbToAnsiBackground,
   rgbToAnsiForeground,
+  ThreeAsciiAnsiBackgroundState,
   ThreeAsciiAnsiColorKeyCache,
 } from "../src/three_ascii/colors.ts";
 import {
