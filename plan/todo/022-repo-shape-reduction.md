@@ -7,11 +7,11 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `798`
+- Tracked files after the current consolidation passes: `797`
 - Tracked top-level file counts:
   - `src`: `368`
   - `tests`: `205`
-  - `app`: `54`
+  - `app`: `53`
   - `docs`: `50`
   - `examples`: `42`
   - `scripts`: `27`
@@ -21,7 +21,7 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,241` lines across `43` files
   - `src/three_ascii`: `7,195` lines across `45` files
-  - `app`: `20,445` lines across `54` files
+  - `app`: `20,442` lines across `53` files
   - `examples`: `8,732` lines across `42` files
   - `tests`: `49,398` lines across `205` files
 - Generated/docs weight:
@@ -59,6 +59,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - the app ASCII options shim was removed in favor of direct `src/three_ascii/*` imports
   - system metric diagnostics are folded into `app/system_metrics.ts`
   - API workbench control styles and wrapped-option projection are folded into `app/api_workbench_controls.ts`
+  - API workbench primitive control ids and hit types are folded into `app/api_workbench_control_line.ts`
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
