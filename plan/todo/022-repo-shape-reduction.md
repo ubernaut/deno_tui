@@ -157,6 +157,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     app-specific terminal pressure analysis out of the reusable Three ASCII renderer package boundary
   - System metrics provider contracts and the Deno-backed provider are folded into `app/system_metrics_sources.ts`,
     keeping app-only OS sampling sources together and removing a standalone provider shard without public API drift
+  - NVIDIA GPU sampling contracts, parser, and provider are folded into `app/system_metrics_sources.ts`, keeping GPU
+    command sampling with the other app-only system metric source adapters
   - System snapshot history, alert, and empty-snapshot helpers are folded into `app/system_metrics.ts`, keeping monitor
     state projection with the monitor controller and removing another app-only helper shard
   - API workbench data-table row projection is folded into `app/workbench_panels.ts`, keeping panel content projection

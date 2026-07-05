@@ -1,15 +1,17 @@
 import { Signal } from "../src/signals/mod.ts";
 import type { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import { clamp } from "./styles.ts";
-import { emptyGpuSnapshot, NvidiaSmiGpuMetricsProvider, type SystemGpuMetricsProvider } from "./system_metrics_gpu.ts";
 import {
   type CpuTimes,
   DenoSystemMetricsProvider,
+  emptyGpuSnapshot,
   type NetCounters,
+  NvidiaSmiGpuMetricsProvider,
   parseDfDiskRows,
   sampleCpuStatRows,
   sampleNetworkStats,
   sampleTemperatures,
+  type SystemGpuMetricsProvider,
   type SystemMetricsCommandOutput,
   type SystemMetricsProvider,
   type TemperatureSample,
@@ -30,9 +32,11 @@ export {
   NvidiaSmiGpuMetricsProvider,
   type SystemGpuMetricsProvider,
   type SystemGpuMetricsProviderContext,
-} from "./system_metrics_gpu.ts";
+} from "./system_metrics_sources.ts";
 export {
   DenoSystemMetricsProvider,
+  emptyGpuSnapshot,
+  parseNvidiaSmiGpuRow,
   type SystemMetricsCommandOptions,
   type SystemMetricsCommandOutput,
   type SystemMetricsDirEntry,

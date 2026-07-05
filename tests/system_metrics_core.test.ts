@@ -1,9 +1,10 @@
 import { assertEquals } from "./deps.ts";
-import { emptyGpuSnapshot, parseNvidiaSmiGpuRow } from "../app/system_metrics_gpu.ts";
 import {
   collectAlerts,
+  emptyGpuSnapshot,
   emptySnapshot,
   insertTopProcessSnapshot,
+  parseNvidiaSmiGpuRow,
   parseProcessStat,
   processComparator,
   pushHistory,
