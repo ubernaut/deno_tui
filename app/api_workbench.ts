@@ -1196,12 +1196,20 @@ function shouldForceWorkbenchFullRepaint(now: number): boolean {
 }
 
 function syncWorkbenchThreeRuntimeBudget(width: number, height: number): void {
+  syncWorkbenchThreeRuntimeBudgetForViewport(width, height, threeBodyRect.peek());
+}
+
+function syncWorkbenchThreeRuntimeBudgetForViewport(
+  width: number,
+  height: number,
+  liveViewport: Pick<Rectangle, "width" | "height">,
+): void {
   const snapshot = resolveWorkbenchThreeRuntimeBudgetSnapshot({
     id: "three",
     fullscreenId: maximized.peek(),
     ascii: ascii.peek(),
     liveMaxCells: workbenchThreeLiveMaxCells.peek(),
-    liveViewport: threeBodyRect.peek(),
+    liveViewport,
     fullscreenMaxCells: workbenchThreeFullscreenMaxCells.peek(),
     viewport: { width, height },
     fullscreenViewportPadding: { columns: 6, rows: 10 },
@@ -1573,6 +1581,8 @@ function renderThree(frame: Frame, rect: Rectangle): void {
   const t = theme();
   const mode = threeRendererModeLabel(ascii.peek()).toUpperCase();
   if (threeAsciiAvailable.peek()) {
+    const sceneRect = workbenchThreeBodyRect(rect, { headerRows: 3 });
+    setThreeBodyRect(sceneRect);
     const performance = threePanel.inspectPerformance();
     const pressure = workbenchThreeRuntime.inspectPressureDetailsInto(workbenchThreePressureDetails);
     writeRows(
@@ -1592,9 +1602,7 @@ function renderThree(frame: Frame, rect: Rectangle): void {
           : undefined,
       ),
     );
-    const sceneRect = workbenchThreeBodyRect(rect, { headerRows: 3 });
     addHit(sceneRect, { type: "threeViewport", id: "three" });
-    setThreeBodyRect({ column: 0, row: 0, width: sceneRect.width, height: sceneRect.height });
     setThreeGraphicsRect(contentRectToGraphicsRect(sceneRect));
     const grid = threePanel.grid.peek();
     renderThreeGrid(frame, sceneRect, grid, t, {
@@ -3049,7 +3057,16 @@ function disposeVisualizationThreePanel(id: VisualizationWindowId): void {
 }
 
 function setThreeBodyRect(rect: Rectangle): void {
-  setWorkbenchThreeRect(threeBodyRect, rect);
+  const changed = setWorkbenchThreeRect(threeBodyRect, {
+    column: 0,
+    row: 0,
+    width: rect.width,
+    height: rect.height,
+  });
+  if (!changed) return;
+  threeCadence.reset();
+  workbenchThreeRuntime.resetPressureCounters();
+  syncWorkbenchThreeRuntimeBudgetForViewport(currentWidth(), currentHeight(), rect);
 }
 
 function setThreeGraphicsRect(rect: Rectangle): void {

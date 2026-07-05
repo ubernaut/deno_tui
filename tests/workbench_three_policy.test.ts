@@ -114,8 +114,8 @@ Deno.test("API workbench Three fullscreen render target follows viewport within 
 
 Deno.test("API workbench Three live render target follows tiled pane size", () => {
   assertEquals(workbenchThreeLiveRenderCells({ width: 20, height: 10 }), 480);
-  assertEquals(workbenchThreeLiveRenderCells({ width: 51, height: 17 }), 780);
-  assertEquals(workbenchThreeLiveRenderCells({ width: 100, height: 40 }), 3_600);
+  assertEquals(workbenchThreeLiveRenderCells({ width: 51, height: 17 }), 867);
+  assertEquals(workbenchThreeLiveRenderCells({ width: 100, height: 40 }), 3_840);
 });
 
 Deno.test("API workbench Three policy leaves non-fullscreen ASCII options unchanged", () => {
@@ -217,7 +217,7 @@ Deno.test("API workbench Three policy floors live caps to the visible tiled pane
     viewport: { width: 160, height: 48 },
   });
 
-  assertEquals(snapshot.effectiveMaxCells, 780);
+  assertEquals(snapshot.effectiveMaxCells, 867);
   assertStrictEquals(snapshot.runtimeAscii, ascii);
 });
 

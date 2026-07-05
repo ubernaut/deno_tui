@@ -162,7 +162,7 @@ Deno.test("workbench visual smoke inspector rejects under-scaled Three pane tele
 
   assertEquals(result.passed, false);
   assertEquals(result.threeRenderedCells, 40);
-  assertEquals(result.missing, ["three rendered cells >= 73"]);
+  assertEquals(result.missing, ["three rendered cells >= 86"]);
 });
 
 Deno.test("workbench visual smoke inspector rejects colored resize frames when Three pane stays blank", () => {

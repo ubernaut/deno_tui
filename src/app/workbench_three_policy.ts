@@ -366,7 +366,7 @@ export function workbenchThreeLiveRenderCells(
 ): number {
   const minCells = Math.max(1, Math.floor(options.minCells ?? 480));
   const maxCells = Math.max(minCells, Math.floor(options.maxCells ?? WORKBENCH_THREE_FULLSCREEN_MIN_CELLS));
-  const areaRatio = Math.min(1, Math.max(0.1, options.areaRatio ?? 0.9));
+  const areaRatio = Math.min(1, Math.max(0.1, options.areaRatio ?? 1));
   const area = Math.max(1, Math.floor(rect.width) * Math.floor(rect.height));
   return Math.max(minCells, Math.min(maxCells, Math.floor(area * areaRatio)));
 }

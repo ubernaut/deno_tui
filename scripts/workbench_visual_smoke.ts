@@ -254,7 +254,7 @@ export function inspectWorkbenchVisualSmokeOutput(
     if (threePane.visibleMaxColumns < minVisibleColumns) {
       missing.push(`three pane visible columns >= ${minVisibleColumns}`);
     }
-    const minRenderedCells = Math.max(1, Math.floor(threePane.bodyRows * threePane.bodyColumns * 0.75));
+    const minRenderedCells = Math.max(1, Math.floor(threePane.bodyRows * threePane.bodyColumns * 0.88));
     if (!rendererUnavailable && threeRenderedCells > 0 && threeRenderedCells < minRenderedCells) {
       missing.push(`three rendered cells >= ${minRenderedCells}`);
     }
