@@ -1,5 +1,5 @@
 import { assertEquals, assertRejects } from "./deps.ts";
-import { withThreeAsciiMappedReadback } from "../src/three_ascii/readback_mapping.ts";
+import { withThreeAsciiMappedReadback } from "../src/three_ascii/renderer.ts";
 
 Deno.test("withThreeAsciiMappedReadback measures map time and unmaps after reading", async () => {
   const source = new ArrayBuffer(8);

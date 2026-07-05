@@ -8,7 +8,6 @@ import {
   ThreeAsciiAnsiGridAssembler as InternalThreeAsciiAnsiGridAssembler,
   type ThreeAsciiAnsiGridInput as InternalThreeAsciiAnsiGridInput,
 } from "./ansi_grid.ts";
-import { computeThreeAsciiCameraAspect, shouldUpdateThreeAsciiCameraAspect } from "./camera_aspect.ts";
 import type { TerminalGlyphStyle } from "./glyphs.ts";
 import { HeadlessCanvas } from "./headless_canvas.ts";
 import { loadAsciiLutTextures } from "./loadAsciiLuts.ts";
@@ -62,7 +61,6 @@ import {
   assembleThreeAsciiReadbackGridWithContext,
   type ThreeAsciiReadbackGridAssemblyContext,
 } from "./readback_assembly.ts";
-import { withThreeAsciiMappedReadback } from "./readback_mapping.ts";
 import {
   emptyThreeAsciiRenderFrame,
   resolveThreeAsciiRenderFrameSelectionInto,
@@ -71,7 +69,6 @@ import {
   type ThreeAsciiRenderFrameOptions,
   type ThreeAsciiRenderFrameSelection,
 } from "./frame_options.ts";
-import { readThreeAsciiImageFrame, type ThreeAsciiImageFrame } from "./image_frame.ts";
 import {
   normalizeThreeAsciiRendererOptions,
   normalizeThreeAsciiRenderSize,
@@ -123,8 +120,94 @@ export interface ThreeAsciiRenderFrame {
 }
 
 export type { ThreeAsciiRenderFrameOptions } from "./frame_options.ts";
-export type { ThreeAsciiImageFrame } from "./image_frame.ts";
 export type { ThreeAsciiRendererPerformance } from "./performance.ts";
+
+export interface ThreeAsciiCameraAspectInput {
+  columns: number;
+  rows: number;
+  pixelAspectRatio: number;
+}
+
+export const THREE_ASCII_CAMERA_ASPECT_EPSILON = 0.000001;
+
+export function computeThreeAsciiCameraAspect(input: ThreeAsciiCameraAspectInput): number {
+  return (input.columns * input.pixelAspectRatio) / Math.max(1, input.rows);
+}
+
+export function shouldUpdateThreeAsciiCameraAspect(
+  current: number,
+  next: number,
+  epsilon = THREE_ASCII_CAMERA_ASPECT_EPSILON,
+): boolean {
+  return Math.abs(current - next) > epsilon;
+}
+
+/** Raw image frame emitted by the Acerola three Ascii renderer. */
+export interface ThreeAsciiImageFrame {
+  data: Uint8Array;
+  encoding: "bytes";
+  format: 32;
+  pixelWidth: number;
+  pixelHeight: number;
+}
+
+/** Minimal RGBA readback source used to build renderer image frames. */
+export interface ThreeAsciiImageFrameSource {
+  readonly width: number;
+  readonly height: number;
+  readonly context: {
+    readRGBA(): Uint8Array | Promise<Uint8Array>;
+  };
+}
+
+/** Reads an RGBA image frame from a renderer surface. */
+export async function readThreeAsciiImageFrame(
+  source: ThreeAsciiImageFrameSource,
+): Promise<ThreeAsciiImageFrame> {
+  return {
+    data: await source.context.readRGBA(),
+    encoding: "bytes",
+    format: 32,
+    pixelWidth: source.width,
+    pixelHeight: source.height,
+  };
+}
+
+export interface ThreeAsciiMappedReadbackBuffer {
+  mapAsync(mode: number): Promise<void>;
+  getMappedRange(): ArrayBuffer;
+  unmap(): void;
+}
+
+export interface ThreeAsciiMappedReadbackOptions<T> {
+  mapModeRead: number;
+  now?: () => number;
+  mapError: (error: unknown) => Error;
+  read: (source: ArrayBuffer, readbackMs: number) => T;
+}
+
+export async function withThreeAsciiMappedReadback<T>(
+  buffer: ThreeAsciiMappedReadbackBuffer,
+  options: ThreeAsciiMappedReadbackOptions<T>,
+): Promise<{ value: T; readbackMs: number }> {
+  const now = options.now ?? (() => performance.now());
+  const readbackStart = now();
+  try {
+    await buffer.mapAsync(options.mapModeRead);
+  } catch (error) {
+    throw options.mapError(error);
+  }
+  const readbackMs = now() - readbackStart;
+
+  try {
+    return {
+      value: options.read(buffer.getMappedRange(), readbackMs),
+      readbackMs,
+    };
+  } finally {
+    buffer.unmap();
+  }
+}
 
 /** Stable error raised when WebGPU output buffers cannot be mapped back to CPU-readable memory. */
 export class ThreeAsciiReadbackError extends Error {

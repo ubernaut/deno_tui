@@ -7,9 +7,9 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `743`
+- Tracked files after the current consolidation passes: `740`
 - Tracked top-level file counts:
-  - `src`: `357`
+  - `src`: `354`
   - `tests`: `167`
   - `app`: `48`
   - `docs`: `50`
@@ -20,10 +20,10 @@ runtime probes that catch real failures, and deletion-heavy refactors over addin
   - `src/app`: `24,509` lines across `120` files
   - `src/runtime`: `11,119` lines across `35` files
   - `src/components`: `10,261` lines across `43` files
-  - `src/three_ascii`: `7,191` lines across `40` files
+  - `src/three_ascii`: `7,188` lines across `37` files
   - `app`: `20,429` lines across `48` files
   - `examples`: `8,732` lines across `41` files
-  - `tests`: `49,246` lines across `167` files
+  - `tests`: `49,244` lines across `167` files
 - Generated/docs weight:
   - `docs/screenshots`: roughly `24MB`
   - `docs/assets/api-workbench.js`: roughly `728KB`
@@ -74,6 +74,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - app sorted-string insertion is folded into `src/app/commands.ts`
   - Three ASCII deferred readback staleness now lives in `src/three_ascii/deferred_frame.ts`
   - Three ASCII deferred readback submission and failure handling now live in `src/three_ascii/renderer.ts`
+  - Three ASCII camera-aspect, image-frame, and mapped-readback helpers now live in `src/three_ascii/renderer.ts`
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
@@ -120,8 +121,8 @@ The library core is real and valuable, but it needs clearer boundaries:
 - Continue using benchmark cases for hot helpers, but treat live probes as required evidence:
   - `deno task three-workbench:startup-probe`
   - `deno task three-ascii:live-probe -- --frames 45 --glyphs blocks --max-cells 960 --check --max-average-ms 40`
-- Latest workbench block-mode startup probe after the Three ASCII deferred-readback source consolidation: `6.76ms`
-  steady average, about `148.0 fps` at `53x17` cells with the capped default-workbench probe.
+- Latest workbench block-mode startup probe after the Three ASCII renderer-owned helper consolidation: `6.89ms` steady
+  average, about `145.2 fps` at `53x17` cells with the capped default-workbench probe.
 - Avoid speculative micro-optimizations unless they improve measured workbench/default-demo behavior.
 
 ### P2: Split Demo Framework From Library Framework

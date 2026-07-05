@@ -14,11 +14,6 @@ import {
   terminalGlyphModeForStyle,
 } from "../src/three_ascii/ansi_glyph_keys.ts";
 import {
-  computeThreeAsciiCameraAspect,
-  shouldUpdateThreeAsciiCameraAspect,
-  THREE_ASCII_CAMERA_ASPECT_EPSILON,
-} from "../src/three_ascii/camera_aspect.ts";
-import {
   colorToBytes,
   colorValue,
   createLinearByteCache,
@@ -51,7 +46,6 @@ import {
   type ThreeAsciiGpuBufferDevice,
 } from "../src/three_ascii/gpu_buffers.ts";
 import { compactMappedRgbaRows } from "../src/three_ascii/headless_canvas.ts";
-import { readThreeAsciiImageFrame } from "../src/three_ascii/image_frame.ts";
 import { loadAsciiLutTextures } from "../src/three_ascii/loadAsciiLuts.ts";
 import {
   createThreeAsciiRendererPerformance,
@@ -71,8 +65,12 @@ import {
   normalizeThreeAsciiTerminalEdgeBias,
 } from "../src/three_ascii/renderer_options.ts";
 import {
+  computeThreeAsciiCameraAspect,
   handleThreeAsciiDeferredReadbackFailure,
+  readThreeAsciiImageFrame,
   resolveThreeAsciiDeferredReadbackSubmission,
+  shouldUpdateThreeAsciiCameraAspect,
+  THREE_ASCII_CAMERA_ASPECT_EPSILON,
   ThreeAsciiReadbackError,
 } from "../src/three_ascii/renderer.ts";
 import { resolveThreeAsciiDeferredReadbackStaleness } from "../src/three_ascii/deferred_frame.ts";
