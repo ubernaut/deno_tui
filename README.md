@@ -2709,6 +2709,7 @@ Direct Deno tasks are also available:
 ```sh
 deno task showcase
 deno task api-workbench
+deno task workbench-visual-smoke
 deno task three-workbench:startup-probe
 deno task three-workbench:narrow-probe
 deno task neon-exodus
@@ -2756,10 +2757,13 @@ deno task action-middleware
 deno task cached-pipeline
 ```
 
-Use the Three workbench probes when tuning the default API Workbench renderer. The startup probe exercises the
-workbench-sized block-mode Three panel with the default blocking readback path and fails if average renderer time drifts
-above the guard. The narrow probe mirrors an 80x24 terminal where the pane collapses to a small 37x5 region, which is
-useful for separating renderer cost from terminal/layout constraints.
+Use `deno task workbench-visual-smoke` after renderer or layout changes to capture the real API Workbench through a PTY
+and verify that the final screen contains the Three telemetry row, bottom status row, and no known crash or status-bar
+collision text. Use the Three workbench probes when tuning the default API Workbench renderer. The startup probe
+exercises the workbench-sized block-mode Three panel and fails if average renderer time drifts above the guard. The
+narrow probe mirrors an 80x24 terminal where the pane collapses to a small 37x5 region, which is useful for separating
+renderer cost from terminal/layout constraints. Run GPU-backed visual smoke and Three probe tasks serially; concurrent
+WebGPU probes can contend for the same device and produce false device-loss or slow-frame failures.
 
 ```sh
 deno run --watch --allow-hrtime examples/demo.ts

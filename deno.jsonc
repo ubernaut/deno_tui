@@ -40,6 +40,7 @@
     "package-check": "deno run -A ./scripts/package_check.ts",
     "screenshots": "deno run -A ./scripts/generate_screenshots.ts",
     "visual-smoke": "deno run -A ./scripts/visual_smoke.ts",
+    "workbench-visual-smoke": "deno run -A ./scripts/workbench_visual_smoke.ts",
     "component-catalog": "deno run -A ./scripts/component_catalog.ts",
     "app-plugin-catalog": "deno run -A ./examples/app_plugin_catalog.ts",
     "adopter-workbench": "deno run -A ./examples/adopter_workbench.ts",

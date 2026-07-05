@@ -1163,3 +1163,8 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Tightened the shared status-bar renderer so clipped right-side shortcut hints keep a visible separator from the left
   diagnostics segment. A real 118x34 PTY workbench capture no longer joins `warning` and `F10`, and the default Three
   pane still reported roughly `5ms 333c live 20fps`.
+- Added `deno task workbench-visual-smoke`, a real PTY capture/replay smoke for the API Workbench that verifies the
+  default Three telemetry row, bottom status row, and known crash/collision sentinels. This gives renderer/layout tuning
+  a repeatable visual gate instead of relying only on ad hoc terminal captures. Serial runs passed with the default
+  Three pane around `6ms 333c live 20fps`; concurrent GPU probe/smoke runs can still induce device-loss noise, so
+  GPU-backed visual/probe checks should be sequenced rather than parallelized.
