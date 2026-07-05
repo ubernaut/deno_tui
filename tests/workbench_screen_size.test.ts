@@ -4,7 +4,7 @@ import {
   workbenchScreenHeight,
   type WorkbenchScreenSizeTarget,
   workbenchScreenWidth,
-} from "../src/app/workbench_screen_size.ts";
+} from "../src/app/workbench_repaint_policy.ts";
 
 Deno.test("syncWorkbenchTerminalSize reports unchanged terminal size", () => {
   const target = fakeSizeTarget({ columns: 80, rows: 24 });
