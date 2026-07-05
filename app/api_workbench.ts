@@ -362,8 +362,8 @@ import {
 import {
   type WorkbenchThreePanelEntry,
   WorkbenchThreePanelRegistry,
+  WorkbenchThreeViewportInteractionController,
 } from "../src/app/workbench_three_panel_registry.ts";
-import { WorkbenchThreeViewportInteractionController } from "../src/app/workbench_three_interaction.ts";
 import {
   type ApiWorkbenchThreePressureInspection,
   ApiWorkbenchThreeRuntimeController,

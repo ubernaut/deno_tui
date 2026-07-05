@@ -183,6 +183,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     status presentation helpers while preserving the public workbench facade export
   - Workbench prompt-input helpers are folded into `src/app/workbench_text.ts`, keeping single-line prompt editing with
     the shared text utilities that already own the corresponding tests and facade export
+  - Workbench Three viewport mouse routing is folded into `src/app/workbench_three_panel_registry.ts`, keeping panel
+    lifecycle and pointer interaction ownership together without widening the public workbench facade
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
