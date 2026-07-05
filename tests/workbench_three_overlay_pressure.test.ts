@@ -1,5 +1,5 @@
 import { assertEquals } from "./deps.ts";
-import { WorkbenchThreeOverlayPressureGate } from "../src/app/workbench_three_overlay_pressure.ts";
+import { WorkbenchThreeOverlayPressureGate } from "../src/app/workbench_three_runtime.ts";
 
 Deno.test("WorkbenchThreeOverlayPressureGate allows steady frames to update pressure", () => {
   const gate = new WorkbenchThreeOverlayPressureGate(2);

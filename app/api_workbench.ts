@@ -105,7 +105,7 @@ import {
   workbenchScreenHeight,
   workbenchScreenWidth,
 } from "../src/app/workbench_repaint_policy.ts";
-import { WorkbenchThreeOverlayPressureGate } from "../src/app/workbench_three_overlay_pressure.ts";
+import { WorkbenchThreeOverlayPressureGate } from "../src/app/workbench_three_runtime.ts";
 import {
   createWorkbenchThreeWindowState,
   resolveWorkbenchThreeWindowStateInto,
