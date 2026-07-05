@@ -244,6 +244,8 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Standalone Three ASCII demo window geometry assertions are now bundled into `tests/three_ascii_glyphs.test.ts`
   - Workbench Kitty graphics status and tmux passthrough assertions are now bundled into
     `tests/graphics_surface.test.ts`
+  - Simple grid solver helper assertions are now bundled into `tests/html_css_layout.test.ts`, keeping private grid
+    placement coverage with the HTML/CSS simple solver behavior
   - Workbench Three header telemetry assertions are now bundled into `tests/workbench_three_panel.test.ts`
   - Public flex layout export assertions are now bundled into `tests/flex_layout.test.ts`
   - Visualization panel defaults are now bundled into `tests/visualization_launcher.test.ts`
