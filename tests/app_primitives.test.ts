@@ -82,8 +82,7 @@ import {
   themePreviewCommands,
   themeSelectionCommands,
 } from "../src/app/theme_commands.ts";
-import { createThemePlugin } from "../src/app/theme_plugin.ts";
-import { createThemeWorkspacePlugin } from "../src/app/theme_workspace_plugin.ts";
+import { createThemePlugin, createThemeWorkspacePlugin } from "../src/app/theme_plugin.ts";
 import { KeymapRegistry } from "../src/keymap.ts";
 import { SplitPaneController } from "../src/layout/mod.ts";
 import { createRuntimeProfileController } from "../src/runtime/profiles.ts";

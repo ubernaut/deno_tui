@@ -16,15 +16,19 @@ import {
   type ThemeSettingBindingOptions,
 } from "./settings_bindings.ts";
 import {
+  bindThemeEngineCommands,
   bindThemePipelineCommands,
   type ThemeCommandAction,
   type ThemeCommandOptions,
   themeCommands,
+  type ThemeEngineCommandAction,
+  type ThemeEngineCommandOptions,
   type ThemePipelineCommandAction,
   type ThemePipelineCommandOptions,
 } from "./theme_commands.ts";
 import { createThemeProvider, type ThemeProvider, type ThemeProviderOptions } from "../theme.ts";
 import type { ThemeEnginePipeline } from "../theme_engine_pipeline.ts";
+import { createThemeWorkspace, type ThemeWorkspace, type ThemeWorkspaceOptions } from "../theme_workspace.ts";
 
 /** Public type alias for a theme Plugin Pipeline Setting Option. */
 export type ThemePluginPipelineSettingOption = boolean | ThemePipelineSettingBindingOptions<unknown>;
@@ -88,6 +92,46 @@ export interface ThemeAppPlugin<
   readonly provider: ThemeProvider;
   readonly pipelines: readonly ThemeEnginePipeline[];
   inspect(): ThemePluginInspection;
+}
+
+/** Options for configuring the theme workspace plugin. */
+export interface ThemeWorkspacePluginOptions {
+  id?: string;
+  label?: string;
+  workspace?: ThemeWorkspace;
+  workspaceOptions?: ThemeWorkspaceOptions;
+  settings?: SettingsController;
+  persistTheme?: boolean | ThemeSettingBindingOptions<unknown>;
+  persistLayers?: boolean | ThemeLayerSettingBindingOptions<unknown>;
+  persistPipelines?: ThemePluginPipelineSettingOptions;
+  commands?: boolean | ThemeCommandOptions;
+  engineCommands?: boolean | ThemeEngineCommandOptions;
+  pipelineCommands?: ThemePluginPipelineCommandOptions;
+  mirrorKeymap?: boolean | CommandKeymapBindingOptions;
+  install?: (context: ThemeWorkspacePluginInstallContext) => AppPluginDisposer;
+}
+
+/** Context object passed to theme workspace plugin install callbacks. */
+export interface ThemeWorkspacePluginInstallContext extends ThemePluginInstallContext {
+  workspace: ThemeWorkspace;
+}
+
+/** Serializable inspection snapshot for the theme workspace plugin. */
+export interface ThemeWorkspacePluginInspection {
+  id?: string;
+  label?: string;
+  theme: ThemePluginInspection;
+  engineCommandsEnabled: boolean;
+  workspace: ReturnType<ThemeWorkspace["inspect"]>;
+}
+
+/** Public interface describing a theme workspace app plugin. */
+export interface ThemeWorkspaceAppPlugin<
+  TAction extends Action = ThemeCommandAction | ThemePipelineCommandAction | ThemeEngineCommandAction,
+  TRoute extends Route = Route,
+> extends AppPlugin<TAction, TRoute> {
+  readonly workspace: ThemeWorkspace;
+  inspect(): ThemeWorkspacePluginInspection;
 }
 
 /** Creates an theme Plugin. */
@@ -209,6 +253,70 @@ export function createThemePlugin<
   };
 }
 
+/** Creates a theme workspace plugin. */
+export function createThemeWorkspacePlugin<
+  TAction extends Action = ThemeCommandAction | ThemePipelineCommandAction | ThemeEngineCommandAction,
+  TRoute extends Route = Route,
+>(
+  options: ThemeWorkspacePluginOptions = {},
+): ThemeWorkspaceAppPlugin<TAction, TRoute> {
+  const workspace = options.workspace ?? createThemeWorkspace(options.workspaceOptions);
+  const id = options.id ?? "theme-workspace";
+  const label = options.label ?? "Theme Workspace";
+  const theme = createThemePlugin<TAction, TRoute>({
+    id,
+    label,
+    provider: workspace.provider,
+    pipelines: workspace.pipelines,
+    settings: options.settings,
+    persistTheme: options.persistTheme,
+    persistLayers: options.persistLayers,
+    persistPipelines: options.persistPipelines,
+    commands: options.commands,
+    pipelineCommands: options.pipelineCommands,
+    mirrorKeymap: options.mirrorKeymap,
+    install: (context) =>
+      options.install?.({
+        ...context,
+        workspace,
+      }),
+  });
+
+  return {
+    id,
+    label,
+    workspace,
+    install(app) {
+      const stack = new DisposableStack();
+      try {
+        stack.defer(theme.install(app));
+        if (options.engineCommands ?? true) {
+          stack.defer(
+            bindThemeEngineCommands(
+              app.commands,
+              workspace,
+              themeWorkspaceEngineCommandOptions(options.engineCommands),
+            ) as () => void,
+          );
+        }
+      } catch (error) {
+        stack.dispose();
+        throw error;
+      }
+      return stack.dispose;
+    },
+    inspect() {
+      return {
+        id,
+        label,
+        theme: theme.inspect(),
+        engineCommandsEnabled: (options.engineCommands ?? true) !== false,
+        workspace: workspace.inspect(),
+      };
+    },
+  };
+}
+
 function inspectThemePluginPipelines(
   pipelines: readonly ThemeEnginePipeline[],
 ): ReturnType<ThemeEnginePipeline["inspect"]>[] {
@@ -244,6 +352,12 @@ function keymapOptionsFrom(
 
 function settingOptions<TOptions>(options: true | TOptions): TOptions {
   return options === true ? {} as TOptions : options;
+}
+
+function themeWorkspaceEngineCommandOptions(
+  options: boolean | ThemeEngineCommandOptions | undefined,
+): ThemeEngineCommandOptions {
+  return typeof options === "object" ? options : {};
 }
 
 function normalizePipelines(pipelines: ThemePluginOptions["pipelines"]): ThemeEnginePipeline[] {

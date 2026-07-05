@@ -2860,6 +2860,13 @@
     },
     {
       "module": "src/app/theme_plugin.ts",
+      "name": "createThemeWorkspacePlugin",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/theme_plugin.ts",
       "name": "ThemeAppPlugin",
       "kind": "interface",
       "typeOnly": true,
@@ -2908,35 +2915,28 @@
       "documented": true
     },
     {
-      "module": "src/app/theme_workspace_plugin.ts",
-      "name": "createThemeWorkspacePlugin",
-      "kind": "function",
-      "typeOnly": false,
-      "documented": true
-    },
-    {
-      "module": "src/app/theme_workspace_plugin.ts",
+      "module": "src/app/theme_plugin.ts",
       "name": "ThemeWorkspaceAppPlugin",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
     },
     {
-      "module": "src/app/theme_workspace_plugin.ts",
+      "module": "src/app/theme_plugin.ts",
       "name": "ThemeWorkspacePluginInspection",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
     },
     {
-      "module": "src/app/theme_workspace_plugin.ts",
+      "module": "src/app/theme_plugin.ts",
       "name": "ThemeWorkspacePluginInstallContext",
       "kind": "interface",
       "typeOnly": true,
       "documented": true
     },
     {
-      "module": "src/app/theme_workspace_plugin.ts",
+      "module": "src/app/theme_plugin.ts",
       "name": "ThemeWorkspacePluginOptions",
       "kind": "interface",
       "typeOnly": true,
