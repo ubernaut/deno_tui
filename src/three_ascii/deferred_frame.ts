@@ -1,6 +1,17 @@
 import type { ThreeAsciiDeferredReadbackConsumeResult } from "./deferred_readback.ts";
-import { resolveThreeAsciiDeferredReadbackStaleness } from "./deferred_readback_staleness.ts";
 import type { ThreeAsciiReadbackStrategy } from "./renderer_options.ts";
+
+export interface ThreeAsciiDeferredReadbackStalenessInput {
+  staleFrames: number;
+  maxStaleFrames: number;
+  completedGrid: boolean;
+  hasCachedGrid: boolean;
+}
+
+export interface ThreeAsciiDeferredReadbackStalenessResult {
+  staleFrames: number;
+  forceBlockingReadback: boolean;
+}
 
 export interface ThreeAsciiDeferredPreSceneFrameInput {
   renderAnsi: boolean;
@@ -19,6 +30,23 @@ export type ThreeAsciiDeferredPreSceneFrameResult =
   | { kind: "readbackUnavailable"; staleFrames: number; forceBlockingReadback: false }
   | { kind: "saturated"; staleFrames: number; forceBlockingReadback: boolean }
   | { kind: "continue"; staleFrames: number; forceBlockingReadback: boolean };
+
+/** Resolves whether deferred readback has returned a cached grid for too many frames. */
+export function resolveThreeAsciiDeferredReadbackStaleness(
+  input: ThreeAsciiDeferredReadbackStalenessInput,
+): ThreeAsciiDeferredReadbackStalenessResult {
+  if (input.completedGrid) {
+    return { staleFrames: 0, forceBlockingReadback: false };
+  }
+  if (input.maxStaleFrames <= 0) {
+    return { staleFrames: input.staleFrames, forceBlockingReadback: false };
+  }
+  const staleFrames = input.staleFrames + 1;
+  return {
+    staleFrames,
+    forceBlockingReadback: staleFrames >= input.maxStaleFrames,
+  };
+}
 
 /** Resolves the deferred-readback pre-scene decision for one renderer frame. */
 export function resolveThreeAsciiDeferredPreSceneFrame(

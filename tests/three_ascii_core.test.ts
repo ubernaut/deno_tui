@@ -70,10 +70,12 @@ import {
   normalizeThreeAsciiRenderSize,
   normalizeThreeAsciiTerminalEdgeBias,
 } from "../src/three_ascii/renderer_options.ts";
-import { ThreeAsciiReadbackError } from "../src/three_ascii/renderer.ts";
-import { resolveThreeAsciiDeferredReadbackStaleness } from "../src/three_ascii/deferred_readback_staleness.ts";
-import { handleThreeAsciiDeferredReadbackFailure } from "../src/three_ascii/readback_failure.ts";
-import { resolveThreeAsciiDeferredReadbackSubmission } from "../src/three_ascii/readback_submission.ts";
+import {
+  handleThreeAsciiDeferredReadbackFailure,
+  resolveThreeAsciiDeferredReadbackSubmission,
+  ThreeAsciiReadbackError,
+} from "../src/three_ascii/renderer.ts";
+import { resolveThreeAsciiDeferredReadbackStaleness } from "../src/three_ascii/deferred_frame.ts";
 import {
   THREE_ASCII_COLOR_SHADER,
   THREE_ASCII_EDGE_SHADER,

@@ -62,9 +62,7 @@ import {
   assembleThreeAsciiReadbackGridWithContext,
   type ThreeAsciiReadbackGridAssemblyContext,
 } from "./readback_assembly.ts";
-import { handleThreeAsciiDeferredReadbackFailure } from "./readback_failure.ts";
 import { withThreeAsciiMappedReadback } from "./readback_mapping.ts";
-import { resolveThreeAsciiDeferredReadbackSubmission } from "./readback_submission.ts";
 import {
   emptyThreeAsciiRenderFrame,
   resolveThreeAsciiRenderFrameSelectionInto,
@@ -138,6 +136,67 @@ export class ThreeAsciiReadbackError extends Error {
     this.name = "ThreeAsciiReadbackError";
     this.cause = cause;
   }
+}
+
+export interface ThreeAsciiDeferredReadbackSubmission<TReadback> {
+  readback?: TReadback;
+  grid: string[][];
+  submit: boolean;
+  queue: boolean;
+}
+
+export function resolveThreeAsciiDeferredReadbackSubmission<TReadback>(
+  completed: ThreeAsciiDeferredReadbackConsumeResult,
+  readback: TReadback | undefined,
+  lastCompletedGrid: string[][],
+): ThreeAsciiDeferredReadbackSubmission<TReadback> {
+  if (completed.readbackUnavailable) {
+    return {
+      grid: completed.grid ?? [],
+      submit: false,
+      queue: false,
+    };
+  }
+
+  const grid = completed.grid ?? lastCompletedGrid;
+  if (!readback) {
+    return {
+      grid,
+      submit: false,
+      queue: false,
+    };
+  }
+
+  return {
+    readback,
+    grid,
+    submit: true,
+    queue: true,
+  };
+}
+
+export interface ThreeAsciiDeferredReadbackFailureQueue {
+  lastCompletedGrid(): string[][];
+  destroy(): void;
+}
+
+export interface ThreeAsciiDeferredReadbackFailureResult {
+  handled: boolean;
+  result?: ThreeAsciiDeferredReadbackConsumeResult;
+}
+
+export function handleThreeAsciiDeferredReadbackFailure(
+  error: unknown,
+  expectedError: new (...args: unknown[]) => Error,
+  queue: ThreeAsciiDeferredReadbackFailureQueue,
+): ThreeAsciiDeferredReadbackFailureResult {
+  if (!(error instanceof expectedError)) {
+    return { handled: false };
+  }
+
+  const grid = queue.lastCompletedGrid();
+  queue.destroy();
+  return { handled: true, result: { grid, readbackUnavailable: true } };
 }
 
 /** Input buffers for assembling a terminal ANSI grid from three Ascii GPU readback data. */
