@@ -4757,6 +4757,9 @@ function fillDenseGlyphBlankRun(outputRow, fillGlyphs, rowOffset, column, column
 // src/three_ascii/loadAsciiLuts.ts
 import { ClampToEdgeWrapping, LinearFilter as LinearFilter2, NoColorSpace, Texture as Texture2 } from "https://esm.sh/three@0.183.2";
 
+// src/three_ascii/deferred_readback.ts
+import { Color as Color3 } from "https://esm.sh/three@0.183.2";
+
 // src/three_ascii/readback.ts
 var FLOAT_BYTE_LENGTH = Float32Array.BYTES_PER_ELEMENT;
 

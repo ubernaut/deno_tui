@@ -133,6 +133,7 @@ export class ThreeAsciiDeferredReadbackQueue<TBuffer extends ThreeAsciiDeferredR
   readonly pending: Array<ThreeAsciiDeferredReadbackFrame<TBuffer>> = [];
 
   private readonly slots: Array<ThreeAsciiGpuBufferSlot<TBuffer> | undefined> = [];
+  private readonly slotBackgroundColors: Array<Color | undefined> = [];
   private readonly slotCount: number;
   private readonly mapModeRead: number;
   private readonly now: () => number;
@@ -211,9 +212,13 @@ export class ThreeAsciiDeferredReadbackQueue<TBuffer extends ThreeAsciiDeferredR
       "slot" | "generation" | "resolved" | "error" | "readbackStart" | "readbackMs" | "mapPromise"
     >,
   ): ThreeAsciiDeferredReadbackFrame<TBuffer> {
+    const slotIndex = this.slots.indexOf(slot);
+    const backgroundColor = this.backgroundColorForSlot(slotIndex);
+    backgroundColor.copy(options.backgroundColor);
     const pending: ThreeAsciiDeferredReadbackFrame<TBuffer> = {
       ...options,
       slot,
+      backgroundColor,
       generation: this.generation,
       resolved: false,
       readbackStart: this.now(),
@@ -271,8 +276,19 @@ export class ThreeAsciiDeferredReadbackQueue<TBuffer extends ThreeAsciiDeferredR
       this.slots[index] = destroyThreeAsciiGpuBufferSlot(this.slots[index]);
     }
     this.slots.length = 0;
+    this.slotBackgroundColors.length = 0;
     this.nextSlotIndex = 0;
     this.lastGrid = [];
     this.generation += 1;
+  }
+
+  private backgroundColorForSlot(slotIndex: number): Color {
+    if (slotIndex < 0) return new Color();
+    let backgroundColor = this.slotBackgroundColors[slotIndex];
+    if (!backgroundColor) {
+      backgroundColor = new Color();
+      this.slotBackgroundColors[slotIndex] = backgroundColor;
+    }
+    return backgroundColor;
   }
 }

@@ -1212,6 +1212,26 @@ Deno.test("deferred readback queue consumes resolved frames and reports timing",
   });
 });
 
+Deno.test("deferred readback queue snapshots background color into the readback slot", async () => {
+  const queue = new ThreeAsciiDeferredReadbackQueue<FakeDeferredReadbackBuffer>({ mapModeRead: 1 });
+  const buffer = new FakeDeferredReadbackBuffer(1, [14, 1, 0.2, 0.1, 1]);
+  const readback = deferredReadbackSlot(buffer, buffer.source.byteLength);
+  const backgroundColor = new Color(0x102030);
+
+  queue.queue(readback, { ...deferredReadbackFrameOptions(), backgroundColor });
+  backgroundColor.set(0xaabbcc);
+  buffer.resolveMap();
+  await Promise.resolve();
+
+  let capturedHex = 0;
+  queue.consumeCompleted((pending) => {
+    capturedHex = pending.backgroundColor.getHex();
+    return [["frame"]];
+  }, (error) => new Error(String(error)));
+
+  assertEquals(capturedHex, 0x102030);
+});
+
 Deno.test("deferred readback queue consumes multiple same-generation frames without self-invalidating", async () => {
   const queue = new ThreeAsciiDeferredReadbackQueue<FakeDeferredReadbackBuffer>({ mapModeRead: 1 });
   const first = new FakeDeferredReadbackBuffer(1, [14, 10, 0, 0, 1]);

@@ -1204,3 +1204,5 @@ performance, shared terminal/web workbench projections, and oversized module red
   API surface.
 - Reused retained Three ASCII readback layout-mode and copy-plan option records in the renderer, removing two small
   per-ANSI-frame object allocations before readback cache resolution while preserving the public readback APIs.
+- Moved deferred Three ASCII background-color snapshots into queue-owned per-slot `Color` instances so deferred frames
+  keep stable assembly colors without allocating a new `Color` clone for every submitted readback.

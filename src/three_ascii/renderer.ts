@@ -859,7 +859,7 @@ export class ThreeAsciiRenderer {
       rows: this.rows,
       terminalGlyphStyle: this.terminalGlyphStyle,
       terminalEdgeBias: this.terminalEdgeBias,
-      backgroundColor: backgroundColor.clone(),
+      backgroundColor,
     });
     return submission.grid;
   }
