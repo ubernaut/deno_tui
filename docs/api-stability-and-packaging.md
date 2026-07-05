@@ -102,7 +102,10 @@ deno test
 ```
 
 `deno task package-check` compares `deno.jsonc` exports with `packageEntrypoints`, verifies the entrypoint files exist,
-and reports drift separately for stable, beta, experimental, and internal tiers.
+reports drift separately for stable, beta, experimental, and internal tiers, and blocks new `src/app/*` modules from
+leaking through the stable root entrypoint unless the legacy app-module allowlist is intentionally updated. The current
+stable root still exposes older app and Workbench helper modules for compatibility; new Workbench implementation helpers
+should stay behind focused modules or app-local imports until they are intentionally promoted.
 `deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1
 --baseline=docs/api-stable-baseline.json`
 enforces a duplicate-free stable re-export graph with 100% JSDoc coverage and fails if the stable root API changes
@@ -117,6 +120,9 @@ stable/beta/experimental reference and should continue to show 100% documentatio
 4. Re-export through the appropriate module entrypoint.
 5. If the API creates a new package surface or changes stability expectations, update `src/api_stability.ts`,
    `deno.jsonc`, this document, and `CHANGELOG.md`.
-6. If the change intentionally adds or removes a stable root export, regenerate `docs/api-stable-baseline.json` with
+6. If the change intentionally adds a stable root `src/app/*` module, update the legacy app-module allowlist in
+   `scripts/package_check.ts` and document why the helper belongs on the stable package surface instead of a focused
+   subpath.
+7. If the change intentionally adds or removes a stable root export, regenerate `docs/api-stable-baseline.json` with
    `deno run -A ./scripts/api_inventory.ts mod.ts --update-baseline=docs/api-stable-baseline.json --quiet`.
-7. Regenerate `docs/api-reference.md` with `deno task api-reference > docs/api-reference.md`.
+8. Regenerate `docs/api-reference.md` with `deno task api-reference > docs/api-reference.md`.

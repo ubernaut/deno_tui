@@ -10,8 +10,10 @@ import {
 } from "../mod.ts";
 import {
   formatPackageExportValidation,
+  formatStableAppExportValidation,
   formatStableDemoExportValidation,
   validatePackageExports,
+  validateStableAppExports,
   validateStableDemoExports,
 } from "../scripts/package_check.ts";
 
@@ -190,6 +192,49 @@ Deno.test("package check guards stable entrypoint against new demo-only modules"
   assertEquals(drift.unexpectedModules, ["src/examples/new_widget_demo.ts"]);
   assertEquals(
     formatStableDemoExportValidation(drift).includes("unexpected stable demo export: src/examples/new_widget_demo.ts"),
+    true,
+  );
+});
+
+Deno.test("package check guards stable entrypoint against new app and workbench modules", () => {
+  const current = validateStableAppExports({
+    modules: [
+      { module: "mod.ts" },
+      { module: "src/app/actions.ts" },
+      { module: "src/app/workbench/mod.ts" },
+      { module: "src/app/workbench_terminal.ts" },
+      { module: "src/components/button.ts" },
+    ],
+  });
+
+  assertEquals(current.ok, true);
+  assertEquals(
+    formatStableAppExportValidation(current),
+    [
+      "ok stable exports contain no new app/workbench modules",
+      "legacy app modules allowed: 61",
+    ].join("\n"),
+  );
+
+  const drift = validateStableAppExports({
+    modules: [
+      { module: "mod.ts" },
+      { module: "src/app/actions.ts" },
+      { module: "src/app/workbench/new_internal_helper.ts" },
+      { module: "src/app/workbench_terminal.ts" },
+      { module: "src/app/workbench_z_layer_experiment.ts" },
+    ],
+  });
+
+  assertEquals(drift.ok, false);
+  assertEquals(drift.unexpectedModules, [
+    "src/app/workbench/new_internal_helper.ts",
+    "src/app/workbench_z_layer_experiment.ts",
+  ]);
+  assertEquals(
+    formatStableAppExportValidation(drift).includes(
+      "unexpected stable app export: src/app/workbench/new_internal_helper.ts",
+    ),
     true,
   );
 });

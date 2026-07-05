@@ -236,6 +236,8 @@ The library core is real and valuable, but it needs clearer boundaries:
   breaking package change, so the next safe cleanup should introduce a focused migration path: keep stable imports
   working, add clearer package docs around focused entrypoints, and stop promoting new Workbench implementation helpers
   through `src/app/workbench/mod.ts` unless they are intentionally public.
+- Package checks now grandfather the current stable `src/app/*` module set and fail future stable root leaks of new app
+  or Workbench implementation modules unless the allowlist is intentionally updated with migration rationale.
 
 ## Acceptance Checks
 

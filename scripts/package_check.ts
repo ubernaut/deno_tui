@@ -24,6 +24,12 @@ export interface StableDemoExportValidation {
   unexpectedModules: string[];
 }
 
+export interface StableAppExportValidation {
+  ok: boolean;
+  legacyAllowedModules: string[];
+  unexpectedModules: string[];
+}
+
 type PackageConfig = {
   exports?: string | Record<string, string>;
 };
@@ -118,6 +124,70 @@ const DEFAULT_LEGACY_STABLE_DEMO_MODULES = [
   "src/three_ascii/demo_presets.ts",
 ] as const;
 
+const DEFAULT_LEGACY_STABLE_APP_MODULES = [
+  "src/app/actions.ts",
+  "src/app/app.ts",
+  "src/app/command_bindings.ts",
+  "src/app/command_search_index.ts",
+  "src/app/commands.ts",
+  "src/app/component_commands.ts",
+  "src/app/data_query_commands.ts",
+  "src/app/data_table_commands.ts",
+  "src/app/disposables.ts",
+  "src/app/focus_commands.ts",
+  "src/app/form_commands.ts",
+  "src/app/forms.ts",
+  "src/app/history.ts",
+  "src/app/hit_targets.ts",
+  "src/app/input_commands.ts",
+  "src/app/list_commands.ts",
+  "src/app/log_viewer_commands.ts",
+  "src/app/menu_bar_commands.ts",
+  "src/app/metric_series_commands.ts",
+  "src/app/mod.ts",
+  "src/app/mouse_bindings.ts",
+  "src/app/pad_commands.ts",
+  "src/app/plugins.ts",
+  "src/app/router.ts",
+  "src/app/runtime_commands.ts",
+  "src/app/scroll_area_commands.ts",
+  "src/app/selection_bindings.ts",
+  "src/app/settings.ts",
+  "src/app/settings_bindings.ts",
+  "src/app/split_pane_commands.ts",
+  "src/app/table_commands.ts",
+  "src/app/tabs_commands.ts",
+  "src/app/terminal_commands.ts",
+  "src/app/terminal_input.ts",
+  "src/app/theme_commands.ts",
+  "src/app/theme_plugin.ts",
+  "src/app/toast_commands.ts",
+  "src/app/tree_commands.ts",
+  "src/app/widget_commands.ts",
+  "src/app/window_manager_commands.ts",
+  "src/app/workbench/mod.ts",
+  "src/app/workbench_ansi_screen.ts",
+  "src/app/workbench_button_style.ts",
+  "src/app/workbench_control_layout.ts",
+  "src/app/workbench_frame.ts",
+  "src/app/workbench_help.ts",
+  "src/app/workbench_keymap.ts",
+  "src/app/workbench_layout.ts",
+  "src/app/workbench_menu.ts",
+  "src/app/workbench_overlay.ts",
+  "src/app/workbench_panel_workspace_store.ts",
+  "src/app/workbench_prompt_input.ts",
+  "src/app/workbench_shelf.ts",
+  "src/app/workbench_status.ts",
+  "src/app/workbench_terminal.ts",
+  "src/app/workbench_text.ts",
+  "src/app/workbench_three_terminal_pressure.ts",
+  "src/app/workbench_titlebar.ts",
+  "src/app/workbench_window_registry.ts",
+  "src/app/workbench_workspace.ts",
+  "src/app/workbench_workspace_store.ts",
+] as const;
+
 export function validateStableDemoExports(
   inventory: { modules: ReadonlyArray<{ module: string }> },
   options: { legacyAllowedModules?: readonly string[] } = {},
@@ -127,6 +197,25 @@ export function validateStableDemoExports(
   const unexpectedModules = inventory.modules
     .map((entry) => entry.module)
     .filter(isDemoLikeStableModule)
+    .filter((module) => !allowed.has(module))
+    .sort();
+
+  return {
+    ok: unexpectedModules.length === 0,
+    legacyAllowedModules,
+    unexpectedModules,
+  };
+}
+
+export function validateStableAppExports(
+  inventory: { modules: ReadonlyArray<{ module: string }> },
+  options: { legacyAllowedModules?: readonly string[] } = {},
+): StableAppExportValidation {
+  const legacyAllowedModules = [...(options.legacyAllowedModules ?? DEFAULT_LEGACY_STABLE_APP_MODULES)].sort();
+  const allowed = new Set(legacyAllowedModules);
+  const unexpectedModules = inventory.modules
+    .map((entry) => entry.module)
+    .filter((module) => module.startsWith("src/app/"))
     .filter((module) => !allowed.has(module))
     .sort();
 
@@ -148,6 +237,19 @@ export function formatStableDemoExportValidation(validation: StableDemoExportVal
   }
   for (const module of validation.unexpectedModules) {
     lines.push(`unexpected stable demo export: ${module}`);
+  }
+  return lines.join("\n");
+}
+
+export function formatStableAppExportValidation(validation: StableAppExportValidation): string {
+  const lines = [
+    validation.ok
+      ? "ok stable exports contain no new app/workbench modules"
+      : "fail stable exports include new app/workbench modules",
+  ];
+  lines.push(`legacy app modules allowed: ${validation.legacyAllowedModules.length}`);
+  for (const module of validation.unexpectedModules) {
+    lines.push(`unexpected stable app export: ${module}`);
   }
   return lines.join("\n");
 }
@@ -192,16 +294,27 @@ if (import.meta.main) {
   const source = await Deno.readTextFile("deno.jsonc");
   const config = JSON.parse(stripJsonComments(source)) as PackageConfig;
   const validation = validatePackageExports(config);
-  const stableDemoValidation = validateStableDemoExports(await createApiInventory("mod.ts"));
+  const stableInventory = await createApiInventory("mod.ts");
+  const stableDemoValidation = validateStableDemoExports(stableInventory);
+  const stableAppValidation = validateStableAppExports(stableInventory);
 
   if (json) {
-    console.log(JSON.stringify({ ...validation, stableDemoExports: stableDemoValidation }, null, 2));
+    console.log(JSON.stringify(
+      {
+        ...validation,
+        stableDemoExports: stableDemoValidation,
+        stableAppExports: stableAppValidation,
+      },
+      null,
+      2,
+    ));
   } else if (!quiet) {
     console.log(formatPackageExportValidation(validation));
     console.log(formatStableDemoExportValidation(stableDemoValidation));
+    console.log(formatStableAppExportValidation(stableAppValidation));
   }
 
-  if (!validation.ok || !stableDemoValidation.ok) Deno.exit(1);
+  if (!validation.ok || !stableDemoValidation.ok || !stableAppValidation.ok) Deno.exit(1);
 }
 
 function isDemoLikeStableModule(module: string): boolean {
