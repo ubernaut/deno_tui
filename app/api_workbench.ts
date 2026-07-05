@@ -239,6 +239,8 @@ import {
   type ApiWorkbenchCheckboxOption,
   apiWorkbenchCheckboxRowsInto,
   apiWorkbenchComboHeaderRowsInto,
+  apiWorkbenchControlAt,
+  apiWorkbenchControlAtEdge,
   apiWorkbenchControlBaseStyle,
   apiWorkbenchControlButtonDetailStyle,
   type ApiWorkbenchControlHitPlacement,
@@ -269,7 +271,7 @@ import {
   type ApiWorkbenchWrappedOptionsRenderCommand,
   apiWorkbenchWrappedOptionsRenderCommandsInto,
   apiWorkbenchWrappedOptionStyle,
-  nextApiWorkbenchControlId,
+  isApiWorkbenchTextControlActive,
   nextSortableDataColumn,
 } from "./api_workbench_controls.ts";
 import { createHtmlCssLayoutDemo, HTML_CSS_LAYOUT_WINDOW_ID } from "../src/markup/demo_fixtures.ts";
@@ -4595,15 +4597,15 @@ function focusNextControl(delta = 1): void {
 }
 
 function isTextControlActive(): boolean {
-  return activeWindow.peek() === "controls" && (activeControl.peek() === "input" || activeControl.peek() === "textbox");
+  return isApiWorkbenchTextControlActive(activeWindow.peek(), "controls", activeControl.peek());
 }
 
 function controlAt(delta: number): ControlId {
-  return nextApiWorkbenchControlId(activeControl.peek(), delta, { wrap: true }) ?? "button";
+  return apiWorkbenchControlAt(activeControl.peek(), delta);
 }
 
 function controlAtEdge(delta: number): ControlId | undefined {
-  return nextApiWorkbenchControlId(activeControl.peek(), delta);
+  return apiWorkbenchControlAtEdge(activeControl.peek(), delta);
 }
 
 function pushLog(message: string): void {

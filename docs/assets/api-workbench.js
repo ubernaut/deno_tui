@@ -17514,6 +17514,15 @@ function nextApiWorkbenchControlId(current, delta, options = {}) {
   if (!options.wrap && (next < 0 || next >= apiWorkbenchControlIds.length)) return void 0;
   return apiWorkbenchControlIds[(next % apiWorkbenchControlIds.length + apiWorkbenchControlIds.length) % apiWorkbenchControlIds.length];
 }
+function apiWorkbenchControlAt(current, delta, fallback = "button") {
+  return nextApiWorkbenchControlId(current, delta, { wrap: true }) ?? fallback;
+}
+function apiWorkbenchControlAtEdge(current, delta) {
+  return nextApiWorkbenchControlId(current, delta);
+}
+function isApiWorkbenchTextControlActive(activeWindowId, controlsWindowId, activeControl2) {
+  return activeWindowId === controlsWindowId && (activeControl2 === "input" || activeControl2 === "textbox");
+}
 function nextSortableDataColumn(columns2, currentColumnId, delta) {
   let sortableCount = 0;
   let currentSortableIndex = -1;
@@ -21134,13 +21143,13 @@ function focusNextControl(delta = 1) {
   delta < 0 ? focusPrevious() : focusNext();
 }
 function controlAt(delta) {
-  return nextApiWorkbenchControlId(activeControl.peek(), delta, { wrap: true }) ?? "button";
+  return apiWorkbenchControlAt(activeControl.peek(), delta);
 }
 function controlAtEdge(delta) {
-  return nextApiWorkbenchControlId(activeControl.peek(), delta);
+  return apiWorkbenchControlAtEdge(activeControl.peek(), delta);
 }
 function isTextControlActive() {
-  return active.peek() === "controls" && (activeControl.peek() === "input" || activeControl.peek() === "textbox");
+  return isApiWorkbenchTextControlActive(active.peek(), "controls", activeControl.peek());
 }
 function write(frame, row, column, value) {
   framePainter.write(frame, row, column, value);

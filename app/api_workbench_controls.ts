@@ -904,6 +904,29 @@ export function nextApiWorkbenchControlId(
   ];
 }
 
+export function apiWorkbenchControlAt(
+  current: ApiWorkbenchControlId,
+  delta: number,
+  fallback: ApiWorkbenchControlId = "button",
+): ApiWorkbenchControlId {
+  return nextApiWorkbenchControlId(current, delta, { wrap: true }) ?? fallback;
+}
+
+export function apiWorkbenchControlAtEdge(
+  current: ApiWorkbenchControlId,
+  delta: number,
+): ApiWorkbenchControlId | undefined {
+  return nextApiWorkbenchControlId(current, delta);
+}
+
+export function isApiWorkbenchTextControlActive(
+  activeWindowId: string | undefined,
+  controlsWindowId: string,
+  activeControl: ApiWorkbenchControlId,
+): boolean {
+  return activeWindowId === controlsWindowId && (activeControl === "input" || activeControl === "textbox");
+}
+
 export function nextSortableDataColumn<TRow extends Record<string, unknown>>(
   columns: readonly DataColumn<TRow>[],
   currentColumnId: string | undefined,

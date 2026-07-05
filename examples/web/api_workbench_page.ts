@@ -131,6 +131,8 @@ import {
   type ApiWorkbenchCheckboxOption,
   apiWorkbenchCheckboxRowsInto,
   apiWorkbenchComboHeaderRowsInto,
+  apiWorkbenchControlAt,
+  apiWorkbenchControlAtEdge,
   apiWorkbenchControlBaseStyle,
   apiWorkbenchControlButtonDetailStyle,
   type ApiWorkbenchControlHitPlacement,
@@ -160,7 +162,7 @@ import {
   type ApiWorkbenchWrappedOptionsRenderCommand,
   apiWorkbenchWrappedOptionsRenderCommandsInto,
   apiWorkbenchWrappedOptionStyle,
-  nextApiWorkbenchControlId,
+  isApiWorkbenchTextControlActive,
   nextSortableDataColumn,
 } from "../../app/api_workbench_controls.ts";
 import { findApiWorkbenchHitTarget, isApiWorkbenchTouchOptimizedLayout } from "../../app/api_workbench_hit.ts";
@@ -2626,14 +2628,14 @@ function focusNextControl(delta = 1): void {
 }
 
 function controlAt(delta: number): ControlId {
-  return nextApiWorkbenchControlId(activeControl.peek(), delta, { wrap: true }) ?? "button";
+  return apiWorkbenchControlAt(activeControl.peek(), delta);
 }
 
 function controlAtEdge(delta: number): ControlId | undefined {
-  return nextApiWorkbenchControlId(activeControl.peek(), delta);
+  return apiWorkbenchControlAtEdge(activeControl.peek(), delta);
 }
 function isTextControlActive(): boolean {
-  return active.peek() === "controls" && (activeControl.peek() === "input" || activeControl.peek() === "textbox");
+  return isApiWorkbenchTextControlActive(active.peek(), "controls", activeControl.peek());
 }
 function write(frame: string[], row: number, column: number, value: string): void {
   framePainter.write(frame, row, column, value);

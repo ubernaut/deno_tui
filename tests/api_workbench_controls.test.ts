@@ -3,6 +3,8 @@ import {
   apiWorkbenchButtonRowInto,
   apiWorkbenchCheckboxRowsInto,
   apiWorkbenchComboHeaderRowsInto,
+  apiWorkbenchControlAt,
+  apiWorkbenchControlAtEdge,
   apiWorkbenchControlBaseStyle,
   apiWorkbenchControlButtonDetailStyle,
   type ApiWorkbenchControlHitPlacement,
@@ -32,6 +34,7 @@ import {
   type ApiWorkbenchWrappedOptionsRenderCommand,
   apiWorkbenchWrappedOptionsRenderCommandsInto,
   apiWorkbenchWrappedOptionStyle,
+  isApiWorkbenchTextControlActive,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
 } from "../app/api_workbench_controls.ts";
@@ -56,6 +59,14 @@ Deno.test("api workbench control traversal supports wrap and edge-aware tabbing"
   assertEquals(nextApiWorkbenchControlId("textbox", 1, { wrap: true }), "button");
   assertEquals(nextApiWorkbenchControlId("button", -1, { wrap: true }), "textbox");
   assertEquals(nextApiWorkbenchControlId("radio", 3), "input");
+  assertEquals(apiWorkbenchControlAt("textbox", 1), "button");
+  assertEquals(apiWorkbenchControlAt("button", -1), "textbox");
+  assertEquals(apiWorkbenchControlAtEdge("textbox", 1), undefined);
+  assertEquals(apiWorkbenchControlAtEdge("button", 1), "genericButton");
+  assertEquals(isApiWorkbenchTextControlActive("controls", "controls", "input"), true);
+  assertEquals(isApiWorkbenchTextControlActive("controls", "controls", "textbox"), true);
+  assertEquals(isApiWorkbenchTextControlActive("data", "controls", "input"), false);
+  assertEquals(isApiWorkbenchTextControlActive("controls", "controls", "slider"), false);
 });
 
 Deno.test("api workbench sortable column traversal skips disabled columns", () => {
