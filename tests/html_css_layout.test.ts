@@ -42,15 +42,6 @@ import {
   TreeController,
   WorkerPool,
 } from "../mod.ts";
-import {
-  alignGridItemBounds,
-  gridSpanSize,
-  gridTrackOffsets,
-  hitRegionForNode,
-  placeGridChildren,
-  resolveGridTracks,
-} from "../src/layout/solvers/simple_grid.ts";
-import { cellLength, frLength, percentLength } from "../src/layout/style.ts";
 import { computedLayoutBoxOverflow } from "../src/layout/solver.ts";
 import { yogaLayoutSolver } from "../src/layout/solvers/yoga.ts";
 import type {
@@ -802,61 +793,84 @@ Deno.test("createMarkupLayout computes CSS grid tracks and item placement", () =
   assertEquals(result.layout.byId.get("c")!.rect, { column: 0, row: 0, width: 10, height: 2 });
 });
 
-Deno.test("simple grid placement honors explicit cells before auto-flow", () => {
-  const explicit = gridNode("explicit", { columnStart: 2, rowStart: 1 });
-  const autoA = gridNode("auto-a");
-  const rowFixed = gridNode("row-fixed", { rowStart: 2 });
-  const autoB = gridNode("auto-b");
+Deno.test("createMarkupLayout honors explicit grid cells before auto-flow", () => {
+  const result = createMarkupLayout({
+    markup: `
+      <window id="main">
+        <panel id="auto-a">A</panel>
+        <panel id="explicit">Explicit</panel>
+        <panel id="row-fixed">Row fixed</panel>
+        <panel id="auto-b">B</panel>
+      </window>
+    `,
+    css: `
+      window {
+        display: grid;
+        grid-template-columns: repeat(3, 4);
+        grid-template-rows: repeat(2, 2);
+        gap: 1;
+        width: 14;
+        height: 5;
+      }
 
-  const placed = placeGridChildren([autoA, explicit, rowFixed, autoB], {
-    columns: 3,
-    rows: 2,
-    autoFlow: "row",
+      #explicit {
+        grid-column: 2;
+        grid-row: 1;
+      }
+
+      #row-fixed {
+        grid-row: 2;
+      }
+    `,
+    bounds: { column: 0, row: 0, width: 14, height: 5 },
+    widgets: false,
   });
 
-  assertEquals(
-    placed.map((item) => [item.node.id, item.column, item.row, item.columnSpan, item.rowSpan]),
-    [
-      ["auto-a", 0, 0, 1, 1],
-      ["explicit", 1, 0, 1, 1],
-      ["row-fixed", 0, 1, 1, 1],
-      ["auto-b", 2, 0, 1, 1],
-    ],
-  );
+  assertEquals(result.layout.byId.get("auto-a")!.rect, { column: 0, row: 0, width: 4, height: 2 });
+  assertEquals(result.layout.byId.get("explicit")!.rect, { column: 5, row: 0, width: 4, height: 2 });
+  assertEquals(result.layout.byId.get("row-fixed")!.rect, { column: 0, row: 3, width: 4, height: 2 });
+  assertEquals(result.layout.byId.get("auto-b")!.rect, { column: 10, row: 0, width: 4, height: 2 });
 });
 
-Deno.test("simple grid track helpers resolve fixed percent fr auto gap and spans", () => {
-  const tracks = resolveGridTracks(
-    [cellLength(4), percentLength(25), frLength(1)],
-    4,
-    24,
-    1,
-    frLength(1),
-  );
-  assertEquals(tracks, [4, 5, 6, 6]);
-  assertEquals(gridTrackOffsets(2, tracks, 1), [2, 7, 13, 20]);
-  assertEquals(gridSpanSize(tracks, 1, 3, 1), 19);
-});
+Deno.test("createMarkupLayout resolves grid tracks spans alignment and hit regions", () => {
+  const result = createMarkupLayout({
+    markup: `
+      <window id="main">
+        <panel id="centered">Centered</panel>
+      </window>
+    `,
+    css: `
+      window {
+        display: grid;
+        grid-template-columns: 4 25% 1fr 1fr;
+        grid-template-rows: 1fr;
+        grid-auto-columns: 1fr;
+        gap: 1;
+        width: 100%;
+        height: 100%;
+      }
 
-Deno.test("simple grid alignment and hit region helpers preserve solver contracts", () => {
-  const node = gridNode("centered");
-  node.style.justifySelf = "center";
-  node.style.alignSelf = "end";
-  node.style.width = cellLength(4);
-  node.style.height = cellLength(2);
-
-  assertEquals(alignGridItemBounds(node, { column: 10, row: 5, width: 10, height: 5 }), {
-    column: 13,
-    row: 8,
-    width: 4,
-    height: 2,
+      #centered {
+        grid-column: 2 / span 3;
+        width: 4;
+        height: 2;
+        justify-self: center;
+        align-self: end;
+        z-index: 7;
+      }
+    `,
+    bounds: { column: 2, row: 5, width: 24, height: 5 },
+    widgets: false,
   });
-  assertEquals(hitRegionForNode(node, { column: 1, row: 2, width: 3, height: 4 }, 7), {
+
+  const centered = result.layout.byId.get("centered")!;
+  assertEquals(centered.rect, { column: 14, row: 8, width: 4, height: 2 });
+  assertEquals(centered.hitRegions, [{
     id: "centered",
-    bounds: { column: 1, row: 2, width: 3, height: 4 },
+    bounds: { column: 14, row: 8, width: 4, height: 2 },
     zIndex: 7,
-    payload: { nodeId: "centered", tag: "div" },
-  });
+    payload: { nodeId: "centered", tag: "panel" },
+  }]);
 });
 
 Deno.test("createMarkupLayout supports grid numeric end lines and longhands", () => {
@@ -1964,16 +1978,6 @@ Deno.test("generated flex fixtures keep simple and yoga solvers in parity", () =
     }
   }
 });
-
-function gridNode(
-  id: string,
-  options: { columnStart?: number; rowStart?: number; columnSpan?: number; rowSpan?: number } = {},
-): LayoutNode {
-  const style = defaultComputedLayoutStyle();
-  style.gridColumn = { start: options.columnStart, span: options.columnSpan };
-  style.gridRow = { start: options.rowStart, span: options.rowSpan };
-  return createLayoutNode({ id, tag: "div", style });
-}
 
 function findLayoutNode(node: LayoutNode, id: string): LayoutNode | undefined {
   if (node.id === id) return node;

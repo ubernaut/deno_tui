@@ -6606,282 +6606,6 @@ function isAsciiWhitespace(code) {
   return code === 32 || code === 9 || code === 11 || code === 12;
 }
 
-// src/layout/solvers/simple_grid.ts
-function placeGridChildren(children, bounds) {
-  const placed = new Array(children.length);
-  const occupied = /* @__PURE__ */ new Set();
-  const autoColumns = bounds.columns > 0 ? bounds.columns : Math.max(1, Math.ceil(Math.sqrt(children.length)));
-  const autoRows = bounds.rows > 0 ? bounds.rows : Math.max(1, Math.ceil(Math.sqrt(children.length)));
-  const candidates = new Array(children.length);
-  for (let index = 0; index < children.length; index += 1) {
-    const child = children[index];
-    const area = child.style.gridArea ? gridTemplateAreaBounds(bounds.areas ?? [], child.style.gridArea) : void 0;
-    const hasExplicitColumn = gridPlacementHasExplicitLine(child.style.gridColumn);
-    const hasExplicitRow = gridPlacementHasExplicitLine(child.style.gridRow);
-    candidates[index] = {
-      index,
-      node: child,
-      columnSpan: hasExplicitColumn ? gridPlacementSpan(child.style.gridColumn) : area?.columnSpan ?? gridPlacementSpan(child.style.gridColumn),
-      rowSpan: hasExplicitRow ? gridPlacementSpan(child.style.gridRow) : area?.rowSpan ?? gridPlacementSpan(child.style.gridRow),
-      explicitColumn: gridPlacementStart(child.style.gridColumn) ?? area?.column,
-      explicitRow: gridPlacementStart(child.style.gridRow) ?? area?.row
-    };
-  }
-  for (let phase = 0; phase < 3; phase += 1) {
-    for (const candidate of candidates) {
-      const explicitColumn = candidate.explicitColumn !== void 0;
-      const explicitRow = candidate.explicitRow !== void 0;
-      if (phase === 0 && (!explicitColumn || !explicitRow)) continue;
-      if (phase === 1 && explicitColumn === explicitRow) continue;
-      if (phase === 2 && (explicitColumn || explicitRow)) continue;
-      const position = candidate.explicitColumn !== void 0 && candidate.explicitRow !== void 0 ? { column: candidate.explicitColumn, row: candidate.explicitRow } : candidate.explicitColumn !== void 0 ? findGridSlot(occupied, {
-        preferredColumn: candidate.explicitColumn,
-        columnSpan: candidate.columnSpan,
-        rowSpan: candidate.rowSpan,
-        maxColumns: void 0,
-        maxRows: void 0,
-        scanColumns: Math.max(autoColumns, candidate.explicitColumn + candidate.columnSpan),
-        scanRows: autoRows,
-        autoFlow: bounds.autoFlow
-      }) : candidate.explicitRow !== void 0 ? findGridSlot(occupied, {
-        preferredRow: candidate.explicitRow,
-        columnSpan: candidate.columnSpan,
-        rowSpan: candidate.rowSpan,
-        maxColumns: bounds.columns > 0 ? bounds.columns : void 0,
-        maxRows: void 0,
-        scanColumns: autoColumns,
-        scanRows: Math.max(autoRows, candidate.explicitRow + candidate.rowSpan),
-        autoFlow: bounds.autoFlow
-      }) : findGridSlot(occupied, {
-        columnSpan: candidate.columnSpan,
-        rowSpan: candidate.rowSpan,
-        maxColumns: bounds.autoFlow === "row" && bounds.columns > 0 ? bounds.columns : void 0,
-        maxRows: bounds.autoFlow === "column" && bounds.rows > 0 ? bounds.rows : void 0,
-        scanColumns: autoColumns,
-        scanRows: autoRows,
-        autoFlow: bounds.autoFlow
-      });
-      occupyGridCells(occupied, position.row, position.column, candidate.rowSpan, candidate.columnSpan);
-      placed[candidate.index] = {
-        node: candidate.node,
-        column: position.column,
-        row: position.row,
-        columnSpan: candidate.columnSpan,
-        rowSpan: candidate.rowSpan
-      };
-    }
-  }
-  return placed;
-}
-function alignGridItemBounds(node, cell) {
-  const width = node.style.justifySelf === "stretch" || node.style.width.unit === "auto" ? cell.width : Math.min(cell.width, resolveLayoutLength(node.style.width, cell.width, cell.width));
-  const height = node.style.alignSelf === "stretch" || node.style.height.unit === "auto" ? cell.height : Math.min(cell.height, resolveLayoutLength(node.style.height, cell.height, cell.height));
-  return {
-    column: cell.column + alignmentOffset(cell.width, width, node.style.justifySelf),
-    row: cell.row + alignmentOffset(cell.height, height, node.style.alignSelf),
-    width,
-    height
-  };
-}
-function resolveGridTracks(template, count, available, gap, autoTrack) {
-  const trackCount = Math.max(1, count);
-  const tracks = new Array(trackCount);
-  for (let index = 0; index < trackCount; index++) {
-    tracks[index] = template[index] ?? autoTrack;
-  }
-  const totalGap = Math.max(0, trackCount - 1) * Math.max(0, gap);
-  const availableWithoutGaps = Math.max(0, Math.floor(available) - totalGap);
-  const sizes = new Array(trackCount).fill(0);
-  const autoIndexes = [];
-  const frIndexes = [];
-  let fixed2 = 0;
-  let frTotal = 0;
-  for (let index = 0; index < tracks.length; index += 1) {
-    const track = tracks[index] ?? autoTrack;
-    if (track.unit === "cell") {
-      sizes[index] = Math.max(0, Math.floor(track.value));
-      fixed2 += sizes[index];
-    } else if (track.unit === "percent") {
-      sizes[index] = Math.max(0, Math.floor(availableWithoutGaps * track.value / 100));
-      fixed2 += sizes[index];
-    } else if (track.unit === "fr") {
-      frIndexes.push(index);
-      frTotal += Math.max(0, track.value);
-    } else {
-      autoIndexes.push(index);
-    }
-  }
-  let remaining = Math.max(0, availableWithoutGaps - fixed2);
-  if (frIndexes.length > 0 && frTotal > 0) {
-    let assigned = 0;
-    for (const [frIndex, trackIndex] of frIndexes.entries()) {
-      const track = tracks[trackIndex] ?? autoTrack;
-      const size = frIndex === frIndexes.length - 1 ? remaining - assigned : Math.floor(remaining * Math.max(0, track.value) / frTotal);
-      sizes[trackIndex] = Math.max(0, size);
-      assigned += sizes[trackIndex];
-    }
-    remaining = Math.max(0, availableWithoutGaps - fixed2 - assigned);
-  }
-  if (autoIndexes.length > 0) {
-    const base = Math.floor(remaining / autoIndexes.length);
-    let extra = remaining % autoIndexes.length;
-    for (const trackIndex of autoIndexes) {
-      sizes[trackIndex] = base + (extra > 0 ? 1 : 0);
-      if (extra > 0) extra -= 1;
-    }
-  }
-  shrinkGridTracksToFit(sizes, availableWithoutGaps);
-  for (let index = 0; index < sizes.length; index += 1) {
-    sizes[index] = Math.max(0, Math.floor(sizes[index] ?? 0));
-  }
-  return sizes;
-}
-function gridTrackOffsets(start, tracks, gap) {
-  const offsets = [];
-  let cursor = start;
-  for (const track of tracks) {
-    offsets.push(cursor);
-    cursor += Math.max(0, track) + Math.max(0, gap);
-  }
-  return offsets;
-}
-function gridSpanSize(tracks, start, span, gap) {
-  const safeSpan = Math.max(1, span);
-  let size = 0;
-  for (let offset = 0; offset < safeSpan; offset += 1) {
-    size += tracks[start + offset] ?? 0;
-  }
-  return Math.max(0, size + Math.max(0, safeSpan - 1) * Math.max(0, gap));
-}
-function hitRegionForNode(node, bounds, zIndex) {
-  return {
-    id: node.id,
-    bounds,
-    zIndex,
-    payload: { nodeId: node.id, tag: node.tag }
-  };
-}
-function findGridSlot(occupied, options) {
-  const scanColumns = Math.max(
-    1,
-    options.scanColumns,
-    options.preferredColumn !== void 0 ? options.preferredColumn + 1 : 1
-  );
-  const scanRows = Math.max(1, options.scanRows, options.preferredRow !== void 0 ? options.preferredRow + 1 : 1);
-  const limit = Math.max(scanColumns * scanRows + occupied.size + 16, 32);
-  if (options.preferredColumn !== void 0) {
-    for (let row = options.preferredRow ?? 0; row < limit; row += 1) {
-      if (gridCellsAvailable(occupied, row, options.preferredColumn, options.rowSpan, options.columnSpan, options)) {
-        return { column: options.preferredColumn, row };
-      }
-    }
-  }
-  if (options.preferredRow !== void 0) {
-    for (let column = options.preferredColumn ?? 0; column < limit; column += 1) {
-      if (gridCellsAvailable(occupied, options.preferredRow, column, options.rowSpan, options.columnSpan, options)) {
-        return { column, row: options.preferredRow };
-      }
-    }
-  }
-  if (options.autoFlow === "column") {
-    for (let column = 0; column < limit; column += 1) {
-      for (let row = 0; row < scanRows || row < limit && options.maxRows === void 0; row += 1) {
-        if (gridCellsAvailable(occupied, row, column, options.rowSpan, options.columnSpan, options)) {
-          return { column, row };
-        }
-      }
-    }
-  } else {
-    for (let row = 0; row < limit; row += 1) {
-      for (let column = 0; column < scanColumns || column < limit && options.maxColumns === void 0; column += 1) {
-        if (gridCellsAvailable(occupied, row, column, options.rowSpan, options.columnSpan, options)) {
-          return { column, row };
-        }
-      }
-    }
-  }
-  return { column: 0, row: 0 };
-}
-function gridCellsAvailable(occupied, row, column, rowSpan, columnSpan, options) {
-  if (row < 0 || column < 0) return false;
-  if (options.maxColumns !== void 0 && column + columnSpan > options.maxColumns) return false;
-  if (options.maxRows !== void 0 && row + rowSpan > options.maxRows) return false;
-  for (let rowOffset = 0; rowOffset < rowSpan; rowOffset += 1) {
-    for (let columnOffset = 0; columnOffset < columnSpan; columnOffset += 1) {
-      if (occupied.has(gridCellKey(row + rowOffset, column + columnOffset))) return false;
-    }
-  }
-  return true;
-}
-function occupyGridCells(occupied, row, column, rowSpan, columnSpan) {
-  for (let rowOffset = 0; rowOffset < rowSpan; rowOffset += 1) {
-    for (let columnOffset = 0; columnOffset < columnSpan; columnOffset += 1) {
-      occupied.add(gridCellKey(row + rowOffset, column + columnOffset));
-    }
-  }
-}
-function gridCellKey(row, column) {
-  return `${row}:${column}`;
-}
-function gridPlacementSpan(placement) {
-  if (placement.span !== void 0) return Math.max(1, placement.span);
-  if (placement.start !== void 0 && placement.end !== void 0) return Math.max(1, placement.end - placement.start);
-  return 1;
-}
-function gridPlacementHasExplicitLine(placement) {
-  return placement.start !== void 0 || placement.end !== void 0 || placement.span !== void 0;
-}
-function gridPlacementStart(placement) {
-  if (placement.start !== void 0) return Math.max(0, placement.start - 1);
-  if (placement.end !== void 0 && placement.span !== void 0) {
-    return Math.max(0, placement.end - placement.span - 1);
-  }
-  return void 0;
-}
-function gridTemplateAreaBounds(areas, name) {
-  let minRow = Number.POSITIVE_INFINITY;
-  let maxRow = -1;
-  let minColumn = Number.POSITIVE_INFINITY;
-  let maxColumn = -1;
-  for (const [row, cells] of areas.entries()) {
-    for (const [column, cell] of cells.entries()) {
-      if (cell !== name) continue;
-      minRow = Math.min(minRow, row);
-      maxRow = Math.max(maxRow, row);
-      minColumn = Math.min(minColumn, column);
-      maxColumn = Math.max(maxColumn, column);
-    }
-  }
-  if (maxRow < 0 || maxColumn < 0) return void 0;
-  for (let row = minRow; row <= maxRow; row += 1) {
-    for (let column = minColumn; column <= maxColumn; column += 1) {
-      if (areas[row]?.[column] !== name) return void 0;
-    }
-  }
-  return {
-    column: minColumn,
-    row: minRow,
-    columnSpan: maxColumn - minColumn + 1,
-    rowSpan: maxRow - minRow + 1
-  };
-}
-function alignmentOffset(available, size, alignment) {
-  const free = Math.max(0, available - size);
-  if (alignment === "end") return free;
-  if (alignment === "center") return Math.floor(free / 2);
-  return 0;
-}
-function shrinkGridTracksToFit(sizes, available) {
-  let total = 0;
-  for (const size of sizes) total += size;
-  let overflow = total - Math.max(0, available);
-  for (let index = sizes.length - 1; index >= 0 && overflow > 0; index -= 1) {
-    const removable = Math.min(sizes[index] ?? 0, overflow);
-    sizes[index] = Math.max(0, (sizes[index] ?? 0) - removable);
-    overflow -= removable;
-  }
-}
-
 // src/layout/solvers/simple.ts
 var SimpleLayoutSolver = class {
   id = "simple";
@@ -7098,6 +6822,280 @@ var SimpleLayoutSolver = class {
 };
 function simpleLayoutSolver(options = {}) {
   return new SimpleLayoutSolver(options);
+}
+function placeGridChildren(children, bounds) {
+  const placed = new Array(children.length);
+  const occupied = /* @__PURE__ */ new Set();
+  const autoColumns = bounds.columns > 0 ? bounds.columns : Math.max(1, Math.ceil(Math.sqrt(children.length)));
+  const autoRows = bounds.rows > 0 ? bounds.rows : Math.max(1, Math.ceil(Math.sqrt(children.length)));
+  const candidates = new Array(children.length);
+  for (let index = 0; index < children.length; index += 1) {
+    const child = children[index];
+    const area = child.style.gridArea ? gridTemplateAreaBounds(bounds.areas ?? [], child.style.gridArea) : void 0;
+    const hasExplicitColumn = gridPlacementHasExplicitLine(child.style.gridColumn);
+    const hasExplicitRow = gridPlacementHasExplicitLine(child.style.gridRow);
+    candidates[index] = {
+      index,
+      node: child,
+      columnSpan: hasExplicitColumn ? gridPlacementSpan(child.style.gridColumn) : area?.columnSpan ?? gridPlacementSpan(child.style.gridColumn),
+      rowSpan: hasExplicitRow ? gridPlacementSpan(child.style.gridRow) : area?.rowSpan ?? gridPlacementSpan(child.style.gridRow),
+      explicitColumn: gridPlacementStart(child.style.gridColumn) ?? area?.column,
+      explicitRow: gridPlacementStart(child.style.gridRow) ?? area?.row
+    };
+  }
+  for (let phase = 0; phase < 3; phase += 1) {
+    for (const candidate of candidates) {
+      const explicitColumn = candidate.explicitColumn !== void 0;
+      const explicitRow = candidate.explicitRow !== void 0;
+      if (phase === 0 && (!explicitColumn || !explicitRow)) continue;
+      if (phase === 1 && explicitColumn === explicitRow) continue;
+      if (phase === 2 && (explicitColumn || explicitRow)) continue;
+      const position = candidate.explicitColumn !== void 0 && candidate.explicitRow !== void 0 ? { column: candidate.explicitColumn, row: candidate.explicitRow } : candidate.explicitColumn !== void 0 ? findGridSlot(occupied, {
+        preferredColumn: candidate.explicitColumn,
+        columnSpan: candidate.columnSpan,
+        rowSpan: candidate.rowSpan,
+        maxColumns: void 0,
+        maxRows: void 0,
+        scanColumns: Math.max(autoColumns, candidate.explicitColumn + candidate.columnSpan),
+        scanRows: autoRows,
+        autoFlow: bounds.autoFlow
+      }) : candidate.explicitRow !== void 0 ? findGridSlot(occupied, {
+        preferredRow: candidate.explicitRow,
+        columnSpan: candidate.columnSpan,
+        rowSpan: candidate.rowSpan,
+        maxColumns: bounds.columns > 0 ? bounds.columns : void 0,
+        maxRows: void 0,
+        scanColumns: autoColumns,
+        scanRows: Math.max(autoRows, candidate.explicitRow + candidate.rowSpan),
+        autoFlow: bounds.autoFlow
+      }) : findGridSlot(occupied, {
+        columnSpan: candidate.columnSpan,
+        rowSpan: candidate.rowSpan,
+        maxColumns: bounds.autoFlow === "row" && bounds.columns > 0 ? bounds.columns : void 0,
+        maxRows: bounds.autoFlow === "column" && bounds.rows > 0 ? bounds.rows : void 0,
+        scanColumns: autoColumns,
+        scanRows: autoRows,
+        autoFlow: bounds.autoFlow
+      });
+      occupyGridCells(occupied, position.row, position.column, candidate.rowSpan, candidate.columnSpan);
+      placed[candidate.index] = {
+        node: candidate.node,
+        column: position.column,
+        row: position.row,
+        columnSpan: candidate.columnSpan,
+        rowSpan: candidate.rowSpan
+      };
+    }
+  }
+  return placed;
+}
+function alignGridItemBounds(node, cell) {
+  const width = node.style.justifySelf === "stretch" || node.style.width.unit === "auto" ? cell.width : Math.min(cell.width, resolveLayoutLength(node.style.width, cell.width, cell.width));
+  const height = node.style.alignSelf === "stretch" || node.style.height.unit === "auto" ? cell.height : Math.min(cell.height, resolveLayoutLength(node.style.height, cell.height, cell.height));
+  return {
+    column: cell.column + gridAlignmentOffset(cell.width, width, node.style.justifySelf),
+    row: cell.row + gridAlignmentOffset(cell.height, height, node.style.alignSelf),
+    width,
+    height
+  };
+}
+function resolveGridTracks(template, count, available, gap, autoTrack) {
+  const trackCount = Math.max(1, count);
+  const tracks = new Array(trackCount);
+  for (let index = 0; index < trackCount; index++) {
+    tracks[index] = template[index] ?? autoTrack;
+  }
+  const totalGap = Math.max(0, trackCount - 1) * Math.max(0, gap);
+  const availableWithoutGaps = Math.max(0, Math.floor(available) - totalGap);
+  const sizes = new Array(trackCount).fill(0);
+  const autoIndexes = [];
+  const frIndexes = [];
+  let fixed2 = 0;
+  let frTotal = 0;
+  for (let index = 0; index < tracks.length; index += 1) {
+    const track = tracks[index] ?? autoTrack;
+    if (track.unit === "cell") {
+      sizes[index] = Math.max(0, Math.floor(track.value));
+      fixed2 += sizes[index];
+    } else if (track.unit === "percent") {
+      sizes[index] = Math.max(0, Math.floor(availableWithoutGaps * track.value / 100));
+      fixed2 += sizes[index];
+    } else if (track.unit === "fr") {
+      frIndexes.push(index);
+      frTotal += Math.max(0, track.value);
+    } else {
+      autoIndexes.push(index);
+    }
+  }
+  let remaining = Math.max(0, availableWithoutGaps - fixed2);
+  if (frIndexes.length > 0 && frTotal > 0) {
+    let assigned = 0;
+    for (const [frIndex, trackIndex] of frIndexes.entries()) {
+      const track = tracks[trackIndex] ?? autoTrack;
+      const size = frIndex === frIndexes.length - 1 ? remaining - assigned : Math.floor(remaining * Math.max(0, track.value) / frTotal);
+      sizes[trackIndex] = Math.max(0, size);
+      assigned += sizes[trackIndex];
+    }
+    remaining = Math.max(0, availableWithoutGaps - fixed2 - assigned);
+  }
+  if (autoIndexes.length > 0) {
+    const base = Math.floor(remaining / autoIndexes.length);
+    let extra = remaining % autoIndexes.length;
+    for (const trackIndex of autoIndexes) {
+      sizes[trackIndex] = base + (extra > 0 ? 1 : 0);
+      if (extra > 0) extra -= 1;
+    }
+  }
+  shrinkGridTracksToFit(sizes, availableWithoutGaps);
+  for (let index = 0; index < sizes.length; index += 1) {
+    sizes[index] = Math.max(0, Math.floor(sizes[index] ?? 0));
+  }
+  return sizes;
+}
+function gridTrackOffsets(start, tracks, gap) {
+  const offsets = [];
+  let cursor = start;
+  for (const track of tracks) {
+    offsets.push(cursor);
+    cursor += Math.max(0, track) + Math.max(0, gap);
+  }
+  return offsets;
+}
+function gridSpanSize(tracks, start, span, gap) {
+  const safeSpan = Math.max(1, span);
+  let size = 0;
+  for (let offset = 0; offset < safeSpan; offset += 1) {
+    size += tracks[start + offset] ?? 0;
+  }
+  return Math.max(0, size + Math.max(0, safeSpan - 1) * Math.max(0, gap));
+}
+function hitRegionForNode(node, bounds, zIndex) {
+  return {
+    id: node.id,
+    bounds,
+    zIndex,
+    payload: { nodeId: node.id, tag: node.tag }
+  };
+}
+function findGridSlot(occupied, options) {
+  const scanColumns = Math.max(
+    1,
+    options.scanColumns,
+    options.preferredColumn !== void 0 ? options.preferredColumn + 1 : 1
+  );
+  const scanRows = Math.max(1, options.scanRows, options.preferredRow !== void 0 ? options.preferredRow + 1 : 1);
+  const limit = Math.max(scanColumns * scanRows + occupied.size + 16, 32);
+  if (options.preferredColumn !== void 0) {
+    for (let row = options.preferredRow ?? 0; row < limit; row += 1) {
+      if (gridCellsAvailable(occupied, row, options.preferredColumn, options.rowSpan, options.columnSpan, options)) {
+        return { column: options.preferredColumn, row };
+      }
+    }
+  }
+  if (options.preferredRow !== void 0) {
+    for (let column = options.preferredColumn ?? 0; column < limit; column += 1) {
+      if (gridCellsAvailable(occupied, options.preferredRow, column, options.rowSpan, options.columnSpan, options)) {
+        return { column, row: options.preferredRow };
+      }
+    }
+  }
+  if (options.autoFlow === "column") {
+    for (let column = 0; column < limit; column += 1) {
+      for (let row = 0; row < scanRows || row < limit && options.maxRows === void 0; row += 1) {
+        if (gridCellsAvailable(occupied, row, column, options.rowSpan, options.columnSpan, options)) {
+          return { column, row };
+        }
+      }
+    }
+  } else {
+    for (let row = 0; row < limit; row += 1) {
+      for (let column = 0; column < scanColumns || column < limit && options.maxColumns === void 0; column += 1) {
+        if (gridCellsAvailable(occupied, row, column, options.rowSpan, options.columnSpan, options)) {
+          return { column, row };
+        }
+      }
+    }
+  }
+  return { column: 0, row: 0 };
+}
+function gridCellsAvailable(occupied, row, column, rowSpan, columnSpan, options) {
+  if (row < 0 || column < 0) return false;
+  if (options.maxColumns !== void 0 && column + columnSpan > options.maxColumns) return false;
+  if (options.maxRows !== void 0 && row + rowSpan > options.maxRows) return false;
+  for (let rowOffset = 0; rowOffset < rowSpan; rowOffset += 1) {
+    for (let columnOffset = 0; columnOffset < columnSpan; columnOffset += 1) {
+      if (occupied.has(gridCellKey(row + rowOffset, column + columnOffset))) return false;
+    }
+  }
+  return true;
+}
+function occupyGridCells(occupied, row, column, rowSpan, columnSpan) {
+  for (let rowOffset = 0; rowOffset < rowSpan; rowOffset += 1) {
+    for (let columnOffset = 0; columnOffset < columnSpan; columnOffset += 1) {
+      occupied.add(gridCellKey(row + rowOffset, column + columnOffset));
+    }
+  }
+}
+function gridCellKey(row, column) {
+  return `${row}:${column}`;
+}
+function gridPlacementSpan(placement) {
+  if (placement.span !== void 0) return Math.max(1, placement.span);
+  if (placement.start !== void 0 && placement.end !== void 0) return Math.max(1, placement.end - placement.start);
+  return 1;
+}
+function gridPlacementHasExplicitLine(placement) {
+  return placement.start !== void 0 || placement.end !== void 0 || placement.span !== void 0;
+}
+function gridPlacementStart(placement) {
+  if (placement.start !== void 0) return Math.max(0, placement.start - 1);
+  if (placement.end !== void 0 && placement.span !== void 0) {
+    return Math.max(0, placement.end - placement.span - 1);
+  }
+  return void 0;
+}
+function gridTemplateAreaBounds(areas, name) {
+  let minRow = Number.POSITIVE_INFINITY;
+  let maxRow = -1;
+  let minColumn = Number.POSITIVE_INFINITY;
+  let maxColumn = -1;
+  for (const [row, cells] of areas.entries()) {
+    for (const [column, cell] of cells.entries()) {
+      if (cell !== name) continue;
+      minRow = Math.min(minRow, row);
+      maxRow = Math.max(maxRow, row);
+      minColumn = Math.min(minColumn, column);
+      maxColumn = Math.max(maxColumn, column);
+    }
+  }
+  if (maxRow < 0 || maxColumn < 0) return void 0;
+  for (let row = minRow; row <= maxRow; row += 1) {
+    for (let column = minColumn; column <= maxColumn; column += 1) {
+      if (areas[row]?.[column] !== name) return void 0;
+    }
+  }
+  return {
+    column: minColumn,
+    row: minRow,
+    columnSpan: maxColumn - minColumn + 1,
+    rowSpan: maxRow - minRow + 1
+  };
+}
+function gridAlignmentOffset(available, size, alignment) {
+  const free = Math.max(0, available - size);
+  if (alignment === "end") return free;
+  if (alignment === "center") return Math.floor(free / 2);
+  return 0;
+}
+function shrinkGridTracksToFit(sizes, available) {
+  let total = 0;
+  for (const size of sizes) total += size;
+  let overflow = total - Math.max(0, available);
+  for (let index = sizes.length - 1; index >= 0 && overflow > 0; index -= 1) {
+    const removable = Math.min(sizes[index] ?? 0, overflow);
+    sizes[index] = Math.max(0, (sizes[index] ?? 0) - removable);
+    overflow -= removable;
+  }
 }
 function layoutChildren(node) {
   const children = [];
