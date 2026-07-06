@@ -16331,6 +16331,9 @@ var ENCODER = new TextEncoder();
 // src/utils/ansi_text.ts
 var ESCAPE = String.fromCharCode(27);
 var ANSI_PATTERN = new RegExp(`${ESCAPE}\\[[0-?]*[ -/]*[@-~]`, "g");
+function ansiCubeLevel(value) {
+  return value === 0 ? 0 : 55 + value * 40;
+}
 
 // src/platform/types.ts
 var NoopLifecycleController = class {
@@ -16541,9 +16544,6 @@ function ansi256Color(index) {
   const green = Math.floor(offset % 36 / 6);
   const blue = offset % 6;
   return `rgb(${ansiCubeLevel(red)},${ansiCubeLevel(green)},${ansiCubeLevel(blue)})`;
-}
-function ansiCubeLevel(value) {
-  return value === 0 ? 0 : 55 + value * 40;
 }
 
 // src/web/platform.ts

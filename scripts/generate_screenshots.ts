@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
 import jpeg from "jpeg-js";
 import { PNG } from "pngjs";
+import { ansiCubeLevel } from "../src/utils/ansi_text.ts";
 import { clamp } from "../src/utils/numbers.ts";
 
 interface ScreenshotTarget {
@@ -1194,10 +1195,6 @@ function ansi256Color(index: number): string {
   const green = Math.floor((offset % 36) / 6);
   const blue = offset % 6;
   return `rgb(${ansiCubeLevel(red)},${ansiCubeLevel(green)},${ansiCubeLevel(blue)})`;
-}
-
-function ansiCubeLevel(value: number): number {
-  return value === 0 ? 0 : 55 + value * 40;
 }
 
 function sameStyle(left: CellStyle, right: CellStyle): boolean {

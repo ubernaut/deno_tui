@@ -3,6 +3,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { CanvasCellSink, CanvasCellUpdate, CanvasRowRangeUpdate } from "../canvas/sink.ts";
 import type { CanvasRenderStats } from "../canvas/canvas.ts";
+import { ansiCubeLevel } from "../utils/ansi_text.ts";
 import { stripStyles } from "../utils/strings.ts";
 
 const textDecoder = new TextDecoder();
@@ -263,8 +264,4 @@ function ansi256Color(index: number): string {
   const green = Math.floor((offset % 36) / 6);
   const blue = offset % 6;
   return `rgb(${ansiCubeLevel(red)},${ansiCubeLevel(green)},${ansiCubeLevel(blue)})`;
-}
-
-function ansiCubeLevel(value: number): number {
-  return value === 0 ? 0 : 55 + value * 40;
 }
