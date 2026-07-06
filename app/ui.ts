@@ -4,7 +4,6 @@ import { Canvas } from "../src/canvas/canvas.ts";
 import { Computed, Signal, type SignalOfObject } from "../src/signals/mod.ts";
 import { cropToWidth, textWidth } from "../src/utils/strings.ts";
 import type { Style } from "../src/theme.ts";
-import { frameChars } from "./styles.ts";
 import type { BorderMode, MenuLine, Rect } from "./types.ts";
 
 const PANEL_BODY_LINE_LIMIT = 1024;
@@ -46,6 +45,38 @@ class RetainedTextLines {
     while (this.lines.length < targetCount) {
       this.lines.push(this.createLine(this.lines.length));
     }
+  }
+}
+
+function frameChars(mode: BorderMode) {
+  switch (mode) {
+    case "ascii":
+      return {
+        topLeft: "+",
+        topRight: "+",
+        bottomLeft: "+",
+        bottomRight: "+",
+        horizontal: "-",
+        vertical: "|",
+      };
+    case "sharp":
+      return {
+        topLeft: "┌",
+        topRight: "┐",
+        bottomLeft: "└",
+        bottomRight: "┘",
+        horizontal: "─",
+        vertical: "│",
+      };
+    default:
+      return {
+        topLeft: "╭",
+        topRight: "╮",
+        bottomLeft: "╰",
+        bottomRight: "╯",
+        horizontal: "─",
+        vertical: "│",
+      };
   }
 }
 

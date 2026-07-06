@@ -1,5 +1,5 @@
 import type { Style } from "../src/theme.ts";
-import type { Accent, BorderMode, Severity } from "./types.ts";
+import type { Accent, Severity } from "./types.ts";
 
 export const palette = {
   void: "#05070d",
@@ -80,38 +80,6 @@ export function severityAccent(severity: Severity): Accent {
       return "amber";
     default:
       return "signal";
-  }
-}
-
-export function frameChars(mode: BorderMode) {
-  switch (mode) {
-    case "ascii":
-      return {
-        topLeft: "+",
-        topRight: "+",
-        bottomLeft: "+",
-        bottomRight: "+",
-        horizontal: "-",
-        vertical: "|",
-      };
-    case "sharp":
-      return {
-        topLeft: "┌",
-        topRight: "┐",
-        bottomLeft: "└",
-        bottomRight: "┘",
-        horizontal: "─",
-        vertical: "│",
-      };
-    default:
-      return {
-        topLeft: "╭",
-        topRight: "╮",
-        bottomLeft: "╰",
-        bottomRight: "╯",
-        horizontal: "─",
-        vertical: "│",
-      };
   }
 }
 
