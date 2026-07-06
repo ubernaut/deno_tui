@@ -525,7 +525,15 @@ const terminalShellSearchPromptOpen = new Signal(false);
 const menuFocused = new Signal(false);
 const workbenchController = new WorkbenchController<"theme" | "newWindow" | "workspace">({
   activeId: "three",
-  menu: { onChange: syncTopMenuState },
+  menu: {
+    onChange: (state) => {
+      const projected = projectWorkbenchStandardTopMenuState(state);
+      themeMenuOpen.value = projected.themeMenuOpen;
+      newWindowMenuOpen.value = projected.newWindowMenuOpen;
+      workspaceMenuOpen.value = projected.workspaceMenuOpen;
+      menuFocused.value = projected.menuFocused;
+    },
+  },
   windows: [
     { id: "explorer", title: apiWorkbenchPanelTitle("explorer"), minWidth: 26, minHeight: 12 },
     { id: "inspector", title: apiWorkbenchPanelTitle("inspector"), minWidth: 32, minHeight: 11 },
@@ -953,7 +961,15 @@ tui.on("mouseScroll", (event) => {
     draw();
     return;
   }
-  const hovered = windowAt(event.x, event.y);
+  const hoveredHit = findHit(event.x, event.y);
+  const hovered = hoveredHit
+    ? resolveApiWorkbenchHitWindowId<WindowId>(hoveredHit.action, {
+      terminalShell: TERMINAL_SHELL_WINDOW_ID,
+      controls: "controls",
+      data: "data",
+      explorer: "explorer",
+    })
+    : undefined;
   if (hovered) {
     scrollWindow(hovered, event.shift ? event.scroll * 4 : 0, event.shift ? 0 : event.scroll);
   } else {
@@ -1052,7 +1068,7 @@ function draw(): void {
   const frame = prepareWorkbenchFrame(screenFrame, height);
   renderHeader(frame);
   renderWorkspace(frame);
-  syncWorkbenchThreeRuntimeBudget(width, height);
+  syncWorkbenchThreeRuntimeBudgetForViewport(width, height, threeBodyRect.peek());
   workbenchThreeRuntime.syncFrameInterval();
   renderStatus(frame);
   renderActiveDropdownOverlay(frame);
@@ -1060,10 +1076,6 @@ function draw(): void {
   if (forceFullRepaint) screenPainter.reset();
   const flushStats = screenPainter.flush(frame, width, height, renderFrameRow, renderFrameSlice);
   updateThreeTerminalPressure(flushStats, { ignoreSample: forceFullRepaint });
-}
-
-function syncWorkbenchThreeRuntimeBudget(width: number, height: number): void {
-  syncWorkbenchThreeRuntimeBudgetForViewport(width, height, threeBodyRect.peek());
 }
 
 function syncWorkbenchThreeRuntimeBudgetForViewport(
@@ -1211,7 +1223,7 @@ function renderWorkspace(frame: Frame): void {
     }
     hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
     translateHitTargets(hitTargets, { startIndex: hitStart, rowDelta: bounds.row, clip: bounds });
-    blitWorkspace(frame, virtual, bounds, 0, layout.bounds.width);
+    blitWorkbenchFrameCells(frame, virtual, { ...bounds, width: layout.bounds.width }, { columns: 0, rows: 0 });
     renderWindowTabs(frame);
     return;
   }
@@ -1248,7 +1260,7 @@ function renderWorkspace(frame: Frame): void {
   }
   hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
   translateHitTargets(hitTargets, { startIndex: hitStart, rowDelta: bounds.row - offset, clip: bounds });
-  blitWorkspace(frame, virtual, bounds, offset, layout.bounds.width);
+  blitWorkbenchFrameCells(frame, virtual, { ...bounds, width: layout.bounds.width }, { columns: 0, rows: offset });
   renderWorkspaceScrollbar(frame, bounds);
   renderShelf(frame);
 }
@@ -1279,8 +1291,22 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
       }
     },
     afterRenderContent: ({ contentHitStart, viewport, offset }) => {
-      translateDropdownOverlayForWindow(id, viewport, offset);
-      translateContentHits(contentHitStart, viewport, offset);
+      if (id === "controls" && dropdownOverlay?.coordinate === "workspace" && dropdownOverlay.kind === "control") {
+        dropdownOverlay = {
+          ...dropdownOverlay,
+          rect: {
+            ...dropdownOverlay.rect,
+            column: viewport.column + dropdownOverlay.rect.column - offset.columns,
+            row: viewport.row + dropdownOverlay.rect.row - offset.rows,
+          },
+        };
+      }
+      translateHitTargets(hitTargets, {
+        startIndex: contentHitStart,
+        columnDelta: viewport.column - offset.columns,
+        rowDelta: viewport.row - offset.rows,
+        clip: viewport,
+      });
     },
     focusAction: (targetId): HitAction => ({ type: "focus", id: targetId }),
     titlebarAction: (targetId, kind) => resolveApiWorkbenchTitlebarHitAction(targetId, kind),
@@ -1405,7 +1431,7 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
     });
     return;
   }
-  hideVisualizationThreePanel(id);
+  visualizationThreePanels.hide(id);
   renderApiWorkbenchVisualizationTextWindow({
     frame,
     rect,
@@ -1454,7 +1480,7 @@ function renderThree(frame: Frame, rect: Rectangle): void {
       writeRows,
     });
     addHit(sceneRect, { type: "threeViewport", id: "three" });
-    setThreeGraphicsRect(contentRectToGraphicsRect(sceneRect));
+    setWorkbenchThreeRect(threeGraphicsRect, contentRectToGraphicsRect(sceneRect));
     const grid = threePanel.grid.peek();
     if (resized) {
       renderApiWorkbenchThreeGridOrResizePlaceholder({
@@ -2070,7 +2096,15 @@ function renderThreeConfigModal(frame: Frame): void {
 }
 
 function threeConfigRowText(row: ThreeConfigRow): string {
-  return formatWorkbenchAsciiConfigRowText(row, configuredAscii().peek(), { kittyStatus: kittyGraphicsStatus() });
+  const current = configuredAscii().peek();
+  return formatWorkbenchAsciiConfigRowText(row, current, {
+    kittyStatus: formatWorkbenchKittyGraphicsStatus({
+      selected: current,
+      tmux: kittyGraphics.tmux,
+      tmuxPassthroughAllowed: kittyGraphics.tmuxPassthroughAllowed,
+      surface: kittyGraphics.surfaceFor(current).inspect(),
+    }),
+  });
 }
 
 function applyThreeConfigRow(index: number, action: ConfigHitAction = "activate"): void {
@@ -2083,16 +2117,6 @@ function applyThreeConfigRow(index: number, action: ConfigHitAction = "activate"
   threeConfigSelected.value = index;
   const next = applyWorkbenchAsciiConfigRowAction(configuredAscii().peek(), row, action, ASCII_DEMO_PRESET_IDS);
   setConfiguredAscii(next.options, `three config ${next.message}`, { persist: false });
-}
-
-function kittyGraphicsStatus(): string {
-  const current = configuredAscii().peek();
-  return formatWorkbenchKittyGraphicsStatus({
-    selected: current,
-    tmux: kittyGraphics.tmux,
-    tmuxPassthroughAllowed: kittyGraphics.tmuxPassthroughAllowed,
-    surface: kittyGraphics.surfaceFor(current).inspect(),
-  });
 }
 
 function drawFrame(frame: Frame, rect: Rectangle, title: string, active: boolean): void {
@@ -2192,12 +2216,20 @@ function buildVisualizationContext(
   const system = usesRealSystem
     ? systemMonitor.snapshot.peek()
     : syntheticWorkbenchSystem(phase, option?.group ?? "Monitor");
-  const sources = usesRealSystem ? realWorkbenchSources(visualizationId, system, phase) : syntheticWorkbenchSourcesInto(
-    syntheticSourceFrameBuffer,
-    visualizationId,
-    option?.group ?? "Monitor",
-    phase,
-  );
+  const sources = usesRealSystem
+    ? resolveSourceFramesInto(
+      realSourceFrameBuffer,
+      monitorSourceIdsInto(realSourceIdBuffer, visualizationId),
+      system,
+      workbenchAudioRegistry,
+      phase,
+    )
+    : syntheticWorkbenchSourcesInto(
+      syntheticSourceFrameBuffer,
+      visualizationId,
+      option?.group ?? "Monitor",
+      phase,
+    );
   const slot: SlotConfig = {
     id: "cpu",
     name: option?.label ?? visualizationId,
@@ -2219,40 +2251,6 @@ function buildVisualizationContext(
     selectedCpuLabel: visualizationId === "cpu-hex-grid" && options.windowId
       ? selectedCpuHexTiles.peek()[options.windowId]
       : undefined,
-  };
-}
-
-function realWorkbenchSources(visualizationId: string, system: SystemSnapshot, phase: number): SourceFrame[] {
-  const sourceIds = monitorSourceIdsInto(realSourceIdBuffer, visualizationId);
-  return resolveSourceFramesInto(realSourceFrameBuffer, sourceIds, system, workbenchAudioRegistry, phase);
-}
-
-function translateContentHits(
-  startIndex: number,
-  viewport: Rectangle,
-  offset: { columns: number; rows: number },
-): void {
-  translateHitTargets(hitTargets, {
-    startIndex,
-    columnDelta: viewport.column - offset.columns,
-    rowDelta: viewport.row - offset.rows,
-    clip: viewport,
-  });
-}
-
-function translateDropdownOverlayForWindow(
-  id: WindowId,
-  viewport: Rectangle,
-  offset: { columns: number; rows: number },
-): void {
-  if (id !== "controls" || dropdownOverlay?.coordinate !== "workspace" || dropdownOverlay.kind !== "control") return;
-  dropdownOverlay = {
-    ...dropdownOverlay,
-    rect: {
-      ...dropdownOverlay.rect,
-      column: viewport.column + dropdownOverlay.rect.column - offset.columns,
-      row: viewport.row + dropdownOverlay.rect.row - offset.rows,
-    },
   };
 }
 
@@ -2308,10 +2306,6 @@ function syncWorkbenchThreeWindowState(): WorkbenchThreeWindowState<WindowId> {
   });
 }
 
-function hideVisualizationThreePanel(id: VisualizationWindowId): void {
-  visualizationThreePanels.hide(id);
-}
-
 function hideVisualizationThreePanelsExcept(visibleIds: ReadonlySet<VisualizationWindowId>): void {
   visualizationThreePanels.hideExcept(visibleIds);
 }
@@ -2333,10 +2327,6 @@ function setThreeBodyRect(rect: Rectangle): boolean {
   syncWorkbenchThreeRuntimeBudgetForViewport(currentWidth(), currentHeight(), rect);
   scheduleDraw();
   return true;
-}
-
-function setThreeGraphicsRect(rect: Rectangle): void {
-  setWorkbenchThreeRect(threeGraphicsRect, rect);
 }
 
 function hideBuiltinThreeRects(): void {
@@ -2438,10 +2428,6 @@ function contentRectToGraphicsRect(rect: Rectangle): Rectangle {
   });
 }
 
-function blitWorkspace(frame: Frame, virtual: Frame, bounds: Rectangle, offset: number, width: number): void {
-  blitWorkbenchFrameCells(frame, virtual, { ...bounds, width }, { columns: 0, rows: offset });
-}
-
 function renderWorkspaceScrollbar(frame: Frame, bounds: Rectangle): void {
   const overflow = workspaceScroll.inspectOverflow();
   const t = theme();
@@ -2460,17 +2446,6 @@ function renderWorkspaceScrollbar(frame: Frame, bounds: Rectangle): void {
 
 function scrollWindow(id: WindowId, columns: number, rows: number): void {
   windowScroll(id).scrollBy(columns, rows);
-}
-
-function windowAt(x: number, y: number): WindowId | undefined {
-  const hit = findHit(x, y);
-  if (!hit) return undefined;
-  return resolveApiWorkbenchHitWindowId<WindowId>(hit.action, {
-    terminalShell: TERMINAL_SHELL_WINDOW_ID,
-    controls: "controls",
-    data: "data",
-    explorer: "explorer",
-  });
 }
 
 function focus(id: WindowId): void {
@@ -2499,11 +2474,6 @@ function toggleMaximize(id: WindowId): void {
   pushLog(workbenchWindowActionLog(maximized.peek() === id ? "maximize" : "restore", windowTitle(id)));
 }
 
-function selectWindowTab(id: WindowId): void {
-  windowManager.selectTab(id);
-  syncAndLogWindowAction("fullscreenTab", id);
-}
-
 function restoreAll(): void {
   windowManager.restore();
   syncWindowSignalsFromManager();
@@ -2528,14 +2498,6 @@ function syncWindowSignalsFromManager(): void {
 function adjustTileDensity(delta: number): void {
   tileDensity.value = clampWorkbenchTileDensity(tileDensity.peek() + delta);
   pushLog(`tile density ${tileDensity.peek()}`);
-}
-
-function cycleDataSortColumn(delta: number): void {
-  const current = table.state.peek().sort?.columnId;
-  const next = nextSortableDataColumn(columns, current, delta);
-  if (!next) return;
-  table.toggleSort(next.id);
-  pushLog(`sort data by ${next.label}`);
 }
 
 function setTheme(index: number): void {
@@ -2858,8 +2820,10 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
     menu.setActive(action.index);
     menu.selectActive();
   } else if (action.type === "quit") openQuitModal();
-  else if (action.type === "windowTab") selectWindowTab(action.id);
-  else if (action.type === "focus") focus(action.id);
+  else if (action.type === "windowTab") {
+    windowManager.selectTab(action.id);
+    syncAndLogWindowAction("fullscreenTab", action.id);
+  } else if (action.type === "focus") focus(action.id);
   else if (action.type === "minimize") minimize(action.id);
   else if (action.type === "maximize") toggleMaximize(action.id);
   else if (action.type === "close") closeWindow(action.id);
@@ -3087,7 +3051,12 @@ function handleWorkbenchKey(event: KeyPressEvent): void {
     explorer.handleKeyPress(event, Math.max(1, currentHeight() - 8));
   } else if (activeWindow.peek() === "controls") handleControlsKey(event);
   else if (activeWindow.peek() === "data" && event.key.toLowerCase() === "s") {
-    cycleDataSortColumn(event.shift ? -1 : 1);
+    const current = table.state.peek().sort?.columnId;
+    const next = nextSortableDataColumn(columns, current, event.shift ? -1 : 1);
+    if (next) {
+      table.toggleSort(next.id);
+      pushLog(`sort data by ${next.label}`);
+    }
   } else if (activeWindow.peek() === "data") table.handleKeyPress(event as never);
   else applyWorkbenchGlobalKeyAction(global, { phase: "postWindow" });
 }
@@ -3146,7 +3115,15 @@ function applyWorkbenchGlobalKeyAction(
       return true;
     }
     case "restoreNextMinimized":
-      restoreNextMinimizedWindow();
+      {
+        const restored = windowManager.restoreNextMinimized();
+        if (!restored) {
+          pushLog("no minimized windows");
+          return true;
+        }
+        syncWindowSignalsFromManager();
+        pushLog(`restore ${windowTitle(restored.id as WindowId)}`);
+      }
       return true;
     case "adjustTileDensity":
       adjustTileDensity(action.delta);
@@ -3436,7 +3413,13 @@ function openActiveTopMenu(): void {
       openNewWindowMenu();
       return;
     case "workspace":
-      openWorkspaceMenu();
+      {
+        const index = menu.items.peek().findIndex((item) => item.id === "workspace");
+        if (index >= 0) menu.setActive(index);
+        workbenchController.openMenu("workspace", workspaceMenuItemCount());
+        workspaceMenuIndex.value = workbenchController.menuIndex("workspace");
+        pushLog("open workspace menu");
+      }
       return;
   }
   topMenus.close(false);
@@ -3457,34 +3440,8 @@ function openNewWindowMenu(): void {
   pushLog("open new window menu");
 }
 
-function openWorkspaceMenu(): void {
-  const index = menu.items.peek().findIndex((item) => item.id === "workspace");
-  if (index >= 0) menu.setActive(index);
-  workbenchController.openMenu("workspace", workspaceMenuItemCount());
-  workspaceMenuIndex.value = workbenchController.menuIndex("workspace");
-  pushLog("open workspace menu");
-}
-
 function closeTopMenus(clearFocus = true): void {
   topMenus.close(clearFocus);
-}
-
-function syncTopMenuState(state: { openId: "theme" | "newWindow" | "workspace" | null; focused: boolean }): void {
-  const projected = projectWorkbenchStandardTopMenuState(state);
-  themeMenuOpen.value = projected.themeMenuOpen;
-  newWindowMenuOpen.value = projected.newWindowMenuOpen;
-  workspaceMenuOpen.value = projected.workspaceMenuOpen;
-  menuFocused.value = projected.menuFocused;
-}
-
-function restoreNextMinimizedWindow(): void {
-  const restored = windowManager.restoreNextMinimized();
-  if (!restored) {
-    pushLog("no minimized windows");
-    return;
-  }
-  syncWindowSignalsFromManager();
-  pushLog(`restore ${windowTitle(restored.id as WindowId)}`);
 }
 
 function handleThreeConfigKey(event: { key: string; shift?: boolean }): void {
