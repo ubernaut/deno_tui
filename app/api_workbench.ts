@@ -312,6 +312,7 @@ import {
   visualizationTextContentSize,
   visualizationThreeStatusLine,
   workbenchThreeFallbackRowsInto,
+  workbenchThreeStatusRowsInto,
   workbenchVisualizationRowsInto,
 } from "./workbench_visualization_window.ts";
 import {
@@ -494,6 +495,7 @@ const inspectorWrappedTextRows: string[] = [];
 const visualizationTextRows: string[] = [];
 const visualizationRenderRows: RowStyle[] = [];
 const threeFallbackRowsBuffer: RowStyle[] = [];
+const threeStatusRowsBuffer: RowStyle[] = [];
 const logRenderRows: RowStyle[] = [];
 const terminalOutputContentRows: string[] = [];
 const terminalOutputWindowRows: WorkbenchTerminalOutputWindowRow[] = [];
@@ -1604,12 +1606,16 @@ function renderThree(frame: Frame, rect: Rectangle): void {
 
 function renderThreeResizePlaceholder(frame: Frame, rect: Rectangle, t: ThemeSpec): void {
   if (rect.width <= 0 || rect.height <= 0) return;
-  fillRect(frame, rect, t.surface);
-  write(
+  writeRows(
     frame,
-    rect.row + Math.floor(rect.height / 2),
-    rect.column,
-    paint(centerText("renderer resizing", rect.width), { fg: t.warn, bg: t.surface }),
+    rect,
+    workbenchThreeStatusRowsInto(threeStatusRowsBuffer, {
+      width: rect.width,
+      height: rect.height,
+      message: "renderer resizing",
+      theme: t,
+      center: centerText,
+    }),
   );
 }
 
@@ -1624,12 +1630,16 @@ function renderThreeGrid(
 
   if (grid.length === 0) {
     const message = threeAsciiAvailable.peek() ? "renderer warming up" : "renderer unavailable";
-    fillRect(frame, rect, t.surface);
-    write(
+    writeRows(
       frame,
-      rect.row + Math.floor(rect.height / 2),
-      rect.column,
-      paint(centerText(message, rect.width), { fg: t.warn, bg: t.surface }),
+      rect,
+      workbenchThreeStatusRowsInto(threeStatusRowsBuffer, {
+        width: rect.width,
+        height: rect.height,
+        message,
+        theme: t,
+        center: centerText,
+      }),
     );
     return;
   }

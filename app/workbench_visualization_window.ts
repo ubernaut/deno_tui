@@ -52,6 +52,21 @@ export interface WorkbenchThreeFallbackRowsOptions {
   center?: (text: string, width: number) => string;
 }
 
+/** Minimal theme tokens needed to style transient Three renderer status rows. */
+export interface WorkbenchThreeStatusRowsTheme {
+  surface: string;
+  warn: string;
+}
+
+/** Options for building centered transient Three renderer status rows. */
+export interface WorkbenchThreeStatusRowsOptions {
+  width: number;
+  height: number;
+  message: string;
+  theme: WorkbenchThreeStatusRowsTheme;
+  center?: (text: string, width: number) => string;
+}
+
 /** Options for projecting the browser workbench Three preview rows. */
 export interface WorkbenchThreePreviewRowsOptions {
   width: number;
@@ -206,6 +221,28 @@ export function workbenchThreeFallbackRowsInto(
     });
   }
   target.push({ text: "scene: torus knot + sphere + box + floor", fg: t.soft, bg: t.surface });
+  return target;
+}
+
+/** Builds full-width centered status rows for warming, resizing, and unavailable Three panes. */
+export function workbenchThreeStatusRowsInto(
+  target: RowStyle[],
+  options: WorkbenchThreeStatusRowsOptions,
+): RowStyle[] {
+  const width = Math.max(0, Math.floor(options.width));
+  const height = Math.max(0, Math.floor(options.height));
+  const center = options.center ?? centerText;
+  target.length = height;
+  const messageRow = Math.max(0, Math.floor(height / 2));
+  const blank = " ".repeat(width);
+  for (let rowIndex = 0; rowIndex < height; rowIndex += 1) {
+    const row = target[rowIndex] ?? { text: "" };
+    row.text = rowIndex === messageRow ? center(options.message, width).padEnd(width) : blank;
+    row.fg = rowIndex === messageRow ? options.theme.warn : undefined;
+    row.bg = options.theme.surface;
+    row.bold = undefined;
+    target[rowIndex] = row;
+  }
   return target;
 }
 

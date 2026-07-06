@@ -22,6 +22,7 @@ import {
   workbenchThreeFallbackRowsInto,
   workbenchThreePreviewMode,
   workbenchThreePreviewRowsInto,
+  workbenchThreeStatusRowsInto,
   workbenchVisualizationRowsInto,
   type WorkbenchVisualizationRowsTheme,
   type WorkbenchVisualizationWindowOption,
@@ -416,6 +417,21 @@ Deno.test("workbenchThreeFallbackRowsInto reports warming state without alarm bo
   assertEquals(rows[0]?.text, " THREE ASCII FALLBACK · MIXED ");
   assertEquals(rows[1], { text: "renderer warming up", fg: rowTheme.warn, bg: rowTheme.surface, bold: false });
   assertEquals(rows.length, 4);
+});
+
+Deno.test("workbenchThreeStatusRowsInto projects full-width centered status rows", () => {
+  const rows = workbenchThreeStatusRowsInto([], {
+    width: 9,
+    height: 3,
+    message: "wait",
+    theme: rowTheme,
+  });
+
+  assertEquals(rows, [
+    { text: "         ", fg: undefined, bg: rowTheme.surface, bold: undefined },
+    { text: "  wait   ", fg: rowTheme.warn, bg: rowTheme.surface, bold: undefined },
+    { text: "         ", fg: undefined, bg: rowTheme.surface, bold: undefined },
+  ]);
 });
 
 Deno.test("workbenchThreePreviewRowsInto projects web-safe preview rows", () => {

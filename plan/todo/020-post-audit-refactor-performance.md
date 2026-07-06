@@ -1262,3 +1262,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   render-cell pressure caps while ensuring resized and fullscreen workbench panes repaint their full visible bounds.
 - Added a shared workbench terminal session draft helper and routed console/browser terminal session creation through
   it, keeping id/title prefix policy in one tested place.
+- Extracted transient Three pane status-row projection for resizing, warming, and unavailable states into the app-local
+  visualization-window helper, trimming another presentation branch from the oversized API Workbench adapter without
+  widening the stable package surface.
