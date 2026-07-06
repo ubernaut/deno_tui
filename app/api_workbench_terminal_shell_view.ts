@@ -106,17 +106,6 @@ export interface ApiWorkbenchTerminalShellCopyPaneRenderOptions extends ApiWorkb
   addHit: (rect: Rectangle, action: { type: "terminalShellCopyRow"; index: number }) => void;
 }
 
-export interface ApiWorkbenchTerminalShellScreenPaneRenderOptions {
-  frame: WorkbenchFrame;
-  rect: Rectangle;
-  shell: TerminalShellController;
-  active: boolean;
-  cursorActive: boolean;
-  theme: ApiWorkbenchThemeSpec;
-  paint: (text: string, style: ApiWorkbenchTerminalShellPaintStyle) => string;
-  write: (frame: WorkbenchFrame, row: number, column: number, value: string) => void;
-}
-
 export interface ApiWorkbenchTerminalShellPaneRenderOptions extends ApiWorkbenchTerminalShellPaintCallbacks {
   frame: WorkbenchFrame;
   projection: WorkbenchTerminalPaneProjection;
@@ -257,26 +246,6 @@ export function renderApiWorkbenchTerminalShellCopyPane(
   }
 }
 
-/** Renders the live terminal screen cells for a shell pane. */
-export function renderApiWorkbenchTerminalShellScreenPane(
-  options: ApiWorkbenchTerminalShellScreenPaneRenderOptions,
-): void {
-  const { frame, rect, shell, cursorActive, theme, paint, write } = options;
-  shell.resize(rect.width, rect.height);
-  const cursor = shell.screen.cursor;
-  const rows = shell.screen.cellRows();
-  for (let screenRow = 0; screenRow < rect.height; screenRow += 1) {
-    const cells = rows[screenRow] ?? [];
-    for (let column = 0; column < rect.width; column += 1) {
-      const cell = cells[column] ?? { char: " " };
-      const atCursor = cursorActive && cursor.row === screenRow && cursor.column === column;
-      const style = apiWorkbenchTerminalCellStyle(cell, theme, atCursor);
-      const char = atCursor && cell.char === " " ? " " : cell.char;
-      write(frame, rect.row + screenRow, rect.column + column, paint(char, style));
-    }
-  }
-}
-
 /** Renders one terminal workspace pane, including its title, content hit target, and copy/live body. */
 export function renderApiWorkbenchTerminalShellPane(
   options: ApiWorkbenchTerminalShellPaneRenderOptions,
@@ -314,16 +283,18 @@ export function renderApiWorkbenchTerminalShellPane(
     });
     return;
   }
-  renderApiWorkbenchTerminalShellScreenPane({
-    frame,
-    rect: content,
-    shell,
-    active,
-    cursorActive,
-    theme,
-    paint,
-    write,
-  });
+  const cursor = shell.screen.cursor;
+  const rows = shell.screen.cellRows();
+  for (let screenRow = 0; screenRow < content.height; screenRow += 1) {
+    const cells = rows[screenRow] ?? [];
+    for (let column = 0; column < content.width; column += 1) {
+      const cell = cells[column] ?? { char: " " };
+      const atCursor = cursorActive && cursor.row === screenRow && cursor.column === column;
+      const style = apiWorkbenchTerminalCellStyle(cell, theme, atCursor);
+      const char = atCursor && cell.char === " " ? " " : cell.char;
+      write(frame, content.row + screenRow, content.column + column, paint(char, style));
+    }
+  }
 }
 
 /** Renders all terminal workspace panes for the shell window. */
