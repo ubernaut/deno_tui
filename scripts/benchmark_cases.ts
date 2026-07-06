@@ -35,6 +35,7 @@ import {
   terminalWorkspacePaneRects,
   TextObject,
   textWidth,
+  ThreeAsciiObject,
   tileRects,
   updateWorkbenchLineSignals,
   updateWorkbenchStringLineSignals,
@@ -103,7 +104,6 @@ import {
   queueRerenderRangeInto,
   queueRerenderRangeOnlyInto,
 } from "../src/canvas/rerender_queue.ts";
-import { applyThreeAsciiRerenderRanges } from "../src/canvas/three_ascii_ranges.ts";
 import { createTextObjectFullRowCanvasBenchmark } from "./benchmark_textobject_canvas.ts";
 import { threeAsciiBenchmarkCases } from "./benchmark_three_ascii.ts";
 
@@ -777,11 +777,34 @@ const threeAsciiRangeOutputRow = Array.from(
   { length: 160 },
   (_, column) => `\x1b[48;2;${column % 256};${(120 + column * 3) % 256};${(220 + column * 7) % 256}m \x1b[0m`,
 );
-const threeAsciiRangeDirectRanges: Array<{ row: number; startColumn: number; endColumn: number }> = [];
 const threeAsciiRangeSegments = [
   { row: 8, startColumn: 12, endColumn: 84 },
   { row: 8, startColumn: 90, endColumn: 148 },
 ];
+const threeAsciiRangeCanvas = new Canvas({
+  sink: new MemoryCanvasSink(),
+  size: { columns: 160, rows: 20 },
+});
+const threeAsciiRangeObject = new ThreeAsciiObject({
+  canvas: threeAsciiRangeCanvas,
+  rectangle: { column: 4, row: 8, width: 150, height: 1 },
+  scene: {} as never,
+  camera: {} as never,
+  style: emptyStyle,
+  zIndex: 1,
+  rendererFactory: () => ({
+    scene: {} as never,
+    camera: {} as never,
+    setSize: () => {},
+    setEffectOptions: () => {},
+    getTerminalEdgeBias: () => 1,
+    setTerminalEdgeBias: () => {},
+    getTerminalGlyphStyle: () => "blocks" as const,
+    setTerminalGlyphStyle: () => {},
+    renderToAnsiGrid: () => Promise.resolve([]),
+    destroy: () => {},
+  }),
+});
 let threeAsciiRangeChecksum = 0;
 
 function runDenseRerenderRangeQueueWorkload(): void {
@@ -848,21 +871,18 @@ function clearRerenderRangeBenchmarkQueue(): void {
 }
 
 function runThreeAsciiRangeApplyWorkload(): void {
-  threeAsciiRangeDirectRanges.length = 0;
-  applyThreeAsciiRerenderRanges({
-    frameRow: threeAsciiRangeFrameRow,
-    outputRow: threeAsciiRangeOutputRow,
-    ranges: threeAsciiRangeSegments,
-    row: 8,
-    rectangleColumn: 4,
-    columnLimit: 154,
-    directRanges: threeAsciiRangeDirectRanges,
-  });
+  threeAsciiRangeCanvas.frameBuffer[8] = threeAsciiRangeFrameRow;
+  threeAsciiRangeCanvas.rerenderRanges.length = 0;
+  threeAsciiRangeCanvas.rerenderQueue.length = 0;
+  threeAsciiRangeObject.grid = [threeAsciiRangeOutputRow];
+  threeAsciiRangeObject.rerenderRanges[8] = [...threeAsciiRangeSegments];
+  threeAsciiRangeObject.rerender();
+  const directRanges = threeAsciiRangeCanvas.rerenderRanges[8] ?? [];
   threeAsciiRangeChecksum = (threeAsciiRangeChecksum +
     (threeAsciiRangeFrameRow[12]?.length ?? 0) +
     (threeAsciiRangeFrameRow[147]?.length ?? 0) +
-    threeAsciiRangeDirectRanges.length) % 1_000_000;
-  if (threeAsciiRangeDirectRanges.length !== 2 || !Number.isFinite(threeAsciiRangeChecksum)) {
+    directRanges.length) % 1_000_000;
+  if (directRanges.length !== 2 || !Number.isFinite(threeAsciiRangeChecksum)) {
     throw new Error("Three ASCII range apply workload failed");
   }
 }

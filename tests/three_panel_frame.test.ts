@@ -1747,6 +1747,56 @@ Deno.test("ThreeAsciiObject changed-cell queue respects view clipping", async ()
   }
 });
 
+Deno.test("ThreeAsciiObject rerender applies queued ranges and omission fallbacks", () => {
+  const rectangle = new Signal({ column: 2, row: 3, width: 4, height: 1 }, { deepObserve: true });
+  const sink = new MemoryCanvasSink();
+  const canvas = new Canvas({ sink, size: { columns: 8, rows: 8 } });
+  const object = new ThreeAsciiObject({
+    canvas,
+    rectangle,
+    scene: {} as Scene,
+    camera: {} as Camera,
+    style: emptyStyle,
+    zIndex: 1,
+    rendererFactory: (options) => new FakeGridRenderer(options.columns, options.rows),
+  });
+
+  try {
+    object.grid = [["A", "B", "C", "D"]];
+    object.rerenderRanges[3] = [{ row: 3, startColumn: 2, endColumn: 6 }];
+    object.rerender();
+
+    assertEquals(canvas.frameBuffer[3]?.slice(2, 6), ["A", "B", "C", "D"]);
+    assertEquals(canvas.rerenderRanges[3], [{ row: 3, startColumn: 2, endColumn: 6 }]);
+    assertEquals(canvas.rerenderQueue[3], undefined);
+
+    canvas.frameBuffer.length = 0;
+    canvas.rerenderRanges.length = 0;
+    canvas.rerenderQueue.length = 0;
+    object.grid = [["Q", "R", "S", "T"]];
+    object.omitCells[3] = new Set([3]);
+    object.rerenderRanges[3] = [{ row: 3, startColumn: 2, endColumn: 6 }];
+    object.rerender();
+
+    assertEquals([
+      canvas.frameBuffer[3]?.[2],
+      canvas.frameBuffer[3]?.[3],
+      canvas.frameBuffer[3]?.[4],
+      canvas.frameBuffer[3]?.[5],
+    ], [
+      "Q",
+      undefined,
+      "S",
+      "T",
+    ]);
+    assertEquals(canvas.rerenderRanges[3], undefined);
+    assertEquals([...(canvas.rerenderQueue[3] ?? [])], [2, 4, 5]);
+  } finally {
+    object.erase();
+    rectangle.dispose();
+  }
+});
+
 function sceneState(): ThreeSceneState {
   return {
     mode: "studio" as const,

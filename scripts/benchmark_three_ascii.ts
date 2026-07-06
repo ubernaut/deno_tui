@@ -17,11 +17,6 @@ import type { ThreeAsciiRendererPerformance } from "../src/three_ascii/performan
 import { createThreeAsciiReadbackLayout, ThreeAsciiReadbackViewCache } from "../src/three_ascii/readback.ts";
 import { resolveThreeAsciiRenderProfileInto } from "../src/three_ascii/render_profile.ts";
 import {
-  clearThreeAsciiGridDiffState,
-  createThreeAsciiGridDiffState,
-  queueChangedThreeAsciiGridCells,
-} from "../src/canvas/three_ascii_diff.ts";
-import {
   summarizeWorkbenchThreePressureProbe,
   type WorkbenchThreePressureProbeSample,
 } from "../src/app/workbench_three_pressure_probe.ts";
@@ -231,6 +226,7 @@ interface ThreeAsciiDiffQueueTarget {
     grid: string[][],
     rectangle: { column: number; row: number; width: number; height: number },
   ): boolean;
+  clearPreviousGridCells(): void;
 }
 
 const threeAsciiDiffRectangle = { column: 0, row: 0, width: 96, height: 40 };
@@ -250,10 +246,6 @@ const threeAsciiDiffObject = new ThreeAsciiObject({
   rendererFactory: () => createNoopThreeAsciiRenderer(),
 });
 const threeAsciiDiffQueueTarget = threeAsciiDiffObject as unknown as ThreeAsciiDiffQueueTarget;
-const threeAsciiDirectDiffState = createThreeAsciiGridDiffState();
-const threeAsciiDirectDiffCells: Array<Set<number> | undefined> = [];
-const threeAsciiDirectDiffRanges: Array<Array<{ row: number; startColumn: number; endColumn: number }> | undefined> =
-  [];
 const threeAsciiProbeOptions = { ...defaultThreeAsciiProbeOptions(), columns: threeAsciiColumns, rows: threeAsciiRows };
 const threeAsciiProbeSamples: ThreeAsciiRendererPerformance[] = Array.from({ length: 180 }, (_, index) => ({
   columns: threeAsciiColumns,
@@ -439,45 +431,24 @@ function runThreeAsciiDiffQueueWorkload(): void {
 }
 
 function runThreeAsciiDirectDiffQueueWorkload(): void {
-  queueChangedThreeAsciiGridCells(
-    threeAsciiDiffGridA,
-    threeAsciiDiffRectangle,
-    { columns: threeAsciiDiffRectangle.width, rows: threeAsciiDiffRectangle.height },
-    threeAsciiDirectDiffCells,
-    threeAsciiDirectDiffState,
-    undefined,
-    threeAsciiDirectDiffRanges,
-  );
-  clearThreeAsciiDirectDiffQueue();
+  threeAsciiDiffQueueTarget.queueChangedGridCells(threeAsciiDiffGridA, threeAsciiDiffRectangle);
+  clearThreeAsciiDiffQueue();
   for (let step = 0; step < 64; step += 1) {
-    queueChangedThreeAsciiGridCells(
+    threeAsciiDiffQueueTarget.queueChangedGridCells(
       step % 2 === 0 ? threeAsciiDiffGridB : threeAsciiDiffGridA,
       threeAsciiDiffRectangle,
-      { columns: threeAsciiDiffRectangle.width, rows: threeAsciiDiffRectangle.height },
-      threeAsciiDirectDiffCells,
-      threeAsciiDirectDiffState,
-      undefined,
-      threeAsciiDirectDiffRanges,
     );
-    clearThreeAsciiDirectDiffQueue();
+    clearThreeAsciiDiffQueue();
   }
 }
 
 function runThreeAsciiInitialDirectDiffQueueWorkload(): void {
-  clearThreeAsciiGridDiffState(threeAsciiDirectDiffState);
-  queueChangedThreeAsciiGridCells(
-    threeAsciiDiffGridA,
-    threeAsciiDiffRectangle,
-    { columns: threeAsciiDiffRectangle.width, rows: threeAsciiDiffRectangle.height },
-    threeAsciiDirectDiffCells,
-    threeAsciiDirectDiffState,
-    undefined,
-    threeAsciiDirectDiffRanges,
-  );
-  if ((threeAsciiDirectDiffRanges[0]?.[0]?.endColumn ?? 0) !== threeAsciiDiffRectangle.width) {
+  threeAsciiDiffQueueTarget.clearPreviousGridCells();
+  threeAsciiDiffQueueTarget.queueChangedGridCells(threeAsciiDiffGridA, threeAsciiDiffRectangle);
+  if ((threeAsciiDiffObject.rerenderRanges[0]?.[0]?.endColumn ?? 0) !== threeAsciiDiffRectangle.width) {
     throw new Error("initial Three ASCII diff did not queue a full visible row range");
   }
-  clearThreeAsciiDirectDiffQueue();
+  clearThreeAsciiDiffQueue();
 }
 
 function createThreeAsciiDiffGrid(columns: number, rows: number, phase: number): string[][] {
@@ -499,16 +470,6 @@ function clearThreeAsciiDiffQueue(): void {
   }
   for (let row = 0; row < threeAsciiDiffObject.rerenderRanges.length; row += 1) {
     const ranges = threeAsciiDiffObject.rerenderRanges[row];
-    if (ranges) ranges.length = 0;
-  }
-}
-
-function clearThreeAsciiDirectDiffQueue(): void {
-  for (let row = 0; row < threeAsciiDirectDiffCells.length; row += 1) {
-    threeAsciiDirectDiffCells[row]?.clear();
-  }
-  for (let row = 0; row < threeAsciiDirectDiffRanges.length; row += 1) {
-    const ranges = threeAsciiDirectDiffRanges[row];
     if (ranges) ranges.length = 0;
   }
 }
