@@ -372,6 +372,12 @@ Deno.test("coalesceCanvasRowRanges groups sorted adjacent cells only", () => {
   assertEquals(target[0]!.values, ["A", "B"]);
   assertEquals(coalesceCanvasRowRanges([], target), target);
   assertEquals(target, []);
+
+  const frozenValues = Object.freeze(["frozen"]);
+  const frozenTarget = [{ row: 9, startColumn: 9, values: frozenValues }];
+  assertEquals(coalesceCanvasRowRanges(updates.slice(0, 2), frozenTarget), frozenTarget);
+  assertEquals(frozenTarget[0]!.values, ["A", "B"]);
+  assertEquals(frozenTarget[0]!.values === frozenValues, false);
 });
 
 function emptyCanvasRenderStats(patch: Partial<CanvasRenderStats> = {}): CanvasRenderStats {

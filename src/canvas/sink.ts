@@ -394,7 +394,7 @@ export function coalesceCanvasRowRanges(
 }
 
 function retainedCanvasRowRangeValues(range: CanvasRowRangeUpdate | undefined): (string | Uint8Array)[] {
-  return Array.isArray(range?.values) ? range.values as (string | Uint8Array)[] : [];
+  return Array.isArray(range?.values) && !Object.isFrozen(range.values) ? range.values as (string | Uint8Array)[] : [];
 }
 
 function writeCanvasRowRangeUpdate(
