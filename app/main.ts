@@ -18,8 +18,7 @@ import {
   terminalGlyphStyleLabel,
 } from "../src/three_ascii/options.ts";
 import { textWidth } from "../src/utils/strings.ts";
-import { AudioRegistry, discoverAudioSources } from "./audio.ts";
-import { buildSourceCatalog, resolveSourceFramesInto } from "./sources.ts";
+import { AudioRegistry, buildSourceCatalog, discoverAudioSources, resolveSourceFramesInto } from "./sources.ts";
 import { accentColor, makeStyle, palette, requireInteractiveTerminal, severityAccent } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
 import { ThreePanelView } from "./three_panel.ts";

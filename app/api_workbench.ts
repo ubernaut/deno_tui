@@ -191,7 +191,6 @@ import {
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarStateFromSnapshot,
 } from "../src/app/workbench_terminal.ts";
-import { AudioRegistry } from "./audio.ts";
 import {
   type ApiWorkbenchBuiltInWindowId,
   apiWorkbenchColumns,
@@ -228,7 +227,7 @@ import { HTML_CSS_LAYOUT_WINDOW_ID } from "../src/markup/demo_fixtures.ts";
 import { type HtmlCssLayoutRenderCommand, renderApiWorkbenchHtmlCssLayout } from "./html_css_layout_view.ts";
 import { asciiDemoPresetIds } from "../src/three_ascii/demo_presets.ts";
 import { cloneAsciiOptions, normalizeAsciiOptions, terminalGlyphStyleLabel } from "../src/three_ascii/options.ts";
-import { resolveSourceFramesInto } from "./sources.ts";
+import { AudioRegistry, resolveSourceFramesInto } from "./sources.ts";
 import { makeStyle, requireInteractiveTerminal } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
 import { createWorkbenchThreePanelFrameView, ThreePanelFrameView } from "./three_panel.ts";

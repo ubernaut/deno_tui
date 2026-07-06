@@ -52,9 +52,8 @@ import {
   writeFrameCells,
   writeStringFrameRow,
 } from "../mod.ts";
-import { AudioRegistry } from "../app/audio.ts";
 import { createHtmlCssLayoutDemo } from "../src/markup/demo_fixtures.ts";
-import { resolveSourceFramesInto } from "../app/sources.ts";
+import { AudioRegistry, resolveSourceFramesInto } from "../app/sources.ts";
 import {
   type RowStyle,
   type ThreeHeaderPerformance,

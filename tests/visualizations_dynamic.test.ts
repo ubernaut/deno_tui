@@ -1,6 +1,10 @@
 import { assert, assertEquals, assertNotEquals, assertStrictEquals } from "./deps.ts";
-import { AudioRegistry, type AudioRuntimeOptions, discoverAudioSources } from "../app/audio.ts";
-import { resolveSourceFramesInto } from "../app/sources.ts";
+import {
+  AudioRegistry,
+  type AudioRuntimeOptions,
+  discoverAudioSources,
+  resolveSourceFramesInto,
+} from "../app/sources.ts";
 import {
   monitorSourceIds,
   monitorSourceIdsInto,
