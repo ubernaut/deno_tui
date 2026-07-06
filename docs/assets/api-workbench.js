@@ -14832,7 +14832,347 @@ function clampByte(value) {
   return clamp(Math.floor(value), 0, 255);
 }
 
-// src/runtime/terminal_workspace_layout.ts
+// src/runtime/terminal_workspace.ts
+var TERMINAL_WORKSPACE_SNAPSHOT_VERSION = 1;
+var TerminalWorkspaceController = class {
+  sessions;
+  activeId;
+  layout;
+  #now;
+  constructor(options = {}) {
+    this.#now = options.now ?? (() => Date.now());
+    const sourceSessions = options.sessions ?? [];
+    const sessions = new Array(sourceSessions.length);
+    for (let index = 0; index < sourceSessions.length; index += 1) {
+      sessions[index] = cloneTerminalSessionDescriptor(sourceSessions[index]);
+    }
+    const activeId = options.activeId && hasTerminalSession(sessions, options.activeId) ? options.activeId : sessions[0]?.id;
+    this.sessions = new Signal(sessions);
+    this.activeId = new Signal(activeId);
+    this.layout = new Signal(normalizeTerminalWorkspaceLayout(options.layout, sessions, activeId));
+  }
+  get active() {
+    const id2 = this.activeId.peek();
+    return findTerminalSession(this.sessions.peek(), id2);
+  }
+  add(template, options = {}) {
+    const descriptor = descriptorFromTerminalTemplate(template, options, this.#now());
+    return this.upsert(descriptor, {
+      activate: options.activate ?? this.sessions.peek().length === 0
+    });
+  }
+  upsert(descriptor, options = {}) {
+    const nextDescriptor = cloneTerminalSessionDescriptor(descriptor);
+    const sessions = this.sessions.peek();
+    const index = terminalSessionIndex(sessions, nextDescriptor.id);
+    this.sessions.value = index >= 0 ? replaceTerminalSession(sessions, index, nextDescriptor) : appendTerminalSession(
+      sessions,
+      nextDescriptor
+    );
+    if (options.activate || !this.activeId.peek()) this.activeId.value = nextDescriptor.id;
+    if (!this.layout.peek().root) {
+      this.layout.value = terminalWorkspaceLayoutWithActive({
+        root: createTerminalWorkspacePaneNode(nextDescriptor.id, void 0, { title: nextDescriptor.title })
+      }, nextDescriptor.id);
+    }
+    return cloneTerminalSessionDescriptor(nextDescriptor);
+  }
+  activate(id2) {
+    if (!hasTerminalSession(this.sessions.peek(), id2)) return false;
+    this.activeId.value = id2;
+    const layout = this.layout.peek();
+    const pane = findTerminalWorkspacePaneBySessionRef(layout.root, id2);
+    if (pane) {
+      this.layout.value = {
+        root: layout.root,
+        activePaneId: pane.id,
+        zoomedPaneId: layout.zoomedPaneId
+      };
+    } else if (!layout.root) {
+      this.layout.value = terminalWorkspaceLayoutWithActive({ root: createTerminalWorkspacePaneNode(id2) }, id2);
+    }
+    return true;
+  }
+  remove(id2) {
+    const sessions = this.sessions.peek();
+    const index = terminalSessionIndex(sessions, id2);
+    if (index < 0) return false;
+    const next = removeTerminalSessionAt(sessions, index);
+    this.sessions.value = next;
+    const sessionIds = /* @__PURE__ */ new Set();
+    for (const session of next) sessionIds.add(session.id);
+    this.layout.value = normalizeTerminalWorkspaceLayout(
+      pruneTerminalWorkspaceLayoutSessions(this.layout.peek(), sessionIds),
+      next,
+      this.activeId.peek()
+    );
+    if (this.activeId.peek() === id2) {
+      this.activeId.value = next[index]?.id ?? next[index - 1]?.id;
+      const pane = this.activeId.peek() ? findTerminalWorkspacePaneBySessionRef(this.layout.peek().root, this.activeId.peek()) : void 0;
+      if (pane) {
+        const layout = this.layout.peek();
+        this.layout.value = {
+          root: layout.root,
+          activePaneId: pane.id,
+          zoomedPaneId: layout.zoomedPaneId
+        };
+      }
+    }
+    return true;
+  }
+  rename(id2, title) {
+    const trimmed = title.trim();
+    if (!trimmed) return false;
+    const sessions = this.sessions.peek();
+    const index = terminalSessionIndex(sessions, id2);
+    if (index < 0) return false;
+    const descriptor = cloneTerminalSessionDescriptor(sessions[index]);
+    descriptor.title = trimmed;
+    descriptor.updatedAt = this.#now();
+    this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
+    return true;
+  }
+  updateRuntimeTitle(id2, title) {
+    const trimmed = title?.trim();
+    if (!trimmed) return false;
+    const sessions = this.sessions.peek();
+    const index = terminalSessionIndex(sessions, id2);
+    if (index < 0) return false;
+    const previous = sessions[index];
+    const descriptor = cloneTerminalSessionDescriptor(previous);
+    const previousRuntimeTitle = descriptor.runtimeTitle;
+    const previousVisibleTitle = descriptor.title;
+    descriptor.runtimeTitle = trimmed;
+    if (shouldAdoptRuntimeTitle(descriptor, previousRuntimeTitle)) {
+      descriptor.title = trimmed;
+    }
+    descriptor.updatedAt = this.#now();
+    this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
+    if (descriptor.title !== previousVisibleTitle) {
+      this.layout.value = updateTerminalWorkspacePaneRuntimeTitles(
+        this.layout.peek(),
+        id2,
+        trimmed,
+        previousVisibleTitle,
+        previousRuntimeTitle,
+        descriptor.template.title
+      );
+    }
+    return true;
+  }
+  move(id2, delta) {
+    const sessions = this.sessions.peek();
+    const index = terminalSessionIndex(sessions, id2);
+    if (index < 0 || sessions.length < 2) return false;
+    const nextIndex = Math.max(0, Math.min(sessions.length - 1, index + Math.trunc(delta)));
+    if (nextIndex === index) return false;
+    this.sessions.value = moveTerminalSession(sessions, index, nextIndex);
+    return true;
+  }
+  activateRelative(delta) {
+    const sessions = this.sessions.peek();
+    if (sessions.length === 0) return void 0;
+    const activeId = this.activeId.peek();
+    let index = terminalSessionIndex(sessions, activeId ?? "");
+    if (index < 0) index = 0;
+    const nextIndex = (index + Math.trunc(delta) + sessions.length) % sessions.length;
+    const next = sessions[nextIndex];
+    return this.activate(next.id) ? cloneTerminalSessionDescriptor(next) : void 0;
+  }
+  duplicate(id2 = this.activeId.peek(), options = {}) {
+    if (!id2) return void 0;
+    const sessions = this.sessions.peek();
+    const source = findTerminalSession(sessions, id2);
+    if (!source) return void 0;
+    const descriptor = duplicateTerminalSessionDescriptor(source, sessions, options, this.#now());
+    return this.upsert(descriptor, { activate: options.activate ?? true });
+  }
+  detach(id2 = this.activeId.peek()) {
+    if (!id2) return false;
+    const sessions = this.sessions.peek();
+    const index = terminalSessionIndex(sessions, id2);
+    if (index < 0) return false;
+    const descriptor = cloneTerminalSessionDescriptor(sessions[index]);
+    descriptor.detached = true;
+    descriptor.reconnectable = true;
+    descriptor.running = false;
+    descriptor.updatedAt = this.#now();
+    this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
+    return true;
+  }
+  attach(id2 = this.activeId.peek()) {
+    if (!id2) return false;
+    const sessions = this.sessions.peek();
+    const index = terminalSessionIndex(sessions, id2);
+    if (index < 0) return false;
+    const descriptor = cloneTerminalSessionDescriptor(sessions[index]);
+    if (!descriptor.detached) return false;
+    descriptor.detached = false;
+    descriptor.updatedAt = this.#now();
+    this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
+    return this.activate(id2);
+  }
+  restart(id2 = this.activeId.peek()) {
+    if (!id2) return false;
+    const sessions = this.sessions.peek();
+    const index = terminalSessionIndex(sessions, id2);
+    if (index < 0) return false;
+    const descriptor = cloneTerminalSessionDescriptor(sessions[index]);
+    if (!isSpawnTerminalTemplate(descriptor.template)) return false;
+    descriptor.runtimeTitle = void 0;
+    descriptor.status = "idle";
+    descriptor.running = false;
+    descriptor.detached = false;
+    descriptor.updatedAt = this.#now();
+    this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
+    return this.activate(id2);
+  }
+  clear() {
+    this.sessions.value = [];
+    this.activeId.value = void 0;
+    this.layout.value = {};
+  }
+  splitActive(direction, sessionId, options = {}) {
+    if (!hasTerminalSession(this.sessions.peek(), sessionId)) return void 0;
+    const current = normalizeTerminalWorkspaceLayout(this.layout.peek(), this.sessions.peek(), this.activeId.peek());
+    if (!current.root) {
+      const pane = createTerminalWorkspacePaneNode(sessionId, void 0, options);
+      this.layout.value = { root: pane, activePaneId: pane.id };
+      this.activeId.value = sessionId;
+      return cloneTerminalWorkspacePaneNode(pane);
+    }
+    const activePane = options.paneId ? findTerminalWorkspacePaneRef(current.root, options.paneId) : findActiveTerminalWorkspacePaneRef(current);
+    if (!activePane) return void 0;
+    const nextPane = createTerminalWorkspacePaneNode(sessionId, current.root, options);
+    const ratio = clampTerminalWorkspaceSplitRatio(options.ratio ?? 0.5);
+    const placement = options.placement ?? "after";
+    const split = {
+      kind: "split",
+      id: uniqueTerminalWorkspaceLayoutId("split", current.root),
+      direction,
+      ratio,
+      first: placement === "before" ? nextPane : cloneTerminalWorkspacePaneNode(activePane),
+      second: placement === "before" ? cloneTerminalWorkspacePaneNode(activePane) : nextPane
+    };
+    const root2 = replaceTerminalWorkspacePane(current.root, activePane.id, split);
+    this.layout.value = {
+      root: root2,
+      activePaneId: nextPane.id,
+      zoomedPaneId: current.zoomedPaneId === activePane.id ? nextPane.id : current.zoomedPaneId
+    };
+    this.activeId.value = sessionId;
+    return cloneTerminalWorkspacePaneNode(nextPane);
+  }
+  activatePane(paneId) {
+    const pane = findTerminalWorkspacePaneRef(this.layout.peek().root, paneId);
+    if (!pane || !hasTerminalSession(this.sessions.peek(), pane.sessionId)) return false;
+    const layout = this.layout.peek();
+    this.layout.value = {
+      root: layout.root,
+      activePaneId: pane.id,
+      zoomedPaneId: layout.zoomedPaneId
+    };
+    this.activeId.value = pane.sessionId;
+    return true;
+  }
+  closePane(paneId) {
+    const current = this.layout.peek();
+    if (!findTerminalWorkspacePaneRef(current.root, paneId)) return false;
+    const root2 = removeTerminalWorkspacePane(current.root, paneId);
+    const activePane = current.activePaneId ? findTerminalWorkspacePaneRef(root2, current.activePaneId) : void 0;
+    const nextActivePane = activePane ?? firstTerminalWorkspacePaneRef(root2);
+    this.layout.value = {
+      root: root2,
+      activePaneId: nextActivePane?.id,
+      zoomedPaneId: current.zoomedPaneId === paneId ? void 0 : current.zoomedPaneId
+    };
+    if (nextActivePane) this.activeId.value = nextActivePane.sessionId;
+    return true;
+  }
+  resizeSplit(splitId, ratio) {
+    const current = this.layout.peek();
+    const root2 = updateTerminalWorkspaceSplitRatio(current.root, splitId, clampTerminalWorkspaceSplitRatio(ratio));
+    if (!root2.changed) return false;
+    this.layout.value = {
+      root: root2.node,
+      activePaneId: current.activePaneId,
+      zoomedPaneId: current.zoomedPaneId
+    };
+    return true;
+  }
+  resizeActiveSplit(delta) {
+    const current = this.layout.peek();
+    const activePane = findActiveTerminalWorkspacePaneRef(current);
+    if (!activePane) return false;
+    const nearest = findNearestTerminalWorkspaceSplit(current.root, activePane.id);
+    if (!nearest) return false;
+    const nextRatio = nearest.activeSide === "first" ? nearest.split.ratio + delta : nearest.split.ratio - delta;
+    return this.resizeSplit(nearest.split.id, nextRatio);
+  }
+  toggleZoomPane(paneId = this.layout.peek().activePaneId) {
+    if (!paneId || !findTerminalWorkspacePaneRef(this.layout.peek().root, paneId)) return false;
+    const current = this.layout.peek();
+    this.layout.value = {
+      root: current.root,
+      activePaneId: paneId,
+      zoomedPaneId: current.zoomedPaneId === paneId ? void 0 : paneId
+    };
+    return true;
+  }
+  inspectLayout() {
+    return inspectTerminalWorkspaceLayout(this.layout.peek(), this.sessions.peek());
+  }
+  inspect() {
+    const source = this.sessions.peek();
+    const sessions = new Array(source.length);
+    for (let index = 0; index < source.length; index += 1) {
+      sessions[index] = cloneTerminalSessionDescriptor(source[index]);
+    }
+    const activeId = this.activeId.peek();
+    const active2 = findTerminalSession(sessions, activeId);
+    return {
+      activeId,
+      active: active2,
+      sessions,
+      count: sessions.length,
+      layout: inspectTerminalWorkspaceLayout(this.layout.peek(), sessions)
+    };
+  }
+  snapshot() {
+    return snapshotTerminalWorkspace(this.inspect());
+  }
+  dispose() {
+    this.sessions.dispose();
+    this.activeId.dispose();
+    this.layout.dispose();
+  }
+};
+function createTerminalWorkspaceController(options = {}) {
+  return new TerminalWorkspaceController(options);
+}
+function normalizeTerminalWorkspaceSnapshot(snapshot) {
+  const sessions = new Array(snapshot.sessions.length);
+  for (let index = 0; index < snapshot.sessions.length; index += 1) {
+    sessions[index] = cloneTerminalSessionDescriptor(snapshot.sessions[index]);
+  }
+  const activeId = snapshot.activeId && hasTerminalSession(sessions, snapshot.activeId) ? snapshot.activeId : sessions[0]?.id;
+  const layout = normalizeTerminalWorkspaceLayout(snapshot.layout, sessions, activeId);
+  return {
+    version: TERMINAL_WORKSPACE_SNAPSHOT_VERSION,
+    activeId,
+    sessions,
+    layout: cloneTerminalWorkspaceLayoutState(layout)
+  };
+}
+function snapshotTerminalWorkspace(source) {
+  const inspection = source instanceof TerminalWorkspaceController ? source.inspect() : source;
+  return normalizeTerminalWorkspaceSnapshot({
+    version: TERMINAL_WORKSPACE_SNAPSHOT_VERSION,
+    activeId: inspection.activeId,
+    sessions: inspection.sessions,
+    layout: inspection.layout
+  });
+}
 function terminalWorkspacePaneRects(layout, bounds, options = {}) {
   const normalizedBounds = normalizeRect3(bounds);
   if (!layout.root || normalizedBounds.width <= 0 || normalizedBounds.height <= 0) return [];
@@ -14990,6 +15330,96 @@ function sanitizeTerminalWorkspaceLayoutId(value) {
 function clampTerminalWorkspaceSplitRatio(value) {
   return Math.max(0.1, Math.min(0.9, Number.isFinite(value) ? value : 0.5));
 }
+function descriptorFromTerminalTemplate(template, options, now) {
+  if (!isSpawnTerminalTemplate(template)) {
+    return {
+      ...describeAttachTerminalTemplate(template, now),
+      title: options.title ?? template.title,
+      backendId: options.backendId,
+      columns: normalizeTerminalWorkspaceDimension(options.columns),
+      rows: normalizeTerminalWorkspaceDimension(options.rows),
+      status: options.status,
+      running: options.running,
+      detached: false
+    };
+  }
+  const commandLine = formatProcessCommandLine(template);
+  return {
+    id: template.id,
+    title: options.title ?? template.title,
+    template: cloneTerminalTemplate(template),
+    backendId: options.backendId,
+    commandLine,
+    status: options.status ?? "idle",
+    running: options.running ?? false,
+    columns: normalizeTerminalWorkspaceDimension(options.columns ?? template.columns),
+    rows: normalizeTerminalWorkspaceDimension(options.rows ?? template.rows),
+    reconnectable: template.reconnectable ?? false,
+    restartPolicy: template.restartPolicy ?? "never",
+    createdAt: now,
+    updatedAt: now
+  };
+}
+function cloneTerminalSessionDescriptor(descriptor) {
+  return {
+    ...descriptor,
+    template: cloneTerminalTemplate(descriptor.template)
+  };
+}
+function duplicateTerminalSessionDescriptor(source, sessions, options, now) {
+  const ids = /* @__PURE__ */ new Set();
+  for (let index = 0; index < sessions.length; index += 1) ids.add(sessions[index].id);
+  const id2 = uniqueTerminalWorkspaceSessionId(options.id ?? `${source.id}-copy`, ids);
+  const title = options.title ?? `${source.title} Copy`;
+  const template = cloneTerminalTemplate(source.template);
+  template.id = id2;
+  template.title = title;
+  const descriptor = {
+    ...cloneTerminalSessionDescriptor(source),
+    id: id2,
+    title,
+    runtimeTitle: void 0,
+    template,
+    status: isSpawnTerminalTemplate(template) ? "idle" : source.status,
+    running: isSpawnTerminalTemplate(template) ? false : source.running,
+    detached: false,
+    createdAt: now,
+    updatedAt: now
+  };
+  if (isSpawnTerminalTemplate(template)) descriptor.commandLine = formatProcessCommandLine(template);
+  return descriptor;
+}
+function shouldAdoptRuntimeTitle(descriptor, previousRuntimeTitle) {
+  return descriptor.title === descriptor.template.title || descriptor.title === previousRuntimeTitle || descriptor.title === descriptor.runtimeTitle;
+}
+function cloneTerminalTemplate(template) {
+  if (!isSpawnTerminalTemplate(template)) {
+    return {
+      ...template,
+      metadata: template.metadata ? { ...template.metadata } : void 0
+    };
+  }
+  return {
+    ...template,
+    args: template.args ? [...template.args] : void 0,
+    env: template.env ? { ...template.env } : void 0,
+    metadata: template.metadata ? { ...template.metadata } : void 0
+  };
+}
+function normalizeTerminalWorkspaceDimension(value) {
+  if (!Number.isFinite(value)) return void 0;
+  return Math.max(1, Math.floor(value));
+}
+function uniqueTerminalWorkspaceSessionId(prefix, ids) {
+  const base = sanitizeTerminalWorkspaceLayoutId(prefix);
+  let candidate = base;
+  let suffix = 2;
+  while (ids.has(candidate)) {
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+}
 function collectPaneRects(node, rect, gap, layout, rows2) {
   if (node.kind === "pane") {
     rows2.push({
@@ -15081,21 +15511,6 @@ function collectTerminalWorkspacePanesInto(node, panes) {
   collectTerminalWorkspacePanesInto(node.first, panes);
   collectTerminalWorkspacePanesInto(node.second, panes);
 }
-function findTerminalWorkspacePaneRef(node, paneId) {
-  if (!node) return void 0;
-  if (node.kind === "pane") return node.id === paneId ? node : void 0;
-  return findTerminalWorkspacePaneRef(node.first, paneId) ?? findTerminalWorkspacePaneRef(node.second, paneId);
-}
-function findTerminalWorkspacePaneBySessionRef(node, sessionId) {
-  if (!node) return void 0;
-  if (node.kind === "pane") return node.sessionId === sessionId ? node : void 0;
-  return findTerminalWorkspacePaneBySessionRef(node.first, sessionId) ?? findTerminalWorkspacePaneBySessionRef(node.second, sessionId);
-}
-function firstTerminalWorkspacePaneRef(node) {
-  if (!node) return void 0;
-  if (node.kind === "pane") return node;
-  return firstTerminalWorkspacePaneRef(node.first) ?? firstTerminalWorkspacePaneRef(node.second);
-}
 function findNearestTerminalWorkspaceSplitSearch(node, paneId) {
   if (!node) return { found: false };
   if (node.kind === "pane") return { found: node.id === paneId };
@@ -15141,441 +15556,6 @@ function normalizePaneDimension(value) {
   if (!Number.isFinite(value)) return void 0;
   return Math.max(1, Math.floor(value));
 }
-
-// src/runtime/terminal_workspace.ts
-var TERMINAL_WORKSPACE_SNAPSHOT_VERSION = 1;
-var TerminalWorkspaceController = class {
-  sessions;
-  activeId;
-  layout;
-  #now;
-  constructor(options = {}) {
-    this.#now = options.now ?? (() => Date.now());
-    const sourceSessions = options.sessions ?? [];
-    const sessions = new Array(sourceSessions.length);
-    for (let index = 0; index < sourceSessions.length; index += 1) {
-      sessions[index] = cloneTerminalSessionDescriptor(sourceSessions[index]);
-    }
-    const activeId = options.activeId && hasTerminalSession(sessions, options.activeId) ? options.activeId : sessions[0]?.id;
-    this.sessions = new Signal(sessions);
-    this.activeId = new Signal(activeId);
-    this.layout = new Signal(normalizeTerminalWorkspaceLayout(options.layout, sessions, activeId));
-  }
-  get active() {
-    const id2 = this.activeId.peek();
-    return findTerminalSession(this.sessions.peek(), id2);
-  }
-  add(template, options = {}) {
-    const descriptor = descriptorFromTerminalTemplate(template, options, this.#now());
-    return this.upsert(descriptor, {
-      activate: options.activate ?? this.sessions.peek().length === 0
-    });
-  }
-  upsert(descriptor, options = {}) {
-    const nextDescriptor = cloneTerminalSessionDescriptor(descriptor);
-    const sessions = this.sessions.peek();
-    const index = terminalSessionIndex(sessions, nextDescriptor.id);
-    this.sessions.value = index >= 0 ? replaceTerminalSession(sessions, index, nextDescriptor) : appendTerminalSession(
-      sessions,
-      nextDescriptor
-    );
-    if (options.activate || !this.activeId.peek()) this.activeId.value = nextDescriptor.id;
-    if (!this.layout.peek().root) {
-      this.layout.value = terminalWorkspaceLayoutWithActive({
-        root: createTerminalWorkspacePaneNode(nextDescriptor.id, void 0, { title: nextDescriptor.title })
-      }, nextDescriptor.id);
-    }
-    return cloneTerminalSessionDescriptor(nextDescriptor);
-  }
-  activate(id2) {
-    if (!hasTerminalSession(this.sessions.peek(), id2)) return false;
-    this.activeId.value = id2;
-    const layout = this.layout.peek();
-    const pane = findTerminalWorkspacePaneBySessionRef2(layout.root, id2);
-    if (pane) {
-      this.layout.value = {
-        root: layout.root,
-        activePaneId: pane.id,
-        zoomedPaneId: layout.zoomedPaneId
-      };
-    } else if (!layout.root) {
-      this.layout.value = terminalWorkspaceLayoutWithActive({ root: createTerminalWorkspacePaneNode(id2) }, id2);
-    }
-    return true;
-  }
-  remove(id2) {
-    const sessions = this.sessions.peek();
-    const index = terminalSessionIndex(sessions, id2);
-    if (index < 0) return false;
-    const next = removeTerminalSessionAt(sessions, index);
-    this.sessions.value = next;
-    const sessionIds = /* @__PURE__ */ new Set();
-    for (const session of next) sessionIds.add(session.id);
-    this.layout.value = normalizeTerminalWorkspaceLayout(
-      pruneTerminalWorkspaceLayoutSessions(this.layout.peek(), sessionIds),
-      next,
-      this.activeId.peek()
-    );
-    if (this.activeId.peek() === id2) {
-      this.activeId.value = next[index]?.id ?? next[index - 1]?.id;
-      const pane = this.activeId.peek() ? findTerminalWorkspacePaneBySessionRef2(this.layout.peek().root, this.activeId.peek()) : void 0;
-      if (pane) {
-        const layout = this.layout.peek();
-        this.layout.value = {
-          root: layout.root,
-          activePaneId: pane.id,
-          zoomedPaneId: layout.zoomedPaneId
-        };
-      }
-    }
-    return true;
-  }
-  rename(id2, title) {
-    const trimmed = title.trim();
-    if (!trimmed) return false;
-    const sessions = this.sessions.peek();
-    const index = terminalSessionIndex(sessions, id2);
-    if (index < 0) return false;
-    const descriptor = cloneTerminalSessionDescriptor(sessions[index]);
-    descriptor.title = trimmed;
-    descriptor.updatedAt = this.#now();
-    this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
-    return true;
-  }
-  updateRuntimeTitle(id2, title) {
-    const trimmed = title?.trim();
-    if (!trimmed) return false;
-    const sessions = this.sessions.peek();
-    const index = terminalSessionIndex(sessions, id2);
-    if (index < 0) return false;
-    const previous = sessions[index];
-    const descriptor = cloneTerminalSessionDescriptor(previous);
-    const previousRuntimeTitle = descriptor.runtimeTitle;
-    const previousVisibleTitle = descriptor.title;
-    descriptor.runtimeTitle = trimmed;
-    if (shouldAdoptRuntimeTitle(descriptor, previousRuntimeTitle)) {
-      descriptor.title = trimmed;
-    }
-    descriptor.updatedAt = this.#now();
-    this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
-    if (descriptor.title !== previousVisibleTitle) {
-      this.layout.value = updateTerminalWorkspacePaneRuntimeTitles(
-        this.layout.peek(),
-        id2,
-        trimmed,
-        previousVisibleTitle,
-        previousRuntimeTitle,
-        descriptor.template.title
-      );
-    }
-    return true;
-  }
-  move(id2, delta) {
-    const sessions = this.sessions.peek();
-    const index = terminalSessionIndex(sessions, id2);
-    if (index < 0 || sessions.length < 2) return false;
-    const nextIndex = Math.max(0, Math.min(sessions.length - 1, index + Math.trunc(delta)));
-    if (nextIndex === index) return false;
-    this.sessions.value = moveTerminalSession(sessions, index, nextIndex);
-    return true;
-  }
-  activateRelative(delta) {
-    const sessions = this.sessions.peek();
-    if (sessions.length === 0) return void 0;
-    const activeId = this.activeId.peek();
-    let index = terminalSessionIndex(sessions, activeId ?? "");
-    if (index < 0) index = 0;
-    const nextIndex = (index + Math.trunc(delta) + sessions.length) % sessions.length;
-    const next = sessions[nextIndex];
-    return this.activate(next.id) ? cloneTerminalSessionDescriptor(next) : void 0;
-  }
-  duplicate(id2 = this.activeId.peek(), options = {}) {
-    if (!id2) return void 0;
-    const sessions = this.sessions.peek();
-    const source = findTerminalSession(sessions, id2);
-    if (!source) return void 0;
-    const descriptor = duplicateTerminalSessionDescriptor(source, sessions, options, this.#now());
-    return this.upsert(descriptor, { activate: options.activate ?? true });
-  }
-  detach(id2 = this.activeId.peek()) {
-    if (!id2) return false;
-    const sessions = this.sessions.peek();
-    const index = terminalSessionIndex(sessions, id2);
-    if (index < 0) return false;
-    const descriptor = cloneTerminalSessionDescriptor(sessions[index]);
-    descriptor.detached = true;
-    descriptor.reconnectable = true;
-    descriptor.running = false;
-    descriptor.updatedAt = this.#now();
-    this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
-    return true;
-  }
-  attach(id2 = this.activeId.peek()) {
-    if (!id2) return false;
-    const sessions = this.sessions.peek();
-    const index = terminalSessionIndex(sessions, id2);
-    if (index < 0) return false;
-    const descriptor = cloneTerminalSessionDescriptor(sessions[index]);
-    if (!descriptor.detached) return false;
-    descriptor.detached = false;
-    descriptor.updatedAt = this.#now();
-    this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
-    return this.activate(id2);
-  }
-  restart(id2 = this.activeId.peek()) {
-    if (!id2) return false;
-    const sessions = this.sessions.peek();
-    const index = terminalSessionIndex(sessions, id2);
-    if (index < 0) return false;
-    const descriptor = cloneTerminalSessionDescriptor(sessions[index]);
-    if (!isSpawnTerminalTemplate(descriptor.template)) return false;
-    descriptor.runtimeTitle = void 0;
-    descriptor.status = "idle";
-    descriptor.running = false;
-    descriptor.detached = false;
-    descriptor.updatedAt = this.#now();
-    this.sessions.value = replaceTerminalSession(sessions, index, descriptor);
-    return this.activate(id2);
-  }
-  clear() {
-    this.sessions.value = [];
-    this.activeId.value = void 0;
-    this.layout.value = {};
-  }
-  splitActive(direction, sessionId, options = {}) {
-    if (!hasTerminalSession(this.sessions.peek(), sessionId)) return void 0;
-    const current = normalizeTerminalWorkspaceLayout(this.layout.peek(), this.sessions.peek(), this.activeId.peek());
-    if (!current.root) {
-      const pane = createTerminalWorkspacePaneNode(sessionId, void 0, options);
-      this.layout.value = { root: pane, activePaneId: pane.id };
-      this.activeId.value = sessionId;
-      return cloneTerminalWorkspacePaneNode(pane);
-    }
-    const activePane = options.paneId ? findTerminalWorkspacePaneRef2(current.root, options.paneId) : findActiveTerminalWorkspacePaneRef(current);
-    if (!activePane) return void 0;
-    const nextPane = createTerminalWorkspacePaneNode(sessionId, current.root, options);
-    const ratio = clampTerminalWorkspaceSplitRatio(options.ratio ?? 0.5);
-    const placement = options.placement ?? "after";
-    const split = {
-      kind: "split",
-      id: uniqueTerminalWorkspaceLayoutId("split", current.root),
-      direction,
-      ratio,
-      first: placement === "before" ? nextPane : cloneTerminalWorkspacePaneNode(activePane),
-      second: placement === "before" ? cloneTerminalWorkspacePaneNode(activePane) : nextPane
-    };
-    const root2 = replaceTerminalWorkspacePane(current.root, activePane.id, split);
-    this.layout.value = {
-      root: root2,
-      activePaneId: nextPane.id,
-      zoomedPaneId: current.zoomedPaneId === activePane.id ? nextPane.id : current.zoomedPaneId
-    };
-    this.activeId.value = sessionId;
-    return cloneTerminalWorkspacePaneNode(nextPane);
-  }
-  activatePane(paneId) {
-    const pane = findTerminalWorkspacePaneRef2(this.layout.peek().root, paneId);
-    if (!pane || !hasTerminalSession(this.sessions.peek(), pane.sessionId)) return false;
-    const layout = this.layout.peek();
-    this.layout.value = {
-      root: layout.root,
-      activePaneId: pane.id,
-      zoomedPaneId: layout.zoomedPaneId
-    };
-    this.activeId.value = pane.sessionId;
-    return true;
-  }
-  closePane(paneId) {
-    const current = this.layout.peek();
-    if (!findTerminalWorkspacePaneRef2(current.root, paneId)) return false;
-    const root2 = removeTerminalWorkspacePane(current.root, paneId);
-    const activePane = current.activePaneId ? findTerminalWorkspacePaneRef2(root2, current.activePaneId) : void 0;
-    const nextActivePane = activePane ?? firstTerminalWorkspacePaneRef2(root2);
-    this.layout.value = {
-      root: root2,
-      activePaneId: nextActivePane?.id,
-      zoomedPaneId: current.zoomedPaneId === paneId ? void 0 : current.zoomedPaneId
-    };
-    if (nextActivePane) this.activeId.value = nextActivePane.sessionId;
-    return true;
-  }
-  resizeSplit(splitId, ratio) {
-    const current = this.layout.peek();
-    const root2 = updateTerminalWorkspaceSplitRatio(current.root, splitId, clampTerminalWorkspaceSplitRatio(ratio));
-    if (!root2.changed) return false;
-    this.layout.value = {
-      root: root2.node,
-      activePaneId: current.activePaneId,
-      zoomedPaneId: current.zoomedPaneId
-    };
-    return true;
-  }
-  resizeActiveSplit(delta) {
-    const current = this.layout.peek();
-    const activePane = findActiveTerminalWorkspacePaneRef(current);
-    if (!activePane) return false;
-    const nearest = findNearestTerminalWorkspaceSplit(current.root, activePane.id);
-    if (!nearest) return false;
-    const nextRatio = nearest.activeSide === "first" ? nearest.split.ratio + delta : nearest.split.ratio - delta;
-    return this.resizeSplit(nearest.split.id, nextRatio);
-  }
-  toggleZoomPane(paneId = this.layout.peek().activePaneId) {
-    if (!paneId || !findTerminalWorkspacePaneRef2(this.layout.peek().root, paneId)) return false;
-    const current = this.layout.peek();
-    this.layout.value = {
-      root: current.root,
-      activePaneId: paneId,
-      zoomedPaneId: current.zoomedPaneId === paneId ? void 0 : paneId
-    };
-    return true;
-  }
-  inspectLayout() {
-    return inspectTerminalWorkspaceLayout(this.layout.peek(), this.sessions.peek());
-  }
-  inspect() {
-    const source = this.sessions.peek();
-    const sessions = new Array(source.length);
-    for (let index = 0; index < source.length; index += 1) {
-      sessions[index] = cloneTerminalSessionDescriptor(source[index]);
-    }
-    const activeId = this.activeId.peek();
-    const active2 = findTerminalSession(sessions, activeId);
-    return {
-      activeId,
-      active: active2,
-      sessions,
-      count: sessions.length,
-      layout: inspectTerminalWorkspaceLayout(this.layout.peek(), sessions)
-    };
-  }
-  snapshot() {
-    return snapshotTerminalWorkspace(this.inspect());
-  }
-  dispose() {
-    this.sessions.dispose();
-    this.activeId.dispose();
-    this.layout.dispose();
-  }
-};
-function createTerminalWorkspaceController(options = {}) {
-  return new TerminalWorkspaceController(options);
-}
-function normalizeTerminalWorkspaceSnapshot(snapshot) {
-  const sessions = new Array(snapshot.sessions.length);
-  for (let index = 0; index < snapshot.sessions.length; index += 1) {
-    sessions[index] = cloneTerminalSessionDescriptor(snapshot.sessions[index]);
-  }
-  const activeId = snapshot.activeId && hasTerminalSession(sessions, snapshot.activeId) ? snapshot.activeId : sessions[0]?.id;
-  const layout = normalizeTerminalWorkspaceLayout(snapshot.layout, sessions, activeId);
-  return {
-    version: TERMINAL_WORKSPACE_SNAPSHOT_VERSION,
-    activeId,
-    sessions,
-    layout: cloneTerminalWorkspaceLayoutState(layout)
-  };
-}
-function snapshotTerminalWorkspace(source) {
-  const inspection = source instanceof TerminalWorkspaceController ? source.inspect() : source;
-  return normalizeTerminalWorkspaceSnapshot({
-    version: TERMINAL_WORKSPACE_SNAPSHOT_VERSION,
-    activeId: inspection.activeId,
-    sessions: inspection.sessions,
-    layout: inspection.layout
-  });
-}
-function terminalWorkspacePaneRects2(layout, bounds, options = {}) {
-  return terminalWorkspacePaneRects(layout, bounds, options);
-}
-function descriptorFromTerminalTemplate(template, options, now) {
-  if (!isSpawnTerminalTemplate(template)) {
-    return {
-      ...describeAttachTerminalTemplate(template, now),
-      title: options.title ?? template.title,
-      backendId: options.backendId,
-      columns: normalizeTerminalWorkspaceDimension(options.columns),
-      rows: normalizeTerminalWorkspaceDimension(options.rows),
-      status: options.status,
-      running: options.running,
-      detached: false
-    };
-  }
-  const commandLine = formatProcessCommandLine(template);
-  return {
-    id: template.id,
-    title: options.title ?? template.title,
-    template: cloneTerminalTemplate(template),
-    backendId: options.backendId,
-    commandLine,
-    status: options.status ?? "idle",
-    running: options.running ?? false,
-    columns: normalizeTerminalWorkspaceDimension(options.columns ?? template.columns),
-    rows: normalizeTerminalWorkspaceDimension(options.rows ?? template.rows),
-    reconnectable: template.reconnectable ?? false,
-    restartPolicy: template.restartPolicy ?? "never",
-    createdAt: now,
-    updatedAt: now
-  };
-}
-function cloneTerminalSessionDescriptor(descriptor) {
-  return {
-    ...descriptor,
-    template: cloneTerminalTemplate(descriptor.template)
-  };
-}
-function duplicateTerminalSessionDescriptor(source, sessions, options, now) {
-  const ids = /* @__PURE__ */ new Set();
-  for (let index = 0; index < sessions.length; index += 1) ids.add(sessions[index].id);
-  const id2 = uniqueTerminalWorkspaceSessionId(options.id ?? `${source.id}-copy`, ids);
-  const title = options.title ?? `${source.title} Copy`;
-  const template = cloneTerminalTemplate(source.template);
-  template.id = id2;
-  template.title = title;
-  const descriptor = {
-    ...cloneTerminalSessionDescriptor(source),
-    id: id2,
-    title,
-    runtimeTitle: void 0,
-    template,
-    status: isSpawnTerminalTemplate(template) ? "idle" : source.status,
-    running: isSpawnTerminalTemplate(template) ? false : source.running,
-    detached: false,
-    createdAt: now,
-    updatedAt: now
-  };
-  if (isSpawnTerminalTemplate(template)) descriptor.commandLine = formatProcessCommandLine(template);
-  return descriptor;
-}
-function shouldAdoptRuntimeTitle(descriptor, previousRuntimeTitle) {
-  return descriptor.title === descriptor.template.title || descriptor.title === previousRuntimeTitle || descriptor.title === descriptor.runtimeTitle;
-}
-function cloneTerminalTemplate(template) {
-  if (!isSpawnTerminalTemplate(template)) {
-    return {
-      ...template,
-      metadata: template.metadata ? { ...template.metadata } : void 0
-    };
-  }
-  return {
-    ...template,
-    args: template.args ? [...template.args] : void 0,
-    env: template.env ? { ...template.env } : void 0,
-    metadata: template.metadata ? { ...template.metadata } : void 0
-  };
-}
-function normalizeTerminalWorkspaceDimension(value) {
-  if (!Number.isFinite(value)) return void 0;
-  return Math.max(1, Math.floor(value));
-}
-function uniqueTerminalWorkspaceSessionId(prefix, ids) {
-  const base = sanitizeTerminalWorkspaceLayoutId(prefix);
-  let candidate = base;
-  let suffix = 2;
-  while (ids.has(candidate)) {
-    candidate = `${base}-${suffix}`;
-    suffix += 1;
-  }
-  return candidate;
-}
 function normalizeTerminalWorkspaceLayout(layout, sessions, activeId) {
   const sessionIds = /* @__PURE__ */ new Set();
   for (const session of sessions) sessionIds.add(session.id);
@@ -15587,14 +15567,14 @@ function normalizeTerminalWorkspaceLayout(layout, sessions, activeId) {
       zoomedPaneId: void 0
     }, activeId);
   }
-  const activePane = pruned.activePaneId ? findTerminalWorkspacePaneRef2(pruned.root, pruned.activePaneId) : void 0;
-  const fallbackPane = activeId ? findTerminalWorkspacePaneBySessionRef2(pruned.root, activeId) : void 0;
-  const firstPane = firstTerminalWorkspacePaneRef2(pruned.root);
+  const activePane = pruned.activePaneId ? findTerminalWorkspacePaneRef(pruned.root, pruned.activePaneId) : void 0;
+  const fallbackPane = activeId ? findTerminalWorkspacePaneBySessionRef(pruned.root, activeId) : void 0;
+  const firstPane = firstTerminalWorkspacePaneRef(pruned.root);
   const nextActive = activePane ?? fallbackPane ?? firstPane;
   return {
     root: pruned.root,
     activePaneId: nextActive?.id,
-    zoomedPaneId: pruned.zoomedPaneId && findTerminalWorkspacePaneRef2(pruned.root, pruned.zoomedPaneId) ? pruned.zoomedPaneId : void 0
+    zoomedPaneId: pruned.zoomedPaneId && findTerminalWorkspacePaneRef(pruned.root, pruned.zoomedPaneId) ? pruned.zoomedPaneId : void 0
   };
 }
 function cloneTerminalWorkspaceLayoutState(layout) {
@@ -15680,23 +15660,23 @@ function removeTerminalSessionAt(sessions, index) {
   }
   return next;
 }
-function findTerminalWorkspacePaneRef2(node, paneId) {
+function findTerminalWorkspacePaneRef(node, paneId) {
   if (!node) return void 0;
   if (node.kind === "pane") return node.id === paneId ? node : void 0;
-  return findTerminalWorkspacePaneRef2(node.first, paneId) ?? findTerminalWorkspacePaneRef2(node.second, paneId);
+  return findTerminalWorkspacePaneRef(node.first, paneId) ?? findTerminalWorkspacePaneRef(node.second, paneId);
 }
-function findTerminalWorkspacePaneBySessionRef2(node, sessionId) {
+function findTerminalWorkspacePaneBySessionRef(node, sessionId) {
   if (!node) return void 0;
   if (node.kind === "pane") return node.sessionId === sessionId ? node : void 0;
-  return findTerminalWorkspacePaneBySessionRef2(node.first, sessionId) ?? findTerminalWorkspacePaneBySessionRef2(node.second, sessionId);
+  return findTerminalWorkspacePaneBySessionRef(node.first, sessionId) ?? findTerminalWorkspacePaneBySessionRef(node.second, sessionId);
 }
 function findActiveTerminalWorkspacePaneRef(layout) {
-  return layout.activePaneId ? findTerminalWorkspacePaneRef2(layout.root, layout.activePaneId) : firstTerminalWorkspacePaneRef2(layout.root);
+  return layout.activePaneId ? findTerminalWorkspacePaneRef(layout.root, layout.activePaneId) : firstTerminalWorkspacePaneRef(layout.root);
 }
-function firstTerminalWorkspacePaneRef2(node) {
+function firstTerminalWorkspacePaneRef(node) {
   if (!node) return void 0;
   if (node.kind === "pane") return node;
-  return firstTerminalWorkspacePaneRef2(node.first) ?? firstTerminalWorkspacePaneRef2(node.second);
+  return firstTerminalWorkspacePaneRef(node.first) ?? firstTerminalWorkspacePaneRef(node.second);
 }
 
 // src/app/workbench_terminal.ts
@@ -15882,7 +15862,7 @@ function workbenchTerminalToolbarItemsInto(target, state, options = {}) {
   );
 }
 function workbenchTerminalPaneProjectionsInto(target, layout, bounds, options = {}) {
-  const entries = terminalWorkspacePaneRects2(layout, bounds, {
+  const entries = terminalWorkspacePaneRects(layout, bounds, {
     gap: options.gap,
     respectZoom: options.respectZoom
   });

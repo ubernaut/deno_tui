@@ -3,23 +3,6 @@ import { Signal } from "../signals/mod.ts";
 import type { Rectangle } from "../types.ts";
 import { formatProcessCommandLine } from "./process_session.ts";
 import {
-  clampTerminalWorkspaceSplitRatio,
-  cloneTerminalWorkspaceLayoutNode,
-  cloneTerminalWorkspacePaneNode,
-  collectTerminalWorkspacePanes,
-  createTerminalWorkspacePaneNode,
-  findNearestTerminalWorkspaceSplit,
-  pruneTerminalWorkspaceLayoutSessions,
-  removeTerminalWorkspacePane,
-  replaceTerminalWorkspacePane,
-  sanitizeTerminalWorkspaceLayoutId,
-  terminalWorkspaceLayoutWithActive,
-  terminalWorkspacePaneRects as projectTerminalWorkspacePaneRects,
-  uniqueTerminalWorkspaceLayoutId,
-  updateTerminalWorkspacePaneRuntimeTitles,
-  updateTerminalWorkspaceSplitRatio,
-} from "./terminal_workspace_layout.ts";
-import {
   describeAttachTerminalTemplate,
   isSpawnTerminalTemplate,
   type TerminalSessionDescriptor,
@@ -570,7 +553,215 @@ export function terminalWorkspacePaneRects(
   bounds: Rectangle,
   options: TerminalWorkspacePaneRectOptions = {},
 ): TerminalWorkspacePaneRect[] {
-  return projectTerminalWorkspacePaneRects(layout, bounds, options);
+  const normalizedBounds = normalizeRect(bounds);
+  if (!layout.root || normalizedBounds.width <= 0 || normalizedBounds.height <= 0) return [];
+  if (options.respectZoom !== false && layout.zoomedPaneId) {
+    const pane = findTerminalWorkspacePaneRef(layout.root, layout.zoomedPaneId);
+    if (pane) {
+      return [{
+        pane: cloneTerminalWorkspacePaneNode(pane),
+        rect: normalizedBounds,
+        active: pane.id === layout.activePaneId,
+        zoomed: true,
+      }];
+    }
+  }
+  const rows: TerminalWorkspacePaneRect[] = [];
+  collectPaneRects(layout.root, normalizedBounds, Math.max(0, Math.floor(options.gap ?? 1)), layout, rows);
+  return rows;
+}
+
+function createTerminalWorkspacePaneNode(
+  sessionId: string,
+  root?: TerminalWorkspaceLayoutNode,
+  options: { title?: string; minColumns?: number; minRows?: number } = {},
+): TerminalWorkspacePaneNode {
+  return {
+    kind: "pane",
+    id: uniqueTerminalWorkspaceLayoutId(`pane-${sanitizeTerminalWorkspaceLayoutId(sessionId)}`, root),
+    sessionId,
+    title: options.title,
+    minColumns: normalizePaneDimension(options.minColumns),
+    minRows: normalizePaneDimension(options.minRows),
+  };
+}
+
+function terminalWorkspaceLayoutWithActive(
+  layout: TerminalWorkspaceLayoutState,
+  sessionId: string,
+): TerminalWorkspaceLayoutState {
+  const pane = findTerminalWorkspacePaneBySessionRef(layout.root, sessionId) ??
+    firstTerminalWorkspacePaneRef(layout.root);
+  return {
+    root: layout.root ? cloneTerminalWorkspaceLayoutNode(layout.root) : undefined,
+    activePaneId: pane?.id,
+    zoomedPaneId: layout.zoomedPaneId,
+  };
+}
+
+function cloneTerminalWorkspaceLayoutNode(node: TerminalWorkspaceLayoutNode): TerminalWorkspaceLayoutNode {
+  return node.kind === "pane" ? cloneTerminalWorkspacePaneNode(node) : {
+    kind: "split",
+    id: node.id,
+    direction: node.direction,
+    ratio: node.ratio,
+    first: cloneTerminalWorkspaceLayoutNode(node.first),
+    second: cloneTerminalWorkspaceLayoutNode(node.second),
+  };
+}
+
+function cloneTerminalWorkspacePaneNode(node: TerminalWorkspacePaneNode): TerminalWorkspacePaneNode {
+  return {
+    kind: "pane",
+    id: node.id,
+    sessionId: node.sessionId,
+    title: node.title,
+    minColumns: node.minColumns,
+    minRows: node.minRows,
+  };
+}
+
+function updateTerminalWorkspacePaneRuntimeTitles(
+  layout: TerminalWorkspaceLayoutState,
+  sessionId: string,
+  runtimeTitle: string,
+  previousVisibleTitle: string,
+  previousRuntimeTitle: string | undefined,
+  templateTitle: string,
+): TerminalWorkspaceLayoutState {
+  return {
+    ...layout,
+    root: layout.root
+      ? updatePaneRuntimeTitleNode(
+        layout.root,
+        sessionId,
+        runtimeTitle,
+        previousVisibleTitle,
+        previousRuntimeTitle,
+        templateTitle,
+      )
+      : undefined,
+  };
+}
+
+function pruneTerminalWorkspaceLayoutSessions(
+  layout: TerminalWorkspaceLayoutState,
+  sessionIds: ReadonlySet<string>,
+): TerminalWorkspaceLayoutState {
+  const root = pruneLayoutNode(layout.root, sessionIds);
+  return {
+    root,
+    activePaneId: layout.activePaneId && findTerminalWorkspacePaneRef(root, layout.activePaneId)
+      ? layout.activePaneId
+      : undefined,
+    zoomedPaneId: layout.zoomedPaneId && findTerminalWorkspacePaneRef(root, layout.zoomedPaneId)
+      ? layout.zoomedPaneId
+      : undefined,
+  };
+}
+
+function collectTerminalWorkspacePanes(
+  node: TerminalWorkspaceLayoutNode | undefined,
+): TerminalWorkspacePaneNode[] {
+  const panes: TerminalWorkspacePaneNode[] = [];
+  collectTerminalWorkspacePanesInto(node, panes);
+  return panes;
+}
+
+function replaceTerminalWorkspacePane(
+  node: TerminalWorkspaceLayoutNode,
+  paneId: string,
+  replacement: TerminalWorkspaceLayoutNode,
+): TerminalWorkspaceLayoutNode {
+  if (node.kind === "pane") {
+    return node.id === paneId ? cloneTerminalWorkspaceLayoutNode(replacement) : cloneTerminalWorkspacePaneNode(node);
+  }
+  return {
+    ...node,
+    first: replaceTerminalWorkspacePane(node.first, paneId, replacement),
+    second: replaceTerminalWorkspacePane(node.second, paneId, replacement),
+  };
+}
+
+function removeTerminalWorkspacePane(
+  node: TerminalWorkspaceLayoutNode | undefined,
+  paneId: string,
+): TerminalWorkspaceLayoutNode | undefined {
+  if (!node) return undefined;
+  if (node.kind === "pane") return node.id === paneId ? undefined : cloneTerminalWorkspacePaneNode(node);
+  const first = removeTerminalWorkspacePane(node.first, paneId);
+  const second = removeTerminalWorkspacePane(node.second, paneId);
+  if (first && second) return { ...node, first, second };
+  return first ?? second;
+}
+
+function updateTerminalWorkspaceSplitRatio(
+  node: TerminalWorkspaceLayoutNode | undefined,
+  splitId: string,
+  ratio: number,
+): { node?: TerminalWorkspaceLayoutNode; changed: boolean } {
+  if (!node) return { changed: false };
+  if (node.kind === "pane") return { node, changed: false };
+  if (node.id === splitId) {
+    return {
+      node: {
+        ...node,
+        ratio,
+      },
+      changed: true,
+    };
+  }
+  const first = updateTerminalWorkspaceSplitRatio(node.first, splitId, ratio);
+  if (first.changed) {
+    return {
+      node: {
+        ...node,
+        first: first.node ?? node.first,
+      },
+      changed: true,
+    };
+  }
+  const second = updateTerminalWorkspaceSplitRatio(node.second, splitId, ratio);
+  if (second.changed) {
+    return {
+      node: {
+        ...node,
+        second: second.node ?? node.second,
+      },
+      changed: true,
+    };
+  }
+  return {
+    node,
+    changed: false,
+  };
+}
+
+function findNearestTerminalWorkspaceSplit(
+  node: TerminalWorkspaceLayoutNode | undefined,
+  paneId: string,
+): { split: TerminalWorkspaceSplitNode; activeSide: "first" | "second" } | undefined {
+  return findNearestTerminalWorkspaceSplitSearch(node, paneId).nearest;
+}
+
+function uniqueTerminalWorkspaceLayoutId(prefix: string, root?: TerminalWorkspaceLayoutNode): string {
+  const ids = new Set<string>();
+  collectLayoutIds(root, ids);
+  let candidate = prefix;
+  let suffix = 2;
+  while (ids.has(candidate)) {
+    candidate = `${prefix}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+}
+
+function sanitizeTerminalWorkspaceLayoutId(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "terminal";
+}
+
+function clampTerminalWorkspaceSplitRatio(value: number): number {
+  return Math.max(0.1, Math.min(0.9, Number.isFinite(value) ? value : 0.5));
 }
 
 function descriptorFromTerminalTemplate(
@@ -683,6 +874,193 @@ function uniqueTerminalWorkspaceSessionId(prefix: string, ids: ReadonlySet<strin
     suffix += 1;
   }
   return candidate;
+}
+
+function collectPaneRects(
+  node: TerminalWorkspaceLayoutNode,
+  rect: Rectangle,
+  gap: number,
+  layout: TerminalWorkspaceLayoutState,
+  rows: TerminalWorkspacePaneRect[],
+): void {
+  if (node.kind === "pane") {
+    rows.push({
+      pane: cloneTerminalWorkspacePaneNode(node),
+      rect,
+      active: node.id === layout.activePaneId,
+      zoomed: node.id === layout.zoomedPaneId,
+    });
+    return;
+  }
+  const [first, second] = splitPaneRect(rect, node, gap);
+  collectPaneRects(node.first, first, gap, layout, rows);
+  collectPaneRects(node.second, second, gap, layout, rows);
+}
+
+function splitPaneRect(
+  rect: Rectangle,
+  split: TerminalWorkspaceSplitNode,
+  gap: number,
+): [Rectangle, Rectangle] {
+  const safeGap = split.direction === "row" ? Math.min(gap, Math.max(0, rect.width - 1)) : Math.min(
+    gap,
+    Math.max(0, rect.height - 1),
+  );
+  if (split.direction === "row") {
+    const available = Math.max(0, rect.width - safeGap);
+    const firstWidth = clampSplitSize(Math.floor(available * clampTerminalWorkspaceSplitRatio(split.ratio)), available);
+    const secondWidth = Math.max(0, available - firstWidth);
+    return [
+      { ...rect, width: firstWidth },
+      { column: rect.column + firstWidth + safeGap, row: rect.row, width: secondWidth, height: rect.height },
+    ];
+  }
+  const available = Math.max(0, rect.height - safeGap);
+  const firstHeight = clampSplitSize(Math.floor(available * clampTerminalWorkspaceSplitRatio(split.ratio)), available);
+  const secondHeight = Math.max(0, available - firstHeight);
+  return [
+    { ...rect, height: firstHeight },
+    { column: rect.column, row: rect.row + firstHeight + safeGap, width: rect.width, height: secondHeight },
+  ];
+}
+
+function updatePaneRuntimeTitleNode(
+  node: TerminalWorkspaceLayoutNode,
+  sessionId: string,
+  runtimeTitle: string,
+  previousVisibleTitle: string,
+  previousRuntimeTitle: string | undefined,
+  templateTitle: string,
+): TerminalWorkspaceLayoutNode {
+  if (node.kind === "pane") {
+    const pane = cloneTerminalWorkspacePaneNode(node);
+    if (
+      pane.sessionId === sessionId &&
+      (
+        pane.title === undefined ||
+        pane.title === previousVisibleTitle ||
+        pane.title === previousRuntimeTitle ||
+        pane.title === templateTitle
+      )
+    ) {
+      pane.title = runtimeTitle;
+    }
+    return pane;
+  }
+  return {
+    ...node,
+    first: updatePaneRuntimeTitleNode(
+      node.first,
+      sessionId,
+      runtimeTitle,
+      previousVisibleTitle,
+      previousRuntimeTitle,
+      templateTitle,
+    ),
+    second: updatePaneRuntimeTitleNode(
+      node.second,
+      sessionId,
+      runtimeTitle,
+      previousVisibleTitle,
+      previousRuntimeTitle,
+      templateTitle,
+    ),
+  };
+}
+
+function pruneLayoutNode(
+  node: TerminalWorkspaceLayoutNode | undefined,
+  sessionIds: ReadonlySet<string>,
+): TerminalWorkspaceLayoutNode | undefined {
+  if (!node) return undefined;
+  if (node.kind === "pane") return sessionIds.has(node.sessionId) ? cloneTerminalWorkspacePaneNode(node) : undefined;
+  const first = pruneLayoutNode(node.first, sessionIds);
+  const second = pruneLayoutNode(node.second, sessionIds);
+  if (first && second) return { ...node, ratio: clampTerminalWorkspaceSplitRatio(node.ratio), first, second };
+  return first ?? second;
+}
+
+function cloneTerminalWorkspaceSplitNode(node: TerminalWorkspaceSplitNode): TerminalWorkspaceSplitNode {
+  return {
+    kind: "split",
+    id: node.id,
+    direction: node.direction,
+    ratio: node.ratio,
+    first: cloneTerminalWorkspaceLayoutNode(node.first),
+    second: cloneTerminalWorkspaceLayoutNode(node.second),
+  };
+}
+
+function collectTerminalWorkspacePanesInto(
+  node: TerminalWorkspaceLayoutNode | undefined,
+  panes: TerminalWorkspacePaneNode[],
+): void {
+  if (!node) return;
+  if (node.kind === "pane") {
+    panes.push(cloneTerminalWorkspacePaneNode(node));
+    return;
+  }
+  collectTerminalWorkspacePanesInto(node.first, panes);
+  collectTerminalWorkspacePanesInto(node.second, panes);
+}
+
+function findNearestTerminalWorkspaceSplitSearch(
+  node: TerminalWorkspaceLayoutNode | undefined,
+  paneId: string,
+): {
+  found: boolean;
+  nearest?: { split: TerminalWorkspaceSplitNode; activeSide: "first" | "second" };
+} {
+  if (!node) return { found: false };
+  if (node.kind === "pane") return { found: node.id === paneId };
+
+  const first = findNearestTerminalWorkspaceSplitSearch(node.first, paneId);
+  if (first.nearest) return first;
+  if (first.found) {
+    return {
+      found: true,
+      nearest: { split: cloneTerminalWorkspaceSplitNode(node), activeSide: "first" },
+    };
+  }
+
+  const second = findNearestTerminalWorkspaceSplitSearch(node.second, paneId);
+  if (second.nearest) return second;
+  if (second.found) {
+    return {
+      found: true,
+      nearest: { split: cloneTerminalWorkspaceSplitNode(node), activeSide: "second" },
+    };
+  }
+
+  return { found: false };
+}
+
+function collectLayoutIds(node: TerminalWorkspaceLayoutNode | undefined, ids: Set<string>): void {
+  if (!node) return;
+  ids.add(node.id);
+  if (node.kind === "split") {
+    collectLayoutIds(node.first, ids);
+    collectLayoutIds(node.second, ids);
+  }
+}
+
+function clampSplitSize(value: number, available: number): number {
+  if (available <= 1) return available;
+  return Math.max(1, Math.min(available - 1, value));
+}
+
+function normalizeRect(rect: Rectangle): Rectangle {
+  return {
+    column: Math.floor(rect.column),
+    row: Math.floor(rect.row),
+    width: Math.max(0, Math.floor(rect.width)),
+    height: Math.max(0, Math.floor(rect.height)),
+  };
+}
+
+function normalizePaneDimension(value: number | undefined): number | undefined {
+  if (!Number.isFinite(value)) return undefined;
+  return Math.max(1, Math.floor(value!));
 }
 
 function normalizeTerminalWorkspaceLayout(

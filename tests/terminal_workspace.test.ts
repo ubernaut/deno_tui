@@ -13,19 +13,6 @@ import {
 } from "../src/app/terminal_commands.ts";
 import { TerminalOutputController } from "../src/components/terminal_output.ts";
 import { WindowManagerController } from "../src/layout/window_manager.ts";
-import {
-  cloneTerminalWorkspaceLayoutState,
-  collectTerminalWorkspacePanes,
-  createTerminalWorkspacePaneNode,
-  findNearestTerminalWorkspaceSplit,
-  pruneTerminalWorkspaceLayoutSessions,
-  removeTerminalWorkspacePane,
-  replaceTerminalWorkspacePane,
-  type TerminalWorkspaceLayoutNode,
-  terminalWorkspaceLayoutWithActive,
-  updateTerminalWorkspacePaneRuntimeTitles,
-  updateTerminalWorkspaceSplitRatio,
-} from "../src/runtime/terminal_workspace_layout.ts";
 import type {
   TerminalBackend,
   TerminalBackendSpawnOptions,
@@ -528,148 +515,125 @@ Deno.test("terminal workspace pane rects project split layouts", () => {
   workspace.dispose();
 });
 
-Deno.test("terminal workspace layout helpers create stable unique pane ids", () => {
-  const first = createTerminalWorkspacePaneNode("Shell Main");
-  const second = createTerminalWorkspacePaneNode("Shell Main", first, { title: "mirror", minColumns: 12.9 });
+Deno.test("terminal workspace layout creates stable pane ids through controller splits", () => {
+  const workspace = createTerminalWorkspaceController({ now: () => 1 });
+  workspace.add(commandTerminalTemplate({ id: "Shell Main", title: "Shell Main", command: "bash" }));
+  workspace.splitActive("row", "Shell Main", { title: "mirror", minColumns: 12.9 });
 
-  assertEquals(first, {
+  assertEquals(
+    workspace.inspectLayout().panes.map((pane) => ({
+      id: pane.id,
+      sessionId: pane.sessionId,
+      title: pane.title,
+      minColumns: pane.minColumns,
+      minRows: pane.minRows,
+    })),
+    [
+      {
+        id: "pane-shell-main",
+        sessionId: "Shell Main",
+        title: "Shell Main",
+        minColumns: undefined,
+        minRows: undefined,
+      },
+      {
+        id: "pane-shell-main-2",
+        sessionId: "Shell Main",
+        title: "mirror",
+        minColumns: 12,
+        minRows: undefined,
+      },
+    ],
+  );
+
+  workspace.dispose();
+});
+
+Deno.test("terminal workspace layout snapshot normalization clones prunes and preserves active panes", () => {
+  const workspace = createTerminalWorkspaceController({ now: () => 1 });
+  workspace.add(shellTerminalTemplate({ id: "shell", shell: "bash" }));
+  workspace.add(commandTerminalTemplate({ id: "logs", title: "Logs", command: "tail", args: ["-f"] }));
+  workspace.add(commandTerminalTemplate({ id: "tests", title: "Tests", command: "deno", args: ["test"] }));
+  workspace.splitActive("row", "logs", { ratio: 0.65, title: "Logs" });
+  const testsPane = workspace.splitActive("column", "tests", { ratio: 0.35, title: "Tests" })!;
+  workspace.toggleZoomPane("pane-logs");
+
+  const snapshot = workspace.snapshot();
+  const cloned = normalizeTerminalWorkspaceSnapshot(snapshot);
+  if (cloned.layout.root?.kind !== "split") throw new Error("expected split root");
+  cloned.layout.root.ratio = 0.2;
+  assertEquals(snapshot.layout.root?.kind === "split" ? snapshot.layout.root.ratio : undefined, 0.65);
+
+  const pruned = normalizeTerminalWorkspaceSnapshot({
+    ...snapshot,
+    sessions: snapshot.sessions.filter((session) => session.id !== "logs"),
+  });
+
+  assertEquals(pruned.activeId, "tests");
+  assertEquals(pruned.layout.activePaneId, testsPane.id);
+  assertEquals(pruned.layout.zoomedPaneId, undefined);
+  assertEquals(
+    terminalWorkspacePaneRects(pruned.layout, { column: 0, row: 0, width: 21, height: 8 }).map((entry) => ({
+      id: entry.pane.id,
+      sessionId: entry.pane.sessionId,
+    })),
+    [
+      { id: "pane-shell", sessionId: "shell" },
+      { id: testsPane.id, sessionId: "tests" },
+    ],
+  );
+
+  workspace.dispose();
+});
+
+Deno.test("terminal workspace layout controller operations replace remove resize and find active split", () => {
+  const workspace = createTerminalWorkspaceController({ now: () => 1 });
+  workspace.add(shellTerminalTemplate({ id: "shell", shell: "bash" }));
+  workspace.add(commandTerminalTemplate({ id: "logs", title: "Logs", command: "tail", args: ["-f"] }));
+  const logsPane = workspace.splitActive("row", "logs", { ratio: 0.5 })!;
+
+  workspace.activate("shell");
+  assertEquals(workspace.resizeActiveSplit(0.4), true);
+  const resizedRoot = workspace.inspectLayout().root;
+  assertEquals(resizedRoot?.kind === "split" ? resizedRoot.ratio : undefined, 0.9);
+
+  assertEquals(workspace.closePane("pane-shell"), true);
+  assertEquals(workspace.inspectLayout().panes.map((pane) => pane.id), [logsPane.id]);
+  assertEquals(workspace.inspectLayout().root, {
     kind: "pane",
-    id: "pane-shell-main",
-    sessionId: "Shell Main",
+    id: logsPane.id,
+    sessionId: "logs",
     title: undefined,
     minColumns: undefined,
     minRows: undefined,
   });
-  assertEquals(second, {
-    kind: "pane",
-    id: "pane-shell-main-2",
-    sessionId: "Shell Main",
-    title: "mirror",
-    minColumns: 12,
-    minRows: undefined,
-  });
+
+  workspace.dispose();
 });
 
-Deno.test("terminal workspace layout helpers clone prune and preserve active panes", () => {
-  const shell = createTerminalWorkspacePaneNode("shell");
-  const logs = createTerminalWorkspacePaneNode("logs", shell);
-  const tests = createTerminalWorkspacePaneNode("tests", {
-    kind: "split",
-    id: "split",
-    direction: "row",
-    ratio: 0.5,
-    first: shell,
-    second: logs,
-  });
-  const root: TerminalWorkspaceLayoutNode = {
-    kind: "split",
-    id: "root",
-    direction: "row",
-    ratio: 0.65,
-    first: shell,
-    second: {
-      kind: "split",
-      id: "nested",
-      direction: "column",
-      ratio: 0.35,
-      first: logs,
-      second: tests,
-    },
-  };
+Deno.test("terminal workspace layout updates runtime titles and projects rectangles", () => {
+  const workspace = createTerminalWorkspaceController({ now: () => 1 });
+  workspace.add(shellTerminalTemplate({ id: "shell", shell: "bash" }));
+  workspace.add(commandTerminalTemplate({ id: "logs", title: "Logs", command: "tail", args: ["-f"] }));
+  workspace.splitActive("row", "logs", { ratio: 0.5, title: "Logs" });
 
-  const cloned = cloneTerminalWorkspaceLayoutState({ root, activePaneId: tests.id, zoomedPaneId: logs.id });
-  if (cloned.root?.kind !== "split") throw new Error("expected split root");
-  cloned.root.ratio = 0.2;
-  assertEquals(root.ratio, 0.65);
-
-  assertEquals(collectTerminalWorkspacePanes(root).map((pane) => pane.sessionId), ["shell", "logs", "tests"]);
+  assertEquals(workspace.updateRuntimeTitle("logs", "tail -f api.log"), true);
+  assertEquals(workspace.inspectLayout().panes.map((pane) => pane.title), ["Shell", "tail -f api.log"]);
   assertEquals(
-    pruneTerminalWorkspaceLayoutSessions(
-      { root, activePaneId: tests.id, zoomedPaneId: logs.id },
-      new Set(["shell", "tests"]),
+    terminalWorkspacePaneRects(workspace.inspect().layout, { column: 0, row: 0, width: 21, height: 8 }, { gap: 1 }).map(
+      (entry) => ({
+        id: entry.pane.id,
+        rect: entry.rect,
+        active: entry.active,
+      }),
     ),
-    {
-      root: {
-        kind: "split",
-        id: "root",
-        direction: "row",
-        ratio: 0.65,
-        first: shell,
-        second: tests,
-      },
-      activePaneId: tests.id,
-      zoomedPaneId: undefined,
-    },
-  );
-  assertEquals(terminalWorkspaceLayoutWithActive({ root }, "logs").activePaneId, logs.id);
-});
-
-Deno.test("terminal workspace layout helpers replace remove resize and find nearest split", () => {
-  const shell = createTerminalWorkspacePaneNode("shell");
-  const logs = createTerminalWorkspacePaneNode("logs", shell);
-  const next = createTerminalWorkspacePaneNode("next", {
-    kind: "split",
-    id: "root",
-    direction: "row",
-    ratio: 0.5,
-    first: shell,
-    second: logs,
-  });
-  const root: TerminalWorkspaceLayoutNode = {
-    kind: "split",
-    id: "root",
-    direction: "row",
-    ratio: 0.5,
-    first: shell,
-    second: logs,
-  };
-
-  const replaced = replaceTerminalWorkspacePane(root, logs.id, next);
-  assertEquals(collectTerminalWorkspacePanes(replaced).map((pane) => pane.sessionId), ["shell", "next"]);
-  assertEquals(removeTerminalWorkspacePane(replaced, shell.id), next);
-  assertEquals(updateTerminalWorkspaceSplitRatio(root, "root", 0.9), {
-    node: { ...root, ratio: 0.9 },
-    changed: true,
-  });
-  assertEquals(updateTerminalWorkspaceSplitRatio(root, "missing", 0.9), {
-    node: root,
-    changed: false,
-  });
-  assertEquals(findNearestTerminalWorkspaceSplit(root, logs.id)?.activeSide, "second");
-});
-
-Deno.test("terminal workspace layout helpers update runtime titles and project rectangles", () => {
-  const shell = createTerminalWorkspacePaneNode("shell", undefined, { title: "Shell" });
-  const logs = createTerminalWorkspacePaneNode("logs", shell, { title: "Logs" });
-  const root: TerminalWorkspaceLayoutNode = {
-    kind: "split",
-    id: "root",
-    direction: "row",
-    ratio: 0.5,
-    first: shell,
-    second: logs,
-  };
-  const layout = updateTerminalWorkspacePaneRuntimeTitles(
-    { root, activePaneId: logs.id },
-    "logs",
-    "tail -f api.log",
-    "Logs",
-    undefined,
-    "Logs",
-  );
-
-  assertEquals(collectTerminalWorkspacePanes(layout.root).map((pane) => pane.title), ["Shell", "tail -f api.log"]);
-  assertEquals(
-    terminalWorkspacePaneRects(layout, { column: 0, row: 0, width: 21, height: 8 }, { gap: 1 }).map((entry) => ({
-      id: entry.pane.id,
-      rect: entry.rect,
-      active: entry.active,
-    })),
     [
-      { id: shell.id, rect: { column: 0, row: 0, width: 10, height: 8 }, active: false },
-      { id: logs.id, rect: { column: 11, row: 0, width: 10, height: 8 }, active: true },
+      { id: "pane-shell", rect: { column: 0, row: 0, width: 10, height: 8 }, active: false },
+      { id: "pane-logs", rect: { column: 11, row: 0, width: 10, height: 8 }, active: true },
     ],
   );
+
+  workspace.dispose();
 });
 
 Deno.test("terminal workspace snapshots round trip sessions active pane and layout", () => {
