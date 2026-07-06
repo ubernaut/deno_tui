@@ -3,8 +3,9 @@ import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import { emptySnapshot } from "../app/system_metrics.ts";
 import type { RenderContext, SlotConfig, SourceFrame, SystemSnapshot } from "../app/types.ts";
 import { compactSpaces, maxTrimmedTextWidth } from "../src/app/workbench_text.ts";
-import { studioCameraFramingForAspect } from "../app/neon_three.ts";
+import { createNeonThreeScene } from "../app/neon_three.ts";
 import { renderVisualization } from "../app/visualizations.ts";
+import type { Object3D } from "three";
 
 const fallbackContext: RenderContext = {
   width: 28,
@@ -125,9 +126,34 @@ Deno.test("three fallback footer preserves primitive mode context", () => {
 });
 
 Deno.test("studio Three scene framing tightens for wide terminal panes", () => {
-  const normal = studioCameraFramingForAspect(1.2);
-  const wide = studioCameraFramingForAspect(1.95);
-  const tall = studioCameraFramingForAspect(0.75);
+  function frameStudioAspect(aspect: number) {
+    const bundle = createNeonThreeScene("studio");
+    const group = bundle.scene.children.find((child: Object3D) => child.type === "Group");
+    assert(group);
+
+    bundle.camera.aspect = aspect;
+    bundle.tick(1000, {
+      x: 0.5,
+      y: 0.5,
+      depth: 0.5,
+      twist: 0,
+      lift: 0,
+      pulse: 0.5,
+      active: true,
+      pressed: false,
+    });
+    const result = {
+      cameraY: bundle.camera.position.y,
+      cameraZ: bundle.camera.position.z,
+      groupScale: group.scale.x,
+    };
+    bundle.dispose();
+    return result;
+  }
+
+  const normal = frameStudioAspect(1.2);
+  const wide = frameStudioAspect(1.95);
+  const tall = frameStudioAspect(0.75);
 
   assert(wide.cameraZ < normal.cameraZ);
   assert(wide.cameraY < normal.cameraY);

@@ -258,7 +258,7 @@ interface StudioCameraFraming {
   groupScale: number;
 }
 
-export function studioCameraFramingForAspect(aspect: number): StudioCameraFraming {
+function studioCameraFramingForAspect(aspect: number): StudioCameraFraming {
   const wide = Math.max(0, aspect - 1.25);
   const tall = Math.max(0, 1.05 - aspect);
   return {
