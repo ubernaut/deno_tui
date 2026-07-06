@@ -275,7 +275,7 @@ export function findApiWorkbenchHitTarget<TAction>(
     }) ?? target.rect);
 }
 
-export type ApiWorkbenchControlLineSegmentKind = "line" | WorkbenchControlButtonLineSegmentKind;
+type ApiWorkbenchControlLineSegmentKind = "line" | WorkbenchControlButtonLineSegmentKind;
 
 export interface ApiWorkbenchControlLineSegment {
   kind: ApiWorkbenchControlLineSegmentKind;
@@ -286,7 +286,7 @@ export interface ApiWorkbenchControlLineSegment {
   active: boolean;
 }
 
-export type ApiWorkbenchControlLineRenderRole = "base" | "button" | "detail";
+type ApiWorkbenchControlLineRenderRole = "base" | "button" | "detail";
 
 export interface ApiWorkbenchControlLineRenderCommand {
   kind: "fill" | "segment";
@@ -728,7 +728,7 @@ interface ApiWorkbenchTextboxProjection {
   startVisualRow: number;
 }
 
-export type ApiWorkbenchTextboxRenderRole = "label" | "body";
+type ApiWorkbenchTextboxRenderRole = "label" | "body";
 
 export interface ApiWorkbenchTextboxRenderCommand {
   role: ApiWorkbenchTextboxRenderRole;
