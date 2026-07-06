@@ -259,6 +259,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     `tests/app_primitives.test.ts`, keeping focus behavior with the app primitive and command binding suite.
   - HitTargetStack and rectangle-helper behavior tests are now bundled into `tests/app_primitives.test.ts`, removing
     another standalone app-primitive shard without changing the covered assertions.
+  - Workbench window-registry and shelf/tab projection tests are now bundled into `tests/workbench_controller.test.ts`,
+    keeping window launch, visibility, minimized shelf, and fullscreen tab behavior in one workbench windowing suite.
   - system metrics GPU, network, process, and snapshot helper tests are now `tests/system_metrics_core.test.ts`
   - small Three ASCII renderer option/profile/frame/cache helper shards are now bundled into
     `tests/three_ascii_core.test.ts`
