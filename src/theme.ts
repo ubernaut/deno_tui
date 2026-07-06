@@ -43,10 +43,6 @@ import {
 } from "./theme_engine.ts";
 import { ThemeLayerStackImplementation } from "./theme_layer_stack.ts";
 import { ThemePackNotFoundErrorImplementation, ThemeRegistryImplementation } from "./theme_registry.ts";
-import {
-  inspectThemeProviderIssues as inspectThemeProviderIssuesCore,
-  themeProviderActiveOptions as themeProviderActiveOptionsCore,
-} from "./theme_provider_inspection.ts";
 import { createThemeCatalogFromInspection, previewThemeProviderCore } from "./theme_provider_preview.ts";
 import { ThemeProviderImplementation } from "./theme_provider.ts";
 
@@ -1010,9 +1006,9 @@ export function createThemeProviderReport(
   options: ThemeProviderReportOptions = {},
 ): ThemeProviderReport {
   return createThemeProviderReportCore(provider, options, {
-    activeOptions: themeProviderActiveOptionsCore,
+    activeOptions: themeProviderActiveOptions,
     inspectCoverage: inspectThemeCoverage,
-    inspectIssues: (reportProvider) => inspectThemeProviderIssuesCore(reportProvider, validateThemeOptions),
+    inspectIssues: (reportProvider) => inspectThemeProviderIssues(reportProvider, validateThemeOptions),
     previewProvider: previewThemeProvider,
   });
 }
@@ -1051,6 +1047,62 @@ export class ThemeValidationError extends Error {
     this.name = "ThemeValidationError";
     this.issues = issues;
   }
+}
+
+function themeProviderActiveOptions(provider: ThemeProvider): ThemeEngineOptions {
+  const activePack = provider.registry.get(provider.activeId.peek());
+  const activeLayers = provider.layers.activeLayers();
+  const options = new Array<ThemeEngineOptions>(activeLayers.length + 1);
+  options[0] = activePack?.options ?? {};
+  for (let index = 0; index < activeLayers.length; index += 1) {
+    options[index + 1] = activeLayers[index]!.options;
+  }
+  return composeThemeOptionsCore(...options);
+}
+
+function themeRegistryOptions(provider: ThemeProvider): ThemeEngineOptions[] {
+  const options: ThemeEngineOptions[] = [];
+  for (const id of provider.registry.ids()) {
+    const packOptions = provider.registry.get(id)?.options;
+    if (packOptions !== undefined) options.push(packOptions);
+  }
+  return options;
+}
+
+function inspectThemeProviderIssues(
+  provider: ThemeProvider,
+  validateOptions: (options: ThemeEngineOptions) => ThemeValidationIssue[],
+): ThemeProviderReportIssue[] {
+  const issues: ThemeProviderReportIssue[] = [];
+  for (const id of provider.registry.ids()) {
+    const pack = provider.registry.get(id);
+    if (!pack?.options) continue;
+    const packIssues = validateOptions(pack.options);
+    for (const issue of packIssues) {
+      issues.push({
+        ...issue,
+        source: "theme",
+        sourceId: id,
+      });
+    }
+  }
+
+  const registryOptions = themeRegistryOptions(provider);
+  for (const id of provider.layers.ids()) {
+    const layer = provider.layers.get(id);
+    if (!layer) continue;
+    const layerComponents = new Set(Object.keys(layer.options.components ?? {}));
+    const layerIssues = validateOptions(composeThemeOptionsCore(...registryOptions, layer.options));
+    for (const issue of layerIssues) {
+      if (issue.component && !layerComponents.has(issue.component)) continue;
+      issues.push({
+        ...issue,
+        source: "layer",
+        sourceId: id,
+      });
+    }
+  }
+  return issues;
 }
 
 function previewStyle(style: Style, sample: string): ThemeStylePreview {

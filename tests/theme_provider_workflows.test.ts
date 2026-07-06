@@ -4,6 +4,7 @@ import { MemoryStore } from "../src/runtime/storage.ts";
 import {
   createThemeLayerStack,
   createThemeProvider,
+  createThemeProviderReport,
   createThemeRegistry,
   type ThemeCoverageOptions,
   type ThemeEngineOptions,
@@ -13,13 +14,7 @@ import {
   type ThemeProviderReport,
   themeStates,
   themeTokenNames,
-  validateThemeOptions,
 } from "../src/theme.ts";
-import {
-  inspectThemeProviderIssues,
-  themeProviderActiveOptions,
-  themeRegistryOptions,
-} from "../src/theme_provider_inspection.ts";
 import { createThemeCatalogFromInspection, previewThemeProviderCore } from "../src/theme_provider_preview.ts";
 import { ThemeProviderImplementation } from "../src/theme_provider.ts";
 import {
@@ -106,10 +101,10 @@ Deno.test("theme provider inspection composes active pack and layers", () => {
     ]),
   });
 
-  const active = themeProviderActiveOptions(provider);
-  assertEquals(Object.keys(active.tokens ?? {}), ["accent", "danger"]);
-  assertEquals(Object.keys(active.components ?? {}), ["label", "button"]);
-  assertEquals(themeRegistryOptions(provider).length, 1);
+  const report = createThemeProviderReport(provider, { preview: false });
+  assertEquals(report.coverage?.components.map((component) => component.name).sort(), ["button", "label"]);
+  assertEquals(report.summary.themeCount, 1);
+  assertEquals(report.summary.activeLayerCount, 1);
 });
 
 Deno.test("theme provider inspection attributes pack and layer validation issues", () => {
@@ -141,7 +136,7 @@ Deno.test("theme provider inspection attributes pack and layer validation issues
     layers: createThemeLayerStack(layers),
   });
 
-  const issues = inspectThemeProviderIssues(provider, validateThemeOptions);
+  const issues = createThemeProviderReport(provider, { preview: false, coverage: false }).issues;
   assertEquals(
     issues.map((issue) => [issue.source, issue.sourceId, issue.kind, issue.component]),
     [
