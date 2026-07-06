@@ -54,6 +54,7 @@ import {
   type WorkbenchTerminalToolbarAction,
 } from "../src/app/workbench_terminal.ts";
 import { renderApiWorkbenchTerminalOutputToolbar } from "../app/api_workbench_terminal_output_view.ts";
+import { renderApiWorkbenchShelf, renderApiWorkbenchWindowTabs } from "../app/api_workbench_shelf_view.ts";
 import {
   renderApiWorkbenchTerminalSessionTabs,
   renderApiWorkbenchTerminalShellToolbar,
@@ -881,6 +882,82 @@ Deno.test("workbench buffer caches keep terminal session tab storage together", 
 
   cache.clear();
   assertEquals(cache.inspect(), { sources: 0, placements: 0, commands: 0 });
+});
+
+Deno.test("renderApiWorkbenchShelf paints minimized windows and registers restore hits", () => {
+  const cache = new WorkbenchShelfBufferCache<"logs" | "three">();
+  const frame: string[][] = [[]];
+  const buttons: Array<{ label: string; state?: string; tone?: string; width?: number }> = [];
+  const hits: Array<{ id: string; width: number }> = [];
+
+  renderApiWorkbenchShelf({
+    frame,
+    row: 0,
+    column: 1,
+    width: 40,
+    windows: [
+      { id: "logs", minimized: true },
+      { id: "three", minimized: false },
+    ],
+    buffers: cache,
+    theme: testWorkbenchTheme(),
+    titleForId: (id) => id === "logs" ? "Logs" : "Three",
+    paint: (text, style) => `${style.bg}:${style.fg}:${text}`,
+    write: (target, row, column, value) => {
+      target[row] ??= [];
+      target[row]![column] = value;
+    },
+    writeButton: (_target, _row, _column, label, options) => {
+      buttons.push({ label, state: options?.state, tone: options?.tone, width: options?.maxWidth });
+      return options?.maxWidth ?? 0;
+    },
+    addHit: (rect, action) => hits.push({ id: action.id, width: rect.width }),
+  });
+
+  assertEquals(frame[0]?.[1], "#111:#aaa:minimized ");
+  assertEquals(buttons, [{ label: "Logs", state: "base", tone: "muted", width: 8 }]);
+  assertEquals(hits, [{ id: "logs", width: 8 }]);
+});
+
+Deno.test("renderApiWorkbenchWindowTabs paints tab strip and registers tab hits", () => {
+  const cache = new WorkbenchShelfBufferCache<"logs" | "three">();
+  const frame: string[][] = [[]];
+  const fills: Array<{ row: number; bg: string }> = [];
+  const buttons: Array<{ label: string; state?: string; tone?: string }> = [];
+  const hits: Array<{ id: string; width: number }> = [];
+
+  renderApiWorkbenchWindowTabs({
+    frame,
+    row: 0,
+    column: 1,
+    width: 42,
+    tabs: [
+      { id: "logs", fullscreen: false, minimized: true },
+      { id: "three", fullscreen: true },
+    ],
+    buffers: cache,
+    theme: testWorkbenchTheme(),
+    titleForId: (id) => id === "logs" ? "Logs" : "Three",
+    paint: (text, style) => `${style.bg}:${style.fg}:${text}`,
+    write: (target, row, column, value) => {
+      target[row] ??= [];
+      target[row]![column] = value;
+    },
+    fillRow: (_target, row, bg) => fills.push({ row, bg }),
+    writeButton: (_target, _row, _column, label, options) => {
+      buttons.push({ label, state: options?.state, tone: options?.tone });
+      return options?.maxWidth ?? 0;
+    },
+    addHit: (rect, action) => hits.push({ id: action.id, width: rect.width }),
+  });
+
+  assertEquals(fills, [{ row: 0, bg: "#111" }]);
+  assertEquals(frame[0]?.[1], "#111:#aaa:windows ");
+  assertEquals(buttons, [
+    { label: "○ Logs", state: "base", tone: "muted" },
+    { label: "● Three", state: "active", tone: "default" },
+  ]);
+  assertEquals(hits.map((hit) => hit.id), ["logs", "three"]);
 });
 
 Deno.test("renderApiWorkbenchTerminalOutputToolbar paints actions and registers enabled hits", () => {

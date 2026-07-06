@@ -32,8 +32,6 @@ import {
   layoutWorkbenchHeaderInto,
   layoutWorkbenchMenuBarHitsInto,
   layoutWorkbenchModal,
-  layoutWorkbenchShelfInto,
-  layoutWorkbenchTabsInto,
   layoutWorkbenchTitlebarInto,
   loadWorkbenchWorkspaceStorage,
   persistWorkbenchWorkspaceStorage,
@@ -68,12 +66,9 @@ import {
   workbenchModalActionButtonsInto,
   workbenchModalRowRenderCommandsInto,
   type WorkbenchScrollbarRenderCommand,
-  workbenchShelfEntriesInto,
-  workbenchShelfRenderCommandsInto,
   workbenchStandardTopMenuDropdownOverlayInto,
   workbenchStandardTopMenuIdForItem,
   workbenchStatusSnapshotLine,
-  workbenchTabEntriesInto,
   workbenchTerminalOutputRowsInto,
   type WorkbenchTerminalOutputToolbarAction,
   type WorkbenchTerminalOutputWindowRow,
@@ -401,6 +396,7 @@ import {
 } from "./api_workbench_terminal_shell_view.ts";
 import { renderApiWorkbenchTerminalOutputToolbar } from "./api_workbench_terminal_output_view.ts";
 import { renderApiWorkbenchHtmlCssLayout } from "./api_workbench_html_css_view.ts";
+import { renderApiWorkbenchShelf, renderApiWorkbenchWindowTabs } from "./api_workbench_shelf_view.ts";
 
 type BuiltInWindowId = ApiWorkbenchBuiltInWindowId;
 type VisualizationWindowId = `viz:${string}`;
@@ -2507,57 +2503,39 @@ function addInlineStepperHits(rect: Rectangle, row: number): void {
 
 function renderShelf(frame: Frame): void {
   const row = currentHeight() - 2;
-  const entries = workbenchShelfEntriesInto(shelfBuffers.entries, windowManager.inspect().windows, windowTitle);
-  if (entries.length === 0) return;
-  const layout = layoutWorkbenchShelfInto(shelfBuffers.shelfLayout, {
+  renderApiWorkbenchShelf({
+    frame,
     row,
     column: 1,
     width: Math.max(0, currentWidth() - 1),
-    entries,
+    windows: windowManager.inspect().windows,
+    buffers: shelfBuffers,
+    theme: theme(),
+    titleForId: windowTitle,
+    paint,
+    write,
+    writeButton,
+    addHit,
   });
-  const commands = workbenchShelfRenderCommandsInto(shelfBuffers.shelfCommands, layout);
-  for (const command of commands) {
-    if (command.kind === "prefix") {
-      write(
-        frame,
-        command.rect.row,
-        command.rect.column,
-        paint(command.text, { fg: theme().muted, bg: theme().backgroundSoft }),
-      );
-    } else {
-      writeButton(frame, command.rect.row, command.rect.column, command.label, {
-        state: command.state,
-        tone: command.tone,
-        maxWidth: command.rect.width,
-      });
-      addHit(command.hitRect, { type: "restore", id: command.id });
-    }
-  }
 }
 
 function renderWindowTabs(frame: Frame): void {
   const row = currentHeight() - 2;
-  const t = theme();
-  fillRow(frame, row, t.backgroundSoft);
-  const layout = layoutWorkbenchTabsInto(shelfBuffers.tabLayout, {
+  renderApiWorkbenchWindowTabs({
+    frame,
     row,
     column: 1,
     width: Math.max(0, currentWidth() - 1),
-    tabs: workbenchTabEntriesInto(shelfBuffers.tabs, windowManager.inspect().tabs, windowTitle),
+    tabs: windowManager.inspect().tabs,
+    buffers: shelfBuffers,
+    theme: theme(),
+    titleForId: windowTitle,
+    paint,
+    write,
+    fillRow,
+    writeButton,
+    addHit,
   });
-  const commands = workbenchShelfRenderCommandsInto(shelfBuffers.tabCommands, layout);
-  for (const command of commands) {
-    if (command.kind === "prefix") {
-      write(frame, command.rect.row, command.rect.column, paint(command.text, { fg: t.muted, bg: t.backgroundSoft }));
-    } else {
-      writeButton(frame, command.rect.row, command.rect.column, command.label, {
-        state: command.state,
-        tone: command.tone,
-        maxWidth: command.rect.width,
-      });
-      addHit(command.hitRect, { type: "windowTab", id: command.id });
-    }
-  }
 }
 
 function renderStatus(frame: Frame): void {
