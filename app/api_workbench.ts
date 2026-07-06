@@ -354,6 +354,7 @@ import {
   resolveWorkbenchThreeFullscreenAsciiOptions,
   resolveWorkbenchThreeLiveAsciiOptions,
   resolveWorkbenchThreeRuntimeBudgetSnapshot,
+  resolveWorkbenchThreeTiledAsciiOptions,
   sameWorkbenchThreeAsciiOptions,
   WORKBENCH_THREE_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
@@ -3005,14 +3006,23 @@ function createVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
   const rectangle = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
   const graphicsRectangle = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
   const scene = new Signal<WorkbenchThreeScene | null>(null);
-  const runtimeAscii = new Computed<AsciiOptions>(() =>
-    resolveWorkbenchThreeFullscreenAsciiOptions({
-      id,
-      fullscreenId: maximized.value,
-      ascii: asciiForWindow(id).value,
-      fullscreenMinCells: workbenchThreeFullscreenTargetCells.value,
-    })
-  );
+  const runtimeAscii = new Computed<AsciiOptions>(() => {
+    const savedAscii = asciiForWindow(id).value;
+    const fullscreenId = maximized.value;
+    if (fullscreenId === id) {
+      return resolveWorkbenchThreeFullscreenAsciiOptions({
+        id,
+        fullscreenId,
+        ascii: savedAscii,
+        fullscreenMinCells: workbenchThreeFullscreenTargetCells.value,
+      });
+    }
+    return resolveWorkbenchThreeTiledAsciiOptions({
+      ascii: savedAscii,
+      liveViewport: rectangle.value,
+      liveMaxCells: workbenchThreeLiveMaxCells.value,
+    });
+  });
   const panel = createWorkbenchThreePanelFrameView({
     rectangle,
     graphicsRectangle,

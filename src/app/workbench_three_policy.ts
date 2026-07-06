@@ -109,6 +109,12 @@ export interface WorkbenchThreeRuntimeBudgetSnapshot {
   runtimeAscii: ThreeAsciiConfigOptions;
 }
 
+export interface WorkbenchThreeTiledAsciiOptionsInput {
+  ascii: ThreeAsciiConfigOptions;
+  liveViewport: { width: number; height: number };
+  liveMaxCells: number;
+}
+
 export const DEFAULT_WORKBENCH_THREE_PANEL_DEFAULTS: WorkbenchThreePanelDefaults = {
   idleMaxRenderCells: WORKBENCH_THREE_RESCUE_CELLS,
   readbackStrategy: WORKBENCH_THREE_READBACK_STRATEGY,
@@ -264,6 +270,19 @@ export function resolveWorkbenchThreeLiveAsciiOptions(
     ...ascii,
     renderMaxCells,
   };
+}
+
+/** Raises tiled Three ASCII render cells to the pane's measured body size without mutating saved settings. */
+export function resolveWorkbenchThreeTiledAsciiOptions(
+  input: WorkbenchThreeTiledAsciiOptionsInput,
+): ThreeAsciiConfigOptions {
+  return resolveWorkbenchThreeLiveAsciiOptions(
+    input.ascii,
+    Math.max(
+      Math.floor(input.liveMaxCells),
+      workbenchThreeLiveRenderCells(input.liveViewport),
+    ),
+  );
 }
 
 /** Compares every persisted/runtime Three ASCII option field used by the workbench. */

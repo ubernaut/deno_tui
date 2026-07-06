@@ -9,6 +9,7 @@ import {
   resolveWorkbenchThreeFullscreenAsciiOptions,
   resolveWorkbenchThreeLiveAsciiOptions,
   resolveWorkbenchThreeRuntimeBudgetSnapshot,
+  resolveWorkbenchThreeTiledAsciiOptions,
   resolveWorkbenchThreeWindowState,
   resolveWorkbenchThreeWindowStateInto,
   sameWorkbenchThreeAsciiOptions,
@@ -291,6 +292,26 @@ Deno.test("API workbench Three policy raises live ASCII options to the final eff
   assertEquals(raised.renderMaxCells, 2_800);
   assertEquals(ascii.renderMaxCells, 960);
   assertStrictEquals(resolveWorkbenchThreeLiveAsciiOptions(raised, 960), raised);
+});
+
+Deno.test("API workbench Three policy raises tiled dynamic panes from their measured body size", () => {
+  const ascii = createDefaultWorkbenchAsciiOptions();
+  const raised = resolveWorkbenchThreeTiledAsciiOptions({
+    ascii,
+    liveViewport: { width: 71, height: 22 },
+    liveMaxCells: 480,
+  });
+
+  assertEquals(raised.renderMaxCells, 1_562);
+  assertEquals(ascii.renderMaxCells, 960);
+  assertStrictEquals(
+    resolveWorkbenchThreeTiledAsciiOptions({
+      ascii: raised,
+      liveViewport: { width: 20, height: 10 },
+      liveMaxCells: 480,
+    }),
+    raised,
+  );
 });
 
 Deno.test("API workbench Three policy compares every runtime ASCII option", () => {
