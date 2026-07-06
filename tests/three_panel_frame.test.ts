@@ -649,6 +649,69 @@ Deno.test("ThreePanelFrameView republishes visible resize when capped renderer s
   }
 });
 
+Deno.test("ThreePanelFrameView fills visible bounds when a capped renderer fails", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 80, height: 40 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal({ ...createDefaultAsciiOptions("sharp"), renderMaxCells: 4 });
+  let renderer: ThrowingGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    frameInterval: 10_000,
+    maxRenderCells: 4,
+    rendererFactory: (options) => renderer = new ThrowingGridRenderer(options.columns, options.rows),
+  });
+
+  try {
+    await waitFor(() => panel.inspectLifecycle().failed);
+
+    assertEquals(renderer?.sizes.at(-1), [2, 1]);
+    assertEquals(panel.grid.peek().length, 40);
+    assertEquals(panel.grid.peek()[0]?.length, 80);
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+  }
+});
+
+Deno.test("ThreePanelFrameView rebuilds after a transient renderer failure", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 16, height: 8 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal(createDefaultAsciiOptions("sharp"));
+  let factories = 0;
+  let recoveryRenderer: FakeGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    frameInterval: 1,
+    rendererFactory: (options) => {
+      factories += 1;
+      if (factories === 1) return new ThrowingGridRenderer(options.columns, options.rows);
+      recoveryRenderer = new FakeGridRenderer(options.columns, options.rows);
+      return recoveryRenderer;
+    },
+  });
+
+  try {
+    await waitFor(() => (recoveryRenderer?.renderCount ?? 0) >= 1);
+
+    assertEquals(factories, 2);
+    assertEquals(panel.inspectLifecycle().failed, false);
+    assertEquals(panel.grid.peek().length, 8);
+    assertEquals(panel.grid.peek()[0]?.length, 16);
+    assertEquals(panel.grid.peek()[0]?.[0], "█");
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+  }
+});
+
 Deno.test("ThreePanelFrameView accepts reactive render cell caps", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 160, height: 60 }, { deepObserve: true });
   const scene = new Signal<ThreeSceneState | null>(sceneState());
@@ -1902,6 +1965,11 @@ class EmptyThenGridRenderer extends FakeGridRenderer {
 
 class ThrowingGridRenderer extends FakeGridRenderer {
   override async renderToAnsiGrid(): Promise<string[][]> {
+    this.renderCount += 1;
+    throw new Error("GPU backend unavailable");
+  }
+
+  override async renderFrame(): Promise<{ grid?: string[][] }> {
     this.renderCount += 1;
     throw new Error("GPU backend unavailable");
   }

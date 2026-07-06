@@ -123,6 +123,20 @@ Deno.test("workbench visual smoke inspector finds workbench telemetry and collis
   assertStringIncludes(result.threeLine, "20fps");
 });
 
+Deno.test("workbench visual smoke does not treat kitty diagnostics as renderer fallback", () => {
+  const output = [
+    "\x1b[2J",
+    "\x1b[1;1HAPI WORKBENCH",
+    "\x1b[4;1HTHREE ASCII",
+    "\x1b[6;1Hgraphics/kitty-unavailable",
+    "\x1b[8;1Hfocus Three ASCII | Unit-01  F10 menu",
+  ].join("");
+  const result = inspectWorkbenchVisualSmokeOutput(output, { columns: 80, rows: 8 });
+
+  assertEquals(result.passed, false);
+  assertEquals(result.missing, ["three telemetry line"]);
+});
+
 Deno.test("workbench visual smoke inspector measures Three pane truecolor coverage", () => {
   const output = [
     "\x1b[2J",

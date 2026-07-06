@@ -79,6 +79,8 @@ type ThreePanelLiveValue = boolean | Signal<boolean> | (() => boolean);
 type ThreePanelIntervalValue = number | Signal<number>;
 type ThreePanelRenderCellsValue = number | Signal<number>;
 
+const THREE_PANEL_RENDERER_FAILURE_RETRIES = 2;
+
 export interface ThreePanelGridRenderer {
   setSize(columns: number, rows: number): void;
   setEffectOptions(options: ReturnType<typeof asciiEffectOptions>): void;
@@ -258,6 +260,7 @@ export class ThreePanelFrameView {
   private readonly gridPublisher = new ThreePanelGridPublisher();
   private displayColumns = 0;
   private displayRows = 0;
+  private rendererFailureRetries = 0;
 
   constructor(
     private readonly options: {
@@ -526,6 +529,7 @@ export class ThreePanelFrameView {
       }
 
       this.failed = false;
+      this.rendererFailureRetries = 0;
       const displayRect = this.options.rectangle.peek();
       const displayColumns = Math.max(1, Math.floor(displayRect.width));
       const displayRows = Math.max(1, Math.floor(displayRect.height));
@@ -550,8 +554,12 @@ export class ThreePanelFrameView {
       this.running = false;
       await this.clearGraphicsImage();
       const rect = this.options.rectangle.peek();
-      const renderSize = this.renderSizeFor(rect, this.options.ascii.peek());
-      this.setGrid(buildFallbackGrid(renderSize.columns, renderSize.rows, formatThreeAsciiFallbackDetail(error)));
+      this.setGrid(buildFallbackGrid(rect.width, rect.height, formatThreeAsciiFallbackDetail(error)));
+      this.rendererFailureRetries += 1;
+      if (this.rendererFailureRetries <= THREE_PANEL_RENDERER_FAILURE_RETRIES) {
+        this.rebuildPending = true;
+        this.syncPending = true;
+      }
       this.destroyPending = true;
     } finally {
       this.rendering = false;

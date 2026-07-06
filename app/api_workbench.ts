@@ -3018,6 +3018,7 @@ function setThreeBodyRect(rect: Rectangle): void {
   threeCadence.reset();
   workbenchThreeRuntime.resetPressureCounters();
   syncWorkbenchThreeRuntimeBudgetForViewport(currentWidth(), currentHeight(), rect);
+  scheduleDraw();
 }
 
 function setThreeGraphicsRect(rect: Rectangle): void {

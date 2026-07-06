@@ -80,6 +80,8 @@ const REQUIRED_TOKENS: readonly string[] = ["API WORKBENCH", "THREE ASCII"];
 const FORBIDDEN_TOKENS: readonly string[] = ["ReferenceError", "RangeError", "Maximum call stack", ")F10"];
 const FULLSCREEN_THREE_CELL_PATTERN = /(\d+)c(?: cap (\d+)c)?/;
 const THREE_RENDERED_CELL_PATTERN = /(\d+)c/;
+const THREE_RENDERER_UNAVAILABLE_PATTERN =
+  /ASCII RENDERER OFFLINE|ASCII RENDERER UNAVAILABLE|THREE ASCII GPU READBACK UNAVAILABLE|renderer unavailable/i;
 
 if (import.meta.main) {
   const options = parseWorkbenchVisualSmokeArgs(Deno.args);
@@ -266,7 +268,7 @@ export function inspectWorkbenchVisualSmokeOutput(
   const statusLine = lines.at(-1) ?? "";
   const threePane = inspectWorkbenchThreePaneCoverage(lines, replay.truecolorStyled);
   const threeLine = findWorkbenchThreePaneTelemetryLine(lines, threePane) ?? "";
-  const rendererUnavailable = /unavailable/i.test(text) && text.includes("ASCII");
+  const rendererUnavailable = THREE_RENDERER_UNAVAILABLE_PATTERN.test(text);
   const missing = REQUIRED_TOKENS.filter((token) => !text.includes(token));
   const forbidden = FORBIDDEN_TOKENS.filter((token) => text.includes(token));
   const nonBlankRows = lines.filter((line) => line.trim().length > 0).length;
