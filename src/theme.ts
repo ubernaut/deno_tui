@@ -2,43 +2,135 @@
 import { Computed, Signal } from "./signals/mod.ts";
 import type { AsyncStore } from "./runtime/storage.ts";
 import { componentCatalog, type ComponentCatalogEntry } from "./components/catalog.ts";
-import {
-  type AnsiColor as AnsiColorInternal,
-  type AnsiColorName as AnsiColorNameInternal,
-  type AnsiRgbColor as AnsiRgbColorInternal,
-  type AnsiStyleSpec as AnsiStyleSpecInternal,
-  createAnsiStyle as createAnsiStyleInternal,
-  createAnsiStyleMap,
-  emptyStyle as emptyStyleInternal,
-  replaceEmptyStyle as replaceEmptyStyleInternal,
-  type Style as StyleInternal,
-} from "./theme_ansi.ts";
 /** Function that's supposed to return styled text given string as parameter */
-export type Style = StyleInternal;
+export type Style = (text: string) => string;
 
 /** Public type alias for an ansi Color Name. */
-export type AnsiColorName = AnsiColorNameInternal;
+export type AnsiColorName =
+  | "black"
+  | "red"
+  | "green"
+  | "yellow"
+  | "blue"
+  | "magenta"
+  | "cyan"
+  | "white"
+  | "brightBlack"
+  | "brightRed"
+  | "brightGreen"
+  | "brightYellow"
+  | "brightBlue"
+  | "brightMagenta"
+  | "brightCyan"
+  | "brightWhite";
 
 /** Public type alias for an ansi Rgb Color. */
-export type AnsiRgbColor = AnsiRgbColorInternal;
+export type AnsiRgbColor = readonly [red: number, green: number, blue: number];
 
 /** Public type alias for an ansi Color. */
-export type AnsiColor = AnsiColorInternal;
+export type AnsiColor = AnsiColorName | AnsiRgbColor | number;
 
 /** Public type alias for an ansi Style Spec. */
-export type AnsiStyleSpec = AnsiStyleSpecInternal;
+export type AnsiStyleSpec = {
+  foreground?: AnsiColor;
+  background?: AnsiColor;
+  bold?: boolean;
+  dim?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  inverse?: boolean;
+  strikethrough?: boolean;
+};
+
+const ANSI_COLOR_NAMES: readonly AnsiColorName[] = [
+  "black",
+  "red",
+  "green",
+  "yellow",
+  "blue",
+  "magenta",
+  "cyan",
+  "white",
+  "brightBlack",
+  "brightRed",
+  "brightGreen",
+  "brightYellow",
+  "brightBlue",
+  "brightMagenta",
+  "brightCyan",
+  "brightWhite",
+];
+
+function emptyStyleInternal(text: string): string {
+  return text;
+}
 
 /** Used as placeholder style when one is not supplied, returns the input */
 export const emptyStyle: Style = emptyStyleInternal;
+
+function replaceEmptyStyleInternal(style: Style, replacement: Style): Style {
+  return style === emptyStyleInternal ? replacement : style;
+}
 
 /** Returns {replacement} if {style} is an {emptyStyle} otherwise returns {style} back */
 export function replaceEmptyStyle(style: Style, replacement: Style): Style {
   return replaceEmptyStyleInternal(style, replacement);
 }
 
+function createAnsiStyleInternal(spec: AnsiStyleSpec): Style {
+  const codes = ansiStyleCodes(spec);
+  if (codes.length === 0) return emptyStyleInternal;
+  const open = `\x1b[${codes.join(";")}m`;
+  return (value) => `${open}${value}\x1b[0m`;
+}
+
 /** Creates an ansi Style. */
 export function createAnsiStyle(spec: AnsiStyleSpec): Style {
   return createAnsiStyleInternal(spec);
+}
+
+function createAnsiStyleMap<TokenName extends string>(
+  specs: Partial<Record<TokenName, AnsiStyleSpec>>,
+): Partial<Record<TokenName, Style>> {
+  const styles: Partial<Record<TokenName, Style>> = {};
+  for (const [name, spec] of Object.entries(specs) as [TokenName, AnsiStyleSpec][]) {
+    styles[name] = createAnsiStyleInternal(spec);
+  }
+  return styles;
+}
+
+function ansiStyleCodes(spec: AnsiStyleSpec): number[] {
+  const codes: number[] = [];
+  if (spec.bold) codes.push(1);
+  if (spec.dim) codes.push(2);
+  if (spec.italic) codes.push(3);
+  if (spec.underline) codes.push(4);
+  if (spec.inverse) codes.push(7);
+  if (spec.strikethrough) codes.push(9);
+  if (spec.foreground !== undefined) codes.push(...ansiColorCodes(spec.foreground, false));
+  if (spec.background !== undefined) codes.push(...ansiColorCodes(spec.background, true));
+  return codes;
+}
+
+function ansiColorCodes(color: AnsiColor, background: boolean): number[] {
+  if (typeof color === "number") {
+    return [background ? 48 : 38, 5, clampAnsiByte(color)];
+  }
+  if (typeof color !== "string") {
+    const [red, green, blue] = color;
+    return [background ? 48 : 38, 2, clampAnsiByte(red), clampAnsiByte(green), clampAnsiByte(blue)];
+  }
+  return [ansiNamedColorCode(color, background)];
+}
+
+function ansiNamedColorCode(color: AnsiColorName, background: boolean): number {
+  const index = ANSI_COLOR_NAMES.indexOf(color);
+  const base = background ? 40 : 30;
+  return index < 8 ? base + index : base + 60 + index - 8;
+}
+
+function clampAnsiByte(value: number): number {
+  return Math.max(0, Math.min(255, Math.round(value)));
 }
 
 /** Public type alias for an ansi Theme Token Specs. */

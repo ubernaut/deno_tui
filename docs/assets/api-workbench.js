@@ -1056,10 +1056,7 @@ function sortedSetValues(values) {
   return sorted;
 }
 
-// src/theme_ansi.ts
-function emptyStyle(text) {
-  return text;
-}
+// src/theme.ts
 var ANSI_COLOR_NAMES = [
   "black",
   "red",
@@ -1078,16 +1075,22 @@ var ANSI_COLOR_NAMES = [
   "brightCyan",
   "brightWhite"
 ];
-function createAnsiStyle(spec) {
+function emptyStyleInternal(text) {
+  return text;
+}
+function createAnsiStyleInternal(spec) {
   const codes = ansiStyleCodes(spec);
-  if (codes.length === 0) return emptyStyle;
+  if (codes.length === 0) return emptyStyleInternal;
   const open = `\x1B[${codes.join(";")}m`;
   return (value) => `${open}${value}\x1B[0m`;
+}
+function createAnsiStyle(spec) {
+  return createAnsiStyleInternal(spec);
 }
 function createAnsiStyleMap(specs) {
   const styles = {};
   for (const [name, spec] of Object.entries(specs)) {
-    styles[name] = createAnsiStyle(spec);
+    styles[name] = createAnsiStyleInternal(spec);
   }
   return styles;
 }
@@ -1121,20 +1124,15 @@ function ansiNamedColorCode(color, background) {
 function clampAnsiByte(value) {
   return Math.max(0, Math.min(255, Math.round(value)));
 }
-
-// src/theme.ts
-function createAnsiStyle2(spec) {
-  return createAnsiStyle(spec);
-}
 var themePalettesInternal = {
   plain: {
-    foreground: emptyStyle,
-    muted: emptyStyle,
-    accent: emptyStyle,
-    success: emptyStyle,
-    warning: emptyStyle,
-    danger: emptyStyle,
-    surface: emptyStyle
+    foreground: emptyStyleInternal,
+    muted: emptyStyleInternal,
+    accent: emptyStyleInternal,
+    success: emptyStyleInternal,
+    warning: emptyStyleInternal,
+    danger: emptyStyleInternal,
+    surface: emptyStyleInternal
   },
   neon: {
     ...createAnsiStyleMap({
@@ -1156,7 +1154,7 @@ var themePalettesInternal = {
       warning: { foreground: "yellow" },
       danger: { foreground: "red" }
     }),
-    surface: emptyStyle
+    surface: emptyStyleInternal
   }
 };
 function mergeComponentThemeDefinitionCore(base = {}, extension = {}) {
@@ -2846,7 +2844,7 @@ function grWizardThemeOptions(palette2) {
   });
 }
 function style(spec) {
-  return createAnsiStyle2({
+  return createAnsiStyle({
     foreground: spec.foreground ? hexRgb(spec.foreground) : void 0,
     background: spec.background ? hexRgb(spec.background) : void 0,
     bold: spec.bold,
@@ -20212,7 +20210,7 @@ new BoxObject({
   canvas: host.canvas,
   rectangle: new Computed(() => ({ column: 0, row: 0, width: cols(), height: rowsCount() })),
   filler: " ",
-  style: new Computed(() => createAnsiStyle2({ background: parseHexColor(theme().background) ?? [0, 0, 0] })),
+  style: new Computed(() => createAnsiStyle({ background: parseHexColor(theme().background) ?? [0, 0, 0] })),
   zIndex: -2
 }).draw();
 ensureLines();

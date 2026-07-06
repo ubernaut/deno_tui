@@ -1,13 +1,9 @@
 import { assertEquals, assertInstanceOf, assertThrows } from "./deps.ts";
 import {
-  createAnsiStyle as createAnsiStyleFromModule,
-  createAnsiStyleMap,
-  emptyStyle as emptyStyleFromModule,
-} from "../src/theme_ansi.ts";
-import {
   compileThemeManifestStateDefinition,
   compileThemeManifestStyleReference,
   createAnsiStyle,
+  createAnsiThemeTokens,
   createStandardComponentThemeDefinitions,
   createThemeEngine,
   createThemeEngineFromPalette,
@@ -64,11 +60,11 @@ Deno.test("theme catalog merge sorts components and variants with default first"
   );
 });
 
-Deno.test("theme ANSI module matches theme public re-exports", () => {
+Deno.test("theme ANSI helpers create reusable terminal styles", () => {
   const spec = { foreground: "brightCyan" as const, background: [4, 8, 12] as const, bold: true };
-  assertEquals(createAnsiStyle(spec)("x"), createAnsiStyleFromModule(spec)("x"));
-  assertEquals(emptyStyle("plain"), emptyStyleFromModule("plain"));
-  assertEquals(createAnsiStyleMap<"accent">({ accent: spec }).accent?.("x"), createAnsiStyle(spec)("x"));
+  assertEquals(createAnsiStyle(spec)("x"), "\x1b[1;96;48;2;4;8;12mx\x1b[0m");
+  assertEquals(emptyStyle("plain"), "plain");
+  assertEquals(createAnsiThemeTokens({ accent: spec }).accent?.("x"), createAnsiStyle(spec)("x"));
 });
 
 Deno.test("theme standard component definitions cover catalog categories", () => {
