@@ -1,4 +1,13 @@
-import { Camera, type Color, PerspectiveCamera, Scene } from "three";
+import {
+  Camera,
+  ClampToEdgeWrapping,
+  type Color,
+  LinearFilter,
+  NoColorSpace,
+  PerspectiveCamera,
+  Scene,
+  Texture,
+} from "three";
 import { RenderPipeline, WebGPURenderer } from "three/webgpu";
 import { pass } from "three/tsl";
 
@@ -10,7 +19,6 @@ import {
 } from "./ansi_grid.ts";
 import type { TerminalGlyphStyle } from "./glyphs.ts";
 import { HeadlessCanvas } from "./headless_canvas.ts";
-import { loadAsciiLutTextures } from "./loadAsciiLuts.ts";
 import {
   resolveThreeAsciiDeferredPreSceneFrame,
   type ThreeAsciiDeferredReadbackConsumeResult,
@@ -84,6 +92,80 @@ import {
 import { getCompatibleWebGPUDevice } from "./webgpu_compat.ts";
 
 const GPU_MAP_READ = 1;
+const bitmapCache = new Map<string, Promise<ImageBitmap>>();
+
+function imageSourceUrl(source: URL | string): URL {
+  return source instanceof URL ? source : new URL(source, import.meta.url);
+}
+
+async function loadImageBytes(source: URL | string): Promise<Uint8Array> {
+  const url = imageSourceUrl(source);
+
+  if (url.protocol === "file:" && typeof Deno !== "undefined") {
+    return await Deno.readFile(url);
+  }
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to load image: ${url} (${response.status})`);
+  }
+  return new Uint8Array(await response.arrayBuffer());
+}
+
+async function loadBitmapUncached(source: URL): Promise<ImageBitmap> {
+  const bytes = await loadImageBytes(source);
+  const arrayBuffer = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(arrayBuffer).set(bytes);
+  const blob = new Blob([arrayBuffer], { type: "image/png" });
+  return await createImageBitmap(blob);
+}
+
+async function loadBitmap(source: URL | string): Promise<ImageBitmap> {
+  const url = imageSourceUrl(source);
+  const key = url.href;
+  let promise = bitmapCache.get(key);
+  if (!promise) {
+    promise = loadBitmapUncached(url);
+    bitmapCache.set(key, promise);
+  }
+  try {
+    return await promise;
+  } catch (error) {
+    if (bitmapCache.get(key) === promise) {
+      bitmapCache.delete(key);
+    }
+    throw error;
+  }
+}
+
+function createMaskTexture(bitmap: ImageBitmap): Texture {
+  const texture = new Texture(bitmap);
+  texture.name = "AcerolaAsciiMask";
+  texture.colorSpace = NoColorSpace;
+  texture.generateMipmaps = false;
+  texture.magFilter = LinearFilter;
+  texture.minFilter = LinearFilter;
+  texture.wrapS = ClampToEdgeWrapping;
+  texture.wrapT = ClampToEdgeWrapping;
+  texture.flipY = false;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+async function loadAsciiLutTextures(
+  edgesUrl: URL | string,
+  fillUrl: URL | string,
+) {
+  const [edgesBitmap, fillBitmap] = await Promise.all([
+    loadBitmap(edgesUrl),
+    loadBitmap(fillUrl),
+  ]);
+
+  return {
+    edgesTexture: createMaskTexture(edgesBitmap),
+    fillTexture: createMaskTexture(fillBitmap),
+  };
+}
 
 type ThreeBackendRenderer = WebGPURenderer & {
   backend: {

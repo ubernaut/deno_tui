@@ -3814,7 +3814,13 @@ function sliceDefinedRowRange(rowBuffer, startColumn, endColumn) {
 }
 
 // src/three_ascii/renderer.ts
-import { PerspectiveCamera } from "https://esm.sh/three@0.183.2";
+import {
+  ClampToEdgeWrapping,
+  LinearFilter as LinearFilter2,
+  NoColorSpace,
+  PerspectiveCamera,
+  Texture as Texture2
+} from "https://esm.sh/three@0.183.2";
 import { RenderPipeline, WebGPURenderer } from "https://esm.sh/three@0.183.2/webgpu";
 import { pass } from "https://esm.sh/three@0.183.2/tsl";
 
@@ -4813,9 +4819,6 @@ function fillDenseGlyphBlankRun(outputRow, fillGlyphs, rowOffset, column, column
   outputRow.fill(blankAnsi, blankStart, column);
   return column - 1;
 }
-
-// src/three_ascii/loadAsciiLuts.ts
-import { ClampToEdgeWrapping, LinearFilter as LinearFilter2, NoColorSpace, Texture as Texture2 } from "https://esm.sh/three@0.183.2";
 
 // src/three_ascii/deferred_readback.ts
 import { Color as Color3 } from "https://esm.sh/three@0.183.2";

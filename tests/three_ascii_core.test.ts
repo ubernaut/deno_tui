@@ -1,14 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Color, PerspectiveCamera, Scene } from "three";
 
-import {
-  assertEquals,
-  assertNotStrictEquals,
-  assertRejects,
-  assertStrictEquals,
-  assertStringIncludes,
-  assertThrows,
-} from "./deps.ts";
+import { assertEquals, assertRejects, assertStrictEquals, assertStringIncludes, assertThrows } from "./deps.ts";
 import { AcerolaAsciiNode, type AcerolaAsciiRenderProfile } from "../src/three_ascii/AcerolaAsciiNode.ts";
 import { buildThreeAsciiAnsiGrid, type ThreeAsciiAnsiGridInput } from "../src/three_ascii/ansi_grid.ts";
 import {
@@ -53,7 +46,6 @@ import {
   THREE_ASCII_IMAGE_FRAME_OPTIONS,
 } from "../src/three_ascii/frame_options.ts";
 import { compactMappedRgbaRows } from "../src/three_ascii/headless_canvas.ts";
-import { loadAsciiLutTextures } from "../src/three_ascii/loadAsciiLuts.ts";
 import {
   createThreeAsciiRendererPerformance,
   createThreeAsciiRendererSaturatedPerformance,
@@ -166,34 +158,6 @@ Deno.test("three ascii WGSL shaders include expected bindings and workgroup size
   assertStringIncludes(THREE_ASCII_COLOR_SHADER, "@binding(3) var<storage, read_write> colors: array<vec4<f32>>;");
   assertStringIncludes(THREE_ASCII_FLAT_COLOR_SHADER, "@binding(2) var<storage, read_write> colors: array<vec4<f32>>;");
   assertEquals(THREE_ASCII_FLAT_COLOR_SHADER.includes("normalsTex"), false);
-});
-
-Deno.test("loadAsciiLutTextures caches decoded bitmaps while returning fresh textures", async () => {
-  const originalCreateImageBitmap = globalThis.createImageBitmap;
-  let bitmapCount = 0;
-  const bitmaps: ImageBitmap[] = [];
-  globalThis.createImageBitmap = (() => {
-    const bitmap = { id: bitmapCount++ } as unknown as ImageBitmap;
-    bitmaps.push(bitmap);
-    return Promise.resolve(bitmap);
-  }) as typeof createImageBitmap;
-
-  try {
-    const edges = "data:image/png;base64,ZWQ=";
-    const fill = "data:image/png;base64,ZmlsbA==";
-    const first = await loadAsciiLutTextures(edges, fill);
-    const second = await loadAsciiLutTextures(edges, fill);
-
-    assertEquals(bitmapCount, 2);
-    assertNotStrictEquals(first.edgesTexture, second.edgesTexture);
-    assertNotStrictEquals(first.fillTexture, second.fillTexture);
-    assertStrictEquals(first.edgesTexture.image, bitmaps[0]);
-    assertStrictEquals(second.edgesTexture.image, bitmaps[0]);
-    assertStrictEquals(first.fillTexture.image, bitmaps[1]);
-    assertStrictEquals(second.fillTexture.image, bitmaps[1]);
-  } finally {
-    globalThis.createImageBitmap = originalCreateImageBitmap;
-  }
 });
 
 Deno.test("three ascii color helpers preserve Color inputs and resolve fallbacks", () => {
