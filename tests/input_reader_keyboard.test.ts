@@ -1,11 +1,15 @@
 import { assertEquals } from "./deps.ts";
-import { decodeKey } from "../src/input_reader/decoders/keyboard.ts";
 import { decodeBuffer } from "../src/input_reader/mod.ts";
+import type { InputEvent, KeyPressEvent } from "../src/input_reader/types.ts";
 
 const encoder = new TextEncoder();
 
-function decode(code: string) {
-  return decodeKey(encoder.encode(code), code);
+function decode(code: string): KeyPressEvent {
+  const event = fullSnapshot(code)[0];
+  if (!event || event.key === "mouse" || event.key === "paste" || event.key === "focus") {
+    throw new Error(`Expected key press event for ${JSON.stringify(code)}`);
+  }
+  return event;
 }
 
 function snapshot(code: string) {
@@ -20,15 +24,15 @@ function snapshot(code: string) {
   return events;
 }
 
-function fullSnapshot(code: string) {
-  const events = [];
+function fullSnapshot(code: string): InputEvent[] {
+  const events: InputEvent[] = [];
   for (const event of decodeBuffer(encoder.encode(code))) {
     events.push({ ...event });
   }
   return events;
 }
 
-Deno.test("decodeKey maps xterm function keys", () => {
+Deno.test("decodeBuffer maps xterm function keys", () => {
   assertEquals(decode("\x1bOP").key, "f1");
   assertEquals(decode("\x1bOQ").key, "f2");
   assertEquals(decode("\x1bOR").key, "f3");
@@ -36,14 +40,14 @@ Deno.test("decodeKey maps xterm function keys", () => {
   assertEquals(decode("\x1b[15~").key, "f5");
 });
 
-Deno.test("decodeKey maps alternate function key sequences", () => {
+Deno.test("decodeBuffer maps alternate function key sequences", () => {
   assertEquals(decode("\x1b[11~").key, "f1");
   assertEquals(decode("\x1b[12~").key, "f2");
   assertEquals(decode("\x1b[[C").key, "f3");
   assertEquals(decode("\x1b[[D").key, "f4");
 });
 
-Deno.test("decodeKey keeps modifier flags on function keys", () => {
+Deno.test("decodeBuffer keeps modifier flags on function keys", () => {
   const shifted = decode("\x1b[1;2Q");
   assertEquals(shifted.key, "f2");
   assertEquals(shifted.shift, true);
@@ -57,7 +61,7 @@ Deno.test("decodeKey keeps modifier flags on function keys", () => {
   assertEquals(alternateControlled.ctrl, true);
 });
 
-Deno.test("decodeKey maps application cursor sequences", () => {
+Deno.test("decodeBuffer maps application cursor sequences", () => {
   assertEquals(decode("\x1bOA").key, "up");
   assertEquals(decode("\x1bOB").key, "down");
   assertEquals(decode("\x1bOC").key, "right");
@@ -117,6 +121,7 @@ Deno.test("decodeBuffer preserves generated mixed input event boundaries", () =>
     { code: "\t", key: "tab" },
     { code: "\x1b[A", key: "up" },
     { code: "\x1b[B", key: "down" },
+    { code: "\x1b[[C", key: "f3" },
     { code: "\x1b[<0;7;5M", key: "mouse" },
     { code: "\x1b[<0;7;5m", key: "mouse" },
     { code: "\x1b[I", key: "focus" },
@@ -147,7 +152,7 @@ Deno.test("decodeBuffer ignores generated incomplete trailing escape sequences",
     { code: "\x1b[<64;2;3M", key: "mouse" },
     { code: "\x1b[200~payload\x1b[201~", key: "paste" },
   ];
-  const incomplete = ["\x1b", "\x1b[", "\x1b[<0;7;5", "\x1b[200~partial"];
+  const incomplete = ["\x1b", "\x1b[", "\x1b[[", "\x1b[<0;7;5", "\x1b[200~partial"];
   const random = seededRandom(0xdec0de);
 
   for (let run = 0; run < 100; run += 1) {
