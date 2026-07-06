@@ -10,16 +10,7 @@ import {
   assertThrows,
 } from "./deps.ts";
 import { AcerolaAsciiNode, type AcerolaAsciiRenderProfile } from "../src/three_ascii/AcerolaAsciiNode.ts";
-import type { ThreeAsciiAnsiGridInput } from "../src/three_ascii/ansi_grid.ts";
-import {
-  fillGlyphKeyForIndex,
-  GLYPH_MODE_BLOCKS,
-  glyphForKey,
-  isSolidBlockFillGlyphKey,
-  terminalFillGlyphKeysForMode,
-  terminalGlyphForCell,
-  terminalGlyphModeForStyle,
-} from "../src/three_ascii/ansi_glyph_keys.ts";
+import { buildThreeAsciiAnsiGrid, type ThreeAsciiAnsiGridInput } from "../src/three_ascii/ansi_grid.ts";
 import {
   colorToBytes,
   colorValue,
@@ -127,6 +118,37 @@ import {
   THREE_ASCII_WORKGROUP_SIZE,
 } from "../src/three_ascii/shaders.ts";
 import { getCompatibleWebGPUDevice, resetCompatibleWebGPUDeviceCache } from "../src/three_ascii/webgpu_compat.ts";
+
+function visibleAnsiCell(cell: string): string {
+  let text = "";
+  for (let index = 0; index < cell.length;) {
+    if (cell.charCodeAt(index) === 27 && cell[index + 1] === "[") {
+      index += 2;
+      while (index < cell.length && cell[index] !== "m") index += 1;
+      if (cell[index] === "m") index += 1;
+      continue;
+    }
+    text += cell[index];
+    index += 1;
+  }
+  return text;
+}
+
+function renderSingleThreeAsciiCell(
+  input:
+    & Pick<ThreeAsciiAnsiGridInput, "terminalGlyphStyle">
+    & Partial<Pick<ThreeAsciiAnsiGridInput, "edgeGlyphs" | "fillGlyphs">>,
+): string {
+  const grid = buildThreeAsciiAnsiGrid({
+    columns: 1,
+    rows: 1,
+    fillGlyphs: input.fillGlyphs ?? [14],
+    colors: [255, 255, 255, 1],
+    edgeGlyphs: input.edgeGlyphs,
+    terminalGlyphStyle: input.terminalGlyphStyle,
+  });
+  return visibleAnsiCell(grid[0]?.[0] ?? "");
+}
 
 Deno.test("three ascii shader constants preserve renderer dimensions", () => {
   assertEquals(THREE_ASCII_TILE_SIZE, 8);
@@ -259,36 +281,22 @@ Deno.test("ThreeAsciiAnsiBackgroundState tracks mutable Color inputs and clear",
   assertEquals(state.set(0x030201), true);
 });
 
-Deno.test("three ascii glyph keys map block mode to full-cell block fills", () => {
-  const mode = terminalGlyphModeForStyle("blocks");
-  const keys = terminalFillGlyphKeysForMode(mode);
-
-  assertEquals(mode, GLYPH_MODE_BLOCKS);
-  assertEquals(glyphForKey(fillGlyphKeyForIndex(keys, 0)), " ");
-  assertEquals(glyphForKey(fillGlyphKeyForIndex(keys, 14)), "█");
-  assertEquals(isSolidBlockFillGlyphKey(fillGlyphKeyForIndex(keys, 14)), true);
+Deno.test("three ascii grid maps block mode to full-cell block fills", () => {
+  assertEquals(renderSingleThreeAsciiCell({ terminalGlyphStyle: "blocks", fillGlyphs: [0] }), " ");
+  assertEquals(renderSingleThreeAsciiCell({ terminalGlyphStyle: "blocks", fillGlyphs: [14] }), "█");
 });
 
-Deno.test("three ascii glyph and mixed modes keep distinct fill glyph tables", () => {
-  const glyphKeys = terminalFillGlyphKeysForMode(terminalGlyphModeForStyle("glyphs"));
-  const mixedKeys = terminalFillGlyphKeysForMode(terminalGlyphModeForStyle("mixed"));
-  const glyphKey = fillGlyphKeyForIndex(glyphKeys, 14);
-  const mixedKey = fillGlyphKeyForIndex(mixedKeys, 14);
+Deno.test("three ascii grid glyph and mixed modes keep distinct fill glyph tables", () => {
+  const glyphCell = renderSingleThreeAsciiCell({ terminalGlyphStyle: "glyphs", fillGlyphs: [12] });
+  const mixedCell = renderSingleThreeAsciiCell({ terminalGlyphStyle: "mixed", fillGlyphs: [12] });
 
-  assertEquals(glyphForKey(glyphKey), "=");
-  assertEquals(glyphForKey(mixedKey).length > 0, true);
-  assertEquals(isSolidBlockFillGlyphKey(glyphKey), false);
-  assertEquals(isSolidBlockFillGlyphKey(mixedKey), false);
+  assertEquals(glyphCell, ":");
+  assertEquals(mixedCell, "▇");
 });
 
-Deno.test("three ascii glyph keys promote strong edges in edge-capable modes", () => {
-  const glyphKeys = terminalFillGlyphKeysForMode(terminalGlyphModeForStyle("glyphs"));
-
-  const edgeKey = terminalGlyphForCell(glyphKeys, 1, 64, 64, 0, 14, 1);
-  const weakKey = terminalGlyphForCell(glyphKeys, 1, 1, 64, 0, 14, 1);
-
-  assertEquals(glyphForKey(edgeKey), "|");
-  assertEquals(glyphForKey(weakKey), "=");
+Deno.test("three ascii grid promotes strong edges in edge-capable modes", () => {
+  assertEquals(renderSingleThreeAsciiCell({ terminalGlyphStyle: "glyphs", edgeGlyphs: [1, 64, 64, 0] }), "|");
+  assertEquals(renderSingleThreeAsciiCell({ terminalGlyphStyle: "glyphs", edgeGlyphs: [1, 1, 64, 0] }), "=");
 });
 
 Deno.test("three ascii camera aspect accounts for terminal cell geometry", () => {
