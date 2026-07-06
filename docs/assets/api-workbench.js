@@ -16328,7 +16328,7 @@ var TERMINAL_CAPABILITY_IDS = Object.keys(TERMINAL_CAPABILITY_METADATA);
 // src/runtime/terminal_session.ts
 var ENCODER = new TextEncoder();
 
-// src/testing/snapshot.ts
+// src/utils/ansi_text.ts
 var ESCAPE = String.fromCharCode(27);
 var ANSI_PATTERN = new RegExp(`${ESCAPE}\\[[0-?]*[ -/]*[@-~]`, "g");
 

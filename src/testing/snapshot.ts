@@ -1,9 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Canvas } from "../canvas/canvas.ts";
 import type { ConsoleSize, Stdout } from "../types.ts";
-
-const ESCAPE = String.fromCharCode(27);
-const ANSI_PATTERN = new RegExp(`${ESCAPE}\\[[0-?]*[ -/]*[@-~]`, "g");
+import { stripAnsi as stripAnsiText } from "../utils/ansi_text.ts";
 
 /** Public interface describing a test Stdout. */
 export interface TestStdout {
@@ -21,7 +19,7 @@ export interface TestCanvasOptions {
 
 /** Public helper for strip Ansi. */
 export function stripAnsi(value: string): string {
-  return value.replace(ANSI_PATTERN, "");
+  return stripAnsiText(value);
 }
 
 /** Public helper for normalize Terminal Snapshot. */

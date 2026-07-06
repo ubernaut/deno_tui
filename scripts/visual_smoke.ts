@@ -1,3 +1,5 @@
+import { stripAnsi } from "../src/utils/ansi_text.ts";
+
 export interface VisualSmokeTarget {
   id: string;
   label: string;
@@ -58,9 +60,6 @@ export const visualSmokeTargets: readonly VisualSmokeTarget[] = [
     required: ["Runtime capabilities", "Terminal capabilities", "Terminal environment"],
   },
 ];
-
-const ESCAPE = String.fromCharCode(27);
-const ANSI_PATTERN = new RegExp(`${ESCAPE}\\[[0-?]*[ -/]*[@-~]`, "g");
 
 export async function runVisualSmoke(
   targets: readonly VisualSmokeTarget[] = visualSmokeTargets,
@@ -158,10 +157,6 @@ export function formatVisualSmokeReport(report: VisualSmokeReport): string {
       ]
       : []),
   ].join("\n");
-}
-
-function stripAnsi(value: string): string {
-  return value.replace(ANSI_PATTERN, "");
 }
 
 if (import.meta.main) {

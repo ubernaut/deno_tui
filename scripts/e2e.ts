@@ -1,3 +1,5 @@
+import { stripAnsi } from "../src/utils/ansi_text.ts";
+
 export interface E2ECommandTarget {
   id: string;
   label: string;
@@ -39,9 +41,6 @@ export interface E2EReport {
   commands: E2ECommandResult[];
   artifacts: E2EArtifactResult[];
 }
-
-const ESCAPE = String.fromCharCode(27);
-const ansiPattern = new RegExp(`${ESCAPE}\\[[0-?]*[ -/]*[@-~]`, "g");
 
 export const e2eCommandTargets: readonly E2ECommandTarget[] = [
   {
@@ -308,10 +307,6 @@ const defaultForbiddenTokens = [
 
 function isLikelyText(path: string): boolean {
   return /\.(html|js|css|json|map|txt|md)$/i.test(path);
-}
-
-function stripAnsi(value: string): string {
-  return value.replace(ansiPattern, "");
 }
 
 function previewText(value: string): string {

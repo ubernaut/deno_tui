@@ -4,15 +4,13 @@ import {
   queryVisualizationLaunchTargets,
 } from "./visualization_launcher.ts";
 import type { VisualizationLaunchCategory, VisualizationLaunchTarget } from "./visualization_launcher.ts";
+import { stripAnsi } from "../src/utils/ansi_text.ts";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 const CONTROL_CHARACTER_PATTERN = new RegExp(
   `[${String.fromCharCode(0)}-${String.fromCharCode(31)}${String.fromCharCode(127)}]`,
 );
-const ESCAPE = String.fromCharCode(27);
-const ANSI_PATTERN = new RegExp(`${ESCAPE}\\[[0-9;?]*[A-Za-z]`, "g");
-
 export interface DemoLauncherSelection {
   index: number;
   query: string;
@@ -215,10 +213,6 @@ function style(text: string, options: { fg?: string; bg?: string; bold?: boolean
 function rgb(hex: string): [number, number, number] {
   const value = hex.replace("#", "");
   return [0, 2, 4].map((index) => Number.parseInt(value.slice(index, index + 2), 16)) as [number, number, number];
-}
-
-function stripAnsi(value: string): string {
-  return value.replace(ANSI_PATTERN, "");
 }
 
 function wrap(value: number, length: number): number {
