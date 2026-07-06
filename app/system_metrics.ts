@@ -45,9 +45,9 @@ export {
 
 const COMMAND_OUTPUT_DECODER = new TextDecoder();
 
-export type SystemProcessSortKey = "cpu" | "memory" | "pid" | "name";
+type SystemProcessSortKey = "cpu" | "memory" | "pid" | "name";
 
-export interface ParsedProcessStat {
+interface ParsedProcessStat {
   name: string;
   state: string;
   cpuTime: number;
@@ -79,7 +79,7 @@ type ProcessCache = {
   processes: ProcessSnapshot[];
 };
 
-export interface ProcessDiagnosticsInput {
+interface ProcessDiagnosticsInput {
   scanned: number;
   failedReads: number;
   limited: boolean;
@@ -87,7 +87,7 @@ export interface ProcessDiagnosticsInput {
   scanError?: string;
 }
 
-export interface SystemMonitorOptions {
+interface SystemMonitorOptions {
   historyLength?: number;
   provider?: SystemMetricsProvider;
   gpuProvider?: SystemGpuMetricsProvider;
