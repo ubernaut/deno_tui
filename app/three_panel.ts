@@ -60,7 +60,7 @@ export interface ThreeSceneState {
   signal: ThreeSceneSignal;
 }
 
-export interface ThreePanelLifecycleInspection {
+interface ThreePanelLifecycleInspection {
   state: ThreePanelLifecycleState;
   running: boolean;
   rendering: boolean;
@@ -95,9 +95,9 @@ export interface ThreePanelGridRenderer {
   destroy(): void;
 }
 
-export type ThreePanelRendererFactory = (options: ThreeAsciiRendererOptions) => ThreePanelGridRenderer;
+type ThreePanelRendererFactory = (options: ThreeAsciiRendererOptions) => ThreePanelGridRenderer;
 
-export type WorkbenchThreePanelFrameViewOptions = ConstructorParameters<typeof ThreePanelFrameView>[0];
+type WorkbenchThreePanelFrameViewOptions = ConstructorParameters<typeof ThreePanelFrameView>[0];
 
 /** Creates API workbench Three panels with the shared terminal-pressure defaults. */
 export function createWorkbenchThreePanelFrameView(
