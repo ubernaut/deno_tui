@@ -71,7 +71,6 @@ import {
   workbenchTerminalOutputRowsInto,
   type WorkbenchTerminalOutputToolbarAction,
   type WorkbenchTerminalOutputWindowRow,
-  workbenchTerminalOutputWindowRowsInto,
   workbenchTitlebarButtonRenderCommandsInto,
   workbenchVisibleWindowRectsInto,
   workbenchVisualizationWindowId,
@@ -146,13 +145,7 @@ import { FrameScheduler } from "../src/runtime/render_loop.ts";
 import { type TerminalBackend } from "../src/runtime/terminal_backend.ts";
 import type { TerminalShellController } from "../src/runtime/terminal_shell.ts";
 import { TerminalShellWorkspaceController } from "../src/runtime/terminal_shell_workspace.ts";
-import {
-  formatTerminalOutputHint,
-  formatTerminalOutputWindowTitle,
-  formatTerminalShellWindowTitle,
-  summarizeTerminalStatus,
-  terminalInputModeDisplayLabel,
-} from "../src/runtime/terminal_status.ts";
+import { formatTerminalOutputWindowTitle, formatTerminalShellWindowTitle } from "../src/runtime/terminal_status.ts";
 import { shellTerminalTemplate } from "../src/runtime/terminal_templates.ts";
 import { Computed, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
@@ -191,8 +184,6 @@ import {
   apiWorkbenchPanelTitle,
   type ApiWorkbenchProcessRow,
   apiWorkbenchRows,
-  apiWorkbenchTerminalOutputLineStyle,
-  apiWorkbenchTerminalStatusToneColor,
   type ApiWorkbenchThemeSpec,
   apiWorkbenchVisualizationSupportsThree,
   apiWorkbenchWindowTitle,
@@ -377,7 +368,10 @@ import {
   renderApiWorkbenchTerminalShellPanes,
   renderApiWorkbenchTerminalShellToolbar,
 } from "./api_workbench_terminal_shell_view.ts";
-import { renderApiWorkbenchTerminalOutputToolbar } from "./api_workbench_terminal_output_view.ts";
+import {
+  renderApiWorkbenchTerminalOutputBody,
+  renderApiWorkbenchTerminalOutputToolbar,
+} from "./api_workbench_terminal_output_view.ts";
 import { renderApiWorkbenchHtmlCssLayout } from "./api_workbench_html_css_view.ts";
 import { renderApiWorkbenchShelf, renderApiWorkbenchWindowTabs } from "./api_workbench_shelf_view.ts";
 
@@ -1957,41 +1951,21 @@ function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
   row = renderTerminalOutputToolbar(frame, rect, row);
   if (row >= rect.row + rect.height) return;
 
-  const statusTone = apiWorkbenchTerminalStatusToneColor(inspection.status, t);
-  const statusSummary = summarizeTerminalStatus(inspection, {
-    title: terminalInputModeDisplayLabel(terminalInputMode.peek()),
-    backendId: "process",
-    width: rect.width,
-  });
   const outputHeight = Math.max(0, rect.row + rect.height - row - 2);
-  const lines = terminalOutputSession.output.visible(outputHeight);
-  const projectedRows = workbenchTerminalOutputWindowRowsInto(terminalOutputWindowRows, {
-    statusText: statusSummary.text,
-    hintText: formatTerminalOutputHint(terminalInputMode.peek()),
-    lines,
-    sourcePrefix: true,
+  renderApiWorkbenchTerminalOutputBody({
+    frame,
+    rect,
+    startRow: row,
+    inspection,
+    inputMode: terminalInputMode.peek(),
+    lines: terminalOutputSession.output.visible(outputHeight),
+    rows: terminalOutputWindowRows,
+    theme: t,
+    contrastText,
+    fit,
+    paint,
+    write,
   });
-  const maxRows = Math.min(projectedRows.length, Math.max(0, rect.row + rect.height - row));
-  for (let index = 0; index < maxRows; index += 1) {
-    const projected = projectedRows[index]!;
-    const style = projected.kind === "status"
-      ? {
-        fg: contrastText(statusTone, t.background, t.text),
-        bg: statusTone,
-        bold: true,
-      }
-      : projected.kind === "hint"
-      ? { fg: t.soft, bg: t.panelSoft }
-      : projected.kind === "empty"
-      ? { fg: t.muted, bg: t.surface }
-      : apiWorkbenchTerminalOutputLineStyle(projected.source ?? "stdout", t);
-    write(
-      frame,
-      row + index,
-      rect.column,
-      paint(fit(projected.text, rect.width), style),
-    );
-  }
 }
 
 function renderTerminalOutputToolbar(frame: Frame, rect: Rectangle, startRow: number): number {

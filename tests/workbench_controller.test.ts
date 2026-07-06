@@ -48,6 +48,7 @@ import {
 import {
   type WorkbenchTerminalCopyRowProjection,
   workbenchTerminalCopyRowsInto,
+  type WorkbenchTerminalOutputWindowRow,
   workbenchTerminalPaneProjectionsInto,
   workbenchTerminalPaneTitleRenderCommandsInto,
   workbenchTerminalSessionTabRenderCommandsInto,
@@ -55,7 +56,10 @@ import {
   type WorkbenchTerminalShellHeaderRow,
   type WorkbenchTerminalToolbarAction,
 } from "../src/app/workbench_terminal.ts";
-import { renderApiWorkbenchTerminalOutputToolbar } from "../app/api_workbench_terminal_output_view.ts";
+import {
+  renderApiWorkbenchTerminalOutputBody,
+  renderApiWorkbenchTerminalOutputToolbar,
+} from "../app/api_workbench_terminal_output_view.ts";
 import { renderApiWorkbenchShelf, renderApiWorkbenchWindowTabs } from "../app/api_workbench_shelf_view.ts";
 import {
   renderApiWorkbenchTerminalSessionTabs,
@@ -63,6 +67,7 @@ import {
   renderApiWorkbenchTerminalShellHeader,
   renderApiWorkbenchTerminalShellToolbar,
 } from "../app/api_workbench_terminal_shell_view.ts";
+import type { ProcessSessionInspection } from "../src/runtime/process_session.ts";
 import type { TerminalShellInspection } from "../src/runtime/terminal_shell.ts";
 import type { TerminalShellWorkspaceInspection } from "../src/runtime/terminal_shell_workspace.ts";
 
@@ -998,6 +1003,40 @@ Deno.test("renderApiWorkbenchTerminalOutputToolbar paints actions and registers 
   assertEquals(frame[0]?.some((cell) => cell?.includes("[ Stop ]")), true);
 });
 
+Deno.test("renderApiWorkbenchTerminalOutputBody paints status hint and stream rows", () => {
+  const frame: string[][] = [];
+  const rows: WorkbenchTerminalOutputWindowRow[] = [];
+
+  const written = renderApiWorkbenchTerminalOutputBody({
+    frame,
+    rect: { column: 1, row: 0, width: 80, height: 4 },
+    startRow: 0,
+    inspection: testProcessSessionInspection({ status: "running", running: true }),
+    inputMode: "workbench",
+    lines: [
+      { source: "stdout", text: "hello" },
+      { source: "stderr", text: "oops" },
+    ],
+    rows,
+    theme: testWorkbenchTheme(),
+    contrastText: () => "#000",
+    fit: (text, width) => text.slice(0, width),
+    paint: (text, style) => `${style.bg}:${style.fg}:${style.bold ? "b:" : ""}${text}`,
+    write: (target, row, column, value) => {
+      target[row] ??= [];
+      target[row]![column] = value;
+    },
+  });
+
+  assertEquals(written, 4);
+  assertEquals(rows.map((row) => row.kind), ["status", "hint", "output", "output"]);
+  assertEquals(frame[0]?.[1]?.includes("WORKBENCH  RUNNING"), true);
+  assertEquals(frame[0]?.[1]?.includes("PROCESS FALLBACK"), true);
+  assertEquals(frame[1]?.[1]?.includes("I raw input"), true);
+  assertEquals(frame[2]?.[1], "#111:#fff:[out] hello");
+  assertEquals(frame[3]?.[1], "#111:#f00:b:[err] oops");
+});
+
 Deno.test("renderApiWorkbenchTerminalShellToolbar paints shell actions and registers hits", () => {
   const cache = new WorkbenchButtonRowBufferCache<WorkbenchTerminalToolbarAction>();
   const frame: string[][] = [[]];
@@ -1176,6 +1215,26 @@ function testWorkbenchTheme() {
     buttonActiveText: "#000",
     buttonMutedBg: "#111",
     buttonMutedText: "#777",
+  };
+}
+
+function testProcessSessionInspection(
+  overrides: Partial<ProcessSessionInspection> = {},
+): ProcessSessionInspection {
+  return {
+    command: { command: "deno", args: ["eval", "console.log('hello')"] },
+    commandLine: "deno eval console.log('hello')",
+    status: "idle",
+    running: false,
+    output: {
+      lines: [],
+      lineCount: 0,
+      visible: [],
+      limit: 1000,
+      follow: true,
+      empty: true,
+    },
+    ...overrides,
   };
 }
 
