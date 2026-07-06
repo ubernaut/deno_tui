@@ -1,7 +1,6 @@
 import { assert, assertEquals } from "./deps.ts";
 import { HTML_CSS_LAYOUT_OPTION_ID, HTML_CSS_LAYOUT_WINDOW_ID } from "../src/markup/demo_fixtures.ts";
 import {
-  apiWorkbenchBuiltInWindowOrder,
   apiWorkbenchColumns,
   apiWorkbenchDocs,
   apiWorkbenchLiveRowsInto,
@@ -17,9 +16,7 @@ import {
   createApiWorkbenchThemes,
   createApiWorkbenchWindowCatalog,
   nextApiWorkbenchTerminalSessionDraft,
-  TERMINAL_OUTPUT_OPTION_ID,
   TERMINAL_OUTPUT_WINDOW_ID,
-  TERMINAL_SHELL_OPTION_ID,
   TERMINAL_SHELL_WINDOW_ID,
 } from "../app/api_workbench_catalog.ts";
 import {
@@ -563,7 +560,9 @@ Deno.test("api workbench catalog projects terminal cell style defaults and curso
 });
 
 Deno.test("api workbench catalog exposes built-in window order", () => {
-  assertEquals(apiWorkbenchBuiltInWindowOrder, [
+  const catalog = createApiWorkbenchWindowCatalog([]);
+
+  assertEquals(catalog.builtInWindowOrder, [
     "explorer",
     "inspector",
     "data",
@@ -583,8 +582,8 @@ Deno.test("api workbench catalog places terminal and layout options before visua
   ]);
 
   assertEquals(catalog.newWindowOptions.map((option) => option.id), [
-    TERMINAL_SHELL_OPTION_ID,
-    TERMINAL_OUTPUT_OPTION_ID,
+    "terminal-shell",
+    "terminal-output",
     HTML_CSS_LAYOUT_OPTION_ID,
     "cpu-monitor",
     "three-lattice",

@@ -142,7 +142,7 @@ export function apiWorkbenchTerminalCellStyle(
   };
 }
 
-export const apiWorkbenchPanelTitles: Record<string, string> = {
+const apiWorkbenchPanelTitles: Record<string, string> = {
   explorer: "Explorer",
   inspector: "Inspector",
   data: "Data Table",
@@ -153,7 +153,7 @@ export const apiWorkbenchPanelTitles: Record<string, string> = {
   terminal: "Terminal",
 };
 
-export const apiWorkbenchShortPanelTitles: Record<string, string> = {
+const apiWorkbenchShortPanelTitles: Record<string, string> = {
   htmlLayout: "Layout",
   inspector: "Inspect",
 };
@@ -190,9 +190,9 @@ export function apiWorkbenchWindowTitle(options: ApiWorkbenchWindowTitleOptions)
 }
 
 export const TERMINAL_OUTPUT_WINDOW_ID = "terminalOutput";
-export const TERMINAL_OUTPUT_OPTION_ID = "terminal-output";
+const TERMINAL_OUTPUT_OPTION_ID = "terminal-output";
 export const TERMINAL_SHELL_WINDOW_ID = "terminalShell";
-export const TERMINAL_SHELL_OPTION_ID = "terminal-shell";
+const TERMINAL_SHELL_OPTION_ID = "terminal-shell";
 
 export type ApiWorkbenchBuiltInWindowId =
   | "explorer"
@@ -216,7 +216,7 @@ export interface ApiWorkbenchWindowCatalog {
   newWindowOptions: WorkbenchWindowOption[];
 }
 
-export const apiWorkbenchBuiltInWindowOrder: readonly ApiWorkbenchBuiltInWindowId[] = [
+const apiWorkbenchBuiltInWindowOrder: readonly ApiWorkbenchBuiltInWindowId[] = [
   "explorer",
   "inspector",
   "data",
@@ -228,7 +228,7 @@ export const apiWorkbenchBuiltInWindowOrder: readonly ApiWorkbenchBuiltInWindowI
   TERMINAL_SHELL_WINDOW_ID,
 ];
 
-export const apiWorkbenchHtmlCssLayoutWindowOption: WorkbenchWindowOption = {
+const apiWorkbenchHtmlCssLayoutWindowOption: WorkbenchWindowOption = {
   id: HTML_CSS_LAYOUT_OPTION_ID,
   label: "HTML/CSS Layout",
   group: "Layout",
@@ -236,7 +236,7 @@ export const apiWorkbenchHtmlCssLayoutWindowOption: WorkbenchWindowOption = {
   windowId: HTML_CSS_LAYOUT_WINDOW_ID,
 };
 
-export const apiWorkbenchTerminalOutputWindowOption: WorkbenchWindowOption = {
+const apiWorkbenchTerminalOutputWindowOption: WorkbenchWindowOption = {
   id: TERMINAL_OUTPUT_OPTION_ID,
   label: "Terminal Output",
   group: "Terminal",
@@ -244,7 +244,7 @@ export const apiWorkbenchTerminalOutputWindowOption: WorkbenchWindowOption = {
   windowId: TERMINAL_OUTPUT_WINDOW_ID,
 };
 
-export const apiWorkbenchTerminalShellWindowOption: WorkbenchWindowOption = {
+const apiWorkbenchTerminalShellWindowOption: WorkbenchWindowOption = {
   id: TERMINAL_SHELL_OPTION_ID,
   label: "Shell",
   group: "Terminal",
