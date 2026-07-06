@@ -76,7 +76,6 @@ import {
   workbenchTabEntriesInto,
   workbenchTerminalOutputRowsInto,
   type WorkbenchTerminalOutputToolbarAction,
-  workbenchTerminalOutputToolbarItemsInto,
   type WorkbenchTerminalOutputWindowRow,
   workbenchTerminalOutputWindowRowsInto,
   workbenchTitlebarButtonRenderCommandsInto,
@@ -403,6 +402,7 @@ import {
 } from "./workbench_synthetic.ts";
 import type { ComputedLayoutBox } from "../src/layout/mod.ts";
 import { renderApiWorkbenchTerminalSessionTabs } from "./api_workbench_terminal_shell_view.ts";
+import { renderApiWorkbenchTerminalOutputToolbar } from "./api_workbench_terminal_output_view.ts";
 
 type BuiltInWindowId = ApiWorkbenchBuiltInWindowId;
 type VisualizationWindowId = `viz:${string}`;
@@ -2028,33 +2028,23 @@ function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
 }
 
 function renderTerminalOutputToolbar(frame: Frame, rect: Rectangle, startRow: number): number {
-  workbenchTerminalOutputToolbarItemsInto(terminalOutputButtonBuffers.items, {
-    running: terminalOutputSession.running,
-    outputLineCount: terminalOutputSession.output.lines.peek().length,
-    follow: terminalOutputSession.output.follow.peek(),
-    inputMode: terminalInputMode.peek(),
-  });
-  const nextRow = layoutWorkbenchButtonRowInto(
-    terminalOutputButtonBuffers.placements,
-    terminalOutputButtonBuffers.items,
+  return renderApiWorkbenchTerminalOutputToolbar({
+    frame,
     rect,
     startRow,
-  );
-
-  workbenchButtonRowRenderCommandsInto(terminalOutputButtonBuffers.commands, terminalOutputButtonBuffers.placements);
-  for (const button of terminalOutputButtonBuffers.commands) {
-    const projection = projectWorkbenchButtonCommand(button, theme(), contrastText);
-    write(
-      frame,
-      button.rect.row,
-      button.rect.column,
-      paint(projection.text, projection.style),
-    );
-    if (!button.item.disabled) {
-      addHit(button.hitRect, { type: "terminalOutput", action: button.item.action });
-    }
-  }
-  return nextRow;
+    state: {
+      running: terminalOutputSession.running,
+      outputLineCount: terminalOutputSession.output.lines.peek().length,
+      follow: terminalOutputSession.output.follow.peek(),
+      inputMode: terminalInputMode.peek(),
+    },
+    buffers: terminalOutputButtonBuffers,
+    theme: theme(),
+    contrastText,
+    paint,
+    write,
+    addHit,
+  });
 }
 
 function toggleTerminalInputMode(): void {
