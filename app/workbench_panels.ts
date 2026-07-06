@@ -1,6 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { dataFooterRows, type RowStyle, type WorkbenchRowTheme } from "../src/app/workbench_rows.ts";
-import { maxTextWidth, maxTextWidthBy, wrapPlainTextInto } from "../src/app/workbench_text.ts";
+import { maxTextWidth, wrapPlainTextInto } from "../src/app/workbench_text.ts";
 import {
   type DataColumn,
   type DataSort,
@@ -260,7 +260,7 @@ export function workbenchWindowContentSize(options: WorkbenchContentSizeOptions)
 }
 
 /** Estimates the scrollable width needed for data-table columns. */
-export function workbenchDataContentWidth(columns: readonly WorkbenchContentSizeColumn[]): number {
+function workbenchDataContentWidth(columns: readonly WorkbenchContentSizeColumn[]): number {
   let width = 8;
   for (let index = 0; index < columns.length; index += 1) {
     width += (columns[index]?.width ?? 12) + 2;
@@ -344,11 +344,6 @@ export function explorerTextRowsInto<T>(
   return target;
 }
 
-/** Measures projected text without retaining rows. */
-export function projectedTextWidth<T>(values: Iterable<T>, project: (value: T) => string): number {
-  return maxTextWidthBy(values, project);
-}
-
 /** Projects explorer tree rows into caller-owned row storage. */
 export function workbenchExplorerRowsInto(
   target: RowStyle[],
@@ -415,15 +410,6 @@ export function workbenchInspectorRowsInto(
     });
   }
   return target;
-}
-
-/** Projects static workbench log/detail rows into caller-owned storage. */
-export function workbenchLogRowsInto(
-  target: RowStyle[],
-  docs: readonly string[],
-  theme: WorkbenchLogsTheme,
-): RowStyle[] {
-  return workbenchLogRowsFromSourcesInto(target, [docs], theme);
 }
 
 /** Projects one or more log/detail row sources into caller-owned storage without concatenating source arrays. */

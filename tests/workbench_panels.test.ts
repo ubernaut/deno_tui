@@ -21,8 +21,6 @@ import {
 } from "../app/api_workbench_catalog.ts";
 import {
   explorerTextRowsInto,
-  projectedTextWidth,
-  workbenchDataContentWidth,
   type WorkbenchDataTableBuffers,
   workbenchDataTablePageSize,
   workbenchDataTableRowsInto,
@@ -33,7 +31,6 @@ import {
   workbenchInspectorRowsInto,
   type WorkbenchInspectorTheme,
   workbenchLogRowsFromSourcesInto,
-  workbenchLogRowsInto,
   workbenchWindowContentSize,
 } from "../app/workbench_panels.ts";
 import type { RowStyle } from "../src/app/workbench_rows.ts";
@@ -259,25 +256,6 @@ Deno.test("workbench inspector reuses caller-owned row storage", () => {
   assertEquals(buffers.actionTextRows.some((row) => row.includes("stale")), false);
 });
 
-Deno.test("workbench log rows project docs into themed rows", () => {
-  const rows = workbenchLogRowsInto([], ["one", "two"], { text: "#eee", surface: "#111" });
-
-  assertEquals(rows, [
-    { text: "one", fg: "#eee", bg: "#111", bold: undefined },
-    { text: "two", fg: "#eee", bg: "#111", bold: undefined },
-  ]);
-});
-
-Deno.test("workbench log rows reuse caller-owned row objects", () => {
-  const target: RowStyle[] = [{ text: "stale", fg: "x", bg: "y", bold: true }];
-  const firstRow = target[0];
-  const rows = workbenchLogRowsInto(target, ["fresh"], { text: "#fff", surface: "#000" });
-
-  assertEquals(rows === target, true);
-  assertEquals(rows[0] === firstRow, true);
-  assertEquals(rows[0], { text: "fresh", fg: "#fff", bg: "#000", bold: undefined });
-});
-
 Deno.test("workbench log rows project multiple sources without cloning source arrays", () => {
   const target: RowStyle[] = [{ text: "stale", fg: "x", bg: "y", bold: true }, { text: "old" }];
   const firstRow = target[0];
@@ -297,7 +275,7 @@ Deno.test("workbench log rows project multiple sources without cloning source ar
 
 Deno.test("workbench log rows trims stale retained rows", () => {
   const target: RowStyle[] = [{ text: "a" }, { text: "b" }];
-  const rows = workbenchLogRowsInto(target, [], { text: "#fff", surface: "#000" });
+  const rows = workbenchLogRowsFromSourcesInto(target, [], { text: "#fff", surface: "#000" });
 
   assertEquals(rows.length, 0);
 });
@@ -379,6 +357,14 @@ Deno.test("workbenchWindowContentSize estimates built-in window content", () => 
   assertEquals(workbenchWindowContentSize({ ...contentSizeBase, id: "inspector" }), { width: 20, height: 18 });
   assertEquals(workbenchWindowContentSize({ ...contentSizeBase, id: "logs" }), { width: 23, height: 10 });
   assertEquals(workbenchWindowContentSize({ ...contentSizeBase, id: "data" }), { width: 24, height: 34 });
+  assertEquals(
+    workbenchWindowContentSize({
+      ...contentSizeBase,
+      id: "data",
+      dataColumns: [{ width: 4 }, {}, { width: 6 }],
+    }),
+    { width: 36, height: 34 },
+  );
   assertEquals(workbenchWindowContentSize({ ...contentSizeBase, id: "three" }), { width: 20, height: 10 });
   assertEquals(workbenchWindowContentSize({ ...contentSizeBase, id: "htmlLayout" }), { width: 20, height: 20 });
   assertEquals(workbenchWindowContentSize({ ...contentSizeBase, id: "unknown" }), { width: 20, height: 16 });
@@ -409,14 +395,12 @@ Deno.test("workbenchWindowContentSize delegates visualization windows", () => {
   assertEquals(workbenchWindowContentSize({ ...contentSizeBase, id: "viz:cpu" }), { width: 23, height: 14 });
 });
 
-Deno.test("workbench content-size helpers reuse text rows and measure projected text", () => {
+Deno.test("workbench content-size helper reuses text rows", () => {
   const target = ["stale"];
   const rows = explorerTextRowsInto(target, [{ text: "alpha" }, { text: "beta gamma" }], (entry) => entry.text);
 
   assertEquals(rows, target);
   assertEquals(rows, ["alpha", "beta gamma"]);
-  assertEquals(projectedTextWidth([{ text: "alpha" }, { text: "beta gamma" }], (entry) => entry.text), 10);
-  assertEquals(workbenchDataContentWidth([{ width: 4 }, {}, { width: 6 }]), 36);
 });
 
 Deno.test("api workbench catalog projects rich selectable themes", () => {
