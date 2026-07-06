@@ -4,6 +4,7 @@ import {
   parseTerminalControlSequence,
   parseTerminalParams,
 } from "./terminal_sequences.ts";
+import { clamp } from "../utils/numbers.ts";
 import { textWidth, UNICODE_CHAR_REGEXP } from "../utils/strings.ts";
 
 /** Styled terminal cell tracked by TerminalScreenController. */
@@ -870,10 +871,6 @@ function cloneState(state: TerminalScreenState): TerminalScreenState {
 function normalizeDimension(value: number | undefined, fallback: number): number {
   if (!Number.isFinite(value)) return fallback;
   return Math.max(1, Math.floor(value!));
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
 }
 
 function clampByte(value: number): number {

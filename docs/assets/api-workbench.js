@@ -13825,7 +13825,7 @@ var TerminalScrollbackController = class {
   }
   scrollLines(delta) {
     if (this.#mode !== "copy") this.enterCopyMode();
-    this.#offset = clamp3(this.#offset + Math.trunc(delta), 0, this.#maxOffset());
+    this.#offset = clamp(this.#offset + Math.trunc(delta), 0, this.#maxOffset());
     return this.#offset;
   }
   page(delta) {
@@ -13847,7 +13847,7 @@ var TerminalScrollbackController = class {
     if (this.#matches.length > 0) {
       this.enterCopyMode();
       this.#activeMatch = 0;
-      this.#offset = clamp3(this.#matches[0], 0, this.#maxOffset());
+      this.#offset = clamp(this.#matches[0], 0, this.#maxOffset());
     }
     return cloneNumberArray(this.#matches);
   }
@@ -13856,7 +13856,7 @@ var TerminalScrollbackController = class {
     this.enterCopyMode();
     this.#activeMatch = (this.#activeMatch + Math.trunc(delta) + this.#matches.length) % this.#matches.length;
     const row = this.#matches[this.#activeMatch];
-    this.#offset = clamp3(row, 0, this.#maxOffset());
+    this.#offset = clamp(row, 0, this.#maxOffset());
     return row;
   }
   setSelection(anchor, focus2 = anchor) {
@@ -13864,14 +13864,14 @@ var TerminalScrollbackController = class {
     this.#selection = normalizeSelection({ anchor, focus: focus2 }, rows2.length);
     if (this.#selection) {
       this.enterCopyMode();
-      this.#offset = clamp3(Math.min(this.#selection.anchor, this.#selection.focus), 0, this.#maxOffset());
+      this.#offset = clamp(Math.min(this.#selection.anchor, this.#selection.focus), 0, this.#maxOffset());
     }
     return this.#selection ? { ...this.#selection } : void 0;
   }
   selectVisibleRow(row, extend = false) {
     const rows2 = this.#rows();
     if (rows2.length === 0) return void 0;
-    const focus2 = clamp3(this.offset + Math.trunc(row), 0, rows2.length - 1);
+    const focus2 = clamp(this.offset + Math.trunc(row), 0, rows2.length - 1);
     const anchor = extend && this.#selection ? this.#selection.anchor : focus2;
     return this.#setSelectionAndReveal(anchor, focus2, rows2.length);
   }
@@ -13879,7 +13879,7 @@ var TerminalScrollbackController = class {
     const rows2 = this.#rows();
     if (rows2.length === 0) return void 0;
     const current = this.#selection?.focus ?? this.offset;
-    const focus2 = clamp3(current + Math.trunc(delta), 0, rows2.length - 1);
+    const focus2 = clamp(current + Math.trunc(delta), 0, rows2.length - 1);
     const anchor = extend ? this.#selection?.anchor ?? current : focus2;
     return this.#setSelectionAndReveal(anchor, focus2, rows2.length);
   }
@@ -13928,7 +13928,7 @@ var TerminalScrollbackController = class {
     return Math.max(0, rowCount - this.#viewportRows);
   }
   #clampOffset() {
-    this.#offset = this.#mode === "live" ? this.#maxOffset() : clamp3(this.#offset, 0, this.#maxOffset());
+    this.#offset = this.#mode === "live" ? this.#maxOffset() : clamp(this.#offset, 0, this.#maxOffset());
   }
   #refreshSearch() {
     const query = this.#query;
@@ -13943,7 +13943,7 @@ var TerminalScrollbackController = class {
       this.#matches = matches;
     }
     if (this.#matches.length === 0) this.#activeMatch = -1;
-    else this.#activeMatch = clamp3(this.#activeMatch, 0, this.#matches.length - 1);
+    else this.#activeMatch = clamp(this.#activeMatch, 0, this.#matches.length - 1);
   }
   #setSelectionAndReveal(anchor, focus2, rowCount) {
     this.#selection = normalizeSelection({ anchor, focus: focus2 }, rowCount);
@@ -13953,11 +13953,11 @@ var TerminalScrollbackController = class {
     return { ...this.#selection };
   }
   #revealRow(row) {
-    const target = clamp3(Math.trunc(row), 0, Math.max(0, this.#rows().length - 1));
+    const target = clamp(Math.trunc(row), 0, Math.max(0, this.#rows().length - 1));
     if (target < this.#offset) {
       this.#offset = target;
     } else if (target >= this.#offset + this.#viewportRows) {
-      this.#offset = clamp3(target - this.#viewportRows + 1, 0, this.#maxOffset());
+      this.#offset = clamp(target - this.#viewportRows + 1, 0, this.#maxOffset());
     }
   }
 };
@@ -13972,8 +13972,8 @@ function normalizeQuery(query) {
 function normalizeSelection(selection, rowCount) {
   if (!selection || rowCount <= 0) return void 0;
   return {
-    anchor: clamp3(Math.trunc(selection.anchor), 0, rowCount - 1),
-    focus: clamp3(Math.trunc(selection.focus), 0, rowCount - 1)
+    anchor: clamp(Math.trunc(selection.anchor), 0, rowCount - 1),
+    focus: clamp(Math.trunc(selection.focus), 0, rowCount - 1)
   };
 }
 function selectedRowsText(rows2, selection) {
@@ -13997,9 +13997,6 @@ function cloneNumberArray(values) {
   const cloned = new Array(values.length);
   for (let index = 0; index < values.length; index += 1) cloned[index] = values[index];
   return cloned;
-}
-function clamp3(value, min2, max2) {
-  return Math.max(min2, Math.min(max2, value));
 }
 
 // src/runtime/terminal_sequences.ts
@@ -14283,23 +14280,23 @@ var TerminalScreenController = class {
         this.#setCursorPosition(params[0] ?? 1, params[1] ?? 1);
         break;
       case "A":
-        this.#state.cursor.row = clamp4(this.#state.cursor.row - (params[0] || 1), 0, this.#rows - 1);
+        this.#state.cursor.row = clamp(this.#state.cursor.row - (params[0] || 1), 0, this.#rows - 1);
         break;
       case "B":
-        this.#state.cursor.row = clamp4(this.#state.cursor.row + (params[0] || 1), 0, this.#rows - 1);
+        this.#state.cursor.row = clamp(this.#state.cursor.row + (params[0] || 1), 0, this.#rows - 1);
         break;
       case "C":
-        this.#state.cursor.column = clamp4(this.#state.cursor.column + (params[0] || 1), 0, this.#columns - 1);
+        this.#state.cursor.column = clamp(this.#state.cursor.column + (params[0] || 1), 0, this.#columns - 1);
         break;
       case "a":
-        this.#state.cursor.column = clamp4(this.#state.cursor.column + (params[0] || 1), 0, this.#columns - 1);
+        this.#state.cursor.column = clamp(this.#state.cursor.column + (params[0] || 1), 0, this.#columns - 1);
         break;
       case "D":
         if (sequence.kind === "esc") {
           this.#index();
           break;
         }
-        this.#state.cursor.column = clamp4(this.#state.cursor.column - (params[0] || 1), 0, this.#columns - 1);
+        this.#state.cursor.column = clamp(this.#state.cursor.column - (params[0] || 1), 0, this.#columns - 1);
         break;
       case "E":
         if (sequence.kind === "esc") {
@@ -14307,24 +14304,24 @@ var TerminalScreenController = class {
           this.#index();
           break;
         }
-        this.#state.cursor.row = clamp4(this.#state.cursor.row + (params[0] || 1), 0, this.#rows - 1);
+        this.#state.cursor.row = clamp(this.#state.cursor.row + (params[0] || 1), 0, this.#rows - 1);
         this.#state.cursor.column = 0;
         break;
       case "F":
-        this.#state.cursor.row = clamp4(this.#state.cursor.row - (params[0] || 1), 0, this.#rows - 1);
+        this.#state.cursor.row = clamp(this.#state.cursor.row - (params[0] || 1), 0, this.#rows - 1);
         this.#state.cursor.column = 0;
         break;
       case "G":
-        this.#state.cursor.column = clamp4((params[0] || 1) - 1, 0, this.#columns - 1);
+        this.#state.cursor.column = clamp((params[0] || 1) - 1, 0, this.#columns - 1);
         break;
       case "`":
-        this.#state.cursor.column = clamp4((params[0] || 1) - 1, 0, this.#columns - 1);
+        this.#state.cursor.column = clamp((params[0] || 1) - 1, 0, this.#columns - 1);
         break;
       case "d":
         this.#setCursorPosition(params[0] || 1, this.#state.cursor.column + 1);
         break;
       case "e":
-        this.#state.cursor.row = clamp4(this.#state.cursor.row + (params[0] || 1), 0, this.#rows - 1);
+        this.#state.cursor.row = clamp(this.#state.cursor.row + (params[0] || 1), 0, this.#rows - 1);
         break;
       case "I":
         this.#cursorForwardTabs(params[0] || 1);
@@ -14440,17 +14437,17 @@ var TerminalScreenController = class {
     }
   }
   #setCursorPosition(row, column) {
-    const nextColumn = clamp4(column - 1, 0, this.#columns - 1);
+    const nextColumn = clamp(column - 1, 0, this.#columns - 1);
     if (!this.#originMode) {
       this.#state.cursor = {
         column: nextColumn,
-        row: clamp4(row - 1, 0, this.#rows - 1)
+        row: clamp(row - 1, 0, this.#rows - 1)
       };
       return;
     }
     this.#state.cursor = {
       column: nextColumn,
-      row: clamp4(this.#scrollRegion.top + row - 1, this.#scrollRegion.top, this.#scrollRegion.bottom)
+      row: clamp(this.#scrollRegion.top + row - 1, this.#scrollRegion.top, this.#scrollRegion.bottom)
     };
   }
   #setTabStop() {
@@ -14462,8 +14459,8 @@ var TerminalScreenController = class {
   #restoreCursor() {
     if (!this.#savedCursor) return;
     this.#state.cursor = {
-      column: clamp4(this.#savedCursor.column, 0, this.#columns - 1),
-      row: clamp4(this.#savedCursor.row, 0, this.#rows - 1)
+      column: clamp(this.#savedCursor.column, 0, this.#columns - 1),
+      row: clamp(this.#savedCursor.row, 0, this.#rows - 1)
     };
   }
   #clearTabStops(mode) {
@@ -14568,25 +14565,25 @@ var TerminalScreenController = class {
   #insertCharacters(count) {
     const row = this.#state.cells[this.#state.cursor.row];
     const column = this.#state.cursor.column;
-    const amount = clamp4(Math.floor(count), 1, this.#columns - column);
+    const amount = clamp(Math.floor(count), 1, this.#columns - column);
     shiftCellsRight(row, column, amount, this.#columns);
   }
   #deleteCharacters(count) {
     const row = this.#state.cells[this.#state.cursor.row];
     const column = this.#state.cursor.column;
-    const amount = clamp4(Math.floor(count), 1, this.#columns - column);
+    const amount = clamp(Math.floor(count), 1, this.#columns - column);
     shiftCellsLeft(row, column, amount, this.#columns);
   }
   #eraseCharacters(count) {
     const row = this.#state.cells[this.#state.cursor.row];
     const column = this.#state.cursor.column;
-    const amount = clamp4(Math.floor(count), 1, this.#columns - column);
+    const amount = clamp(Math.floor(count), 1, this.#columns - column);
     fillBlankCells(row, column, amount);
   }
   #insertLines(count) {
     const row = this.#state.cursor.row;
     if (row < this.#scrollRegion.top || row > this.#scrollRegion.bottom) return;
-    const amount = clamp4(Math.floor(count), 1, this.#scrollRegion.bottom - row + 1);
+    const amount = clamp(Math.floor(count), 1, this.#scrollRegion.bottom - row + 1);
     for (let index = 0; index < amount; index += 1) {
       this.#state.cells.splice(row, 0, blankRow(this.#columns));
       this.#state.cells.splice(this.#scrollRegion.bottom + 1, 1);
@@ -14595,7 +14592,7 @@ var TerminalScreenController = class {
   #deleteLines(count) {
     const row = this.#state.cursor.row;
     if (row < this.#scrollRegion.top || row > this.#scrollRegion.bottom) return;
-    const amount = clamp4(Math.floor(count), 1, this.#scrollRegion.bottom - row + 1);
+    const amount = clamp(Math.floor(count), 1, this.#scrollRegion.bottom - row + 1);
     for (let index = 0; index < amount; index += 1) {
       this.#state.cells.splice(row, 1);
       this.#state.cells.splice(this.#scrollRegion.bottom, 0, blankRow(this.#columns));
@@ -14607,8 +14604,8 @@ var TerminalScreenController = class {
       this.#state.cursor = { column: 0, row: 0 };
       return;
     }
-    const top = clamp4((params[0] || 1) - 1, 0, this.#rows - 1);
-    const bottom = clamp4((params[1] || this.#rows) - 1, 0, this.#rows - 1);
+    const top = clamp((params[0] || 1) - 1, 0, this.#rows - 1);
+    const bottom = clamp((params[1] || this.#rows) - 1, 0, this.#rows - 1);
     if (bottom <= top) {
       this.#scrollRegion = fullScrollRegion(this.#rows);
       this.#state.cursor = { column: 0, row: 0 };
@@ -14618,7 +14615,7 @@ var TerminalScreenController = class {
     this.#state.cursor = { column: 0, row: 0 };
   }
   #scrollRegionUp(top, bottom, count) {
-    const amount = clamp4(Math.floor(count), 1, bottom - top + 1);
+    const amount = clamp(Math.floor(count), 1, bottom - top + 1);
     for (let index = 0; index < amount; index += 1) {
       const shifted = this.#state.cells.splice(top, 1)[0] ?? blankRow(this.#columns);
       if (top === 0 && bottom === this.#rows - 1 && !this.alternate) {
@@ -14629,7 +14626,7 @@ var TerminalScreenController = class {
     }
   }
   #scrollRegionDown(top, bottom, count) {
-    const amount = clamp4(Math.floor(count), 1, bottom - top + 1);
+    const amount = clamp(Math.floor(count), 1, bottom - top + 1);
     for (let index = 0; index < amount; index += 1) {
       this.#state.cells.splice(bottom, 1);
       this.#state.cells.splice(top, 0, blankRow(this.#columns));
@@ -14819,8 +14816,8 @@ function resizeState(state, columns2, rows2) {
   return {
     cells,
     cursor: {
-      column: clamp4(state.cursor.column, 0, columns2 - 1),
-      row: clamp4(state.cursor.row, 0, rows2 - 1)
+      column: clamp(state.cursor.column, 0, columns2 - 1),
+      row: clamp(state.cursor.row, 0, rows2 - 1)
     }
   };
 }
@@ -14834,11 +14831,8 @@ function normalizeDimension(value, fallback) {
   if (!Number.isFinite(value)) return fallback;
   return Math.max(1, Math.floor(value));
 }
-function clamp4(value, min2, max2) {
-  return Math.max(min2, Math.min(max2, value));
-}
 function clampByte(value) {
-  return clamp4(Math.floor(value), 0, 255);
+  return clamp(Math.floor(value), 0, 255);
 }
 
 // src/runtime/terminal_workspace_layout.ts

@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TerminalScreenController } from "./terminal_screen.ts";
+import { clamp } from "../utils/numbers.ts";
 
 /** Terminal scrollback interaction mode. */
 export type TerminalScrollbackMode = "live" | "copy";
@@ -294,8 +295,4 @@ function cloneNumberArray(values: readonly number[]): number[] {
   const cloned = new Array<number>(values.length);
   for (let index = 0; index < values.length; index += 1) cloned[index] = values[index]!;
   return cloned;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
 }
