@@ -1,4 +1,5 @@
 import { assertEquals } from "./deps.ts";
+import { commandDisabledBoolean as commandDisabled } from "./test_commands.ts";
 import {
   formatTerminalOutputLine,
   TerminalOutputController,
@@ -702,10 +703,6 @@ Deno.test("ProcessTerminalBackend spawns inspectable non-PTY sessions", async ()
   assertEquals(handle.inspect().rows, 40);
   await handle.dispose();
 });
-
-function commandDisabled(command: Command<TerminalCommandAction>): boolean {
-  return typeof command.disabled === "function" ? command.disabled() : Boolean(command.disabled);
-}
 
 function completedChild(
   stdout: string,

@@ -45,6 +45,7 @@ import {
   renderVisualization,
   visualizations,
 } from "./visualizations.ts";
+import { crop } from "./visualization_primitives.ts";
 
 const PANEL_SCROLLBAR_LINE_LIMIT = 256;
 const MONITOR_WINDOW_CONTROL_TEXT = "[-] [□] [↺] [x]";
@@ -1763,16 +1764,6 @@ function createDefaultSlots(): Record<SlotId, SlotConfig> {
       ascii: createDefaultAsciiOptions(),
     },
   };
-}
-
-function crop(text: string, width: number) {
-  if (width <= 0) {
-    return "";
-  }
-  if (text.length <= width) {
-    return text;
-  }
-  return `${text.slice(0, Math.max(0, width - 1))}…`;
 }
 
 function titleInk(accent: Accent) {

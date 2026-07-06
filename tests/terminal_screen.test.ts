@@ -1,4 +1,5 @@
 import { assertEquals } from "./deps.ts";
+import { commandDisabledBoolean as commandDisabled } from "./test_commands.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
 import {
   bindTerminalScrollbackCommands,
@@ -742,7 +743,3 @@ Deno.test("terminal scrollback commands drive copy mode search and selection", a
   dispose();
   assertEquals(registry.list("terminal"), []);
 });
-
-function commandDisabled(command: { disabled?: boolean | (() => boolean) }): boolean {
-  return typeof command.disabled === "function" ? command.disabled() : !!command.disabled;
-}

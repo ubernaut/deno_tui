@@ -1,4 +1,5 @@
 import { assertEquals } from "./deps.ts";
+import { commandDisabled } from "./test_commands.ts";
 import { createApp } from "../src/app/app.ts";
 import { ActionBus } from "../src/app/actions.ts";
 import type { Action } from "../src/app/actions.ts";
@@ -3883,10 +3884,6 @@ Deno.test("bindSplitPaneSetting restores and persists layout state", async () =>
     resizeMode: "size",
   });
 });
-
-function commandDisabled<TAction extends Action>(command: Command<TAction>): boolean | undefined {
-  return typeof command.disabled === "function" ? command.disabled() : command.disabled;
-}
 
 function focusTarget(): Focusable {
   return { state: new Signal<ComponentState>("base") };

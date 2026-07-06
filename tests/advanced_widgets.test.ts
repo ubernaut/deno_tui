@@ -1,4 +1,5 @@
 import { assertEquals } from "./deps.ts";
+import { commandDisabled } from "./test_commands.ts";
 import {
   bindComponentCatalogCommands,
   type ComponentCatalogCommandAction,
@@ -590,8 +591,4 @@ function keyPress(key: Key, options: Partial<Omit<KeyPressEvent, "key" | "buffer
     shift: options.shift ?? false,
     buffer: new Uint8Array(),
   };
-}
-
-function commandDisabled(command: { disabled?: boolean | (() => boolean) }): boolean | undefined {
-  return typeof command.disabled === "function" ? command.disabled() : command.disabled;
 }

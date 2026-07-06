@@ -1,4 +1,5 @@
 import { assertEquals, assertNotStrictEquals } from "./deps.ts";
+import { commandDisabledBoolean as commandDisabled } from "./test_commands.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
 import {
   bindTerminalShellWorkspaceCommands,
@@ -1067,10 +1068,6 @@ Deno.test("terminal shell workspace commands drive live shell sessions", async (
   assertEquals(registry.list("terminal"), []);
   await workspace.dispose();
 });
-
-function commandDisabled(command: { disabled?: boolean | (() => boolean) }): boolean {
-  return typeof command.disabled === "function" ? command.disabled() : !!command.disabled;
-}
 
 class FakeWorkspaceShellBackend implements TerminalBackend {
   readonly id = "fake-workspace-pty";

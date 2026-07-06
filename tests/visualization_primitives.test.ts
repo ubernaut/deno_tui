@@ -174,6 +174,8 @@ Deno.test("app panel bodies keep rendering deep lines in tall single-pane layout
 Deno.test("visualization primitives crop and gridify text cells", () => {
   assertEquals(crop("abcdef", 4), "abc…");
   assertEquals(crop("abc", 4), "abc");
+  assertEquals(crop("abc", 0), "");
+  assertEquals(crop("abc", -1), "");
   const grid = gridify(["alpha", "beta", "gamma"], 36);
   assertStringIncludes(grid, "alpha");
   assertStringIncludes(grid, "gamma");

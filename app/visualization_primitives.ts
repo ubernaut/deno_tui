@@ -110,6 +110,7 @@ export function gridify(entries: string[], width: number) {
 }
 
 export function crop(text: string, width: number) {
+  if (width <= 0) return "";
   if (text.length <= width) {
     return text;
   }

@@ -1,4 +1,5 @@
 import { assertEquals } from "./deps.ts";
+import { commandDisabled } from "./test_commands.ts";
 import { bindInputCommands, inputCommands } from "../src/app/input_commands.ts";
 import { bindListCommands, listCommands } from "../src/app/list_commands.ts";
 import { bindMenuBarCommands, menuBarCommands } from "../src/app/menu_bar_commands.ts";
@@ -2157,10 +2158,6 @@ function keyPress(key: Key, options: Partial<Omit<KeyPressEvent, "key" | "buffer
     shift: options.shift ?? false,
     buffer: new Uint8Array(),
   };
-}
-
-function commandDisabled(command: { disabled?: boolean | (() => boolean) }): boolean | undefined {
-  return typeof command.disabled === "function" ? command.disabled() : command.disabled;
 }
 
 function createFakeTui(): Tui {

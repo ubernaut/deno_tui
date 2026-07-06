@@ -1,4 +1,5 @@
 import {
+  capitalize,
   type ComponentCapability,
   type ComponentCatalogQuery,
   type ComponentCatalogReport,
@@ -41,7 +42,7 @@ export function formatComponentCatalogTerminal(
   for (const category of report.categories) {
     const entries = report.entries.filter((entry) => entry.category === category);
     if (entries.length === 0) continue;
-    lines.push(`## ${titleCase(category)} (${entries.length})`);
+    lines.push(`## ${capitalize(category)} (${entries.length})`);
     for (const entry of entries) {
       const capabilityText = summarizeCapabilities(entry.capabilities, maxCapabilities);
       const labelWidth = Math.min(18, Math.max(12, Math.floor(width * 0.2)));
@@ -105,8 +106,4 @@ function wrapText(value: string, width: number): string[] {
   }
   if (line) lines.push(line);
   return lines.length ? lines : [""];
-}
-
-function titleCase(value: string): string {
-  return value.slice(0, 1).toUpperCase() + value.slice(1);
 }

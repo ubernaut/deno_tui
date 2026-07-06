@@ -1,4 +1,5 @@
 import { assertEquals } from "./deps.ts";
+import { commandDisabled } from "./test_commands.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
 import { bindLogViewerCommands, logViewerCommands } from "../src/app/log_viewer_commands.ts";
 import { bindMetricSeriesCommands, metricSeriesCommands } from "../src/app/metric_series_commands.ts";
@@ -2463,7 +2464,3 @@ Deno.test("ComponentThemeBindingGroup disposes on abort and rejects late registr
     assertEquals(error instanceof Error && error.message, "ComponentThemeBindingGroup is disposed");
   }
 });
-
-function commandDisabled(command: { disabled?: boolean | (() => boolean) }): boolean | undefined {
-  return typeof command.disabled === "function" ? command.disabled() : command.disabled;
-}

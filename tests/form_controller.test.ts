@@ -1,4 +1,5 @@
 import { assertEquals } from "./deps.ts";
+import { commandDisabled } from "./test_commands.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { bindFormCommands, formCommands } from "../src/app/form_commands.ts";
 import type { FormCommandAction } from "../src/app/form_commands.ts";
@@ -289,7 +290,3 @@ Deno.test("bindFormField supports target-first sync and parse format transforms"
 
   dispose();
 });
-
-function commandDisabled(command: { disabled?: boolean | (() => boolean) }): boolean | undefined {
-  return typeof command.disabled === "function" ? command.disabled() : command.disabled;
-}
