@@ -1283,3 +1283,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   through it. The smaller `220x70` benchmark stayed roughly even with retained-target scaling, while a local
   fullscreen-sized `440x140` timing loop improved from roughly `0.205ms` to `0.141ms`; focused core/frame tests and
   sequential workbench visual resize checks remain the verification gate.
+- Trimmed ANSI canvas range compaction on the Three block-output path by carrying span body text directly instead of
+  constructing and slicing full styled cells. The mixed truecolor-background range benchmark improved from roughly
+  `0.045ms` to `0.025ms` on this run, with canvas sink tests preserving reset/coalescing behavior.

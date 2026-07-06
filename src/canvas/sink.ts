@@ -153,7 +153,7 @@ function compactAnsiCellSpan(values: readonly (string | Uint8Array)[], start: nu
   }
   if (repeatedCells > 1) {
     return {
-      text: `${first.prefix}${first.text.repeat(repeatedCells)}${first.suffix}`,
+      text: first.text.repeat(repeatedCells),
       cells: repeatedCells,
       first,
     };
@@ -168,7 +168,7 @@ function compactAnsiCellSpan(values: readonly (string | Uint8Array)[], start: nu
     index += 1;
   }
   return {
-    text: `${first.prefix}${text}${first.suffix}`,
+    text,
     cells: index - start,
     first,
   };
@@ -193,7 +193,7 @@ function compactAnsiCellRange(values: readonly (string | Uint8Array)[]): string 
       activePrefix = first.prefix;
       activeState = nextState;
     }
-    output += span.text.slice(first.prefix.length, span.text.length - first.suffix.length);
+    output += span.text;
     if (first.prefix || first.suffix) needsReset = true;
     index += span.cells;
   }
