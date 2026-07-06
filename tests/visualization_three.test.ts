@@ -2,15 +2,7 @@ import { assert, assertEquals, assertMatch, assertStringIncludes } from "./deps.
 import { createDefaultWorkbenchAsciiOptions } from "../src/app/workbench_ascii.ts";
 import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import { emptySnapshot } from "../app/system_metrics.ts";
-import type {
-  PanelRender,
-  RenderContext,
-  SlotConfig,
-  SourceFrame,
-  SystemSnapshot,
-  ThreeSceneMode,
-} from "../app/types.ts";
-import { buildVisualizationDrive } from "../app/visualization_drive.ts";
+import type { PanelRender, RenderContext, SlotConfig, SourceFrame, SystemSnapshot } from "../app/types.ts";
 import {
   threeRendererModeLabel,
   visualizationTextContentSize,
@@ -23,14 +15,7 @@ import {
 } from "../app/workbench_visualization_window.ts";
 import { compactSpaces, maxTrimmedTextWidth } from "../src/app/workbench_text.ts";
 import { studioCameraFramingForAspect } from "../app/neon_three.ts";
-import {
-  appendThreeSceneFooter,
-  driveThreeSignal,
-  modeTwist,
-  renderThreeFallbackBody,
-  renderVisualization,
-  threeSceneModeLabel,
-} from "../app/visualizations.ts";
+import { renderVisualization } from "../app/visualizations.ts";
 import type { RowStyle } from "../src/app/workbench_rows.ts";
 
 const fallbackContext: RenderContext = {
@@ -172,11 +157,19 @@ function context(overrides: Partial<RenderContext> = {}): RenderContext {
 }
 
 Deno.test("three fallback footer preserves primitive mode context", () => {
-  assertEquals(
-    appendThreeSceneFooter("SRC CPU", "lattice", 32),
-    `SRC CPU / ${threeSceneModeLabel("lattice")} PRIMITIVES`,
-  );
-  assertEquals(appendThreeSceneFooter("", "field", 16), `${threeSceneModeLabel("field")} PRIMITIVES`);
+  const lattice = renderVisualization({
+    ...fallbackContext,
+    width: 32,
+    slot: { ...fallbackContext.slot, visualizationId: "three-lattice" },
+  });
+  const field = renderVisualization({
+    ...fallbackContext,
+    width: 24,
+    slot: { ...fallbackContext.slot, visualizationId: "field-ring" },
+  });
+
+  assertStringIncludes(lattice.footer, "LATTICE PRIMITIVES");
+  assertStringIncludes(field.footer, "FIELD PRIMITIVES");
 });
 
 Deno.test("studio Three scene framing tightens for wide terminal panes", () => {
@@ -192,8 +185,7 @@ Deno.test("studio Three scene framing tightens for wide terminal panes", () => {
 });
 
 Deno.test("three fallback body renders bounded mode-specific text fields", () => {
-  const drive = buildVisualizationDrive(fallbackContext, 32);
-  const body = renderThreeFallbackBody(fallbackContext, drive, "lattice");
+  const body = renderVisualization(fallbackContext).body;
   const lines = body.split("\n");
 
   assertMatch(body, /LATTICE DRIVE/);
@@ -211,50 +203,32 @@ Deno.test("three visualization renderer exposes a chunky text fallback body", ()
 });
 
 Deno.test("three fallback body covers all scene modes with visible output", () => {
-  const drive = buildVisualizationDrive(fallbackContext, 32);
-  const modes: ThreeSceneMode[] = [
-    "lattice",
-    "atfield",
-    "hexshell",
-    "capture",
-    "mapslab",
-    "solenoid",
-    "studio",
-    "emergency",
-    "counter",
-    "plug",
-    "surveillance",
-    "relay",
-    "rack",
-    "scope",
-    "biosignal",
-    "harmonic",
-    "psychograph",
-    "field",
-    "heat",
-    "route",
-    "topology",
-    "command",
-    "launch",
-    "magi",
-    "target",
-    "waveform",
-    "angel",
-    "gate",
+  const cases = [
+    ["three-lattice", "lattice", "LATTICE DRIVE"],
+    ["three-atfield", "atfield", "AT-FIELD DRIVE"],
+    ["three-hexshell", "hexshell", "HEX SHELL DRIVE"],
+    ["three-capture", "capture", "CAPTURE DRIVE"],
+    ["three-mapslab", "mapslab", "MAP SLAB DRIVE"],
+    ["three-solenoid", "solenoid", "SOLENOID DRIVE"],
+    ["three-ascii-studio", "studio", "ACEROLA DRIVE"],
   ];
 
-  for (const mode of modes) {
-    const body = renderThreeFallbackBody(fallbackContext, drive, mode);
-    assert(body.trim().length > 0, mode);
-    assertMatch(body, new RegExp(`${threeSceneModeLabel(mode)} DRIVE`));
+  for (const [visualizationId, mode, bodyHeading] of cases) {
+    const rendered = renderVisualization({
+      ...fallbackContext,
+      slot: { ...fallbackContext.slot, visualizationId },
+    });
+
+    assert(rendered.body.trim().length > 0, visualizationId);
+    assertStringIncludes(rendered.body, bodyHeading);
+    assertEquals(rendered.three?.mode, mode);
   }
 });
 
 Deno.test("three visualization signal stays normalized and active", () => {
-  const renderContext = context();
-  const drive = buildVisualizationDrive(renderContext, 48);
-  const signal = driveThreeSignal(renderContext, drive, "lattice");
+  const signal = renderVisualization(context()).three?.signal;
 
+  assert(signal);
   assert(signal.x >= 0 && signal.x <= 1);
   assert(signal.y >= 0 && signal.y <= 1);
   assert(signal.depth >= 0.12 && signal.depth <= 0.98);
@@ -269,14 +243,27 @@ Deno.test("three visualization signal enters pressed state on alarm context", ()
       ...system,
       alerts: [{ severity: "alarm", title: "LIMIT", detail: "fixture" }],
     },
+    slot: { ...slot, visualizationId: "gate-status" },
   });
-  const drive = buildVisualizationDrive(renderContext, 48);
-  assertEquals(driveThreeSignal(renderContext, drive, "gate").pressed, true);
+  const rendered = renderVisualization(renderContext);
+
+  assertEquals(rendered.three?.mode, "gate");
+  assertEquals(rendered.three?.signal.pressed, true);
 });
 
-Deno.test("three visualization mode twist exposes distinct mode biases", () => {
-  assertEquals(modeTwist("lattice"), { phase: 0, speed: 0.12, offset: 0.18, lift: 0.32 });
-  assertEquals(modeTwist("gate"), { phase: 53, speed: 0.12, offset: 0.18, lift: 0.42 });
+Deno.test("three visualization modes project distinct public signals", () => {
+  const lattice = renderVisualization({
+    ...context({ phase: 40 }),
+    slot: { ...slot, visualizationId: "three-lattice" },
+  }).three?.signal;
+  const gate = renderVisualization({
+    ...context({ phase: 40 }),
+    slot: { ...slot, visualizationId: "gate-status" },
+  }).three?.signal;
+
+  assert(lattice);
+  assert(gate);
+  assert(lattice.twist !== gate.twist || lattice.lift !== gate.lift);
 });
 
 Deno.test("workbenchVisualizationRowsInto styles visualization rows and reuses storage", () => {

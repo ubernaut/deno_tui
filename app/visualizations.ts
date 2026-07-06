@@ -716,7 +716,7 @@ const ngePrimitiveSceneModes: Record<string, ThreeSceneMode> = {
 
 type VisualizationRenderFn = (context: RenderContext, descriptor: VisualizationDescriptor) => PanelRender;
 
-const threeSceneVisualizationModes: Record<string, ThreeSceneMode> = {
+const threeSceneVisualizationModes = {
   "three-lattice": "lattice",
   "three-atfield": "atfield",
   "three-hexshell": "hexshell",
@@ -724,21 +724,27 @@ const threeSceneVisualizationModes: Record<string, ThreeSceneMode> = {
   "three-mapslab": "mapslab",
   "three-solenoid": "solenoid",
   "three-ascii-studio": "studio",
-};
+} as const satisfies Record<string, ThreeSceneMode>;
+
+type ThreeSceneVisualizationMode = (typeof threeSceneVisualizationModes)[keyof typeof threeSceneVisualizationModes];
 
 const THREE_FALLBACK_BLOCKS = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"] as const;
 
-export function threeSceneModeLabel(mode: ThreeSceneMode) {
+function threeSceneModeLabel(mode: ThreeSceneMode) {
   return neonThreeSceneModeLabel(mode);
 }
 
-export function appendThreeSceneFooter(footer: string, mode: ThreeSceneMode, width: number): string {
+function appendThreeSceneFooter(footer: string, mode: ThreeSceneMode, width: number): string {
   const suffix = `${threeSceneModeLabel(mode)} PRIMITIVES`;
   if (!footer) return suffix;
   return `${crop(footer, Math.max(0, width - suffix.length - 3))} / ${suffix}`;
 }
 
-export function renderThreeFallbackBody(context: RenderContext, drive: VisualizationDrive, mode: ThreeSceneMode) {
+function renderThreeFallbackBody(
+  context: RenderContext,
+  drive: VisualizationDrive,
+  mode: ThreeSceneVisualizationMode,
+) {
   const width = Math.max(12, context.width);
   const infoLines = [
     crop(
@@ -766,41 +772,13 @@ export function renderThreeFallbackBody(context: RenderContext, drive: Visualiza
         return routeBoard(width, chartHeight, drive, THREE_FALLBACK_BLOCKS);
       case "studio":
         return harmonicField(width, chartHeight, drive, "◆");
-      case "emergency":
-      case "counter":
-      case "relay":
-        return routeBoard(width, chartHeight, drive, [" ", "░", "▒", "▓", "█"]);
-      case "launch":
-      case "gate":
-      case "route":
-        return signalChart(drive.spreadSeries, width, chartHeight, drive.hazard >= 0.78 ? "▓" : "▒");
-      case "harmonic":
-        return harmonicField(width, chartHeight, drive, monitorGlyph(drive, "violet"));
-      case "field":
-        return circularField(width, chartHeight, drive);
-      case "magi":
-      case "angel":
-      case "plug":
-      case "rack":
-      case "heat":
-      case "command":
-        return heatmap(width, chartHeight, drive, THREE_FALLBACK_BLOCKS);
-      case "target":
-        return circularField(width, chartHeight, drive);
-      case "waveform":
-      case "scope":
-      case "biosignal":
-      case "psychograph":
-      case "surveillance":
-      case "topology":
-        return psychograph(width, chartHeight, drive, monitorGlyph(drive, "signal"));
     }
   })();
 
   return [...infoLines, chart].join("\n");
 }
 
-export function driveThreeSignal(
+function driveThreeSignal(
   context: RenderContext,
   drive: VisualizationDrive,
   mode: ThreeSceneMode,
@@ -829,7 +807,7 @@ export function driveThreeSignal(
   };
 }
 
-export function modeTwist(mode: ThreeSceneMode) {
+function modeTwist(mode: ThreeSceneMode) {
   switch (mode) {
     case "lattice":
       return { phase: 0, speed: 0.12, offset: 0.18, lift: 0.32 };
@@ -1210,7 +1188,7 @@ function applyNgePrimitiveScene(context: RenderContext, panel: PanelRender): Pan
   };
 }
 
-function renderThreeScene(context: RenderContext, mode: ThreeSceneMode, accent: Accent): PanelRender {
+function renderThreeScene(context: RenderContext, mode: ThreeSceneVisualizationMode, accent: Accent): PanelRender {
   const drive = buildVisualizationDrive(context, Math.max(32, context.width));
   const severity = drive.hazard >= 0.88 ? "alarm" : drive.hazard >= 0.7 ? "warning" : "info";
   const headerAlert = sceneAlert(context.sources) || driveAlert(drive);
