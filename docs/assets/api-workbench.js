@@ -19363,6 +19363,49 @@ function dataFooterRows(options) {
   return rows2;
 }
 
+// app/styles.ts
+function hexToRgb(hex) {
+  const normalized = hex.replace(/^#/, "");
+  const value = normalized.length === 3 ? expandShortHex(normalized) : normalized;
+  const intValue = Number.parseInt(value, 16);
+  return {
+    r: intValue >> 16 & 255,
+    g: intValue >> 8 & 255,
+    b: intValue & 255
+  };
+}
+function expandShortHex(value) {
+  const r = value[0] ?? "0";
+  const g = value[1] ?? "0";
+  const b = value[2] ?? "0";
+  return `${r}${r}${g}${g}${b}${b}`;
+}
+function makeStyle(options = {}) {
+  const codes = [];
+  if (options.bold) {
+    codes.push("1");
+  }
+  if (options.dim) {
+    codes.push("2");
+  }
+  if (options.inverse) {
+    codes.push("7");
+  }
+  if (options.fg) {
+    const { r, g, b } = hexToRgb(options.fg);
+    codes.push(`38;2;${r};${g};${b}`);
+  }
+  if (options.bg) {
+    const { r, g, b } = hexToRgb(options.bg);
+    codes.push(`48;2;${r};${g};${b}`);
+  }
+  if (codes.length === 0) {
+    return (text) => text;
+  }
+  const prefix = `\x1B[${codes.join(";")}m`;
+  return (text) => `${prefix}${text}\x1B[0m`;
+}
+
 // app/workbench_panels.ts
 function workbenchDemoModalContent(options = {}) {
   const web = options.profile === "web";
@@ -19919,49 +19962,6 @@ function clampMenuIndex2(index, itemCount) {
   const normalized = Number.isFinite(index) ? Math.trunc(index) : 0;
   if (itemCount <= 0) return 0;
   return Math.max(0, Math.min(itemCount - 1, normalized));
-}
-
-// app/styles.ts
-function hexToRgb(hex) {
-  const normalized = hex.replace(/^#/, "");
-  const value = normalized.length === 3 ? expandShortHex(normalized) : normalized;
-  const intValue = Number.parseInt(value, 16);
-  return {
-    r: intValue >> 16 & 255,
-    g: intValue >> 8 & 255,
-    b: intValue & 255
-  };
-}
-function expandShortHex(value) {
-  const r = value[0] ?? "0";
-  const g = value[1] ?? "0";
-  const b = value[2] ?? "0";
-  return `${r}${r}${g}${g}${b}${b}`;
-}
-function makeStyle(options = {}) {
-  const codes = [];
-  if (options.bold) {
-    codes.push("1");
-  }
-  if (options.dim) {
-    codes.push("2");
-  }
-  if (options.inverse) {
-    codes.push("7");
-  }
-  if (options.fg) {
-    const { r, g, b } = hexToRgb(options.fg);
-    codes.push(`38;2;${r};${g};${b}`);
-  }
-  if (options.bg) {
-    const { r, g, b } = hexToRgb(options.bg);
-    codes.push(`48;2;${r};${g};${b}`);
-  }
-  if (codes.length === 0) {
-    return (text) => text;
-  }
-  const prefix = `\x1B[${codes.join(";")}m`;
-  return (text) => `${prefix}${text}\x1B[0m`;
 }
 
 // examples/web/api_workbench_page.ts

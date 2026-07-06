@@ -67,10 +67,14 @@ import {
 } from "../src/app/workbench_terminal.ts";
 import { WorkbenchThreeGridProjectionCache } from "../src/app/workbench_three_grid.ts";
 import {
+  addApiWorkbenchCpuHexTileHits,
   renderApiWorkbenchDataPanel,
   renderApiWorkbenchExplorerPanel,
   renderApiWorkbenchInspectorPanel,
   renderApiWorkbenchLogsPanel,
+  renderApiWorkbenchVisualizationMissing,
+  renderApiWorkbenchVisualizationTextWindow,
+  renderApiWorkbenchVisualizationThreeChrome,
 } from "../app/workbench_panels.ts";
 import { renderApiWorkbenchModalOverlay, renderApiWorkbenchThreeConfigModal } from "../app/api_workbench_modal_view.ts";
 import {
@@ -78,12 +82,6 @@ import {
   renderApiWorkbenchThreeHeader,
   renderApiWorkbenchThreeSurface,
 } from "../app/api_workbench_three_view.ts";
-import {
-  addApiWorkbenchCpuHexTileHits,
-  renderApiWorkbenchVisualizationMissing,
-  renderApiWorkbenchVisualizationTextWindow,
-  renderApiWorkbenchVisualizationThreeChrome,
-} from "../app/api_workbench_visualization_view.ts";
 import {
   ApiWorkbenchWindowShellBufferCache,
   renderApiWorkbenchChromeHeader,

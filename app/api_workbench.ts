@@ -189,11 +189,15 @@ import { makeStyle, requireInteractiveTerminal } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
 import { createWorkbenchThreePanelFrameView, ThreePanelFrameView } from "./three_panel.ts";
 import {
+  addApiWorkbenchCpuHexTileHits,
   explorerTextRowsInto,
   renderApiWorkbenchDataPanel,
   renderApiWorkbenchExplorerPanel,
   renderApiWorkbenchInspectorPanel,
   renderApiWorkbenchLogsPanel,
+  renderApiWorkbenchVisualizationMissing,
+  renderApiWorkbenchVisualizationTextWindow,
+  renderApiWorkbenchVisualizationThreeChrome,
   workbenchDemoModalContent,
   workbenchHelpModalContent,
   workbenchModalConfirmedContent,
@@ -297,12 +301,6 @@ import {
   renderApiWorkbenchThreeHeader,
   renderApiWorkbenchThreeSurface,
 } from "./api_workbench_three_view.ts";
-import {
-  addApiWorkbenchCpuHexTileHits,
-  renderApiWorkbenchVisualizationMissing,
-  renderApiWorkbenchVisualizationTextWindow,
-  renderApiWorkbenchVisualizationThreeChrome,
-} from "./api_workbench_visualization_view.ts";
 import {
   type ApiWorkbenchDropdownOverlay,
   ApiWorkbenchWindowShellBufferCache,
