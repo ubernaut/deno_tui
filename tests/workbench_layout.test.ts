@@ -21,6 +21,7 @@ import {
   DEFAULT_WORKBENCH_FULL_REPAINT_INTERVAL_MS,
   DEFAULT_WORKBENCH_RESIZE_REPAINT_WINDOW_MS,
   normalizeWorkbenchFullRepaintInterval,
+  readWorkbenchVerifiedConsoleSize,
   syncWorkbenchTerminalSize,
   WorkbenchFullRepaintPolicy,
   workbenchScreenHeight,
@@ -568,6 +569,33 @@ Deno.test("syncWorkbenchTerminalSize keeps current size when reading fails", () 
   assertEquals(result.size, { columns: 80, rows: 24 });
   assertEquals(result.error instanceof Error, true);
   assertEquals(target.writes, 0);
+});
+
+Deno.test("readWorkbenchVerifiedConsoleSize prefers verified stty dimensions over stale console size", () => {
+  assertEquals(
+    readWorkbenchVerifiedConsoleSize({
+      consoleSize: () => ({ columns: 100, rows: 30 }),
+      sttySize: () => ({ columns: 180, rows: 50 }),
+      now: () => 1_000,
+      cacheMs: 0,
+    }),
+    { columns: 180, rows: 50 },
+  );
+});
+
+Deno.test("syncWorkbenchTerminalSize can use verified dimensions for resize polling", () => {
+  const target = fakeSizeTarget({ columns: 100, rows: 30 });
+  const result = syncWorkbenchTerminalSize(target, () =>
+    readWorkbenchVerifiedConsoleSize({
+      consoleSize: () => ({ columns: 100, rows: 30 }),
+      sttySize: () => ({ columns: 180, rows: 50 }),
+      now: () => 2_000,
+      cacheMs: 0,
+    }));
+
+  assertEquals(result, { changed: true, size: { columns: 180, rows: 50 } });
+  assertEquals(target.peek(), { columns: 180, rows: 50 });
+  assertEquals(target.writes, 1);
 });
 
 Deno.test("workbench screen dimension helpers clamp invalid rectangles", () => {

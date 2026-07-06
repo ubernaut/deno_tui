@@ -29,6 +29,15 @@ export interface WorkbenchScreenSizeSyncResult {
 /** Reads the current host terminal size. */
 export type WorkbenchConsoleSizeReader = () => ConsoleSize;
 
+export interface WorkbenchVerifiedConsoleSizeReaderOptions {
+  consoleSize?: WorkbenchConsoleSizeReader;
+  sttySize?: () => ConsoleSize | undefined;
+  now?: () => number;
+  cacheMs?: number;
+}
+
+let cachedVerifiedSttySize: { size: ConsoleSize; readAt: number } | undefined;
+
 /** Tracks when a retained full-screen renderer should drop its diff cache and repaint all rows. */
 export class WorkbenchFullRepaintPolicy {
   readonly intervalMs: number;
@@ -95,6 +104,31 @@ export function syncWorkbenchTerminalSize(
   }
 }
 
+/**
+ * Reads terminal dimensions with a short-lived stty verification pass.
+ *
+ * Deno.consoleSize can lag or report the parent pseudo-terminal size under
+ * some SSH/tmux resize paths. The workbench has its own fast resize poller, so
+ * it needs to use the same verified source as the base TUI runtime instead of
+ * snapping the canvas back to a stale consoleSize reading.
+ */
+export function readWorkbenchVerifiedConsoleSize(
+  options: WorkbenchVerifiedConsoleSizeReaderOptions = {},
+): ConsoleSize {
+  const consoleSize = normalizeWorkbenchScreenRepaintSize((options.consoleSize ?? (() => Deno.consoleSize()))());
+  const now = options.now?.() ?? performance.now();
+  const cacheMs = Math.max(0, Math.floor(options.cacheMs ?? 250));
+  const cached = cachedVerifiedSttySize;
+  if (cached && now - cached.readAt <= cacheMs) return cached.size;
+
+  const sttySize = normalizeOptionalWorkbenchScreenRepaintSize(
+    (options.sttySize ?? readWorkbenchSttyConsoleSize)(),
+  );
+  if (!sttySize) return consoleSize;
+  cachedVerifiedSttySize = { size: sttySize, readAt: now };
+  return sttySize;
+}
+
 /** Returns the current workbench width from a rectangle-like signal, clamped for rendering. */
 export function workbenchScreenWidth(rectangle: Pick<Rectangle, "width">): number {
   return Math.max(1, Math.floor(rectangle.width));
@@ -110,4 +144,32 @@ function normalizeWorkbenchScreenRepaintSize(size: ConsoleSize): ConsoleSize {
     columns: Math.max(1, Math.floor(size.columns)),
     rows: Math.max(1, Math.floor(size.rows)),
   };
+}
+
+function normalizeOptionalWorkbenchScreenRepaintSize(size: ConsoleSize | undefined): ConsoleSize | undefined {
+  if (!size) return undefined;
+  return normalizeWorkbenchScreenRepaintSize(size);
+}
+
+function readWorkbenchSttyConsoleSize(): ConsoleSize | undefined {
+  if (Deno.build.os === "windows") return undefined;
+  try {
+    const permission = Deno.permissions.querySync({ name: "run", command: "stty" });
+    if (permission.state !== "granted") return undefined;
+    const output = new Deno.Command("stty", {
+      args: ["size"],
+      stdin: "inherit",
+      stdout: "piped",
+      stderr: "null",
+    }).outputSync();
+    if (!output.success) return undefined;
+    const text = new TextDecoder().decode(output.stdout).trim();
+    const [rowsText, columnsText] = text.split(/\s+/, 2);
+    const rows = Number.parseInt(rowsText ?? "", 10);
+    const columns = Number.parseInt(columnsText ?? "", 10);
+    if (!Number.isFinite(rows) || !Number.isFinite(columns) || rows <= 0 || columns <= 0) return undefined;
+    return { columns, rows };
+  } catch {
+    return undefined;
+  }
 }

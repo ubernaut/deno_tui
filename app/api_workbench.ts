@@ -101,7 +101,11 @@ import {
   apiWorkbenchWorkspaceStorageOptions,
   createApiWorkbenchWorkspaceStore,
 } from "../src/app/workbench_workspace_menu.ts";
-import { syncWorkbenchTerminalSize, WorkbenchFullRepaintPolicy } from "../src/app/workbench_repaint_policy.ts";
+import {
+  readWorkbenchVerifiedConsoleSize,
+  syncWorkbenchTerminalSize,
+  WorkbenchFullRepaintPolicy,
+} from "../src/app/workbench_repaint_policy.ts";
 import { WorkbenchThreeCadenceMeter, WorkbenchThreeOverlayPressureGate } from "../src/app/workbench_three_runtime.ts";
 import {
   createWorkbenchThreeWindowState,
@@ -4734,7 +4738,7 @@ function currentHeight(): number {
 }
 
 function syncTerminalSize(): boolean {
-  const result = syncWorkbenchTerminalSize(tui.canvas.size);
+  const result = syncWorkbenchTerminalSize(tui.canvas.size, readWorkbenchVerifiedConsoleSize);
   const observed = repaintPolicy.inspectScreenSize(tui.canvas.size.peek());
   if (!result.changed && !observed.changed) return false;
   screenPainter.clearScreen();
