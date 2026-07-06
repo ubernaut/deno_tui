@@ -18,19 +18,17 @@ import {
   ThreeAsciiDeferredReadbackQueue,
 } from "./deferred_readback.ts";
 import {
-  encodeThreeAsciiComputeDispatchCommands,
-  ThreeAsciiComputeDispatchPlanCache,
-  type ThreeAsciiComputeDispatchPlanInput,
-  type ThreeAsciiComputeDispatchResources,
-} from "./compute_plan.ts";
-import {
   applyThreeAsciiComputeResourcePlanState,
   createThreeAsciiComputeBindGroups,
   createThreeAsciiComputePipeline,
   createThreeAsciiComputeResourcePlan,
   destroyThreeAsciiGpuBufferSlot,
+  encodeThreeAsciiComputeDispatchCommands,
   ensureThreeAsciiGpuBufferSlot,
   THREE_ASCII_UNIFORM_FLOAT_COUNT,
+  ThreeAsciiComputeDispatchPlanCache,
+  type ThreeAsciiComputeDispatchPlanInput,
+  type ThreeAsciiComputeDispatchResources,
   type ThreeAsciiComputeResourcePlanInput,
   type ThreeAsciiGpuBufferSlot,
   writeThreeAsciiUniformValues,

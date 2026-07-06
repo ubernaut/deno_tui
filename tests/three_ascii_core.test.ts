@@ -31,18 +31,16 @@ import {
   ThreeAsciiAnsiColorKeyCache,
 } from "../src/three_ascii/colors.ts";
 import {
-  createThreeAsciiComputeDispatchPlan,
-  encodeThreeAsciiComputeDispatchCommands,
-  ThreeAsciiComputeDispatchPlanCache,
-} from "../src/three_ascii/compute_plan.ts";
-import {
   applyThreeAsciiComputeResourcePlanState,
   createThreeAsciiComputeBindGroups,
+  createThreeAsciiComputeDispatchPlan,
   createThreeAsciiComputePipeline,
   createThreeAsciiComputeResourcePlan,
   destroyThreeAsciiGpuBufferSlot,
+  encodeThreeAsciiComputeDispatchCommands,
   ensureThreeAsciiGpuBufferSlot,
   THREE_ASCII_UNIFORM_FLOAT_COUNT,
+  ThreeAsciiComputeDispatchPlanCache,
   type ThreeAsciiGpuBuffer,
   type ThreeAsciiGpuBufferDevice,
   writeThreeAsciiUniformValues,
