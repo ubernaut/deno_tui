@@ -114,7 +114,11 @@ import {
 import { renderApiWorkbenchButtonRow } from "../../app/api_workbench_button_row_view.ts";
 import { renderApiWorkbenchHtmlCssLayout } from "../../app/html_css_layout_view.ts";
 import {
+  type ApiWorkbenchDropdownOverlay,
+  renderApiWorkbenchChromeHeader,
+  renderApiWorkbenchDropdownOverlay,
   renderApiWorkbenchShelf,
+  renderApiWorkbenchStatus,
   renderApiWorkbenchWindowTabs,
   renderApiWorkbenchWindowTitlebar,
 } from "../../app/api_workbench_window_view.ts";
@@ -122,12 +126,6 @@ import {
   renderApiWorkbenchTerminalSessionTabs,
   renderApiWorkbenchTerminalShellToolbar,
 } from "../../app/api_workbench_terminal_shell_view.ts";
-import {
-  type ApiWorkbenchDropdownOverlay,
-  renderApiWorkbenchChromeHeader,
-  renderApiWorkbenchDropdownOverlay,
-  renderApiWorkbenchStatus,
-} from "../../app/api_workbench_chrome_view.ts";
 import {
   renderApiWorkbenchModalOverlay,
   renderApiWorkbenchThreeConfigModal,

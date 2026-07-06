@@ -283,12 +283,6 @@ import {
 } from "./workbench_synthetic.ts";
 import type { ComputedLayoutBox } from "../src/layout/mod.ts";
 import {
-  type ApiWorkbenchDropdownOverlay,
-  renderApiWorkbenchChromeHeader,
-  renderApiWorkbenchDropdownOverlay,
-  renderApiWorkbenchStatus,
-} from "./api_workbench_chrome_view.ts";
-import {
   renderApiWorkbenchTerminalOutputBody,
   renderApiWorkbenchTerminalOutputToolbar,
   renderApiWorkbenchTerminalSessionTabs,
@@ -310,8 +304,12 @@ import {
   renderApiWorkbenchVisualizationThreeChrome,
 } from "./api_workbench_visualization_view.ts";
 import {
+  type ApiWorkbenchDropdownOverlay,
   ApiWorkbenchWindowShellBufferCache,
+  renderApiWorkbenchChromeHeader,
+  renderApiWorkbenchDropdownOverlay,
   renderApiWorkbenchShelf,
+  renderApiWorkbenchStatus,
   renderApiWorkbenchWindowFrame,
   renderApiWorkbenchWindowShell,
   renderApiWorkbenchWindowTabs,

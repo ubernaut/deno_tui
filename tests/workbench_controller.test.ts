@@ -72,11 +72,6 @@ import {
   renderApiWorkbenchInspectorPanel,
   renderApiWorkbenchLogsPanel,
 } from "../app/workbench_panels.ts";
-import {
-  renderApiWorkbenchChromeHeader,
-  renderApiWorkbenchDropdownOverlay,
-  renderApiWorkbenchStatus,
-} from "../app/api_workbench_chrome_view.ts";
 import { renderApiWorkbenchModalOverlay, renderApiWorkbenchThreeConfigModal } from "../app/api_workbench_modal_view.ts";
 import {
   renderApiWorkbenchThreeFallback,
@@ -91,7 +86,10 @@ import {
 } from "../app/api_workbench_visualization_view.ts";
 import {
   ApiWorkbenchWindowShellBufferCache,
+  renderApiWorkbenchChromeHeader,
+  renderApiWorkbenchDropdownOverlay,
   renderApiWorkbenchShelf,
+  renderApiWorkbenchStatus,
   renderApiWorkbenchWindowShell,
   renderApiWorkbenchWindowTabs,
 } from "../app/api_workbench_window_view.ts";
