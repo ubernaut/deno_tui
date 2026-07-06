@@ -1122,44 +1122,6 @@ function clampAnsiByte(value) {
   return Math.max(0, Math.min(255, Math.round(value)));
 }
 
-// src/theme_core.ts
-function mergeComponentThemeDefinitionCore(base = {}, extension = {}) {
-  const variants = { ...base.variants ?? {} };
-  for (const [name, variant] of Object.entries(extension.variants ?? {})) {
-    variants[name] = {
-      ...variants[name] ?? {},
-      ...variant
-    };
-  }
-  return {
-    extends: mergeThemeExtends(base.extends, extension.extends),
-    base: {
-      ...base.base ?? {},
-      ...extension.base ?? {}
-    },
-    variants
-  };
-}
-function composeThemeOptionsCore(...options) {
-  const tokens = {};
-  const components = {};
-  for (const option of options) {
-    Object.assign(tokens, option.tokens ?? {});
-    for (const [name, definition] of Object.entries(option.components ?? {})) {
-      components[name] = mergeComponentThemeDefinitionCore(components[name], definition);
-    }
-  }
-  return { tokens, components };
-}
-function mergeThemeExtends(base, extension) {
-  const names = [...normalizeThemeExtends(base), ...normalizeThemeExtends(extension)];
-  return names.length === 0 ? void 0 : [...new Set(names)];
-}
-function normalizeThemeExtends(value) {
-  if (value === void 0) return [];
-  return typeof value === "string" ? [value] : [...value];
-}
-
 // src/theme.ts
 function createAnsiStyle2(spec) {
   return createAnsiStyle(spec);
@@ -1197,6 +1159,42 @@ var themePalettesInternal = {
     surface: emptyStyle
   }
 };
+function mergeComponentThemeDefinitionCore(base = {}, extension = {}) {
+  const variants = { ...base.variants ?? {} };
+  for (const [name, variant] of Object.entries(extension.variants ?? {})) {
+    variants[name] = {
+      ...variants[name] ?? {},
+      ...variant
+    };
+  }
+  return {
+    extends: mergeThemeExtends(base.extends, extension.extends),
+    base: {
+      ...base.base ?? {},
+      ...extension.base ?? {}
+    },
+    variants
+  };
+}
+function composeThemeOptionsCore(...options) {
+  const tokens = {};
+  const components = {};
+  for (const option of options) {
+    Object.assign(tokens, option.tokens ?? {});
+    for (const [name, definition] of Object.entries(option.components ?? {})) {
+      components[name] = mergeComponentThemeDefinitionCore(components[name], definition);
+    }
+  }
+  return { tokens, components };
+}
+function mergeThemeExtends(base, extension) {
+  const names = [...normalizeThemeExtends(base), ...normalizeThemeExtends(extension)];
+  return names.length === 0 ? void 0 : [...new Set(names)];
+}
+function normalizeThemeExtends(value) {
+  if (value === void 0) return [];
+  return typeof value === "string" ? [value] : [...value];
+}
 function composeThemeOptions(...options) {
   return composeThemeOptionsCore(...options);
 }

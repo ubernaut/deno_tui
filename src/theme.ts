@@ -13,16 +13,6 @@ import {
   replaceEmptyStyle as replaceEmptyStyleInternal,
   type Style as StyleInternal,
 } from "./theme_ansi.ts";
-import {
-  composeStylesCore,
-  composeThemeOptionsCore,
-  createThemeCore,
-  hierarchizeThemeCore,
-  mergeComponentThemeDefinitionCore,
-  normalizeThemeExtends,
-  resolveThemeStateDefinitionCore,
-  resolveThemeStyleReferenceCore,
-} from "./theme_core.ts";
 /** Function that's supposed to return styled text given string as parameter */
 export type Style = StyleInternal;
 
@@ -57,6 +47,23 @@ export type AnsiThemeTokenSpecs = Partial<Record<ThemeTokenName, AnsiStyleSpec>>
 /** Creates an ansi Theme Tokens. */
 export function createAnsiThemeTokens(specs: AnsiThemeTokenSpecs): Partial<ThemeTokens> {
   return createAnsiStyleMap(specs) as Partial<ThemeTokens>;
+}
+
+function hierarchizeThemeCore(input: Partial<Theme> = {}): Theme {
+  input.base ??= emptyStyleInternal;
+  input.disabled ??= input.base;
+  input.focused ??= input.base;
+  input.active ??= input.focused;
+
+  const output = input as Theme & Record<string, Theme>;
+  for (const key in output) {
+    if (key === "base" || key === "focused" || key === "active" || key === "disabled" || output === output[key]) {
+      continue;
+    }
+    output[key] = hierarchizeThemeCore(output[key]);
+  }
+
+  return output;
 }
 
 /** Applies default values to properties (lower one hierarchy or `emptyStyle`) that aren't set */
@@ -128,6 +135,25 @@ export interface ThemeManifestOptions {
 /** Creates an theme. */
 export function createTheme(tokens: Partial<ThemeTokens> = {}): Theme & { tokens: ThemeTokens } {
   return createThemeCore(tokens);
+}
+
+function createThemeCore(tokens: Partial<ThemeTokens> = {}): Theme & { tokens: ThemeTokens } {
+  const fallback = tokens.foreground ?? emptyStyleInternal;
+  return {
+    base: fallback,
+    focused: tokens.accent ?? fallback,
+    active: tokens.success ?? tokens.accent ?? fallback,
+    disabled: tokens.muted ?? fallback,
+    tokens: {
+      foreground: fallback,
+      muted: tokens.muted ?? fallback,
+      accent: tokens.accent ?? fallback,
+      success: tokens.success ?? fallback,
+      warning: tokens.warning ?? fallback,
+      danger: tokens.danger ?? fallback,
+      surface: tokens.surface ?? emptyStyleInternal,
+    },
+  };
 }
 
 /** Public type alias for a theme State. */
@@ -591,6 +617,103 @@ function themePaletteIdInternal(palette: ThemePaletteReference): string {
 
 function titleCaseThemePaletteId(value: string): string {
   return value.replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function mergeComponentThemeDefinitionCore(
+  base: ComponentThemeDefinition = {},
+  extension: ComponentThemeDefinition = {},
+): ComponentThemeDefinition {
+  const variants = { ...(base.variants ?? {}) };
+  for (const [name, variant] of Object.entries(extension.variants ?? {})) {
+    variants[name] = {
+      ...(variants[name] ?? {}),
+      ...variant,
+    };
+  }
+
+  return {
+    extends: mergeThemeExtends(base.extends, extension.extends),
+    base: {
+      ...(base.base ?? {}),
+      ...(extension.base ?? {}),
+    },
+    variants,
+  };
+}
+
+function composeStylesCore(...styles: Style[]): Style {
+  let first: Style | undefined;
+  let active: Style[] | undefined;
+  for (const style of styles) {
+    if (style === emptyStyleInternal) continue;
+    if (!first) {
+      first = style;
+    } else {
+      active ??= [first];
+      active.push(style);
+    }
+  }
+  if (!first) return emptyStyleInternal;
+  if (!active) return first;
+  return (value) => {
+    let output = value;
+    for (let index = 0; index < active.length; index += 1) {
+      output = active[index]!(output);
+    }
+    return output;
+  };
+}
+
+function resolveThemeStyleReferenceCore(reference: ThemeStyleReference, tokens: ThemeTokens): Style {
+  if (isThemeStyleReferencePipeline(reference)) {
+    return composeStylesCore(...reference.map((part) => resolveThemeStyleReferenceCore(part, tokens)));
+  }
+  return typeof reference === "string" ? tokens[reference] : reference;
+}
+
+function resolveThemeStateDefinitionCore(
+  definition: ThemeStateDefinition = {},
+  tokens: ThemeTokens,
+): Partial<Theme> {
+  const resolved: Partial<Theme> = {};
+  for (const [state, reference] of Object.entries(definition) as [ThemeState, ThemeStyleReference][]) {
+    if (reference === undefined) continue;
+    resolved[state] = resolveThemeStyleReferenceCore(reference, tokens);
+  }
+  return resolved;
+}
+
+function composeThemeOptionsCore(...options: ThemeEngineOptions[]): ThemeEngineOptions {
+  const tokens: Partial<ThemeTokens> = {};
+  const components: Record<string, ComponentThemeDefinition> = {};
+
+  for (const option of options) {
+    Object.assign(tokens, option.tokens ?? {});
+    for (const [name, definition] of Object.entries(option.components ?? {})) {
+      components[name] = mergeComponentThemeDefinitionCore(components[name], definition);
+    }
+  }
+
+  return { tokens, components };
+}
+
+function mergeThemeExtends(
+  base: string | readonly string[] | undefined,
+  extension: string | readonly string[] | undefined,
+): string | readonly string[] | undefined {
+  const names = [...normalizeThemeExtends(base), ...normalizeThemeExtends(extension)];
+  return names.length === 0 ? undefined : [...new Set(names)];
+}
+
+function normalizeThemeExtends(value: string | readonly string[] | undefined): string[] {
+  if (value === undefined) return [];
+  return typeof value === "string" ? [value] : [...value];
+}
+
+function isThemeStyleReferencePipeline(
+  reference: ThemeStyleReference,
+): reference is readonly ThemeStyleReference[] {
+  return Array.isArray(reference);
 }
 
 /** Public helper for merge Component Theme Definition. */
