@@ -14,13 +14,13 @@ export interface WorkbenchVisualizationWindowOption {
 }
 
 /** Content dimensions for a rendered visualization panel inside a scrollable workbench window. */
-export interface WorkbenchVisualizationContentSize {
+interface WorkbenchVisualizationContentSize {
   width: number;
   height: number;
 }
 
 /** Minimal color tokens needed to format the built-in Three fallback rows. */
-export interface WorkbenchThreeFallbackTheme {
+interface WorkbenchThreeFallbackTheme {
   buttonActiveText: string;
   buttonActiveBg: string;
   accent: string;
@@ -31,7 +31,7 @@ export interface WorkbenchThreeFallbackTheme {
 }
 
 /** Minimal theme tokens needed to style generic visualization text rows. */
-export interface WorkbenchVisualizationRowsTheme {
+interface WorkbenchVisualizationRowsTheme {
   background: string;
   danger: string;
   muted: string;
@@ -43,7 +43,7 @@ export interface WorkbenchVisualizationRowsTheme {
 }
 
 /** Options for building the built-in Three ASCII fallback rows. */
-export interface WorkbenchThreeFallbackRowsOptions {
+interface WorkbenchThreeFallbackRowsOptions {
   width: number;
   height: number;
   terminalGlyphStyle: AsciiOptions["terminalGlyphStyle"];
@@ -53,13 +53,13 @@ export interface WorkbenchThreeFallbackRowsOptions {
 }
 
 /** Minimal theme tokens needed to style transient Three renderer status rows. */
-export interface WorkbenchThreeStatusRowsTheme {
+interface WorkbenchThreeStatusRowsTheme {
   surface: string;
   warn: string;
 }
 
 /** Options for building centered transient Three renderer status rows. */
-export interface WorkbenchThreeStatusRowsOptions {
+interface WorkbenchThreeStatusRowsOptions {
   width: number;
   height: number;
   message: string;
@@ -68,7 +68,7 @@ export interface WorkbenchThreeStatusRowsOptions {
 }
 
 /** Options for projecting the browser workbench Three preview rows. */
-export interface WorkbenchThreePreviewRowsOptions {
+interface WorkbenchThreePreviewRowsOptions {
   width: number;
   height: number;
   phase: number;
@@ -78,7 +78,7 @@ export interface WorkbenchThreePreviewRowsOptions {
   orbRows?: string[];
 }
 
-export const WORKBENCH_THREE_FALLBACK_BODY: readonly string[] = [
+const WORKBENCH_THREE_FALLBACK_BODY: readonly string[] = [
   "         .-=========-.         ",
   "      .-#%%%@@@@@@%%%#-.       ",
   "    .+%%@*=-.     .-=*@%+.     ",
@@ -90,16 +90,8 @@ export const WORKBENCH_THREE_FALLBACK_BODY: readonly string[] = [
   "         `-=========-'         ",
 ] as const;
 
-/** Builds the rows shown for text-rendered visualization windows. */
-export function visualizationWindowRows(
-  option: WorkbenchVisualizationWindowOption,
-  rendered: PanelRender,
-): string[] {
-  return visualizationWindowRowsInto([], option, rendered);
-}
-
 /** Builds visualization rows into caller-owned storage. */
-export function visualizationWindowRowsInto(
+function visualizationWindowRowsInto(
   target: string[],
   option: WorkbenchVisualizationWindowOption,
   rendered: PanelRender,
@@ -282,7 +274,7 @@ export function workbenchThreePreviewRowsInto(
 }
 
 /** Maps tile-density state into the web Three preview renderer mode label. */
-export function workbenchThreePreviewMode(tileDensity: number): string {
+function workbenchThreePreviewMode(tileDensity: number): string {
   return ["BLOCKS", "GLYPHS", "MIXED"][Math.abs(Math.trunc(tileDensity)) % 3] ?? "MIXED";
 }
 

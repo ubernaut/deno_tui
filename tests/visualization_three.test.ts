@@ -17,14 +17,10 @@ import {
   threeRendererModeLabel,
   visualizationTextContentSize,
   visualizationThreeStatusLine,
-  visualizationWindowRows,
-  visualizationWindowRowsInto,
   workbenchThreeFallbackRowsInto,
-  workbenchThreePreviewMode,
   workbenchThreePreviewRowsInto,
   workbenchThreeStatusRowsInto,
   workbenchVisualizationRowsInto,
-  type WorkbenchVisualizationRowsTheme,
   type WorkbenchVisualizationWindowOption,
 } from "../app/workbench_visualization_window.ts";
 import { studioCameraFramingForAspect } from "../app/neon_three.ts";
@@ -153,7 +149,7 @@ const rowTheme = {
   surface: "#101018",
 };
 
-const visualizationTheme: WorkbenchVisualizationRowsTheme = {
+const visualizationTheme = {
   background: "#000000",
   danger: "#ff3366",
   muted: "#887799",
@@ -284,34 +280,6 @@ Deno.test("three visualization mode twist exposes distinct mode biases", () => {
   assertEquals(modeTwist("gate"), { phase: 53, speed: 0.12, offset: 0.18, lift: 0.42 });
 });
 
-Deno.test("visualizationWindowRows assembles title description body and footer", () => {
-  assertEquals(visualizationWindowRows(windowOption, windowRender), [
-    " MONITOR · Hex Grid ",
-    "core utilization topology",
-    "core 0  12%",
-    "core 1  95%      ",
-    "selected cpu-1",
-  ]);
-  assertEquals(
-    visualizationWindowRows(windowOption, { ...windowRender, alert: "thermal warning" })[1],
-    "! thermal warning",
-  );
-});
-
-Deno.test("visualizationWindowRowsInto reuses caller storage", () => {
-  const target = ["stale", "rows"];
-  const rows = visualizationWindowRowsInto(target, windowOption, windowRender);
-
-  assertEquals(rows, target);
-  assertEquals(rows, [
-    " MONITOR · Hex Grid ",
-    "core utilization topology",
-    "core 0  12%",
-    "core 1  95%      ",
-    "selected cpu-1",
-  ]);
-});
-
 Deno.test("workbenchVisualizationRowsInto styles visualization rows and reuses storage", () => {
   const target: RowStyle[] = [{ text: "stale", fg: "x", bg: "y", bold: false }];
   const firstRow = target[0];
@@ -342,7 +310,11 @@ Deno.test("workbenchVisualizationRowsInto styles visualization rows and reuses s
 });
 
 Deno.test("workbenchVisualizationRowsInto maps alarm and info severity", () => {
-  const alarm = workbenchVisualizationRowsInto([], [], windowOption, { ...windowRender, severity: "alarm" }, {
+  const alarm = workbenchVisualizationRowsInto([], [], windowOption, {
+    ...windowRender,
+    alert: "thermal warning",
+    severity: "alarm",
+  }, {
     accent: "#9cff3a",
     theme: visualizationTheme,
     contrast: () => "#000000",
@@ -353,7 +325,7 @@ Deno.test("workbenchVisualizationRowsInto maps alarm and info severity", () => {
     contrast: () => "#000000",
   });
 
-  assertEquals(alarm[1], { text: "core utilization topology", fg: "#ff3366", bg: "#101018", bold: true });
+  assertEquals(alarm[1], { text: "! thermal warning", fg: "#ff3366", bg: "#101018", bold: true });
   assertEquals(info[1], { text: "core utilization topology", fg: "#c7b8ff", bg: "#101018", bold: false });
 });
 
@@ -480,8 +452,18 @@ Deno.test("workbenchThreePreviewRowsInto clips to short panes and reuses orb sto
   });
 
   assertEquals(rows.length, 4);
-  assertEquals(workbenchThreePreviewMode(-1), "GLYPHS");
-  assertEquals(workbenchThreePreviewMode(3), "BLOCKS");
+  assertEquals(rows[0], " ACEROLA THREE ASCII · GLYPHS · WEB SAFE PREVIEW ");
+  assertEquals(
+    workbenchThreePreviewRowsInto([], {
+      width: 10,
+      height: 4,
+      phase: 0,
+      tileDensity: 3,
+      themeLabel: "Signal",
+      orbRows: [],
+    })[0],
+    " ACEROLA THREE ASCII · BLOCKS · WEB SAFE PREVIEW ",
+  );
   assertEquals(orbRows[0] === firstOrb, false);
   assertEquals(orbRows.length, 3);
 });
