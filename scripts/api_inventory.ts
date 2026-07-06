@@ -89,6 +89,8 @@ export interface ApiInventoryBaseline {
   symbols: ApiInventorySymbolChange[];
 }
 
+export const apiStabilityTiers: readonly ApiStabilityTier[] = ["stable", "beta", "experimental", "internal"];
+
 export function parseApiExports(source: string, module: string): ApiExportDeclaration[] {
   const exports: ApiExportDeclaration[] = [];
   const declarationPattern = /export\s+(?:(type)\s+)?(?:(\*)|\{([\s\S]*?)\})\s+from\s+["']([^"']+)["'];?/g;
@@ -327,7 +329,7 @@ export function formatApiInventoryDiff(diff: ApiInventoryDiff): string {
   ) {
     lines.push("", `## ${section.title}`, "");
     let wroteAny = false;
-    for (const tier of stabilityTiers()) {
+    for (const tier of apiStabilityTiers) {
       const symbols = section.grouped[tier];
       if (symbols.length === 0) continue;
       wroteAny = true;
@@ -428,10 +430,6 @@ function emptyStabilityGroups(): Record<ApiStabilityTier, ApiInventorySymbolChan
     experimental: [],
     internal: [],
   };
-}
-
-function stabilityTiers(): ApiStabilityTier[] {
-  return ["stable", "beta", "experimental", "internal"];
 }
 
 function compareSymbolChanges(left: ApiInventorySymbolChange, right: ApiInventorySymbolChange): number {

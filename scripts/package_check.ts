@@ -1,5 +1,5 @@
 import { type ApiStabilityTier, type PackageEntrypointManifest, packageEntrypoints } from "../src/api_stability.ts";
-import { createApiInventory } from "./api_inventory.ts";
+import { apiStabilityTiers, createApiInventory } from "./api_inventory.ts";
 
 export interface PackageExportValidation {
   ok: boolean;
@@ -111,7 +111,7 @@ export function formatPackageExportValidation(validation: PackageExportValidatio
   for (const path of validation.missingFiles) {
     lines.push(`missing file: ${path}`);
   }
-  for (const tier of stabilityTiers()) {
+  for (const tier of apiStabilityTiers) {
     const tierValidation = validation.byStability[tier];
     lines.push(`${tier}: ${tierValidation.ok ? "ok" : "drift"}`);
     for (const specifier of tierValidation.missingExports) {
@@ -242,10 +242,6 @@ function emptyStabilityValidation(): Record<ApiStabilityTier, PackageExportStabi
     experimental: { stability: "experimental", ok: true, missingExports: [], mismatchedExports: [], missingFiles: [] },
     internal: { stability: "internal", ok: true, missingExports: [], mismatchedExports: [], missingFiles: [] },
   };
-}
-
-function stabilityTiers(): ApiStabilityTier[] {
-  return ["stable", "beta", "experimental", "internal"];
 }
 
 function normalizeExports(exportsValue: PackageConfig["exports"]): Map<string, string> {
