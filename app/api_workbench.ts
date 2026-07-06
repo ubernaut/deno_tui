@@ -24,9 +24,7 @@ import {
   formatWorkbenchDiagnosticStatus,
   HitTargetStack,
   initialWorkbenchDiagnosticLogRows,
-  inset,
   isWorkbenchVisualizationWindowId,
-  layoutWorkbenchTitlebarInto,
   loadWorkbenchWorkspaceStorage,
   persistWorkbenchWorkspaceStorage,
   prepareWorkbenchFrame,
@@ -45,11 +43,9 @@ import {
   WorkbenchAnsiScreenPainter,
   workbenchBuiltInWindowTogglePlan,
   type WorkbenchButtonTone,
-  workbenchContentViewport,
   type WorkbenchDropdownOverlayRenderCommand,
   workbenchEmptyWorkspaceMessage,
   type WorkbenchFrame,
-  type WorkbenchFrameBoxLine,
   workbenchFullscreenWindowRect,
   type WorkbenchHeaderLayout,
   type WorkbenchMenuBarHitLayout,
@@ -58,7 +54,6 @@ import {
   workbenchTerminalOutputRowsInto,
   type WorkbenchTerminalOutputToolbarAction,
   type WorkbenchTerminalOutputWindowRow,
-  workbenchTitlebarButtonRenderCommandsInto,
   workbenchVisibleWindowRectsInto,
   workbenchVisualizationWindowId,
   workbenchVisualizationWindowRegistrationPlan,
@@ -66,7 +61,6 @@ import {
   type WorkbenchWindowOption,
   workbenchWindowOptionMenuLabelsInto,
   workbenchWindowOptionTogglePlan,
-  workbenchWindowScrollbarRenderCommandsInto,
   type WorkbenchWorkspace,
   workbenchWorkspaceScrollbarRenderCommandsInto,
   WorkbenchWorkspaceViewportController,
@@ -140,7 +134,6 @@ import {
   WorkbenchModalBufferCache,
   WorkbenchTerminalBufferCache,
   WorkbenchTerminalSessionTabBufferCache,
-  WorkbenchTitlebarBufferCache,
 } from "../src/app/workbench_buffers.ts";
 import { maxTextWidth, type VisibleMenuSlice } from "../src/app/workbench_text.ts";
 import {
@@ -247,10 +240,6 @@ import {
   formatWorkbenchKittyGraphicsStatus,
   WorkbenchKittyGraphicsController,
 } from "../src/runtime/graphics_surface.ts";
-import {
-  type WorkbenchFrameRenderCommand,
-  workbenchFrameRenderCommandsInto,
-} from "../src/app/workbench_frame_render.ts";
 import { WorkbenchFramePainter } from "../src/app/workbench_row_render.ts";
 import { type RowStyle, type ThreeHeaderPerformance } from "../src/app/workbench_rows.ts";
 import { shouldCountWorkbenchThreeGridPressure } from "../src/app/workbench_three_terminal_pressure.ts";
@@ -337,6 +326,11 @@ import {
   renderApiWorkbenchThreeGridOrResizePlaceholder,
   renderApiWorkbenchThreeHeader,
 } from "./api_workbench_three_view.ts";
+import {
+  ApiWorkbenchWindowShellBufferCache,
+  renderApiWorkbenchWindowFrame,
+  renderApiWorkbenchWindowShell,
+} from "./api_workbench_window_view.ts";
 
 type BuiltInWindowId = ApiWorkbenchBuiltInWindowId;
 type VisualizationWindowId = `viz:${string}`;
@@ -583,7 +577,6 @@ const hitTargets = new HitTargetStack<HitAction>();
 const screenFrame: Frame = [];
 const workspaceVirtualFrame: Frame = [];
 const windowContentFrames = new Map<WindowId, Frame>();
-const titlebarBuffers = new WorkbenchTitlebarBufferCache<WindowId>();
 const themeMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
 const newWindowMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
 const newWindowMenuLabels: string[] = [];
@@ -599,9 +592,7 @@ const threeGridProjectionCache = new WorkbenchThreeGridProjectionCache();
 const menuBarHitLayouts: WorkbenchMenuBarHitLayout[] = [];
 const headerLayout: WorkbenchHeaderLayout = { menu: { column: 0, row: 0, width: 0, height: 1 } };
 const shelfBuffers = new WorkbenchShelfBufferCache<WindowId>();
-const windowFrameBoxLines: WorkbenchFrameBoxLine[] = [];
-const windowFrameRenderCommands: WorkbenchFrameRenderCommand[] = [];
-const windowScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
+const windowShellBuffers = new ApiWorkbenchWindowShellBufferCache<WindowId>();
 const workspaceScrollbarRenderCommands: WorkbenchScrollbarRenderCommand[] = [];
 const dropdownOverlayRenderCommands: WorkbenchDropdownOverlayRenderCommand[] = [];
 const visibleWindowRects = new Map<WindowId, Rectangle>();
@@ -1256,51 +1247,44 @@ function renderWorkspace(frame: Frame): void {
 }
 
 function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
-  if (rect.width < 8 || rect.height < 4 || minimized.peek()[id]) return;
-  const t = theme();
-  const active = activeWindow.peek() === id;
-  addHit(rect, { type: "focus", id });
-  drawFrame(frame, rect, windowTitle(id), active);
-  const titlebar = layoutWorkbenchTitlebarInto(titlebarBuffers.layout(id), {
+  renderApiWorkbenchWindowShell<WindowId, HitAction>({
+    frame,
+    id,
     rect,
+    minimized: Boolean(minimized.peek()[id]),
+    active: activeWindow.peek() === id,
     title: windowTitle(id),
     showConfig: isThreeRenderedWindow(id),
+    theme: theme(),
+    buffers: windowShellBuffers,
+    scroll: windowScroll(id),
+    contentSizeForInner: (inner) => windowContentSize(id, inner),
+    contentFrameForRows: (rows) => windowContentFrame(id, rows),
+    setFrameWidthHint: (target, width) => frameWidthHints.set(target, width),
+    hitTargetCount: () => hitTargets.length,
+    renderContent: (contentFrame, contentRect, context) => {
+      const previousWindowRenderContext = windowRenderContext;
+      windowRenderContext = context;
+      try {
+        renderWindowContent(contentFrame, id, contentRect);
+      } finally {
+        windowRenderContext = previousWindowRenderContext;
+      }
+    },
+    afterRenderContent: ({ contentHitStart, viewport, offset }) => {
+      translateDropdownOverlayForWindow(id, viewport, offset);
+      translateContentHits(contentHitStart, viewport, offset);
+    },
+    focusAction: (targetId): HitAction => ({ type: "focus", id: targetId }),
+    titlebarAction: (targetId, kind) => resolveApiWorkbenchTitlebarHitAction(targetId, kind),
+    scrollbarAction: (targetId, axis): HitAction =>
+      axis === "vertical" ? { type: "windowVScrollbar", id: targetId } : { type: "windowHScrollbar", id: targetId },
+    paint,
+    write,
+    fillRect,
+    writeButton,
+    addHit,
   });
-  const titlebarCommands = workbenchTitlebarButtonRenderCommandsInto(titlebarBuffers.renderCommands(id), titlebar);
-  for (const command of titlebarCommands) {
-    writeButton(frame, command.rect.row, command.rect.column, command.label, {
-      compact: command.compact,
-      tone: command.tone,
-    });
-    addHit(command.hitRect, resolveApiWorkbenchTitlebarHitAction(id, command.kind));
-  }
-
-  const inner = inset(rect, 1);
-  const scroll = windowScroll(id);
-  const contentSize = windowContentSize(id, inner);
-  const viewport = workbenchContentViewport({
-    inner,
-    contentWidth: contentSize.width,
-    contentHeight: contentSize.height,
-  });
-  scroll.setViewportSize(viewport.width, viewport.height);
-  scroll.setContentSize(contentSize.width, contentSize.height);
-  fillRect(frame, inner, t.surface);
-  const contentFrame = windowContentFrame(id, contentSize.height);
-  frameWidthHints.set(contentFrame, contentSize.width);
-  fillRect(contentFrame, { column: 0, row: 0, width: contentSize.width, height: contentSize.height }, t.surface);
-  const contentHitStart = hitTargets.length;
-  const previousWindowRenderContext = windowRenderContext;
-  windowRenderContext = { viewport, offset: scroll.offset.peek() };
-  try {
-    renderWindowContent(contentFrame, id, { column: 0, row: 0, width: contentSize.width, height: contentSize.height });
-  } finally {
-    windowRenderContext = previousWindowRenderContext;
-  }
-  translateDropdownOverlayForWindow(id, viewport, scroll.offset.peek());
-  translateContentHits(contentHitStart, viewport, scroll.offset.peek());
-  blitWindowContent(frame, contentFrame, viewport, scroll.offset.peek());
-  renderWindowScrollbars(frame, id, inner, viewport);
 }
 
 function windowContentFrame(id: WindowId, rows: number): Frame {
@@ -2124,19 +2108,17 @@ function kittyGraphicsStatus(): string {
 }
 
 function drawFrame(frame: Frame, rect: Rectangle, title: string, active: boolean): void {
-  const commands = workbenchFrameRenderCommandsInto(windowFrameRenderCommands, windowFrameBoxLines, {
+  renderApiWorkbenchWindowFrame({
+    frame,
     rect,
     title,
     active,
     theme: theme(),
+    buffers: windowShellBuffers,
+    paint,
+    write,
+    fillRect,
   });
-  for (const command of commands) {
-    if (command.kind === "fill") {
-      fillRect(frame, command.rect, command.bg);
-    } else {
-      write(frame, command.row, command.column, paint(command.text, command.style));
-    }
-  }
 }
 
 function workspaceLayout(bounds: Rectangle): {
@@ -2284,37 +2266,6 @@ function translateDropdownOverlayForWindow(
       row: viewport.row + dropdownOverlay.rect.row - offset.rows,
     },
   };
-}
-
-function blitWindowContent(
-  frame: Frame,
-  content: Frame,
-  viewport: Rectangle,
-  offset: { columns: number; rows: number },
-) {
-  blitWorkbenchFrameCells(frame, content, viewport, offset);
-}
-
-function renderWindowScrollbars(
-  frame: Frame,
-  id: WindowId,
-  inner: Rectangle,
-  viewport: Rectangle,
-): void {
-  const scroll = windowScroll(id);
-  const t = theme();
-  const overflow = scroll.inspectOverflow();
-  const commands = workbenchWindowScrollbarRenderCommandsInto(windowScrollbarRenderCommands, {
-    inner,
-    viewport,
-    overflow,
-  });
-  for (const command of commands) {
-    addHit(command.rect, { type: command.axis === "vertical" ? "windowVScrollbar" : "windowHScrollbar", id });
-    for (const cell of command.cells) {
-      write(frame, cell.row, cell.column, paint(cell.glyph, { fg: t.accent, bg: t.panelSoft, bold: true }));
-    }
-  }
 }
 
 function ensureVisualizationThreePanel(id: VisualizationWindowId): DynamicThreePanel {

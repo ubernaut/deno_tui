@@ -1,6 +1,7 @@
 import { assertEquals, assertStrictEquals } from "./deps.ts";
 import type { DataColumn, DataTableView } from "../src/components/data_table.ts";
 import type { ModalInspection } from "../src/components/modal.ts";
+import { ScrollAreaController } from "../src/components/scroll_area.ts";
 import {
   createDefaultWorkbenchAsciiOptions,
   defaultWorkbenchAsciiConfigRows,
@@ -89,6 +90,7 @@ import {
   renderApiWorkbenchThreeGridOrResizePlaceholder,
   renderApiWorkbenchThreeHeader,
 } from "../app/api_workbench_three_view.ts";
+import { ApiWorkbenchWindowShellBufferCache, renderApiWorkbenchWindowShell } from "../app/api_workbench_window_view.ts";
 import {
   renderApiWorkbenchTerminalSessionTabs,
   renderApiWorkbenchTerminalShellCopyPane,
@@ -997,6 +999,97 @@ Deno.test("renderApiWorkbenchWindowTabs paints tab strip and registers tab hits"
     { label: "● Three", state: "active", tone: "default" },
   ]);
   assertEquals(hits.map((hit) => hit.id), ["logs", "three"]);
+});
+
+Deno.test("renderApiWorkbenchWindowShell paints frame content titlebar and scrollbars", () => {
+  type TestWindowAction =
+    | { type: "focus"; id: "logs" }
+    | { type: "titlebar"; id: "logs"; kind: string }
+    | { type: "scrollbar"; id: "logs"; axis: "vertical" | "horizontal" };
+
+  const frame: string[][] = [];
+  const contentFrame: string[][] = [];
+  const fills: Array<{ row: number; width: number; bg: string }> = [];
+  const buttons: Array<{ label: string; tone?: string }> = [];
+  const hits: Array<TestWindowAction & { width: number }> = [];
+  const hints: number[] = [];
+  let contentRows = 0;
+  let contentContext:
+    | {
+      viewport: { column: number; row: number; width: number; height: number };
+      offset: { columns: number; rows: number };
+    }
+    | undefined;
+  let translatedHitStart = -1;
+
+  const fillRect = (
+    target: string[][],
+    rect: { column: number; row: number; width: number; height: number },
+    bg: string,
+  ) => {
+    fills.push({ row: rect.row, width: rect.width, bg });
+    for (let row = 0; row < rect.height; row += 1) {
+      const targetRow = target[rect.row + row] ??= [];
+      for (let column = 0; column < rect.width; column += 1) {
+        targetRow[rect.column + column] = `${bg}: `;
+      }
+    }
+  };
+
+  const rendered = renderApiWorkbenchWindowShell<"logs", TestWindowAction>({
+    frame,
+    id: "logs",
+    rect: { column: 0, row: 0, width: 28, height: 8 },
+    minimized: false,
+    active: true,
+    title: "Logs",
+    showConfig: true,
+    theme: testWorkbenchTheme(),
+    buffers: new ApiWorkbenchWindowShellBufferCache<"logs">(),
+    scroll: new ScrollAreaController({ showScrollbar: true }),
+    contentSizeForInner: () => ({ width: 34, height: 12 }),
+    contentFrameForRows: (rows) => {
+      contentRows = rows;
+      contentFrame.length = rows;
+      return contentFrame;
+    },
+    setFrameWidthHint: (_target, width) => hints.push(width),
+    hitTargetCount: () => hits.length,
+    renderContent: (target, _rect, context) => {
+      contentContext = context;
+      target[0] ??= [];
+      target[0]![0] = "BODY";
+    },
+    afterRenderContent: (context) => {
+      translatedHitStart = context.contentHitStart;
+    },
+    focusAction: (id) => ({ type: "focus", id }),
+    titlebarAction: (id, kind) => ({ type: "titlebar", id, kind }),
+    scrollbarAction: (id, axis) => ({ type: "scrollbar", id, axis }),
+    paint: (text, style) => `${style.bg ?? ""}:${style.fg ?? ""}:${style.bold ? "b:" : ""}${text}`,
+    write: (target, row, column, value) => {
+      target[row] ??= [];
+      target[row]![column] = value;
+    },
+    fillRect,
+    writeButton: (_target, _row, _column, label, options) => {
+      buttons.push({ label, tone: options?.tone });
+      return label.length;
+    },
+    addHit: (rect, action) => hits.push({ ...action, width: rect.width }),
+  });
+
+  assertEquals(rendered, true);
+  assertEquals(contentRows, 12);
+  assertEquals(hints, [34]);
+  assertEquals(contentContext?.viewport, { column: 1, row: 1, width: 25, height: 5 });
+  assertEquals(translatedHitStart, 5);
+  assertEquals(frame[1]?.[1], "BODY");
+  assertEquals(buttons.some((button) => button.label === "x" && button.tone === "danger"), true);
+  assertEquals(hits.some((hit) => hit.type === "focus" && hit.width === 28), true);
+  assertEquals(hits.some((hit) => hit.type === "titlebar" && hit.kind === "close"), true);
+  assertEquals(hits.some((hit) => hit.type === "scrollbar" && hit.axis === "vertical"), true);
+  assertEquals(fills.some((fill) => fill.row === 0 && fill.width === 28), true);
 });
 
 Deno.test("renderApiWorkbenchChromeHeader paints header hits and top menu overlay", () => {
