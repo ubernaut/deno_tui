@@ -1,5 +1,4 @@
 import { assertEquals, assertInstanceOf, assertThrows } from "./deps.ts";
-import { mergeThemeCatalogComponents } from "../src/theme_provider_preview.ts";
 import {
   ThemeEngine as ThemeEngineModule,
   ThemeInheritanceError as ThemeInheritanceErrorModule,
@@ -21,6 +20,7 @@ import {
   createThemeEngine,
   createThemeEngineFromPalette,
   createThemeLayerStack,
+  createThemeProvider,
   createThemeRegistry,
   diffThemeEngines,
   emptyStyle,
@@ -36,17 +36,34 @@ import {
 import type { ComponentThemeDefinition, ThemeStyleReference } from "../src/theme.ts";
 
 Deno.test("theme catalog merge sorts components and variants with default first", () => {
+  const provider = createThemeProvider({
+    registry: createThemeRegistry([
+      {
+        id: "base",
+        options: {
+          components: {
+            modal: { variants: { danger: { active: "danger" }, default: { active: "accent" } } },
+            button: { variants: { primary: { active: "accent" } } },
+          },
+        },
+      },
+    ]),
+    activeId: "base",
+    layers: createThemeLayerStack([
+      {
+        id: "extra",
+        options: {
+          components: {
+            button: { variants: { secondary: { active: "muted" }, primary: { active: "accent" } } },
+            table: {},
+          },
+        },
+      },
+    ]),
+  });
+
   assertEquals(
-    mergeThemeCatalogComponents(
-      [
-        { name: "modal", variants: ["danger", "default"] },
-        { name: "button", variants: ["primary"] },
-      ],
-      [
-        { name: "button", variants: ["secondary", "primary"] },
-        { name: "table", variants: [] },
-      ],
-    ),
+    provider.catalog().components,
     [
       { name: "button", variants: ["default", "primary", "secondary"] },
       { name: "modal", variants: ["default", "danger"] },

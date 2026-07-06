@@ -33,12 +33,10 @@ import {
   resolveThemeStateDefinitionCore,
   resolveThemeStyleReferenceCore,
 } from "./theme_core.ts";
-import { createThemeProviderReportCore, formatThemeProviderReportMarkdownFromReport } from "./theme_provider_report.ts";
 import {
   ThemeEngine as ThemeEngineImplementation,
   ThemeInheritanceError as ThemeInheritanceErrorImplementation,
 } from "./theme_engine.ts";
-import { createThemeCatalogFromInspection, previewThemeProviderCore } from "./theme_provider_preview.ts";
 
 /** Function that's supposed to return styled text given string as parameter */
 export type Style = StyleInternal;
@@ -1609,7 +1607,7 @@ export function createThemeProvider(options: ThemeProviderOptions = {}): ThemePr
 
 /** Creates an theme Catalog. */
 export function createThemeCatalog(provider: ThemeProvider): ThemeCatalog {
-  return createThemeCatalogFromInspection(provider.inspect(), themeTokenNames, themeStates);
+  return themeCatalogFromInspection(provider.inspect());
 }
 
 /** Public helper for preview Theme Provider. */
@@ -1617,7 +1615,31 @@ export function previewThemeProvider(
   provider: ThemeProvider,
   options: ThemeProviderPreviewOptions = {},
 ): ThemeProviderPreview {
-  return previewThemeProviderCore(provider, options, themeTokenNames, themeStates);
+  const sample = options.sample ?? "Aa";
+  const engine = provider.engine.peek();
+  const catalog = provider.catalog();
+  const requestedTokens = options.tokens
+    ? sortedThemeTokenNames(options.tokens)
+    : cloneThemeStringArray(themeTokenNames);
+  const componentNames = options.components
+    ? cloneThemeStringArray(options.components)
+    : catalogComponentNames(catalog);
+  const stateNames = options.states ? sortedThemeStates(options.states) : cloneThemeStringArray(themeStates);
+
+  return {
+    sample,
+    activeId: provider.activeId.peek(),
+    activeLayers: provider.layers.activeIds(),
+    catalog,
+    tokens: previewThemeProviderTokens(engine.theme.tokens, requestedTokens, sample),
+    components: previewThemeProviderComponents(
+      engine,
+      componentNames,
+      stateNames,
+      sample,
+      options.variants,
+    ),
+  };
 }
 
 /** Creates an audit-ready report for a provider's theme catalog, active composition, preview, and diagnostics. */
@@ -1625,12 +1647,44 @@ export function createThemeProviderReport(
   provider: ThemeProvider,
   options: ThemeProviderReportOptions = {},
 ): ThemeProviderReport {
-  return createThemeProviderReportCore(provider, options, {
-    activeOptions: themeProviderActiveOptions,
-    inspectCoverage: inspectThemeCoverage,
-    inspectIssues: (reportProvider) => inspectThemeProviderIssues(reportProvider, validateThemeOptions),
-    previewProvider: previewThemeProvider,
-  });
+  const catalog = provider.catalog();
+  const activeLayers = provider.layers.activeIds();
+  const coverageOptions = options.coverage === false ? undefined : options.coverage ?? {};
+  const componentNames = new Array<string>(catalog.components.length);
+  let variantCount = 0;
+  for (let index = 0; index < catalog.components.length; index += 1) {
+    const component = catalog.components[index]!;
+    componentNames[index] = component.name;
+    variantCount += component.variants.length;
+  }
+  const coverage = coverageOptions
+    ? inspectThemeCoverage(themeProviderActiveOptions(provider), {
+      components: componentNames,
+      ...coverageOptions,
+    })
+    : undefined;
+  const preview = options.preview === false ? undefined : previewThemeProvider(provider, options.preview ?? {});
+  const issues = inspectThemeProviderIssues(provider, validateThemeOptions);
+
+  return {
+    title: options.title ?? "Theme Provider Report",
+    activeId: catalog.activeId,
+    activeLayers,
+    catalog,
+    preview,
+    coverage,
+    issues,
+    summary: {
+      themeCount: catalog.themes.length,
+      layerCount: catalog.layers.length,
+      activeLayerCount: activeLayers.length,
+      componentCount: catalog.components.length,
+      variantCount,
+      issueCount: issues.length,
+      missingStateCount: coverage?.missingStateCount ?? 0,
+      completeCoverage: coverage?.complete ?? true,
+    },
+  };
 }
 
 /** Formats a theme provider report as Markdown for demos, docs, and CI summaries. */
@@ -1639,6 +1693,213 @@ export function formatThemeProviderReportMarkdown(
   options: ThemeProviderReportOptions = {},
 ): string {
   return formatThemeProviderReportMarkdownFromReport(createThemeProviderReport(provider, options));
+}
+
+function themeCatalogFromInspection(inspection: ThemeProviderInspection): ThemeCatalog {
+  const themes = new Array<ThemeCatalog["themes"][number]>(inspection.themes.length);
+  for (let index = 0; index < inspection.themes.length; index += 1) {
+    const theme = inspection.themes[index]!;
+    themes[index] = {
+      ...theme,
+      active: theme.id === inspection.activeId,
+    };
+  }
+  const layers = new Array<ThemeCatalog["layers"][number]>(inspection.layers.length);
+  for (let index = 0; index < inspection.layers.length; index += 1) {
+    const layer = inspection.layers[index]!;
+    layers[index] = {
+      ...layer,
+      active: layer.enabled,
+    };
+  }
+  const componentSources = new Array<ThemeCatalog["components"]>(
+    inspection.themes.length + inspection.layers.length + 1,
+  );
+  componentSources[0] = inspection.engine.components;
+  let sourceIndex = 1;
+  for (const theme of inspection.themes) {
+    componentSources[sourceIndex] = theme.components;
+    sourceIndex += 1;
+  }
+  for (const layer of inspection.layers) {
+    componentSources[sourceIndex] = layer.components;
+    sourceIndex += 1;
+  }
+  return {
+    activeId: inspection.activeId,
+    tokens: cloneThemeStringArray(themeTokenNames),
+    states: cloneThemeStringArray(themeStates),
+    themes,
+    layers,
+    components: mergeThemeCatalogComponents(...componentSources),
+  };
+}
+
+function catalogComponentNames(catalog: ThemeCatalog): string[] {
+  const names = new Array<string>(catalog.components.length);
+  for (let index = 0; index < catalog.components.length; index += 1) {
+    names[index] = catalog.components[index]!.name;
+  }
+  return names;
+}
+
+function cloneThemeStringArray<T extends string>(values: Iterable<T>): T[] {
+  const cloned: T[] = [];
+  for (const value of values) {
+    cloned.push(value);
+  }
+  return cloned;
+}
+
+function mergeThemeCatalogComponents(
+  ...groups: readonly ThemeComponentInspection[][]
+): ThemeCatalogComponent[] {
+  const components = new Map<string, Set<string>>();
+
+  for (const group of groups) {
+    for (const component of group) {
+      const variants = components.get(component.name) ?? new Set<string>(["default"]);
+      variants.add("default");
+      for (const variant of component.variants) variants.add(variant);
+      components.set(component.name, variants);
+    }
+  }
+
+  const entries = [...components.entries()].sort(([a], [b]) => a.localeCompare(b));
+  const merged = new Array<ThemeCatalogComponent>(entries.length);
+  for (let index = 0; index < entries.length; index += 1) {
+    const [name, variants] = entries[index]!;
+    merged[index] = {
+      name,
+      variants: [...variants].sort(compareThemeCatalogVariants),
+    };
+  }
+  return merged;
+}
+
+function compareThemeCatalogVariants(a: string, b: string): number {
+  if (a === "default") return -1;
+  if (b === "default") return 1;
+  return a.localeCompare(b);
+}
+
+function previewThemeProviderTokens(
+  tokens: Record<ThemeTokenName, Style>,
+  tokenNames: readonly ThemeTokenName[],
+  sample: string,
+): ThemeProviderPreview["tokens"] {
+  const previews = new Array<ThemeProviderPreview["tokens"][number]>(tokenNames.length);
+  for (let index = 0; index < tokenNames.length; index += 1) {
+    const token = tokenNames[index]!;
+    previews[index] = {
+      token,
+      preview: previewStyle(tokens[token], sample),
+    };
+  }
+  return previews;
+}
+
+function previewThemeProviderComponents(
+  engine: ThemeEngine,
+  componentNames: readonly string[],
+  stateNames: readonly ThemeState[],
+  sample: string,
+  variantsOption: ThemeProviderPreviewOptions["variants"],
+): ThemeProviderPreview["components"] {
+  const previews: ThemeProviderPreview["components"] = [];
+  for (const component of componentNames) {
+    const variants = variantsOption
+      ? cloneThemeStringArray(variantsOption(component, engine))
+      : defaultThemeProviderVariantNames(engine, component);
+    for (const variant of variants) {
+      const theme = engine.component(component, variant);
+      for (const state of stateNames) {
+        previews.push({
+          component,
+          variant,
+          state,
+          preview: previewStyle(theme[state], sample),
+        });
+      }
+    }
+  }
+  return previews;
+}
+
+function defaultThemeProviderVariantNames(engine: ThemeEngine, component: string): string[] {
+  const variants = engine.variants(component);
+  const names = new Array<string>(variants.length + 1);
+  names[0] = "default";
+  for (let index = 0; index < variants.length; index += 1) {
+    names[index + 1] = variants[index]!;
+  }
+  return names;
+}
+
+function formatThemeProviderReportMarkdownFromReport(report: ThemeProviderReport): string {
+  const lines = [`# ${report.title}`, ""];
+  lines.push(
+    `Active theme: ${report.activeId}. Active layers: ${report.activeLayers.join(", ") || "none"}.`,
+    "",
+  );
+  lines.push(
+    `${report.summary.themeCount} themes, ${report.summary.layerCount} layers, ${report.summary.componentCount} components, ${report.summary.variantCount} variants, ${report.summary.issueCount} issues.`,
+    "",
+  );
+
+  lines.push("| Theme | Label | Palette | Active | Components |");
+  lines.push("| --- | --- | --- | --- | ---: |");
+  for (const theme of report.catalog.themes) {
+    lines.push(
+      `| ${escapeMarkdownCell(theme.id)} | ${escapeMarkdownCell(theme.label)} | ${
+        escapeMarkdownCell(theme.palette)
+      } | ${theme.active ? "yes" : "no"} | ${theme.components.length} |`,
+    );
+  }
+
+  if (report.catalog.layers.length > 0) {
+    lines.push("", "| Layer | Label | Active | Components |");
+    lines.push("| --- | --- | --- | ---: |");
+    for (const layer of report.catalog.layers) {
+      lines.push(
+        `| ${escapeMarkdownCell(layer.id)} | ${escapeMarkdownCell(layer.label)} | ${
+          layer.active ? "yes" : "no"
+        } | ${layer.components.length} |`,
+      );
+    }
+  }
+
+  if (report.issues.length > 0) {
+    lines.push("", "| Issue | Source | Path | Message |");
+    lines.push("| --- | --- | --- | --- |");
+    for (const issue of report.issues) {
+      lines.push(
+        `| ${issue.kind} | ${issue.source}:${escapeMarkdownCell(issue.sourceId)} | ${
+          escapeMarkdownCell(issue.path)
+        } | ${escapeMarkdownCell(issue.message)} |`,
+      );
+    }
+  }
+
+  if (report.coverage) {
+    lines.push("", "| Component | Variant | Complete | Missing States |");
+    lines.push("| --- | --- | --- | --- |");
+    for (const component of report.coverage.components) {
+      for (const variant of component.variants) {
+        lines.push(
+          `| ${escapeMarkdownCell(component.name)} | ${escapeMarkdownCell(variant.name)} | ${
+            variant.complete ? "yes" : "no"
+          } | ${variant.missingStates.join(", ") || "-"} |`,
+        );
+      }
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function escapeMarkdownCell(value: string): string {
+  return value.replaceAll("|", "\\|").replaceAll("\n", " ");
 }
 
 /** Public class implementing a theme Engine. */

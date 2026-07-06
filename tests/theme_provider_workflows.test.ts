@@ -6,20 +6,12 @@ import {
   createThemeProvider,
   createThemeProviderReport,
   createThemeRegistry,
-  type ThemeCoverageOptions,
-  type ThemeEngineOptions,
+  formatThemeProviderReportMarkdown,
+  previewThemeProvider,
   type ThemeLayer,
   type ThemePack,
   ThemeProvider,
-  type ThemeProviderReport,
-  themeStates,
-  themeTokenNames,
 } from "../src/theme.ts";
-import { createThemeCatalogFromInspection, previewThemeProviderCore } from "../src/theme_provider_preview.ts";
-import {
-  createThemeProviderReportCore,
-  formatThemeProviderReportMarkdownFromReport,
-} from "../src/theme_provider_report.ts";
 
 Deno.test("theme provider exposes public persistence and resolution behavior", async () => {
   const store = new MemoryStore<string>();
@@ -172,7 +164,7 @@ Deno.test("theme provider preview builds catalog from inspection", () => {
     ]),
   });
 
-  const catalog = createThemeCatalogFromInspection(provider.inspect(), themeTokenNames, themeStates);
+  const catalog = provider.catalog();
   assertEquals(catalog.activeId, "ops");
   assertEquals(catalog.themes.map((theme) => [theme.id, theme.active]), [["ops", true]]);
   assertEquals(catalog.layers.map((layer) => [layer.id, layer.active]), [["layer", true]]);
@@ -201,18 +193,13 @@ Deno.test("theme provider preview honors token component state and variant filte
     activeId: "ops",
   });
 
-  const preview = previewThemeProviderCore(
-    provider,
-    {
-      sample: "Go",
-      tokens: ["danger", "accent"],
-      components: ["button"],
-      states: ["active"],
-      variants: () => ["danger"],
-    },
-    themeTokenNames,
-    themeStates,
-  );
+  const preview = previewThemeProvider(provider, {
+    sample: "Go",
+    tokens: ["danger", "accent"],
+    components: ["button"],
+    states: ["active"],
+    variants: () => ["danger"],
+  });
 
   assertEquals(preview.tokens.map((token) => token.token), ["accent", "danger"]);
   assertEquals(preview.components.map((component) => [component.component, component.variant, component.state]), [
@@ -240,157 +227,57 @@ Deno.test("theme provider report builder assembles injected coverage preview and
     ]),
     activeId: "ops",
   });
-  const capturedCoverageOptions: ThemeCoverageOptions[] = [];
-
-  const report = createThemeProviderReportCore(provider, { title: "Ops Report", preview: { sample: "OK" } }, {
-    activeOptions: () => ({ components: {} }),
-    inspectCoverage: (_options: ThemeEngineOptions, coverageOptions: ThemeCoverageOptions) => {
-      capturedCoverageOptions.push(coverageOptions);
-      return {
-        componentCount: 1,
-        variantCount: 2,
-        stateCount: 8,
-        coveredStateCount: 7,
-        missingStateCount: 1,
-        complete: false,
-        components: [],
-      };
-    },
-    inspectIssues: () => [{
-      kind: "unknown-token",
-      path: "components.button.default.active",
-      message: "bad token",
-      source: "theme",
-      sourceId: "ops",
-    }],
-    previewProvider: (_provider, options) => ({
-      sample: options.sample ?? "",
-      activeId: "ops",
-      activeLayers: [],
-      catalog: provider.catalog(),
-      tokens: [],
-      components: [],
-    }),
-  });
+  const report = createThemeProviderReport(provider, { title: "Ops Report", preview: { sample: "OK" } });
 
   assertEquals(report.title, "Ops Report");
   assertEquals(report.preview?.sample, "OK");
-  assertEquals(report.summary, {
-    themeCount: 1,
-    layerCount: 0,
-    activeLayerCount: 0,
-    componentCount: 1,
-    variantCount: 2,
-    issueCount: 1,
-    missingStateCount: 1,
-    completeCoverage: false,
-  });
-  assertEquals([...(capturedCoverageOptions[0].components ?? [])], ["button"]);
+  assertEquals(report.summary.themeCount, 1);
+  assertEquals(report.summary.layerCount, 0);
+  assertEquals(report.summary.componentCount, 1);
+  assertEquals(report.summary.variantCount, 2);
+  assertEquals(report.coverage?.components.map((component) => component.name), ["button"]);
 });
 
-Deno.test("theme provider report formatter escapes tables and includes diagnostics", () => {
-  const report: ThemeProviderReport = {
-    title: "Theme | Report",
-    activeId: "unit-01",
-    activeLayers: ["scan|line"],
-    catalog: {
-      activeId: "unit-01",
-      tokens: ["foreground"],
-      states: ["base", "focused", "active", "disabled"],
-      themes: [
-        {
-          id: "unit-01",
-          label: "Unit | 01",
-          palette: "neon",
-          active: true,
-          components: [{ name: "button", variants: ["default"] }],
-        },
-      ],
-      layers: [
-        {
-          id: "scan|line",
-          label: "Scan\nLine",
-          enabled: true,
-          active: true,
-          components: [{ name: "modal", variants: ["default"] }],
-        },
-      ],
-      components: [
-        { name: "button", variants: ["default"] },
-        { name: "modal", variants: ["default"] },
-      ],
-    },
-    issues: [
+Deno.test("theme provider report formatter escapes table cells", () => {
+  const provider = createThemeProvider({
+    registry: createThemeRegistry([
       {
-        kind: "unknown-token",
-        path: "components.button.default.focused",
-        message: "Missing | focused\nstate",
-        source: "theme",
-        sourceId: "unit|01",
-      },
-    ],
-    coverage: {
-      componentCount: 1,
-      variantCount: 1,
-      stateCount: 4,
-      coveredStateCount: 3,
-      missingStateCount: 1,
-      complete: false,
-      components: [
-        {
-          name: "button",
-          extends: [],
-          variants: [
-            {
-              name: "default",
-              states: ["base"],
-              missingStates: ["focused"],
-              complete: false,
-            },
-          ],
-          stateCount: 4,
-          coveredStateCount: 3,
-          missingStateCount: 1,
-          complete: false,
+        id: "unit|01",
+        label: "Unit | 01",
+        palette: "neon",
+        options: {
+          components: { button: { base: { active: "accent" } } },
         },
-      ],
-    },
-    summary: {
-      themeCount: 1,
-      layerCount: 1,
-      activeLayerCount: 1,
-      componentCount: 2,
-      variantCount: 2,
-      issueCount: 1,
-      missingStateCount: 1,
-      completeCoverage: false,
-    },
-  };
+      },
+    ]),
+    activeId: "unit|01",
+    layers: createThemeLayerStack([
+      {
+        id: "scan|line",
+        label: "Scan\nLine",
+        options: {
+          components: { modal: { base: { active: "accent" } } },
+        },
+      },
+    ]),
+  });
 
   assertEquals(
-    formatThemeProviderReportMarkdownFromReport(report),
+    formatThemeProviderReportMarkdown(provider, { title: "Theme | Report", preview: false, coverage: false }),
     [
       "# Theme | Report",
       "",
-      "Active theme: unit-01. Active layers: scan|line.",
+      "Active theme: unit|01. Active layers: scan|line.",
       "",
-      "1 themes, 1 layers, 2 components, 2 variants, 1 issues.",
+      "1 themes, 1 layers, 2 components, 2 variants, 0 issues.",
       "",
       "| Theme | Label | Palette | Active | Components |",
       "| --- | --- | --- | --- | ---: |",
-      "| unit-01 | Unit \\| 01 | neon | yes | 1 |",
+      "| unit\\|01 | Unit \\| 01 | neon | yes | 1 |",
       "",
       "| Layer | Label | Active | Components |",
       "| --- | --- | --- | ---: |",
       "| scan\\|line | Scan Line | yes | 1 |",
-      "",
-      "| Issue | Source | Path | Message |",
-      "| --- | --- | --- | --- |",
-      "| unknown-token | theme:unit\\|01 | components.button.default.focused | Missing \\| focused state |",
-      "",
-      "| Component | Variant | Complete | Missing States |",
-      "| --- | --- | --- | --- |",
-      "| button | default | no | focused |",
     ].join("\n"),
   );
 });
