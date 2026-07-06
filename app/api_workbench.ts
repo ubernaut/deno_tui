@@ -5,7 +5,7 @@ import { DataTableController } from "../src/components/data_table.ts";
 import { createFileExplorerTree, FileExplorerController } from "../src/components/file_explorer.ts";
 import { InputController } from "../src/components/input.ts";
 import { MenuBarController, renderMenuBar } from "../src/components/menu_bar.ts";
-import { modalContentHeight, ModalController, type ModalInspection } from "../src/components/modal.ts";
+import { ModalController, type ModalInspection } from "../src/components/modal.ts";
 import { ProgressBarController } from "../src/components/progressbar.ts";
 import { RadioGroupController } from "../src/components/radio_group.ts";
 import { ScrollAreaController } from "../src/components/scroll_area.ts";
@@ -30,12 +30,10 @@ import {
   isWorkbenchVisualizationWindowId,
   layoutWorkbenchHeaderInto,
   layoutWorkbenchMenuBarHitsInto,
-  layoutWorkbenchModal,
   layoutWorkbenchTitlebarInto,
   loadWorkbenchWorkspaceStorage,
   persistWorkbenchWorkspaceStorage,
   prepareWorkbenchFrame,
-  projectWorkbenchButtonCommand,
   projectWorkbenchStandardTopMenuState,
   renderFrameRow,
   renderFrameSlice,
@@ -61,8 +59,6 @@ import {
   workbenchHeaderHelp,
   type WorkbenchHeaderLayout,
   type WorkbenchMenuBarHitLayout,
-  workbenchModalActionButtonsInto,
-  workbenchModalRowRenderCommandsInto,
   type WorkbenchScrollbarRenderCommand,
   workbenchStandardTopMenuDropdownOverlayInto,
   workbenchStandardTopMenuIdForItem,
@@ -122,12 +118,8 @@ import {
   type WorkbenchAsciiConfigRow,
 } from "../src/app/workbench_ascii.ts";
 import {
-  layoutWorkbenchAsciiConfigModal,
   type WorkbenchAsciiConfigModalAction,
-  workbenchAsciiConfigModalActionRenderCommandsInto,
   WorkbenchAsciiConfigModalBufferCache,
-  workbenchAsciiConfigRowPlacementsInto,
-  workbenchAsciiConfigRowRenderCommandsInto,
 } from "../src/app/workbench_ascii_modal.ts";
 import { handleInput } from "../src/input.ts";
 import type { KeyPressEvent, MousePressEvent, MouseScrollEvent, PasteEvent } from "../src/input_reader/types.ts";
@@ -151,10 +143,6 @@ import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts
 import { Tui } from "../src/tui.ts";
 import type { Rectangle } from "../src/types.ts";
 import { textWidth } from "../src/utils/strings.ts";
-import {
-  layoutWorkbenchButtonRowInto,
-  workbenchButtonRowRenderCommandsInto,
-} from "../src/app/workbench_control_layout.ts";
 import {
   WorkbenchButtonRowBufferCache,
   WorkbenchModalBufferCache,
@@ -349,6 +337,7 @@ import {
 } from "./api_workbench_terminal_output_view.ts";
 import { ApiWorkbenchControlsViewBufferCache, renderApiWorkbenchControls } from "./api_workbench_controls_view.ts";
 import { renderApiWorkbenchHtmlCssLayout } from "./api_workbench_html_css_view.ts";
+import { renderApiWorkbenchModalOverlay, renderApiWorkbenchThreeConfigModal } from "./api_workbench_modal_view.ts";
 import { renderApiWorkbenchShelf, renderApiWorkbenchWindowTabs } from "./api_workbench_shelf_view.ts";
 
 type BuiltInWindowId = ApiWorkbenchBuiltInWindowId;
@@ -2142,61 +2131,21 @@ function renderModalOverlay(frame: Frame): void {
   }
   if (!modal.openState.peek()) return;
 
-  const t = theme();
   const screen = { column: 0, row: 0, width: currentWidth(), height: currentHeight() };
-  addHit(screen, { type: "modalAction", index: -1 });
-
-  const inspection = modal.inspect();
-  const probeWidth = Math.min(Math.max(38, currentWidth() - 8), 72);
-  const { rect, inner, shadow } = layoutWorkbenchModal({
+  renderApiWorkbenchModalOverlay({
+    frame,
     bounds: screen,
-    contentHeight: modalContentHeight(inspection, probeWidth),
-    maxWidth: 72,
+    inspection: modal.inspect(),
+    buffers: modalBuffers,
+    theme: theme(),
+    contrastText,
+    fit,
+    paint,
+    write,
+    fillRect,
+    drawFrame,
+    addHit,
   });
-  if (shadow.width > 0 && shadow.height > 0) fillRect(frame, shadow, t.background);
-
-  fillRect(frame, rect, t.panelSoft);
-  drawFrame(frame, rect, inspection.title, true);
-
-  const rowCommands = workbenchModalRowRenderCommandsInto(modalBuffers.rowCommands, {
-    inspection,
-    inner,
-    contentWidth: rect.width,
-  });
-  let actionRow: number | undefined;
-  for (const command of rowCommands) {
-    if (command.kind === "actions") actionRow = command.rect.row;
-    write(
-      frame,
-      command.rect.row,
-      command.rect.column,
-      paint(fit(command.text, command.rect.width), {
-        fg: command.kind === "title" ? t.accent : t.text,
-        bg: command.kind === "actions" ? t.panel : t.panelSoft,
-        bold: command.kind === "actions" || command.kind === "title",
-      }),
-    );
-  }
-
-  if (inspection.actions.length === 0 || actionRow === undefined) return;
-  workbenchModalActionButtonsInto(modalBuffers.actionItems, inspection);
-  layoutWorkbenchButtonRowInto(
-    modalBuffers.actionPlacements,
-    modalBuffers.actionItems,
-    { column: inner.column, row: actionRow, width: inner.width, height: 1 },
-    actionRow,
-  );
-  workbenchButtonRowRenderCommandsInto(modalBuffers.actionCommands, modalBuffers.actionPlacements);
-  for (const command of modalBuffers.actionCommands) {
-    const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
-    write(
-      frame,
-      command.rect.row,
-      command.rect.column,
-      paint(button.text, button.style),
-    );
-    addHit(command.hitRect, { type: "modalAction", index: command.item.action });
-  }
 }
 
 type ThreeConfigRow = WorkbenchAsciiConfigRow;
@@ -2205,80 +2154,25 @@ const threeConfigRows: readonly ThreeConfigRow[] = defaultWorkbenchAsciiConfigRo
 const threeConfigBuffers = new WorkbenchAsciiConfigModalBufferCache<ThreeConfigRow>();
 
 function renderThreeConfigModal(frame: Frame): void {
-  const t = theme();
   const screen = { column: 0, row: 0, width: currentWidth(), height: currentHeight() };
-  addHit(screen, { type: "asciiConfigBackdrop" });
-  const layout = layoutWorkbenchAsciiConfigModal({ bounds: screen, rowCount: threeConfigRows.length });
-  if (layout.shadow.width > 0 && layout.shadow.height > 0) fillRect(frame, layout.shadow, t.background);
-  fillRect(frame, layout.rect, t.panelSoft);
-  drawFrame(frame, layout.rect, "Three Renderer Config", true);
-
-  const inner = layout.inner;
   const current = configuredAscii().peek();
-  const title = formatWorkbenchAsciiConfigTitle(windowTitle(configuredAsciiWindow()), current);
-  write(frame, inner.row, inner.column, paint(fit(title, inner.width), { fg: t.accent, bg: t.panelSoft, bold: true }));
-  const placements = workbenchAsciiConfigRowPlacementsInto(threeConfigBuffers.rowPlacements, threeConfigRows, {
-    inner,
-    rowsTop: layout.rowsTop,
-    visibleRows: layout.visibleRows,
-    selectedIndex: threeConfigSelected.peek(),
-  });
-  const rowCommands = workbenchAsciiConfigRowRenderCommandsInto(threeConfigBuffers.rowRenderCommands, placements, {
-    text: threeConfigRowText,
-  });
-  for (const command of rowCommands) {
-    const selected = command.selected;
-    const bg = selected ? t.warn : t.surface;
-    const fg = selected ? t.background : t.text;
-    const text = command.kind === "fill" ? " ".repeat(command.rect.width) : fit(command.text, command.rect.width);
-    write(
-      frame,
-      command.rect.row,
-      command.rect.column,
-      paint(text, { fg, bg, bold: command.kind === "text" && selected }),
-    );
-  }
-  for (const placement of placements) {
-    addHit(placement.previousRect, {
-      type: "asciiConfig",
-      index: placement.rowIndex,
-      action: "previous",
-    });
-    addHit(placement.nextRect, {
-      type: "asciiConfig",
-      index: placement.rowIndex,
-      action: "next",
-    });
-  }
-  workbenchAsciiConfigModalActionRenderCommandsInto(
-    threeConfigBuffers.actionCommands,
-    threeConfigBuffers.actionItems,
-    threeConfigBuffers.actionPlacements,
-    { inner, actionRow: layout.actionRow },
-  );
-  for (const command of threeConfigBuffers.actionCommands) {
-    const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
-    write(
-      frame,
-      command.rect.row,
-      command.rect.column,
-      paint(button.text, button.style),
-    );
-    addHit(command.hitRect, {
-      type: "asciiConfigAction",
-      action: command.item.action,
-    });
-  }
-  const footer = "Up/Down select  Left/Right change  Enter toggle  A apply  O OK  Esc cancel";
-  write(
+  renderApiWorkbenchThreeConfigModal({
     frame,
-    layout.footerRow,
-    inner.column,
-    paint(fit(footer, inner.width), {
-      fg: t.muted,
-      bg: t.panel,
-    }),
-  );
+    bounds: screen,
+    rows: threeConfigRows,
+    selectedIndex: threeConfigSelected.peek(),
+    title: formatWorkbenchAsciiConfigTitle(windowTitle(configuredAsciiWindow()), current),
+    buffers: threeConfigBuffers,
+    theme: theme(),
+    contrastText,
+    fit,
+    paint,
+    write,
+    fillRect,
+    drawFrame,
+    rowText: threeConfigRowText,
+    addHit,
+  });
 }
 
 function threeConfigRowText(row: ThreeConfigRow): string {

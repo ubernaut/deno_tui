@@ -1,4 +1,12 @@
 import { assertEquals, assertStrictEquals } from "./deps.ts";
+import type { ModalInspection } from "../src/components/modal.ts";
+import {
+  createDefaultWorkbenchAsciiOptions,
+  defaultWorkbenchAsciiConfigRows,
+  formatWorkbenchAsciiConfigRowText,
+  type WorkbenchAsciiConfigRow,
+} from "../src/app/workbench_ascii.ts";
+import { WorkbenchAsciiConfigModalBufferCache } from "../src/app/workbench_ascii_modal.ts";
 import {
   layoutWorkbenchButtonRowInto,
   workbenchButtonRowRenderCommandsInto,
@@ -60,6 +68,7 @@ import {
   renderApiWorkbenchTerminalOutputBody,
   renderApiWorkbenchTerminalOutputToolbar,
 } from "../app/api_workbench_terminal_output_view.ts";
+import { renderApiWorkbenchModalOverlay, renderApiWorkbenchThreeConfigModal } from "../app/api_workbench_modal_view.ts";
 import { renderApiWorkbenchShelf, renderApiWorkbenchWindowTabs } from "../app/api_workbench_shelf_view.ts";
 import {
   renderApiWorkbenchTerminalSessionTabs,
@@ -1051,6 +1060,103 @@ Deno.test("renderApiWorkbenchControls paints controls, hits, and dropdown overla
   assertEquals(result.dropdownOverlay?.kind, "control");
   assertEquals(result.dropdownOverlay?.items, ["CPU", "GPU"]);
   assertEquals(buffers.projectedRows.length > 0, true);
+});
+
+Deno.test("renderApiWorkbenchModalOverlay paints modal content and action hits", () => {
+  const buffers = new WorkbenchModalBufferCache<number>();
+  const frame: string[][] = [];
+  const fills: Array<{ row: number; width: number; bg: string }> = [];
+  const frames: Array<{ title: string; width: number; active: boolean }> = [];
+  const hits: Array<{ index: number; width: number }> = [];
+  const selectedAction = { id: "ok", label: "OK", default: true };
+  const inspection: ModalInspection = {
+    open: true,
+    title: "Confirm",
+    body: ["Delete item?"],
+    tone: "warning",
+    actions: [
+      { id: "cancel", label: "Cancel" },
+      selectedAction,
+    ],
+    selectedActionIndex: 1,
+    selectedAction,
+  };
+
+  renderApiWorkbenchModalOverlay({
+    frame,
+    bounds: { column: 0, row: 0, width: 80, height: 24 },
+    inspection,
+    buffers,
+    theme: testWorkbenchTheme(),
+    contrastText: () => "#000",
+    fit: (text, width) => text.slice(0, width),
+    paint: (text, style) => `${style.bg}:${style.fg}:${style.bold ? "b:" : ""}${text}`,
+    write: (target, row, column, value) => {
+      target[row] ??= [];
+      target[row]![column] = value;
+    },
+    fillRect: (_target, rect, bg) => fills.push({ row: rect.row, width: rect.width, bg }),
+    drawFrame: (_target, rect, title, active) => frames.push({ title, width: rect.width, active }),
+    addHit: (rect, action) => hits.push({ index: action.index, width: rect.width }),
+  });
+
+  const painted = frame.flat().filter(Boolean).join("|");
+  assertEquals(painted.includes("Confirm"), true);
+  assertEquals(painted.includes("Delete item?"), true);
+  assertEquals(painted.includes("[ OK ]"), true);
+  assertEquals(fills.some((fill) => fill.bg === "#222"), true);
+  assertEquals(frames, [{ title: "Confirm", width: 72, active: true }]);
+  assertEquals(hits.some((hit) => hit.index === -1 && hit.width === 80), true);
+  assertEquals(hits.some((hit) => hit.index === 1), true);
+  assertEquals(buffers.actionCommands.length, 2);
+});
+
+Deno.test("renderApiWorkbenchThreeConfigModal paints rows, footer, and config hits", () => {
+  const buffers = new WorkbenchAsciiConfigModalBufferCache<WorkbenchAsciiConfigRow>();
+  const frame: string[][] = [];
+  const fills: Array<{ bg: string; width: number }> = [];
+  const frames: Array<{ title: string; active: boolean }> = [];
+  const hits: Array<{ type: string; action?: string; index?: number; width: number }> = [];
+  const ascii = createDefaultWorkbenchAsciiOptions();
+  const rows = defaultWorkbenchAsciiConfigRows.slice(0, 2);
+
+  renderApiWorkbenchThreeConfigModal({
+    frame,
+    bounds: { column: 0, row: 0, width: 82, height: 22 },
+    rows,
+    selectedIndex: 0,
+    title: "Three Test",
+    buffers,
+    theme: testWorkbenchTheme(),
+    contrastText: () => "#000",
+    fit: (text, width) => text.slice(0, width),
+    paint: (text, style) => `${style.bg}:${style.fg}:${style.bold ? "b:" : ""}${text}`,
+    write: (target, row, column, value) => {
+      target[row] ??= [];
+      target[row]![column] = value;
+    },
+    fillRect: (_target, rect, bg) => fills.push({ bg, width: rect.width }),
+    drawFrame: (_target, _rect, title, active) => frames.push({ title, active }),
+    rowText: (row) => formatWorkbenchAsciiConfigRowText(row, ascii, { kittyStatus: "Kitty auto" }),
+    addHit: (rect, action) =>
+      hits.push({
+        type: action.type,
+        action: "action" in action ? action.action : undefined,
+        index: "index" in action ? action.index : undefined,
+        width: rect.width,
+      }),
+  });
+
+  const painted = frame.flat().filter(Boolean).join("|");
+  assertEquals(painted.includes("Three Test"), true);
+  assertEquals(painted.includes("Preset"), true);
+  assertEquals(painted.includes("Up/Down select"), true);
+  assertEquals(frames, [{ title: "Three Renderer Config", active: true }]);
+  assertEquals(fills.some((fill) => fill.bg === "#222"), true);
+  assertEquals(hits.some((hit) => hit.type === "asciiConfigBackdrop" && hit.width === 82), true);
+  assertEquals(hits.some((hit) => hit.type === "asciiConfig" && hit.action === "previous" && hit.index === 0), true);
+  assertEquals(hits.some((hit) => hit.type === "asciiConfigAction" && hit.action === "ok"), true);
+  assertEquals(buffers.rowRenderCommands.length > 0, true);
 });
 
 Deno.test("renderApiWorkbenchTerminalOutputToolbar paints actions and registers enabled hits", () => {
