@@ -41,7 +41,7 @@ import {
   routeBoard,
   tacticalMap,
   telemetryRack,
-} from "../app/visualization_fields.ts";
+} from "../app/visualizations.ts";
 import type { BorderMode, MenuLine, Rect, RenderContext, SourceFrame } from "../app/types.ts";
 
 const sources: SourceFrame[] = [

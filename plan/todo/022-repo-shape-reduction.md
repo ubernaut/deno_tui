@@ -223,6 +223,8 @@ The library core is real and valuable, but it needs clearer boundaries:
   - The stale standalone visualization app layout shard was removed after the monitor switched to
     `WindowManagerController`; the only live viewport-mode helper is now local to `app/main.ts`, and tests no longer
     preserve unused slot-rectangle helpers.
+  - Visualization field renderers are folded into `app/visualizations.ts`, keeping app-only fallback/field drawing
+    helpers with the visualization dispatch facade that owns their only runtime path.
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
