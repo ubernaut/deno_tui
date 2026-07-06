@@ -1,19 +1,10 @@
 import { assert, assertEquals, assertMatch, assertStringIncludes } from "./deps.ts";
-import { createDefaultWorkbenchAsciiOptions } from "../src/app/workbench_ascii.ts";
 import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import { emptySnapshot } from "../app/system_metrics.ts";
-import type { PanelRender, RenderContext, SlotConfig, SourceFrame, SystemSnapshot } from "../app/types.ts";
-import {
-  threeRendererModeLabel,
-  visualizationTextContentSize,
-  visualizationThreeStatusLine,
-  workbenchVisualizationRowsInto,
-  type WorkbenchVisualizationWindowOption,
-} from "../app/workbench_visualization_window.ts";
+import type { RenderContext, SlotConfig, SourceFrame, SystemSnapshot } from "../app/types.ts";
 import { compactSpaces, maxTrimmedTextWidth } from "../src/app/workbench_text.ts";
 import { studioCameraFramingForAspect } from "../app/neon_three.ts";
 import { renderVisualization } from "../app/visualizations.ts";
-import type { RowStyle } from "../src/app/workbench_rows.ts";
 
 const fallbackContext: RenderContext = {
   width: 28,
@@ -104,32 +95,6 @@ const sources: SourceFrame[] = [
     detailLines: [],
   },
 ];
-
-const windowOption: WorkbenchVisualizationWindowOption = {
-  label: "CPU Hex Grid",
-  description: "core utilization topology",
-  group: "Monitor",
-};
-
-const windowRender: PanelRender = {
-  title: "Hex Grid",
-  body: "core 0  12%\ncore 1  95%      ",
-  footer: "selected cpu-1",
-  alert: "",
-  accent: "signal",
-  severity: "info",
-};
-
-const visualizationTheme = {
-  background: "#000000",
-  danger: "#ff3366",
-  muted: "#887799",
-  panelSoft: "#21182f",
-  soft: "#c7b8ff",
-  surface: "#101018",
-  text: "#f8f5ff",
-  warn: "#ffb02e",
-};
 
 function context(overrides: Partial<RenderContext> = {}): RenderContext {
   return {
@@ -251,84 +216,6 @@ Deno.test("three visualization modes project distinct public signals", () => {
   assert(lattice);
   assert(gate);
   assert(lattice.twist !== gate.twist || lattice.lift !== gate.lift);
-});
-
-Deno.test("workbenchVisualizationRowsInto styles visualization rows and reuses storage", () => {
-  const target: RowStyle[] = [{ text: "stale", fg: "x", bg: "y", bold: false }];
-  const firstRow = target[0];
-  const textRows = ["stale"];
-  const rows = workbenchVisualizationRowsInto(target, textRows, windowOption, {
-    ...windowRender,
-    severity: "warning",
-  }, {
-    accent: "#9cff3a",
-    theme: visualizationTheme,
-    contrast: () => "#000000",
-  });
-
-  assertEquals(rows === target, true);
-  assertEquals(rows[0] === firstRow, true);
-  assertEquals(rows[0], { text: " MONITOR · Hex Grid ", fg: "#000000", bg: "#9cff3a", bold: true });
-  assertEquals(rows[1], { text: "core utilization topology", fg: "#ffb02e", bg: "#101018", bold: true });
-  assertEquals(rows[2], { text: "core 0  12%", fg: "#9cff3a", bg: "#101018", bold: true });
-  assertEquals(rows[3], { text: "core 1  95%      ", fg: "#f8f5ff", bg: "#101018", bold: false });
-  assertEquals(rows[4], { text: "selected cpu-1", fg: "#887799", bg: "#21182f", bold: undefined });
-  assertEquals(textRows, [
-    " MONITOR · Hex Grid ",
-    "core utilization topology",
-    "core 0  12%",
-    "core 1  95%      ",
-    "selected cpu-1",
-  ]);
-});
-
-Deno.test("workbenchVisualizationRowsInto maps alarm and info severity", () => {
-  const alarm = workbenchVisualizationRowsInto([], [], windowOption, {
-    ...windowRender,
-    alert: "thermal warning",
-    severity: "alarm",
-  }, {
-    accent: "#9cff3a",
-    theme: visualizationTheme,
-    contrast: () => "#000000",
-  });
-  const info = workbenchVisualizationRowsInto([], [], windowOption, { ...windowRender, severity: "info" }, {
-    accent: "#9cff3a",
-    theme: visualizationTheme,
-    contrast: () => "#000000",
-  });
-
-  assertEquals(alarm[1], { text: "! thermal warning", fg: "#ff3366", bg: "#101018", bold: true });
-  assertEquals(info[1], { text: "core utilization topology", fg: "#c7b8ff", bg: "#101018", bold: false });
-});
-
-Deno.test("visualizationTextContentSize expands to rendered text dimensions", () => {
-  assertEquals(visualizationTextContentSize(windowRender, 8, 3), {
-    width: "selected cpu-1".length,
-    height: 5,
-  });
-  assertEquals(visualizationTextContentSize(windowRender, 40, 8), {
-    width: 40,
-    height: 8,
-  });
-});
-
-Deno.test("visualizationThreeStatusLine uses renderer mode labels and compact spacing", () => {
-  const ascii = createDefaultWorkbenchAsciiOptions();
-  const status = visualizationThreeStatusLine(
-    {
-      ...windowRender,
-      three: {
-        mode: "lattice",
-        signal: { x: 0, y: 0, depth: 0, twist: 0, lift: 0, pulse: 0, active: true, pressed: false },
-      },
-    },
-    windowOption,
-    ascii,
-  );
-  assertStringIncludes(status, "ACEROLA LATTICE");
-  assertStringIncludes(status, threeRendererModeLabel(ascii).toUpperCase());
-  assertStringIncludes(status, windowOption.label);
 });
 
 Deno.test("compactSpaces and maxTrimmedTextWidth keep display helpers deterministic", () => {

@@ -1,20 +1,35 @@
+import { workbenchAsciiRendererModeLabel } from "../src/app/workbench_ascii.ts";
 import type { WorkbenchFrame } from "../src/app/workbench_frame.ts";
 import type { RowStyle } from "../src/app/workbench_rows.ts";
+import { compactSpaces } from "../src/app/workbench_text.ts";
 import { workbenchThreeBodyRect } from "../src/app/workbench_three_policy.ts";
+import { terminalGlyphStyleLabel } from "../src/three_ascii/options.ts";
 import type { Rectangle } from "../src/types.ts";
 import type { ApiWorkbenchThemeSpec } from "./api_workbench_catalog.ts";
 import type { AsciiOptions, PanelRender, SystemSnapshot } from "./types.ts";
 import { type CpuHexTileLayout, cpuHexTileLayoutInto } from "./visualization_system.ts";
-import {
-  visualizationThreeStatusLine,
-  workbenchVisualizationRowsInto,
-  type WorkbenchVisualizationWindowOption,
-} from "./workbench_visualization_window.ts";
 
 interface ApiWorkbenchVisualizationPaintStyle {
   fg?: string;
   bg?: string;
   bold?: boolean;
+}
+
+interface WorkbenchVisualizationWindowOption {
+  label: string;
+  description: string;
+  group: string;
+}
+
+interface WorkbenchVisualizationRowsTheme {
+  background: string;
+  danger: string;
+  muted: string;
+  panelSoft: string;
+  soft: string;
+  surface: string;
+  text: string;
+  warn: string;
 }
 
 interface ApiWorkbenchVisualizationMissingRenderOptions {
@@ -122,6 +137,83 @@ export function renderApiWorkbenchVisualizationTextWindow(options: ApiWorkbenchV
       contrast: contrastText,
     }),
   );
+}
+
+function workbenchVisualizationRowsInto(
+  target: RowStyle[],
+  textRows: string[],
+  option: WorkbenchVisualizationWindowOption,
+  rendered: PanelRender,
+  options: {
+    accent: string;
+    theme: WorkbenchVisualizationRowsTheme;
+    contrast: (color: string, darkFallback: string, lightFallback: string) => string;
+  },
+): RowStyle[] {
+  const rows = visualizationWindowRowsInto(textRows, option, rendered);
+  const { accent, theme: t, contrast } = options;
+  target.length = rows.length;
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = target[index] ?? { text: "" };
+    row.text = rows[index]!;
+    if (index === 0) {
+      row.fg = contrast(accent, t.background, t.text);
+      row.bg = accent;
+      row.bold = true;
+    } else if (index === 1) {
+      row.fg = rendered.severity === "alarm" ? t.danger : rendered.severity === "warning" ? t.warn : t.soft;
+      row.bg = t.surface;
+      row.bold = rendered.severity !== "info";
+    } else if (index === rows.length - 1) {
+      row.fg = t.muted;
+      row.bg = t.panelSoft;
+      row.bold = undefined;
+    } else {
+      const bodyIndex = index - 2;
+      row.fg = bodyIndex % 3 === 0 ? accent : bodyIndex % 3 === 1 ? t.text : t.soft;
+      row.bg = t.surface;
+      row.bold = bodyIndex === 0;
+    }
+    target[index] = row;
+  }
+  return target;
+}
+
+function visualizationWindowRowsInto(
+  target: string[],
+  option: WorkbenchVisualizationWindowOption,
+  rendered: PanelRender,
+): string[] {
+  target.length = 0;
+  target.push(
+    ` ${option.group.toUpperCase()} · ${rendered.title ?? option.label.toUpperCase()} `,
+    rendered.alert ? `! ${rendered.alert}` : option.description,
+  );
+  appendBodyLines(target, rendered.body);
+  target.push(rendered.footer);
+  return target;
+}
+
+function visualizationThreeStatusLine(
+  rendered: PanelRender,
+  option: WorkbenchVisualizationWindowOption,
+  options: AsciiOptions,
+): string {
+  const mode = rendered.three?.mode.toUpperCase() ?? "TEXT";
+  return compactSpaces(`ACEROLA ${mode} · ${threeRendererModeLabel(options).toUpperCase()} · ${option.label}`);
+}
+
+function threeRendererModeLabel(options: AsciiOptions): string {
+  return workbenchAsciiRendererModeLabel(options, terminalGlyphStyleLabel);
+}
+
+function appendBodyLines(target: string[], body: string): void {
+  let start = 0;
+  for (let index = 0; index <= body.length; index += 1) {
+    if (index < body.length && body[index] !== "\n") continue;
+    target.push(body.slice(start, index));
+    start = index + 1;
+  }
 }
 
 /** Registers hit targets for CPU hex tiles in the rendered visualization body. */

@@ -102,6 +102,7 @@ import {
   resolveWorkbenchAsciiConfigKey,
   WorkbenchAsciiConfigController,
   type WorkbenchAsciiConfigRow,
+  workbenchAsciiRendererModeLabel,
 } from "../src/app/workbench_ascii.ts";
 import {
   type WorkbenchAsciiConfigModalAction,
@@ -182,7 +183,7 @@ import {
 import { HTML_CSS_LAYOUT_WINDOW_ID } from "../src/markup/demo_fixtures.ts";
 import { type HtmlCssLayoutRenderCommand } from "./html_css_layout_view.ts";
 import { asciiDemoPresetIds } from "../src/three_ascii/demo_presets.ts";
-import { cloneAsciiOptions, normalizeAsciiOptions } from "../src/three_ascii/options.ts";
+import { cloneAsciiOptions, normalizeAsciiOptions, terminalGlyphStyleLabel } from "../src/three_ascii/options.ts";
 import { resolveSourceFramesInto } from "./sources.ts";
 import { makeStyle, requireInteractiveTerminal } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
@@ -207,7 +208,6 @@ import {
   type WorkbenchThreeScene as SharedWorkbenchThreeScene,
   workbenchVisualizationThreeScene,
 } from "../src/app/workbench_three_policy.ts";
-import { threeRendererModeLabel, visualizationTextContentSize } from "./workbench_visualization_window.ts";
 import {
   apiWorkbenchWorkspaceStorageLabel,
   buildWorkspaceMenuEntriesInto,
@@ -2192,6 +2192,30 @@ function visualizationWindowContentSize(
     };
   }
   return visualizationTextContentSize(rendered, baseWidth, baseHeight);
+}
+
+function visualizationTextContentSize(
+  rendered: PanelRender,
+  baseWidth: number,
+  baseHeight: number,
+): { width: number; height: number } {
+  let rowCount = 3;
+  let width = Math.max(baseWidth, rendered.footer.trimEnd().length);
+  let start = 0;
+  for (let index = 0; index <= rendered.body.length; index += 1) {
+    if (index < rendered.body.length && rendered.body[index] !== "\n") continue;
+    width = Math.max(width, rendered.body.slice(start, index).trimEnd().length);
+    rowCount += 1;
+    start = index + 1;
+  }
+  return {
+    width,
+    height: Math.max(baseHeight, rowCount),
+  };
+}
+
+function threeRendererModeLabel(options: AsciiOptions): string {
+  return workbenchAsciiRendererModeLabel(options, terminalGlyphStyleLabel);
 }
 
 function buildVisualizationContext(
