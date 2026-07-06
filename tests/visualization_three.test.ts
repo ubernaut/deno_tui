@@ -27,6 +27,7 @@ import {
   type WorkbenchVisualizationRowsTheme,
   type WorkbenchVisualizationWindowOption,
 } from "../app/workbench_visualization_window.ts";
+import { studioCameraFramingForAspect } from "../app/neon_three.ts";
 import {
   appendThreeSceneFooter,
   driveThreeSignal,
@@ -181,6 +182,18 @@ Deno.test("three fallback footer preserves primitive mode context", () => {
     `SRC CPU / ${threeSceneModeLabel("lattice")} PRIMITIVES`,
   );
   assertEquals(appendThreeSceneFooter("", "field", 16), `${threeSceneModeLabel("field")} PRIMITIVES`);
+});
+
+Deno.test("studio Three scene framing tightens for wide terminal panes", () => {
+  const normal = studioCameraFramingForAspect(1.2);
+  const wide = studioCameraFramingForAspect(1.95);
+  const tall = studioCameraFramingForAspect(0.75);
+
+  assert(wide.cameraZ < normal.cameraZ);
+  assert(wide.cameraY < normal.cameraY);
+  assert(wide.groupScale > normal.groupScale);
+  assert(tall.cameraZ > normal.cameraZ);
+  assertEquals(tall.groupScale, 1);
 });
 
 Deno.test("three fallback body renders bounded mode-specific text fields", () => {

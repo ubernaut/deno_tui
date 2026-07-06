@@ -252,6 +252,22 @@ export interface NeonThreeSceneBundle {
   dispose: () => void;
 }
 
+export interface StudioCameraFraming {
+  cameraY: number;
+  cameraZ: number;
+  groupScale: number;
+}
+
+export function studioCameraFramingForAspect(aspect: number): StudioCameraFraming {
+  const wide = Math.max(0, aspect - 1.25);
+  const tall = Math.max(0, 1.05 - aspect);
+  return {
+    cameraY: 1.18 - Math.min(0.28, wide * 0.18) + Math.min(0.18, tall * 0.22),
+    cameraZ: 6.25 - Math.min(1.05, wide * 1.15) + Math.min(0.65, tall * 1.1),
+    groupScale: 1 + Math.min(0.24, wide * 0.22),
+  };
+}
+
 const modeLabels = {
   lattice: "LATTICE",
   atfield: "AT-FIELD",
@@ -633,9 +649,10 @@ export function createNeonThreeScene(mode: ThreeSceneMode, options: NeonThreeSce
             sphere.rotation.y += 0.055;
             block.rotation.x += 0.035 + signal.lift * 0.01;
             block.rotation.z += 0.025 + signal.twist * 0.01;
-            const wideAspect = Math.max(0, camera.aspect - 1.35);
-            camera.position.y = 1.18 - Math.min(0.22, wideAspect * 0.08);
-            camera.position.z = 6.25 - Math.min(0.35, wideAspect * 0.12);
+            const framing = studioCameraFramingForAspect(camera.aspect);
+            camera.position.y = framing.cameraY;
+            camera.position.z = framing.cameraZ;
+            group.scale.setScalar(framing.groupScale);
           },
         };
       }

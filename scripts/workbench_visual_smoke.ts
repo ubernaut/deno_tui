@@ -361,7 +361,10 @@ export function inspectWorkbenchFullscreenVisualSmokeOutput(
   }
   let minVisibleCells = 0;
   if (!rendererUnavailable && fullscreenCells >= 1_000) {
-    minVisibleCells = Math.max(1, Math.min(300, Math.floor(fullscreenCells * 0.05)));
+    const largeFullscreenPane = bodyTruecolor.rows >= 12 && bodyTruecolor.maxColumns >= minTruecolorColumns;
+    minVisibleCells = largeFullscreenPane
+      ? Math.max(1, Math.floor(fullscreenCells * 0.44))
+      : Math.max(1, Math.min(300, Math.floor(fullscreenCells * 0.05)));
     if (bodyVisible.cells < minVisibleCells) {
       missing.push(`three body visible cells >= ${minVisibleCells}`);
     }
