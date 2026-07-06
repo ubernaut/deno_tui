@@ -1,8 +1,8 @@
 import { assertEquals } from "./deps.ts";
 import {
   emptyGpuSnapshot,
+  NvidiaSmiGpuMetricsProvider,
   parseDfDiskRows,
-  parseNvidiaSmiGpuRow,
   sampleCpuStatRows,
   sampleNetworkStats,
   sampleTemperatures,
@@ -15,10 +15,16 @@ import type {
   SystemMetricsProvider,
 } from "../app/system_metrics_sources.ts";
 
-Deno.test("parseNvidiaSmiGpuRow parses utilization memory and nullable telemetry", () => {
-  const gpu = parseNvidiaSmiGpuRow("Fixture RTX, 75, 1024, 4096, 66, 120, 1800, 5000");
+Deno.test("NvidiaSmiGpuMetricsProvider parses utilization memory and nullable telemetry", async () => {
+  const provider = new FixtureThermalProvider();
+  provider.commands.set("nvidia-smi", commandOutput("Fixture RTX, 75, 1024, 4096, 66, 120, 1800, 5000\n"));
 
-  assertEquals(gpu, {
+  const sample = await new NvidiaSmiGpuMetricsProvider().sampleGpu({
+    provider,
+    current: emptyGpuSnapshot(),
+  });
+
+  assertEquals(sample.gpu, {
     available: true,
     name: "Fixture RTX",
     utilizationPercent: 75,
@@ -30,17 +36,24 @@ Deno.test("parseNvidiaSmiGpuRow parses utilization memory and nullable telemetry
     graphicsClockMhz: 1800,
     memoryClockMhz: 5000,
   });
+  assertEquals(sample.diagnostic?.status, "ok");
 });
 
-Deno.test("parseNvidiaSmiGpuRow handles unsupported optional fields", () => {
-  const gpu = parseNvidiaSmiGpuRow("Fixture GPU, 150, n/a, 0, Not Supported, N/A, , ");
+Deno.test("NvidiaSmiGpuMetricsProvider handles unsupported optional fields", async () => {
+  const provider = new FixtureThermalProvider();
+  provider.commands.set("nvidia-smi", commandOutput("Fixture GPU, 150, n/a, 0, Not Supported, N/A, , \n"));
 
-  assertEquals(gpu?.utilizationPercent, 100);
-  assertEquals(gpu?.memoryPercent, 0);
-  assertEquals(gpu?.temperatureCelsius, null);
-  assertEquals(gpu?.powerWatts, null);
-  assertEquals(gpu?.graphicsClockMhz, null);
-  assertEquals(gpu?.memoryClockMhz, null);
+  const sample = await new NvidiaSmiGpuMetricsProvider().sampleGpu({
+    provider,
+    current: emptyGpuSnapshot(),
+  });
+
+  assertEquals(sample.gpu.utilizationPercent, 100);
+  assertEquals(sample.gpu.memoryPercent, 0);
+  assertEquals(sample.gpu.temperatureCelsius, null);
+  assertEquals(sample.gpu.powerWatts, null);
+  assertEquals(sample.gpu.graphicsClockMhz, null);
+  assertEquals(sample.gpu.memoryClockMhz, null);
 });
 
 Deno.test("emptyGpuSnapshot exposes stable unavailable GPU state", () => {
@@ -235,9 +248,17 @@ function procNetDev(counters: Record<string, [number, number]>): string {
   ].join("\n");
 }
 
+function commandOutput(output: string): SystemMetricsCommandOutput {
+  return {
+    success: true,
+    stdout: new TextEncoder().encode(output),
+  };
+}
+
 class FixtureThermalProvider implements SystemMetricsProvider {
   files = new Map<string, string>();
   dirs = new Map<string, SystemMetricsDirEntry[]>();
+  commands = new Map<string, SystemMetricsCommandOutput>();
   dirError?: Error;
 
   now(): number {
@@ -290,10 +311,10 @@ class FixtureThermalProvider implements SystemMetricsProvider {
   }
 
   command(
-    _command: string,
+    command: string,
     _args: string[],
     _options?: SystemMetricsCommandOptions,
   ): Promise<SystemMetricsCommandOutput> {
-    return Promise.resolve({ success: false, stdout: new Uint8Array() });
+    return Promise.resolve(this.commands.get(command) ?? { success: false, stdout: new Uint8Array() });
   }
 }

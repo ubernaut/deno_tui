@@ -190,7 +190,7 @@ export function emptyGpuSnapshot(): GpuSnapshot {
   };
 }
 
-export function parseNvidiaSmiGpuRow(row: string): GpuSnapshot | null {
+function parseNvidiaSmiGpuRow(row: string): GpuSnapshot | null {
   const parts = row.split(",");
   const name = parts[0]?.trim();
   const utilization = parts[1]?.trim();
