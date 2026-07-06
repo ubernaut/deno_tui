@@ -302,7 +302,6 @@ import {
 } from "./api_workbench_terminal_output_view.ts";
 import { ApiWorkbenchControlsViewBufferCache, renderApiWorkbenchControls } from "./api_workbench_controls_view.ts";
 import { renderApiWorkbenchModalOverlay, renderApiWorkbenchThreeConfigModal } from "./api_workbench_modal_view.ts";
-import { renderApiWorkbenchShelf, renderApiWorkbenchWindowTabs } from "./api_workbench_shelf_view.ts";
 import {
   renderApiWorkbenchThreeFallback,
   renderApiWorkbenchThreeHeader,
@@ -316,8 +315,10 @@ import {
 } from "./api_workbench_visualization_view.ts";
 import {
   ApiWorkbenchWindowShellBufferCache,
+  renderApiWorkbenchShelf,
   renderApiWorkbenchWindowFrame,
   renderApiWorkbenchWindowShell,
+  renderApiWorkbenchWindowTabs,
 } from "./api_workbench_window_view.ts";
 
 type BuiltInWindowId = ApiWorkbenchBuiltInWindowId;

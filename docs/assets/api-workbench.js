@@ -18816,65 +18816,6 @@ function writeTextCommand(target, index, command) {
   return index + 1;
 }
 
-// app/api_workbench_shelf_view.ts
-function renderApiWorkbenchShelf(options) {
-  const { frame, row, column, width, windows, buffers, theme: theme2, titleForId, paint: paint2, write: write2, writeButton: writeButton2, addHit } = options;
-  const entries = workbenchShelfEntriesInto(buffers.entries, windows, titleForId);
-  if (entries.length === 0) return;
-  const layout = layoutWorkbenchShelfInto(buffers.shelfLayout, {
-    row,
-    column,
-    width,
-    entries
-  });
-  const commands = workbenchShelfRenderCommandsInto(buffers.shelfCommands, layout);
-  for (const command of commands) {
-    if (command.kind === "prefix") {
-      write2(
-        frame,
-        command.rect.row,
-        command.rect.column,
-        paint2(command.text, { fg: theme2.muted, bg: theme2.backgroundSoft })
-      );
-      continue;
-    }
-    writeButton2(frame, command.rect.row, command.rect.column, command.label, {
-      state: command.state,
-      tone: command.tone,
-      maxWidth: command.rect.width
-    });
-    addHit(command.hitRect, { type: "restore", id: command.id });
-  }
-}
-function renderApiWorkbenchWindowTabs(options) {
-  const { frame, row, column, width, tabs, buffers, theme: theme2, titleForId, paint: paint2, write: write2, fillRow, writeButton: writeButton2, addHit } = options;
-  fillRow?.(frame, row, theme2.backgroundSoft);
-  const layout = layoutWorkbenchTabsInto(buffers.tabLayout, {
-    row,
-    column,
-    width,
-    tabs: workbenchTabEntriesInto(buffers.tabs, tabs, titleForId)
-  });
-  const commands = workbenchShelfRenderCommandsInto(buffers.tabCommands, layout);
-  for (const command of commands) {
-    if (command.kind === "prefix") {
-      write2(
-        frame,
-        command.rect.row,
-        command.rect.column,
-        paint2(command.text, { fg: theme2.muted, bg: theme2.backgroundSoft })
-      );
-      continue;
-    }
-    writeButton2(frame, command.rect.row, command.rect.column, command.label, {
-      state: command.state,
-      tone: command.tone,
-      maxWidth: command.rect.width
-    });
-    addHit(command.hitRect, options.hitAction?.(command.id) ?? { type: "windowTab", id: command.id });
-  }
-}
-
 // src/app/workbench_frame_render.ts
 function workbenchFrameRenderCommandsInto(target, lineBuffer, options) {
   if (options.rect.width <= 0 || options.rect.height <= 0) {
@@ -18945,6 +18886,63 @@ function writeTextCommand2(target, line, style2) {
 }
 
 // app/api_workbench_window_view.ts
+function renderApiWorkbenchShelf(options) {
+  const { frame, row, column, width, windows, buffers, theme: theme2, titleForId, paint: paint2, write: write2, writeButton: writeButton2, addHit } = options;
+  const entries = workbenchShelfEntriesInto(buffers.entries, windows, titleForId);
+  if (entries.length === 0) return;
+  const layout = layoutWorkbenchShelfInto(buffers.shelfLayout, {
+    row,
+    column,
+    width,
+    entries
+  });
+  const commands = workbenchShelfRenderCommandsInto(buffers.shelfCommands, layout);
+  for (const command of commands) {
+    if (command.kind === "prefix") {
+      write2(
+        frame,
+        command.rect.row,
+        command.rect.column,
+        paint2(command.text, { fg: theme2.muted, bg: theme2.backgroundSoft })
+      );
+      continue;
+    }
+    writeButton2(frame, command.rect.row, command.rect.column, command.label, {
+      state: command.state,
+      tone: command.tone,
+      maxWidth: command.rect.width
+    });
+    addHit(command.hitRect, { type: "restore", id: command.id });
+  }
+}
+function renderApiWorkbenchWindowTabs(options) {
+  const { frame, row, column, width, tabs, buffers, theme: theme2, titleForId, paint: paint2, write: write2, fillRow, writeButton: writeButton2, addHit } = options;
+  fillRow?.(frame, row, theme2.backgroundSoft);
+  const layout = layoutWorkbenchTabsInto(buffers.tabLayout, {
+    row,
+    column,
+    width,
+    tabs: workbenchTabEntriesInto(buffers.tabs, tabs, titleForId)
+  });
+  const commands = workbenchShelfRenderCommandsInto(buffers.tabCommands, layout);
+  for (const command of commands) {
+    if (command.kind === "prefix") {
+      write2(
+        frame,
+        command.rect.row,
+        command.rect.column,
+        paint2(command.text, { fg: theme2.muted, bg: theme2.backgroundSoft })
+      );
+      continue;
+    }
+    writeButton2(frame, command.rect.row, command.rect.column, command.label, {
+      state: command.state,
+      tone: command.tone,
+      maxWidth: command.rect.width
+    });
+    addHit(command.hitRect, options.hitAction?.(command.id) ?? { type: "windowTab", id: command.id });
+  }
+}
 function renderApiWorkbenchWindowTitlebar(options) {
   const titlebar = layoutWorkbenchTitlebarInto(options.buffers.layout(options.id), {
     rect: options.rect,
