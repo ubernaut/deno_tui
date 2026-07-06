@@ -1,6 +1,7 @@
 import { assertEquals, assertStrictEquals } from "./deps.ts";
 import {
   clampWorkbenchTileDensity,
+  featuredWorkbenchWindowLayout,
   WorkbenchActiveRevealTracker,
   workbenchAdaptiveTileOptions,
   workbenchAdaptiveWindowLayout,
@@ -105,6 +106,49 @@ Deno.test("workbenchAdaptiveWindowLayout runs managers with shared tile defaults
   }]);
   assertEquals(layout.contentHeight, 42);
   assertEquals(layout.rects.get("a"), { column: 2, row: 3, width: 40, height: 12 });
+});
+
+Deno.test("workbenchAdaptiveWindowLayout can feature an active visual window across full width", () => {
+  const bounds = { column: 0, row: 0, width: 150, height: 42 };
+  const layout = workbenchAdaptiveWindowLayout<"a" | "b" | "three">({
+    layout(options) {
+      return {
+        contentHeight: 42,
+        visible: [
+          { id: "a", rect: { column: 0, row: 0, width: 49, height: 20 } },
+          { id: "b", rect: { column: 50, row: 0, width: 49, height: 20 } },
+          { id: "three", rect: { column: 100, row: 0, width: 50, height: 20 } },
+        ],
+      };
+    },
+  }, {
+    bounds,
+    featuredId: "three",
+    featuredMinWidth: 120,
+    featuredMinHeight: 18,
+    featuredHeightRatio: 0.5,
+  });
+
+  assertEquals(layout.rects.get("three"), { column: 0, row: 0, width: 150, height: 21 });
+  assertEquals(layout.rects.get("a")?.row, 22);
+  assertEquals(layout.rects.get("b")?.row, 22);
+  assertEquals(layout.contentHeight, 42);
+});
+
+Deno.test("featuredWorkbenchWindowLayout leaves narrow workbench layouts alone", () => {
+  const result = featuredWorkbenchWindowLayout<"a" | "three">(
+    { column: 0, row: 0, width: 90, height: 32 },
+    {
+      contentHeight: 32,
+      visible: [
+        { id: "a", rect: { column: 0, row: 0, width: 44, height: 15 } },
+        { id: "three", rect: { column: 45, row: 0, width: 45, height: 15 } },
+      ],
+    },
+    { featuredId: "three", featuredMinWidth: 120 },
+  );
+
+  assertEquals(result, undefined);
 });
 
 Deno.test("workbenchFullscreenWindowRect uses the visible viewport instead of virtual content height", () => {

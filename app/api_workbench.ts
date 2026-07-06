@@ -2837,7 +2837,15 @@ function workspaceLayout(bounds: Rectangle): {
   contentHeight: number;
   rects: Map<WindowId, Rectangle>;
 } {
-  return workbenchAdaptiveWindowLayout<WindowId>(windowManager, { bounds, tileDensity: tileDensity.peek() });
+  const active = activeWindow.peek();
+  return workbenchAdaptiveWindowLayout<WindowId>(windowManager, {
+    bounds,
+    tileDensity: tileDensity.peek(),
+    featuredId: isThreeRenderedWindow(active) ? active : undefined,
+    featuredMinWidth: 118,
+    featuredMinHeight: 18,
+    featuredHeightRatio: 0.48,
+  });
 }
 
 function windowScroll(id: WindowId): ScrollAreaController {

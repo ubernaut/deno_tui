@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import type { TileLayoutOptions } from "../layout/responsive.ts";
+import { type TileLayoutOptions, tileRects } from "../layout/responsive.ts";
 import type { Rectangle } from "../types.ts";
 import type { ViewportOverflowInspection } from "../viewport.ts";
 import { scrollbarGlyph, type ScrollbarThumb } from "../components/scroll_area.ts";
@@ -42,6 +42,10 @@ export interface WorkbenchAdaptiveWindowLayoutManager {
 /** Options for projecting a window manager layout with shared workbench tile defaults. */
 export interface WorkbenchAdaptiveWindowLayoutOptions extends Omit<WorkbenchAdaptiveTileOptions, "bounds"> {
   bounds: Rectangle;
+  featuredId?: string;
+  featuredMinWidth?: number;
+  featuredMinHeight?: number;
+  featuredHeightRatio?: number;
 }
 
 /** Options for locating a workbench vertical scrollbar hit region. */
@@ -256,11 +260,70 @@ export function workbenchAdaptiveWindowLayout<Id extends string>(
   options: WorkbenchAdaptiveWindowLayoutOptions,
 ): WorkbenchWindowLayout<Id> {
   const bounds = options.bounds;
+  const tileOptions = workbenchAdaptiveTileOptions(options);
   const layout = manager.layout({
     bounds,
-    tileOptions: workbenchAdaptiveTileOptions(options),
+    tileOptions,
   });
+  const featured = featuredWorkbenchWindowLayout<Id>(bounds, layout, {
+    ...tileOptions,
+    featuredId: options.featuredId,
+    featuredMinWidth: options.featuredMinWidth,
+    featuredMinHeight: options.featuredMinHeight,
+    featuredHeightRatio: options.featuredHeightRatio,
+  });
+  if (featured) return featured;
   return workbenchWindowLayout<Id>(bounds, layout);
+}
+
+/** Promotes a visually rich active window into a full-width row on roomy landscape workbench layouts. */
+export function featuredWorkbenchWindowLayout<Id extends string>(
+  bounds: Rectangle,
+  layout: WorkbenchLayoutShape,
+  options: Partial<Omit<TileLayoutOptions, "itemCount">> & {
+    featuredId?: string;
+    featuredMinWidth?: number;
+    featuredMinHeight?: number;
+    featuredHeightRatio?: number;
+  },
+): WorkbenchWindowLayout<Id> | undefined {
+  const featuredId = options.featuredId;
+  if (!featuredId || bounds.width < Math.max(1, Math.floor(options.featuredMinWidth ?? 96))) return undefined;
+  const visible = layout.visible.filter((entry) => entry.rect);
+  if (visible.length <= 2 || !visible.some((entry) => entry.id === featuredId)) return undefined;
+
+  const gap = Math.max(0, Math.floor(options.gap ?? 1));
+  const featuredHeight = Math.max(
+    Math.max(1, Math.floor(options.featuredMinHeight ?? 18)),
+    Math.floor(bounds.height * Math.max(0.1, Math.min(0.85, options.featuredHeightRatio ?? 0.46))),
+  );
+  const otherHeight = Math.max(1, bounds.height - featuredHeight - gap);
+  const otherBounds = { ...bounds, row: bounds.row + featuredHeight + gap, height: otherHeight };
+  const otherEntries = visible.filter((entry) => entry.id !== featuredId);
+  const otherLayout = tileRects(otherBounds, {
+    ...options,
+    itemCount: otherEntries.length,
+    minTileWidth: Math.max(1, Math.floor(options.minTileWidth ?? 38)),
+    minTileHeight: Math.max(1, Math.floor(options.minTileHeight ?? 10)),
+    allowVerticalOverflow: options.allowVerticalOverflow ?? true,
+  });
+
+  const rects = new Map<Id, Rectangle>();
+  rects.set(featuredId as Id, {
+    column: bounds.column,
+    row: bounds.row,
+    width: bounds.width,
+    height: featuredHeight,
+  });
+  for (let index = 0; index < otherEntries.length; index += 1) {
+    rects.set(otherEntries[index]!.id as Id, otherLayout.rects[index]!);
+  }
+
+  return {
+    bounds,
+    contentHeight: Math.max(bounds.height, featuredHeight + gap + otherLayout.contentHeight),
+    rects,
+  };
 }
 
 /**

@@ -497,9 +497,15 @@ export function inspectWorkbenchVisualSmokeOutput(
     const minPaneRows = Math.min(2, threePane.bodyRows);
     const minPaneColumns = Math.max(1, Math.floor(threePane.bodyColumns * 0.35));
     const minVisibleColumns = Math.max(1, Math.floor(threePane.bodyColumns * 0.08));
+    const focusedThreeWideColumns = statusLine.includes("focus Three ASCII") && options.columns >= 130
+      ? Math.floor(options.columns * 0.65)
+      : 0;
     if (threePane.truecolorRows < minPaneRows) missing.push(`three pane truecolor rows >= ${minPaneRows}`);
     if (threePane.truecolorMaxColumns < minPaneColumns) {
       missing.push(`three pane truecolor columns >= ${minPaneColumns}`);
+    }
+    if (focusedThreeWideColumns > 0 && threePane.bodyColumns < focusedThreeWideColumns) {
+      missing.push(`focused three pane columns >= ${focusedThreeWideColumns}`);
     }
     if (threePane.visibleRows < minPaneRows) missing.push(`three pane visible rows >= ${minPaneRows}`);
     if (threePane.visibleMaxColumns < minVisibleColumns) {
