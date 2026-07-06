@@ -1,3 +1,5 @@
+import { clamp } from "../src/utils/numbers.ts";
+
 export interface WorkbenchVisualSmokeOptions {
   command?: readonly string[];
   columns?: number;
@@ -1140,10 +1142,6 @@ function numberParam(value: string | undefined, fallback: number): number {
   if (!value) return fallback;
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
 }
 
 function countOccurrences(value: string, needle: string): number {

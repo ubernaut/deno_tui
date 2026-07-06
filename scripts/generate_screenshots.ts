@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
 import jpeg from "jpeg-js";
 import { PNG } from "pngjs";
+import { clamp } from "../src/utils/numbers.ts";
 
 interface ScreenshotTarget {
   filename: string;
@@ -1215,10 +1216,6 @@ function clearRow(row: Cell[], start: number): void {
 function numberParam(value: string | undefined, fallback: number): number {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number : fallback;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
 }
 
 function quoteCommand(command: readonly string[]): string {
