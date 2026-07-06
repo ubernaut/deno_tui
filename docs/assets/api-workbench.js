@@ -2881,7 +2881,12 @@ var CLEAR_SCREEN = `\x1B[2J`;
 // src/controls.ts
 var textEncoder = new TextEncoder();
 
-// src/input_reader/decoders/mouse.ts
+// src/input_reader/mod.ts
+var BRACKETED_PASTE_START_TEXT = "\x1B[200~";
+var BRACKETED_PASTE_END_TEXT = "\x1B[201~";
+var BRACKETED_PASTE_START = new TextEncoder().encode(BRACKETED_PASTE_START_TEXT);
+var BRACKETED_PASTE_END = new TextEncoder().encode(BRACKETED_PASTE_END_TEXT);
+var textDecoder = new TextDecoder();
 var mouseEvent = {
   key: "mouse",
   x: 0,
@@ -2894,14 +2899,6 @@ var mouseEvent = {
   meta: false
 };
 var lastMouseEvent = { ...mouseEvent };
-
-// src/input_reader/decoders/terminal.ts
-var textDecoder = new TextDecoder();
-
-// src/input_reader/mod.ts
-var BRACKETED_PASTE_START = new TextEncoder().encode("\x1B[200~");
-var BRACKETED_PASTE_END = new TextEncoder().encode("\x1B[201~");
-var textDecoder2 = new TextDecoder();
 
 // src/canvas/box.ts
 var BoxObject = class extends DrawObject {
@@ -3132,7 +3129,7 @@ var DrawObjectSpatialIndex = class _DrawObjectSpatialIndex {
 
 // src/canvas/sink.ts
 var textEncoder2 = new TextEncoder();
-var textDecoder3 = new TextDecoder();
+var textDecoder2 = new TextDecoder();
 var MAX_ANSI_CELL_PARTS_CACHE_SIZE = 32768;
 var MAX_ANSI_PREFIX_STATE_CACHE_SIZE = 8192;
 var ansiCellPartsCache = /* @__PURE__ */ new Map();
@@ -3278,7 +3275,7 @@ function ansiPrefixCanOverrideActive(active2, next) {
   return true;
 }
 function splitAnsiCellValue(value) {
-  const cell = typeof value === "string" ? value : textDecoder3.decode(value);
+  const cell = typeof value === "string" ? value : textDecoder2.decode(value);
   if (!cell.includes("\x1B[")) {
     return { prefix: "", text: cell, suffix: "" };
   }
@@ -5211,7 +5208,7 @@ var defaultRenderLoopTimer = {
 
 // src/tui.ts
 var textEncoder3 = new TextEncoder();
-var textDecoder4 = new TextDecoder();
+var textDecoder3 = new TextDecoder();
 
 // src/layout/flex_layout.ts
 var MAX_FLEX_SIZE = Number.MAX_SAFE_INTEGER;
@@ -16353,7 +16350,7 @@ var NoopLifecycleController = class {
 };
 
 // src/web/cell_canvas_sink.ts
-var textDecoder5 = new TextDecoder();
+var textDecoder4 = new TextDecoder();
 var ESCAPE2 = String.fromCharCode(27);
 var SGR_PATTERN = new RegExp(`${ESCAPE2}\\[([0-9;]*)m`, "g");
 var BrowserCellCanvasSink = class {
@@ -16425,7 +16422,7 @@ var BrowserCellCanvasSink = class {
     };
   }
   #paintCell(row, column, rawValue) {
-    const value = typeof rawValue === "string" ? rawValue : textDecoder5.decode(rawValue);
+    const value = typeof rawValue === "string" ? rawValue : textDecoder4.decode(rawValue);
     const parsed = parseAnsiCell(value);
     const x = column * this.#cellWidth;
     const y = row * this.#cellHeight;
@@ -16960,7 +16957,7 @@ function createWebTui(options) {
 }
 
 // src/web/remote_terminal.ts
-var textDecoder6 = new TextDecoder();
+var textDecoder5 = new TextDecoder();
 
 // src/app/workbench_buffers.ts
 var WorkbenchButtonRowBufferCache = class {

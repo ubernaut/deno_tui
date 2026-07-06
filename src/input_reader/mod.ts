@@ -10,9 +10,7 @@ import type {
   TerminalFocusEvent,
 } from "./types.ts";
 import type { Stdin } from "../types.ts";
-import { decodeMouseSGR, decodeMouseVT_UTF8 } from "./decoders/mouse.ts";
 import { decodeKey } from "./decoders/keyboard.ts";
-import { decodeBracketedPaste, decodeTerminalFocus } from "./decoders/terminal.ts";
 import type { EmitterEvent, EventEmitter } from "../event_emitter.ts";
 
 /** Public type alias for an input Event Record. */
@@ -26,8 +24,10 @@ export type InputEventRecord = {
   terminalFocus: EmitterEvent<[TerminalFocusEvent]>;
 };
 
-const BRACKETED_PASTE_START = new TextEncoder().encode("\x1b[200~");
-const BRACKETED_PASTE_END = new TextEncoder().encode("\x1b[201~");
+const BRACKETED_PASTE_START_TEXT = "\x1b[200~";
+const BRACKETED_PASTE_END_TEXT = "\x1b[201~";
+const BRACKETED_PASTE_START = new TextEncoder().encode(BRACKETED_PASTE_START_TEXT);
+const BRACKETED_PASTE_END = new TextEncoder().encode(BRACKETED_PASTE_END_TEXT);
 
 /**
  * Read keypresses from given stdin, parse them and emit to given emitter.
@@ -82,6 +82,19 @@ export async function emitInputEvents(
 
 const textDecoder = new TextDecoder();
 
+let mouseEvent: MouseEvent = {
+  key: "mouse",
+  x: 0,
+  y: 0,
+  movementX: 0,
+  movementY: 0,
+  buffer: undefined as unknown as Uint8Array,
+  shift: false,
+  ctrl: false,
+  meta: false,
+};
+let lastMouseEvent: MouseEvent = { ...mouseEvent };
+
 /**
  * Decode character(s) from buffer that was sent to stdin from terminal on mostly
  * @see https://invisible-island.net/xterm/ctlseqs/ctlseqs.txt for reference used to create this function
@@ -99,6 +112,187 @@ export function* decodeBuffer(
       decodeMouseVT_UTF8(chunk, code) ?? decodeMouseSGR(chunk, code) ?? decodeKey(chunk, code);
     index = boundary;
   }
+}
+
+function decodeBracketedPaste(
+  buffer: Uint8Array,
+  code: string,
+  decoder = textDecoder,
+): PasteEvent | undefined {
+  if (!code.startsWith(BRACKETED_PASTE_START_TEXT) || !code.endsWith(BRACKETED_PASTE_END_TEXT)) {
+    return undefined;
+  }
+  const payload = buffer.subarray(BRACKETED_PASTE_START.length, buffer.length - BRACKETED_PASTE_END.length);
+  return {
+    key: "paste",
+    text: decoder.decode(payload),
+    buffer,
+  };
+}
+
+function decodeTerminalFocus(buffer: Uint8Array, code: string): TerminalFocusEvent | undefined {
+  if (code === "\x1b[I") {
+    return { key: "focus", focused: true, buffer };
+  }
+  if (code === "\x1b[O") {
+    return { key: "focus", focused: false, buffer };
+  }
+  return undefined;
+}
+
+function decodeMouseSGR(
+  buffer: Uint8Array,
+  code: string,
+): MousePressEvent | MouseScrollEvent | undefined {
+  const action = code.at(-1);
+  if (!code.startsWith("\x1b[<") || (action !== "m" && action !== "M")) {
+    return undefined;
+  }
+
+  const release = action === "m";
+
+  const xSeparator = code.indexOf(";");
+  let modifiers = +code.slice(3, xSeparator);
+  const ySeparator = code.indexOf(";", xSeparator + 1);
+  let x = +code.slice(xSeparator + 1, ySeparator);
+  let y = +code.slice(ySeparator + 1, code.length - 1);
+
+  x -= 1;
+  y -= 1;
+
+  const movementX = lastMouseEvent ? x - lastMouseEvent.x : 0;
+  const movementY = lastMouseEvent ? y - lastMouseEvent.y : 0;
+
+  let scroll: MouseScrollEvent["scroll"] = 0;
+  if (modifiers >= 64) {
+    scroll = modifiers % 2 === 0 ? -1 : 1;
+    modifiers -= scroll < 0 ? 64 : 65;
+  }
+
+  let drag = false;
+  if (modifiers >= 32) {
+    drag = true;
+    modifiers -= 32;
+  }
+
+  let ctrl = false;
+  if (modifiers >= 16) {
+    ctrl = true;
+    modifiers -= 16;
+  }
+
+  let meta = false;
+  if (modifiers >= 8) {
+    meta = true;
+    modifiers -= 8;
+  }
+
+  let shift = false;
+  if (modifiers >= 4) {
+    shift = true;
+    modifiers -= 4;
+  }
+
+  let button: MousePressEvent["button"];
+  if (!scroll) {
+    button = modifiers as MousePressEvent["button"];
+  }
+
+  lastMouseEvent = mouseEvent;
+  const previous = lastMouseEvent;
+  mouseEvent = previous;
+
+  const allMouseEvents = mouseEvent as Partial<MousePressEvent & MouseScrollEvent>;
+  delete allMouseEvents.scroll;
+  delete allMouseEvents.drag;
+  delete allMouseEvents.button;
+  delete allMouseEvents.release;
+
+  mouseEvent.buffer = buffer;
+  mouseEvent.x = x;
+  mouseEvent.y = y;
+  mouseEvent.ctrl = ctrl;
+  mouseEvent.meta = meta;
+  mouseEvent.shift = shift;
+  mouseEvent.movementX = movementX;
+  mouseEvent.movementY = movementY;
+
+  if (scroll) {
+    const mouseScrollEvent = mouseEvent as MouseScrollEvent;
+    mouseScrollEvent.scroll = scroll;
+    return mouseScrollEvent;
+  }
+
+  const mousePressEvent = mouseEvent as MousePressEvent;
+  mousePressEvent.drag = drag;
+  mousePressEvent.button = button!;
+  mousePressEvent.release = release;
+  return mousePressEvent;
+}
+
+function decodeMouseVT_UTF8(
+  buffer: Uint8Array,
+  code: string,
+): MousePressEvent | MouseScrollEvent | undefined {
+  if (!code.startsWith("\x1b[M")) return undefined;
+
+  const modifiers = code.charCodeAt(3);
+  let x = code.charCodeAt(4);
+  let y = code.charCodeAt(5);
+
+  x -= 0o41;
+  y -= 0o41;
+
+  const movementX = lastMouseEvent ? x - lastMouseEvent.x : 0;
+  const movementY = lastMouseEvent ? y - lastMouseEvent.y : 0;
+
+  const buttonInfo = modifiers & 3;
+  let release = false;
+
+  let button: MousePressEvent["button"];
+  if (buttonInfo === 3) {
+    release = true;
+  } else {
+    button = buttonInfo as MousePressEvent["button"];
+  }
+
+  const shift = !!(modifiers & 4);
+  const meta = !!(modifiers & 8);
+  const ctrl = !!(modifiers & 16);
+  const scroll = button && !!(modifiers & 32) && !!(modifiers & 64) ? (modifiers & 3 ? 1 : -1) : 0;
+  if (scroll) button = undefined;
+  const drag = !scroll && !!(modifiers & 64);
+
+  lastMouseEvent = mouseEvent;
+  const previous = lastMouseEvent;
+  mouseEvent = previous;
+
+  const allMouseEvents = mouseEvent as Partial<MousePressEvent & MouseScrollEvent>;
+  delete allMouseEvents.scroll;
+  delete allMouseEvents.drag;
+  delete allMouseEvents.button;
+  delete allMouseEvents.release;
+
+  mouseEvent.buffer = buffer;
+  mouseEvent.x = x;
+  mouseEvent.y = y;
+  mouseEvent.ctrl = ctrl;
+  mouseEvent.meta = meta;
+  mouseEvent.shift = shift;
+  mouseEvent.movementX = movementX;
+  mouseEvent.movementY = movementY;
+
+  if (scroll) {
+    const mouseScrollEvent = mouseEvent as MouseScrollEvent;
+    mouseScrollEvent.scroll = scroll;
+    return mouseScrollEvent;
+  }
+
+  const mousePressEvent = mouseEvent as MousePressEvent;
+  mousePressEvent.drag = drag;
+  mousePressEvent.button = button!;
+  mousePressEvent.release = release;
+  return mousePressEvent;
 }
 
 function splitInputBuffer(buffer: Uint8Array) {
