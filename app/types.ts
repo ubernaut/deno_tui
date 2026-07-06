@@ -20,11 +20,11 @@ export const layoutIds = ["monitor", "single", "vertical", "horizontal", "quad"]
 
 export type LayoutId = typeof layoutIds[number];
 
-export const viewportModes = ["desktop", "compact", "mobile"] as const;
+const viewportModes = ["desktop", "compact", "mobile"] as const;
 
 export type ViewportMode = typeof viewportModes[number];
 
-export const accentIds = ["alarm", "amber", "phosphor", "signal", "violet"] as const;
+const accentIds = ["alarm", "amber", "phosphor", "signal", "violet"] as const;
 
 export type Accent = typeof accentIds[number];
 
@@ -147,7 +147,7 @@ export interface GpuSnapshot {
   memoryClockMhz: number | null;
 }
 
-export type SystemMetricStatus = "ok" | "degraded" | "unavailable" | "limited" | "stale";
+type SystemMetricStatus = "ok" | "degraded" | "unavailable" | "limited" | "stale";
 
 export interface SystemMetricDiagnostic {
   source: string;
@@ -256,7 +256,7 @@ export interface RenderContext {
   selectedCpuLabel?: string;
 }
 
-export type MenuKind = "help" | "routing" | "layout" | "options";
+type MenuKind = "help" | "routing" | "layout" | "options";
 
 export interface MenuState {
   kind: MenuKind;
@@ -283,7 +283,7 @@ export interface ThreeAsciiDemoWindowOptions {
   minBodyWidth?: number;
 }
 
-export type ThreeAsciiDemoTitlebarControl = "minimize" | "maximize" | "restore" | "close";
+type ThreeAsciiDemoTitlebarControl = "minimize" | "maximize" | "restore" | "close";
 
 export const THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT = "[-] [M] [R] [x]";
 export const THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH = 15;
