@@ -1,4 +1,5 @@
 import { renderCheckBoxMark } from "../src/components/checkbox.ts";
+import type { DataColumn } from "../src/components/data_table.ts";
 import { renderStepper, type StepperStep } from "../src/components/stepper.ts";
 import type { CursorPosition, TextBoxVisualLine } from "../src/components/textbox.ts";
 import { wrapTextBoxLinesInto } from "../src/components/textbox.ts";
@@ -25,12 +26,6 @@ export {
   nextApiWorkbenchControlId,
 } from "./api_workbench_control_base.ts";
 export {
-  type ApiWorkbenchControlKeyEvent,
-  type ApiWorkbenchControlKeyResolution,
-  resolveApiWorkbenchControlKey,
-  type ResolveApiWorkbenchControlKeyOptions,
-} from "./api_workbench_control_keys.ts";
-export {
   apiWorkbenchControlLineInto,
   type ApiWorkbenchControlLineOptions,
   type ApiWorkbenchControlLineRenderCommand,
@@ -46,23 +41,234 @@ export {
   apiWorkbenchSliderSetHit,
   apiWorkbenchSliderSetHitInto,
 } from "./api_workbench_control_slider.ts";
-export {
-  apiWorkbenchControlBaseStyle,
-  apiWorkbenchControlButtonDetailStyle,
-  apiWorkbenchControlLineFallbackStyle,
-  type ApiWorkbenchControlLineStyleRole,
-  type ApiWorkbenchControlPaintStyle,
-  type ApiWorkbenchControlStyleTheme,
-  apiWorkbenchTextboxCommandStyle,
-  type ApiWorkbenchTextboxStyleCommand,
-  apiWorkbenchWrappedOptionStyle,
-} from "./api_workbench_control_styles.ts";
-export {
-  type ApiWorkbenchDropdownPopoverOptions,
-  apiWorkbenchDropdownPopoverRect,
-} from "./api_workbench_dropdown_popover.ts";
-export { apiWorkbenchStepperHitPlacementsInto, type ApiWorkbenchStepperHitStep } from "./api_workbench_stepper_hits.ts";
-export { nextSortableDataColumn } from "./api_workbench_table_navigation.ts";
+
+export interface ApiWorkbenchControlKeyEvent {
+  key: string;
+  ctrl?: boolean;
+  meta?: boolean;
+  shift?: boolean;
+}
+
+export type ApiWorkbenchControlKeyResolution =
+  | { type: "textInput" }
+  | { type: "focus"; delta: number }
+  | { type: "control"; action: Extract<ApiWorkbenchControlHitAction, "previous" | "next" | "activate"> }
+  | { type: "radio"; delta: number }
+  | { type: "dropdown"; action: "move"; delta: number }
+  | { type: "dropdown"; action: "first" | "last" | "close" | "select" }
+  | { type: "none" };
+
+export interface ResolveApiWorkbenchControlKeyOptions {
+  dropdownExpanded?: boolean;
+}
+
+export function resolveApiWorkbenchControlKey(
+  id: ApiWorkbenchControlId,
+  event: ApiWorkbenchControlKeyEvent,
+  options: ResolveApiWorkbenchControlKeyOptions = {},
+): ApiWorkbenchControlKeyResolution {
+  if (id === "input" || id === "textbox") return { type: "textInput" };
+  if (id === "dropdown" && options.dropdownExpanded) {
+    if (event.key === "up") return { type: "dropdown", action: "move", delta: -1 };
+    if (event.key === "down") return { type: "dropdown", action: "move", delta: 1 };
+    if (event.key === "home") return { type: "dropdown", action: "first" };
+    if (event.key === "end") return { type: "dropdown", action: "last" };
+    if (event.key === "escape") return { type: "dropdown", action: "close" };
+    if (event.key === "return" || event.key === "space") return { type: "dropdown", action: "select" };
+    if (event.key === "left") return { type: "control", action: "previous" };
+    if (event.key === "right") return { type: "control", action: "next" };
+    return { type: "none" };
+  }
+  if (id === "radio" && (event.key === "up" || event.key === "down")) {
+    return { type: "radio", delta: event.key === "up" ? -1 : 1 };
+  }
+  if (event.key === "up") return { type: "focus", delta: -1 };
+  if (event.key === "down") return { type: "focus", delta: 1 };
+  if (event.key === "left") return { type: "control", action: "previous" };
+  if (event.key === "right") return { type: "control", action: "next" };
+  if (event.key === "space" || event.key === "return") return { type: "control", action: "activate" };
+  return { type: "none" };
+}
+
+export interface ApiWorkbenchControlStyleTheme {
+  background: string;
+  text: string;
+  surface: string;
+  warn: string;
+}
+
+export interface ApiWorkbenchControlPaintStyle {
+  fg: string;
+  bg: string;
+  bold: boolean;
+}
+
+export type ApiWorkbenchControlLineStyleRole = "base" | "button" | "detail";
+
+export interface ApiWorkbenchTextboxStyleCommand {
+  role: "label" | "body";
+  header: boolean;
+}
+
+export function apiWorkbenchControlBaseStyle(
+  theme: ApiWorkbenchControlStyleTheme,
+  active: boolean,
+): ApiWorkbenchControlPaintStyle {
+  return {
+    fg: active ? theme.background : theme.text,
+    bg: active ? theme.warn : theme.surface,
+    bold: active,
+  };
+}
+
+export function apiWorkbenchControlButtonDetailStyle(
+  theme: ApiWorkbenchControlStyleTheme,
+  active: boolean,
+): ApiWorkbenchControlPaintStyle {
+  return {
+    fg: active ? theme.warn : theme.text,
+    bg: theme.surface,
+    bold: active,
+  };
+}
+
+export function apiWorkbenchControlLineFallbackStyle(
+  theme: ApiWorkbenchControlStyleTheme,
+  role: ApiWorkbenchControlLineStyleRole,
+  active: boolean,
+): ApiWorkbenchControlPaintStyle {
+  return role === "detail"
+    ? apiWorkbenchControlButtonDetailStyle(theme, active)
+    : apiWorkbenchControlBaseStyle(theme, active);
+}
+
+export function apiWorkbenchTextboxCommandStyle(
+  theme: ApiWorkbenchControlStyleTheme,
+  command: ApiWorkbenchTextboxStyleCommand,
+  active: boolean,
+): ApiWorkbenchControlPaintStyle {
+  const highlighted = active && (command.role === "body" || command.header);
+  return {
+    fg: highlighted ? theme.background : theme.text,
+    bg: highlighted ? theme.warn : theme.surface,
+    bold: highlighted,
+  };
+}
+
+export function apiWorkbenchWrappedOptionStyle(
+  theme: ApiWorkbenchControlStyleTheme,
+  active: boolean,
+): ApiWorkbenchControlPaintStyle {
+  return apiWorkbenchControlBaseStyle(theme, active);
+}
+
+export interface ApiWorkbenchDropdownPopoverOptions {
+  rect: Rectangle;
+  row: number;
+  items: readonly string[];
+  label?: string;
+  minContentWidth?: number;
+  horizontalInset?: number;
+  padding?: number;
+}
+
+export function apiWorkbenchDropdownPopoverRect(
+  options: ApiWorkbenchDropdownPopoverOptions,
+): Rectangle {
+  const rect = options.rect;
+  const horizontalInset = Math.max(0, Math.floor(options.horizontalInset ?? 2));
+  const padding = Math.max(0, Math.floor(options.padding ?? 6));
+  const minContentWidth = Math.max(1, Math.floor(options.minContentWidth ?? 12));
+  const maxWidth = Math.max(1, Math.floor(rect.width) - (horizontalInset * 2));
+  const contentWidth = Math.max(
+    minContentWidth,
+    maxItemTextWidth(options.items),
+    textWidth(options.label ?? ""),
+  );
+  const width = Math.max(1, Math.min(Math.max(16, contentWidth + padding), Math.max(16, maxWidth)));
+  return {
+    column: rect.column + horizontalInset,
+    row: options.row,
+    width,
+    height: Math.max(2, options.items.length + 2),
+  };
+}
+
+export interface ApiWorkbenchStepperHitStep {
+  label: string;
+  disabled?: boolean;
+  completed?: boolean;
+}
+
+export function apiWorkbenchStepperHitPlacementsInto(
+  target: ApiWorkbenchControlHitPlacement[],
+  steps: readonly ApiWorkbenchStepperHitStep[],
+  activeIndex: number,
+  rect: Rectangle,
+  row: number,
+  options: { columnOffset?: number; gap?: number } = {},
+): ApiWorkbenchControlHitPlacement[] {
+  const columnOffset = Math.max(0, Math.floor(options.columnOffset ?? 12));
+  const gap = Math.max(0, Math.floor(options.gap ?? 3));
+  const endColumn = rect.column + rect.width;
+  let column = rect.column + columnOffset;
+  let written = 0;
+  for (let index = 0; index < steps.length; index += 1) {
+    const step = steps[index]!;
+    const label = step.disabled ? `(${step.label})` : step.completed ? `✓ ${step.label}` : step.label;
+    const token = index === activeIndex ? `[${label}]` : label;
+    const width = textWidth(token);
+    if (column + width > endColumn) break;
+    const placement = target[written] ?? {
+      column: 0,
+      row: 0,
+      width: 0,
+      height: 1,
+      id: "stepper",
+      action: "activate",
+    };
+    placement.column = column;
+    placement.row = row;
+    placement.width = width;
+    placement.height = 1;
+    placement.id = "stepper";
+    placement.action = "activate";
+    placement.index = index;
+    target[written] = placement;
+    written += 1;
+    column += width + gap;
+  }
+  target.length = written;
+  return target;
+}
+
+export function nextSortableDataColumn<TRow extends Record<string, unknown>>(
+  columns: readonly DataColumn<TRow>[],
+  currentColumnId: string | undefined,
+  delta: number,
+): DataColumn<TRow> | undefined {
+  let sortableCount = 0;
+  let currentSortableIndex = -1;
+  for (let index = 0; index < columns.length; index += 1) {
+    const column = columns[index]!;
+    if (column.sortable === false) continue;
+    if (column.id === currentColumnId) currentSortableIndex = sortableCount;
+    sortableCount += 1;
+  }
+  if (sortableCount === 0) return undefined;
+
+  let targetSortableIndex = currentSortableIndex < 0 ? 0 : currentSortableIndex;
+  targetSortableIndex = ((targetSortableIndex + delta) % sortableCount + sortableCount) % sortableCount;
+
+  let sortableIndex = 0;
+  for (let index = 0; index < columns.length; index += 1) {
+    const column = columns[index]!;
+    if (column.sortable === false) continue;
+    if (sortableIndex === targetSortableIndex) return column;
+    sortableIndex += 1;
+  }
+  return undefined;
+}
 
 export interface ApiWorkbenchTextboxProjectionOptions {
   rect: Rectangle;
@@ -800,4 +1006,10 @@ function writeProjectedControlRow(
   row.value = value;
   row.options = options;
   return row;
+}
+
+function maxItemTextWidth(items: readonly string[]): number {
+  let width = 0;
+  for (const item of items) width = Math.max(width, textWidth(item));
+  return width;
 }
