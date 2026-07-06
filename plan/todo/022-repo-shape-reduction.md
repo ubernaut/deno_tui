@@ -358,6 +358,9 @@ The library core is real and valuable, but it needs clearer boundaries:
   - duplicate Three panel lifecycle-state assertions were removed from `tests/three_panel_frame.test.ts`; the pure
     helper behavior remains covered in `tests/three_panel_core.test.ts`, keeping frame tests focused on live view
     behavior.
+  - Workbench retained buffer cache assertions are now bundled into `tests/workbench_controller.test.ts`, keeping shelf,
+    modal, titlebar, and terminal cache behavior with the workbench controller/shelf suite instead of a standalone
+    narrow test shard.
   - duplicate Three panel render-policy, render-size, and adaptive-budget assertions were removed from
     `tests/three_panel_frame.test.ts`, then the standalone policy test shard was folded into
     `tests/three_panel_core.test.ts`; the frame suite stays focused on live panel behavior and renderer lifecycle
