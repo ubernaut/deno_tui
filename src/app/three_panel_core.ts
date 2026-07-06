@@ -386,17 +386,15 @@ export class ThreePanelGridPublicationCache {
 
   shouldPublish(input: ThreePanelGridPublicationInput): boolean {
     const { grid, currentGrid, forceUpdate = false, revision } = input;
+    const fingerprint = fingerprintThreePanelGrid(grid);
     if (revision !== undefined) {
-      if (this.#revision === revision) return false;
-      const fingerprint = fingerprintThreePanelGrid(grid);
-      this.#revision = revision;
       if (this.#fingerprint === fingerprint) return false;
+      this.#revision = revision;
       this.#fingerprint = fingerprint;
       return true;
     }
 
     this.#revision = undefined;
-    const fingerprint = fingerprintThreePanelGrid(grid);
     if (!forceUpdate && currentGrid === grid) return false;
     if (this.#fingerprint === fingerprint) return false;
     this.#fingerprint = fingerprint;

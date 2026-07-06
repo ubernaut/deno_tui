@@ -743,6 +743,7 @@ Deno.test("ThreePanelGridPublicationCache skips repeated revisioned grids", () =
   assertEquals(cache.shouldPublish({ grid, revision: 1 }), true);
   assertEquals(cache.shouldPublish({ grid, revision: 1 }), false);
   assertEquals(cache.shouldPublish({ grid: [["A"]], revision: 2 }), false);
+  assertEquals(cache.shouldPublish({ grid: [["A", "A"]], revision: 2 }), true);
   assertEquals(cache.shouldPublish({ grid: [["B"]], revision: 3 }), true);
 });
 

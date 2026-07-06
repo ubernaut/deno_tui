@@ -2,6 +2,7 @@ import { assert, assertEquals } from "./deps.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import {
+  scaleThreePanelGridToSize,
   type ThreePanelFrameUpdate,
   ThreePanelFrameView,
   type ThreePanelGridRenderer,
@@ -589,6 +590,8 @@ Deno.test("ThreePanelFrameView caps large ASCII renderer sizes", async () => {
     assert(renderer.columns * renderer.rows <= 3_840);
     assert(renderer.columns < 160);
     assert(renderer.rows < 60);
+    await waitFor(() => panel.grid.peek().length === 60);
+    assertEquals(panel.grid.peek()[0]?.length, 160);
 
     const expanded = resolveThreePanelRenderSize(rectangle.peek(), 7_680);
     ascii.value = { ...ascii.peek(), renderMaxCells: 7_680 };
@@ -598,6 +601,8 @@ Deno.test("ThreePanelFrameView caps large ASCII renderer sizes", async () => {
 
     rectangle.value = { column: 0, row: 0, width: 80, height: 24 };
     await waitFor(() => renderer?.sizes.some(([columns, rows]) => columns === 80 && rows === 24) === true);
+    await waitFor(() => panel.grid.peek().length === 24);
+    assertEquals(panel.grid.peek()[0]?.length, 80);
   } finally {
     panel.dispose();
     rectangle.dispose();
@@ -605,6 +610,20 @@ Deno.test("ThreePanelFrameView caps large ASCII renderer sizes", async () => {
     ascii.dispose();
     enabled.dispose();
   }
+});
+
+Deno.test("scaleThreePanelGridToSize fills display bounds from capped renderer grids", () => {
+  assertEquals(scaleThreePanelGridToSize([["A", "B"], ["C", "D"]], 4, 4), [
+    ["A", "A", "B", "B"],
+    ["A", "A", "B", "B"],
+    ["C", "C", "D", "D"],
+    ["C", "C", "D", "D"],
+  ]);
+  assertEquals(scaleThreePanelGridToSize([["A", "B"], ["C", "D"]], 1, 1), [["A"]]);
+  assertEquals(scaleThreePanelGridToSize([], 3, 2), [
+    [" ", " ", " "],
+    [" ", " ", " "],
+  ]);
 });
 
 Deno.test("ThreePanelFrameView accepts reactive render cell caps", async () => {

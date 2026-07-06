@@ -27,6 +27,7 @@ import {
   resolveThreePanelRendererStateUpdate,
   resolveThreePanelValue,
   threePanelAdaptiveRenderCellsDiagnostic,
+  threePanelBlankGrid,
   type ThreePanelFrameUpdate,
   threePanelFrameUpdate,
   threePanelGraphicsFallbackDiagnostic,
@@ -77,6 +78,32 @@ export interface ThreePanelLifecycleInspection {
 type ThreePanelLiveValue = boolean | Signal<boolean> | (() => boolean);
 type ThreePanelIntervalValue = number | Signal<number>;
 type ThreePanelRenderCellsValue = number | Signal<number>;
+
+export function scaleThreePanelGridToSize(
+  grid: readonly (readonly string[] | undefined)[],
+  columns: number,
+  rows: number,
+): string[][] {
+  const targetColumns = Math.max(1, Math.floor(columns));
+  const targetRows = Math.max(1, Math.floor(rows));
+  const sourceRows = grid.length;
+  const sourceColumns = grid[0]?.length ?? 0;
+  if (sourceRows === targetRows && sourceColumns === targetColumns) {
+    return grid.map((row) => Array.from(row ?? []));
+  }
+  if (sourceRows <= 0 || sourceColumns <= 0) {
+    return threePanelBlankGrid(targetColumns, targetRows);
+  }
+
+  return Array.from({ length: targetRows }, (_, row) => {
+    const sourceRow = Math.min(sourceRows - 1, Math.floor((row * sourceRows) / targetRows));
+    const source = grid[sourceRow] ?? [];
+    return Array.from({ length: targetColumns }, (_, column) => {
+      const sourceColumn = Math.min(sourceColumns - 1, Math.floor((column * sourceColumns) / targetColumns));
+      return source[sourceColumn] ?? " ";
+    });
+  });
+}
 
 export interface ThreePanelGridRenderer {
   setSize(columns: number, rows: number): void;
@@ -385,7 +412,7 @@ export class ThreePanelFrameView {
       });
       this.captureAppliedRendererState(rect, ascii, effectOptions, renderSize);
       this.setGrid(
-        buildFallbackGrid(renderSize.columns, renderSize.rows, "INITIALIZING", "ASCII RENDERER STARTING"),
+        buildFallbackGrid(rect.width, rect.height, "INITIALIZING", "ASCII RENDERER STARTING"),
       );
     }
 
@@ -406,7 +433,7 @@ export class ThreePanelFrameView {
       ) {
         return;
       }
-      this.publishTransitionGrid(renderSize.columns, renderSize.rows, "RESIZING", "ASCII RENDERER RESIZING");
+      this.publishTransitionGrid(rect.width, rect.height, "RESIZING", "ASCII RENDERER RESIZING");
       this.invalidateFrame();
       this.running = false;
       this.syncPending = true;
@@ -507,10 +534,14 @@ export class ThreePanelFrameView {
       }
 
       this.failed = false;
-      const renderSize = this.renderSizeFor(rect, ascii);
-      const nextGrid = policy.renderAscii ? frame.grid ?? [] : this.blankGridFor(renderSize.columns, renderSize.rows);
+      const displayRect = this.options.rectangle.peek();
+      const displayColumns = Math.max(1, Math.floor(displayRect.width));
+      const displayRows = Math.max(1, Math.floor(displayRect.height));
+      const nextGrid = policy.renderAscii && hasThreePanelGridCells(frame.grid ?? [])
+        ? scaleThreePanelGridToSize(frame.grid ?? [], displayColumns, displayRows)
+        : this.blankGridFor(displayColumns, displayRows);
       this.onFrame?.(threePanelFrameUpdate(nextGrid, true));
-      if (!policy.renderAscii || hasThreePanelGridCells(nextGrid)) {
+      if (!policy.renderAscii || hasThreePanelGridCells(frame.grid ?? [])) {
         this.setGrid(
           nextGrid,
           policy.renderAscii,
@@ -751,7 +782,7 @@ export class ThreePanelFrameView {
     }
     this.appliedRendererState = update.next;
     if (update.resize) {
-      this.publishTransitionGrid(update.next.columns, update.next.rows, "RESIZING", "ASCII RENDERER RESIZING");
+      this.publishTransitionGrid(rect.width, rect.height, "RESIZING", "ASCII RENDERER RESIZING");
     }
   }
 
