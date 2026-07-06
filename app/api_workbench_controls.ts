@@ -506,21 +506,6 @@ export function apiWorkbenchControlTrack(options: ApiWorkbenchControlTrackOption
   };
 }
 
-export function apiWorkbenchSliderSetHit(
-  rect: Rectangle,
-  row: number,
-  track: Pick<ApiWorkbenchControlTrack, "width">,
-  options: { columnOffset?: number } = {},
-): ApiWorkbenchControlHitPlacement {
-  return apiWorkbenchSliderSetHitInto(
-    { column: 0, row: 0, width: 0, height: 1, id: "slider", action: "set" },
-    rect,
-    row,
-    track,
-    options,
-  );
-}
-
 export function apiWorkbenchSliderSetHitInto(
   target: ApiWorkbenchControlHitPlacement,
   rect: Rectangle,
@@ -551,8 +536,6 @@ export interface ApiWorkbenchControlPaintStyle {
   bold: boolean;
 }
 
-export type ApiWorkbenchControlLineStyleRole = "base" | "button" | "detail";
-
 export interface ApiWorkbenchTextboxStyleCommand {
   role: "label" | "body";
   header: boolean;
@@ -578,16 +561,6 @@ export function apiWorkbenchControlButtonDetailStyle(
     bg: theme.surface,
     bold: active,
   };
-}
-
-export function apiWorkbenchControlLineFallbackStyle(
-  theme: ApiWorkbenchControlStyleTheme,
-  role: ApiWorkbenchControlLineStyleRole,
-  active: boolean,
-): ApiWorkbenchControlPaintStyle {
-  return role === "detail"
-    ? apiWorkbenchControlButtonDetailStyle(theme, active)
-    : apiWorkbenchControlBaseStyle(theme, active);
 }
 
 export function apiWorkbenchTextboxCommandStyle(

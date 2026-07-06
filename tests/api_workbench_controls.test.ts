@@ -9,7 +9,6 @@ import {
   apiWorkbenchControlButtonDetailStyle,
   type ApiWorkbenchControlHitPlacement,
   apiWorkbenchControlIds,
-  apiWorkbenchControlLineFallbackStyle,
   apiWorkbenchControlLineInto,
   type ApiWorkbenchControlLineRenderCommand,
   apiWorkbenchControlLineRenderCommandsInto,
@@ -23,7 +22,7 @@ import {
   apiWorkbenchProgressRowInto,
   apiWorkbenchRadioRowsInto,
   apiWorkbenchSliderRowInto,
-  apiWorkbenchSliderSetHit,
+  apiWorkbenchSliderSetHitInto,
   apiWorkbenchStepperHitPlacementsInto,
   apiWorkbenchStepperRowInto,
   apiWorkbenchTextboxCommandStyle,
@@ -267,11 +266,6 @@ Deno.test("api workbench control styles preserve shared active and detail colors
     bg: "#111111",
     bold: true,
   });
-  assertEquals(apiWorkbenchControlLineFallbackStyle(controlTheme, "detail", true), {
-    fg: "#ffaa00",
-    bg: "#111111",
-    bold: true,
-  });
 });
 
 Deno.test("api workbench textbox and wrapped-option styles share highlight policy", () => {
@@ -427,7 +421,12 @@ Deno.test("api workbench control track projects clamped fill and slider hit geom
     text: "██████████░░░░░░░░░░░░░░",
   });
   assertEquals(
-    apiWorkbenchSliderSetHit({ column: 3, row: 4, width: 80, height: 2 }, 9, track),
+    apiWorkbenchSliderSetHitInto(
+      { column: 0, row: 0, width: 0, height: 1, id: "slider", action: "set" },
+      { column: 3, row: 4, width: 80, height: 2 },
+      9,
+      track,
+    ),
     { column: 15, row: 9, width: 24, height: 1, id: "slider", action: "set", index: undefined },
   );
   assertEquals(
