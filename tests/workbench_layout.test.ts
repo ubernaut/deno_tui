@@ -162,6 +162,33 @@ Deno.test("workbenchAdaptiveWindowLayout gives featured visual panes most tall l
   assertEquals(layout.contentHeight, 40);
 });
 
+Deno.test("workbenchAdaptiveWindowLayout features active visual panes at medium terminal widths", () => {
+  const bounds = { column: 0, row: 0, width: 99, height: 27 };
+  const layout = workbenchAdaptiveWindowLayout<"explorer" | "data" | "three">({
+    layout() {
+      return {
+        contentHeight: 55,
+        visible: [
+          { id: "explorer", rect: { column: 0, row: 0, width: 49, height: 9 } },
+          { id: "data", rect: { column: 50, row: 0, width: 49, height: 9 } },
+          { id: "three", rect: { column: 50, row: 40, width: 49, height: 9 } },
+        ],
+      };
+    },
+  }, {
+    bounds,
+    featuredId: "three",
+    featuredMinWidth: 96,
+    featuredMinHeight: 18,
+    featuredHeightRatio: 0.62,
+  });
+
+  assertEquals(layout.rects.get("three"), { column: 0, row: 0, width: 99, height: 18 });
+  assertEquals(layout.rects.get("explorer")?.row, 19);
+  assertEquals(layout.rects.get("data")?.row, 19);
+  assertEquals(layout.contentHeight, 29);
+});
+
 Deno.test("featuredWorkbenchWindowLayout leaves narrow workbench layouts alone", () => {
   const result = featuredWorkbenchWindowLayout<"a" | "three">(
     { column: 0, row: 0, width: 90, height: 32 },

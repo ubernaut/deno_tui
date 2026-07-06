@@ -2782,7 +2782,7 @@ function workspaceLayout(bounds: Rectangle): {
     bounds,
     tileDensity: tileDensity.peek(),
     featuredId: isThreeRenderedWindow(active) ? active : undefined,
-    featuredMinWidth: 118,
+    featuredMinWidth: 96,
     featuredMinHeight: 18,
     featuredHeightRatio: 0.62,
   });
