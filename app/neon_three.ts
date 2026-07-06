@@ -235,11 +235,11 @@ function createTopologyNode(color: string, radius = 0.09) {
   );
 }
 
-export interface NeonThreeSceneOptions {
+interface NeonThreeSceneOptions {
   wireframeThickness?: number;
 }
 
-export interface NeonThreeSceneDescriptor {
+interface NeonThreeSceneDescriptor {
   mode: ThreeSceneMode;
   label: string;
   family: "acerola" | "monitor" | "nge";
@@ -252,7 +252,7 @@ export interface NeonThreeSceneBundle {
   dispose: () => void;
 }
 
-export interface StudioCameraFraming {
+interface StudioCameraFraming {
   cameraY: number;
   cameraZ: number;
   groupScale: number;
@@ -335,8 +335,6 @@ export const neonThreeSceneCatalog: readonly NeonThreeSceneDescriptor[] = threeS
   label: modeLabels[mode],
   family: modeFamilies[mode],
 }));
-
-export const neonThreeSceneModeLabels: Readonly<Record<ThreeSceneMode, string>> = modeLabels;
 
 export function neonThreeSceneModeLabel(mode: ThreeSceneMode): string {
   return modeLabels[mode];
