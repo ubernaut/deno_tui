@@ -184,8 +184,8 @@ Deno.test("benchmark CLI catalog covers high-volume TUI workloads", () => {
   const report = createBenchmarkCatalogReport({ cases: benchmarkCases });
   const names = report.cases.map((entry) => entry.name);
 
-  assertEquals(report.inspection.count, 83);
-  assertEquals(report.inspection.thresholded, 83);
+  assertEquals(report.inspection.count, 84);
+  assertEquals(report.inspection.thresholded, 84);
   assertEquals(report.inspection.categories, ["data", "input", "layout", "render", "runtime", "widgets"]);
   assertEquals(names.includes("data/table-select-100k"), true);
   assertEquals(names.includes("data/table-filter-25k"), true);
@@ -218,6 +218,7 @@ Deno.test("benchmark CLI catalog covers high-volume TUI workloads", () => {
   assertEquals(names.includes("render/workbench-three-header-telemetry"), true);
   assertEquals(names.includes("render/workbench-three-pressure-policy"), true);
   assertEquals(names.includes("render/workbench-three-fullscreen-pressure-policy"), true);
+  assertEquals(names.includes("render/three-panel-grid-scale-220x70"), true);
   assertEquals(names.includes("render/textobject-full-row-canvas-220x70"), true);
   assertEquals(names.includes("render/workbench-scaled-three-grid-220x70"), true);
   assertEquals(names.includes("render/workbench-capped-three-grid-220x70"), true);

@@ -520,21 +520,41 @@ export function scaleThreePanelGridToSize(
   const targetRows = Math.max(1, Math.floor(rows));
   const sourceRows = grid.length;
   const sourceColumns = grid[0]?.length ?? 0;
+  const scaled = new Array<string[]>(targetRows);
   if (sourceRows === targetRows && sourceColumns === targetColumns) {
-    return grid.map((row) => Array.from(row ?? []));
+    for (let row = 0; row < targetRows; row += 1) {
+      const source = grid[row] ?? [];
+      const target = new Array<string>(targetColumns);
+      for (let column = 0; column < targetColumns; column += 1) {
+        target[column] = source[column] ?? " ";
+      }
+      scaled[row] = target;
+    }
+    return scaled;
   }
   if (sourceRows <= 0 || sourceColumns <= 0) {
     return threePanelBlankGrid(targetColumns, targetRows);
   }
 
-  return Array.from({ length: targetRows }, (_, row) => {
+  let lastSourceRow = -1;
+  let lastProjectedRow: string[] | undefined;
+  for (let row = 0; row < targetRows; row += 1) {
     const sourceRow = Math.min(sourceRows - 1, Math.floor((row * sourceRows) / targetRows));
+    if (sourceRow === lastSourceRow && lastProjectedRow) {
+      scaled[row] = lastProjectedRow.slice();
+      continue;
+    }
     const source = grid[sourceRow] ?? [];
-    return Array.from({ length: targetColumns }, (_, column) => {
+    const target = new Array<string>(targetColumns);
+    for (let column = 0; column < targetColumns; column += 1) {
       const sourceColumn = Math.min(sourceColumns - 1, Math.floor((column * sourceColumns) / targetColumns));
-      return source[sourceColumn] ?? " ";
-    });
-  });
+      target[column] = source[sourceColumn] ?? " ";
+    }
+    scaled[row] = target;
+    lastSourceRow = sourceRow;
+    lastProjectedRow = target;
+  }
+  return scaled;
 }
 
 export function fingerprintThreePanelGrid(grid: readonly (readonly string[] | undefined)[]): string {

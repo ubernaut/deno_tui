@@ -73,6 +73,7 @@ import {
   createWorkbenchThreeTerminalPressureState,
   resolveWorkbenchThreeTerminalPressureBudget,
 } from "../src/app/workbench_three_terminal_pressure.ts";
+import { scaleThreePanelGridToSize } from "../src/app/three_panel_core.ts";
 import {
   API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY,
   apiWorkbenchThreeFrameIntervalForCells,
@@ -160,6 +161,17 @@ const workbenchThreeGridBenchmark = createWorkbenchThreeGridBenchmark({
   targetColumns: 220,
   targetRows: 70,
 });
+const threePanelScaleSourceGrid = Array.from(
+  { length: 34 },
+  (_, row) =>
+    Array.from({ length: 109 }, (_, column) => {
+      const red = (row * 17 + column * 11) % 256;
+      const green = (64 + row * 7 + column * 13) % 256;
+      const blue = (160 + row * 5 + column * 3) % 256;
+      return `\x1b[48;2;${red};${green};${blue}m \x1b[0m`;
+    }),
+);
+let threePanelScaleChecksum = 0;
 const workbenchThreeBlockBenchmark = createWorkbenchThreeBlockFlushBenchmark({
   frameWidth: 168,
   frameRows: 54,
@@ -1278,6 +1290,16 @@ function runThreePanelAdaptiveBudgetWorkload(): void {
   }
 }
 
+function runThreePanelGridScaleWorkload(): void {
+  const scaled = scaleThreePanelGridToSize(threePanelScaleSourceGrid, 220, 70);
+  threePanelScaleChecksum = (
+    threePanelScaleChecksum + scaled.length + (scaled[0]?.length ?? 0) + (scaled[69]?.[219]?.length ?? 0)
+  ) % 1_000_000;
+  if (scaled.length !== 70 || scaled[0]?.length !== 220 || !Number.isFinite(threePanelScaleChecksum)) {
+    throw new Error("three panel grid scale workload failed");
+  }
+}
+
 function runAnsiStyledCharacterSplitWorkload(): void {
   const cells = getMultiCodePointCharacters(ansiStyledSplitRow);
   if (cells.length !== 160) {
@@ -1743,6 +1765,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 2_000,
     maxAverageMs: 1,
     run: runThreePanelAdaptiveBudgetWorkload,
+  },
+  {
+    name: "render/three-panel-grid-scale-220x70",
+    category: "render",
+    description: "Scale a capped Three panel renderer grid into the visible pane grid before publication.",
+    tags: ["render", "three", "ascii", "grid", "scale"],
+    iterations: 500,
+    maxAverageMs: 4,
+    run: runThreePanelGridScaleWorkload,
   },
   {
     name: "render/textobject-full-row-canvas-220x70",
