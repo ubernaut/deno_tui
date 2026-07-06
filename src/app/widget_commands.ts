@@ -6,9 +6,29 @@ import type { ProgressBarController, ProgressBarInspection } from "../components
 import type { RadioGroupController, RadioGroupInspection, RadioOption } from "../components/radio_group.ts";
 import type { SliderController, SliderInspection } from "../components/slider.ts";
 import type { StepperController, StepperInspection, StepperStep } from "../components/stepper.ts";
-import type { CursorPosition, TextBoxController, TextBoxInspection } from "../components/textbox.ts";
+import type { TextBoxController, TextBoxInspection } from "../components/textbox.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
+
+function widgetUpdateCommand<TAction extends Action, TResult, TPayload>(
+  id: string,
+  label: string,
+  group: string,
+  keywords: string[],
+  type: TAction["type"] & string,
+  update: () => TResult,
+  payload: (result: TResult) => TPayload,
+  disabled?: () => boolean,
+): Command<TAction> {
+  return {
+    id,
+    label,
+    group,
+    keywords,
+    disabled,
+    action: () => ({ type, payload: payload(update()) } as TAction),
+  };
+}
 
 /** Identifier union for button Command variants. */
 export type ButtonCommandKind = "press" | "enable" | "disable";
@@ -62,20 +82,22 @@ export function buttonCommands<TAction extends Action = ButtonCommandAction>(
 
   if (options.includeStateCommands ?? true) {
     commands.push(
-      buttonStateCommand(
+      widgetUpdateCommand(
         `${idPrefix}.enable`,
         label("enable", "Enable Button"),
         group,
         ["button", "enable"],
+        "button.changed",
         () => controller.enable(),
         payload,
         () => controller.disabled.peek() === false,
       ),
-      buttonStateCommand(
+      widgetUpdateCommand(
         `${idPrefix}.disable`,
         label("disable", "Disable Button"),
         group,
         ["button", "disable"],
+        "button.changed",
         () => controller.disable(),
         payload,
         () => controller.disabled.peek() === true,
@@ -93,28 +115,6 @@ export function bindButtonCommands<TAction extends Action = ButtonCommandAction>
   options: ButtonCommandOptions = {},
 ): () => void {
   return registry.registerAll(buttonCommands<TAction>(controller, options));
-}
-
-function buttonStateCommand<TAction extends Action>(
-  id: string,
-  label: string,
-  group: string,
-  keywords: string[],
-  update: () => boolean,
-  payload: () => ButtonCommandPayload,
-  disabled: () => boolean,
-): Command<TAction> {
-  return {
-    id,
-    label,
-    group,
-    keywords,
-    disabled,
-    action: () => {
-      update();
-      return { type: "button.changed", payload: payload() } as TAction;
-    },
-  };
 }
 
 /** Identifier union for check Box Command variants. */
@@ -157,11 +157,12 @@ export function checkBoxCommands<TAction extends Action = CheckBoxCommandAction>
   const commands: Command<TAction>[] = [];
 
   if (options.includeToggleCommand ?? true) {
-    commands.push(checkBoxCommand(
+    commands.push(widgetUpdateCommand(
       `${idPrefix}.toggle`,
       label("toggle", "Toggle Checkbox"),
       group,
       ["checkbox", "toggle"],
+      "checkbox.changed",
       () => controller.toggle(),
       payload,
     ));
@@ -169,20 +170,22 @@ export function checkBoxCommands<TAction extends Action = CheckBoxCommandAction>
 
   if (options.includeSetCommands ?? true) {
     commands.push(
-      checkBoxCommand(
+      widgetUpdateCommand(
         `${idPrefix}.check`,
         label("check", "Check Checkbox"),
         group,
         ["checkbox", "check", "enable"],
+        "checkbox.changed",
         () => controller.check(),
         payload,
         () => controller.checked.peek() === true,
       ),
-      checkBoxCommand(
+      widgetUpdateCommand(
         `${idPrefix}.uncheck`,
         label("uncheck", "Uncheck Checkbox"),
         group,
         ["checkbox", "uncheck", "disable"],
+        "checkbox.changed",
         () => controller.uncheck(),
         payload,
         () => controller.checked.peek() === false,
@@ -200,28 +203,6 @@ export function bindCheckBoxCommands<TAction extends Action = CheckBoxCommandAct
   options: CheckBoxCommandOptions = {},
 ): () => void {
   return registry.registerAll(checkBoxCommands<TAction>(controller, options));
-}
-
-function checkBoxCommand<TAction extends Action>(
-  id: string,
-  label: string,
-  group: string,
-  keywords: string[],
-  setChecked: () => boolean,
-  payload: () => CheckBoxCommandPayload,
-  disabled?: () => boolean,
-): Command<TAction> {
-  return {
-    id,
-    label,
-    group,
-    keywords,
-    disabled,
-    action: () => {
-      setChecked();
-      return { type: "checkbox.changed", payload: payload() } as TAction;
-    },
-  };
 }
 
 /** Identifier union for combo Box Command variants. */
@@ -276,59 +257,80 @@ export function comboBoxCommands<TAction extends Action = ComboBoxCommandAction,
 
   if (options.includeExpandCommands ?? true) {
     commands.push(
-      comboBoxExpandCommand(
+      widgetUpdateCommand(
         `${idPrefix}.open`,
         label("open", "Open Combo Box"),
         group,
+        ["combobox", "combo-box", "expand", label("open", "Open Combo Box")],
+        "comboBox.expandedChanged",
         () => controller.open(),
-        payload,
+        (expanded) => ({ ...payload(), expanded }),
+        () => payload().inspection.empty,
       ),
-      comboBoxExpandCommand(
+      widgetUpdateCommand(
         `${idPrefix}.close`,
         label("close", "Close Combo Box"),
         group,
+        ["combobox", "combo-box", "expand", label("close", "Close Combo Box")],
+        "comboBox.expandedChanged",
         () => controller.close(),
-        payload,
+        (expanded) => ({ ...payload(), expanded }),
+        () => payload().inspection.empty,
       ),
-      comboBoxExpandCommand(
+      widgetUpdateCommand(
         `${idPrefix}.toggle`,
         label("toggle", "Toggle Combo Box"),
         group,
+        ["combobox", "combo-box", "expand", label("toggle", "Toggle Combo Box")],
+        "comboBox.expandedChanged",
         () => controller.toggle(),
-        payload,
+        (expanded) => ({ ...payload(), expanded }),
+        () => payload().inspection.empty,
       ),
     );
   }
 
   if (options.includeMoveCommands ?? true) {
     commands.push(
-      comboBoxMoveCommand(
+      widgetUpdateCommand(
         `${idPrefix}.first`,
         label("first", "First Combo Box Item"),
         group,
+        ["combobox", "combo-box", label("first", "First Combo Box Item")],
+        "comboBox.changed",
         () => controller.first(),
         payload,
+        () => payload().inspection.empty,
       ),
-      comboBoxMoveCommand(
+      widgetUpdateCommand(
         `${idPrefix}.previous`,
         label("previous", "Previous Combo Box Item"),
         group,
+        ["combobox", "combo-box", label("previous", "Previous Combo Box Item")],
+        "comboBox.changed",
         () => controller.move(-1),
         payload,
+        () => payload().inspection.empty,
       ),
-      comboBoxMoveCommand(
+      widgetUpdateCommand(
         `${idPrefix}.next`,
         label("next", "Next Combo Box Item"),
         group,
+        ["combobox", "combo-box", label("next", "Next Combo Box Item")],
+        "comboBox.changed",
         () => controller.move(1),
         payload,
+        () => payload().inspection.empty,
       ),
-      comboBoxMoveCommand(
+      widgetUpdateCommand(
         `${idPrefix}.last`,
         label("last", "Last Combo Box Item"),
         group,
+        ["combobox", "combo-box", label("last", "Last Combo Box Item")],
+        "comboBox.changed",
         () => controller.last(),
         payload,
+        () => payload().inspection.empty,
       ),
     );
   }
@@ -383,49 +385,6 @@ export function bindComboBoxCommands<TAction extends Action = ComboBoxCommandAct
   return registry.registerAll(comboBoxCommands<TAction, Items>(controller, options));
 }
 
-function comboBoxExpandCommand<TAction extends Action>(
-  id: string,
-  label: string,
-  group: string,
-  expand: () => boolean,
-  payload: () => ComboBoxCommandPayload,
-): Command<TAction> {
-  return {
-    id,
-    label,
-    group,
-    keywords: ["combobox", "combo-box", "expand", label],
-    disabled: () => payload().inspection.empty,
-    action: () => {
-      const expanded = expand();
-      return {
-        type: "comboBox.expandedChanged",
-        payload: { ...payload(), expanded },
-      } as TAction;
-    },
-  };
-}
-
-function comboBoxMoveCommand<TAction extends Action>(
-  id: string,
-  label: string,
-  group: string,
-  move: () => string | undefined,
-  payload: () => ComboBoxCommandPayload,
-): Command<TAction> {
-  return {
-    id,
-    label,
-    group,
-    keywords: ["combobox", "combo-box", label],
-    disabled: () => payload().inspection.empty,
-    action: () => {
-      move();
-      return { type: "comboBox.changed", payload: payload() } as TAction;
-    },
-  };
-}
-
 /** Identifier union for progress Bar Command variants. */
 export type ProgressBarCommandKind = "decrement" | "increment" | "min" | "max" | "value";
 
@@ -473,19 +432,21 @@ export function progressBarCommands<TAction extends Action = ProgressBarCommandA
 
   if (options.includeMoveCommands ?? true) {
     commands.push(
-      progressCommand(
+      widgetUpdateCommand(
         `${idPrefix}.decrement`,
         label("decrement", "Decrease Progress"),
         group,
         ["progress", "decrease", "decrement"],
+        "progressBar.changed",
         () => controller.decrement(step),
         payload,
       ),
-      progressCommand(
+      widgetUpdateCommand(
         `${idPrefix}.increment`,
         label("increment", "Increase Progress"),
         group,
         ["progress", "increase", "increment"],
+        "progressBar.changed",
         () => controller.increment(step),
         payload,
       ),
@@ -494,19 +455,21 @@ export function progressBarCommands<TAction extends Action = ProgressBarCommandA
 
   if (options.includeEdgeCommands ?? true) {
     commands.push(
-      progressCommand(
+      widgetUpdateCommand(
         `${idPrefix}.min`,
         label("min", "Minimum Progress"),
         group,
         ["progress", "minimum", "min"],
+        "progressBar.changed",
         () => controller.setMin(),
         payload,
       ),
-      progressCommand(
+      widgetUpdateCommand(
         `${idPrefix}.max`,
         label("max", "Maximum Progress"),
         group,
         ["progress", "maximum", "max"],
+        "progressBar.changed",
         () => controller.setMax(),
         payload,
       ),
@@ -515,11 +478,12 @@ export function progressBarCommands<TAction extends Action = ProgressBarCommandA
 
   if (options.includeValueCommands ?? false) {
     for (const value of options.values ?? []) {
-      commands.push(progressCommand(
+      commands.push(widgetUpdateCommand(
         `${idPrefix}.value.${value}`,
         `${label("value", "Set Progress")}: ${valueLabel(value)}`,
         group,
         ["progress", "value", `${value}`],
+        "progressBar.changed",
         () => controller.setValue(value),
         payload,
         () => controller.value.peek() === value,
@@ -537,28 +501,6 @@ export function bindProgressBarCommands<TAction extends Action = ProgressBarComm
   options: ProgressBarCommandOptions = {},
 ): () => void {
   return registry.registerAll(progressBarCommands<TAction>(controller, options));
-}
-
-function progressCommand<TAction extends Action>(
-  id: string,
-  label: string,
-  group: string,
-  keywords: string[],
-  setValue: () => number,
-  payload: () => ProgressBarCommandPayload,
-  disabled?: () => boolean,
-): Command<TAction> {
-  return {
-    id,
-    label,
-    group,
-    keywords,
-    disabled,
-    action: () => {
-      setValue();
-      return { type: "progressBar.changed", payload: payload() } as TAction;
-    },
-  };
 }
 
 /** Identifier union for radio Group Command variants. */
@@ -602,31 +544,39 @@ export function radioGroupCommands<TAction extends Action = RadioGroupCommandAct
 
   if (options.includeMoveCommands ?? true) {
     commands.push(
-      radioGroupMoveCommand(
+      widgetUpdateCommand(
         `${idPrefix}.first`,
         label("first", "First Radio Option"),
         group,
+        ["radio", "radio-group", label("first", "First Radio Option")],
+        "radioGroup.changed",
         () => controller.first(),
         payload,
       ),
-      radioGroupMoveCommand(
+      widgetUpdateCommand(
         `${idPrefix}.previous`,
         label("previous", "Previous Radio Option"),
         group,
+        ["radio", "radio-group", label("previous", "Previous Radio Option")],
+        "radioGroup.changed",
         () => controller.move(-1),
         payload,
       ),
-      radioGroupMoveCommand(
+      widgetUpdateCommand(
         `${idPrefix}.next`,
         label("next", "Next Radio Option"),
         group,
+        ["radio", "radio-group", label("next", "Next Radio Option")],
+        "radioGroup.changed",
         () => controller.move(1),
         payload,
       ),
-      radioGroupMoveCommand(
+      widgetUpdateCommand(
         `${idPrefix}.last`,
         label("last", "Last Radio Option"),
         group,
+        ["radio", "radio-group", label("last", "Last Radio Option")],
+        "radioGroup.changed",
         () => controller.last(),
         payload,
       ),
@@ -687,25 +637,6 @@ export function bindRadioGroupCommands<TAction extends Action = RadioGroupComman
   return registry.registerAll(radioGroupCommands<TAction>(controller, options));
 }
 
-function radioGroupMoveCommand<TAction extends Action>(
-  id: string,
-  label: string,
-  group: string,
-  move: () => RadioOption | undefined,
-  payload: () => RadioGroupCommandPayload,
-): Command<TAction> {
-  return {
-    id,
-    label,
-    group,
-    keywords: ["radio", "radio-group", label],
-    action: () => {
-      move();
-      return { type: "radioGroup.changed", payload: payload() } as TAction;
-    },
-  };
-}
-
 /** Identifier union for slider Command variants. */
 export type SliderCommandKind = "decrement" | "increment" | "min" | "max" | "value";
 
@@ -753,19 +684,21 @@ export function sliderCommands<TAction extends Action = SliderCommandAction>(
 
   if (options.includeMoveCommands ?? true) {
     commands.push(
-      sliderCommand(
+      widgetUpdateCommand(
         `${idPrefix}.decrement`,
         label("decrement", "Decrease Slider"),
         group,
         ["slider", "decrease", "decrement"],
+        "slider.changed",
         () => controller.decrement(stepMultiplier),
         payload,
       ),
-      sliderCommand(
+      widgetUpdateCommand(
         `${idPrefix}.increment`,
         label("increment", "Increase Slider"),
         group,
         ["slider", "increase", "increment"],
+        "slider.changed",
         () => controller.increment(stepMultiplier),
         payload,
       ),
@@ -774,19 +707,21 @@ export function sliderCommands<TAction extends Action = SliderCommandAction>(
 
   if (options.includeEdgeCommands ?? true) {
     commands.push(
-      sliderCommand(
+      widgetUpdateCommand(
         `${idPrefix}.min`,
         label("min", "Minimum Slider Value"),
         group,
         ["slider", "minimum", "min"],
+        "slider.changed",
         () => controller.setMin(),
         payload,
       ),
-      sliderCommand(
+      widgetUpdateCommand(
         `${idPrefix}.max`,
         label("max", "Maximum Slider Value"),
         group,
         ["slider", "maximum", "max"],
+        "slider.changed",
         () => controller.setMax(),
         payload,
       ),
@@ -795,11 +730,12 @@ export function sliderCommands<TAction extends Action = SliderCommandAction>(
 
   if (options.includeValueCommands ?? false) {
     for (const value of options.values ?? []) {
-      commands.push(sliderCommand(
+      commands.push(widgetUpdateCommand(
         `${idPrefix}.value.${value}`,
         `${label("value", "Set Slider Value")}: ${valueLabel(value)}`,
         group,
         ["slider", "value", `${value}`],
+        "slider.changed",
         () => controller.setValue(value),
         payload,
         () => controller.value.peek() === value,
@@ -817,28 +753,6 @@ export function bindSliderCommands<TAction extends Action = SliderCommandAction>
   options: SliderCommandOptions = {},
 ): () => void {
   return registry.registerAll(sliderCommands<TAction>(controller, options));
-}
-
-function sliderCommand<TAction extends Action>(
-  id: string,
-  label: string,
-  group: string,
-  keywords: string[],
-  setValue: () => number,
-  payload: () => SliderCommandPayload,
-  disabled?: () => boolean,
-): Command<TAction> {
-  return {
-    id,
-    label,
-    group,
-    keywords,
-    disabled,
-    action: () => {
-      setValue();
-      return { type: "slider.changed", payload: payload() } as TAction;
-    },
-  };
 }
 
 /** Identifier union for stepper Command variants. */
@@ -881,16 +795,42 @@ export function stepperCommands<TAction extends Action = StepperCommandAction>(
 
   if (options.includeMoveCommands ?? true) {
     commands.push(
-      stepperMoveCommand(`${idPrefix}.first`, label("first", "First Step"), group, () => controller.first(), payload),
-      stepperMoveCommand(
+      widgetUpdateCommand(
+        `${idPrefix}.first`,
+        label("first", "First Step"),
+        group,
+        ["step", "stepper", label("first", "First Step")],
+        "stepper.changed",
+        () => controller.first(),
+        payload,
+      ),
+      widgetUpdateCommand(
         `${idPrefix}.previous`,
         label("previous", "Previous Step"),
         group,
+        ["step", "stepper", label("previous", "Previous Step")],
+        "stepper.changed",
         () => controller.move(-1),
         payload,
       ),
-      stepperMoveCommand(`${idPrefix}.next`, label("next", "Next Step"), group, () => controller.move(1), payload),
-      stepperMoveCommand(`${idPrefix}.last`, label("last", "Last Step"), group, () => controller.last(), payload),
+      widgetUpdateCommand(
+        `${idPrefix}.next`,
+        label("next", "Next Step"),
+        group,
+        ["step", "stepper", label("next", "Next Step")],
+        "stepper.changed",
+        () => controller.move(1),
+        payload,
+      ),
+      widgetUpdateCommand(
+        `${idPrefix}.last`,
+        label("last", "Last Step"),
+        group,
+        ["step", "stepper", label("last", "Last Step")],
+        "stepper.changed",
+        () => controller.last(),
+        payload,
+      ),
     );
   }
 
@@ -926,25 +866,6 @@ export function bindStepperCommands<TAction extends Action = StepperCommandActio
   options: StepperCommandOptions = {},
 ): () => void {
   return registry.registerAll(stepperCommands<TAction>(controller, options));
-}
-
-function stepperMoveCommand<TAction extends Action>(
-  id: string,
-  label: string,
-  group: string,
-  move: () => StepperStep | undefined,
-  payload: () => StepperCommandPayload,
-): Command<TAction> {
-  return {
-    id,
-    label,
-    group,
-    keywords: ["step", "stepper", label],
-    action: () => {
-      move();
-      return { type: "stepper.changed", payload: payload() } as TAction;
-    },
-  };
 }
 
 /** Identifier union for text Box Command variants. */
@@ -1010,23 +931,27 @@ export function textBoxCommands<TAction extends Action = TextBoxCommandAction>(
 
   if (options.includeCursorCommands ?? true) {
     commands.push(
-      textBoxCursorCommand(
+      widgetUpdateCommand(
         `${idPrefix}.home`,
         label("home", "Text Box Line Home"),
         group,
         ["textbox", "cursor", "home"],
+        "textbox.cursorMoved",
         () => controller.home(),
         payload,
+        () => payload().inspection.lineCount <= 0,
       ),
-      textBoxCursorCommand(
+      widgetUpdateCommand(
         `${idPrefix}.left`,
         label("left", "Text Box Cursor Left"),
         group,
         ["textbox", "cursor", "left"],
+        "textbox.cursorMoved",
         () => controller.moveCursor({ x: -1 }),
         payload,
+        () => payload().inspection.lineCount <= 0,
       ),
-      textBoxCursorCommand(
+      widgetUpdateCommand(
         `${idPrefix}.right`,
         label("right", "Text Box Cursor Right"),
         group,
@@ -1035,32 +960,40 @@ export function textBoxCommands<TAction extends Action = TextBoxCommandAction>(
           "cursor",
           "right",
         ],
+        "textbox.cursorMoved",
         () => controller.moveCursor({ x: 1 }),
         payload,
+        () => payload().inspection.lineCount <= 0,
       ),
-      textBoxCursorCommand(
+      widgetUpdateCommand(
         `${idPrefix}.up`,
         label("up", "Text Box Cursor Up"),
         group,
         ["textbox", "cursor", "up"],
+        "textbox.cursorMoved",
         () => controller.moveCursor({ y: -1 }),
         payload,
+        () => payload().inspection.lineCount <= 0,
       ),
-      textBoxCursorCommand(
+      widgetUpdateCommand(
         `${idPrefix}.down`,
         label("down", "Text Box Cursor Down"),
         group,
         ["textbox", "cursor", "down"],
+        "textbox.cursorMoved",
         () => controller.moveCursor({ y: 1 }),
         payload,
+        () => payload().inspection.lineCount <= 0,
       ),
-      textBoxCursorCommand(
+      widgetUpdateCommand(
         `${idPrefix}.end`,
         label("end", "Text Box Line End"),
         group,
         ["textbox", "cursor", "end"],
+        "textbox.cursorMoved",
         () => controller.end(),
         payload,
+        () => payload().inspection.lineCount <= 0,
       ),
     );
   }
@@ -1092,25 +1025,4 @@ export function bindTextBoxCommands<TAction extends Action = TextBoxCommandActio
   options: TextBoxCommandOptions = {},
 ): () => void {
   return registry.registerAll(textBoxCommands<TAction>(controller, options));
-}
-
-function textBoxCursorCommand<TAction extends Action>(
-  id: string,
-  label: string,
-  group: string,
-  keywords: string[],
-  move: () => CursorPosition,
-  payload: () => TextBoxCommandPayload,
-): Command<TAction> {
-  return {
-    id,
-    label,
-    group,
-    keywords,
-    disabled: () => payload().inspection.lineCount <= 0,
-    action: () => {
-      move();
-      return { type: "textbox.cursorMoved", payload: payload() } as TAction;
-    },
-  };
 }
