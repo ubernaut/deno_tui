@@ -648,9 +648,9 @@ class FactoryGridRenderer implements ThreePanelGridRenderer {
     this.terminalGlyphStyle = value;
   }
 
-  async renderToAnsiGrid(): Promise<string[][]> {
+  renderToAnsiGrid(): Promise<string[][]> {
     this.renderCount += 1;
-    return this.grid();
+    return Promise.resolve(this.grid());
   }
 
   async renderFrame(

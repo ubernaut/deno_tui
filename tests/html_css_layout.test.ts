@@ -52,6 +52,7 @@ import {
   resolveGridTracks,
 } from "../src/layout/solvers/simple_grid.ts";
 import { cellLength, frLength, percentLength } from "../src/layout/style.ts";
+import { computedLayoutBoxOverflow } from "../src/layout/solver.ts";
 import { yogaLayoutSolver } from "../src/layout/solvers/yoga.ts";
 import type {
   ComputedLayoutBox,
@@ -178,22 +179,33 @@ Deno.test("htmlCssLayoutRenderCommandsInto projects boxes outlines labels and su
     rect: { column: 9, row: 9, width: 1, height: 1 },
     bg: "stale",
   }];
+  const rect = { column: 1, row: 1, width: 10, height: 5 };
+  const contentRect = { column: 2, row: 2, width: 8, height: 3 };
+  const zeroEdges = { top: 0, right: 0, bottom: 0, left: 0 };
+  const metricBox: ComputedLayoutBox = {
+    id: "metric-cpu",
+    tag: "panel",
+    classes: [],
+    attributes: {},
+    rect,
+    contentRect,
+    padding: zeroEdges,
+    margin: zeroEdges,
+    border: zeroEdges,
+    overflowX: "visible",
+    overflowY: "visible",
+    scrollWidth: contentRect.width,
+    scrollHeight: contentRect.height,
+    overflow: computedLayoutBoxOverflow(contentRect, contentRect.width, contentRect.height, "visible", "visible"),
+    zIndex: 0,
+    visible: true,
+    hitRegions: [],
+    text: "CPU 42%",
+    children: [],
+  };
   const commands = htmlCssLayoutRenderCommandsInto(target, {
     bounds: { column: 0, row: 0, width: 20, height: 8 },
-    boxes: [
-      {
-        id: "metric-cpu",
-        tag: "panel",
-        classes: [],
-        rect: { column: 1, row: 1, width: 10, height: 5 },
-        contentRect: { column: 2, row: 2, width: 8, height: 3 },
-        text: "CPU 42%",
-        visible: true,
-        zIndex: 0,
-        children: [],
-        styles: {},
-      } as any,
-    ],
+    boxes: [metricBox],
     theme: htmlCssViewTheme,
     contrast: htmlCssViewContrast,
     summaryRows: ["pipeline", "resize"],

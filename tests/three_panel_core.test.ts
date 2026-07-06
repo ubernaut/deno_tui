@@ -1139,25 +1139,30 @@ class FakeGraphicsSurface implements GraphicsSurface {
   failDeletes = false;
   private nextId = 1;
 
-  async putImage(image: GraphicsImage, placement: GraphicsPlacement): Promise<GraphicsHandle> {
+  putImage(image: GraphicsImage, placement: GraphicsPlacement): Promise<GraphicsHandle> {
     this.puts.push({ image, placement });
-    return {
+    return Promise.resolve({
       id: `kitty:${this.nextId}:1`,
       kind: this.kind,
       imageId: this.nextId++,
       placementId: 1,
       placement,
-    };
+    });
   }
 
-  async moveImage(): Promise<void> {}
+  moveImage(): Promise<void> {
+    return Promise.resolve();
+  }
 
-  async deleteImage(handle: GraphicsHandle, mode?: GraphicsDeleteMode): Promise<void> {
+  deleteImage(handle: GraphicsHandle, mode?: GraphicsDeleteMode): Promise<void> {
     this.deleted.push({ handle, mode });
-    if (this.failDeletes) throw new Error("delete unavailable");
+    if (this.failDeletes) return Promise.reject(new Error("delete unavailable"));
+    return Promise.resolve();
   }
 
-  async clear(): Promise<void> {}
+  clear(): Promise<void> {
+    return Promise.resolve();
+  }
 
   inspect(): GraphicsSurfaceInspection {
     return {

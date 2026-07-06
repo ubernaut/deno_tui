@@ -2001,14 +2001,14 @@ class EmptyThenGridRenderer extends FakeGridRenderer {
 }
 
 class ThrowingGridRenderer extends FakeGridRenderer {
-  override async renderToAnsiGrid(): Promise<string[][]> {
+  override renderToAnsiGrid(): Promise<string[][]> {
     this.renderCount += 1;
-    throw new Error("GPU backend unavailable");
+    return Promise.reject(new Error("GPU backend unavailable"));
   }
 
-  override async renderFrame(): Promise<{ grid?: string[][] }> {
+  override renderFrame(): Promise<{ grid?: string[][] }> {
     this.renderCount += 1;
-    throw new Error("GPU backend unavailable");
+    return Promise.reject(new Error("GPU backend unavailable"));
   }
 }
 
@@ -2093,25 +2093,30 @@ class FakeGraphicsSurface implements GraphicsSurface {
   failDeletes = false;
   private nextId = 1;
 
-  async putImage(image: GraphicsImage, placement: GraphicsPlacement): Promise<GraphicsHandle> {
+  putImage(image: GraphicsImage, placement: GraphicsPlacement): Promise<GraphicsHandle> {
     this.puts.push({ image, placement });
-    return {
+    return Promise.resolve({
       id: `kitty:${this.nextId}:1`,
       kind: this.kind,
       imageId: this.nextId++,
       placementId: 1,
       placement,
-    };
+    });
   }
 
-  async moveImage(): Promise<void> {}
+  moveImage(): Promise<void> {
+    return Promise.resolve();
+  }
 
-  async deleteImage(handle: GraphicsHandle, mode?: GraphicsDeleteMode): Promise<void> {
+  deleteImage(handle: GraphicsHandle, mode?: GraphicsDeleteMode): Promise<void> {
     this.deleted.push({ handle, mode });
-    if (this.failDeletes) throw new Error("delete unavailable");
+    if (this.failDeletes) return Promise.reject(new Error("delete unavailable"));
+    return Promise.resolve();
   }
 
-  async clear(): Promise<void> {}
+  clear(): Promise<void> {
+    return Promise.resolve();
+  }
 
   inspect(): GraphicsSurfaceInspection {
     return {

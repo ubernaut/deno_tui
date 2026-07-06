@@ -157,15 +157,9 @@ Deno.test("CachedAsyncResource only persists the latest successful load", async 
 Deno.test("CachedAsyncResource can clear cache entries and isolate cache errors", async () => {
   const errors: unknown[] = [];
   const store = {
-    async get(_key: string): Promise<number | undefined> {
-      throw new Error("read failed");
-    },
-    async set(_key: string, _value: number): Promise<void> {
-      throw new Error("write failed");
-    },
-    async delete(_key: string): Promise<void> {
-      throw new Error("delete failed");
-    },
+    get: (_key: string): Promise<number | undefined> => Promise.reject(new Error("read failed")),
+    set: (_key: string, _value: number): Promise<void> => Promise.reject(new Error("write failed")),
+    delete: (_key: string): Promise<void> => Promise.reject(new Error("delete failed")),
   };
   const resource = createCachedAsyncResource<number, number>({
     store,

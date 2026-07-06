@@ -408,14 +408,16 @@ Deno.test("theme coverage core supports custom variant enumeration and injected 
   assertEquals(coverage.components[0]?.variants.map((variant) => variant.name), ["default", "quiet"]);
 
   await assertRejects(
-    async () =>
-      inspectThemeCoverageCore({
-        A: { extends: "B" },
-        B: { extends: "A" },
-      }, {
-        states: ["base"],
-        createInheritanceError: (cycle) => new TypeError(cycle.join(">")),
-      }),
+    () =>
+      Promise.resolve().then(() =>
+        inspectThemeCoverageCore({
+          A: { extends: "B" },
+          B: { extends: "A" },
+        }, {
+          states: ["base"],
+          createInheritanceError: (cycle) => new TypeError(cycle.join(">")),
+        })
+      ),
     TypeError,
     "A>B>A",
   );

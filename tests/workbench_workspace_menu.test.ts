@@ -47,11 +47,9 @@ Deno.test("API workbench workspace config exposes stable storage defaults", () =
 
 Deno.test("apiWorkbenchWorkspaceStorageOptions projects API workbench persistence policy", () => {
   const store = {
-    async get(_key: string) {
-      return undefined;
-    },
-    async set(_key: string, _value: unknown) {},
-    async delete(_key: string) {},
+    get: (_key: string) => Promise.resolve(undefined),
+    set: (_key: string, _value: unknown) => Promise.resolve(),
+    delete: (_key: string) => Promise.resolve(),
   };
   const options = apiWorkbenchWorkspaceStorageOptions({
     store,

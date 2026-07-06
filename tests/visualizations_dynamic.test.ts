@@ -695,7 +695,7 @@ Deno.test("AudioRegistry reports meter startup failures without leaving the sour
   const registry = new AudioRegistry([audioSource()], {
     diagnostics,
     commandFactory: () => ({
-      output: async () => ({ stderr: new Uint8Array() }),
+      output: () => Promise.resolve({ stderr: new Uint8Array() }),
       spawn: () => {
         throw new Error("pulse unavailable");
       },

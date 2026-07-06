@@ -1254,13 +1254,14 @@ Deno.test("JsonFileStore persists async store values through an injected JSON fi
   const files = new Map<string, string>();
   const missing = new Error("missing");
   const fileSystem = {
-    readTextFile: async (path: string) => {
+    readTextFile: (path: string): Promise<string> => {
       const value = files.get(path);
-      if (value === undefined) throw missing;
-      return value;
+      if (value === undefined) return Promise.reject(missing);
+      return Promise.resolve(value);
     },
-    writeTextFile: async (path: string, data: string) => {
+    writeTextFile: (path: string, data: string): Promise<void> => {
       files.set(path, data);
+      return Promise.resolve();
     },
     isNotFound: (error: unknown) => error === missing,
   };

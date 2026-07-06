@@ -176,13 +176,9 @@ Deno.test("workbench workspace storage helpers load normalize and persist envelo
 Deno.test("workbench workspace storage helpers report recoverable load and persist failures", async () => {
   const diagnostics: unknown[] = [];
   const failingStore = {
-    get: async () => {
-      throw new Error("read failed");
-    },
-    set: async () => {
-      throw new Error("write failed");
-    },
-    delete: async () => {},
+    get: () => Promise.reject(new Error("read failed")),
+    set: () => Promise.reject(new Error("write failed")),
+    delete: () => Promise.resolve(),
   };
   const options = {
     key: "workspaces",

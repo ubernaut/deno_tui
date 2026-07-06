@@ -427,10 +427,10 @@ class FixtureThermalProvider implements SystemMetricsProvider {
     return [];
   }
 
-  async readTextFile(path: string): Promise<string> {
+  readTextFile(path: string): Promise<string> {
     const value = this.files.get(path);
-    if (value === undefined) throw new Error(`missing ${path}`);
-    return value;
+    if (value === undefined) return Promise.reject(new Error(`missing ${path}`));
+    return Promise.resolve(value);
   }
 
   async *readDir(path: string): AsyncIterable<SystemMetricsDirEntry> {

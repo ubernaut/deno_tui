@@ -2264,10 +2264,11 @@ Deno.test("ThemeProvider preserves local changes made before persisted theme loa
   const writes: Array<[string, string]> = [];
   const store = {
     get: () => new Promise<string>((resolve) => resolveGet = resolve),
-    set: async (key: string, value: string) => {
+    set: (key: string, value: string) => {
       writes.push([key, value]);
+      return Promise.resolve();
     },
-    delete: async () => {},
+    delete: () => Promise.resolve(),
   };
   const provider = createThemeProvider({
     registry: createThemeRegistry([
