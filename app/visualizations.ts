@@ -67,7 +67,7 @@ function normalizeFieldRows(lines: readonly string[], width: number, height: num
   return rows.join("\n");
 }
 
-export function harmonicField(width: number, height: number, drive: VisualizationDrive, glyph: string) {
+function harmonicField(width: number, height: number, drive: VisualizationDrive, glyph: string) {
   const matrix = createMatrix(width, height, " ");
   const spacing = Math.max(3, 7 - Math.round(drive.divergence * 4));
   for (let y = 0; y < height; y += 1) {
@@ -109,7 +109,7 @@ export function harmonicField(width: number, height: number, drive: Visualizatio
   return renderMatrix(matrix);
 }
 
-export function psychograph(width: number, height: number, drive: VisualizationDrive, glyph: string) {
+function psychograph(width: number, height: number, drive: VisualizationDrive, glyph: string) {
   const matrix = createMatrix(width, height, " ");
   const drift = drive.current * 0.9 + drive.volatility * 0.8;
   let previousX = 0;
@@ -132,7 +132,7 @@ export function psychograph(width: number, height: number, drive: VisualizationD
   return renderMatrix(matrix);
 }
 
-export function circularField(width: number, height: number, drive: VisualizationDrive) {
+function circularField(width: number, height: number, drive: VisualizationDrive) {
   const matrix = createMatrix(width, height, " ");
   const centerX = Math.floor(width / 2);
   const centerY = Math.floor(height / 2);
@@ -181,7 +181,7 @@ export function circularField(width: number, height: number, drive: Visualizatio
   return renderMatrix(matrix);
 }
 
-export function heatmap(width: number, height: number, drive: VisualizationDrive, glyphs: readonly string[]) {
+function heatmap(width: number, height: number, drive: VisualizationDrive, glyphs: readonly string[]) {
   const matrix = createMatrix(width, height, " ");
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -205,7 +205,7 @@ export function heatmap(width: number, height: number, drive: VisualizationDrive
   return renderMatrix(matrix);
 }
 
-export function routeBoard(width: number, rows: number, drive: VisualizationDrive, glyphs: readonly string[]) {
+function routeBoard(width: number, rows: number, drive: VisualizationDrive, glyphs: readonly string[]) {
   const matrix = createMatrix(width, rows, " ");
   const lanes = Math.max(2, Math.min(4, drive.sources.length + 1));
   for (let row = 0; row < rows; row += 1) {
@@ -231,7 +231,7 @@ export function routeBoard(width: number, rows: number, drive: VisualizationDriv
   return renderMatrix(matrix);
 }
 
-export function tacticalMap(width: number, height: number, drive: VisualizationDrive) {
+function tacticalMap(width: number, height: number, drive: VisualizationDrive) {
   const matrix = createMatrix(width, height, " ");
   const bias = 2 + drive.divergence * 5;
   for (let y = 0; y < height; y += 1) {
@@ -264,7 +264,7 @@ export function tacticalMap(width: number, height: number, drive: VisualizationD
   return renderMatrix(matrix);
 }
 
-export function networkTopology(width: number, height: number, drive: VisualizationDrive) {
+function networkTopology(width: number, height: number, drive: VisualizationDrive) {
   const matrix = createMatrix(width, height, " ");
   const offset = Math.floor(drive.divergence * 4 + drive.volatility * 3);
   const nodes = [
@@ -309,7 +309,7 @@ export function networkTopology(width: number, height: number, drive: Visualizat
   return renderMatrix(matrix);
 }
 
-export function liveFeed(width: number, height: number, drive: VisualizationDrive) {
+function liveFeed(width: number, height: number, drive: VisualizationDrive) {
   const matrix = createMatrix(width, height, " ");
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -331,7 +331,7 @@ export function liveFeed(width: number, height: number, drive: VisualizationDriv
   return renderMatrix(matrix);
 }
 
-export function channelMatrix(width: number, height: number, drive: VisualizationDrive) {
+function channelMatrix(width: number, height: number, drive: VisualizationDrive) {
   const matrix = createMatrix(width, height, " ");
   const sourceCount = Math.max(1, drive.sources.length);
   const laneWidth = Math.max(3, Math.floor(width / sourceCount));
@@ -360,7 +360,7 @@ export function channelMatrix(width: number, height: number, drive: Visualizatio
   return renderMatrix(matrix);
 }
 
-export function telemetryRack(
+function telemetryRack(
   width: number,
   height: number,
   drive: VisualizationDrive,
@@ -382,7 +382,7 @@ export function telemetryRack(
   return normalizeFieldRows([...lines, ...chart.split("\n")], width, height);
 }
 
-export function biosignalStrip(width: number, height: number, drive: VisualizationDrive) {
+function biosignalStrip(width: number, height: number, drive: VisualizationDrive) {
   const header = height >= 6
     ? [
       `PULSE ${(drive.current * 100).toFixed(0)}%  NOISE ${(drive.volatility * 100).toFixed(0)}%  Δ${
@@ -398,7 +398,7 @@ export function biosignalStrip(width: number, height: number, drive: Visualizati
   );
 }
 
-export function componentIndex(
+function componentIndex(
   width: number,
   height: number,
   drive: VisualizationDrive,

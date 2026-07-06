@@ -28,20 +28,7 @@ import {
   sourceNameMatrix,
   sourceWarnings,
 } from "../app/visualization_primitives.ts";
-import {
-  biosignalStrip,
-  channelMatrix,
-  circularField,
-  componentIndex,
-  harmonicField,
-  heatmap,
-  liveFeed,
-  networkTopology,
-  psychograph,
-  routeBoard,
-  tacticalMap,
-  telemetryRack,
-} from "../app/visualizations.ts";
+import { renderVisualization } from "../app/visualizations.ts";
 import type { BorderMode, MenuLine, Rect, RenderContext, SourceFrame } from "../app/types.ts";
 
 const sources: SourceFrame[] = [
@@ -243,61 +230,32 @@ Deno.test("visualization panel helpers report highest priority drive state", () 
 });
 
 Deno.test("visualization fields render bounded multiline text", () => {
-  const drive = buildVisualizationDrive(
-    {
-      phase: 17,
-      system: emptySnapshot("host", "os", 4),
-      sources: [
-        {
-          id: "cpu",
-          name: "CPU",
-          accent: "signal",
-          value: 0.72,
-          series: [0.15, 0.3, 0.55, 0.82, 0.64, 0.91, 0.48, 0.72],
-          detailLines: ["LOAD AVG 1.00"],
-        },
-        {
-          id: "mem",
-          name: "MEM",
-          accent: "amber",
-          value: 0.48,
-          series: [0.2, 0.42, 0.51, 0.49, 0.62, 0.57, 0.44, 0.48],
-          detailLines: ["USED 48%"],
-        },
-      ],
-    },
-    24,
-  );
-  const fields = [
-    harmonicField(24, 6, drive, "*"),
-    psychograph(24, 6, drive, "#"),
-    circularField(24, 6, drive),
-    heatmap(24, 6, drive, [" ", ".", "#"]),
-    routeBoard(24, 6, drive, [" ", ".", "+", "#"]),
-    tacticalMap(24, 6, drive),
-    networkTopology(24, 6, drive),
-    liveFeed(24, 6, drive),
-    channelMatrix(24, 6, drive),
-    telemetryRack(24, 6, drive, [" ", "░", "▒", "▓", "█"]),
-    biosignalStrip(24, 6, drive),
-    componentIndex(24, 6, drive, ["alpha", "beta", "gamma"]),
+  const cases = [
+    ["harmonic-graph", "HARMONIC GRAPH", "◆"],
+    ["psychograph", "PSYCHOGRAPH DISPLAY", "■"],
+    ["field-ring", "FIELD RING CAPTURE", "◆"],
+    ["hex-heatmap", "HEX HEATMAP", "▅"],
+    ["route-board", "ROUTE / GATE BOARD", "█"],
+    ["tactical-map", "TACTICAL MAP", "/"],
+    ["network-topology", "NETWORK TOPOLOGY", "●"],
+    ["live-feed", "LIVE FEED / CORRUPTION", "│"],
+    ["channel-matrix", "CHANNEL MATRIX", "│"],
+    ["telemetry-rack", "TELEMETRY RACK", "CPU-MAI"],
+    ["biosignal-strip", "BIOSIGNAL STRIP", "PULSE"],
+    ["component-index", "COMPONENT INDEX", "INDEX"],
   ];
 
-  for (const field of fields) {
-    const rows = field.split("\n");
-    assertEquals(rows.length, 6);
-    assertEquals(rows.every((row) => row.length === 24), true);
+  for (const [visualizationId, title, marker] of cases) {
+    const rendered = renderVisualization({
+      ...context,
+      width: 24,
+      height: 6,
+      slot: { ...context.slot, visualizationId },
+    });
+    const rows = rendered.body.split("\n");
+    assertEquals(rendered.title, title, visualizationId);
+    assertEquals(rows.length, 6, visualizationId);
+    assertEquals(rows.every((row) => row.length === 24), true, visualizationId);
+    assertStringIncludes(rendered.body, marker);
   }
-  assertStringIncludes(fields[0], "*");
-  assertStringIncludes(fields[1], "#");
-  assertStringIncludes(fields[2], "◆");
-  assertStringIncludes(fields[3], ".");
-  assertStringIncludes(fields[4], "█");
-  assertStringIncludes(fields[5], "/");
-  assertStringIncludes(fields[6], "●");
-  assertStringIncludes(fields[7], "│");
-  assertStringIncludes(fields[8], "│");
-  assertStringIncludes(fields[9], "CPU");
-  assertStringIncludes(fields[10], "PULSE");
-  assertStringIncludes(fields[11], "ALPHA");
 });
