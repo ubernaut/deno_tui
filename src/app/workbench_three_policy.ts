@@ -378,7 +378,7 @@ export function workbenchThreeFullscreenRenderCells(
   const minCells = Math.max(1, Math.floor(options.minCells ?? WORKBENCH_THREE_FULLSCREEN_MIN_CELLS));
   const maxCells = Math.max(minCells, Math.floor(options.maxCells ?? WORKBENCH_THREE_FULLSCREEN_MAX_CELLS));
   const area = Math.max(1, Math.floor(rect.width) * Math.floor(rect.height));
-  return Math.max(minCells, Math.min(maxCells, area));
+  return Math.min(maxCells, area);
 }
 
 /** Returns the runtime render-cell floor for a tiled live Three pane at its current body size. */

@@ -107,7 +107,7 @@ Deno.test("API workbench Three policy keeps live panes faster than idle panes", 
 });
 
 Deno.test("API workbench Three fullscreen render target follows viewport within policy bounds", () => {
-  assertEquals(workbenchThreeFullscreenRenderCells({ width: 20, height: 10 }), WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
+  assertEquals(workbenchThreeFullscreenRenderCells({ width: 20, height: 10 }), 200);
   assertEquals(workbenchThreeFullscreenRenderCells({ width: 100, height: 50 }), 5_000);
   assertEquals(workbenchThreeFullscreenRenderCells({ width: 240, height: 90 }), 21_600);
   assertEquals(workbenchThreeFullscreenRenderCells({ width: 360, height: 120 }), WORKBENCH_THREE_FULLSCREEN_MAX_CELLS);
@@ -246,7 +246,7 @@ Deno.test("API workbench Three policy keeps live cap outside fullscreen Three pa
     isThreeWindow: (id) => id === "three",
   });
 
-  assertEquals(snapshot.fullscreenTargetCells, WORKBENCH_THREE_FULLSCREEN_MIN_CELLS);
+  assertEquals(snapshot.fullscreenTargetCells, 200);
   assertEquals(snapshot.fullscreenViewportCells, 200);
   assertEquals(snapshot.effectiveMaxCells, WORKBENCH_THREE_LIVE_MAX_CELLS);
   assertStrictEquals(snapshot.runtimeAscii, ascii);

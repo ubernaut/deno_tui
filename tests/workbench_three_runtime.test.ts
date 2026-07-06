@@ -298,6 +298,26 @@ Deno.test("ApiWorkbenchThreeRuntimeController clamps fullscreen budget when view
   controller.dispose();
 });
 
+Deno.test("ApiWorkbenchThreeRuntimeController lets small fullscreen panes shrink below the old floor", () => {
+  const controller = new ApiWorkbenchThreeRuntimeController({
+    hasLiveThreeWindow: () => true,
+    hasFullscreenThreeWindow: () => true,
+  });
+
+  controller.syncFullscreenTargetCells(6_346, true, 6_346);
+  assertEquals(controller.syncFullscreenTargetCells(1_940, true, 1_940), 1_940);
+  assertEquals(controller.fullscreenMaxCells.peek(), 1_940);
+  assertEquals(controller.inspectPressure().currentCells, 1_940);
+  assertEquals(controller.inspectPressure().highFrames, 0);
+  assertEquals(controller.inspectPressure().lowFrames, 0);
+  assertEquals(
+    controller.frameInterval.peek(),
+    apiWorkbenchThreeFrameIntervalForCells(1_940, { live: true }),
+  );
+
+  controller.dispose();
+});
+
 Deno.test("resolveApiWorkbenchThreePressureChange uses fullscreen pressure tiers when requested", () => {
   const change = resolveApiWorkbenchThreePressureChange({
     pressure: { currentCells: WORKBENCH_THREE_FULLSCREEN_MAX_CELLS, highFrames: 2, lowFrames: 0 },

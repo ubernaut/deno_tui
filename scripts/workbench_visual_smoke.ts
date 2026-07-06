@@ -336,7 +336,8 @@ export function inspectWorkbenchFullscreenVisualSmokeOutput(
   const bodyTruecolor = threeBodyTruecolorCoverage(base.screenLines, replay.truecolorStyled);
   const missing = [...base.missing];
   const fullscreenBodyMinCells = fullscreenBodyRenderCellMinimum(base.threePane);
-  const minCells = Math.max(1, Math.floor(options.minCells ?? 3_000), fullscreenBodyMinCells);
+  const defaultMinCells = fullscreenBodyMinCells > 0 ? Math.min(3_000, fullscreenBodyMinCells) : 3_000;
+  const minCells = Math.max(1, Math.floor(options.minCells ?? defaultMinCells), fullscreenBodyMinCells);
   const minTruecolorRows = Math.max(1, Math.floor(options.minTruecolorRows ?? Math.min(12, options.rows)));
   const minTruecolorColumns = Math.max(1, Math.floor(options.minTruecolorColumns ?? options.columns * 0.75));
   const rendererUnavailable = base.screenLines.join("\n").includes("UNAVAILABLE");

@@ -335,6 +335,35 @@ Deno.test("workbench fullscreen visual smoke accepts compact telemetry after shr
   assertEquals(result.bodyVisibleCells, 180);
 });
 
+Deno.test("workbench fullscreen visual smoke defaults to measured body minimum on small terminals", () => {
+  const top = `┌─ THREE ASCII ${"─".repeat(95)}┐`;
+  const innerWidth = top.length - 2;
+  const line = (text: string) => `│${text.padEnd(innerWidth)}│`;
+  const bodyCells = innerWidth;
+  const output = [
+    "\x1b[2J",
+    "\x1b[1;1HAPI WORKBENCH",
+    `\x1b[4;1H${top}`,
+    `\x1b[5;1H${line(" ACEROLA THREE.JS ASCII · BLOCKS")}`,
+    `\x1b[6;1H${line(`${bodyCells}c live 20fps tier ${bodyCells}c`)}`,
+    `\x1b[7;2H\x1b[48;2;1;2;3m\x1b[38;2;1;2;3m${"█".repeat(innerWidth)}\x1b[0m`,
+    `\x1b[8;2H\x1b[48;2;4;5;6m\x1b[38;2;4;5;6m${"█".repeat(innerWidth)}\x1b[0m`,
+    `\x1b[9;1H└${"─".repeat(innerWidth)}┘`,
+    "\x1b[12;1Hfocus Three ASCII | Unit-01  F10 menu",
+  ].join("");
+  const result = inspectWorkbenchFullscreenVisualSmokeOutput(output, {
+    columns: 110,
+    rows: 12,
+    minTruecolorRows: 2,
+    minTruecolorColumns: innerWidth,
+  });
+
+  assertEquals(bodyCells < 3_000, true);
+  assertEquals(result.fullscreenBodyMinCells < 3_000, true);
+  assertEquals(result.fullscreenCells >= result.fullscreenBodyMinCells, true);
+  assertEquals(result.passed, true);
+});
+
 Deno.test("workbench fullscreen visual smoke rejects narrow truecolor surfaces after resize", () => {
   const output = [
     "\x1b[2J",
