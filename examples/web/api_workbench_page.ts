@@ -117,7 +117,7 @@ import {
   renderApiWorkbenchInspectorPanel,
 } from "../../app/api_workbench_builtin_panels_view.ts";
 import { renderApiWorkbenchButtonRow } from "../../app/api_workbench_button_row_view.ts";
-import { renderApiWorkbenchHtmlCssLayout } from "../../app/api_workbench_html_css_view.ts";
+import { renderApiWorkbenchHtmlCssLayout } from "../../app/html_css_layout_view.ts";
 import { renderApiWorkbenchShelf, renderApiWorkbenchWindowTabs } from "../../app/api_workbench_shelf_view.ts";
 import { renderApiWorkbenchWindowTitlebar } from "../../app/api_workbench_window_view.ts";
 import {

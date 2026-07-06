@@ -6,8 +6,8 @@ import {
   htmlCssLayoutSummaryRows,
   type HtmlCssLayoutTheme,
   htmlCssVisibleLayoutBoxesInto,
+  renderApiWorkbenchHtmlCssLayout,
 } from "../app/html_css_layout_view.ts";
-import { renderApiWorkbenchHtmlCssLayout } from "../app/api_workbench_html_css_view.ts";
 import {
   applyCssCascade,
   ButtonController,

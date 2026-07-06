@@ -18693,6 +18693,34 @@ function htmlCssLayoutRenderCommandsInto(target, options) {
   target.length = written;
   return target;
 }
+function renderApiWorkbenchHtmlCssLayout(options) {
+  const { frame, rect, boxes, commands, theme: theme2, contrastText: contrastText2, fit: fit2, paint: paint2, write: write2, fillRect: fillRect2 } = options;
+  const result = createHtmlCssLayoutDemo(rect);
+  const visibleBoxes = htmlCssVisibleLayoutBoxesInto(boxes, result.layout.boxes);
+  const renderCommands = htmlCssLayoutRenderCommandsInto(commands, {
+    bounds: rect,
+    boxes: visibleBoxes,
+    theme: theme2,
+    contrast: contrastText2,
+    summaryRows: htmlCssLayoutSummaryRows(options.summaryProfile ?? "terminal")
+  });
+  for (const command of renderCommands) {
+    if (command.kind === "fill") {
+      fillRect2(frame, command.rect, command.bg);
+      continue;
+    }
+    write2(
+      frame,
+      command.row,
+      command.column,
+      paint2(fit2(command.text, command.maxWidth), {
+        fg: command.fg,
+        bg: command.bg,
+        bold: command.bold
+      })
+    );
+  }
+}
 function writeHtmlCssLayoutBoxCommands(target, written, box, options) {
   const rect = clipRect(box.rect, options.bounds);
   if (rect.width <= 0 || rect.height <= 0) return written;
@@ -18786,36 +18814,6 @@ function writeFillCommand(target, index, rect, bg) {
 function writeTextCommand(target, index, command) {
   target[index] = { kind: "text", ...command };
   return index + 1;
-}
-
-// app/api_workbench_html_css_view.ts
-function renderApiWorkbenchHtmlCssLayout(options) {
-  const { frame, rect, boxes, commands, theme: theme2, contrastText: contrastText2, fit: fit2, paint: paint2, write: write2, fillRect: fillRect2 } = options;
-  const result = createHtmlCssLayoutDemo(rect);
-  const visibleBoxes = htmlCssVisibleLayoutBoxesInto(boxes, result.layout.boxes);
-  const renderCommands = htmlCssLayoutRenderCommandsInto(commands, {
-    bounds: rect,
-    boxes: visibleBoxes,
-    theme: theme2,
-    contrast: contrastText2,
-    summaryRows: htmlCssLayoutSummaryRows(options.summaryProfile ?? "terminal")
-  });
-  for (const command of renderCommands) {
-    if (command.kind === "fill") {
-      fillRect2(frame, command.rect, command.bg);
-      continue;
-    }
-    write2(
-      frame,
-      command.row,
-      command.column,
-      paint2(fit2(command.text, command.maxWidth), {
-        fg: command.fg,
-        bg: command.bg,
-        bold: command.bold
-      })
-    );
-  }
 }
 
 // app/api_workbench_shelf_view.ts

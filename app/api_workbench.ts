@@ -181,7 +181,7 @@ import {
   resolveApiWorkbenchWorkspaceScrollbarOffset,
 } from "./api_workbench_controls.ts";
 import { HTML_CSS_LAYOUT_WINDOW_ID } from "../src/markup/demo_fixtures.ts";
-import { type HtmlCssLayoutRenderCommand } from "./html_css_layout_view.ts";
+import { type HtmlCssLayoutRenderCommand, renderApiWorkbenchHtmlCssLayout } from "./html_css_layout_view.ts";
 import { asciiDemoPresetIds } from "../src/three_ascii/demo_presets.ts";
 import { cloneAsciiOptions, normalizeAsciiOptions, terminalGlyphStyleLabel } from "../src/three_ascii/options.ts";
 import { resolveSourceFramesInto } from "./sources.ts";
@@ -301,7 +301,6 @@ import {
   renderApiWorkbenchTerminalOutputToolbar,
 } from "./api_workbench_terminal_output_view.ts";
 import { ApiWorkbenchControlsViewBufferCache, renderApiWorkbenchControls } from "./api_workbench_controls_view.ts";
-import { renderApiWorkbenchHtmlCssLayout } from "./api_workbench_html_css_view.ts";
 import { renderApiWorkbenchModalOverlay, renderApiWorkbenchThreeConfigModal } from "./api_workbench_modal_view.ts";
 import { renderApiWorkbenchShelf, renderApiWorkbenchWindowTabs } from "./api_workbench_shelf_view.ts";
 import {

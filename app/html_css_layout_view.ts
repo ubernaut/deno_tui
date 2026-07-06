@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { clipRect } from "../src/app/hit_targets.ts";
 import type { ComputedLayoutBox } from "../src/layout/mod.ts";
-import { htmlCssLayoutDemoBoxLabel } from "../src/markup/demo_fixtures.ts";
+import { createHtmlCssLayoutDemo, htmlCssLayoutDemoBoxLabel } from "../src/markup/demo_fixtures.ts";
 import type { Rectangle } from "../src/types.ts";
 
 /** Theme colors consumed by the HTML/CSS layout demo renderer. */
@@ -65,6 +65,20 @@ interface HtmlCssLayoutRenderCommandOptions {
   theme: HtmlCssLayoutTheme;
   contrast: HtmlCssLayoutContrast;
   summaryRows: readonly string[];
+}
+
+interface ApiWorkbenchHtmlCssLayoutRenderOptions<Frame> {
+  frame: Frame;
+  rect: Rectangle;
+  boxes: ComputedLayoutBox[];
+  commands: HtmlCssLayoutRenderCommand[];
+  summaryProfile?: "terminal" | "web";
+  theme: HtmlCssLayoutTheme;
+  contrastText: (background: string, dark: string, light: string) => string;
+  fit: (text: string, width: number) => string;
+  paint: (text: string, style: { fg: string; bg: string; bold?: boolean }) => string;
+  write: (frame: Frame, row: number, column: number, value: string) => void;
+  fillRect: (frame: Frame, rect: Rectangle, bg: string) => void;
 }
 
 /** Host profile for the HTML/CSS layout demo explanatory summary. */
@@ -211,6 +225,38 @@ export function htmlCssLayoutRenderCommandsInto(
 
   target.length = written;
   return target;
+}
+
+/** Renders the HTML/CSS layout demo in an API Workbench frame using shared layout commands. */
+export function renderApiWorkbenchHtmlCssLayout<Frame>(
+  options: ApiWorkbenchHtmlCssLayoutRenderOptions<Frame>,
+): void {
+  const { frame, rect, boxes, commands, theme, contrastText, fit, paint, write, fillRect } = options;
+  const result = createHtmlCssLayoutDemo(rect);
+  const visibleBoxes = htmlCssVisibleLayoutBoxesInto(boxes, result.layout.boxes);
+  const renderCommands = htmlCssLayoutRenderCommandsInto(commands, {
+    bounds: rect,
+    boxes: visibleBoxes,
+    theme,
+    contrast: contrastText,
+    summaryRows: htmlCssLayoutSummaryRows(options.summaryProfile ?? "terminal"),
+  });
+  for (const command of renderCommands) {
+    if (command.kind === "fill") {
+      fillRect(frame, command.rect, command.bg);
+      continue;
+    }
+    write(
+      frame,
+      command.row,
+      command.column,
+      paint(fit(command.text, command.maxWidth), {
+        fg: command.fg,
+        bg: command.bg,
+        bold: command.bold,
+      }),
+    );
+  }
 }
 
 function writeHtmlCssLayoutBoxCommands(
