@@ -56,7 +56,6 @@ import {
   workbenchWindowOptionWindowId,
 } from "../src/app/workbench_window_registry.ts";
 import {
-  type WorkbenchTerminalCopyRowProjection,
   workbenchTerminalCopyRowsInto,
   type WorkbenchTerminalOutputWindowRow,
   workbenchTerminalPaneProjectionsInto,
@@ -98,13 +97,13 @@ import {
 import { ApiWorkbenchWindowShellBufferCache, renderApiWorkbenchWindowShell } from "../app/api_workbench_window_view.ts";
 import {
   renderApiWorkbenchTerminalSessionTabs,
-  renderApiWorkbenchTerminalShellCopyPane,
   renderApiWorkbenchTerminalShellHeader,
+  renderApiWorkbenchTerminalShellPanes,
   renderApiWorkbenchTerminalShellToolbar,
 } from "../app/api_workbench_terminal_shell_view.ts";
 import { ApiWorkbenchControlsViewBufferCache, renderApiWorkbenchControls } from "../app/api_workbench_controls_view.ts";
 import type { ProcessSessionInspection } from "../src/runtime/process_session.ts";
-import type { TerminalShellInspection } from "../src/runtime/terminal_shell.ts";
+import type { TerminalShellController, TerminalShellInspection } from "../src/runtime/terminal_shell.ts";
 import type { TerminalShellWorkspaceInspection } from "../src/runtime/terminal_shell_workspace.ts";
 import type { RowStyle } from "../src/app/workbench_rows.ts";
 import type { PanelRender } from "../app/types.ts";
@@ -1920,43 +1919,80 @@ Deno.test("renderApiWorkbenchTerminalShellHeader paints status and hint rows", (
   );
 });
 
-Deno.test("renderApiWorkbenchTerminalShellCopyPane paints copy rows and registers row hits", () => {
+Deno.test("renderApiWorkbenchTerminalShellPanes paints copy rows and registers row hits", () => {
   const frame: string[][] = [];
-  const copyRows: WorkbenchTerminalCopyRowProjection[] = [];
-  const hits: Array<{ index: number; row: number; width: number }> = [];
+  const buffers = new WorkbenchTerminalBufferCache();
+  const hits: Array<{ type: string; index?: number; row: number; width: number }> = [];
+  const shellInspection = testTerminalShellInspection({
+    scrollback: {
+      offset: 7,
+      viewportRows: 2,
+      totalRows: 12,
+      visibleRows: ["alpha", "beta"],
+      selection: { anchor: 7, focus: 7 },
+    },
+  });
+  let resizeCall: { columns: number; rows: number } | undefined;
+  const shell = {
+    running: false,
+    resize: (columns: number, rows: number) => {
+      resizeCall = { columns, rows };
+    },
+    inspect: () => shellInspection,
+    screen: {
+      cursor: { row: 0, column: 0 },
+      cellRows: () => [],
+    },
+  } as unknown as TerminalShellController;
 
-  renderApiWorkbenchTerminalShellCopyPane({
+  renderApiWorkbenchTerminalShellPanes({
     frame,
     rect: { column: 3, row: 5, width: 16, height: 2 },
-    inspection: testTerminalShellInspection({
-      scrollback: {
-        offset: 7,
-        viewportRows: 2,
-        totalRows: 12,
-        visibleRows: ["alpha", "beta"],
-        selection: { anchor: 7, focus: 7 },
+    inspection: {
+      activeId: "shell-1",
+      activeShell: shellInspection,
+      sessions: [{ id: "shell-1", title: "Shell 1", shell: shellInspection }],
+      workspace: {
+        activeId: "shell-1",
+        sessions: [],
+        count: 0,
+        layout: { panes: [], count: 0 },
       },
-    }),
-    rows: copyRows,
+    },
+    activeShell: shell,
+    shellForSession: (sessionId) => sessionId === "shell-1" ? shell : undefined,
+    copyMode: true,
+    rawInputActive: false,
+    buffers,
     theme: testWorkbenchTheme(),
+    contrastText: () => "#000",
+    fillRect: () => {},
     fit: (text, width) => text.slice(0, width),
     paint: (text, style) => `${style.bg}:${style.fg}:${style.bold ? "b:" : ""}${text}`,
     write: (target, row, column, value) => {
       target[row] ??= [];
       target[row]![column] = value;
     },
-    addHit: (rect, action) => hits.push({ index: action.index, row: rect.row, width: rect.width }),
+    addHit: (rect, action) =>
+      hits.push({
+        type: action.type,
+        index: action.type === "terminalShellCopyRow" ? action.index : undefined,
+        row: rect.row,
+        width: rect.width,
+      }),
   });
 
+  assertEquals(resizeCall, { columns: 16, rows: 2 });
   assertEquals(hits, [
-    { index: 7, row: 5, width: 16 },
-    { index: 8, row: 6, width: 16 },
+    { type: "terminalShellContent", index: undefined, row: 5, width: 16 },
+    { type: "terminalShellCopyRow", index: 7, row: 5, width: 16 },
+    { type: "terminalShellCopyRow", index: 8, row: 6, width: 16 },
   ]);
   assertEquals(frame[5]?.[3], "#ff0:#000:b:   8 ");
   assertEquals(frame[5]?.[8], "#ff0:#000:b:alpha");
   assertEquals(frame[6]?.[3], "#222:#ccc:   9 ");
   assertEquals(frame[6]?.[8], "#111:#fff:beta");
-  assertEquals(copyRows.length, 2);
+  assertEquals(buffers.copyRows.length, 2);
 });
 
 function testWorkbenchTheme() {

@@ -190,7 +190,7 @@ export function renderApiWorkbenchTerminalShellHeader(
 }
 
 /** Renders copy-mode scrollback rows and row hit targets for the active shell pane. */
-export function renderApiWorkbenchTerminalShellCopyPane(
+function renderApiWorkbenchTerminalShellCopyPane(
   options: ApiWorkbenchTerminalShellCopyPaneRenderOptions,
 ): void {
   const { frame, rect, inspection, rows: targetRows, theme, fit, paint, write, addHit } = options;
