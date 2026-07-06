@@ -6,6 +6,7 @@ import type { WorkbenchFrame } from "../src/app/workbench_frame.ts";
 import type { Rectangle } from "../src/types.ts";
 import {
   type ApiWorkbenchCheckboxOption,
+  type ApiWorkbenchComboHeaderRowsOptions,
   apiWorkbenchControlBaseStyle,
   apiWorkbenchControlButtonDetailStyle,
   type ApiWorkbenchControlHitAction,
@@ -19,7 +20,9 @@ import {
   type ApiWorkbenchControlPaintStyle,
   apiWorkbenchControlsSnapshotRowsInto,
   apiWorkbenchControlTrack,
+  type ApiWorkbenchDropdownHeaderRowOptions,
   apiWorkbenchDropdownPopoverRect,
+  type ApiWorkbenchInputRowOptions,
   type ApiWorkbenchProjectedControlRow,
   type ApiWorkbenchRadioOption,
   type ApiWorkbenchRadioSourceOption,
@@ -30,6 +33,7 @@ import {
   type ApiWorkbenchTextboxProjectionRow,
   type ApiWorkbenchTextboxRenderCommand,
   apiWorkbenchTextboxRenderCommandsInto,
+  type ApiWorkbenchTextboxRenderOptions,
   type ApiWorkbenchWrappedOptionsRenderCommand,
   apiWorkbenchWrappedOptionsRenderCommandsInto,
   apiWorkbenchWrappedOptionStyle,
@@ -89,21 +93,21 @@ export interface ApiWorkbenchControlsViewState<Value extends string = string> {
   radioOptions: readonly ApiWorkbenchRadioSourceOption<Value>[];
   radioSelectedValue: Value | undefined;
   radioActiveIndex: number;
-  combo: {
+  combo: Omit<ApiWorkbenchComboHeaderRowsOptions, "rectWidth"> & {
     title: string;
     label: string;
     expanded: boolean;
     items: string[];
     selectedIndex?: number;
   };
-  dropdown: {
+  dropdown: ApiWorkbenchDropdownHeaderRowOptions & {
     title: string;
     label: string;
     expanded: boolean;
     items: string[];
     selectedIndex?: number;
   };
-  input: {
+  input: ApiWorkbenchInputRowOptions & {
     title: string;
     text: string;
     active: boolean;
@@ -119,11 +123,12 @@ export interface ApiWorkbenchControlsViewState<Value extends string = string> {
   textbox: {
     lines: readonly string[];
     cursor: CursorPosition;
+    renderOptions?: ApiWorkbenchTextboxRenderOptions;
   };
 }
 
-export interface ApiWorkbenchControlsViewOptions<Value extends string = string> {
-  frame: WorkbenchFrame;
+export interface ApiWorkbenchControlsViewOptions<Frame = WorkbenchFrame, Value extends string = string> {
+  frame: Frame;
   rect: Rectangle;
   state: ApiWorkbenchControlsViewState<Value>;
   buffers: ApiWorkbenchControlsViewBufferCache;
@@ -131,7 +136,7 @@ export interface ApiWorkbenchControlsViewOptions<Value extends string = string> 
   contrastText: (background: string, dark: string, light: string) => string;
   fit: (text: string, width: number) => string;
   paint: (text: string, style: ApiWorkbenchControlPaintStyle) => string;
-  write: (frame: WorkbenchFrame, row: number, column: number, value: string) => void;
+  write: (frame: Frame, row: number, column: number, value: string) => void;
   addHit: (rect: Rectangle, action: ApiWorkbenchControlsViewHitAction) => void;
 }
 
@@ -139,8 +144,8 @@ export interface ApiWorkbenchControlsViewResult {
   dropdownOverlay?: ApiWorkbenchControlsDropdownOverlay;
 }
 
-export function renderApiWorkbenchControls<Value extends string = string>(
-  options: ApiWorkbenchControlsViewOptions<Value>,
+export function renderApiWorkbenchControls<Frame = WorkbenchFrame, Value extends string = string>(
+  options: ApiWorkbenchControlsViewOptions<Frame, Value>,
 ): ApiWorkbenchControlsViewResult {
   const { frame, rect, state, buffers, theme, contrastText, fit, paint, write, addHit } = options;
   const result: ApiWorkbenchControlsViewResult = {};
@@ -231,11 +236,18 @@ export function renderApiWorkbenchControls<Value extends string = string>(
       label: state.combo.label,
       expanded: state.combo.expanded,
       rectWidth: rect.width,
+      expandedGlyph: state.combo.expandedGlyph,
+      collapsedGlyph: state.combo.collapsedGlyph,
+      splitMinWidth: state.combo.splitMinWidth,
+      previous: state.combo.previous,
+      next: state.combo.next,
     },
     dropdown: {
       title: state.dropdown.title,
       label: state.dropdown.label,
       expanded: state.dropdown.expanded,
+      expandedGlyph: state.dropdown.expandedGlyph,
+      collapsedGlyph: state.dropdown.collapsedGlyph,
     },
     input: state.input,
     stepper: {
@@ -279,6 +291,7 @@ export function renderApiWorkbenchControls<Value extends string = string>(
         active: state.activeControl === "textbox",
         lines: state.textbox.lines,
         cursor: state.textbox.cursor,
+        renderOptions: state.textbox.renderOptions,
         buffers,
         theme,
         paint,
@@ -348,22 +361,23 @@ export function renderApiWorkbenchControls<Value extends string = string>(
   return result;
 }
 
-interface ApiWorkbenchTextboxControlRenderOptions {
-  frame: WorkbenchFrame;
+interface ApiWorkbenchTextboxControlRenderOptions<Frame> {
+  frame: Frame;
   rect: Rectangle;
   row: number;
   active: boolean;
   lines: readonly string[];
   cursor: CursorPosition;
+  renderOptions?: ApiWorkbenchTextboxRenderOptions;
   buffers: ApiWorkbenchControlsViewBufferCache;
   theme: ApiWorkbenchThemeSpec;
   paint: (text: string, style: ApiWorkbenchControlPaintStyle) => string;
-  write: (frame: WorkbenchFrame, row: number, column: number, value: string) => void;
+  write: (frame: Frame, row: number, column: number, value: string) => void;
   addHit: (rect: Rectangle, action: ApiWorkbenchControlsViewHitAction) => void;
 }
 
-function renderApiWorkbenchTextboxControl(options: ApiWorkbenchTextboxControlRenderOptions): number {
-  const { frame, rect, row, active, lines, cursor, buffers, theme, paint, write, addHit } = options;
+function renderApiWorkbenchTextboxControl<Frame>(options: ApiWorkbenchTextboxControlRenderOptions<Frame>): number {
+  const { frame, rect, row, active, lines, cursor, renderOptions, buffers, theme, paint, write, addHit } = options;
   const projection = apiWorkbenchTextboxProjectionInto(buffers.textboxProjectionRows, {
     rect,
     row,
@@ -373,7 +387,7 @@ function renderApiWorkbenchTextboxControl(options: ApiWorkbenchTextboxControlRen
     active,
   });
   if (projection.height <= 0) return projection.nextRow;
-  const commands = apiWorkbenchTextboxRenderCommandsInto(buffers.textboxRenderCommands, projection.rows);
+  const commands = apiWorkbenchTextboxRenderCommandsInto(buffers.textboxRenderCommands, projection.rows, renderOptions);
   for (const command of commands) {
     write(
       frame,
@@ -390,8 +404,8 @@ function renderApiWorkbenchTextboxControl(options: ApiWorkbenchTextboxControlRen
   return projection.nextRow;
 }
 
-interface ApiWorkbenchWrappedOptionsRenderOptions {
-  frame: WorkbenchFrame;
+interface ApiWorkbenchWrappedOptionsRenderOptions<Frame> {
+  frame: Frame;
   rect: Rectangle;
   startRow: number;
   id: ApiWorkbenchControlId;
@@ -401,11 +415,11 @@ interface ApiWorkbenchWrappedOptionsRenderOptions {
   buffers: ApiWorkbenchControlsViewBufferCache;
   theme: ApiWorkbenchThemeSpec;
   paint: (text: string, style: ApiWorkbenchControlPaintStyle) => string;
-  write: (frame: WorkbenchFrame, row: number, column: number, value: string) => void;
+  write: (frame: Frame, row: number, column: number, value: string) => void;
   addHit: (rect: Rectangle, action: ApiWorkbenchControlsViewHitAction) => void;
 }
 
-function renderApiWorkbenchWrappedOptions(options: ApiWorkbenchWrappedOptionsRenderOptions): void {
+function renderApiWorkbenchWrappedOptions<Frame>(options: ApiWorkbenchWrappedOptionsRenderOptions<Frame>): void {
   const { frame, rect, startRow, id, items, selectedIndex, activeId, buffers, theme, paint, write, addHit } = options;
   const commands = apiWorkbenchWrappedOptionsRenderCommandsInto(
     buffers.wrappedOptionRenderCommands,
