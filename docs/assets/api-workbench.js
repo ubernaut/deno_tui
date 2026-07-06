@@ -3445,12 +3445,32 @@ var Canvas = class extends EventEmitter {
   }
   resize() {
     const { columns: columns2, rows: rows2 } = this.size.peek();
+    this.clearRetainedResizeState();
     for (const drawObject of this.drawnObjects) {
       const { column, row } = drawObject.rectangle.peek();
       if (column >= columns2 || row >= rows2) continue;
       drawObject.rendered = false;
       drawObject.updated = false;
       this.updateObjects.push(drawObject);
+    }
+  }
+  clearRetainedResizeState() {
+    this.frameBuffer.length = 0;
+    this.rerenderQueue.length = 0;
+    this.rerenderRanges.length = 0;
+    this.cellUpdatesBuffer.length = 0;
+    this.rowRangesBuffer.length = 0;
+    this.directRowRangesBuffer.length = 0;
+    this.dirtyRowsSeenBuffer.clear();
+    this.dirtyRegionBuffer.clear();
+    for (const drawObject of this.drawnObjects) {
+      for (const row of drawObject.rerenderCells) row?.clear();
+      drawObject.rerenderCells.length = 0;
+      const ranged = drawObject;
+      if (ranged.rerenderRanges) {
+        for (const row of ranged.rerenderRanges) row.length = 0;
+        ranged.rerenderRanges.length = 0;
+      }
     }
   }
   updateIntersections(object, candidates) {

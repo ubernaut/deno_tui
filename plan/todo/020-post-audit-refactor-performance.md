@@ -1265,3 +1265,7 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Extracted transient Three pane status-row projection for resizing, warming, and unavailable states into the app-local
   visualization-window helper, trimming another presentation branch from the oversized API Workbench adapter without
   widening the stable package surface.
+- Cleared retained canvas frame buffers, cell queues, and subclass range queues on terminal resize so component-backed
+  renderers repaint against the new screen instead of diffing from stale coordinates. A focused canvas regression now
+  proves shrink redraws only emit coordinates inside the resized surface; workbench grow/shrink visual smokes and the
+  Three live resize probe passed, followed by full `deno task health`.

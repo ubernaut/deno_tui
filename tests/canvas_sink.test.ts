@@ -198,6 +198,45 @@ Deno.test("canvas notifies sinks when size changes", () => {
   assertEquals({ columns: sink.columns, rows: sink.rows }, { columns: 7, rows: 5 });
 });
 
+Deno.test("canvas resize clears retained buffers and redraws only the new screen", () => {
+  const sink = new MemoryCanvasSink();
+  const canvas = new Canvas({
+    sink,
+    size: { columns: 8, rows: 4 },
+  });
+  const box = new BoxObject({
+    canvas,
+    rectangle: { column: 0, row: 0, width: 8, height: 4 },
+    filler: "x",
+    style: (text) => text,
+    zIndex: 1,
+  });
+
+  box.draw();
+  canvas.render();
+  sink.clear();
+
+  box.queueRerenderRange(3, 6, 8);
+  canvas.rerenderRanges[3] = [{ row: 3, startColumn: 6, endColumn: 8 }];
+  canvas.frameBuffer[3] = ["s", "t", "a", "l", "e", " ", "x", "x"];
+
+  canvas.size.value = { columns: 3, rows: 1 };
+  canvas.render();
+
+  assertEquals(canvas.frameBuffer, [["x", "x", "x"]]);
+  assertEquals(canvas.rerenderRanges[0], []);
+  assertEquals(canvas.rerenderRanges[3], undefined);
+  assertEquals(canvas.rerenderQueue.length, 0);
+  assertEquals(box.rerenderRanges[0], []);
+  assertEquals(box.rerenderRanges[3], undefined);
+  assertEquals(sink.rowRanges, [{ row: 0, startColumn: 0, values: ["x", "x", "x"] }]);
+  assertEquals(sink.updates, [
+    { row: 0, column: 0, value: "x" },
+    { row: 0, column: 1, value: "x" },
+    { row: 0, column: 2, value: "x" },
+  ]);
+});
+
 Deno.test("ansi canvas sink preserves stdout terminal output path", () => {
   const chunks: Uint8Array[] = [];
   const sink = new AnsiCanvasSink({
