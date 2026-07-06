@@ -119,16 +119,6 @@ export function formatOptionalNumber(value: number | null, suffix: string) {
   return value === null ? "--" : `${value.toFixed(value >= 100 ? 0 : 1)}${suffix}`;
 }
 
-export function formatDuration(seconds: number) {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const days = Math.floor(hours / 24);
-  if (days > 0) {
-    return `${days}d ${String(hours % 24).padStart(2, "0")}h`;
-  }
-  return `${String(hours).padStart(2, "0")}h ${String(minutes).padStart(2, "0")}m`;
-}
-
 export function requireInteractiveTerminal(command: string): void {
   const input = Deno.stdin.isTerminal();
   const output = Deno.stdout.isTerminal();

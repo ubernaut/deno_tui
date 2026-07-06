@@ -1,4 +1,4 @@
-import { clamp, formatBytes, formatDuration, formatPercent } from "./styles.ts";
+import { clamp, formatBytes, formatPercent } from "./styles.ts";
 import { buildVisualizationDrive, type VisualizationDrive } from "./visualization_drive.ts";
 import { crop, formatLoadAverage, severityForValue } from "./visualization_primitives.ts";
 import type { Accent, PanelRender, RenderContext, Severity } from "./types.ts";
@@ -366,6 +366,16 @@ export function gpuAlert(context: RenderContext) {
 
 export function formatNullable(value: number | null, suffix: string) {
   return value === null ? "--" : `${value.toFixed(value >= 100 ? 0 : 1)}${suffix}`;
+}
+
+function formatDuration(seconds: number) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const days = Math.floor(hours / 24);
+  if (days > 0) {
+    return `${days}d ${String(hours % 24).padStart(2, "0")}h`;
+  }
+  return `${String(hours).padStart(2, "0")}h ${String(minutes).padStart(2, "0")}m`;
 }
 
 export function cpuActivityRgb(percent: number): [number, number, number] {
