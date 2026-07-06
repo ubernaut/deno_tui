@@ -6,8 +6,8 @@ import {
   monitorSourceIdsInto,
   syntheticWorkbenchSourcesInto,
   syntheticWorkbenchSystem,
-} from "../app/workbench_synthetic.ts";
-import { unitWave } from "../app/visualization_primitives.ts";
+  unitWave,
+} from "../app/visualization_primitives.ts";
 import {
   cpuHexTileLayoutInto,
   cpuHexTileScrollTarget,

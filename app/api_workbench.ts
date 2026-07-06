@@ -266,6 +266,12 @@ import {
 } from "../src/app/workbench_three_panel_registry.ts";
 import type { AsciiOptions, PanelRender, RenderContext, SlotConfig, SourceFrame, ThreeSceneMode } from "./types.ts";
 import {
+  monitorSourceIds,
+  monitorSourceIdsInto,
+  syntheticWorkbenchSourcesInto,
+  syntheticWorkbenchSystem,
+} from "./visualization_primitives.ts";
+import {
   cpuHexGridColumnCount,
   type CpuHexNavigationKey,
   type CpuHexTileLayout,
@@ -276,12 +282,6 @@ import {
   topCpuProcessLabelForCpu,
 } from "./visualization_system.ts";
 import { renderVisualization, visualizations, visualizationUsesThreeRenderer } from "./visualizations.ts";
-import {
-  monitorSourceIds,
-  monitorSourceIdsInto,
-  syntheticWorkbenchSourcesInto,
-  syntheticWorkbenchSystem,
-} from "./workbench_synthetic.ts";
 import type { ComputedLayoutBox } from "../src/layout/mod.ts";
 import {
   type ApiWorkbenchDropdownOverlay,

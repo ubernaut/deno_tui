@@ -97,7 +97,7 @@ import type {
   SystemMetricsNetworkInterface,
   SystemMetricsProvider,
 } from "../app/system_metrics_sources.ts";
-import { syntheticWorkbenchSystem } from "../app/workbench_synthetic.ts";
+import { syntheticWorkbenchSystem } from "../app/visualization_primitives.ts";
 import { cpuHexTileLayoutInto } from "../app/visualization_system.ts";
 import {
   queueRerenderCellInto,
