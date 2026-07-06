@@ -149,7 +149,6 @@ import {
 } from "../../src/app/workbench_frame_render.ts";
 import { WorkbenchFramePainter } from "../../src/app/workbench_row_render.ts";
 import type { RowStyle } from "../../src/app/workbench_rows.ts";
-import { workbenchThreePreviewRowsInto } from "../../app/workbench_visualization_window.ts";
 import {
   type WorkbenchMobileCommandAction,
   workbenchMobileCommandStripItemsInto,
@@ -956,6 +955,71 @@ function renderThreePreview(frame: string[], rect: Rectangle): void {
       ),
     );
   }
+}
+
+function workbenchThreePreviewRowsInto(
+  target: string[],
+  options: {
+    width: number;
+    height: number;
+    phase: number;
+    tileDensity: number;
+    themeLabel: string;
+    asciiOptions?: Pick<AsciiOptions, "preset" | "terminalGlyphStyle" | "kittyGraphics" | "kittyDisableAscii">;
+    orbRows?: string[];
+  },
+): string[] {
+  const mode = options.asciiOptions
+    ? terminalGlyphStyleLabel(options.asciiOptions.terminalGlyphStyle).toUpperCase()
+    : workbenchThreePreviewMode(options.tileDensity);
+  const preset = options.asciiOptions?.preset ?? "mixed-best";
+  const transport = options.asciiOptions?.kittyGraphics
+    ? options.asciiOptions.kittyDisableAscii ? "kitty only" : "kitty + ascii"
+    : "ascii";
+  target.length = 0;
+  target.push(
+    ` ACEROLA THREE ASCII · ${mode} · WEB SAFE PREVIEW `,
+    "Full WebGPU renderer is mounted below this workbench on the Pages build.",
+    "Use the standalone Three demo for live WebGPU; this pane mirrors controls and state.",
+    "",
+  );
+  const bodyHeight = Math.max(3, Math.floor(options.height) - 6);
+  const orbRows = asciiOrbInto(options.orbRows ?? [], options.width, bodyHeight, options.phase);
+  for (let index = 0; index < orbRows.length; index += 1) {
+    if (target.length >= options.height) return target;
+    target.push(orbRows[index]!);
+  }
+  if (target.length < options.height) target.push("");
+  if (target.length < options.height) {
+    target.push(
+      `preset ${preset}  glyph ${mode.toLowerCase()}  ${transport}  density ${
+        Math.trunc(options.tileDensity)
+      }  theme ${options.themeLabel}`,
+    );
+  }
+  return target;
+}
+
+function workbenchThreePreviewMode(tileDensity: number): string {
+  return ["BLOCKS", "GLYPHS", "MIXED"][Math.abs(Math.trunc(tileDensity)) % 3] ?? "MIXED";
+}
+
+function asciiOrbInto(target: string[], width: number, height: number, phase: number): string[] {
+  const columns = Math.max(8, Math.floor(width));
+  const rows = Math.max(3, Math.floor(height));
+  const glyphs = " .:-=+*#%@";
+  return prepareWorkbenchRows(target, rows, () => "", (_line, row) => {
+    let line = "";
+    for (let column = 0; column < columns; column += 1) {
+      const x = (column / Math.max(1, columns - 1)) * 2 - 1;
+      const y = (row / Math.max(1, rows - 1)) * 2 - 1;
+      const ring = Math.abs(Math.sqrt(x * x * 2.8 + y * y * 1.8) - 0.62);
+      const wave = Math.sin(column * 0.32 + phase * 0.18) + Math.cos(row * 0.7 - phase * 0.14);
+      const value = Math.max(0, Math.min(1, 1 - ring * 3.5 + wave * 0.15));
+      line += glyphs[Math.floor(value * (glyphs.length - 1))] ?? " ";
+    }
+    return line;
+  });
 }
 
 function renderHtmlCssLayout(frame: string[], rect: Rectangle): void {

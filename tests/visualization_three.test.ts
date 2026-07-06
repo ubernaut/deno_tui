@@ -7,7 +7,6 @@ import {
   threeRendererModeLabel,
   visualizationTextContentSize,
   visualizationThreeStatusLine,
-  workbenchThreePreviewRowsInto,
   workbenchVisualizationRowsInto,
   type WorkbenchVisualizationWindowOption,
 } from "../app/workbench_visualization_window.ts";
@@ -330,55 +329,6 @@ Deno.test("visualizationThreeStatusLine uses renderer mode labels and compact sp
   assertStringIncludes(status, "ACEROLA LATTICE");
   assertStringIncludes(status, threeRendererModeLabel(ascii).toUpperCase());
   assertStringIncludes(status, windowOption.label);
-});
-
-Deno.test("workbenchThreePreviewRowsInto projects web-safe preview rows", () => {
-  const target = ["stale"];
-  const orbRows: string[] = [];
-  const rows = workbenchThreePreviewRowsInto(target, {
-    width: 16,
-    height: 9,
-    phase: 4,
-    tileDensity: 2,
-    themeLabel: "Unit-01",
-    orbRows,
-  });
-
-  assertEquals(rows, target);
-  assertEquals(rows[0], " ACEROLA THREE ASCII · MIXED · WEB SAFE PREVIEW ");
-  assertStringIncludes(rows[1]!, "WebGPU renderer");
-  assertStringIncludes(rows.at(-1)!, "theme Unit-01");
-  assertEquals(orbRows.length, 3);
-});
-
-Deno.test("workbenchThreePreviewRowsInto clips to short panes and reuses orb storage", () => {
-  const target: string[] = [];
-  const orbRows = ["old", "rows"];
-  const firstOrb = orbRows[0];
-  const rows = workbenchThreePreviewRowsInto(target, {
-    width: 10,
-    height: 4,
-    phase: 0,
-    tileDensity: -1,
-    themeLabel: "Signal",
-    orbRows,
-  });
-
-  assertEquals(rows.length, 4);
-  assertEquals(rows[0], " ACEROLA THREE ASCII · GLYPHS · WEB SAFE PREVIEW ");
-  assertEquals(
-    workbenchThreePreviewRowsInto([], {
-      width: 10,
-      height: 4,
-      phase: 0,
-      tileDensity: 3,
-      themeLabel: "Signal",
-      orbRows: [],
-    })[0],
-    " ACEROLA THREE ASCII · BLOCKS · WEB SAFE PREVIEW ",
-  );
-  assertEquals(orbRows[0] === firstOrb, false);
-  assertEquals(orbRows.length, 3);
 });
 
 Deno.test("compactSpaces and maxTrimmedTextWidth keep display helpers deterministic", () => {

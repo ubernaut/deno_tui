@@ -19743,53 +19743,6 @@ var WorkbenchFramePainter = class {
   }
 };
 
-// app/workbench_visualization_window.ts
-function workbenchThreePreviewRowsInto(target, options) {
-  const mode = options.asciiOptions ? terminalGlyphStyleLabel(options.asciiOptions.terminalGlyphStyle).toUpperCase() : workbenchThreePreviewMode(options.tileDensity);
-  const preset = options.asciiOptions?.preset ?? "mixed-best";
-  const transport = options.asciiOptions?.kittyGraphics ? options.asciiOptions.kittyDisableAscii ? "kitty only" : "kitty + ascii" : "ascii";
-  target.length = 0;
-  target.push(
-    ` ACEROLA THREE ASCII \xB7 ${mode} \xB7 WEB SAFE PREVIEW `,
-    "Full WebGPU renderer is mounted below this workbench on the Pages build.",
-    "Use the standalone Three demo for live WebGPU; this pane mirrors controls and state.",
-    ""
-  );
-  const bodyHeight = Math.max(3, Math.floor(options.height) - 6);
-  const orbRows = asciiOrbInto(options.orbRows ?? [], options.width, bodyHeight, options.phase);
-  for (let index = 0; index < orbRows.length; index += 1) {
-    if (target.length >= options.height) return target;
-    target.push(orbRows[index]);
-  }
-  if (target.length < options.height) target.push("");
-  if (target.length < options.height) {
-    target.push(
-      `preset ${preset}  glyph ${mode.toLowerCase()}  ${transport}  density ${Math.trunc(options.tileDensity)}  theme ${options.themeLabel}`
-    );
-  }
-  return target;
-}
-function workbenchThreePreviewMode(tileDensity2) {
-  return ["BLOCKS", "GLYPHS", "MIXED"][Math.abs(Math.trunc(tileDensity2)) % 3] ?? "MIXED";
-}
-function asciiOrbInto(target, width, height, phase) {
-  const columns2 = Math.max(8, Math.floor(width));
-  const rows2 = Math.max(3, Math.floor(height));
-  const glyphs = " .:-=+*#%@";
-  return prepareWorkbenchRows(target, rows2, () => "", (_line, row) => {
-    let line = "";
-    for (let column = 0; column < columns2; column += 1) {
-      const x = column / Math.max(1, columns2 - 1) * 2 - 1;
-      const y = row / Math.max(1, rows2 - 1) * 2 - 1;
-      const ring = Math.abs(Math.sqrt(x * x * 2.8 + y * y * 1.8) - 0.62);
-      const wave = Math.sin(column * 0.32 + phase * 0.18) + Math.cos(row * 0.7 - phase * 0.14);
-      const value = Math.max(0, Math.min(1, 1 - ring * 3.5 + wave * 0.15));
-      line += glyphs[Math.floor(value * (glyphs.length - 1))] ?? " ";
-    }
-    return line;
-  });
-}
-
 // examples/web/api_workbench_terminal_workspace.ts
 function defaultWebTerminalWorkspaceSnapshot() {
   return {
@@ -20718,6 +20671,51 @@ function renderThreePreview(frame, rect) {
       )
     );
   }
+}
+function workbenchThreePreviewRowsInto(target, options) {
+  const mode = options.asciiOptions ? terminalGlyphStyleLabel(options.asciiOptions.terminalGlyphStyle).toUpperCase() : workbenchThreePreviewMode(options.tileDensity);
+  const preset = options.asciiOptions?.preset ?? "mixed-best";
+  const transport = options.asciiOptions?.kittyGraphics ? options.asciiOptions.kittyDisableAscii ? "kitty only" : "kitty + ascii" : "ascii";
+  target.length = 0;
+  target.push(
+    ` ACEROLA THREE ASCII \xB7 ${mode} \xB7 WEB SAFE PREVIEW `,
+    "Full WebGPU renderer is mounted below this workbench on the Pages build.",
+    "Use the standalone Three demo for live WebGPU; this pane mirrors controls and state.",
+    ""
+  );
+  const bodyHeight = Math.max(3, Math.floor(options.height) - 6);
+  const orbRows = asciiOrbInto(options.orbRows ?? [], options.width, bodyHeight, options.phase);
+  for (let index = 0; index < orbRows.length; index += 1) {
+    if (target.length >= options.height) return target;
+    target.push(orbRows[index]);
+  }
+  if (target.length < options.height) target.push("");
+  if (target.length < options.height) {
+    target.push(
+      `preset ${preset}  glyph ${mode.toLowerCase()}  ${transport}  density ${Math.trunc(options.tileDensity)}  theme ${options.themeLabel}`
+    );
+  }
+  return target;
+}
+function workbenchThreePreviewMode(tileDensity2) {
+  return ["BLOCKS", "GLYPHS", "MIXED"][Math.abs(Math.trunc(tileDensity2)) % 3] ?? "MIXED";
+}
+function asciiOrbInto(target, width, height, phase) {
+  const columns2 = Math.max(8, Math.floor(width));
+  const rows2 = Math.max(3, Math.floor(height));
+  const glyphs = " .:-=+*#%@";
+  return prepareWorkbenchRows(target, rows2, () => "", (_line, row) => {
+    let line = "";
+    for (let column = 0; column < columns2; column += 1) {
+      const x = column / Math.max(1, columns2 - 1) * 2 - 1;
+      const y = row / Math.max(1, rows2 - 1) * 2 - 1;
+      const ring = Math.abs(Math.sqrt(x * x * 2.8 + y * y * 1.8) - 0.62);
+      const wave = Math.sin(column * 0.32 + phase * 0.18) + Math.cos(row * 0.7 - phase * 0.14);
+      const value = Math.max(0, Math.min(1, 1 - ring * 3.5 + wave * 0.15));
+      line += glyphs[Math.floor(value * (glyphs.length - 1))] ?? " ";
+    }
+    return line;
+  });
 }
 function renderHtmlCssLayout(frame, rect) {
   renderApiWorkbenchHtmlCssLayout({
