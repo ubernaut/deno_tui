@@ -90,18 +90,16 @@ import {
   renderApiWorkbenchModalOverlay,
   renderApiWorkbenchShelf,
   renderApiWorkbenchStatus,
-  renderApiWorkbenchThreeConfigModal,
-  renderApiWorkbenchWindowShell,
-  renderApiWorkbenchWindowTabs,
-} from "../app/api_workbench_window_view.ts";
-import {
   renderApiWorkbenchTerminalOutputBody,
   renderApiWorkbenchTerminalOutputToolbar,
   renderApiWorkbenchTerminalSessionTabs,
   renderApiWorkbenchTerminalShellHeader,
   renderApiWorkbenchTerminalShellPanes,
   renderApiWorkbenchTerminalShellToolbar,
-} from "../app/api_workbench_terminal_shell_view.ts";
+  renderApiWorkbenchThreeConfigModal,
+  renderApiWorkbenchWindowShell,
+  renderApiWorkbenchWindowTabs,
+} from "../app/api_workbench_window_view.ts";
 import type { ProcessSessionInspection } from "../src/runtime/process_session.ts";
 import type { TerminalShellController, TerminalShellInspection } from "../src/runtime/terminal_shell.ts";
 import type { TerminalShellWorkspaceInspection } from "../src/runtime/terminal_shell_workspace.ts";

@@ -284,14 +284,6 @@ import {
 } from "./workbench_synthetic.ts";
 import type { ComputedLayoutBox } from "../src/layout/mod.ts";
 import {
-  renderApiWorkbenchTerminalOutputBody,
-  renderApiWorkbenchTerminalOutputToolbar,
-  renderApiWorkbenchTerminalSessionTabs,
-  renderApiWorkbenchTerminalShellHeader,
-  renderApiWorkbenchTerminalShellPanes,
-  renderApiWorkbenchTerminalShellToolbar,
-} from "./api_workbench_terminal_shell_view.ts";
-import {
   renderApiWorkbenchThreeFallback,
   renderApiWorkbenchThreeHeader,
   renderApiWorkbenchThreeSurface,
@@ -304,6 +296,12 @@ import {
   renderApiWorkbenchModalOverlay,
   renderApiWorkbenchShelf,
   renderApiWorkbenchStatus,
+  renderApiWorkbenchTerminalOutputBody,
+  renderApiWorkbenchTerminalOutputToolbar,
+  renderApiWorkbenchTerminalSessionTabs,
+  renderApiWorkbenchTerminalShellHeader,
+  renderApiWorkbenchTerminalShellPanes,
+  renderApiWorkbenchTerminalShellToolbar,
   renderApiWorkbenchThreeConfigModal,
   renderApiWorkbenchWindowFrame,
   renderApiWorkbenchWindowShell,

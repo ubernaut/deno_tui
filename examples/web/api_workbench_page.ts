@@ -116,14 +116,12 @@ import {
   renderApiWorkbenchModalOverlay,
   renderApiWorkbenchShelf,
   renderApiWorkbenchStatus,
+  renderApiWorkbenchTerminalSessionTabs,
+  renderApiWorkbenchTerminalShellToolbar,
   renderApiWorkbenchThreeConfigModal,
   renderApiWorkbenchWindowTabs,
   renderApiWorkbenchWindowTitlebar,
 } from "../../app/api_workbench_window_view.ts";
-import {
-  renderApiWorkbenchTerminalSessionTabs,
-  renderApiWorkbenchTerminalShellToolbar,
-} from "../../app/api_workbench_terminal_shell_view.ts";
 import { type HtmlCssLayoutRenderCommand } from "../../app/html_css_layout_view.ts";
 import {
   ApiWorkbenchControlsViewBufferCache,
