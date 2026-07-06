@@ -14,6 +14,7 @@ import {
 import { buildFallbackGrid, formatThreeAsciiFallbackDetail } from "../src/canvas/three_ascii.ts";
 import { blockFillGlyphForBucket, bucketAsciiLuminance, glyphForTile } from "../src/three_ascii/glyphs.ts";
 import { buildThreeAsciiAnsiGrid, ThreeAsciiAnsiGridAssembler } from "../src/three_ascii/renderer.ts";
+import { stripAnsi } from "../src/utils/ansi_text.ts";
 
 const blockCell = (red: number, green: number, blue: number) =>
   `\x1b[48;2;${red};${green};${blue}m\x1b[38;2;${red};${green};${blue}m█\x1b[0m`;
@@ -581,13 +582,6 @@ Deno.test("three ascii fallback grid paints every cell with truecolor background
 
 function fallbackTextRows(grid: readonly (readonly string[])[]): string[] {
   return grid.map((row) => stripAnsi(row.join("")).trim()).filter(Boolean);
-}
-
-const ESCAPE = String.fromCharCode(27);
-const ANSI_SGR_PATTERN = new RegExp(`${ESCAPE}\\[[0-9;]*m`, "g");
-
-function stripAnsi(value: string): string {
-  return value.replace(ANSI_SGR_PATTERN, "");
 }
 
 Deno.test("three ascii demo window reserves side panel only when useful", () => {
