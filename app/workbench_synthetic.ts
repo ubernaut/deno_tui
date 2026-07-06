@@ -56,14 +56,6 @@ export function monitorSourceIdsInto(target: string[], visualizationId: string):
   return target;
 }
 
-export function syntheticWorkbenchSources(
-  id: string,
-  group: WorkbenchSyntheticGroup,
-  phase: number,
-): SourceFrame[] {
-  return syntheticWorkbenchSourcesInto([], id, group, phase);
-}
-
 export function syntheticWorkbenchSourcesInto(
   target: SourceFrame[],
   id: string,

@@ -4,7 +4,6 @@ import { resolveSourceFramesInto } from "../app/sources.ts";
 import {
   monitorSourceIds,
   monitorSourceIdsInto,
-  syntheticWorkbenchSources,
   syntheticWorkbenchSourcesInto,
   syntheticWorkbenchSystem,
 } from "../app/workbench_synthetic.ts";
@@ -628,8 +627,8 @@ Deno.test("workbench monitor source ids can reuse caller buffers", () => {
 });
 
 Deno.test("workbench synthetic sources are deterministic and bounded", () => {
-  const first = syntheticWorkbenchSources("three-lattice", "Neon 3D", 12);
-  const second = syntheticWorkbenchSources("three-lattice", "Neon 3D", 12);
+  const first = syntheticWorkbenchSourcesInto([], "three-lattice", "Neon 3D", 12);
+  const second = syntheticWorkbenchSourcesInto([], "three-lattice", "Neon 3D", 12);
 
   assertEquals(first, second);
   assertEquals(first.length, 3);
