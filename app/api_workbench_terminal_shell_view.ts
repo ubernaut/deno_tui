@@ -49,17 +49,26 @@ interface ApiWorkbenchTerminalShellPaintCallbacks {
   write: (frame: WorkbenchFrame, row: number, column: number, value: string) => void;
 }
 
-export interface ApiWorkbenchTerminalSessionTabsRenderOptions {
-  frame: WorkbenchFrame;
+export interface ApiWorkbenchTerminalSessionTabsInspection {
+  activeId?: string;
+  sessions: readonly { id: string; title: string }[];
+}
+
+export interface ApiWorkbenchTerminalSessionTabsRenderOptions<
+  Frame = WorkbenchFrame,
+  HitAction = { type: "terminalShellSession"; id: string },
+> {
+  frame: Frame;
   rect: Rectangle;
   startRow: number;
-  inspection: TerminalShellWorkspaceInspection;
+  inspection: ApiWorkbenchTerminalSessionTabsInspection;
   buffers: WorkbenchTerminalSessionTabBufferCache;
   theme: ApiWorkbenchThemeSpec;
   contrastText: (background: string, dark: string, light: string) => string;
   paint: (text: string, style: { fg: string; bg: string; bold?: boolean }) => string;
-  write: (frame: WorkbenchFrame, row: number, column: number, value: string) => void;
-  addHit: (rect: Rectangle, action: { type: "terminalShellSession"; id: string }) => void;
+  write: (frame: Frame, row: number, column: number, value: string) => void;
+  addHit: (rect: Rectangle, action: HitAction) => void;
+  sessionHitAction?: (id: string) => HitAction;
 }
 
 export interface ApiWorkbenchTerminalShellToolbarRenderOptions {
@@ -354,8 +363,11 @@ export function renderApiWorkbenchTerminalShellPanes(
 }
 
 /** Renders the shell session tab strip while keeping terminal shell lifecycle state in the app. */
-export function renderApiWorkbenchTerminalSessionTabs(
-  options: ApiWorkbenchTerminalSessionTabsRenderOptions,
+export function renderApiWorkbenchTerminalSessionTabs<
+  Frame = WorkbenchFrame,
+  HitAction = { type: "terminalShellSession"; id: string },
+>(
+  options: ApiWorkbenchTerminalSessionTabsRenderOptions<Frame, HitAction>,
 ): number {
   const { frame, rect, startRow, inspection, buffers, theme, contrastText, paint, write, addHit } = options;
   if (startRow >= rect.row + rect.height) return startRow;
@@ -379,7 +391,9 @@ export function renderApiWorkbenchTerminalSessionTabs(
       : { fg: theme.text, bg: theme.panelSoft, bold: false };
     write(frame, command.rect.row, command.rect.column, paint(command.text, style));
     if (command.kind === "tab" && command.id) {
-      addHit(command.rect, { type: "terminalShellSession", id: command.id });
+      const hitAction = options.sessionHitAction?.(command.id) ??
+        ({ type: "terminalShellSession", id: command.id } as HitAction);
+      addHit(command.rect, hitAction);
     }
   }
   return startRow + 1;

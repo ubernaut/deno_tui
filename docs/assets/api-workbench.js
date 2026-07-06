@@ -18807,6 +18807,33 @@ function renderApiWorkbenchHtmlCssLayout(options) {
   }
 }
 
+// app/api_workbench_terminal_shell_view.ts
+function renderApiWorkbenchTerminalSessionTabs(options) {
+  const { frame, rect, startRow, inspection, buffers, theme: theme2, contrastText: contrastText2, paint: paint2, write: write2, addHit } = options;
+  if (startRow >= rect.row + rect.height) return startRow;
+  workbenchTerminalSessionTabSourcesInto(buffers.sources, inspection.sessions);
+  workbenchTerminalSessionTabsInto(
+    buffers.placements,
+    buffers.sources,
+    inspection.activeId,
+    { column: rect.column, row: startRow, width: rect.width, height: 1 }
+  );
+  workbenchTerminalSessionTabRenderCommandsInto(
+    buffers.commands,
+    buffers.placements,
+    { column: rect.column, row: startRow, width: rect.width, height: 1 }
+  );
+  for (const command of buffers.commands) {
+    const style2 = command.active ? { fg: contrastText2(theme2.accent, theme2.background, theme2.text), bg: theme2.accent, bold: true } : { fg: theme2.text, bg: theme2.panelSoft, bold: false };
+    write2(frame, command.rect.row, command.rect.column, paint2(command.text, style2));
+    if (command.kind === "tab" && command.id) {
+      const hitAction = options.sessionHitAction?.(command.id) ?? { type: "terminalShellSession", id: command.id };
+      addHit(command.rect, hitAction);
+    }
+  }
+  return startRow + 1;
+}
+
 // app/api_workbench_chrome_view.ts
 function renderApiWorkbenchChromeHeader(options) {
   const {
@@ -20675,7 +20702,7 @@ function renderTerminalProtocol(frame, rect) {
     const fg = index === 0 ? contrastText(t.accentDeep, t.background, t.text) : index === 1 ? t.warn : t.soft;
     write(frame, rect.row + index, rect.column, paint(fit(line, rect.width), fg, bg, index === 0));
   }
-  renderTerminalSessionTabs(frame, { column: rect.column, row: rect.row + 2, width: rect.width, height: 1 });
+  renderTerminalSessionTabs(frame, { column: rect.column, row: rect.row + 2, width: rect.width, height: 1 }, workspace);
   renderTerminalToolbar(frame, { column: rect.column, row: rect.row + 3, width: rect.width, height: 1 }, workspace);
   fillRect(frame, screenRect, t.background);
   renderWebTerminalPanes(frame, screenRect, workspace);
@@ -20715,41 +20742,21 @@ function renderTerminalToolbar(frame, rect, workspace = webTerminalWorkspace.ins
     }
   }
 }
-function renderTerminalSessionTabs(frame, rect) {
+function renderTerminalSessionTabs(frame, rect, workspace = webTerminalWorkspace.inspect()) {
   if (rect.height <= 0 || rect.width <= 0) return;
-  const workspace = webTerminalWorkspace.inspect();
-  const t = theme();
-  workbenchTerminalSessionTabSourcesInto(webTerminalSessionTabBuffers.sources, workspace.sessions);
-  workbenchTerminalSessionTabsInto(
-    webTerminalSessionTabBuffers.placements,
-    webTerminalSessionTabBuffers.sources,
-    workspace.activeId,
-    rect
-  );
-  workbenchTerminalSessionTabRenderCommandsInto(
-    webTerminalSessionTabBuffers.commands,
-    webTerminalSessionTabBuffers.placements,
-    rect
-  );
-  for (const command of webTerminalSessionTabBuffers.commands) {
-    write(
-      frame,
-      command.rect.row,
-      command.rect.column,
-      paint(
-        command.text,
-        command.active ? contrastText(t.accent, t.background, t.text) : t.text,
-        command.active ? t.accent : t.panelSoft,
-        command.active
-      )
-    );
-    if (command.kind === "tab" && command.id) {
-      hitTargets.add(command.rect, {
-        type: "terminalSession",
-        id: command.id
-      });
-    }
-  }
+  renderApiWorkbenchTerminalSessionTabs({
+    frame,
+    rect,
+    startRow: rect.row,
+    inspection: workspace,
+    buffers: webTerminalSessionTabBuffers,
+    theme: theme(),
+    contrastText,
+    paint: (value, style2) => paint(value, style2.fg, style2.bg, style2.bold),
+    write,
+    addHit: (hitRect, action) => hitTargets.add(hitRect, action),
+    sessionHitAction: (id2) => ({ type: "terminalSession", id: id2 })
+  });
 }
 function renderWebTerminalPanes(frame, rect, workspace = webTerminalWorkspace.inspect()) {
   if (rect.width <= 0 || rect.height <= 0) return;

@@ -77,9 +77,6 @@ import {
   type WorkbenchTerminalPaneTitleRenderCommand,
   workbenchTerminalPaneTitleRenderCommandsInto,
   workbenchTerminalProtocolHeaderRowsInto,
-  workbenchTerminalSessionTabRenderCommandsInto,
-  workbenchTerminalSessionTabsInto,
-  workbenchTerminalSessionTabSourcesInto,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
   workbenchTerminalToolbarStateFromSnapshot,
@@ -131,6 +128,7 @@ import {
   renderApiWorkbenchInspectorPanel,
 } from "../../app/api_workbench_builtin_panels_view.ts";
 import { renderApiWorkbenchHtmlCssLayout } from "../../app/api_workbench_html_css_view.ts";
+import { renderApiWorkbenchTerminalSessionTabs } from "../../app/api_workbench_terminal_shell_view.ts";
 import {
   type ApiWorkbenchDropdownOverlay,
   renderApiWorkbenchChromeHeader,
@@ -1039,7 +1037,7 @@ function renderTerminalProtocol(frame: string[], rect: Rectangle): void {
     const fg = index === 0 ? contrastText(t.accentDeep, t.background, t.text) : index === 1 ? t.warn : t.soft;
     write(frame, rect.row + index, rect.column, paint(fit(line, rect.width), fg, bg, index === 0));
   }
-  renderTerminalSessionTabs(frame, { column: rect.column, row: rect.row + 2, width: rect.width, height: 1 });
+  renderTerminalSessionTabs(frame, { column: rect.column, row: rect.row + 2, width: rect.width, height: 1 }, workspace);
   renderTerminalToolbar(frame, { column: rect.column, row: rect.row + 3, width: rect.width, height: 1 }, workspace);
 
   fillRect(frame, screenRect, t.background);
@@ -1088,41 +1086,25 @@ function renderTerminalToolbar(
   }
 }
 
-function renderTerminalSessionTabs(frame: string[], rect: Rectangle): void {
+function renderTerminalSessionTabs(
+  frame: string[],
+  rect: Rectangle,
+  workspace = webTerminalWorkspace.inspect(),
+): void {
   if (rect.height <= 0 || rect.width <= 0) return;
-  const workspace = webTerminalWorkspace.inspect();
-  const t = theme();
-  workbenchTerminalSessionTabSourcesInto(webTerminalSessionTabBuffers.sources, workspace.sessions);
-  workbenchTerminalSessionTabsInto(
-    webTerminalSessionTabBuffers.placements,
-    webTerminalSessionTabBuffers.sources,
-    workspace.activeId,
+  renderApiWorkbenchTerminalSessionTabs<string[], Hit>({
+    frame,
     rect,
-  );
-  workbenchTerminalSessionTabRenderCommandsInto(
-    webTerminalSessionTabBuffers.commands,
-    webTerminalSessionTabBuffers.placements,
-    rect,
-  );
-  for (const command of webTerminalSessionTabBuffers.commands) {
-    write(
-      frame,
-      command.rect.row,
-      command.rect.column,
-      paint(
-        command.text,
-        command.active ? contrastText(t.accent, t.background, t.text) : t.text,
-        command.active ? t.accent : t.panelSoft,
-        command.active,
-      ),
-    );
-    if (command.kind === "tab" && command.id) {
-      hitTargets.add(command.rect, {
-        type: "terminalSession",
-        id: command.id,
-      });
-    }
-  }
+    startRow: rect.row,
+    inspection: workspace,
+    buffers: webTerminalSessionTabBuffers,
+    theme: theme(),
+    contrastText,
+    paint: (value, style) => paint(value, style.fg, style.bg, style.bold),
+    write,
+    addHit: (hitRect, action) => hitTargets.add(hitRect, action),
+    sessionHitAction: (id) => ({ type: "terminalSession", id }),
+  });
 }
 
 function renderWebTerminalPanes(
