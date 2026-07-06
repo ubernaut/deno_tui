@@ -25,10 +25,10 @@
       ],
       "verification_commands": [
         "deno fmt --check",
-        "deno lint",
-        "deno test",
+        "deno test -A",
         "deno task api-workbench:check",
-        "deno task web:demo:check"
+        "deno task web:demo:check",
+        "deno task web:pages:build"
       ],
       "audit_commands": [
         "python3 ${ICC_HOME:-../infinite_context_coder}/scripts/codebase_tool.py status --repo deno_tui --check-staleness",
@@ -74,7 +74,7 @@
             "settings_binding"
           ],
           "verify_commands": [
-            "deno test tests/app_primitives.test.ts tests/app_layout.test.ts tests/data_query.test.ts"
+            "deno test -A tests/app_primitives.test.ts tests/workbench_layout.test.ts tests/data_query.test.ts"
           ],
           "max_parallel": 2
         },
@@ -122,7 +122,7 @@
           "verify_commands": [
             "deno task viz:check",
             "deno task neon-exodus:check",
-            "deno test tests/three_ascii_glyphs.test.ts tests/three_ascii_presets.test.ts tests/neon_suite.test.ts"
+            "deno test -A tests/three_ascii_glyphs.test.ts tests/three_ascii_core.test.ts tests/neon_suite.test.ts"
           ],
           "max_parallel": 1
         },

@@ -3847,6 +3847,13 @@
     },
     {
       "module": "src/app/workbench_layout.ts",
+      "name": "featuredWorkbenchWindowLayout",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/app/workbench_layout.ts",
       "name": "WorkbenchActiveRevealOptions",
       "kind": "interface",
       "typeOnly": true,
@@ -10847,6 +10854,34 @@
     },
     {
       "module": "src/runtime/graphics_surface.ts",
+      "name": "CreateWorkbenchKittyGraphicsControllerOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/graphics_surface.ts",
+      "name": "detectTmuxPassthroughAllowed",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/graphics_surface.ts",
+      "name": "DetectTmuxPassthroughOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/graphics_surface.ts",
+      "name": "formatWorkbenchKittyGraphicsStatus",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/graphics_surface.ts",
       "name": "GraphicsClearScope",
       "kind": "type",
       "typeOnly": true,
@@ -10934,6 +10969,41 @@
       "name": "NoopGraphicsSurface",
       "kind": "class",
       "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/graphics_surface.ts",
+      "name": "TmuxPassthroughProbeResult",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/graphics_surface.ts",
+      "name": "WorkbenchKittyGraphicsController",
+      "kind": "class",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/graphics_surface.ts",
+      "name": "WorkbenchKittyGraphicsControllerOptions",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/graphics_surface.ts",
+      "name": "WorkbenchKittyGraphicsSelection",
+      "kind": "interface",
+      "typeOnly": true,
+      "documented": true
+    },
+    {
+      "module": "src/runtime/graphics_surface.ts",
+      "name": "WorkbenchKittyGraphicsStatusOptions",
+      "kind": "interface",
+      "typeOnly": true,
       "documented": true
     },
     {
@@ -15622,6 +15692,13 @@
     {
       "module": "src/three_ascii/webgpu_compat.ts",
       "name": "resetCompatibleWebGPUDeviceCache",
+      "kind": "function",
+      "typeOnly": false,
+      "documented": true
+    },
+    {
+      "module": "src/tui.ts",
+      "name": "shouldUseRecentlyVerifiedTerminalSize",
       "kind": "function",
       "typeOnly": false,
       "documented": true

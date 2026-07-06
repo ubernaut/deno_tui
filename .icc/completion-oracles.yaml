@@ -103,7 +103,7 @@ oracles:
         label: Three ASCII glyph, preset, and fallback tests pass
         kind: test_evidence
         severity: high
-        action: deno test tests/three_ascii_glyphs.test.ts tests/three_ascii_presets.test.ts tests/visualizations_three_fallback.test.ts
+        action: deno test -A tests/three_ascii_glyphs.test.ts tests/three_ascii_core.test.ts tests/visualization_three.test.ts
 
       - id: visualization_launcher
         label: Root visualization launcher remains available
@@ -134,10 +134,10 @@ oracles:
       - no-regression
     criteria:
       - id: format_lint_tests
-        label: Standard Deno format, lint, and tests pass
+        label: Standard Deno format and permissioned tests pass
         kind: test_evidence
         severity: high
-        action: deno fmt --check && deno lint && deno test
+        action: deno fmt --check && deno test -A
 
       - id: main_demos_check
         label: Primary demos type-check

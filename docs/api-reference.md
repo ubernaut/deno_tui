@@ -8,8 +8,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 - Entrypoints: 9
 - Module visits: 497
 - Re-export declarations: 488
-- Exported symbols: 5338
-- Documented symbols: 5338
+- Exported symbols: 5368
+- Documented symbols: 5368
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -18,12 +18,12 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     221 |    2294 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     200 |    2146 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     221 |    2305 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     200 |    2156 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      87 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
-| `./runtime`     | `./mod.runtime.ts`             | shared   | beta         |      31 |     393 | 100.00% |
+| `./runtime`     | `./mod.runtime.ts`             | shared   | beta         |      31 |     402 | 100.00% |
 | `./terminal`    | `./mod.terminal.ts`            | terminal | beta         |      15 |     157 | 100.00% |
 | `./testing`     | `./mod.testing.ts`             | shared   | beta         |       4 |      22 | 100.00% |
 | `./layout/yoga` | `./src/layout/solvers/yoga.ts` | shared   | experimental |       1 |       3 | 100.00% |
@@ -41,8 +41,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Entrypoint: `mod.ts`
 - Modules: 221
 - Re-export declarations: 220
-- Exported symbols: 2294
-- Documented symbols: 2294
+- Exported symbols: 2305
+- Documented symbols: 2305
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -97,7 +97,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/app/workbench_button_style.ts`](#src-app-workbench-button-style-ts)                       |          0 |      10 |         10 |
 | [`src/app/workbench_control_layout.ts`](#src-app-workbench-control-layout-ts)                   |          0 |      17 |         17 |
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                                     |          0 |      30 |         30 |
-| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                                   |          0 |      34 |         34 |
+| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                                   |          0 |      35 |         35 |
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                                       |          0 |      39 |         39 |
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                                 |          0 |      13 |         13 |
 | [`src/app/workbench_panel_workspace_store.ts`](#src-app-workbench-panel-workspace-store-ts)     |          0 |       8 |          8 |
@@ -203,7 +203,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/runtime/data_pipeline.ts`](#src-runtime-data-pipeline-ts)                                 |          0 |      19 |         19 |
 | [`src/runtime/data_query.ts`](#src-runtime-data-query-ts)                                       |          0 |      15 |         15 |
 | [`src/runtime/diagnostics.ts`](#src-runtime-diagnostics-ts)                                     |          0 |      12 |         12 |
-| [`src/runtime/graphics_surface.ts`](#src-runtime-graphics-surface-ts)                           |          0 |      15 |         15 |
+| [`src/runtime/graphics_surface.ts`](#src-runtime-graphics-surface-ts)                           |          0 |      24 |         24 |
 | [`src/runtime/kitty_graphics.ts`](#src-runtime-kitty-graphics-ts)                               |          0 |      25 |         25 |
 | [`src/runtime/mod.ts`](#src-runtime-mod-ts)                                                     |         29 |       0 |          0 |
 | [`src/runtime/process_session.ts`](#src-runtime-process-session-ts)                             |          0 |       9 |          9 |
@@ -260,7 +260,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/three_ascii/render_profile.ts`](#src-three-ascii-render-profile-ts)                       |          0 |       3 |          3 |
 | [`src/three_ascii/renderer.ts`](#src-three-ascii-renderer-ts)                                   |          2 |      22 |         22 |
 | [`src/three_ascii/webgpu_compat.ts`](#src-three-ascii-webgpu-compat-ts)                         |          0 |       3 |          3 |
-| [`src/tui.ts`](#src-tui-ts)                                                                     |          0 |       2 |          2 |
+| [`src/tui.ts`](#src-tui-ts)                                                                     |          0 |       3 |          3 |
 | [`src/types.ts`](#src-types-ts)                                                                 |          0 |       8 |          8 |
 | [`src/utils/ansi_codes.ts`](#src-utils-ansi-codes-ts)                                           |          0 |      12 |         12 |
 | [`src/utils/async.ts`](#src-utils-async-ts)                                                     |          0 |       1 |          1 |
@@ -1134,6 +1134,7 @@ _No direct exported symbols._
 | Symbol                                          | Kind      | Type Only | JSDoc |
 | ----------------------------------------------- | --------- | --------- | ----- |
 | `clampWorkbenchTileDensity`                     | function  | no        | yes   |
+| `featuredWorkbenchWindowLayout`                 | function  | no        | yes   |
 | `WorkbenchActiveRevealOptions`                  | interface | yes       | yes   |
 | `WorkbenchActiveRevealTracker`                  | class     | no        | yes   |
 | `workbenchAdaptiveTileOptions`                  | function  | no        | yes   |
@@ -2764,23 +2765,32 @@ _No direct exported symbols._
 
 #### src/runtime/graphics_surface.ts
 
-| Symbol                        | Kind      | Type Only | JSDoc |
-| ----------------------------- | --------- | --------- | ----- |
-| `createKittyGraphicsSurface`  | function  | no        | yes   |
-| `createNoopGraphicsSurface`   | function  | no        | yes   |
-| `GraphicsClearScope`          | type      | yes       | yes   |
-| `GraphicsDeleteMode`          | type      | yes       | yes   |
-| `GraphicsHandle`              | interface | yes       | yes   |
-| `GraphicsImage`               | interface | yes       | yes   |
-| `GraphicsImageEncoding`       | type      | yes       | yes   |
-| `GraphicsPlacement`           | interface | yes       | yes   |
-| `GraphicsSurface`             | interface | yes       | yes   |
-| `GraphicsSurfaceInspection`   | interface | yes       | yes   |
-| `GraphicsSurfaceKind`         | type      | yes       | yes   |
-| `GraphicsSurfaceWriter`       | interface | yes       | yes   |
-| `KittyGraphicsSurface`        | class     | no        | yes   |
-| `KittyGraphicsSurfaceOptions` | interface | yes       | yes   |
-| `NoopGraphicsSurface`         | class     | no        | yes   |
+| Symbol                                          | Kind      | Type Only | JSDoc |
+| ----------------------------------------------- | --------- | --------- | ----- |
+| `createKittyGraphicsSurface`                    | function  | no        | yes   |
+| `createNoopGraphicsSurface`                     | function  | no        | yes   |
+| `CreateWorkbenchKittyGraphicsControllerOptions` | interface | yes       | yes   |
+| `detectTmuxPassthroughAllowed`                  | function  | no        | yes   |
+| `DetectTmuxPassthroughOptions`                  | interface | yes       | yes   |
+| `formatWorkbenchKittyGraphicsStatus`            | function  | no        | yes   |
+| `GraphicsClearScope`                            | type      | yes       | yes   |
+| `GraphicsDeleteMode`                            | type      | yes       | yes   |
+| `GraphicsHandle`                                | interface | yes       | yes   |
+| `GraphicsImage`                                 | interface | yes       | yes   |
+| `GraphicsImageEncoding`                         | type      | yes       | yes   |
+| `GraphicsPlacement`                             | interface | yes       | yes   |
+| `GraphicsSurface`                               | interface | yes       | yes   |
+| `GraphicsSurfaceInspection`                     | interface | yes       | yes   |
+| `GraphicsSurfaceKind`                           | type      | yes       | yes   |
+| `GraphicsSurfaceWriter`                         | interface | yes       | yes   |
+| `KittyGraphicsSurface`                          | class     | no        | yes   |
+| `KittyGraphicsSurfaceOptions`                   | interface | yes       | yes   |
+| `NoopGraphicsSurface`                           | class     | no        | yes   |
+| `TmuxPassthroughProbeResult`                    | interface | yes       | yes   |
+| `WorkbenchKittyGraphicsController`              | class     | no        | yes   |
+| `WorkbenchKittyGraphicsControllerOptions`       | interface | yes       | yes   |
+| `WorkbenchKittyGraphicsSelection`               | interface | yes       | yes   |
+| `WorkbenchKittyGraphicsStatusOptions`           | interface | yes       | yes   |
 
 #### src/runtime/kitty_graphics.ts
 
@@ -3794,10 +3804,11 @@ _No direct exported symbols._
 
 #### src/tui.ts
 
-| Symbol       | Kind      | Type Only | JSDoc |
-| ------------ | --------- | --------- | ----- |
-| `Tui`        | class     | no        | yes   |
-| `TuiOptions` | interface | yes       | yes   |
+| Symbol                                  | Kind      | Type Only | JSDoc |
+| --------------------------------------- | --------- | --------- | ----- |
+| `shouldUseRecentlyVerifiedTerminalSize` | function  | no        | yes   |
+| `Tui`                                   | class     | no        | yes   |
+| `TuiOptions`                            | interface | yes       | yes   |
 
 #### src/types.ts
 
@@ -3936,8 +3947,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Entrypoint: `mod.web.ts`
 - Modules: 200
 - Re-export declarations: 199
-- Exported symbols: 2146
-- Documented symbols: 2146
+- Exported symbols: 2156
+- Documented symbols: 2156
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -3992,7 +4003,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/app/workbench_button_style.ts`](#src-app-workbench-button-style-ts)                       |          0 |      10 |         10 |
 | [`src/app/workbench_control_layout.ts`](#src-app-workbench-control-layout-ts)                   |          0 |      17 |         17 |
 | [`src/app/workbench_frame.ts`](#src-app-workbench-frame-ts)                                     |          0 |      30 |         30 |
-| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                                   |          0 |      34 |         34 |
+| [`src/app/workbench_layout.ts`](#src-app-workbench-layout-ts)                                   |          0 |      35 |         35 |
 | [`src/app/workbench_menu.ts`](#src-app-workbench-menu-ts)                                       |          0 |      39 |         39 |
 | [`src/app/workbench_overlay.ts`](#src-app-workbench-overlay-ts)                                 |          0 |      13 |         13 |
 | [`src/app/workbench_panel_workspace_store.ts`](#src-app-workbench-panel-workspace-store-ts)     |          0 |       8 |          8 |
@@ -4091,7 +4102,7 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/runtime/data_pipeline_bindings.ts`](#src-runtime-data-pipeline-bindings-ts)               |          0 |       4 |          4 |
 | [`src/runtime/data_pipeline.ts`](#src-runtime-data-pipeline-ts)                                 |          0 |      19 |         19 |
 | [`src/runtime/data_query.ts`](#src-runtime-data-query-ts)                                       |          0 |      15 |         15 |
-| [`src/runtime/graphics_surface.ts`](#src-runtime-graphics-surface-ts)                           |          0 |      15 |         15 |
+| [`src/runtime/graphics_surface.ts`](#src-runtime-graphics-surface-ts)                           |          0 |      24 |         24 |
 | [`src/runtime/kitty_graphics.ts`](#src-runtime-kitty-graphics-ts)                               |          0 |      25 |         25 |
 | [`src/runtime/profiles.ts`](#src-runtime-profiles-ts)                                           |          0 |      24 |         24 |
 | [`src/runtime/render_loop.ts`](#src-runtime-render-loop-ts)                                     |          0 |      14 |         14 |
@@ -5027,6 +5038,7 @@ _No direct exported symbols._
 | Symbol                                          | Kind      | Type Only | JSDoc |
 | ----------------------------------------------- | --------- | --------- | ----- |
 | `clampWorkbenchTileDensity`                     | function  | no        | yes   |
+| `featuredWorkbenchWindowLayout`                 | function  | no        | yes   |
 | `WorkbenchActiveRevealOptions`                  | interface | yes       | yes   |
 | `WorkbenchActiveRevealTracker`                  | class     | no        | yes   |
 | `workbenchAdaptiveTileOptions`                  | function  | no        | yes   |
@@ -6593,23 +6605,32 @@ _No direct exported symbols._
 
 #### src/runtime/graphics_surface.ts
 
-| Symbol                        | Kind      | Type Only | JSDoc |
-| ----------------------------- | --------- | --------- | ----- |
-| `createKittyGraphicsSurface`  | function  | no        | yes   |
-| `createNoopGraphicsSurface`   | function  | no        | yes   |
-| `GraphicsClearScope`          | type      | yes       | yes   |
-| `GraphicsDeleteMode`          | type      | yes       | yes   |
-| `GraphicsHandle`              | interface | yes       | yes   |
-| `GraphicsImage`               | interface | yes       | yes   |
-| `GraphicsImageEncoding`       | type      | yes       | yes   |
-| `GraphicsPlacement`           | interface | yes       | yes   |
-| `GraphicsSurface`             | interface | yes       | yes   |
-| `GraphicsSurfaceInspection`   | interface | yes       | yes   |
-| `GraphicsSurfaceKind`         | type      | yes       | yes   |
-| `GraphicsSurfaceWriter`       | interface | yes       | yes   |
-| `KittyGraphicsSurface`        | class     | no        | yes   |
-| `KittyGraphicsSurfaceOptions` | interface | yes       | yes   |
-| `NoopGraphicsSurface`         | class     | no        | yes   |
+| Symbol                                          | Kind      | Type Only | JSDoc |
+| ----------------------------------------------- | --------- | --------- | ----- |
+| `createKittyGraphicsSurface`                    | function  | no        | yes   |
+| `createNoopGraphicsSurface`                     | function  | no        | yes   |
+| `CreateWorkbenchKittyGraphicsControllerOptions` | interface | yes       | yes   |
+| `detectTmuxPassthroughAllowed`                  | function  | no        | yes   |
+| `DetectTmuxPassthroughOptions`                  | interface | yes       | yes   |
+| `formatWorkbenchKittyGraphicsStatus`            | function  | no        | yes   |
+| `GraphicsClearScope`                            | type      | yes       | yes   |
+| `GraphicsDeleteMode`                            | type      | yes       | yes   |
+| `GraphicsHandle`                                | interface | yes       | yes   |
+| `GraphicsImage`                                 | interface | yes       | yes   |
+| `GraphicsImageEncoding`                         | type      | yes       | yes   |
+| `GraphicsPlacement`                             | interface | yes       | yes   |
+| `GraphicsSurface`                               | interface | yes       | yes   |
+| `GraphicsSurfaceInspection`                     | interface | yes       | yes   |
+| `GraphicsSurfaceKind`                           | type      | yes       | yes   |
+| `GraphicsSurfaceWriter`                         | interface | yes       | yes   |
+| `KittyGraphicsSurface`                          | class     | no        | yes   |
+| `KittyGraphicsSurfaceOptions`                   | interface | yes       | yes   |
+| `NoopGraphicsSurface`                           | class     | no        | yes   |
+| `TmuxPassthroughProbeResult`                    | interface | yes       | yes   |
+| `WorkbenchKittyGraphicsController`              | class     | no        | yes   |
+| `WorkbenchKittyGraphicsControllerOptions`       | interface | yes       | yes   |
+| `WorkbenchKittyGraphicsSelection`               | interface | yes       | yes   |
+| `WorkbenchKittyGraphicsStatusOptions`           | interface | yes       | yes   |
 
 #### src/runtime/kitty_graphics.ts
 
@@ -8116,8 +8137,8 @@ Shared runtime primitives for scheduling, storage, workers, resources, diagnosti
 - Entrypoint: `mod.runtime.ts`
 - Modules: 31
 - Re-export declarations: 30
-- Exported symbols: 393
-- Documented symbols: 393
+- Exported symbols: 402
+- Documented symbols: 402
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -8132,7 +8153,7 @@ Shared runtime primitives for scheduling, storage, workers, resources, diagnosti
 | [`src/runtime/data_pipeline.ts`](#src-runtime-data-pipeline-ts)                         |          0 |      19 |         19 |
 | [`src/runtime/data_query.ts`](#src-runtime-data-query-ts)                               |          0 |      15 |         15 |
 | [`src/runtime/diagnostics.ts`](#src-runtime-diagnostics-ts)                             |          0 |      12 |         12 |
-| [`src/runtime/graphics_surface.ts`](#src-runtime-graphics-surface-ts)                   |          0 |      15 |         15 |
+| [`src/runtime/graphics_surface.ts`](#src-runtime-graphics-surface-ts)                   |          0 |      24 |         24 |
 | [`src/runtime/kitty_graphics.ts`](#src-runtime-kitty-graphics-ts)                       |          0 |      25 |         25 |
 | [`src/runtime/mod.ts`](#src-runtime-mod-ts)                                             |         29 |       0 |          0 |
 | [`src/runtime/process_session.ts`](#src-runtime-process-session-ts)                     |          0 |       9 |          9 |
@@ -8261,23 +8282,32 @@ _No direct exported symbols._
 
 #### src/runtime/graphics_surface.ts
 
-| Symbol                        | Kind      | Type Only | JSDoc |
-| ----------------------------- | --------- | --------- | ----- |
-| `createKittyGraphicsSurface`  | function  | no        | yes   |
-| `createNoopGraphicsSurface`   | function  | no        | yes   |
-| `GraphicsClearScope`          | type      | yes       | yes   |
-| `GraphicsDeleteMode`          | type      | yes       | yes   |
-| `GraphicsHandle`              | interface | yes       | yes   |
-| `GraphicsImage`               | interface | yes       | yes   |
-| `GraphicsImageEncoding`       | type      | yes       | yes   |
-| `GraphicsPlacement`           | interface | yes       | yes   |
-| `GraphicsSurface`             | interface | yes       | yes   |
-| `GraphicsSurfaceInspection`   | interface | yes       | yes   |
-| `GraphicsSurfaceKind`         | type      | yes       | yes   |
-| `GraphicsSurfaceWriter`       | interface | yes       | yes   |
-| `KittyGraphicsSurface`        | class     | no        | yes   |
-| `KittyGraphicsSurfaceOptions` | interface | yes       | yes   |
-| `NoopGraphicsSurface`         | class     | no        | yes   |
+| Symbol                                          | Kind      | Type Only | JSDoc |
+| ----------------------------------------------- | --------- | --------- | ----- |
+| `createKittyGraphicsSurface`                    | function  | no        | yes   |
+| `createNoopGraphicsSurface`                     | function  | no        | yes   |
+| `CreateWorkbenchKittyGraphicsControllerOptions` | interface | yes       | yes   |
+| `detectTmuxPassthroughAllowed`                  | function  | no        | yes   |
+| `DetectTmuxPassthroughOptions`                  | interface | yes       | yes   |
+| `formatWorkbenchKittyGraphicsStatus`            | function  | no        | yes   |
+| `GraphicsClearScope`                            | type      | yes       | yes   |
+| `GraphicsDeleteMode`                            | type      | yes       | yes   |
+| `GraphicsHandle`                                | interface | yes       | yes   |
+| `GraphicsImage`                                 | interface | yes       | yes   |
+| `GraphicsImageEncoding`                         | type      | yes       | yes   |
+| `GraphicsPlacement`                             | interface | yes       | yes   |
+| `GraphicsSurface`                               | interface | yes       | yes   |
+| `GraphicsSurfaceInspection`                     | interface | yes       | yes   |
+| `GraphicsSurfaceKind`                           | type      | yes       | yes   |
+| `GraphicsSurfaceWriter`                         | interface | yes       | yes   |
+| `KittyGraphicsSurface`                          | class     | no        | yes   |
+| `KittyGraphicsSurfaceOptions`                   | interface | yes       | yes   |
+| `NoopGraphicsSurface`                           | class     | no        | yes   |
+| `TmuxPassthroughProbeResult`                    | interface | yes       | yes   |
+| `WorkbenchKittyGraphicsController`              | class     | no        | yes   |
+| `WorkbenchKittyGraphicsControllerOptions`       | interface | yes       | yes   |
+| `WorkbenchKittyGraphicsSelection`               | interface | yes       | yes   |
+| `WorkbenchKittyGraphicsStatusOptions`           | interface | yes       | yes   |
 
 #### src/runtime/kitty_graphics.ts
 

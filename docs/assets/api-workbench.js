@@ -3212,7 +3212,7 @@ function compactAnsiCellSpan(values, start) {
   }
   if (repeatedCells > 1) {
     return {
-      text: `${first.prefix}${first.text.repeat(repeatedCells)}${first.suffix}`,
+      text: first.text.repeat(repeatedCells),
       cells: repeatedCells,
       first
     };
@@ -3226,7 +3226,7 @@ function compactAnsiCellSpan(values, start) {
     index += 1;
   }
   return {
-    text: `${first.prefix}${text}${first.suffix}`,
+    text,
     cells: index - start,
     first
   };
@@ -3249,7 +3249,7 @@ function compactAnsiCellRange(values) {
       activePrefix = first.prefix;
       activeState = nextState;
     }
-    output += span.text.slice(first.prefix.length, span.text.length - first.suffix.length);
+    output += span.text;
     if (first.prefix || first.suffix) needsReset = true;
     index += span.cells;
   }
@@ -3341,26 +3341,51 @@ function readCsiSequenceAt3(value, start) {
   return value.slice(start, index + 1);
 }
 function coalesceCanvasRowRanges(updates, target = []) {
-  target.length = 0;
   let active2;
+  let written = 0;
   for (const update of updates) {
     if (!active2 || update.row !== active2.row || update.column !== active2.nextColumn) {
       if (active2) {
-        target.push({ row: active2.row, startColumn: active2.startColumn, values: active2.values });
+        target[written] = writeCanvasRowRangeUpdate(
+          target[written],
+          active2.row,
+          active2.startColumn,
+          active2.values
+        );
+        written += 1;
       }
+      const values = retainedCanvasRowRangeValues(target[written]);
+      values.length = 0;
       active2 = {
         row: update.row,
         startColumn: update.column,
         nextColumn: update.column,
-        values: []
+        values
       };
     }
     active2.values.push(update.value);
     active2.nextColumn = update.column + 1;
   }
   if (active2) {
-    target.push({ row: active2.row, startColumn: active2.startColumn, values: active2.values });
+    target[written] = writeCanvasRowRangeUpdate(
+      target[written],
+      active2.row,
+      active2.startColumn,
+      active2.values
+    );
+    written += 1;
   }
+  target.length = written;
+  return target;
+}
+function retainedCanvasRowRangeValues(range) {
+  return Array.isArray(range?.values) && !Object.isFrozen(range.values) ? range.values : [];
+}
+function writeCanvasRowRangeUpdate(target, row, startColumn, values) {
+  if (!target) return { row, startColumn, values };
+  target.row = row;
+  target.startColumn = startColumn;
+  target.values = values;
   return target;
 }
 function defaultAnsiFlushLimit() {
@@ -4654,7 +4679,9 @@ var ThreeAsciiAnsiGridAssembler = class {
     const foregroundRed = foregroundKey >> 16 & 255;
     const foregroundGreen = foregroundKey >> 8 & 255;
     const foregroundBlue = foregroundKey & 255;
-    cell = `${rgbToAnsiForeground(foregroundRed, foregroundGreen, foregroundBlue)}\u2588${RESET2}`;
+    const foregroundAnsi = rgbToAnsiForeground(foregroundRed, foregroundGreen, foregroundBlue);
+    const backgroundAnsi = rgbToAnsiBackground(foregroundRed, foregroundGreen, foregroundBlue);
+    cell = `${backgroundAnsi}${foregroundAnsi}\u2588${RESET2}`;
     this.cellCache.set(cellKey, cell);
     return cell;
   }
@@ -5184,6 +5211,7 @@ var defaultRenderLoopTimer = {
 
 // src/tui.ts
 var textEncoder3 = new TextEncoder();
+var textDecoder4 = new TextDecoder();
 
 // src/layout/flex_layout.ts
 var MAX_FLEX_SIZE = Number.MAX_SAFE_INTEGER;
@@ -12652,11 +12680,56 @@ function workbenchWindowLayout(bounds, layout) {
 }
 function workbenchAdaptiveWindowLayout(manager, options) {
   const bounds = options.bounds;
+  const tileOptions = workbenchAdaptiveTileOptions(options);
   const layout = manager.layout({
     bounds,
-    tileOptions: workbenchAdaptiveTileOptions(options)
+    tileOptions
   });
+  const featured = featuredWorkbenchWindowLayout(bounds, layout, {
+    ...tileOptions,
+    featuredId: options.featuredId,
+    featuredMinWidth: options.featuredMinWidth,
+    featuredMinHeight: options.featuredMinHeight,
+    featuredHeightRatio: options.featuredHeightRatio
+  });
+  if (featured) return featured;
   return workbenchWindowLayout(bounds, layout);
+}
+function featuredWorkbenchWindowLayout(bounds, layout, options) {
+  const featuredId = options.featuredId;
+  if (!featuredId || bounds.width < Math.max(1, Math.floor(options.featuredMinWidth ?? 96))) return void 0;
+  const visible = layout.visible.filter((entry) => entry.rect);
+  if (visible.length <= 2 || !visible.some((entry) => entry.id === featuredId)) return void 0;
+  const gap = Math.max(0, Math.floor(options.gap ?? 1));
+  const featuredHeight = Math.max(
+    Math.max(1, Math.floor(options.featuredMinHeight ?? 18)),
+    Math.floor(bounds.height * Math.max(0.1, Math.min(0.85, options.featuredHeightRatio ?? 0.46)))
+  );
+  const otherHeight = Math.max(1, bounds.height - featuredHeight - gap);
+  const otherBounds = { ...bounds, row: bounds.row + featuredHeight + gap, height: otherHeight };
+  const otherEntries = visible.filter((entry) => entry.id !== featuredId);
+  const otherLayout = tileRects(otherBounds, {
+    ...options,
+    itemCount: otherEntries.length,
+    minTileWidth: Math.max(1, Math.floor(options.minTileWidth ?? 38)),
+    minTileHeight: Math.max(1, Math.floor(options.minTileHeight ?? 10)),
+    allowVerticalOverflow: options.allowVerticalOverflow ?? true
+  });
+  const rects = /* @__PURE__ */ new Map();
+  rects.set(featuredId, {
+    column: bounds.column,
+    row: bounds.row,
+    width: bounds.width,
+    height: featuredHeight
+  });
+  for (let index = 0; index < otherEntries.length; index += 1) {
+    rects.set(otherEntries[index].id, otherLayout.rects[index]);
+  }
+  return {
+    bounds,
+    contentHeight: Math.max(bounds.height, featuredHeight + gap + otherLayout.contentHeight),
+    rects
+  };
 }
 function workbenchRevealActiveRowOffset(options) {
   if (!options.activeRect) return void 0;
@@ -16269,7 +16342,7 @@ var NoopLifecycleController = class {
 };
 
 // src/web/cell_canvas_sink.ts
-var textDecoder4 = new TextDecoder();
+var textDecoder5 = new TextDecoder();
 var BrowserCellCanvasSink = class {
   requiresCellUpdates = false;
   #canvas;
@@ -16339,7 +16412,7 @@ var BrowserCellCanvasSink = class {
     };
   }
   #paintCell(row, column, rawValue) {
-    const value = typeof rawValue === "string" ? rawValue : textDecoder4.decode(rawValue);
+    const value = typeof rawValue === "string" ? rawValue : textDecoder5.decode(rawValue);
     const parsed = parseAnsiCell(value);
     const x = column * this.#cellWidth;
     const y = row * this.#cellHeight;
@@ -16877,7 +16950,7 @@ function createWebTui(options) {
 }
 
 // src/web/remote_terminal.ts
-var textDecoder5 = new TextDecoder();
+var textDecoder6 = new TextDecoder();
 
 // src/app/workbench_buffers.ts
 var WorkbenchButtonRowBufferCache = class {
@@ -17139,7 +17212,7 @@ var apiWorkbenchDocs = [
   "Use Tab or 1-8 to focus built-in windows; use M, F, R for window controls."
 ];
 
-// app/api_workbench_control_base.ts
+// app/api_workbench_controls.ts
 var apiWorkbenchControlIds = [
   "button",
   "genericButton",
@@ -17153,8 +17226,50 @@ var apiWorkbenchControlIds = [
   "stepper",
   "textbox"
 ];
-
-// app/api_workbench_control_keys.ts
+function nextApiWorkbenchControlId(current, delta, options = {}) {
+  const index = apiWorkbenchControlIds.indexOf(current);
+  if (index < 0) return options.wrap ? apiWorkbenchControlIds[0] : void 0;
+  const next = index + delta;
+  if (!options.wrap && (next < 0 || next >= apiWorkbenchControlIds.length)) return void 0;
+  return apiWorkbenchControlIds[(next % apiWorkbenchControlIds.length + apiWorkbenchControlIds.length) % apiWorkbenchControlIds.length];
+}
+function apiWorkbenchControlAt(current, delta, fallback = "button") {
+  return nextApiWorkbenchControlId(current, delta, { wrap: true }) ?? fallback;
+}
+function apiWorkbenchControlAtEdge(current, delta) {
+  return nextApiWorkbenchControlId(current, delta);
+}
+function isApiWorkbenchTextControlActive(activeWindowId, controlsWindowId, activeControl2) {
+  return activeWindowId === controlsWindowId && (activeControl2 === "input" || activeControl2 === "textbox");
+}
+function isApiWorkbenchTouchOptimizedLayout(input2) {
+  return Boolean(input2.coarsePointer) || input2.columns < 92 || input2.rows < 30;
+}
+function expandedApiWorkbenchTouchHitRect(input2) {
+  const { rect, bounds } = input2;
+  const minimumWidth = rect.width <= 3 ? 6 : rect.width <= 10 ? Math.max(10, rect.width) : rect.width;
+  const minimumHeight = rect.height <= 1 ? 3 : rect.height;
+  const growColumns = Math.max(0, minimumWidth - rect.width);
+  const growRows = Math.max(0, minimumHeight - rect.height);
+  return clipApiWorkbenchRect(
+    {
+      column: rect.column - Math.floor(growColumns / 2),
+      row: rect.row - Math.floor(growRows / 2),
+      width: rect.width + growColumns,
+      height: rect.height + growRows
+    },
+    bounds
+  );
+}
+function findApiWorkbenchHitTarget(input2) {
+  const target = input2.targets.find(input2.x, input2.y);
+  if (target) return target;
+  if (!input2.touchOptimized) return void 0;
+  return input2.targets.findExpanded(input2.x, input2.y, (rect, target2) => expandedApiWorkbenchTouchHitRect({
+    rect,
+    bounds: input2.bounds
+  }) ?? target2.rect);
+}
 function resolveApiWorkbenchControlKey(id2, event, options = {}) {
   if (id2 === "input" || id2 === "textbox") return { type: "textInput" };
   if (id2 === "dropdown" && options.dropdownExpanded) {
@@ -17178,8 +17293,6 @@ function resolveApiWorkbenchControlKey(id2, event, options = {}) {
   if (event.key === "space" || event.key === "return") return { type: "control", action: "activate" };
   return { type: "none" };
 }
-
-// app/api_workbench_control_line.ts
 function apiWorkbenchControlLineInto(segments, hits, id2, value, rect, row, activeId, options = {}) {
   let segmentCount = 0;
   let hitCount = 0;
@@ -17277,80 +17390,6 @@ function apiWorkbenchControlLineRenderCommandsInto(target, segments, options) {
   target.length = written;
   return target;
 }
-function writeControlLineSegment(target, index, kind, text, column, row, width, active2) {
-  const segment = target[index] ?? {
-    kind,
-    text: "",
-    column: 0,
-    row: 0,
-    width: 0,
-    active: false
-  };
-  segment.kind = kind;
-  segment.text = text;
-  segment.column = column;
-  segment.row = row;
-  segment.width = width;
-  segment.active = active2;
-  target[index] = segment;
-}
-function writeControlLineRenderCommand(target, index, options) {
-  const command = target[index] ?? {
-    kind: "segment",
-    role: "base",
-    text: "",
-    column: 0,
-    row: 0,
-    width: 0,
-    active: false
-  };
-  command.kind = options.kind;
-  command.role = options.role;
-  command.text = options.text;
-  command.column = options.column;
-  command.row = options.row;
-  command.width = options.width;
-  command.active = options.active;
-  target[index] = command;
-}
-function writeControlHit(target, index, source) {
-  const hit = target[index] ?? {
-    column: 0,
-    row: 0,
-    width: 0,
-    height: 1,
-    id: source.id,
-    action: source.action
-  };
-  hit.column = source.column;
-  hit.row = source.row;
-  hit.width = source.width;
-  hit.height = source.height;
-  hit.id = source.id;
-  hit.action = source.action;
-  hit.index = source.index;
-  target[index] = hit;
-}
-
-// app/api_workbench_control_traversal.ts
-function nextApiWorkbenchControlId(current, delta, options = {}) {
-  const index = apiWorkbenchControlIds.indexOf(current);
-  if (index < 0) return options.wrap ? apiWorkbenchControlIds[0] : void 0;
-  const next = index + delta;
-  if (!options.wrap && (next < 0 || next >= apiWorkbenchControlIds.length)) return void 0;
-  return apiWorkbenchControlIds[(next % apiWorkbenchControlIds.length + apiWorkbenchControlIds.length) % apiWorkbenchControlIds.length];
-}
-function apiWorkbenchControlAt(current, delta, fallback = "button") {
-  return nextApiWorkbenchControlId(current, delta, { wrap: true }) ?? fallback;
-}
-function apiWorkbenchControlAtEdge(current, delta) {
-  return nextApiWorkbenchControlId(current, delta);
-}
-function isApiWorkbenchTextControlActive(activeWindowId, controlsWindowId, activeControl2) {
-  return activeWindowId === controlsWindowId && (activeControl2 === "input" || activeControl2 === "textbox");
-}
-
-// app/api_workbench_control_slider.ts
 function apiWorkbenchControlTrack(options) {
   const minWidth = Math.max(1, Math.floor(options.minWidth ?? 8));
   const maxWidth = Math.max(minWidth, Math.floor(options.maxWidth ?? 24));
@@ -17377,8 +17416,6 @@ function apiWorkbenchSliderSetHitInto(target, rect, row, track, options = {}) {
   target.index = void 0;
   return target;
 }
-
-// app/api_workbench_control_styles.ts
 function apiWorkbenchControlBaseStyle(theme2, active2) {
   return {
     fg: active2 ? theme2.background : theme2.text,
@@ -17404,8 +17441,6 @@ function apiWorkbenchTextboxCommandStyle(theme2, command, active2) {
 function apiWorkbenchWrappedOptionStyle(theme2, active2) {
   return apiWorkbenchControlBaseStyle(theme2, active2);
 }
-
-// app/api_workbench_dropdown_popover.ts
 function apiWorkbenchDropdownPopoverRect(options) {
   const rect = options.rect;
   const horizontalInset = Math.max(0, Math.floor(options.horizontalInset ?? 2));
@@ -17425,13 +17460,6 @@ function apiWorkbenchDropdownPopoverRect(options) {
     height: Math.max(2, options.items.length + 2)
   };
 }
-function maxItemTextWidth(items) {
-  let width = 0;
-  for (const item of items) width = Math.max(width, textWidth(item));
-  return width;
-}
-
-// app/api_workbench_stepper_hits.ts
 function apiWorkbenchStepperHitPlacementsInto(target, steps, activeIndex, rect, row, options = {}) {
   const columnOffset = Math.max(0, Math.floor(options.columnOffset ?? 12));
   const gap = Math.max(0, Math.floor(options.gap ?? 3));
@@ -17466,8 +17494,6 @@ function apiWorkbenchStepperHitPlacementsInto(target, steps, activeIndex, rect, 
   target.length = written;
   return target;
 }
-
-// app/api_workbench_table_navigation.ts
 function nextSortableDataColumn(columns2, currentColumnId, delta) {
   let sortableCount = 0;
   let currentSortableIndex = -1;
@@ -17489,8 +17515,6 @@ function nextSortableDataColumn(columns2, currentColumnId, delta) {
   }
   return void 0;
 }
-
-// app/api_workbench_controls.ts
 function apiWorkbenchTextboxProjectionInto(rows2, options) {
   const rect = options.rect;
   const bottom = rect.row + Math.max(0, rect.height);
@@ -17726,7 +17750,7 @@ function apiWorkbenchWrappedOptionsRenderCommandsInto(target, hits, options) {
     });
     for (let index = 0; index < line.tokens.length; index += 1) {
       const token = line.tokens[index];
-      writeControlHit2(hits, hitCount++, {
+      writeControlHit(hits, hitCount++, {
         column: column + token.columnOffset,
         row,
         width: token.width,
@@ -17756,7 +17780,7 @@ function writeWrappedOptionRenderCommand(target, index, options) {
   command.active = options.active;
   target[index] = command;
 }
-function writeControlHit2(target, index, source) {
+function writeControlHit(target, index, source) {
   const hit = target[index] ?? {
     column: 0,
     row: 0,
@@ -17854,35 +17878,46 @@ function writeProjectedControlRow(target, id2, value, options) {
   row.options = options;
   return row;
 }
-
-// app/api_workbench_hit.ts
-function isApiWorkbenchTouchOptimizedLayout(input2) {
-  return Boolean(input2.coarsePointer) || input2.columns < 92 || input2.rows < 30;
+function writeControlLineSegment(target, index, kind, text, column, row, width, active2) {
+  const segment = target[index] ?? {
+    kind,
+    text: "",
+    column: 0,
+    row: 0,
+    width: 0,
+    active: false
+  };
+  segment.kind = kind;
+  segment.text = text;
+  segment.column = column;
+  segment.row = row;
+  segment.width = width;
+  segment.active = active2;
+  target[index] = segment;
 }
-function expandedApiWorkbenchTouchHitRect(input2) {
-  const { rect, bounds } = input2;
-  const minimumWidth = rect.width <= 3 ? 6 : rect.width <= 10 ? Math.max(10, rect.width) : rect.width;
-  const minimumHeight = rect.height <= 1 ? 3 : rect.height;
-  const growColumns = Math.max(0, minimumWidth - rect.width);
-  const growRows = Math.max(0, minimumHeight - rect.height);
-  return clipApiWorkbenchRect(
-    {
-      column: rect.column - Math.floor(growColumns / 2),
-      row: rect.row - Math.floor(growRows / 2),
-      width: rect.width + growColumns,
-      height: rect.height + growRows
-    },
-    bounds
-  );
+function writeControlLineRenderCommand(target, index, options) {
+  const command = target[index] ?? {
+    kind: "segment",
+    role: "base",
+    text: "",
+    column: 0,
+    row: 0,
+    width: 0,
+    active: false
+  };
+  command.kind = options.kind;
+  command.role = options.role;
+  command.text = options.text;
+  command.column = options.column;
+  command.row = options.row;
+  command.width = options.width;
+  command.active = options.active;
+  target[index] = command;
 }
-function findApiWorkbenchHitTarget(input2) {
-  const target = input2.targets.find(input2.x, input2.y);
-  if (target) return target;
-  if (!input2.touchOptimized) return void 0;
-  return input2.targets.findExpanded(input2.x, input2.y, (rect, target2) => expandedApiWorkbenchTouchHitRect({
-    rect,
-    bounds: input2.bounds
-  }) ?? target2.rect);
+function maxItemTextWidth(items) {
+  let width = 0;
+  for (const item of items) width = Math.max(width, textWidth(item));
+  return width;
 }
 function clipApiWorkbenchRect(rect, bounds) {
   const column = Math.max(bounds.column, rect.column);

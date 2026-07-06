@@ -91,17 +91,20 @@ export interface KittyGraphicsSurfaceOptions {
   force?: boolean;
 }
 
+/** Result from probing tmux allow-passthrough support for Kitty graphics. */
 export interface TmuxPassthroughProbeResult {
   success: boolean;
   stdout: Uint8Array;
 }
 
+/** Options for detecting whether tmux allows Kitty graphics passthrough. */
 export interface DetectTmuxPassthroughOptions {
   tmux?: string | null;
   command?: () => Promise<TmuxPassthroughProbeResult>;
   decoder?: TextDecoder;
 }
 
+/** Options for constructing paired Workbench Kitty graphics surfaces. */
 export interface WorkbenchKittyGraphicsControllerOptions {
   writer: GraphicsSurfaceWriter;
   diagnostics?: DiagnosticsCollector;
@@ -110,15 +113,18 @@ export interface WorkbenchKittyGraphicsControllerOptions {
   tmuxPassthroughAllowed: boolean;
 }
 
+/** Options for async Workbench Kitty graphics controller creation. */
 export interface CreateWorkbenchKittyGraphicsControllerOptions
   extends Omit<WorkbenchKittyGraphicsControllerOptions, "tmuxPassthroughAllowed"> {
   command?: DetectTmuxPassthroughOptions["command"];
 }
 
+/** User-facing Kitty graphics selection state. */
 export interface WorkbenchKittyGraphicsSelection {
   kittyGraphics?: boolean;
 }
 
+/** Inputs for rendering Workbench Kitty graphics availability status text. */
 export interface WorkbenchKittyGraphicsStatusOptions {
   selected: WorkbenchKittyGraphicsSelection;
   tmux?: string | null;

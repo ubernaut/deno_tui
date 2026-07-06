@@ -270,6 +270,7 @@ function terminalSize(options: {
   }
 }
 
+/** Returns true when a fresh stty-verified terminal size should override Deno.consoleSize. */
 export function shouldUseRecentlyVerifiedTerminalSize(
   denoSize: { columns: number; rows: number },
   verified: RecentlyVerifiedTerminalSize | undefined,

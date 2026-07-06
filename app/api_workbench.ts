@@ -27,7 +27,6 @@ import {
   initialWorkbenchDiagnosticLogRows,
   inset,
   intersects,
-  isWorkbenchMenuActivationKey,
   isWorkbenchVisualizationWindowId,
   layoutWorkbenchHeaderInto,
   layoutWorkbenchMenuBarHitsInto,
@@ -75,7 +74,6 @@ import {
   workbenchTerminalOutputWindowRowsInto,
   workbenchTitlebarButtonRenderCommandsInto,
   workbenchVisibleWindowRectsInto,
-  workbenchVisualizationIdFromWindowId,
   workbenchVisualizationWindowId,
   workbenchVisualizationWindowRegistrationPlan,
   workbenchVisualizationWindowTogglePlan,
@@ -212,10 +210,7 @@ import {
   TERMINAL_SHELL_WINDOW_ID,
 } from "./api_workbench_catalog.ts";
 import {
-  apiWorkbenchButtonRowInto,
   type ApiWorkbenchCheckboxOption,
-  apiWorkbenchCheckboxRowsInto,
-  apiWorkbenchComboHeaderRowsInto,
   apiWorkbenchControlAt,
   apiWorkbenchControlAtEdge,
   apiWorkbenchControlBaseStyle,
@@ -226,20 +221,13 @@ import {
   type ApiWorkbenchControlLineRenderCommand,
   apiWorkbenchControlLineRenderCommandsInto,
   type ApiWorkbenchControlLineSegment,
-  apiWorkbenchControlsRowsInto,
   apiWorkbenchControlsSnapshotRowsInto,
   apiWorkbenchControlTrack,
-  apiWorkbenchDropdownHeaderRowInto,
   apiWorkbenchDropdownPopoverRect,
-  apiWorkbenchInputRowInto,
-  apiWorkbenchProgressRowInto,
   type ApiWorkbenchProjectedControlRow,
   type ApiWorkbenchRadioOption,
-  apiWorkbenchRadioRowsInto,
-  apiWorkbenchSliderRowInto,
   apiWorkbenchSliderSetHitInto,
   apiWorkbenchStepperHitPlacementsInto,
-  apiWorkbenchStepperRowInto,
   apiWorkbenchTextboxCommandStyle,
   apiWorkbenchTextboxProjectionInto,
   type ApiWorkbenchTextboxProjectionRow,
@@ -261,7 +249,7 @@ import {
 } from "./api_workbench_controls.ts";
 import { HTML_CSS_LAYOUT_WINDOW_ID } from "../src/markup/demo_fixtures.ts";
 import { type HtmlCssLayoutRenderCommand } from "./html_css_layout_view.ts";
-import { ASCII_DEMO_PRESETS, asciiDemoPresetIds } from "../src/three_ascii/demo_presets.ts";
+import { asciiDemoPresetIds } from "../src/three_ascii/demo_presets.ts";
 import { cloneAsciiOptions, normalizeAsciiOptions } from "../src/three_ascii/options.ts";
 import { resolveSourceFramesInto } from "./sources.ts";
 import { makeStyle, requireInteractiveTerminal } from "./styles.ts";
@@ -1430,7 +1418,7 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
   translateDropdownOverlayForWindow(id, viewport, scroll.offset.peek());
   translateContentHits(contentHitStart, viewport, scroll.offset.peek());
   blitWindowContent(frame, contentFrame, viewport, scroll.offset.peek());
-  renderWindowScrollbars(frame, id, inner, viewport, contentSize);
+  renderWindowScrollbars(frame, id, inner, viewport);
 }
 
 function windowContentFrame(id: WindowId, rows: number): Frame {
@@ -1612,13 +1600,6 @@ function renderThree(frame: Frame, rect: Rectangle): void {
     center: centerText,
   });
   writeRows(frame, rect, fallback);
-}
-
-function renderThreeResizePlaceholder(frame: Frame, rect: Rectangle, t: ThemeSpec): void {
-  renderThreeSurface(frame, rect, [], t, {
-    statusMessage: "renderer resizing",
-    countForPressure: false,
-  });
 }
 
 function renderThreeGridOrResizePlaceholder(
@@ -1827,9 +1808,6 @@ function renderControls(frame: Frame, rect: Rectangle): void {
       }, { type: "control", id: hit.id, action: hit.action, index: hit.index });
     }
     row = nextRow;
-  };
-  const writeSection = (id: ControlId, label: string) => {
-    writeControl(id, label, { action: "activate" });
   };
   const slider = density.inspect();
   const sliderTrack = apiWorkbenchControlTrack({
@@ -2911,7 +2889,6 @@ function renderWindowScrollbars(
   id: WindowId,
   inner: Rectangle,
   viewport: Rectangle,
-  contentSize: { width: number; height: number },
 ): void {
   const scroll = windowScroll(id);
   const t = theme();
@@ -4569,10 +4546,6 @@ function fillRow(frame: Frame, row: number, bg: string): void {
 
 function fillRect(frame: Frame, rect: Rectangle, bg: string): void {
   framePainter.fillRect(frame, rect, bg);
-}
-
-function workbenchFrameWidth(frame: Frame): number {
-  return framePainter.width(frame);
 }
 
 function paint(text: string, options: { fg?: string; bg?: string; bold?: boolean } = {}): string {
