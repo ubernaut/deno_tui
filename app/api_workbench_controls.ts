@@ -994,36 +994,6 @@ interface ApiWorkbenchControlsSnapshotOptions<Value extends string = string>
   buffers: ApiWorkbenchControlsSnapshotBuffers;
 }
 
-function apiWorkbenchCheckboxRowsInto(
-  target: ApiWorkbenchOptionControlRow[],
-  items: readonly ApiWorkbenchCheckboxOption[],
-  options: { header?: string } = {},
-): ApiWorkbenchOptionControlRow[] {
-  const written = appendCheckboxRows(target, 0, items, options.header ?? "Checkboxes", writeOptionControlRow);
-  target.length = written;
-  return target;
-}
-
-function apiWorkbenchRadioRowsInto(
-  target: ApiWorkbenchOptionControlRow[],
-  items: readonly ApiWorkbenchRadioOption[],
-  activeIndex: number,
-  options: { header?: string } = {},
-): ApiWorkbenchOptionControlRow[] {
-  const written = appendRadioRows(target, 0, items, activeIndex, options.header ?? "Radio", writeOptionControlRow);
-  target.length = written;
-  return target;
-}
-
-function apiWorkbenchComboHeaderRowsInto(
-  target: ApiWorkbenchProjectedControlRow[],
-  options: ApiWorkbenchComboHeaderRowsOptions,
-): ApiWorkbenchProjectedControlRow[] {
-  const written = appendComboHeaderRows(target, 0, options);
-  target.length = written;
-  return target;
-}
-
 function apiWorkbenchButtonRowInto(
   target: ApiWorkbenchProjectedControlRow | undefined,
   options: ApiWorkbenchButtonRowOptions,
@@ -1398,19 +1368,6 @@ function appendComboHeaderRows(
     written += 1;
   }
   return written;
-}
-
-function writeOptionControlRow(
-  target: ApiWorkbenchOptionControlRow | undefined,
-  id: OptionRowId,
-  value: string,
-  options?: ApiWorkbenchControlLineOptions,
-): ApiWorkbenchOptionControlRow {
-  const row = target ?? { id, value };
-  row.id = id;
-  row.value = value;
-  row.options = options;
-  return row;
 }
 
 function writeProjectedControlRow(

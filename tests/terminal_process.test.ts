@@ -16,7 +16,7 @@ import {
   routeTerminalPaste,
   terminalMouseRoutingFromPrivateModes,
 } from "../src/app/terminal_input.ts";
-import { type Command, CommandRegistry } from "../src/app/commands.ts";
+import { CommandRegistry } from "../src/app/commands.ts";
 import {
   formatProcessCommandLine,
   type ProcessSessionChild,

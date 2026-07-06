@@ -259,15 +259,7 @@ import {
   type ApiWorkbenchThreePressureInspection,
   ApiWorkbenchThreeRuntimeController,
 } from "../src/app/workbench_three_runtime.ts";
-import type {
-  AsciiOptions,
-  PanelRender,
-  RenderContext,
-  SlotConfig,
-  SourceFrame,
-  SystemSnapshot,
-  ThreeSceneMode,
-} from "./types.ts";
+import type { AsciiOptions, PanelRender, RenderContext, SlotConfig, SourceFrame, ThreeSceneMode } from "./types.ts";
 import {
   cpuHexGridColumnCount,
   type CpuHexNavigationKey,
