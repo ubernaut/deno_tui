@@ -111,7 +111,7 @@ Deno.test("workbenchAdaptiveWindowLayout runs managers with shared tile defaults
 Deno.test("workbenchAdaptiveWindowLayout can feature an active visual window across full width", () => {
   const bounds = { column: 0, row: 0, width: 150, height: 42 };
   const layout = workbenchAdaptiveWindowLayout<"a" | "b" | "three">({
-    layout(options) {
+    layout() {
       return {
         contentHeight: 42,
         visible: [

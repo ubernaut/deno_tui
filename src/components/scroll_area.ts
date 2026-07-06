@@ -2,7 +2,7 @@
 import type { TextRectangle } from "../canvas/text.ts";
 import { Component, type ComponentOptions } from "../component.ts";
 import { Computed, Effect, Signal } from "../signals/mod.ts";
-import type { Offset, Rectangle } from "../types.ts";
+import type { Offset } from "../types.ts";
 import { signalify } from "../utils/signals.ts";
 import { View } from "../view.ts";
 import {

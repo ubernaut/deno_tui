@@ -44,9 +44,7 @@ import {
   threePanelSlowFrameDiagnostic,
 } from "../src/app/three_panel_core.ts";
 import {
-  resolveThreePanelAdaptiveRenderBudget,
   resolveThreePanelRenderPolicy,
-  resolveThreePanelRenderSize,
   resolveThreePanelRuntimeBudget,
   ThreePanelAdaptiveRenderBudgetController,
   type ThreePanelRenderPolicy,

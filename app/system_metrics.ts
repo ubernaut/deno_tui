@@ -14,7 +14,6 @@ import {
   type SystemGpuMetricsProvider,
   type SystemMetricsCommandOutput,
   type SystemMetricsProvider,
-  type TemperatureSample,
 } from "./system_metrics_sources.ts";
 import type {
   AlertMessage,

@@ -466,7 +466,7 @@ Deno.test("terminal workspace controller manages split pane layout", () => {
     ["logs", true],
   ]);
 
-  const testsPane = workspace.splitActive("column", "tests", { placement: "before", minRows: 8 })!;
+  assertEquals(workspace.splitActive("column", "tests", { placement: "before", minRows: 8 })?.sessionId, "tests");
   assertEquals(workspace.inspectLayout().panes.map((pane) => pane.sessionId), ["shell-main", "tests", "logs"]);
   assertEquals(workspace.activatePane(logsPane.id), true);
   assertEquals(workspace.inspect().activeId, "logs");

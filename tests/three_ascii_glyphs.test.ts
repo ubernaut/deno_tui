@@ -1,4 +1,4 @@
-import { assertEquals, assertMatch } from "./deps.ts";
+import { assertEquals } from "./deps.ts";
 import { Color } from "npm:three@0.183.2";
 import {
   layoutThreeAsciiDemoWindow,

@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 /// <reference lib="dom.iterable" />
 // Copyright 2023 Im-Beast. MIT license.
-import { type ThemeTokenName, themeTokenNames, type ThemeTokens } from "../theme.ts";
+import { themeTokenNames, type ThemeTokens } from "../theme.ts";
 import { parseAnsiCell } from "./cell_canvas_sink.ts";
 
 /** CSS style object used by lightweight DOM render nodes. */

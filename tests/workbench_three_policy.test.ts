@@ -13,7 +13,6 @@ import {
   resolveWorkbenchThreeWindowState,
   resolveWorkbenchThreeWindowStateInto,
   sameWorkbenchThreeAsciiOptions,
-  WORKBENCH_THREE_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_EMERGENCY_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_FULLSCREEN_MAX_CELLS,
   WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,

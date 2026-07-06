@@ -350,10 +350,6 @@ function gridColumns() {
   return gridPage().grid.columns;
 }
 
-function gridRows() {
-  return gridPage().grid.rows;
-}
-
 function pageState() {
   const page = gridPage();
   return { current: page.pageIndex, total: page.pageCount };

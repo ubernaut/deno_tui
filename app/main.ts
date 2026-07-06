@@ -19,14 +19,7 @@ import {
 } from "../src/three_ascii/options.ts";
 import { AudioRegistry, discoverAudioSources } from "./audio.ts";
 import { buildSourceCatalog, resolveSourceFramesInto } from "./sources.ts";
-import {
-  accentColor,
-  formatDuration,
-  makeStyle,
-  palette,
-  requireInteractiveTerminal,
-  severityAccent,
-} from "./styles.ts";
+import { accentColor, makeStyle, palette, requireInteractiveTerminal, severityAccent } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
 import { ThreePanelView } from "./three_panel.ts";
 import { centeredRect, fitTextWidth, FrameView, ListView, MultilineTextView, PanelView } from "./ui.ts";
@@ -58,7 +51,6 @@ const MONITOR_WINDOW_CONTROL_TEXT = "[-] [□] [↺] [x]";
 const MONITOR_WINDOW_CONTROL_WIDTH = 15;
 const MONITOR_WINDOW_CONTROL_MIN_WIDTH = MONITOR_WINDOW_CONTROL_WIDTH + 1;
 type MultiPaneLayoutId = Exclude<LayoutId, "single">;
-type MonitorWindowControl = "minimize" | "maximize" | "restore" | "close";
 type MonitorHit =
   | { type: "focus"; id: SlotId }
   | { type: "minimize"; id: SlotId }
@@ -1651,16 +1643,6 @@ function monitorWindowControlRect(rect: Rect): Rect {
     width: visible ? MONITOR_WINDOW_CONTROL_WIDTH : 0,
     height: visible ? 1 : 0,
   };
-}
-
-function monitorWindowControlAt(rect: Rect, x: number, y: number): MonitorWindowControl | undefined {
-  const controls = monitorWindowControlRect(rect);
-  if (controls.width <= 0 || y !== controls.row) return undefined;
-  if (x >= controls.column && x < controls.column + 3) return "minimize";
-  if (x >= controls.column + 4 && x < controls.column + 7) return "maximize";
-  if (x >= controls.column + 8 && x < controls.column + 11) return "restore";
-  if (x >= controls.column + 12 && x < controls.column + 15) return "close";
-  return undefined;
 }
 
 function slotLabel(slotId: SlotId) {

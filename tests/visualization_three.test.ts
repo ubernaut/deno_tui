@@ -358,11 +358,11 @@ Deno.test("workbenchVisualizationRowsInto maps alarm and info severity", () => {
 });
 
 Deno.test("visualizationTextContentSize expands to rendered text dimensions", () => {
-  assertEquals(visualizationTextContentSize(windowOption, windowRender, 8, 3), {
+  assertEquals(visualizationTextContentSize(windowRender, 8, 3), {
     width: "selected cpu-1".length,
     height: 5,
   });
-  assertEquals(visualizationTextContentSize(windowOption, windowRender, 40, 8), {
+  assertEquals(visualizationTextContentSize(windowRender, 40, 8), {
     width: 40,
     height: 8,
   });

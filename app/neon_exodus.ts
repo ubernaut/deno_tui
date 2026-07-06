@@ -373,10 +373,6 @@ function gridColumns() {
   return gridPage().grid.columns;
 }
 
-function gridRows() {
-  return gridPage().grid.rows;
-}
-
 function deckRect(): Rect {
   if (maximized.value || bounds.value.height < 14) return hiddenRect();
   return {

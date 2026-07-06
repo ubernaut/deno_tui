@@ -86,7 +86,6 @@ import {
   WORKBENCH_THREE_FULLSCREEN_MAX_CELLS,
   WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
   WORKBENCH_THREE_FULLSCREEN_PRESSURE_FLOOR_CELLS,
-  WORKBENCH_THREE_FULLSCREEN_PRESSURE_HIGH_BYTES_PER_SECOND,
 } from "../src/app/workbench_three_policy.ts";
 import { resolveThreePanelAdaptiveRenderBudget } from "../src/app/three_panel_policy.ts";
 import { LayoutMeasurementCache, simpleLayoutSolver } from "../src/layout/mod.ts";

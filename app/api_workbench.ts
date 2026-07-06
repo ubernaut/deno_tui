@@ -2797,7 +2797,7 @@ function visualizationWindowContentSize(
       height: baseHeight,
     };
   }
-  return visualizationTextContentSize(option, rendered, baseWidth, baseHeight);
+  return visualizationTextContentSize(rendered, baseWidth, baseHeight);
 }
 
 function buildVisualizationContext(

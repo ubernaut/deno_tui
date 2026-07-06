@@ -5,7 +5,6 @@ import {
   type TerminalOutputSource,
 } from "../components/terminal_output.ts";
 import { Signal } from "../signals/mod.ts";
-import { signalify } from "../utils/signals.ts";
 import type { DiagnosticsCollector } from "./diagnostics.ts";
 
 const INPUT_ENCODER = new TextEncoder();

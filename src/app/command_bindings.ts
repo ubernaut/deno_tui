@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { bindingId, type KeyBinding, type KeymapRegistry } from "../keymap.ts";
+import { bindingId, type KeymapRegistry } from "../keymap.ts";
 import type { KeyPressEvent } from "../input_reader/types.ts";
 import { Signal } from "../signals/mod.ts";
 import {

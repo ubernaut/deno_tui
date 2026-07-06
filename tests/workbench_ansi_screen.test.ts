@@ -155,7 +155,6 @@ Deno.test("WorkbenchAnsiScreenPainter reuses rendered rows when frame cells are 
     },
   });
   const frame: WorkbenchFrame = [[]];
-  const row = frame[0]!;
   writeFrame(frame, 3, 0, 0, "AB");
   let renderCalls = 0;
   const renderRow = (cells: string[], width: number) => {

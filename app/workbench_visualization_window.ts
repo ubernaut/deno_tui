@@ -157,7 +157,6 @@ export function workbenchVisualizationRowsInto(
 
 /** Computes scrollable text dimensions for a rendered visualization panel. */
 export function visualizationTextContentSize(
-  option: WorkbenchVisualizationWindowOption,
   rendered: PanelRender,
   baseWidth: number,
   baseHeight: number,

@@ -253,13 +253,6 @@ function renderModalActions(actions: readonly ModalAction[], selectedIndex: numb
   return row;
 }
 
-function wrapModalLine(value: string, width: number): string[] {
-  if (width <= 0) return [""];
-  const rows: string[] = [];
-  appendModalWrappedLines(rows, value, width);
-  return rows;
-}
-
 function appendModalWrappedLines(rows: string[], value: string, width: number): void {
   if (width <= 0) {
     rows.push("");

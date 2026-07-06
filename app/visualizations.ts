@@ -33,10 +33,6 @@ import {
   sourceWarnings,
 } from "./visualization_primitives.ts";
 import {
-  cpuActivityRgb,
-  cpuHexGridColumnCount,
-  cpuHexTileLayout,
-  cpuHexTileLayoutInto,
   renderCpuHexGrid,
   renderCpuLegend,
   renderCpuMonitor,
