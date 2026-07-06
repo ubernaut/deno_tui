@@ -4,7 +4,7 @@ import { workbenchThreeBodyRect } from "../src/app/workbench_three_policy.ts";
 import type { Rectangle } from "../src/types.ts";
 import type { ApiWorkbenchThemeSpec } from "./api_workbench_catalog.ts";
 import type { AsciiOptions, PanelRender, SystemSnapshot } from "./types.ts";
-import { type CpuHexTileLayout, cpuHexTileLayoutInto } from "./visualizations.ts";
+import { type CpuHexTileLayout, cpuHexTileLayoutInto } from "./visualization_system.ts";
 import {
   visualizationThreeStatusLine,
   workbenchVisualizationRowsInto,

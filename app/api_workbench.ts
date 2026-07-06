@@ -275,12 +275,10 @@ import {
   cpuHexTileLayoutInto,
   cpuHexTileScrollTarget,
   nextCpuHexLabel,
-  renderVisualization,
   selectedCpuHexTilesWith,
   topCpuProcessLabelForCpu,
-  visualizations,
-  visualizationUsesThreeRenderer,
-} from "./visualizations.ts";
+} from "./visualization_system.ts";
+import { renderVisualization, visualizations, visualizationUsesThreeRenderer } from "./visualizations.ts";
 import {
   monitorSourceIds,
   monitorSourceIdsInto,

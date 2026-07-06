@@ -56,23 +56,6 @@ import type {
 
 export { buildVisualizationDrive } from "./visualization_drive.ts";
 export type { VisualizationDrive, VisualizationSourceDrive } from "./visualization_drive.ts";
-export {
-  cpuActivityRgb,
-  cpuHexGridColumnCount,
-  cpuHexTileLayout,
-  cpuHexTileLayoutInto,
-  cpuHexTileScrollTarget,
-  nextCpuHexLabel,
-  processMatchesCpuLabel,
-  selectedCpuHexTilesWith,
-  topCpuProcessLabelForCpu,
-} from "./visualization_system.ts";
-export type {
-  CpuHexNavigationKey,
-  CpuHexScrollOffset,
-  CpuHexScrollTargetOptions,
-  CpuHexTileLayout,
-} from "./visualization_system.ts";
 
 function normalizeFieldRows(lines: readonly string[], width: number, height: number) {
   const visible = Math.min(lines.length, Math.max(1, height));

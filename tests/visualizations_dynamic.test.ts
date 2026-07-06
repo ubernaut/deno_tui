@@ -10,16 +10,18 @@ import {
 } from "../app/workbench_synthetic.ts";
 import { unitWave } from "../app/visualization_primitives.ts";
 import {
-  buildVisualizationDrive,
   cpuActivityRgb,
   cpuHexTileLayout,
   cpuHexTileLayoutInto,
   cpuHexTileScrollTarget,
   nextCpuHexLabel,
   processMatchesCpuLabel,
-  renderVisualization,
   selectedCpuHexTilesWith,
   topCpuProcessLabelForCpu,
+} from "../app/visualization_system.ts";
+import {
+  buildVisualizationDrive,
+  renderVisualization,
   visualizationCatalog,
   visualizationFamily,
   visualizations,
