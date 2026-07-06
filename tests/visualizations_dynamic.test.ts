@@ -6,6 +6,7 @@ import {
   resolveSourceFramesInto,
 } from "../app/sources.ts";
 import {
+  buildVisualizationDrive,
   monitorSourceIds,
   monitorSourceIdsInto,
   syntheticWorkbenchSourcesInto,
@@ -19,7 +20,6 @@ import {
   selectedCpuHexTilesWith,
   topCpuProcessLabelForCpu,
 } from "../app/visualization_system.ts";
-import { buildVisualizationDrive } from "../app/visualization_drive.ts";
 import { renderVisualization, visualizations, visualizationUsesThreeRenderer } from "../app/visualizations.ts";
 import type { RenderContext, SlotConfig, SourceFrame, SystemSnapshot } from "../app/types.ts";
 import { createWorkbenchVisualizationWindowOptions } from "../src/app/workbench_window_registry.ts";

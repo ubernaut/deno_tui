@@ -4,10 +4,10 @@ import { canvasRowText, createTestCanvas } from "../src/testing/mod.ts";
 import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import { emptySystemSnapshot } from "./fixtures/system_snapshot.ts";
 import { ListView, MultilineTextView, PanelView } from "../app/ui.ts";
-import { buildVisualizationDrive } from "../app/visualization_drive.ts";
 import {
   alertText,
   barChart,
+  buildVisualizationDrive,
   createMatrix,
   crop,
   drawEllipse,

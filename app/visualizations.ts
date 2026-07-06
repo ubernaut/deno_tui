@@ -1,28 +1,25 @@
 import { neonThreeSceneModeLabel } from "./neon_three.ts";
 import { clamp, formatRate } from "./styles.ts";
 import {
-  buildVisualizationDrive,
-  fallbackSource,
-  moduloUnit,
-  sampleSeries,
-  sampleSeriesValue,
-  type VisualizationDrive,
-} from "./visualization_drive.ts";
-import {
   alertText,
   barChart,
+  buildVisualizationDrive,
   clampInt,
   createMatrix,
   crop,
   drawEllipse,
   drawLine,
   driveAlert,
+  fallbackSource,
   gridify,
   hottestAccent,
   miniMeter,
+  moduloUnit,
   monitorGlyph,
   plotHistory,
   renderMatrix,
+  sampleSeries,
+  sampleSeriesValue,
   sceneAlert,
   setCell,
   signalChart,
@@ -30,6 +27,7 @@ import {
   sourceFooter,
   sourceNameMatrix,
   sourceWarnings,
+  type VisualizationDrive,
 } from "./visualization_primitives.ts";
 import {
   renderCpuHexGrid,

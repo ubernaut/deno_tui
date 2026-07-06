@@ -1,6 +1,11 @@
 import { clamp, formatBytes, formatPercent } from "./styles.ts";
-import { buildVisualizationDrive, type VisualizationDrive } from "./visualization_drive.ts";
-import { crop, formatLoadAverage, severityForValue } from "./visualization_primitives.ts";
+import {
+  buildVisualizationDrive,
+  crop,
+  formatLoadAverage,
+  severityForValue,
+  type VisualizationDrive,
+} from "./visualization_primitives.ts";
 import type { Accent, PanelRender, RenderContext, Severity } from "./types.ts";
 
 type CpuCoreSnapshot = RenderContext["system"]["cpuCores"][number];
