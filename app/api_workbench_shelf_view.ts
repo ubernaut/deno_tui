@@ -12,8 +12,8 @@ import {
 import type { Rectangle } from "../src/types.ts";
 import type { ApiWorkbenchThemeSpec } from "./api_workbench_catalog.ts";
 
-export interface ApiWorkbenchShelfRenderOptions<TId extends string> {
-  frame: WorkbenchFrame;
+export interface ApiWorkbenchShelfRenderOptions<TId extends string, Frame = WorkbenchFrame> {
+  frame: Frame;
   row: number;
   column: number;
   width: number;
@@ -22,9 +22,9 @@ export interface ApiWorkbenchShelfRenderOptions<TId extends string> {
   theme: ApiWorkbenchThemeSpec;
   titleForId: (id: TId) => string;
   paint: (text: string, style: { fg?: string; bg?: string; bold?: boolean }) => string;
-  write: (frame: WorkbenchFrame, row: number, column: number, value: string) => void;
+  write: (frame: Frame, row: number, column: number, value: string) => void;
   writeButton: (
-    frame: WorkbenchFrame,
+    frame: Frame,
     row: number,
     column: number,
     label: string,
@@ -38,8 +38,12 @@ export interface ApiWorkbenchShelfRenderOptions<TId extends string> {
   addHit: (rect: Rectangle, action: { type: "restore"; id: TId }) => void;
 }
 
-export interface ApiWorkbenchWindowTabsRenderOptions<TId extends string> {
-  frame: WorkbenchFrame;
+export interface ApiWorkbenchWindowTabsRenderOptions<
+  TId extends string,
+  Frame = WorkbenchFrame,
+  HitAction = { type: "windowTab"; id: TId },
+> {
+  frame: Frame;
   row: number;
   column: number;
   width: number;
@@ -48,15 +52,16 @@ export interface ApiWorkbenchWindowTabsRenderOptions<TId extends string> {
   theme: ApiWorkbenchThemeSpec;
   titleForId: (id: TId) => string;
   paint: (text: string, style: { fg?: string; bg?: string; bold?: boolean }) => string;
-  write: (frame: WorkbenchFrame, row: number, column: number, value: string) => void;
-  fillRow: (frame: WorkbenchFrame, row: number, bg: string) => void;
-  writeButton: ApiWorkbenchShelfRenderOptions<TId>["writeButton"];
-  addHit: (rect: Rectangle, action: { type: "windowTab"; id: TId }) => void;
+  write: (frame: Frame, row: number, column: number, value: string) => void;
+  fillRow?: (frame: Frame, row: number, bg: string) => void;
+  writeButton: ApiWorkbenchShelfRenderOptions<TId, Frame>["writeButton"];
+  addHit: (rect: Rectangle, action: HitAction) => void;
+  hitAction?: (id: TId) => HitAction;
 }
 
 /** Renders the minimized-window shelf while keeping app-specific window state outside the shared layout module. */
-export function renderApiWorkbenchShelf<TId extends string>(
-  options: ApiWorkbenchShelfRenderOptions<TId>,
+export function renderApiWorkbenchShelf<TId extends string, Frame = WorkbenchFrame>(
+  options: ApiWorkbenchShelfRenderOptions<TId, Frame>,
 ): void {
   const { frame, row, column, width, windows, buffers, theme, titleForId, paint, write, writeButton, addHit } = options;
   const entries = workbenchShelfEntriesInto(buffers.entries, windows, titleForId);
@@ -89,12 +94,16 @@ export function renderApiWorkbenchShelf<TId extends string>(
 }
 
 /** Renders the fullscreen window tab strip shown while one window owns the workspace. */
-export function renderApiWorkbenchWindowTabs<TId extends string>(
-  options: ApiWorkbenchWindowTabsRenderOptions<TId>,
+export function renderApiWorkbenchWindowTabs<
+  TId extends string,
+  Frame = WorkbenchFrame,
+  HitAction = { type: "windowTab"; id: TId },
+>(
+  options: ApiWorkbenchWindowTabsRenderOptions<TId, Frame, HitAction>,
 ): void {
   const { frame, row, column, width, tabs, buffers, theme, titleForId, paint, write, fillRow, writeButton, addHit } =
     options;
-  fillRow(frame, row, theme.backgroundSoft);
+  fillRow?.(frame, row, theme.backgroundSoft);
   const layout = layoutWorkbenchTabsInto(buffers.tabLayout, {
     row,
     column,
@@ -117,6 +126,6 @@ export function renderApiWorkbenchWindowTabs<TId extends string>(
       tone: command.tone,
       maxWidth: command.rect.width,
     });
-    addHit(command.hitRect, { type: "windowTab", id: command.id });
+    addHit(command.hitRect, options.hitAction?.(command.id) ?? ({ type: "windowTab", id: command.id } as HitAction));
   }
 }

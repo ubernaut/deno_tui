@@ -18820,6 +18820,65 @@ function renderApiWorkbenchHtmlCssLayout(options) {
   }
 }
 
+// app/api_workbench_shelf_view.ts
+function renderApiWorkbenchShelf(options) {
+  const { frame, row, column, width, windows, buffers, theme: theme2, titleForId, paint: paint2, write: write2, writeButton: writeButton2, addHit } = options;
+  const entries = workbenchShelfEntriesInto(buffers.entries, windows, titleForId);
+  if (entries.length === 0) return;
+  const layout = layoutWorkbenchShelfInto(buffers.shelfLayout, {
+    row,
+    column,
+    width,
+    entries
+  });
+  const commands = workbenchShelfRenderCommandsInto(buffers.shelfCommands, layout);
+  for (const command of commands) {
+    if (command.kind === "prefix") {
+      write2(
+        frame,
+        command.rect.row,
+        command.rect.column,
+        paint2(command.text, { fg: theme2.muted, bg: theme2.backgroundSoft })
+      );
+      continue;
+    }
+    writeButton2(frame, command.rect.row, command.rect.column, command.label, {
+      state: command.state,
+      tone: command.tone,
+      maxWidth: command.rect.width
+    });
+    addHit(command.hitRect, { type: "restore", id: command.id });
+  }
+}
+function renderApiWorkbenchWindowTabs(options) {
+  const { frame, row, column, width, tabs, buffers, theme: theme2, titleForId, paint: paint2, write: write2, fillRow, writeButton: writeButton2, addHit } = options;
+  fillRow?.(frame, row, theme2.backgroundSoft);
+  const layout = layoutWorkbenchTabsInto(buffers.tabLayout, {
+    row,
+    column,
+    width,
+    tabs: workbenchTabEntriesInto(buffers.tabs, tabs, titleForId)
+  });
+  const commands = workbenchShelfRenderCommandsInto(buffers.tabCommands, layout);
+  for (const command of commands) {
+    if (command.kind === "prefix") {
+      write2(
+        frame,
+        command.rect.row,
+        command.rect.column,
+        paint2(command.text, { fg: theme2.muted, bg: theme2.backgroundSoft })
+      );
+      continue;
+    }
+    writeButton2(frame, command.rect.row, command.rect.column, command.label, {
+      state: command.state,
+      tone: command.tone,
+      maxWidth: command.rect.width
+    });
+    addHit(command.hitRect, options.hitAction?.(command.id) ?? { type: "windowTab", id: command.id });
+  }
+}
+
 // app/api_workbench_terminal_shell_view.ts
 function renderApiWorkbenchTerminalShellToolbar(options) {
   const { frame, rect, startRow, state, buffers, theme: theme2, contrastText: contrastText2, paint: paint2, write: write2, addHit } = options;
@@ -20455,27 +20514,20 @@ function draw() {
 function renderShelf(frame) {
   const row = rowsCount() - 2;
   syncWebWindowManagerState();
-  const entries = workbenchShelfEntriesInto(shelfBuffers.entries, webWindows.inspect().windows, panelTitle);
-  if (entries.length === 0) return;
-  const layout = layoutWorkbenchShelfInto(shelfBuffers.shelfLayout, {
+  renderApiWorkbenchShelf({
+    frame,
     row,
     column: 2,
     width: Math.max(0, cols() - 2),
-    entries
+    windows: webWindows.inspect().windows,
+    buffers: shelfBuffers,
+    theme: theme(),
+    titleForId: panelTitle,
+    paint: (value, style2) => paint(value, style2.fg, style2.bg, style2.bold),
+    write,
+    writeButton,
+    addHit: (hitRect, action) => hitTargets.add(hitRect, action)
   });
-  const commands = workbenchShelfRenderCommandsInto(shelfBuffers.shelfCommands, layout);
-  for (const command of commands) {
-    if (command.kind === "prefix") {
-      write(frame, command.rect.row, command.rect.column, paint(command.text, theme().muted, theme().backgroundSoft));
-    } else {
-      writeButton(frame, command.rect.row, command.rect.column, command.label, {
-        state: command.state,
-        tone: command.tone,
-        maxWidth: command.rect.width
-      });
-      hitTargets.add(command.hitRect, { type: "restore", id: command.id });
-    }
-  }
 }
 function renderMobileCommandStrip(frame) {
   if (!isTouchOptimizedLayout() || rowsCount() < 8) return;
@@ -20502,25 +20554,21 @@ function renderMobileCommandStrip(frame) {
 function renderWindowTabs(frame) {
   const row = rowsCount() - 2;
   syncWebWindowManagerState();
-  const layout = layoutWorkbenchTabsInto(shelfBuffers.tabLayout, {
+  renderApiWorkbenchWindowTabs({
+    frame,
     row,
     column: 2,
     width: Math.max(0, cols() - 2),
-    tabs: workbenchTabEntriesInto(shelfBuffers.tabs, webWindows.inspect().tabs, panelTitle)
+    tabs: webWindows.inspect().tabs,
+    buffers: shelfBuffers,
+    theme: theme(),
+    titleForId: panelTitle,
+    paint: (value, style2) => paint(value, style2.fg, style2.bg, style2.bold),
+    write,
+    writeButton,
+    addHit: (hitRect, action) => hitTargets.add(hitRect, action),
+    hitAction: (id2) => ({ type: "restore", id: id2 })
   });
-  const commands = workbenchShelfRenderCommandsInto(shelfBuffers.tabCommands, layout);
-  for (const command of commands) {
-    if (command.kind === "prefix") {
-      write(frame, command.rect.row, command.rect.column, paint(command.text, theme().muted, theme().backgroundSoft));
-    } else {
-      writeButton(frame, command.rect.row, command.rect.column, command.label, {
-        state: command.state,
-        tone: command.tone,
-        maxWidth: command.rect.width
-      });
-      hitTargets.add(command.hitRect, { type: "restore", id: command.id });
-    }
-  }
 }
 function renderPanel(frame, id2, rect) {
   if (rect.width < 10 || rect.height < 4) return;

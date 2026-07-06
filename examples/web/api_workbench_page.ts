@@ -25,8 +25,6 @@ import {
   hydrateWorkbenchPanelWorkspaceStore,
   initialWorkbenchDiagnosticLogRows,
   InputController,
-  layoutWorkbenchShelfInto,
-  layoutWorkbenchTabsInto,
   layoutWorkbenchTitlebarInto,
   loadWorkbenchPanelWorkspaceCache,
   maxTextWidth,
@@ -65,9 +63,6 @@ import {
   type WorkbenchMenuBarHitLayout,
   type WorkbenchPanelWorkspaceState,
   type WorkbenchScrollbarRenderCommand,
-  workbenchShelfEntriesInto,
-  workbenchShelfRenderCommandsInto,
-  workbenchTabEntriesInto,
   workbenchTerminalCopyRowsInto,
   type WorkbenchTerminalPaneProjection,
   workbenchTerminalPaneProjectionsInto,
@@ -125,6 +120,7 @@ import {
 } from "../../app/api_workbench_builtin_panels_view.ts";
 import { renderApiWorkbenchButtonRow } from "../../app/api_workbench_button_row_view.ts";
 import { renderApiWorkbenchHtmlCssLayout } from "../../app/api_workbench_html_css_view.ts";
+import { renderApiWorkbenchShelf, renderApiWorkbenchWindowTabs } from "../../app/api_workbench_shelf_view.ts";
 import {
   renderApiWorkbenchTerminalSessionTabs,
   renderApiWorkbenchTerminalShellToolbar,
@@ -761,27 +757,20 @@ function draw(): void {
 function renderShelf(frame: string[]): void {
   const row = rowsCount() - 2;
   syncWebWindowManagerState();
-  const entries = workbenchShelfEntriesInto(shelfBuffers.entries, webWindows.inspect().windows, panelTitle);
-  if (entries.length === 0) return;
-  const layout = layoutWorkbenchShelfInto(shelfBuffers.shelfLayout, {
+  renderApiWorkbenchShelf<PanelId, string[]>({
+    frame,
     row,
     column: 2,
     width: Math.max(0, cols() - 2),
-    entries,
+    windows: webWindows.inspect().windows,
+    buffers: shelfBuffers,
+    theme: theme(),
+    titleForId: panelTitle,
+    paint: (value, style) => paint(value, style.fg, style.bg, style.bold),
+    write,
+    writeButton,
+    addHit: (hitRect, action) => hitTargets.add(hitRect, action),
   });
-  const commands = workbenchShelfRenderCommandsInto(shelfBuffers.shelfCommands, layout);
-  for (const command of commands) {
-    if (command.kind === "prefix") {
-      write(frame, command.rect.row, command.rect.column, paint(command.text, theme().muted, theme().backgroundSoft));
-    } else {
-      writeButton(frame, command.rect.row, command.rect.column, command.label, {
-        state: command.state,
-        tone: command.tone,
-        maxWidth: command.rect.width,
-      });
-      hitTargets.add(command.hitRect, { type: "restore", id: command.id });
-    }
-  }
 }
 
 function renderMobileCommandStrip(frame: string[]): void {
@@ -810,25 +799,21 @@ function renderMobileCommandStrip(frame: string[]): void {
 function renderWindowTabs(frame: string[]): void {
   const row = rowsCount() - 2;
   syncWebWindowManagerState();
-  const layout = layoutWorkbenchTabsInto(shelfBuffers.tabLayout, {
+  renderApiWorkbenchWindowTabs<PanelId, string[], Hit>({
+    frame,
     row,
     column: 2,
     width: Math.max(0, cols() - 2),
-    tabs: workbenchTabEntriesInto(shelfBuffers.tabs, webWindows.inspect().tabs, panelTitle),
+    tabs: webWindows.inspect().tabs,
+    buffers: shelfBuffers,
+    theme: theme(),
+    titleForId: panelTitle,
+    paint: (value, style) => paint(value, style.fg, style.bg, style.bold),
+    write,
+    writeButton,
+    addHit: (hitRect, action) => hitTargets.add(hitRect, action),
+    hitAction: (id) => ({ type: "restore", id }),
   });
-  const commands = workbenchShelfRenderCommandsInto(shelfBuffers.tabCommands, layout);
-  for (const command of commands) {
-    if (command.kind === "prefix") {
-      write(frame, command.rect.row, command.rect.column, paint(command.text, theme().muted, theme().backgroundSoft));
-    } else {
-      writeButton(frame, command.rect.row, command.rect.column, command.label, {
-        state: command.state,
-        tone: command.tone,
-        maxWidth: command.rect.width,
-      });
-      hitTargets.add(command.hitRect, { type: "restore", id: command.id });
-    }
-  }
 }
 
 function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
