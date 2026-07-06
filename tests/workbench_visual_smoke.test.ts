@@ -242,9 +242,9 @@ Deno.test("workbench fullscreen visual smoke inspector verifies scale and trueco
     "\x1b[1;1HAPI WORKBENCH",
     "\x1b[4;1HTHREE ASCII",
     "\x1b[6;1Hframe 7ms scene 5 read 13 asm 0 3720c cap 3840c @10fps live 10fps",
-    "\x1b[8;1H\x1b[48;2;1;2;3m\x1b[38;2;1;2;3m██\x1b[0m",
-    "\x1b[9;1H\x1b[48;2;4;5;6m\x1b[38;2;4;5;6m██\x1b[0m",
-    "\x1b[10;1H\x1b[48;2;7;8;9m\x1b[38;2;7;8;9m██\x1b[0m",
+    `\x1b[8;1H\x1b[48;2;1;2;3m\x1b[38;2;1;2;3m${"█".repeat(70)}\x1b[0m`,
+    `\x1b[9;1H\x1b[48;2;4;5;6m\x1b[38;2;4;5;6m${"█".repeat(70)}\x1b[0m`,
+    `\x1b[10;1H\x1b[48;2;7;8;9m\x1b[38;2;7;8;9m${"█".repeat(70)}\x1b[0m`,
     "\x1b[12;1Hfocus Three ASCII | Unit-01  F10 menu",
   ].join("");
   const result = inspectWorkbenchFullscreenVisualSmokeOutput(output, {
@@ -261,13 +261,13 @@ Deno.test("workbench fullscreen visual smoke inspector verifies scale and trueco
   assertEquals(result.fullscreenCap, 3840);
   assertEquals(result.truecolorBackgroundRows, 3);
   assertEquals(result.finalTruecolorBackgroundRows, 3);
-  assertEquals(result.truecolorBackgroundMaxColumns, 2);
-  assertEquals(result.finalTruecolorBackgroundMaxColumns, 2);
+  assertEquals(result.truecolorBackgroundMaxColumns, 70);
+  assertEquals(result.finalTruecolorBackgroundMaxColumns, 70);
   assertEquals(result.bodyTruecolorBackgroundRows, 3);
-  assertEquals(result.bodyTruecolorBackgroundMaxColumns, 2);
+  assertEquals(result.bodyTruecolorBackgroundMaxColumns, 70);
   assertEquals(result.bodyVisibleRows, 3);
-  assertEquals(result.bodyVisibleMaxColumns, 2);
-  assertEquals(result.bodyVisibleCells, 6);
+  assertEquals(result.bodyVisibleMaxColumns, 70);
+  assertEquals(result.bodyVisibleCells, 210);
   assertEquals(countTruecolorBackgroundRows(output), 3);
 });
 
@@ -388,9 +388,34 @@ Deno.test("workbench fullscreen visual smoke rejects narrow truecolor surfaces a
     "three body truecolor columns >= 60",
     "three body visible rows >= 2",
     "three body visible columns >= 4",
+    "three body visible cells >= 186",
   ]);
   assertEquals(result.truecolorBackgroundMaxColumns, 10);
   assertEquals(result.bodyTruecolorBackgroundMaxColumns, 10);
+});
+
+Deno.test("workbench fullscreen visual smoke rejects mostly blank initializing frames", () => {
+  const output = [
+    "\x1b[2J",
+    "\x1b[1;1HAPI WORKBENCH",
+    "\x1b[4;1H┌─ THREE ASCII ─────────────────────────────────────────┐",
+    "\x1b[5;1H│ ACEROLA THREE.JS ASCII · BLOCKS                       │",
+    "\x1b[6;1H│frame 0ms scene 0 read 0 asm 0 5966c @15fps live 25fps │",
+    "\x1b[8;2H\x1b[48;2;1;2;3mASCII RENDERER STARTING\x1b[0m",
+    "\x1b[9;2H\x1b[48;2;1;2;3mINITIALIZING\x1b[0m",
+    "\x1b[12;1Hfocus Three ASCII | Unit-01  F10 menu",
+  ].join("");
+  const result = inspectWorkbenchFullscreenVisualSmokeOutput(output, {
+    columns: 80,
+    rows: 12,
+    minCells: 1_800,
+    minTruecolorRows: 2,
+    minTruecolorColumns: 2,
+  });
+
+  assertEquals(result.passed, false);
+  assertEquals(result.bodyVisibleCells < 300, true);
+  assertEquals(result.missing.includes("three body visible cells >= 298"), true);
 });
 
 Deno.test("workbench fullscreen visual smoke accepts full-pane offline renderer fallback", () => {

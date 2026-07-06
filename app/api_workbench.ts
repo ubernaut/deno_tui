@@ -1510,12 +1510,15 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
     setWorkbenchThreeRect(entry.graphicsRectangle, contentRectToGraphicsRect(sceneRect));
     setWorkbenchThreeSceneSignal(entry.scene, threeScene);
     renderedVisualizationThreePanels.add(id);
+    const grid = entry.panel.grid.peek();
     if (resized) {
-      renderThreeResizePlaceholder(frame, sceneRect, t);
+      renderThreeGridOrResizePlaceholder(frame, sceneRect, grid, t, {
+        scale: threeGridScaleModeForWindow(id),
+        countForPressure: false,
+      });
       scheduleDraw();
       return;
     }
-    const grid = entry.panel.grid.peek();
     renderThreeGrid(frame, sceneRect, grid, t, {
       scale: threeGridScaleModeForWindow(id),
       countForPressure: shouldCountWorkbenchThreeGridPressure(grid, entry.panel.inspectPerformance()),
@@ -1580,11 +1583,14 @@ function renderThree(frame: Frame, rect: Rectangle): void {
     );
     addHit(sceneRect, { type: "threeViewport", id: "three" });
     setThreeGraphicsRect(contentRectToGraphicsRect(sceneRect));
+    const grid = threePanel.grid.peek();
     if (resized) {
-      renderThreeResizePlaceholder(frame, sceneRect, t);
+      renderThreeGridOrResizePlaceholder(frame, sceneRect, grid, t, {
+        scale: threeGridScaleModeForWindow("three"),
+        countForPressure: false,
+      });
       return;
     }
-    const grid = threePanel.grid.peek();
     renderThreeGrid(frame, sceneRect, grid, t, {
       scale: threeGridScaleModeForWindow("three"),
       countForPressure: shouldCountWorkbenchThreeGridPressure(grid, performance),
@@ -1617,6 +1623,23 @@ function renderThreeResizePlaceholder(frame: Frame, rect: Rectangle, t: ThemeSpe
       center: centerText,
     }),
   );
+}
+
+function renderThreeGridOrResizePlaceholder(
+  frame: Frame,
+  rect: Rectangle,
+  grid: string[][],
+  t: ThemeSpec,
+  options: {
+    scale?: boolean | "down";
+    countForPressure?: boolean;
+  } = {},
+): void {
+  if (grid.length > 0 && (grid[0]?.length ?? 0) > 0) {
+    renderThreeGrid(frame, rect, grid, t, options);
+    return;
+  }
+  renderThreeResizePlaceholder(frame, rect, t);
 }
 
 function renderThreeGrid(
