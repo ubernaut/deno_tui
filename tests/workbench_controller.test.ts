@@ -75,6 +75,11 @@ import {
   renderApiWorkbenchInspectorPanel,
   renderApiWorkbenchLogsPanel,
 } from "../app/api_workbench_builtin_panels_view.ts";
+import {
+  renderApiWorkbenchChromeHeader,
+  renderApiWorkbenchDropdownOverlay,
+  renderApiWorkbenchStatus,
+} from "../app/api_workbench_chrome_view.ts";
 import { renderApiWorkbenchModalOverlay, renderApiWorkbenchThreeConfigModal } from "../app/api_workbench_modal_view.ts";
 import { renderApiWorkbenchShelf, renderApiWorkbenchWindowTabs } from "../app/api_workbench_shelf_view.ts";
 import {
@@ -985,6 +990,119 @@ Deno.test("renderApiWorkbenchWindowTabs paints tab strip and registers tab hits"
     { label: "● Three", state: "active", tone: "default" },
   ]);
   assertEquals(hits.map((hit) => hit.id), ["logs", "three"]);
+});
+
+Deno.test("renderApiWorkbenchChromeHeader paints header hits and top menu overlay", () => {
+  const frame: string[][] = [];
+  const fills: Array<{ row: number; bg: string }> = [];
+  const buttons: Array<{ label: string; row: number; tone?: string }> = [];
+  const hits: Array<{ type: string; index?: number; width: number }> = [];
+
+  const overlay = renderApiWorkbenchChromeHeader({
+    frame,
+    width: 80,
+    menuItems: [
+      { id: "theme", label: "Theme" },
+      { id: "new", label: "New" },
+      { id: "workspace", label: "Workspace" },
+    ],
+    menuActiveIndex: 0,
+    openMenuId: "theme",
+    dropdownEntries: {
+      theme: {
+        visible: { items: [], indexes: [] },
+        labels: ["Light", "Dark"],
+        selectedIndex: 1,
+        preferredWidth: 18,
+      },
+    },
+    headerLayout: { menu: { column: 0, row: 0, width: 0, height: 1 } },
+    menuHitLayouts: [],
+    theme: testWorkbenchTheme(),
+    paint: (text, style) => `${style.bg}:${style.fg}:${style.bold ? "b:" : ""}${text}`,
+    write: (target, row, column, value) => {
+      target[row] ??= [];
+      target[row]![column] = value;
+    },
+    fillRow: (_target, row, bg) => fills.push({ row, bg }),
+    writeButton: (_target, row, _column, label, options) => {
+      buttons.push({ label, row, tone: options?.tone });
+      return 0;
+    },
+    addHit: (rect, action) =>
+      hits.push({ type: action.type, index: "index" in action ? action.index : undefined, width: rect.width }),
+  });
+
+  assertEquals(fills, [{ row: 0, bg: "#111" }, { row: 1, bg: "#111" }]);
+  assertEquals(frame[0]?.[0], "#0f0:#000:b: API WORKBENCH ");
+  assertEquals(frame[0]?.[17]?.includes("[Theme]"), true);
+  assertEquals(buttons, [{ label: "x", row: 0, tone: "danger" }]);
+  assertEquals(hits.some((hit) => hit.type === "menu" && hit.index === 0), true);
+  assertEquals(hits.some((hit) => hit.type === "quit"), true);
+  assertEquals(overlay?.kind, "theme");
+  assertEquals(overlay?.items, ["Light", "Dark"]);
+  assertEquals(overlay?.selectedIndex, 1);
+});
+
+Deno.test("renderApiWorkbenchStatus paints current status snapshot", () => {
+  const frame: string[][] = [];
+
+  renderApiWorkbenchStatus({
+    frame,
+    row: 3,
+    width: 72,
+    focus: "Three",
+    themeLabel: "Test",
+    tileDensity: 6,
+    diagnostics: "ok",
+    theme: testWorkbenchTheme(),
+    paint: (text, style) => `${style.bg}:${style.fg}:${text}`,
+    write: (target, row, column, value) => {
+      target[row] ??= [];
+      target[row]![column] = value;
+    },
+  });
+
+  assertEquals(frame[3]?.[0]?.includes("Three"), true);
+  assertEquals(frame[3]?.[0]?.includes("Test"), true);
+});
+
+Deno.test("renderApiWorkbenchDropdownOverlay paints overlay rows and maps item hits", () => {
+  const frame: string[][] = [];
+  const fills: Array<{ row: number; width: number; bg: string }> = [];
+  const hits: Array<{ type: string; index: number; width: number }> = [];
+
+  renderApiWorkbenchDropdownOverlay({
+    frame,
+    overlay: {
+      kind: "workspace",
+      coordinate: "screen",
+      rect: { column: 2, row: 2, width: 18, height: 4 },
+      items: ["Open", "Rename"],
+      itemIndexes: [3, 4],
+      selectedIndex: 1,
+    },
+    workspaceBounds: { column: 0, row: 3, width: 80, height: 20 },
+    screenBounds: { column: 0, row: 0, width: 80, height: 24 },
+    workspaceOffsetRows: 0,
+    commands: [],
+    theme: testWorkbenchTheme(),
+    paint: (text, style) => `${style.bg}:${style.fg}:${style.bold ? "b:" : ""}${text}`,
+    write: (target, row, column, value) => {
+      target[row] ??= [];
+      target[row]![column] = value;
+    },
+    fillRect: (_target, rect, bg) => fills.push({ row: rect.row, width: rect.width, bg }),
+    addHit: (rect, action) => hits.push({ type: action.type, index: action.index, width: rect.width }),
+  });
+
+  assertEquals(fills, [{ row: 2, width: 18, bg: "#222" }]);
+  assertEquals(frame[3]?.[2]?.includes("Open"), true);
+  assertEquals(frame[4]?.[2]?.includes("Rename"), true);
+  assertEquals(hits, [
+    { type: "workspace", index: 3, width: 16 },
+    { type: "workspace", index: 4, width: 16 },
+  ]);
 });
 
 Deno.test("renderApiWorkbenchExplorerPanel paints tree rows and registers row hits", () => {
