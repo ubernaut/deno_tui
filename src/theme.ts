@@ -36,10 +36,6 @@ import {
   resolveThemeStateDefinitionCore,
   resolveThemeStyleReferenceCore,
 } from "./theme_core.ts";
-import {
-  compileThemeManifestStateDefinitionCore,
-  compileThemeManifestStyleReferenceCore,
-} from "./theme_manifest_core.ts";
 import { inspectThemeCoverageCore } from "./theme_coverage_core.ts";
 import { diffThemeEnginesCore } from "./theme_diff_core.ts";
 import { validateThemeComponentsCore } from "./theme_validation_core.ts";
@@ -552,14 +548,40 @@ export function inspectThemeStandardization(
 export function compileThemeManifestStyleReference(
   reference: ThemeManifestStyleReference,
 ): ThemeStyleReference {
-  return compileThemeManifestStyleReferenceCore(reference) as ThemeStyleReference;
+  return compileThemeManifestStyleReferenceInternal(reference);
 }
 
 /** Public helper for compile Theme Manifest State Definition. */
 export function compileThemeManifestStateDefinition(
   definition: ThemeManifestStateDefinition = {},
 ): ThemeStateDefinition {
-  return compileThemeManifestStateDefinitionCore<ThemeState>(definition) as ThemeStateDefinition;
+  return compileThemeManifestStateDefinitionInternal<ThemeState>(definition) as ThemeStateDefinition;
+}
+
+function compileThemeManifestStyleReferenceInternal(
+  reference: ThemeManifestStyleReference,
+): ThemeStyleReference {
+  if (isThemeManifestStyleReferencePipeline(reference)) {
+    return reference.map((part) => compileThemeManifestStyleReferenceInternal(part));
+  }
+  return typeof reference === "string" ? reference as ThemeTokenName : createAnsiStyleInternal(reference);
+}
+
+function compileThemeManifestStateDefinitionInternal<State extends string>(
+  definition: Partial<Record<State, ThemeManifestStyleReference>> = {},
+): Partial<Record<State, ThemeStyleReference>> {
+  const output: Partial<Record<State, ThemeStyleReference>> = {};
+  for (const [state, reference] of Object.entries(definition) as [State, ThemeManifestStyleReference][]) {
+    if (reference === undefined) continue;
+    output[state] = compileThemeManifestStyleReferenceInternal(reference);
+  }
+  return output;
+}
+
+function isThemeManifestStyleReferencePipeline(
+  reference: ThemeManifestStyleReference,
+): reference is readonly ThemeManifestStyleReference[] {
+  return Array.isArray(reference);
 }
 
 /** Public helper for compile Theme Manifest Options. */

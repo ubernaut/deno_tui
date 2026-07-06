@@ -16,6 +16,8 @@ import {
   standardThemeComponentNames as standardThemeComponentNamesFromModule,
 } from "../src/theme_standard_components.ts";
 import {
+  compileThemeManifestStateDefinition,
+  compileThemeManifestStyleReference,
   createAnsiStyle,
   createStandardComponentThemeDefinitions,
   createThemeEngine,
@@ -32,11 +34,7 @@ import {
 } from "../src/theme.ts";
 import { ThemeLayerStackImplementation } from "../src/theme_layer_stack.ts";
 import { ThemePackNotFoundErrorImplementation, ThemeRegistryImplementation } from "../src/theme_registry.ts";
-import {
-  type CompiledThemeManifestStyleReferenceCore,
-  compileThemeManifestStateDefinitionCore,
-  compileThemeManifestStyleReferenceCore,
-} from "../src/theme_manifest_core.ts";
+import type { ThemeStyleReference } from "../src/theme.ts";
 import { validateThemeComponentsCore } from "../src/theme_validation_core.ts";
 
 Deno.test("theme catalog merge sorts components and variants with default first", () => {
@@ -424,9 +422,9 @@ Deno.test("theme coverage core supports custom variant enumeration and injected 
 });
 
 Deno.test("theme manifest core compiles token names ansi specs and pipelines", () => {
-  const token = compileThemeManifestStyleReferenceCore("accent");
-  const style = compileThemeManifestStyleReferenceCore({ foreground: "brightCyan", bold: true });
-  const pipeline = compileThemeManifestStyleReferenceCore(["muted", { foreground: [1, 2, 3] }]);
+  const token = compileThemeManifestStyleReference("accent");
+  const style = compileThemeManifestStyleReference({ foreground: "brightCyan", bold: true });
+  const pipeline = compileThemeManifestStyleReference(["muted", { foreground: [1, 2, 3] }]);
 
   assertEquals(token, "accent");
   assertEquals(typeof style, "function");
@@ -436,7 +434,7 @@ Deno.test("theme manifest core compiles token names ansi specs and pipelines", (
 });
 
 Deno.test("theme manifest core compiles generic state maps without undefined entries", () => {
-  const state = compileThemeManifestStateDefinitionCore<"base" | "active">({
+  const state = compileThemeManifestStateDefinition({
     base: "foreground",
     active: { foreground: "yellow" },
   });
@@ -478,7 +476,7 @@ Deno.test("theme validation core reports unknown parents and inheritance cycles"
   assertEquals(issues[1]?.message, "Theme component inheritance cycle detected: Card -> Panel -> Card");
 });
 
-function callCompiledStyle(reference: CompiledThemeManifestStyleReferenceCore, value: string): string {
+function callCompiledStyle(reference: ThemeStyleReference, value: string): string {
   if (typeof reference !== "function") throw new Error("expected compiled style function");
   return reference(value);
 }
