@@ -24,12 +24,12 @@ export interface CpuHexTileLayout {
   height: number;
 }
 
-export interface CpuHexScrollOffset {
+interface CpuHexScrollOffset {
   columns: number;
   rows: number;
 }
 
-export interface CpuHexScrollTargetOptions {
+interface CpuHexScrollTargetOptions {
   label: string;
   tiles: readonly CpuHexTileLayout[];
   offset: CpuHexScrollOffset;

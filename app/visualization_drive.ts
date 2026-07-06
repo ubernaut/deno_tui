@@ -1,7 +1,7 @@
 import { clamp } from "./styles.ts";
 import type { RenderContext, SourceFrame } from "./types.ts";
 
-export interface VisualizationSourceDrive {
+interface VisualizationSourceDrive {
   source: SourceFrame;
   rawSeries: number[];
   normalizedSeries: number[];
