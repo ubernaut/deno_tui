@@ -32,7 +32,6 @@ import {
   ThemePackNotFoundError,
   ThemeRegistry,
 } from "../src/theme.ts";
-import { ThemeLayerStackImplementation } from "../src/theme_layer_stack.ts";
 import type { ThemeStyleReference } from "../src/theme.ts";
 import { validateThemeComponentsCore } from "../src/theme_validation_core.ts";
 
@@ -72,9 +71,7 @@ Deno.test("theme standard component module matches theme public re-exports", () 
   );
 });
 
-Deno.test("theme layer stack module backs the public facade class", () => {
-  assertEquals(ThemeLayerStack.prototype instanceof ThemeLayerStackImplementation, true);
-
+Deno.test("theme layer stack exposes public layer lifecycle behavior", () => {
   const layers = createThemeLayerStack([
     {
       id: "accent",
@@ -93,7 +90,6 @@ Deno.test("theme layer stack module backs the public facade class", () => {
   ]);
 
   assertInstanceOf(layers, ThemeLayerStack);
-  assertInstanceOf(layers, ThemeLayerStackImplementation);
   assertEquals(layers.ids(), ["accent", "buttons"]);
   assertEquals(layers.activeIds(), ["accent"]);
   assertEquals(layers.enable("buttons"), true);
@@ -107,8 +103,8 @@ Deno.test("theme layer stack module backs the public facade class", () => {
   layers.dispose();
 });
 
-Deno.test("theme layer stack implementation composes enabled layers only", () => {
-  const layers = new ThemeLayerStackImplementation([
+Deno.test("theme layer stack composes enabled layers only", () => {
+  const layers = createThemeLayerStack([
     {
       id: "base",
       options: { tokens: { foreground: (text) => `a${text}` } },
