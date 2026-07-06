@@ -1,4 +1,4 @@
-import type { AudioCatalogEntry, AudioMeterSnapshot } from "./types.ts";
+import type { AudioCatalogEntry } from "./types.ts";
 import type { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 
 interface AudioCommandOutput {
@@ -18,6 +18,13 @@ interface AudioCommand {
 export interface AudioRuntimeOptions {
   diagnostics?: DiagnosticsCollector;
   commandFactory?: (command: string, options: Deno.CommandOptions) => AudioCommand;
+}
+
+interface AudioMeterSnapshot {
+  rms: number;
+  peak: number;
+  history: number[];
+  active: boolean;
 }
 
 type MeterState = {

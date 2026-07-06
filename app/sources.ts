@@ -1,6 +1,14 @@
 import { AudioRegistry } from "./audio.ts";
 import { clamp, formatCompactBytes, formatOptionalNumber } from "./styles.ts";
-import type { AudioCatalogEntry, SourceDescriptor, SourceFrame, SystemSnapshot } from "./types.ts";
+import type { AudioCatalogEntry, SourceFrame, SystemSnapshot } from "./types.ts";
+
+interface SourceDescriptor {
+  id: string;
+  name: string;
+  description: string;
+  group: string;
+  kind: "system" | "audio" | "synthetic";
+}
 
 export function buildSourceCatalog(audioCatalog: AudioCatalogEntry[]) {
   const sources: SourceDescriptor[] = [

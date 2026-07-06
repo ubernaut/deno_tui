@@ -191,21 +191,6 @@ export interface AudioCatalogEntry {
   isDefault: boolean;
 }
 
-export interface AudioMeterSnapshot {
-  rms: number;
-  peak: number;
-  history: number[];
-  active: boolean;
-}
-
-export interface SourceDescriptor {
-  id: string;
-  name: string;
-  description: string;
-  group: string;
-  kind: "system" | "audio" | "synthetic";
-}
-
 export interface SourceFrame {
   id: string;
   name: string;
