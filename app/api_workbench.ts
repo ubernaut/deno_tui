@@ -294,7 +294,7 @@ import {
   workbenchQuitModalContent,
   workbenchWindowContentSize,
 } from "./workbench_panels.ts";
-import { WorkbenchThreeGridProjectionCache } from "../src/app/workbench_three_grid.ts";
+import { renderWorkbenchThreeSurface, WorkbenchThreeGridProjectionCache } from "../src/app/workbench_three_grid.ts";
 import {
   hideWorkbenchThreeRect,
   setWorkbenchThreeRect,
@@ -307,7 +307,6 @@ import {
   type WorkbenchThreeScene as SharedWorkbenchThreeScene,
   workbenchVisualizationThreeScene,
 } from "../src/app/workbench_three_scene.ts";
-import { renderWorkbenchThreeSurface } from "../src/app/workbench_three_surface.ts";
 import {
   threeRendererModeLabel,
   visualizationTextContentSize,

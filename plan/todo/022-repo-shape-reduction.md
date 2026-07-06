@@ -199,6 +199,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     in resized/maximized Three panes while preserving cells outside the projected region
   - Three panel display-grid scaling is folded into `src/app/three_panel_core.ts`, keeping the pure capped-renderer
     projection helper out of the app-facing Three panel facade while preserving the live resize behavior.
+  - Workbench Three surface rendering is folded into `src/app/workbench_three_grid.ts`, keeping resize/status projection
+    with the grid projector and removing the standalone surface helper and test shard.
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
