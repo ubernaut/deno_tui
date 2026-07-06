@@ -13,7 +13,7 @@ import { buttonText, fitCellText } from "../src/app/workbench_frame.ts";
 import type { Rectangle } from "../src/types.ts";
 import { textWidth } from "../src/utils/strings.ts";
 
-export const apiWorkbenchControlIds = [
+const apiWorkbenchControlIds = [
   "button",
   "genericButton",
   "modal",
@@ -111,7 +111,7 @@ export interface ApiWorkbenchControlHitPlacement {
   index?: number;
 }
 
-export function nextApiWorkbenchControlId(
+function nextApiWorkbenchControlId(
   current: ApiWorkbenchControlId,
   delta: number,
   options: { wrap?: boolean } = {},
@@ -244,7 +244,7 @@ export function isApiWorkbenchTouchOptimizedLayout(input: ApiWorkbenchTouchLayou
 }
 
 /** Expands small pointer targets for touch/mobile layouts while clipping to the visible bounds. */
-export function expandedApiWorkbenchTouchHitRect(input: ApiWorkbenchTouchHitRectInput): Rectangle {
+function expandedApiWorkbenchTouchHitRect(input: ApiWorkbenchTouchHitRectInput): Rectangle {
   const { rect, bounds } = input;
   const minimumWidth = rect.width <= 3 ? 6 : rect.width <= 10 ? Math.max(10, rect.width) : rect.width;
   const minimumHeight = rect.height <= 1 ? 3 : rect.height;

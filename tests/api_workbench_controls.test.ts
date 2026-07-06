@@ -5,7 +5,7 @@ import {
   apiWorkbenchControlBaseStyle,
   apiWorkbenchControlButtonDetailStyle,
   type ApiWorkbenchControlHitPlacement,
-  apiWorkbenchControlIds,
+  type ApiWorkbenchControlId,
   apiWorkbenchControlLineInto,
   type ApiWorkbenchControlLineRenderCommand,
   apiWorkbenchControlLineRenderCommandsInto,
@@ -22,11 +22,9 @@ import {
   type ApiWorkbenchWrappedOptionsRenderCommand,
   apiWorkbenchWrappedOptionsRenderCommandsInto,
   apiWorkbenchWrappedOptionStyle,
-  expandedApiWorkbenchTouchHitRect,
   findApiWorkbenchHitTarget,
   isApiWorkbenchTextControlActive,
   isApiWorkbenchTouchOptimizedLayout,
-  nextApiWorkbenchControlId,
   nextSortableDataColumn,
   resolveApiWorkbenchControlKey,
   resolveApiWorkbenchHitWindowId,
@@ -52,21 +50,16 @@ const workbenchWindowIds = {
 } as const;
 
 Deno.test("api workbench control ids preserve keyboard traversal order", () => {
-  assertEquals(apiWorkbenchControlIds[0], "button");
-  assertEquals(apiWorkbenchControlIds.at(-1), "textbox");
-  assertEquals(nextApiWorkbenchControlId("button", 1), "genericButton");
-  assertEquals(nextApiWorkbenchControlId("textbox", -1), "stepper");
+  assertEquals(apiWorkbenchControlAtEdge("button", 1), "genericButton");
+  assertEquals(apiWorkbenchControlAtEdge("textbox", -1), "stepper");
 });
 
 Deno.test("api workbench control traversal supports wrap and edge-aware tabbing", () => {
-  assertEquals(nextApiWorkbenchControlId("textbox", 1), undefined);
-  assertEquals(nextApiWorkbenchControlId("button", -1), undefined);
-  assertEquals(nextApiWorkbenchControlId("textbox", 1, { wrap: true }), "button");
-  assertEquals(nextApiWorkbenchControlId("button", -1, { wrap: true }), "textbox");
-  assertEquals(nextApiWorkbenchControlId("radio", 3), "input");
+  assertEquals(apiWorkbenchControlAtEdge("textbox", 1), undefined);
+  assertEquals(apiWorkbenchControlAtEdge("button", -1), undefined);
   assertEquals(apiWorkbenchControlAt("textbox", 1), "button");
   assertEquals(apiWorkbenchControlAt("button", -1), "textbox");
-  assertEquals(apiWorkbenchControlAtEdge("textbox", 1), undefined);
+  assertEquals(apiWorkbenchControlAt("radio", 3), "input");
   assertEquals(apiWorkbenchControlAtEdge("button", 1), "genericButton");
   assertEquals(isApiWorkbenchTextControlActive("controls", "controls", "input"), true);
   assertEquals(isApiWorkbenchTextControlActive("controls", "controls", "textbox"), true);
@@ -182,23 +175,6 @@ Deno.test("api workbench touch layout expands on coarse or compact screens", () 
   assertEquals(isApiWorkbenchTouchOptimizedLayout({ columns: 120, rows: 29 }), true);
 });
 
-Deno.test("api workbench expanded touch hit rect grows small targets and clips to bounds", () => {
-  assertEquals(
-    expandedApiWorkbenchTouchHitRect({
-      rect: { column: 10, row: 5, width: 2, height: 1 },
-      bounds: { column: 0, row: 0, width: 40, height: 20 },
-    }),
-    { column: 8, row: 4, width: 6, height: 3 },
-  );
-  assertEquals(
-    expandedApiWorkbenchTouchHitRect({
-      rect: { column: 0, row: 0, width: 2, height: 1 },
-      bounds: { column: 0, row: 0, width: 5, height: 2 },
-    }),
-    { column: 0, row: 0, width: 4, height: 2 },
-  );
-});
-
 Deno.test("api workbench shared hit lookup expands targets only for touch layouts", () => {
   const targets = hitStack([
     { rect: { column: 10, row: 5, width: 2, height: 1 }, action: "small" },
@@ -209,6 +185,20 @@ Deno.test("api workbench shared hit lookup expands targets only for touch layout
   assertEquals(findApiWorkbenchHitTarget({ targets, x: 21, y: 5, bounds })?.action, "direct");
   assertEquals(findApiWorkbenchHitTarget({ targets, x: 8, y: 4, bounds })?.action, undefined);
   assertEquals(findApiWorkbenchHitTarget({ targets, x: 8, y: 4, bounds, touchOptimized: true })?.action, "small");
+
+  const clippedTargets = hitStack([
+    { rect: { column: 0, row: 0, width: 2, height: 1 }, action: "clipped" },
+  ]);
+  const clippedBounds = { column: 0, row: 0, width: 5, height: 2 };
+  assertEquals(
+    findApiWorkbenchHitTarget({ targets: clippedTargets, x: 3, y: 1, bounds: clippedBounds, touchOptimized: true })
+      ?.action,
+    "clipped",
+  );
+  assertEquals(
+    findApiWorkbenchHitTarget({ targets: clippedTargets, x: 4, y: 1, bounds: clippedBounds, touchOptimized: true }),
+    undefined,
+  );
 });
 
 Deno.test("api workbench sortable column traversal skips disabled columns", () => {
@@ -987,8 +977,8 @@ Deno.test("api workbench stepper hit placements clip and reuse caller storage", 
 });
 
 function projectRowsForAdapter(
-  rows: readonly { id: (typeof apiWorkbenchControlIds)[number]; value: string; options?: unknown }[],
-  activeId: (typeof apiWorkbenchControlIds)[number],
+  rows: readonly { id: ApiWorkbenchControlId; value: string; options?: unknown }[],
+  activeId: ApiWorkbenchControlId,
 ): { segments: ApiWorkbenchControlLineSegment[]; hits: ApiWorkbenchControlHitPlacement[] } {
   const segments: ApiWorkbenchControlLineSegment[] = [];
   const hits: ApiWorkbenchControlHitPlacement[] = [];
