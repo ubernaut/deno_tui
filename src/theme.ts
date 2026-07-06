@@ -43,7 +43,7 @@ import {
 import { inspectThemeCoverageCore } from "./theme_coverage_core.ts";
 import { diffThemeEnginesCore } from "./theme_diff_core.ts";
 import { validateThemeComponentsCore } from "./theme_validation_core.ts";
-import { formatThemeProviderReportMarkdownFromReport } from "./theme_provider_report.ts";
+import { createThemeProviderReportCore, formatThemeProviderReportMarkdownFromReport } from "./theme_provider_report.ts";
 import {
   ThemeEngine as ThemeEngineImplementation,
   ThemeInheritanceError as ThemeInheritanceErrorImplementation,
@@ -55,7 +55,6 @@ import {
   themeProviderActiveOptions as themeProviderActiveOptionsCore,
 } from "./theme_provider_inspection.ts";
 import { createThemeCatalogFromInspection, previewThemeProviderCore } from "./theme_provider_preview.ts";
-import { createThemeProviderReportCore } from "./theme_provider_report_builder.ts";
 import { ThemeProviderImplementation } from "./theme_provider.ts";
 
 /** Function that's supposed to return styled text given string as parameter */

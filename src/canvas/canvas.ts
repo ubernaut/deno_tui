@@ -166,7 +166,9 @@ export class Canvas extends EventEmitter<CanvasEventMap> {
       drawObject.rerenderCells.length = 0;
       const ranged = drawObject as DrawObject & { rerenderRanges?: DirtyRowSegment[][] };
       if (ranged.rerenderRanges) {
-        for (const row of ranged.rerenderRanges) row.length = 0;
+        for (const row of ranged.rerenderRanges) {
+          if (row) row.length = 0;
+        }
         ranged.rerenderRanges.length = 0;
       }
     }

@@ -22,8 +22,10 @@ import {
 } from "../src/theme_provider_inspection.ts";
 import { createThemeCatalogFromInspection, previewThemeProviderCore } from "../src/theme_provider_preview.ts";
 import { ThemeProviderImplementation } from "../src/theme_provider.ts";
-import { formatThemeProviderReportMarkdownFromReport } from "../src/theme_provider_report.ts";
-import { createThemeProviderReportCore } from "../src/theme_provider_report_builder.ts";
+import {
+  createThemeProviderReportCore,
+  formatThemeProviderReportMarkdownFromReport,
+} from "../src/theme_provider_report.ts";
 
 Deno.test("theme provider module backs the public facade class", async () => {
   const store = new MemoryStore<string>();

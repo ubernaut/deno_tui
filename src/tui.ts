@@ -69,6 +69,10 @@ export class Tui extends EventEmitter<
   enableMouse: boolean;
   enableBracketedPaste: boolean;
   enableFocusEvents: boolean;
+  private readonly updateCanvasSize: (options?: { verifyWithStty?: boolean }) => void;
+  private readonly sigwinchResizeHandler?: () => void;
+  private readonly resizePollTimer?: ReturnType<typeof setInterval>;
+  private destroyed = false;
 
   constructor(options: TuiOptions) {
     super();
@@ -80,9 +84,23 @@ export class Tui extends EventEmitter<
       stdout: this.stdout,
       size: terminalSize(),
     });
+    this.updateCanvasSize = (updateOptions = {}) => {
+      if (this.destroyed) return;
+      const { canvas } = this;
+      const { columns, rows } = terminalSize(updateOptions);
+
+      const size = canvas.size.peek();
+
+      if (size.columns !== columns || size.rows !== rows) {
+        canvas.size.value = { columns, rows };
+      }
+    };
     this.renderLoop = options.renderLoop ?? new RenderLoop({
       intervalMs: this.refreshRate,
-      tick: () => this.canvas.render(),
+      tick: () => {
+        this.updateCanvasSize();
+        this.canvas.render();
+      },
     });
     this.enableBracketedPaste = options.enableBracketedPaste ?? false;
     this.enableFocusEvents = options.enableFocusEvents ?? false;
@@ -101,23 +119,17 @@ export class Tui extends EventEmitter<
       return tuiRectangle;
     });
 
-    const updateCanvasSize = () => {
-      const { canvas } = this;
-      const { columns, rows } = terminalSize();
-
-      const size = canvas.size.peek();
-
-      if (size.columns !== columns || size.rows !== rows) {
-        canvas.size.value = { columns, rows };
-      }
-    };
-
-    updateCanvasSize();
+    this.updateCanvasSize();
 
     if (Deno.build.os === "windows") {
-      setInterval(updateCanvasSize, this.refreshRate);
+      this.resizePollTimer = setInterval(this.updateCanvasSize, this.refreshRate);
     } else {
-      Deno.addSignalListener("SIGWINCH", updateCanvasSize);
+      this.sigwinchResizeHandler = () => this.updateCanvasSize({ verifyWithStty: true });
+      Deno.addSignalListener("SIGWINCH", this.sigwinchResizeHandler);
+      this.resizePollTimer = setInterval(
+        () => this.updateCanvasSize({ verifyWithStty: true }),
+        Math.max(1_000, this.refreshRate * 10),
+      );
     }
   }
 
@@ -159,9 +171,17 @@ export class Tui extends EventEmitter<
   }
 
   destroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
     this.off();
 
     this.renderLoop.stop();
+    if (this.resizePollTimer !== undefined) clearInterval(this.resizePollTimer);
+    if (Deno.build.os !== "windows" && this.sigwinchResizeHandler) {
+      try {
+        Deno.removeSignalListener("SIGWINCH", this.sigwinchResizeHandler);
+      } catch { /**/ }
+    }
 
     try {
       this.stdin.setRaw(false);
@@ -204,13 +224,46 @@ export class Tui extends EventEmitter<
   }
 }
 
-function terminalSize(): { columns: number; rows: number } {
+function terminalSize(options: { verifyWithStty?: boolean } = {}): { columns: number; rows: number } {
   try {
-    return Deno.consoleSize();
+    const denoSize = Deno.consoleSize();
+    return options.verifyWithStty ? sttyTerminalSize() ?? denoSize : denoSize;
   } catch (error) {
+    const sttySize = options.verifyWithStty ? sttyTerminalSize() : undefined;
+    if (sttySize) return sttySize;
     const detail = error instanceof Error ? error.message : String(error);
     throw new Error(
       `Tui requires an interactive terminal. Run this command from a TTY or use a report/web task instead. (${detail})`,
     );
+  }
+}
+
+function sttyTerminalSize(): { columns: number; rows: number } | undefined {
+  if (Deno.build.os === "windows") return undefined;
+  try {
+    if (!canRunStty()) return undefined;
+    const output = new Deno.Command("stty", {
+      args: ["size"],
+      stdin: "inherit",
+      stdout: "piped",
+      stderr: "null",
+    }).outputSync();
+    if (!output.success) return undefined;
+    const text = new TextDecoder().decode(output.stdout).trim();
+    const [rowsText, columnsText] = text.split(/\s+/, 2);
+    const rows = Number.parseInt(rowsText ?? "", 10);
+    const columns = Number.parseInt(columnsText ?? "", 10);
+    if (!Number.isFinite(rows) || !Number.isFinite(columns) || rows <= 0 || columns <= 0) return undefined;
+    return { columns, rows };
+  } catch {
+    return undefined;
+  }
+}
+
+function canRunStty(): boolean {
+  try {
+    return Deno.permissions.querySync({ name: "run", command: "stty" }).state === "granted";
+  } catch {
+    return false;
   }
 }

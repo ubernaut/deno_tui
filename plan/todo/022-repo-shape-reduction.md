@@ -201,6 +201,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     projection helper out of the app-facing Three panel facade while preserving the live resize behavior.
   - Workbench Three surface rendering is folded into `src/app/workbench_three_grid.ts`, keeping resize/status projection
     with the grid projector and removing the standalone surface helper and test shard.
+  - Theme provider report aggregation is folded into `src/theme_provider_report.ts`, keeping report construction and
+    Markdown formatting together behind the public `src/theme.ts` facade.
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
