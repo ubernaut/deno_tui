@@ -1301,3 +1301,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Fixed Three panel revision publication so same revisions always skip and advancing revisions still suppress redraws
   when content fingerprints are unchanged. This restored the tested redraw-suppression contract for revisioned renderer
   frames while keeping the same-revision publication benchmark on the cheap `0.001ms` path.
+- Cached Acerola ASCII render-target dimensions so steady frames skip redundant uniform vector writes and nine
+  `RenderTarget.setSize()` calls when the WebGPU drawing buffer size has not changed. A focused forged-node test pins
+  idempotent `setSize()` behavior; the block-mode live probe and resized workbench visual smoke stayed green.

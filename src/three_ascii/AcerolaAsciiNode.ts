@@ -191,6 +191,10 @@ export class AcerolaAsciiNode extends TempNode {
   private sobelXMaterial?: NodeMaterial;
   private sobelMaterial?: NodeMaterial;
   private asciiMaterial?: NodeMaterial;
+  private targetScaledWidth = 1;
+  private targetScaledHeight = 1;
+  private targetDownscaleWidth = 1;
+  private targetDownscaleHeight = 1;
   private renderProfile: AcerolaAsciiRenderProfile = {
     image: true,
     terminalEdges: true,
@@ -348,6 +352,18 @@ export class AcerolaAsciiNode extends TempNode {
     const scaledHeight = Math.max(1, Math.round(height * this.resolutionScale));
     const downscaleWidth = Math.max(1, Math.floor(scaledWidth / 8));
     const downscaleHeight = Math.max(1, Math.floor(scaledHeight / 8));
+    if (
+      scaledWidth === this.targetScaledWidth &&
+      scaledHeight === this.targetScaledHeight &&
+      downscaleWidth === this.targetDownscaleWidth &&
+      downscaleHeight === this.targetDownscaleHeight
+    ) {
+      return;
+    }
+    this.targetScaledWidth = scaledWidth;
+    this.targetScaledHeight = scaledHeight;
+    this.targetDownscaleWidth = downscaleWidth;
+    this.targetDownscaleHeight = downscaleHeight;
 
     this.renderSize.value.set(scaledWidth, scaledHeight);
     this.inverseRenderSize.value.set(1 / scaledWidth, 1 / scaledHeight);

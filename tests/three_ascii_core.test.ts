@@ -9,7 +9,7 @@ import {
   assertStringIncludes,
   assertThrows,
 } from "./deps.ts";
-import type { AcerolaAsciiRenderProfile } from "../src/three_ascii/AcerolaAsciiNode.ts";
+import { AcerolaAsciiNode, type AcerolaAsciiRenderProfile } from "../src/three_ascii/AcerolaAsciiNode.ts";
 import type { ThreeAsciiAnsiGridInput } from "../src/three_ascii/ansi_grid.ts";
 import {
   fillGlyphKeyForIndex,
@@ -715,6 +715,42 @@ Deno.test("ThreeAsciiRenderer resizes Acerola targets with the backend renderer"
 
   assertEquals(rendererSizes, [[12 * THREE_ASCII_TILE_SIZE, 6 * THREE_ASCII_TILE_SIZE]]);
   assertEquals(asciiNodeSizes, [[12 * THREE_ASCII_TILE_SIZE, 6 * THREE_ASCII_TILE_SIZE]]);
+});
+
+Deno.test("AcerolaAsciiNode skips redundant render target sizing", () => {
+  const sizes: Array<[string, number, number]> = [];
+  const target = (name: string) => ({
+    setSize: (width: number, height: number) => sizes.push([name, width, height]),
+  });
+  const uniformVector = () => ({
+    value: { set: (width: number, height: number) => sizes.push(["uniform", width, height]) },
+  });
+  const node = Object.create(AcerolaAsciiNode.prototype) as AcerolaAsciiNode;
+  Object.assign(node as unknown as Record<string, unknown>, {
+    resolutionScale: 1,
+    renderSize: uniformVector(),
+    inverseRenderSize: uniformVector(),
+    downscaleSize: uniformVector(),
+    luminanceTarget: target("luminance"),
+    blurTarget: target("blur"),
+    dogTarget: target("dog"),
+    normalsTarget: target("normals"),
+    edgesTarget: target("edges"),
+    sobelXTarget: target("sobelX"),
+    sobelTarget: target("sobel"),
+    asciiTarget: target("ascii"),
+    downscaleTarget: target("downscale"),
+  });
+
+  node.setSize(16, 8);
+  assertEquals(sizes.length, 12);
+
+  node.setSize(16, 8);
+  assertEquals(sizes.length, 12);
+
+  node.setSize(24, 8);
+  assertEquals(sizes.length, 24);
+  assertEquals(sizes.at(-1), ["downscale", 3, 1]);
 });
 
 Deno.test("ThreeAsciiRenderer updates camera aspect before scene frame callbacks after resize", async () => {
