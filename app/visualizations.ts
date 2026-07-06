@@ -671,21 +671,13 @@ const neonVisualizationCatalog: readonly VisualizationCatalogEntry[] = neonVisua
   };
 });
 
-export const visualizationCatalog: readonly VisualizationCatalogEntry[] = [
+const visualizationCatalog: readonly VisualizationCatalogEntry[] = [
   ...monitorVisualizationCatalog,
   ...neonThreeVisualizationCatalog,
   ...neonVisualizationCatalog,
 ];
 
 const visualizationCatalogById = new Map(visualizationCatalog.map((entry) => [entry.id, entry]));
-
-export function visualizationFamily(id: string): VisualizationFamily | undefined {
-  return visualizationCatalogById.get(id)?.family;
-}
-
-export function visualizationsByFamily(family: VisualizationFamily): VisualizationCatalogEntry[] {
-  return visualizationCatalog.filter((entry) => entry.family === family).map((entry) => ({ ...entry }));
-}
 
 export const visualizations: VisualizationDescriptor[] = visualizationCatalog.map((entry) => ({ ...entry }));
 
