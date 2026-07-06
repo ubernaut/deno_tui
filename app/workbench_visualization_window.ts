@@ -19,17 +19,6 @@ interface WorkbenchVisualizationContentSize {
   height: number;
 }
 
-/** Minimal color tokens needed to format the built-in Three fallback rows. */
-interface WorkbenchThreeFallbackTheme {
-  buttonActiveText: string;
-  buttonActiveBg: string;
-  accent: string;
-  good: string;
-  warn: string;
-  soft: string;
-  surface: string;
-}
-
 /** Minimal theme tokens needed to style generic visualization text rows. */
 interface WorkbenchVisualizationRowsTheme {
   background: string;
@@ -42,31 +31,6 @@ interface WorkbenchVisualizationRowsTheme {
   warn: string;
 }
 
-/** Options for building the built-in Three ASCII fallback rows. */
-interface WorkbenchThreeFallbackRowsOptions {
-  width: number;
-  height: number;
-  terminalGlyphStyle: AsciiOptions["terminalGlyphStyle"];
-  rendererAvailable: boolean;
-  theme: WorkbenchThreeFallbackTheme;
-  center?: (text: string, width: number) => string;
-}
-
-/** Minimal theme tokens needed to style transient Three renderer status rows. */
-interface WorkbenchThreeStatusRowsTheme {
-  surface: string;
-  warn: string;
-}
-
-/** Options for building centered transient Three renderer status rows. */
-interface WorkbenchThreeStatusRowsOptions {
-  width: number;
-  height: number;
-  message: string;
-  theme: WorkbenchThreeStatusRowsTheme;
-  center?: (text: string, width: number) => string;
-}
-
 /** Options for projecting the browser workbench Three preview rows. */
 interface WorkbenchThreePreviewRowsOptions {
   width: number;
@@ -77,18 +41,6 @@ interface WorkbenchThreePreviewRowsOptions {
   asciiOptions?: Pick<AsciiOptions, "preset" | "terminalGlyphStyle" | "kittyGraphics" | "kittyDisableAscii">;
   orbRows?: string[];
 }
-
-const WORKBENCH_THREE_FALLBACK_BODY: readonly string[] = [
-  "         .-=========-.         ",
-  "      .-#%%%@@@@@@%%%#-.       ",
-  "    .+%%@*=-.     .-=*@%+.     ",
-  "   :#%@-     TORUS     -@%#:   ",
-  "   *%@=   <> SPHERE <>  =@%*   ",
-  "   :#%@-      CUBE      -@%#:  ",
-  "    .+%%@*=-.     .-=*@%+.     ",
-  "      .-#%%%@@@@@@%%%#-.       ",
-  "         `-=========-'         ",
-] as const;
 
 /** Builds visualization rows into caller-owned storage. */
 function visualizationWindowRowsInto(
@@ -183,60 +135,6 @@ export function threeRendererModeLabel(options: AsciiOptions): string {
   return workbenchAsciiRendererModeLabel(options, terminalGlyphStyleLabel);
 }
 
-/** Builds the text fallback used while the built-in Three ASCII renderer is unavailable or warming up. */
-export function workbenchThreeFallbackRowsInto(
-  target: RowStyle[],
-  options: WorkbenchThreeFallbackRowsOptions,
-): RowStyle[] {
-  const t = options.theme;
-  const center = options.center ?? centerText;
-  const title = ` THREE ASCII FALLBACK · ${terminalGlyphStyleLabel(options.terminalGlyphStyle).toUpperCase()} `;
-  target.length = 0;
-  target.push(
-    { text: title, fg: t.buttonActiveText, bg: t.buttonActiveBg, bold: true },
-    {
-      text: options.rendererAvailable ? "renderer warming up" : "WebGPU/WebGL backend unavailable; text preview active",
-      fg: t.warn,
-      bg: t.surface,
-      bold: !options.rendererAvailable,
-    },
-    { text: "", bg: t.surface },
-  );
-  const bodyRows = Math.min(WORKBENCH_THREE_FALLBACK_BODY.length, Math.max(0, options.height - 5));
-  for (let index = 0; index < bodyRows; index += 1) {
-    target.push({
-      text: center(WORKBENCH_THREE_FALLBACK_BODY[index]!, options.width),
-      fg: index % 3 === 0 ? t.accent : index % 3 === 1 ? t.good : t.warn,
-      bg: t.surface,
-      bold: true,
-    });
-  }
-  target.push({ text: "scene: torus knot + sphere + box + floor", fg: t.soft, bg: t.surface });
-  return target;
-}
-
-/** Builds full-width centered status rows for warming, resizing, and unavailable Three panes. */
-export function workbenchThreeStatusRowsInto(
-  target: RowStyle[],
-  options: WorkbenchThreeStatusRowsOptions,
-): RowStyle[] {
-  const width = Math.max(0, Math.floor(options.width));
-  const height = Math.max(0, Math.floor(options.height));
-  const center = options.center ?? centerText;
-  target.length = height;
-  const messageRow = Math.max(0, Math.floor(height / 2));
-  const blank = " ".repeat(width);
-  for (let rowIndex = 0; rowIndex < height; rowIndex += 1) {
-    const row = target[rowIndex] ?? { text: "" };
-    row.text = rowIndex === messageRow ? center(options.message, width).padEnd(width) : blank;
-    row.fg = rowIndex === messageRow ? options.theme.warn : undefined;
-    row.bg = options.theme.surface;
-    row.bold = undefined;
-    target[rowIndex] = row;
-  }
-  return target;
-}
-
 /** Builds the web-safe Three preview rows shown in the browser API workbench pane. */
 export function workbenchThreePreviewRowsInto(
   target: string[],
@@ -285,13 +183,6 @@ function appendBodyLines(target: string[], body: string): void {
     target.push(body.slice(start, index));
     start = index + 1;
   }
-}
-
-function centerText(text: string, width: number): string {
-  const safeWidth = Math.max(0, Math.floor(width));
-  if (text.length >= safeWidth) return text.slice(0, safeWidth);
-  const left = Math.floor((safeWidth - text.length) / 2);
-  return `${" ".repeat(left)}${text}`;
 }
 
 function asciiOrbInto(target: string[], width: number, height: number, phase: number): string[] {

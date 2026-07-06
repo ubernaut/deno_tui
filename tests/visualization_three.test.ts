@@ -7,9 +7,7 @@ import {
   threeRendererModeLabel,
   visualizationTextContentSize,
   visualizationThreeStatusLine,
-  workbenchThreeFallbackRowsInto,
   workbenchThreePreviewRowsInto,
-  workbenchThreeStatusRowsInto,
   workbenchVisualizationRowsInto,
   type WorkbenchVisualizationWindowOption,
 } from "../app/workbench_visualization_window.ts";
@@ -121,16 +119,6 @@ const windowRender: PanelRender = {
   alert: "",
   accent: "signal",
   severity: "info",
-};
-
-const rowTheme = {
-  buttonActiveText: "#ffffff",
-  buttonActiveBg: "#7a2cff",
-  accent: "#9cff3a",
-  good: "#1ee7d2",
-  warn: "#ffb02e",
-  soft: "#c7b8ff",
-  surface: "#101018",
 };
 
 const visualizationTheme = {
@@ -342,67 +330,6 @@ Deno.test("visualizationThreeStatusLine uses renderer mode labels and compact sp
   assertStringIncludes(status, "ACEROLA LATTICE");
   assertStringIncludes(status, threeRendererModeLabel(ascii).toUpperCase());
   assertStringIncludes(status, windowOption.label);
-});
-
-Deno.test("workbenchThreeFallbackRowsInto projects styled fallback rows", () => {
-  const target = [{ text: "stale" }];
-  const rows = workbenchThreeFallbackRowsInto(target, {
-    width: 48,
-    height: 10,
-    terminalGlyphStyle: "blocks",
-    rendererAvailable: false,
-    theme: rowTheme,
-    center: (text) => text,
-  });
-
-  assertEquals(rows, target);
-  assertEquals(rows[0], {
-    text: " THREE ASCII FALLBACK · BLOCKS ",
-    fg: rowTheme.buttonActiveText,
-    bg: rowTheme.buttonActiveBg,
-    bold: true,
-  });
-  assertEquals(rows[1], {
-    text: "WebGPU/WebGL backend unavailable; text preview active",
-    fg: rowTheme.warn,
-    bg: rowTheme.surface,
-    bold: true,
-  });
-  assertStringIncludes(rows.map((row) => row.text).join("\n"), "TORUS");
-  assertEquals(rows.at(-1), {
-    text: "scene: torus knot + sphere + box + floor",
-    fg: rowTheme.soft,
-    bg: rowTheme.surface,
-  });
-});
-
-Deno.test("workbenchThreeFallbackRowsInto reports warming state without alarm bold", () => {
-  const rows = workbenchThreeFallbackRowsInto([], {
-    width: 24,
-    height: 3,
-    terminalGlyphStyle: "mixed",
-    rendererAvailable: true,
-    theme: rowTheme,
-  });
-
-  assertEquals(rows[0]?.text, " THREE ASCII FALLBACK · MIXED ");
-  assertEquals(rows[1], { text: "renderer warming up", fg: rowTheme.warn, bg: rowTheme.surface, bold: false });
-  assertEquals(rows.length, 4);
-});
-
-Deno.test("workbenchThreeStatusRowsInto projects full-width centered status rows", () => {
-  const rows = workbenchThreeStatusRowsInto([], {
-    width: 9,
-    height: 3,
-    message: "wait",
-    theme: rowTheme,
-  });
-
-  assertEquals(rows, [
-    { text: "         ", fg: undefined, bg: rowTheme.surface, bold: undefined },
-    { text: "  wait   ", fg: rowTheme.warn, bg: rowTheme.surface, bold: undefined },
-    { text: "         ", fg: undefined, bg: rowTheme.surface, bold: undefined },
-  ]);
 });
 
 Deno.test("workbenchThreePreviewRowsInto projects web-safe preview rows", () => {

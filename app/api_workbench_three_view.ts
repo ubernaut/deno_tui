@@ -13,10 +13,10 @@ import {
 } from "../src/app/workbench_three_grid.ts";
 import type { ApiWorkbenchThreePressureInspection } from "../src/app/workbench_three_runtime.ts";
 import type { ThreeAsciiRendererPerformance } from "../src/three_ascii/renderer.ts";
+import { terminalGlyphStyleLabel } from "../src/three_ascii/options.ts";
 import type { Rectangle } from "../src/types.ts";
 import type { ApiWorkbenchThemeSpec } from "./api_workbench_catalog.ts";
 import type { AsciiOptions } from "./types.ts";
-import { workbenchThreeFallbackRowsInto, workbenchThreeStatusRowsInto } from "./workbench_visualization_window.ts";
 
 interface ApiWorkbenchThreePaintStyle {
   bg?: string;
@@ -63,6 +63,18 @@ interface ApiWorkbenchThreeSurfaceRenderOptions {
   statusMessage: string;
   onPressureRows?: (rows: number) => void;
 }
+
+const WORKBENCH_THREE_FALLBACK_BODY: readonly string[] = [
+  "         .-=========-.         ",
+  "      .-#%%%@@@@@@%%%#-.       ",
+  "    .+%%@*=-.     .-=*@%+.     ",
+  "   :#%@-     TORUS     -@%#:   ",
+  "   *%@=   <> SPHERE <>  =@%*   ",
+  "   :#%@-      CUBE      -@%#:  ",
+  "    .+%%@*=-.     .-=*@%+.     ",
+  "      .-#%%%@@@@@@%%%#-.       ",
+  "         `-=========-'         ",
+] as const;
 
 /** Renders the built-in Three window header and runtime telemetry into caller-owned row storage. */
 export function renderApiWorkbenchThreeHeader(options: ApiWorkbenchThreeHeaderRenderOptions): void {
@@ -141,4 +153,76 @@ export function renderApiWorkbenchThreeSurface(
     countForPressure: options.countForPressure,
     onPressureRows: options.onPressureRows,
   });
+}
+
+function workbenchThreeFallbackRowsInto(
+  target: RowStyle[],
+  options: {
+    width: number;
+    height: number;
+    terminalGlyphStyle: AsciiOptions["terminalGlyphStyle"];
+    rendererAvailable: boolean;
+    theme: ApiWorkbenchThemeSpec;
+    center?: (text: string, width: number) => string;
+  },
+): RowStyle[] {
+  const t = options.theme;
+  const center = options.center ?? centerText;
+  const title = ` THREE ASCII FALLBACK · ${terminalGlyphStyleLabel(options.terminalGlyphStyle).toUpperCase()} `;
+  target.length = 0;
+  target.push(
+    { text: title, fg: t.buttonActiveText, bg: t.buttonActiveBg, bold: true },
+    {
+      text: options.rendererAvailable ? "renderer warming up" : "WebGPU/WebGL backend unavailable; text preview active",
+      fg: t.warn,
+      bg: t.surface,
+      bold: !options.rendererAvailable,
+    },
+    { text: "", bg: t.surface },
+  );
+  const bodyRows = Math.min(WORKBENCH_THREE_FALLBACK_BODY.length, Math.max(0, options.height - 5));
+  for (let index = 0; index < bodyRows; index += 1) {
+    target.push({
+      text: center(WORKBENCH_THREE_FALLBACK_BODY[index]!, options.width),
+      fg: index % 3 === 0 ? t.accent : index % 3 === 1 ? t.good : t.warn,
+      bg: t.surface,
+      bold: true,
+    });
+  }
+  target.push({ text: "scene: torus knot + sphere + box + floor", fg: t.soft, bg: t.surface });
+  return target;
+}
+
+function workbenchThreeStatusRowsInto(
+  target: RowStyle[],
+  options: {
+    width: number;
+    height: number;
+    message: string;
+    theme: ApiWorkbenchThemeSpec;
+    center?: (text: string, width: number) => string;
+  },
+): RowStyle[] {
+  const width = Math.max(0, Math.floor(options.width));
+  const height = Math.max(0, Math.floor(options.height));
+  const center = options.center ?? centerText;
+  target.length = height;
+  const messageRow = Math.max(0, Math.floor(height / 2));
+  const blank = " ".repeat(width);
+  for (let rowIndex = 0; rowIndex < height; rowIndex += 1) {
+    const row = target[rowIndex] ?? { text: "" };
+    row.text = rowIndex === messageRow ? center(options.message, width).padEnd(width) : blank;
+    row.fg = rowIndex === messageRow ? options.theme.warn : undefined;
+    row.bg = options.theme.surface;
+    row.bold = undefined;
+    target[rowIndex] = row;
+  }
+  return target;
+}
+
+function centerText(text: string, width: number): string {
+  const safeWidth = Math.max(0, Math.floor(width));
+  if (text.length >= safeWidth) return text.slice(0, safeWidth);
+  const left = Math.floor((safeWidth - text.length) / 2);
+  return `${" ".repeat(left)}${text}`;
 }
