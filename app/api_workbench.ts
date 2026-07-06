@@ -291,15 +291,13 @@ import {
   renderApiWorkbenchStatus,
 } from "./api_workbench_chrome_view.ts";
 import {
+  renderApiWorkbenchTerminalOutputBody,
+  renderApiWorkbenchTerminalOutputToolbar,
   renderApiWorkbenchTerminalSessionTabs,
   renderApiWorkbenchTerminalShellHeader,
   renderApiWorkbenchTerminalShellPanes,
   renderApiWorkbenchTerminalShellToolbar,
 } from "./api_workbench_terminal_shell_view.ts";
-import {
-  renderApiWorkbenchTerminalOutputBody,
-  renderApiWorkbenchTerminalOutputToolbar,
-} from "./api_workbench_terminal_output_view.ts";
 import { ApiWorkbenchControlsViewBufferCache, renderApiWorkbenchControls } from "./api_workbench_controls_view.ts";
 import { renderApiWorkbenchModalOverlay, renderApiWorkbenchThreeConfigModal } from "./api_workbench_modal_view.ts";
 import {

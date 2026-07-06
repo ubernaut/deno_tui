@@ -4,6 +4,11 @@ import { type WorkbenchTerminalSessionTabBufferCache } from "../src/app/workbenc
 import {
   type WorkbenchTerminalCopyRowProjection,
   workbenchTerminalCopyRowsInto,
+  type WorkbenchTerminalOutputToolbarAction,
+  workbenchTerminalOutputToolbarItemsInto,
+  type WorkbenchTerminalOutputToolbarState,
+  type WorkbenchTerminalOutputWindowRow,
+  workbenchTerminalOutputWindowRowsInto,
   workbenchTerminalPaneProjectionsInto,
   workbenchTerminalPaneTitleRenderCommandsInto,
   workbenchTerminalSessionTabRenderCommandsInto,
@@ -15,12 +20,19 @@ import {
   workbenchTerminalToolbarItemsInto,
   type WorkbenchTerminalToolbarState,
 } from "../src/app/workbench_terminal.ts";
-import { terminalInputModeDisplayLabel } from "../src/runtime/terminal_status.ts";
+import type { TerminalOutputLine } from "../src/components/terminal_output.ts";
+import type { ProcessSessionInspection } from "../src/runtime/process_session.ts";
+import {
+  formatTerminalOutputHint,
+  summarizeTerminalStatus,
+  terminalInputModeDisplayLabel,
+} from "../src/runtime/terminal_status.ts";
 import type { TerminalShellController, TerminalShellInspection } from "../src/runtime/terminal_shell.ts";
 import type { TerminalShellWorkspaceInspection } from "../src/runtime/terminal_shell_workspace.ts";
 import type { Rectangle } from "../src/types.ts";
 import {
   apiWorkbenchTerminalCellStyle,
+  apiWorkbenchTerminalOutputLineStyle,
   apiWorkbenchTerminalStatusToneColor,
   type ApiWorkbenchThemeSpec,
 } from "./api_workbench_catalog.ts";
@@ -83,6 +95,34 @@ interface ApiWorkbenchTerminalShellToolbarRenderOptions<
   hitType?: HitType;
 }
 
+interface ApiWorkbenchTerminalOutputToolbarRenderOptions {
+  frame: WorkbenchFrame;
+  rect: Rectangle;
+  startRow: number;
+  state: WorkbenchTerminalOutputToolbarState;
+  buffers: WorkbenchButtonRowBufferCache<WorkbenchTerminalOutputToolbarAction>;
+  theme: ApiWorkbenchThemeSpec;
+  contrastText: (background: string, dark: string, light: string) => string;
+  paint: (text: string, style: { fg: string; bg: string; bold?: boolean }) => string;
+  write: (frame: WorkbenchFrame, row: number, column: number, value: string) => void;
+  addHit: (rect: Rectangle, action: { type: "terminalOutput"; action: WorkbenchTerminalOutputToolbarAction }) => void;
+}
+
+interface ApiWorkbenchTerminalOutputBodyRenderOptions {
+  frame: WorkbenchFrame;
+  rect: Rectangle;
+  startRow: number;
+  inspection: ProcessSessionInspection;
+  inputMode: "raw" | "workbench";
+  lines: readonly TerminalOutputLine[];
+  rows: WorkbenchTerminalOutputWindowRow[];
+  theme: ApiWorkbenchThemeSpec;
+  contrastText: (background: string, dark: string, light: string) => string;
+  fit: (text: string, width: number) => string;
+  paint: (text: string, style: ApiWorkbenchTerminalShellPaintStyle) => string;
+  write: (frame: WorkbenchFrame, row: number, column: number, value: string) => void;
+}
+
 interface ApiWorkbenchTerminalShellHeaderRenderOptions extends ApiWorkbenchTerminalShellPaintCallbacks {
   frame: WorkbenchFrame;
   rect: Rectangle;
@@ -143,6 +183,69 @@ export function renderApiWorkbenchTerminalShellToolbar<
     addHit,
     hitAction: (action) => ({ type: hitType, action }),
   });
+}
+
+/** Renders the process-output terminal toolbar with shared button-row projection helpers. */
+export function renderApiWorkbenchTerminalOutputToolbar(
+  options: ApiWorkbenchTerminalOutputToolbarRenderOptions,
+): number {
+  const { frame, rect, startRow, state, buffers, theme, contrastText, paint, write, addHit } = options;
+  workbenchTerminalOutputToolbarItemsInto(buffers.items, state);
+  return renderApiWorkbenchButtonRow({
+    frame,
+    rect,
+    startRow,
+    items: buffers.items,
+    placements: buffers.placements,
+    commands: buffers.commands,
+    theme,
+    contrastText,
+    paint,
+    write,
+    addHit,
+    hitAction: (action) => ({ type: "terminalOutput" as const, action }),
+  });
+}
+
+/** Renders the process-output terminal body below the toolbar. */
+export function renderApiWorkbenchTerminalOutputBody(
+  options: ApiWorkbenchTerminalOutputBodyRenderOptions,
+): number {
+  const { frame, rect, startRow, inspection, inputMode, lines, rows, theme, contrastText, fit, paint, write } = options;
+  const statusTone = apiWorkbenchTerminalStatusToneColor(inspection.status, theme);
+  const statusSummary = summarizeTerminalStatus(inspection, {
+    title: terminalInputModeDisplayLabel(inputMode),
+    backendId: "process",
+    width: rect.width,
+  });
+  const projectedRows = workbenchTerminalOutputWindowRowsInto(rows, {
+    statusText: statusSummary.text,
+    hintText: formatTerminalOutputHint(inputMode),
+    lines,
+    sourcePrefix: true,
+  });
+  const maxRows = Math.min(projectedRows.length, Math.max(0, rect.row + rect.height - startRow));
+  for (let index = 0; index < maxRows; index += 1) {
+    const projected = projectedRows[index]!;
+    const style = projected.kind === "status"
+      ? {
+        fg: contrastText(statusTone, theme.background, theme.text),
+        bg: statusTone,
+        bold: true,
+      }
+      : projected.kind === "hint"
+      ? { fg: theme.soft, bg: theme.panelSoft }
+      : projected.kind === "empty"
+      ? { fg: theme.muted, bg: theme.surface }
+      : apiWorkbenchTerminalOutputLineStyle(projected.source ?? "stdout", theme);
+    write(
+      frame,
+      startRow + index,
+      rect.column,
+      paint(fit(projected.text, rect.width), style),
+    );
+  }
+  return maxRows;
 }
 
 /** Renders the active shell status and hint rows above pane content. */

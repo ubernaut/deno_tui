@@ -67,10 +67,6 @@ import {
 } from "../src/app/workbench_terminal.ts";
 import { WorkbenchThreeGridProjectionCache } from "../src/app/workbench_three_grid.ts";
 import {
-  renderApiWorkbenchTerminalOutputBody,
-  renderApiWorkbenchTerminalOutputToolbar,
-} from "../app/api_workbench_terminal_output_view.ts";
-import {
   renderApiWorkbenchDataPanel,
   renderApiWorkbenchExplorerPanel,
   renderApiWorkbenchInspectorPanel,
@@ -100,6 +96,8 @@ import {
   renderApiWorkbenchWindowTabs,
 } from "../app/api_workbench_window_view.ts";
 import {
+  renderApiWorkbenchTerminalOutputBody,
+  renderApiWorkbenchTerminalOutputToolbar,
   renderApiWorkbenchTerminalSessionTabs,
   renderApiWorkbenchTerminalShellHeader,
   renderApiWorkbenchTerminalShellPanes,
