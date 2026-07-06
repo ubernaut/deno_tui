@@ -350,6 +350,7 @@ import { shouldCountWorkbenchThreeGridPressure } from "../src/app/workbench_thre
 import {
   apiWorkbenchThreeFrameIntervalForCells,
   resolveWorkbenchThreeFullscreenAsciiOptions,
+  resolveWorkbenchThreeLiveAsciiOptions,
   resolveWorkbenchThreeRuntimeBudgetSnapshot,
   sameWorkbenchThreeAsciiOptions,
   WORKBENCH_THREE_DRAW_INTERVAL_MS,
@@ -1193,8 +1194,11 @@ function syncWorkbenchThreeRuntimeBudgetForViewport(
   if (workbenchThreeEffectiveMaxCells.peek() !== effectiveMaxCells) {
     workbenchThreeEffectiveMaxCells.value = effectiveMaxCells;
   }
-  if (!sameWorkbenchThreeAsciiOptions(threeRuntimeAscii.peek(), snapshot.runtimeAscii)) {
-    threeRuntimeAscii.value = snapshot.runtimeAscii;
+  const runtimeAscii = fullscreenThree
+    ? snapshot.runtimeAscii
+    : resolveWorkbenchThreeLiveAsciiOptions(ascii.peek(), effectiveMaxCells);
+  if (!sameWorkbenchThreeAsciiOptions(threeRuntimeAscii.peek(), runtimeAscii)) {
+    threeRuntimeAscii.value = runtimeAscii;
   }
 }
 

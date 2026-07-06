@@ -254,7 +254,7 @@ export function resolveWorkbenchThreeRuntimeBudgetSnapshot<TId extends string>(
   };
 }
 
-function resolveWorkbenchThreeLiveAsciiOptions(
+export function resolveWorkbenchThreeLiveAsciiOptions(
   ascii: ThreeAsciiConfigOptions,
   liveMinCells: number,
 ): ThreeAsciiConfigOptions {

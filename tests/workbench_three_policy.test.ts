@@ -7,6 +7,7 @@ import {
   apiWorkbenchThreeFrameIntervalForCells,
   createWorkbenchThreeWindowState,
   resolveWorkbenchThreeFullscreenAsciiOptions,
+  resolveWorkbenchThreeLiveAsciiOptions,
   resolveWorkbenchThreeRuntimeBudgetSnapshot,
   resolveWorkbenchThreeWindowState,
   resolveWorkbenchThreeWindowStateInto,
@@ -281,6 +282,15 @@ Deno.test("API workbench Three policy raises live runtime ASCII to resized tiled
   assertEquals(snapshot.effectiveMaxCells, 1_562);
   assertEquals(snapshot.runtimeAscii.renderMaxCells, 1_562);
   assertEquals(ascii.renderMaxCells, 960);
+});
+
+Deno.test("API workbench Three policy raises live ASCII options to the final effective runtime cap", () => {
+  const ascii = createDefaultWorkbenchAsciiOptions();
+  const raised = resolveWorkbenchThreeLiveAsciiOptions(ascii, 2_800);
+
+  assertEquals(raised.renderMaxCells, 2_800);
+  assertEquals(ascii.renderMaxCells, 960);
+  assertStrictEquals(resolveWorkbenchThreeLiveAsciiOptions(raised, 960), raised);
 });
 
 Deno.test("API workbench Three policy compares every runtime ASCII option", () => {
