@@ -17,12 +17,13 @@ import {
   formatAsciiControlValue,
   terminalGlyphStyleLabel,
 } from "../src/three_ascii/options.ts";
+import { textWidth } from "../src/utils/strings.ts";
 import { AudioRegistry, discoverAudioSources } from "./audio.ts";
 import { buildSourceCatalog, resolveSourceFramesInto } from "./sources.ts";
 import { accentColor, makeStyle, palette, requireInteractiveTerminal, severityAccent } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
 import { ThreePanelView } from "./three_panel.ts";
-import { centeredRect, fitTextWidth, FrameView, ListView, MultilineTextView, PanelView } from "./ui.ts";
+import { FrameView, ListView, MultilineTextView, PanelView } from "./ui.ts";
 import {
   type Accent,
   type BorderMode,
@@ -65,6 +66,23 @@ function detectViewportMode(bounds: Rect): ViewportMode {
   if (bounds.width < 90 || bounds.height < 26) return "mobile";
   if (bounds.width < 128 || bounds.height < 34) return "compact";
   return "desktop";
+}
+
+function centeredRect(bounds: Rect, width: number, height: number): Rect {
+  return {
+    column: bounds.column + Math.max(0, Math.floor((bounds.width - width) / 2)),
+    row: bounds.row + Math.max(0, Math.floor((bounds.height - height) / 2)),
+    width: Math.min(bounds.width, width),
+    height: Math.min(bounds.height, height),
+  };
+}
+
+function fitTextWidth(lines: string[], minWidth = 24, maxWidth = 80) {
+  let width = minWidth;
+  for (let index = 0; index < lines.length; index += 1) {
+    width = Math.max(width, textWidth(lines[index] ?? ""));
+  }
+  return Math.min(maxWidth, width);
 }
 
 requireInteractiveTerminal("deno task viz");

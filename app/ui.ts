@@ -434,20 +434,3 @@ export class PanelView {
     this.footer.draw();
   }
 }
-
-export function centeredRect(bounds: Rect, width: number, height: number): Rect {
-  return {
-    column: bounds.column + Math.max(0, Math.floor((bounds.width - width) / 2)),
-    row: bounds.row + Math.max(0, Math.floor((bounds.height - height) / 2)),
-    width: Math.min(bounds.width, width),
-    height: Math.min(bounds.height, height),
-  };
-}
-
-export function fitTextWidth(lines: string[], minWidth = 24, maxWidth = 80) {
-  let width = minWidth;
-  for (let index = 0; index < lines.length; index += 1) {
-    width = Math.max(width, textWidth(lines[index] ?? ""));
-  }
-  return Math.min(maxWidth, width);
-}
