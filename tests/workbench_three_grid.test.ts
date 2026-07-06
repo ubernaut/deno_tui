@@ -192,8 +192,8 @@ Deno.test("workbench three grid refreshes retained scale indexes after dimension
     ["D", "E", "F"],
     ["G", "H", "I"],
   ]);
-  assertEquals(sourceRowIndexes, [0, 1, 2]);
-  assertEquals(sourceColumnIndexes, [0, 1, 2]);
+  assertEquals(sourceRowIndexes, [0, 0, 1, 1]);
+  assertEquals(sourceColumnIndexes, [0, 0, 1, 1]);
 });
 
 Deno.test("workbench three grid projection cache owns reusable write buffers", () => {
@@ -247,13 +247,34 @@ Deno.test("workbench three grid projection cache refreshes and clears retained b
     ["H", "I", "J"],
     ["K", "L", "M"],
   ]);
-  assertEquals(cache.sourceRowIndexes, [0, 1, 2]);
-  assertEquals(cache.sourceColumnIndexes, [0, 1, 2]);
+  assertEquals(cache.sourceRowIndexes, [0, 0, 1, 1]);
+  assertEquals(cache.sourceColumnIndexes, [0, 0, 1, 1]);
 
   cache.clear();
   assertEquals(cache.rowBuffer, []);
   assertEquals(cache.sourceRowIndexes, []);
   assertEquals(cache.sourceColumnIndexes, []);
+});
+
+Deno.test("workbench three grid skips scratch index refresh for unscaled axes", () => {
+  const frame: WorkbenchFrame = [];
+  const sourceRowIndexes = [9, 9, 9];
+  const sourceColumnIndexes = [8, 8, 8];
+  writeWorkbenchThreeGrid(
+    frame,
+    { column: 0, row: 0, width: 3, height: 3 },
+    [["A", "B", "C"], ["D", "E", "F"], ["G", "H", "I"]],
+    ".",
+    { scale: true, sourceColumns: 3, sourceRowIndexes, sourceColumnIndexes },
+  );
+
+  assertEquals(frame, [
+    ["A", "B", "C"],
+    ["D", "E", "F"],
+    ["G", "H", "I"],
+  ]);
+  assertEquals(sourceRowIndexes, [9, 9, 9]);
+  assertEquals(sourceColumnIndexes, [8, 8, 8]);
 });
 
 Deno.test("workbench three grid direct-copies scaled rows when source-column hints match target width", () => {

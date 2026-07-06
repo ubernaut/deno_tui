@@ -68,10 +68,11 @@ export function writeWorkbenchThreeGrid(
   const { sourceRows, sourceColumns, targetHeight, targetWidth, rowOffset, columnOffset } = projection;
   const shouldScale = projection.scaled;
   const rowBuffer = options.rowBuffer ?? [];
-  const sourceRowIndexes = shouldScale && sourceRows > 0
+  const sourceRowIndexes = shouldScale && sourceRows > 0 && sourceRows !== targetHeight
     ? scaledIndexesInto(options.sourceRowIndexes ?? [], targetHeight, sourceRows)
     : undefined;
-  const sourceColumnIndexes = shouldScale && options.sourceColumns !== undefined && sourceColumns > 0
+  const sourceColumnIndexes = shouldScale && options.sourceColumns !== undefined && sourceColumns > 0 &&
+      sourceColumns !== targetWidth
     ? scaledIndexesInto(options.sourceColumnIndexes ?? [], targetWidth, sourceColumns)
     : undefined;
   let lastProjectedSourceRow = -1;
@@ -102,13 +103,14 @@ export function writeWorkbenchThreeGrid(
     }
     lastProjectedFallback = false;
 
+    if (shouldScale && source && sourceColumns === targetWidth && sourceWidth >= sourceColumns && sourceColumns > 0) {
+      writeProjectedGridRow(target, rect.column + columnOffset, source, targetWidth);
+      lastProjectedSourceRow = sourceRow;
+      lastProjectedRow = source;
+      continue;
+    }
+
     if (shouldScale && source && sourceColumnIndexes && sourceWidth >= sourceColumns && sourceColumns > 0) {
-      if (sourceColumns === targetWidth) {
-        writeProjectedGridRow(target, rect.column + columnOffset, source, targetWidth);
-        lastProjectedSourceRow = sourceRow;
-        lastProjectedRow = source;
-        continue;
-      }
       projectScaledGridRowInto(rowBuffer, source, sourceColumnIndexes, targetWidth, fallbackCell);
       writeProjectedGridRow(target, rect.column + columnOffset, rowBuffer, targetWidth);
       lastProjectedSourceRow = sourceRow;
