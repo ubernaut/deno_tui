@@ -1475,51 +1475,35 @@ function handlePointerDrag(
 }
 
 function focus(id: PanelId): void {
-  syncWebWindowManagerState();
-  workbenchController.focusWindow(id);
-  syncWebSignalsFromWindowManager();
+  syncWebWindowMutation(() => workbenchController.focusWindow(id));
   push(`focus ${id}`);
 }
 function focusNext(): void {
-  syncWebWindowManagerState();
-  const focused = workbenchController.focusNextWindow();
-  syncWebSignalsFromWindowManager();
+  const focused = syncWebWindowMutation(() => workbenchController.focusNextWindow());
   if (focused) push(`focus ${focused}`);
 }
 function focusPrevious(): void {
-  syncWebWindowManagerState();
-  const focused = workbenchController.focusNextWindow(-1);
-  syncWebSignalsFromWindowManager();
+  const focused = syncWebWindowMutation(() => workbenchController.focusNextWindow(-1));
   if (focused) push(`focus ${focused}`);
 }
 function minimize(id: PanelId): void {
-  syncWebWindowManagerState();
-  workbenchController.minimizeWindow(id);
-  syncWebSignalsFromWindowManager();
+  syncWebWindowMutation(() => workbenchController.minimizeWindow(id));
   push(`minimize ${id}`);
 }
 function closePanel(id: PanelId): void {
-  syncWebWindowManagerState();
-  workbenchController.closeWindow(id);
-  syncWebSignalsFromWindowManager();
+  syncWebWindowMutation(() => workbenchController.closeWindow(id));
   push(`close ${id}`);
 }
 function toggleMax(id: PanelId): void {
-  syncWebWindowManagerState();
-  workbenchController.toggleFullscreenWindow(id);
-  syncWebSignalsFromWindowManager();
+  syncWebWindowMutation(() => workbenchController.toggleFullscreenWindow(id));
   push(`${maximized.peek() ? "maximize" : "restore"} ${id}`);
 }
 function restorePanel(id: PanelId): void {
-  syncWebWindowManagerState();
-  workbenchController.restoreWindows(id);
-  syncWebSignalsFromWindowManager();
+  syncWebWindowMutation(() => workbenchController.restoreWindows(id));
   push(`restore ${id}`);
 }
 function restore(): void {
-  syncWebWindowManagerState();
-  workbenchController.restoreWindows();
-  syncWebSignalsFromWindowManager();
+  syncWebWindowMutation(() => workbenchController.restoreWindows());
   push("restore all");
 }
 function setTheme(index: number): void {
@@ -1608,6 +1592,13 @@ function workspaceLayout(bounds: Rectangle): {
 } {
   syncWebWindowManagerState();
   return workbenchAdaptiveWindowLayout<PanelId>(webWindows, { bounds, tileDensity: tileDensity.peek() });
+}
+
+function syncWebWindowMutation<T>(mutate: () => T): T {
+  syncWebWindowManagerState();
+  const result = mutate();
+  syncWebSignalsFromWindowManager();
+  return result;
 }
 
 function syncWebWindowManagerState(): void {
