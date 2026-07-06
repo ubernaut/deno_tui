@@ -39,6 +39,7 @@ import {
   ThreePanelGraphicsImageController,
   ThreePanelGridPublicationCache,
   ThreePanelGridPublisher,
+  ThreePanelGridScaleCache,
   ThreePanelInteractionController,
   threePanelRendererStateMatches,
   threePanelSlowFrameDiagnostic,
@@ -760,6 +761,35 @@ Deno.test("scaleThreePanelGridToSizeInto reuses target rows and clears stale cel
   assertStrictEquals(target[0], firstRow);
   assertEquals(target[1], undefined);
   assertEquals(firstRow.length, 1);
+});
+
+Deno.test("ThreePanelGridScaleCache reuses target and source indexes across stable frame sizes", () => {
+  const cache = new ThreePanelGridScaleCache();
+  const result = cache.scale([["A", "B"], ["C", "D"]], 4, 4);
+  const firstRow = result[0];
+  const rowIndexes = cache.sourceRowIndexes;
+  const columnIndexes = cache.sourceColumnIndexes;
+
+  assertEquals(result, [
+    ["A", "A", "B", "B"],
+    ["A", "A", "B", "B"],
+    ["C", "C", "D", "D"],
+    ["C", "C", "D", "D"],
+  ]);
+  assertEquals(rowIndexes, [0, 0, 1, 1]);
+  assertEquals(columnIndexes, [0, 0, 1, 1]);
+
+  const updated = cache.scale([["E", "F"], ["G", "H"]], 4, 4);
+  assertStrictEquals(updated, result);
+  assertStrictEquals(updated[0], firstRow);
+  assertStrictEquals(cache.sourceRowIndexes, rowIndexes);
+  assertStrictEquals(cache.sourceColumnIndexes, columnIndexes);
+  assertEquals(updated[0], ["E", "E", "F", "F"]);
+
+  cache.reset();
+  assertEquals(cache.target, []);
+  assertEquals(cache.sourceRowIndexes, []);
+  assertEquals(cache.sourceColumnIndexes, []);
 });
 
 Deno.test("fingerprintThreePanelGrid distinguishes content shape and text", () => {

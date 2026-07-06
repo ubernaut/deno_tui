@@ -1279,3 +1279,7 @@ performance, shared terminal/web workbench projections, and oversized module red
   fresh full-display grid allocation on every capped renderer frame. The allocating wrapper remains compatible, while
   the new `render/three-panel-grid-scale-into-220x70` benchmark measured about `0.051ms` versus `0.091ms` for the
   allocating scaler in the full health run; visual resize smoke, live resize probe, and `deno task health` passed.
+- Added a retained Three panel grid scale cache with reusable source row/column indexes and routed `ThreePanelFrameView`
+  through it. The smaller `220x70` benchmark stayed roughly even with retained-target scaling, while a local
+  fullscreen-sized `440x140` timing loop improved from roughly `0.205ms` to `0.141ms`; focused core/frame tests and
+  sequential workbench visual resize checks remain the verification gate.

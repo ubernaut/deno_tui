@@ -26,7 +26,6 @@ import {
   resolveThreePanelLiveValue,
   resolveThreePanelRendererStateUpdate,
   resolveThreePanelValue,
-  scaleThreePanelGridToSizeInto,
   threePanelAdaptiveRenderCellsDiagnostic,
   type ThreePanelFrameUpdate,
   threePanelFrameUpdate,
@@ -34,6 +33,7 @@ import {
   threePanelGraphicsFallbackReason,
   ThreePanelGraphicsImageController,
   ThreePanelGridPublisher,
+  ThreePanelGridScaleCache,
   ThreePanelInteractionController,
   type ThreePanelInteractionState,
   type ThreePanelLifecycleState,
@@ -258,7 +258,7 @@ export class ThreePanelFrameView {
   private lastSlowFrameReportTime = 0;
   private readonly adaptiveBudget = new ThreePanelAdaptiveRenderBudgetController();
   private readonly gridPublisher = new ThreePanelGridPublisher();
-  private readonly scaledGridBuffer: string[][] = [];
+  private readonly gridScaleCache = new ThreePanelGridScaleCache();
   private displayColumns = 0;
   private displayRows = 0;
   private rendererFailureRetries = 0;
@@ -535,7 +535,7 @@ export class ThreePanelFrameView {
       const displayColumns = Math.max(1, Math.floor(displayRect.width));
       const displayRows = Math.max(1, Math.floor(displayRect.height));
       const nextGrid = policy.renderAscii && hasThreePanelGridCells(frame.grid ?? [])
-        ? scaleThreePanelGridToSizeInto(this.scaledGridBuffer, frame.grid ?? [], displayColumns, displayRows)
+        ? this.gridScaleCache.scale(frame.grid ?? [], displayColumns, displayRows)
         : this.blankGridFor(displayColumns, displayRows);
       this.onFrame?.(threePanelFrameUpdate(nextGrid, true));
       if (!policy.renderAscii || hasThreePanelGridCells(frame.grid ?? [])) {
@@ -744,7 +744,7 @@ export class ThreePanelFrameView {
     this.activeMode = undefined;
     this.activeWireframeThickness = undefined;
     this.activeDeferredReadbackSlots = undefined;
-    this.scaledGridBuffer.length = 0;
+    this.gridScaleCache.reset();
     this.interaction.clearBaseTransform();
     this.adaptiveBudget.reset();
   }

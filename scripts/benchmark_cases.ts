@@ -73,7 +73,11 @@ import {
   createWorkbenchThreeTerminalPressureState,
   resolveWorkbenchThreeTerminalPressureBudget,
 } from "../src/app/workbench_three_terminal_pressure.ts";
-import { scaleThreePanelGridToSize, scaleThreePanelGridToSizeInto } from "../src/app/three_panel_core.ts";
+import {
+  scaleThreePanelGridToSize,
+  scaleThreePanelGridToSizeInto,
+  ThreePanelGridScaleCache,
+} from "../src/app/three_panel_core.ts";
 import {
   API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY,
   apiWorkbenchThreeFrameIntervalForCells,
@@ -172,6 +176,7 @@ const threePanelScaleSourceGrid = Array.from(
     }),
 );
 const threePanelScaleTargetGrid: string[][] = [];
+const threePanelScaleCache = new ThreePanelGridScaleCache();
 let threePanelScaleChecksum = 0;
 const workbenchThreeBlockBenchmark = createWorkbenchThreeBlockFlushBenchmark({
   frameWidth: 168,
@@ -1311,6 +1316,16 @@ function runThreePanelGridScaleIntoWorkload(): void {
   }
 }
 
+function runThreePanelGridScaleCachedWorkload(): void {
+  const scaled = threePanelScaleCache.scale(threePanelScaleSourceGrid, 220, 70);
+  threePanelScaleChecksum = (
+    threePanelScaleChecksum + scaled.length + (scaled[0]?.length ?? 0) + (scaled[69]?.[219]?.length ?? 0)
+  ) % 1_000_000;
+  if (scaled !== threePanelScaleCache.target || scaled.length !== 70 || scaled[0]?.length !== 220) {
+    throw new Error("three panel cached grid scale workload failed");
+  }
+}
+
 function runAnsiStyledCharacterSplitWorkload(): void {
   const cells = getMultiCodePointCharacters(ansiStyledSplitRow);
   if (cells.length !== 160) {
@@ -1794,6 +1809,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 500,
     maxAverageMs: 4,
     run: runThreePanelGridScaleIntoWorkload,
+  },
+  {
+    name: "render/three-panel-grid-scale-cached-220x70",
+    category: "render",
+    description: "Scale a capped Three panel renderer grid with retained target and source index buffers.",
+    tags: ["render", "three", "ascii", "grid", "scale", "retained", "cache"],
+    iterations: 500,
+    maxAverageMs: 4,
+    run: runThreePanelGridScaleCachedWorkload,
   },
   {
     name: "render/textobject-full-row-canvas-220x70",

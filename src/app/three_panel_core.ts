@@ -519,12 +519,56 @@ export function scaleThreePanelGridToSize(
   return scaleThreePanelGridToSizeInto([], grid, columns, rows);
 }
 
+/** Retained buffers for repeated Three panel grid scaling at stable source and target dimensions. */
+export class ThreePanelGridScaleCache {
+  readonly target: string[][] = [];
+  readonly sourceRowIndexes: number[] = [];
+  readonly sourceColumnIndexes: number[] = [];
+  #rowIndexKey = "";
+  #columnIndexKey = "";
+
+  scale(
+    grid: readonly (readonly string[] | undefined)[],
+    columns: number,
+    rows: number,
+  ): string[][] {
+    return scaleThreePanelGridToSizeInto(this.target, grid, columns, rows, this);
+  }
+
+  reset(): void {
+    this.target.length = 0;
+    this.sourceRowIndexes.length = 0;
+    this.sourceColumnIndexes.length = 0;
+    this.#rowIndexKey = "";
+    this.#columnIndexKey = "";
+  }
+
+  rowIndexes(targetRows: number, sourceRows: number): readonly number[] {
+    const key = `${targetRows}:${sourceRows}`;
+    if (this.#rowIndexKey === key && this.sourceRowIndexes.length === targetRows) return this.sourceRowIndexes;
+    writeThreePanelScaleIndexesInto(this.sourceRowIndexes, targetRows, sourceRows);
+    this.#rowIndexKey = key;
+    return this.sourceRowIndexes;
+  }
+
+  columnIndexes(targetColumns: number, sourceColumns: number): readonly number[] {
+    const key = `${targetColumns}:${sourceColumns}`;
+    if (this.#columnIndexKey === key && this.sourceColumnIndexes.length === targetColumns) {
+      return this.sourceColumnIndexes;
+    }
+    writeThreePanelScaleIndexesInto(this.sourceColumnIndexes, targetColumns, sourceColumns);
+    this.#columnIndexKey = key;
+    return this.sourceColumnIndexes;
+  }
+}
+
 /** Scales a capped Three panel renderer grid into caller-owned storage. */
 export function scaleThreePanelGridToSizeInto(
   target: string[][],
   grid: readonly (readonly string[] | undefined)[],
   columns: number,
   rows: number,
+  cache?: Pick<ThreePanelGridScaleCache, "rowIndexes" | "columnIndexes">,
 ): string[][] {
   const targetColumns = Math.max(1, Math.floor(columns));
   const targetRows = Math.max(1, Math.floor(rows));
@@ -545,6 +589,17 @@ export function scaleThreePanelGridToSizeInto(
   }
   if (sourceRows <= 0 || sourceColumns <= 0) {
     return threePanelBlankGridInto(target, targetColumns, targetRows);
+  }
+
+  if (cache) {
+    return scaleThreePanelGridWithIndexesInto(
+      target,
+      grid,
+      targetColumns,
+      targetRows,
+      cache.rowIndexes(targetRows, sourceRows),
+      cache.columnIndexes(targetColumns, sourceColumns),
+    );
   }
 
   let lastSourceRow = -1;
@@ -572,6 +627,38 @@ export function scaleThreePanelGridToSizeInto(
   return target;
 }
 
+function scaleThreePanelGridWithIndexesInto(
+  target: string[][],
+  grid: readonly (readonly string[] | undefined)[],
+  targetColumns: number,
+  targetRows: number,
+  sourceRowIndexes: readonly number[],
+  sourceColumnIndexes: readonly number[],
+): string[][] {
+  let lastSourceRow = -1;
+  let lastProjectedRow: string[] | undefined;
+  for (let row = 0; row < targetRows; row += 1) {
+    const sourceRow = sourceRowIndexes[row] ?? 0;
+    if (sourceRow === lastSourceRow && lastProjectedRow) {
+      const targetRow = target[row] ?? [];
+      targetRow.length = targetColumns;
+      copyThreePanelGridRow(targetRow, lastProjectedRow, targetColumns);
+      target[row] = targetRow;
+      continue;
+    }
+    const source = grid[sourceRow] ?? [];
+    const targetRow = target[row] ?? [];
+    targetRow.length = targetColumns;
+    for (let column = 0; column < targetColumns; column += 1) {
+      targetRow[column] = source[sourceColumnIndexes[column] ?? 0] ?? " ";
+    }
+    target[row] = targetRow;
+    lastSourceRow = sourceRow;
+    lastProjectedRow = targetRow;
+  }
+  return target;
+}
+
 function threePanelBlankGridInto(target: string[][], columns: number, rows: number): string[][] {
   target.length = rows;
   for (let row = 0; row < rows; row += 1) {
@@ -589,6 +676,15 @@ function copyThreePanelGridRow(target: string[], source: readonly string[], colu
   for (let column = 0; column < columns; column += 1) {
     target[column] = source[column] ?? " ";
   }
+}
+
+function writeThreePanelScaleIndexesInto(target: number[], targetSize: number, sourceSize: number): number[] {
+  target.length = targetSize;
+  const lastSource = Math.max(0, sourceSize - 1);
+  for (let index = 0; index < targetSize; index += 1) {
+    target[index] = Math.min(lastSource, Math.floor((index * sourceSize) / targetSize));
+  }
+  return target;
 }
 
 export function fingerprintThreePanelGrid(grid: readonly (readonly string[] | undefined)[]): string {
