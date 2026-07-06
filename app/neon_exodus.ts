@@ -15,9 +15,7 @@ import {
   formatNeonSuiteAlert,
   hiddenRect,
   moveGridSelection,
-  neonColumnsForWidth,
   neonDemosForSection,
-  neonSceneHeight,
   type NeonSuiteSection,
   neonSuiteSectionLabels,
   neonSuiteSections,
@@ -452,6 +450,18 @@ function minCardWidth(width: number, currentSection: NeonSuiteSection) {
   if (currentSection === "three") return 48;
   if (currentSection === "all") return width >= 176 ? 56 : 38;
   return width >= 116 ? 56 : 38;
+}
+
+function neonColumnsForWidth(width: number, currentSection: NeonSuiteSection): number {
+  if (currentSection === "all") return width >= 236 ? 4 : width >= 176 ? 3 : width >= 112 ? 2 : 1;
+  if (currentSection === "three") return width >= 150 ? 3 : width >= 100 ? 2 : 1;
+  return width >= 176 ? 3 : width >= 116 ? 2 : 1;
+}
+
+function neonSceneHeight(width: number, height: number, currentSection: NeonSuiteSection): number {
+  if (currentSection === "all") return width >= 236 ? 6 : width >= 176 ? 7 : height < 42 ? 6 : 8;
+  if (currentSection === "three") return height < 40 ? 8 : 10;
+  return height < 40 ? 6 : 8;
 }
 
 function fitPad(text: string, width: number) {

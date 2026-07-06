@@ -10,9 +10,7 @@ import {
   formatNeonSuiteAlert,
   moveGridSelection,
   neonDemosForSection,
-  neonOpenTuiDemoIds,
   neonSuiteSummary,
-  neonWebDemoIds,
   renderNeonSuiteDemo,
 } from "../app/neon_suite.ts";
 import { palette } from "../app/styles.ts";
@@ -30,8 +28,8 @@ const signal: ThreeSceneSignal = {
 };
 
 Deno.test("neon suite exposes OpenTUI parity web ordering and extended counts", () => {
-  assertEquals(neonOpenTuiDemoIds.length, 24);
-  assertEquals(neonWebDemoIds.length, 24);
+  assertEquals(neonDemosForSection("all", { source: "opentui" }).length, 24);
+  assertEquals(neonDemosForSection("all", { source: "web" }).length, 24);
   assertEquals(neonSuiteSummary("opentui").count, 24);
   assertEquals(neonSuiteSummary("web").count, 24);
   assertEquals(neonSuiteSummary("extended").count, 25);

@@ -38,9 +38,9 @@ const tallWebDemoIds = new Set([
 const demosById = new Map<string, NeonDemo>();
 for (const demo of demos) demosById.set(demo.id, demo);
 
-export const neonOpenTuiDemoIds = neonDemoIds({ includeTallWebLast: false });
+const neonOpenTuiDemoIds = neonDemoIds({ includeTallWebLast: false });
 
-export const neonWebDemoIds = neonDemoIds({ includeTallWebLast: true });
+const neonWebDemoIds = neonDemoIds({ includeTallWebLast: true });
 
 export function neonDemosForSection(
   section: NeonSuiteSection,
@@ -90,18 +90,6 @@ export function moveGridSelection(current: number, keyName: string, columns: num
     return rowStart <= lastIndex ? lastIndex : current;
   }
   return current;
-}
-
-export function neonColumnsForWidth(width: number, section: NeonSuiteSection): number {
-  if (section === "all") return width >= 236 ? 4 : width >= 176 ? 3 : width >= 112 ? 2 : 1;
-  if (section === "three") return width >= 150 ? 3 : width >= 100 ? 2 : 1;
-  return width >= 176 ? 3 : width >= 116 ? 2 : 1;
-}
-
-export function neonSceneHeight(width: number, height: number, section: NeonSuiteSection): number {
-  if (section === "all") return width >= 236 ? 6 : width >= 176 ? 7 : height < 42 ? 6 : 8;
-  if (section === "three") return height < 40 ? 8 : 10;
-  return height < 40 ? 6 : 8;
 }
 
 export function renderNeonSuiteDemo(options: {
