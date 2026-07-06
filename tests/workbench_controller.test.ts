@@ -65,6 +65,7 @@ import {
   type WorkbenchTerminalShellHeaderRow,
   type WorkbenchTerminalToolbarAction,
 } from "../src/app/workbench_terminal.ts";
+import { WorkbenchThreeGridProjectionCache } from "../src/app/workbench_three_grid.ts";
 import {
   renderApiWorkbenchTerminalOutputBody,
   renderApiWorkbenchTerminalOutputToolbar,
@@ -82,6 +83,12 @@ import {
 } from "../app/api_workbench_chrome_view.ts";
 import { renderApiWorkbenchModalOverlay, renderApiWorkbenchThreeConfigModal } from "../app/api_workbench_modal_view.ts";
 import { renderApiWorkbenchShelf, renderApiWorkbenchWindowTabs } from "../app/api_workbench_shelf_view.ts";
+import {
+  renderApiWorkbenchThreeFallback,
+  renderApiWorkbenchThreeGrid,
+  renderApiWorkbenchThreeGridOrResizePlaceholder,
+  renderApiWorkbenchThreeHeader,
+} from "../app/api_workbench_three_view.ts";
 import {
   renderApiWorkbenchTerminalSessionTabs,
   renderApiWorkbenchTerminalShellCopyPane,
@@ -1103,6 +1110,113 @@ Deno.test("renderApiWorkbenchDropdownOverlay paints overlay rows and maps item h
     { type: "workspace", index: 3, width: 16 },
     { type: "workspace", index: 4, width: 16 },
   ]);
+});
+
+Deno.test("renderApiWorkbenchThreeHeader paints title rows from retained buffers", () => {
+  const frame: string[][] = [];
+  const writes: Array<{ row: number; texts: string[] }> = [];
+
+  renderApiWorkbenchThreeHeader({
+    frame,
+    rect: { column: 0, row: 2, width: 40, height: 4 },
+    mode: "BLOCKS",
+    theme: testWorkbenchTheme(),
+    rows: [],
+    performanceTarget: {
+      totalMs: 0,
+      initMs: 0,
+      sceneMs: 0,
+      readbackMs: 0,
+      assemblyMs: 0,
+      cells: 0,
+    },
+    sourceMaxCells: 120,
+    frameIntervalMs: 50,
+    pressure: {
+      currentCells: 120,
+      highFrames: 0,
+      lowFrames: 0,
+      lastBytes: 0,
+      lastByteRate: 0,
+      lastScoped: false,
+      lastChangedRows: 0,
+      lastRenderedGrids: 0,
+      lastRenderedRows: 0,
+    },
+    writeRows: (_target, rect, rows) => writes.push({ row: rect.row, texts: rows.map((row) => row.text) }),
+  });
+
+  assertEquals(writes[0]?.row, 2);
+  assertEquals(writes[0]?.texts[0], " THREE ASCII · BLOCKS ");
+  assertEquals(writes[0]?.texts[1]?.includes("torus"), true);
+});
+
+Deno.test("renderApiWorkbenchThreeFallback paints renderer fallback rows", () => {
+  const writes: string[][] = [];
+
+  renderApiWorkbenchThreeFallback({
+    frame: [],
+    rect: { column: 0, row: 0, width: 48, height: 7 },
+    terminalGlyphStyle: "blocks",
+    rendererAvailable: false,
+    rows: [],
+    theme: testWorkbenchTheme(),
+    center: (text) => text,
+    writeRows: (_target, _rect, rows) => writes.push(rows.map((row) => row.text)),
+  });
+
+  assertEquals(writes[0]?.[0], " THREE ASCII FALLBACK · BLOCKS ");
+  assertEquals(writes[0]?.[1]?.includes("backend unavailable"), true);
+});
+
+Deno.test("renderApiWorkbenchThreeGrid paints grids and preserves pressure accounting", () => {
+  const frame: string[][] = [];
+  let pressureRows = 0;
+
+  const result = renderApiWorkbenchThreeGrid({
+    frame,
+    rect: { column: 0, row: 0, width: 4, height: 2 },
+    grid: [["A", "B"], ["C", "D"]],
+    theme: testWorkbenchTheme(),
+    projectionCache: new WorkbenchThreeGridProjectionCache(),
+    statusRows: [],
+    paint: (text, style) => `${style.bg ?? ""}:${text}`,
+    center: (text) => text,
+    writeRows: () => {
+      throw new Error("status rows should not render for populated grids");
+    },
+    scale: true,
+    countForPressure: true,
+    rendererAvailable: true,
+    onPressureRows: (rows) => pressureRows = rows,
+  });
+
+  assertEquals(result.kind, "grid");
+  assertEquals(frame, [
+    ["A", "A", "B", "B"],
+    ["C", "C", "D", "D"],
+  ]);
+  assertEquals(pressureRows, 2);
+});
+
+Deno.test("renderApiWorkbenchThreeGridOrResizePlaceholder paints resize status for empty grids", () => {
+  const writes: string[][] = [];
+
+  const result = renderApiWorkbenchThreeGridOrResizePlaceholder({
+    frame: [],
+    rect: { column: 0, row: 0, width: 32, height: 3 },
+    grid: [],
+    theme: testWorkbenchTheme(),
+    projectionCache: new WorkbenchThreeGridProjectionCache(),
+    statusRows: [],
+    paint: (text, style) => `${style.bg ?? ""}:${text}`,
+    center: (text) => text,
+    writeRows: (_target, _rect, rows) => writes.push(rows.map((row) => row.text)),
+    rendererAvailable: true,
+  });
+
+  assertEquals(result.kind, "status");
+  assertEquals(writes[0]?.some((text) => text.includes("renderer resizing")), true);
 });
 
 Deno.test("renderApiWorkbenchExplorerPanel paints tree rows and registers row hits", () => {

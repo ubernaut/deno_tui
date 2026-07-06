@@ -203,7 +203,7 @@ import {
   workbenchQuitModalContent,
   workbenchWindowContentSize,
 } from "./workbench_panels.ts";
-import { renderWorkbenchThreeSurface, WorkbenchThreeGridProjectionCache } from "../src/app/workbench_three_grid.ts";
+import { WorkbenchThreeGridProjectionCache } from "../src/app/workbench_three_grid.ts";
 import {
   hideWorkbenchThreeRect,
   setWorkbenchThreeRect,
@@ -218,8 +218,6 @@ import {
   threeRendererModeLabel,
   visualizationTextContentSize,
   visualizationThreeStatusLine,
-  workbenchThreeFallbackRowsInto,
-  workbenchThreeStatusRowsInto,
   workbenchVisualizationRowsInto,
 } from "./workbench_visualization_window.ts";
 import {
@@ -254,12 +252,7 @@ import {
   workbenchFrameRenderCommandsInto,
 } from "../src/app/workbench_frame_render.ts";
 import { WorkbenchFramePainter } from "../src/app/workbench_row_render.ts";
-import {
-  type RowStyle,
-  type ThreeHeaderPerformance,
-  threeHeaderRowsInto,
-  writeThreeHeaderRuntimePerformance,
-} from "../src/app/workbench_rows.ts";
+import { type RowStyle, type ThreeHeaderPerformance } from "../src/app/workbench_rows.ts";
 import { shouldCountWorkbenchThreeGridPressure } from "../src/app/workbench_three_terminal_pressure.ts";
 import {
   apiWorkbenchThreeFrameIntervalForCells,
@@ -338,6 +331,12 @@ import { ApiWorkbenchControlsViewBufferCache, renderApiWorkbenchControls } from 
 import { renderApiWorkbenchHtmlCssLayout } from "./api_workbench_html_css_view.ts";
 import { renderApiWorkbenchModalOverlay, renderApiWorkbenchThreeConfigModal } from "./api_workbench_modal_view.ts";
 import { renderApiWorkbenchShelf, renderApiWorkbenchWindowTabs } from "./api_workbench_shelf_view.ts";
+import {
+  renderApiWorkbenchThreeFallback,
+  renderApiWorkbenchThreeGrid,
+  renderApiWorkbenchThreeGridOrResizePlaceholder,
+  renderApiWorkbenchThreeHeader,
+} from "./api_workbench_three_view.ts";
 
 type BuiltInWindowId = ApiWorkbenchBuiltInWindowId;
 type VisualizationWindowId = `viz:${string}`;
@@ -1387,16 +1386,38 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
     renderedVisualizationThreePanels.add(id);
     const grid = entry.panel.grid.peek();
     if (resized) {
-      renderThreeGridOrResizePlaceholder(frame, sceneRect, grid, t, {
+      renderApiWorkbenchThreeGridOrResizePlaceholder({
+        frame,
+        rect: sceneRect,
+        grid,
+        theme: t,
+        projectionCache: threeGridProjectionCache,
+        statusRows: threeStatusRowsBuffer,
+        paint,
+        center: centerText,
+        writeRows,
         scale: threeGridScaleModeForWindow(id),
         countForPressure: false,
+        rendererAvailable: threeAsciiAvailable.peek(),
+        onPressureRows: (rows) => workbenchThreeRuntime.recordRenderedGridForPressure(rows),
       });
       scheduleDraw();
       return;
     }
-    renderThreeGrid(frame, sceneRect, grid, t, {
+    renderApiWorkbenchThreeGrid({
+      frame,
+      rect: sceneRect,
+      grid,
+      theme: t,
+      projectionCache: threeGridProjectionCache,
+      statusRows: threeStatusRowsBuffer,
+      paint,
+      center: centerText,
+      writeRows,
       scale: threeGridScaleModeForWindow(id),
       countForPressure: shouldCountWorkbenchThreeGridPressure(grid, entry.panel.inspectPerformance()),
+      rendererAvailable: threeAsciiAvailable.peek(),
+      onPressureRows: (rows) => workbenchThreeRuntime.recordRenderedGridForPressure(rows),
     });
     return;
   }
@@ -1438,113 +1459,69 @@ function renderThree(frame: Frame, rect: Rectangle): void {
     const resized = setThreeBodyRect(sceneRect);
     const performance = threePanel.inspectPerformance();
     const pressure = workbenchThreeRuntime.inspectPressureDetailsInto(workbenchThreePressureDetails);
-    writeRows(
+    renderApiWorkbenchThreeHeader({
       frame,
       rect,
-      threeHeaderRowsInto(
-        workbenchThreeHeaderRows,
-        mode,
-        rect.width,
-        t,
-        performance
-          ? writeThreeHeaderRuntimePerformance(workbenchThreeHeaderPerformance, performance, {
-            sourceMaxCells: workbenchThreeEffectiveMaxCells.peek(),
-            frameIntervalMs: workbenchThreeFrameInterval.peek(),
-            measuredFps: threeCadence.measuredFps(),
-            pressure,
-          })
-          : undefined,
-      ),
-    );
+      mode,
+      theme: t,
+      rows: workbenchThreeHeaderRows,
+      performanceTarget: workbenchThreeHeaderPerformance,
+      rendererPerformance: performance,
+      sourceMaxCells: workbenchThreeEffectiveMaxCells.peek(),
+      frameIntervalMs: workbenchThreeFrameInterval.peek(),
+      measuredFps: threeCadence.measuredFps(),
+      pressure,
+      writeRows,
+    });
     addHit(sceneRect, { type: "threeViewport", id: "three" });
     setThreeGraphicsRect(contentRectToGraphicsRect(sceneRect));
     const grid = threePanel.grid.peek();
     if (resized) {
-      renderThreeGridOrResizePlaceholder(frame, sceneRect, grid, t, {
+      renderApiWorkbenchThreeGridOrResizePlaceholder({
+        frame,
+        rect: sceneRect,
+        grid,
+        theme: t,
+        projectionCache: threeGridProjectionCache,
+        statusRows: threeStatusRowsBuffer,
+        paint,
+        center: centerText,
+        writeRows,
         scale: threeGridScaleModeForWindow("three"),
         countForPressure: false,
+        rendererAvailable: threeAsciiAvailable.peek(),
+        onPressureRows: (rows) => workbenchThreeRuntime.recordRenderedGridForPressure(rows),
       });
       return;
     }
-    renderThreeGrid(frame, sceneRect, grid, t, {
+    renderApiWorkbenchThreeGrid({
+      frame,
+      rect: sceneRect,
+      grid,
+      theme: t,
+      projectionCache: threeGridProjectionCache,
+      statusRows: threeStatusRowsBuffer,
+      paint,
+      center: centerText,
+      writeRows,
       scale: threeGridScaleModeForWindow("three"),
       countForPressure: shouldCountWorkbenchThreeGridPressure(grid, performance),
+      rendererAvailable: threeAsciiAvailable.peek(),
+      onPressureRows: (rows) => workbenchThreeRuntime.recordRenderedGridForPressure(rows),
     });
     return;
   }
 
   hideBuiltinThreeRects();
-  const fallback = workbenchThreeFallbackRowsInto(threeFallbackRowsBuffer, {
-    width: rect.width,
-    height: rect.height,
+  renderApiWorkbenchThreeFallback({
+    frame,
+    rect,
     terminalGlyphStyle: ascii.peek().terminalGlyphStyle,
     rendererAvailable: threeAsciiAvailable.peek(),
     theme: t,
+    rows: threeFallbackRowsBuffer,
     center: centerText,
-  });
-  writeRows(frame, rect, fallback);
-}
-
-function renderThreeGridOrResizePlaceholder(
-  frame: Frame,
-  rect: Rectangle,
-  grid: string[][],
-  t: ThemeSpec,
-  options: {
-    scale?: boolean | "down";
-    countForPressure?: boolean;
-  } = {},
-): void {
-  const resizeScale = grid.length > 0 && (grid[0]?.length ?? 0) > 0 ? true : options.scale;
-  renderThreeSurface(frame, rect, grid, t, {
-    ...options,
-    scale: resizeScale,
-    statusMessage: "renderer resizing",
-  });
-}
-
-function renderThreeGrid(
-  frame: Frame,
-  rect: Rectangle,
-  grid: string[][],
-  t: ThemeSpec,
-  options: { countForPressure?: boolean; scale?: boolean | "down" } = {},
-): void {
-  renderThreeSurface(frame, rect, grid, t, {
-    ...options,
-    statusMessage: threeAsciiAvailable.peek() ? "renderer warming up" : "renderer unavailable",
-  });
-}
-
-function renderThreeSurface(
-  frame: Frame,
-  rect: Rectangle,
-  grid: string[][],
-  t: ThemeSpec,
-  options: {
-    countForPressure?: boolean;
-    scale?: boolean | "down";
-    statusMessage: string;
-  },
-): void {
-  renderWorkbenchThreeSurface({
-    frame,
-    rect,
-    grid,
-    fallbackCell: paint(" ", { bg: t.surface }),
-    projectionCache: threeGridProjectionCache,
     writeRows,
-    statusRows: () =>
-      workbenchThreeStatusRowsInto(threeStatusRowsBuffer, {
-        width: rect.width,
-        height: rect.height,
-        message: options.statusMessage,
-        theme: t,
-        center: centerText,
-      }),
-    scale: options.scale,
-    countForPressure: options.countForPressure,
-    onPressureRows: (rows) => workbenchThreeRuntime.recordRenderedGridForPressure(rows),
   });
 }
 
