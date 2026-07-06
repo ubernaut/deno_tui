@@ -231,6 +231,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     serialized WebGPU probe tasks on the same lock implementation.
   - Workbench Three scene gating and equality helpers are folded into `src/app/workbench_three_policy.ts`, keeping the
     app-internal scene signal policy with the existing Three workbench runtime policy module.
+  - Workbench Three rectangle and graphics-surface geometry helpers are folded into `src/app/workbench_three_policy.ts`,
+    keeping hidden-rect, body-rect, and clipped graphics rect policy with the rest of the workbench Three surface.
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

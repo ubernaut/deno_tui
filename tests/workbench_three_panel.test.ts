@@ -8,14 +8,6 @@ import {
 } from "../app/three_panel.ts";
 import type { Rectangle } from "../src/types.ts";
 import {
-  hideWorkbenchThreeRect,
-  setWorkbenchThreeRect,
-  WORKBENCH_THREE_HIDDEN_RECT,
-  workbenchThreeBodyRect,
-  workbenchThreeContentGraphicsRect,
-  workbenchThreeGraphicsRect,
-} from "../src/app/workbench_three_geometry.ts";
-import {
   type WorkbenchThreePanelEntry,
   WorkbenchThreePanelRegistry,
   WorkbenchThreeViewportInteractionController,
@@ -28,10 +20,16 @@ import {
 } from "../src/app/workbench_three_header.ts";
 import { applyWorkbenchThreePanelFrameDefaults } from "../src/app/workbench_three_policy.ts";
 import {
+  hideWorkbenchThreeRect,
   sameThreeSceneSignal,
   sameWorkbenchThreeScene,
+  setWorkbenchThreeRect,
   setWorkbenchThreeSceneSignal,
+  WORKBENCH_THREE_HIDDEN_RECT,
   workbenchStudioScene,
+  workbenchThreeBodyRect,
+  workbenchThreeContentGraphicsRect,
+  workbenchThreeGraphicsRect,
   type WorkbenchThreeScene,
   workbenchVisualizationThreeScene,
 } from "../src/app/workbench_three_policy.ts";

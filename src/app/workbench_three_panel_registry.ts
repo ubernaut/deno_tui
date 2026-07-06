@@ -1,4 +1,4 @@
-import { hideWorkbenchThreeRect, type WorkbenchThreeRectTarget } from "./workbench_three_geometry.ts";
+import { hideWorkbenchThreeRect, type WorkbenchThreeRectTarget } from "./workbench_three_policy.ts";
 
 export interface WorkbenchThreeInteractivePanel {
   rotateBy(deltaColumns: number, deltaRows: number): unknown;

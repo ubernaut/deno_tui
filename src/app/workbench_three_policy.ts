@@ -2,6 +2,8 @@ import {
   workbenchThreeFrameIntervalForCells,
   type WorkbenchThreeTerminalPressureOptions,
 } from "./workbench_three_terminal_pressure.ts";
+import type { Rectangle } from "../types.ts";
+import { clipRect } from "./hit_targets.ts";
 import type { ThreeAsciiConfigOptions } from "../three_ascii/options.ts";
 import type { ThreeAsciiReadbackStrategy } from "../three_ascii/renderer_options.ts";
 
@@ -124,6 +126,38 @@ export interface WorkbenchThreeSceneSignalTarget<TMode extends string = string> 
   value: WorkbenchThreeScene<TMode> | null;
 }
 
+export interface WorkbenchThreeRectTarget {
+  peek(): Rectangle;
+  value: Rectangle;
+}
+
+export interface WorkbenchWindowRenderContext {
+  viewport: Rectangle;
+  offset: { columns: number; rows: number };
+}
+
+export interface WorkbenchPlacementContext {
+  rowDelta: number;
+  columnDelta: number;
+  clip: Rectangle;
+}
+
+export interface WorkbenchThreeGraphicsRectOptions {
+  rect: Rectangle;
+  window?: WorkbenchWindowRenderContext | null;
+  workspace?: WorkbenchPlacementContext | null;
+}
+
+export interface WorkbenchThreeContentGraphicsRectOptions {
+  window?: WorkbenchWindowRenderContext | null;
+  workspace?: WorkbenchPlacementContext | null;
+}
+
+export interface WorkbenchThreeBodyRectOptions {
+  headerRows?: number;
+  footerRows?: number;
+}
+
 /** Inputs for resolving runtime-only fullscreen Three ASCII options. */
 export interface WorkbenchThreeFullscreenAsciiOptionsInput<TId extends string> {
   id: TId;
@@ -163,6 +197,8 @@ export const DEFAULT_WORKBENCH_THREE_PANEL_DEFAULTS: WorkbenchThreePanelDefaults
   idleMaxRenderCells: WORKBENCH_THREE_RESCUE_CELLS,
   readbackStrategy: WORKBENCH_THREE_READBACK_STRATEGY,
 };
+
+export const WORKBENCH_THREE_HIDDEN_RECT: Rectangle = { column: 0, row: 0, width: 0, height: 0 };
 
 export type WorkbenchThreePanelDefaultedOptions<TOptions extends WorkbenchThreePanelDefaultableOptions> =
   & Omit<TOptions, "idleMaxRenderCells" | "readbackStrategy">
@@ -241,6 +277,77 @@ export function sameThreeSceneSignal(left: WorkbenchThreeSceneSignal, right: Wor
     left.pulse === right.pulse &&
     left.active === right.active &&
     left.pressed === right.pressed;
+}
+
+export function setWorkbenchThreeRect(target: WorkbenchThreeRectTarget, rect: Rectangle): boolean {
+  const current = target.peek();
+  if (
+    current.column === rect.column && current.row === rect.row && current.width === rect.width &&
+    current.height === rect.height
+  ) {
+    return false;
+  }
+  target.value = rect;
+  return true;
+}
+
+export function hideWorkbenchThreeRect(target: WorkbenchThreeRectTarget): boolean {
+  return setWorkbenchThreeRect(target, WORKBENCH_THREE_HIDDEN_RECT);
+}
+
+export function workbenchThreeGraphicsRect(options: WorkbenchThreeGraphicsRectOptions): Rectangle {
+  const rect = options.rect;
+  const window = options.window;
+  if (!window) return rect;
+
+  const windowRect = {
+    column: window.viewport.column + rect.column - window.offset.columns,
+    row: window.viewport.row + rect.row - window.offset.rows,
+    width: rect.width,
+    height: rect.height,
+  };
+  const visibleInWindow = clipRect(windowRect, window.viewport);
+  if (visibleInWindow.width !== rect.width || visibleInWindow.height !== rect.height) {
+    return hiddenWorkbenchThreeGraphicsRect(visibleInWindow);
+  }
+
+  const workspace = options.workspace;
+  if (!workspace) return windowRect;
+  const screenRect = {
+    ...windowRect,
+    column: windowRect.column + workspace.columnDelta,
+    row: windowRect.row + workspace.rowDelta,
+  };
+  const visibleOnScreen = clipRect(screenRect, workspace.clip);
+  if (visibleOnScreen.width !== rect.width || visibleOnScreen.height !== rect.height) {
+    return hiddenWorkbenchThreeGraphicsRect(visibleOnScreen);
+  }
+  return screenRect;
+}
+
+export function workbenchThreeContentGraphicsRect(
+  rect: Rectangle,
+  options: WorkbenchThreeContentGraphicsRectOptions = {},
+): Rectangle {
+  return workbenchThreeGraphicsRect({
+    rect,
+    window: options.window,
+    workspace: options.workspace,
+  });
+}
+
+export function workbenchThreeBodyRect(
+  rect: Rectangle,
+  options: WorkbenchThreeBodyRectOptions = {},
+): Rectangle {
+  const headerRows = Math.max(0, Math.floor(options.headerRows ?? 0));
+  const footerRows = Math.max(0, Math.floor(options.footerRows ?? 0));
+  return {
+    column: rect.column,
+    row: rect.row + headerRows,
+    width: Math.max(0, rect.width),
+    height: Math.max(0, rect.height - headerRows - footerRows),
+  };
 }
 
 /** Resolves the shared Three-window runtime state once per workbench frame. */
@@ -522,4 +629,8 @@ function workbenchThreeWindowStateSourceId<Id extends string>(source: WorkbenchT
 
 function mutableInteractiveIds<Id extends string>(ids: ReadonlySet<Id>): Set<Id> {
   return ids as Set<Id>;
+}
+
+function hiddenWorkbenchThreeGraphicsRect(visible: Rectangle): Rectangle {
+  return { column: visible.column, row: visible.row, width: 0, height: 0 };
 }

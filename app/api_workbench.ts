@@ -300,12 +300,10 @@ import { renderWorkbenchThreeSurface, WorkbenchThreeGridProjectionCache } from "
 import {
   hideWorkbenchThreeRect,
   setWorkbenchThreeRect,
-  workbenchThreeBodyRect,
-  workbenchThreeContentGraphicsRect,
-} from "../src/app/workbench_three_geometry.ts";
-import {
   setWorkbenchThreeSceneSignal,
   workbenchStudioScene,
+  workbenchThreeBodyRect,
+  workbenchThreeContentGraphicsRect,
   type WorkbenchThreeScene as SharedWorkbenchThreeScene,
   workbenchVisualizationThreeScene,
 } from "../src/app/workbench_three_policy.ts";
