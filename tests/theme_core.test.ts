@@ -5,10 +5,6 @@ import {
   emptyStyle as emptyStyleFromModule,
 } from "../src/theme_ansi.ts";
 import {
-  createStandardComponentThemeDefinitions as createStandardComponentThemeDefinitionsFromModule,
-  standardThemeComponentNames as standardThemeComponentNamesFromModule,
-} from "../src/theme_standard_components.ts";
-import {
   compileThemeManifestStateDefinition,
   compileThemeManifestStyleReference,
   createAnsiStyle,
@@ -75,12 +71,31 @@ Deno.test("theme ANSI module matches theme public re-exports", () => {
   assertEquals(createAnsiStyleMap<"accent">({ accent: spec }).accent?.("x"), createAnsiStyle(spec)("x"));
 });
 
-Deno.test("theme standard component module matches theme public re-exports", () => {
-  assertEquals(standardThemeComponentNames(), standardThemeComponentNamesFromModule());
-  assertEquals(createStandardComponentThemeDefinitions(), createStandardComponentThemeDefinitionsFromModule());
+Deno.test("theme standard component definitions cover catalog categories", () => {
+  assertEquals(standardThemeComponentNames().includes("Button"), true);
+  assertEquals(standardThemeComponentNames().includes("Table"), true);
+  assertEquals(Object.keys(createStandardComponentThemeDefinitions({ components: ["Button", "CustomPanel"] })), [
+    "Button",
+    "CustomPanel",
+  ]);
   assertEquals(
-    createStandardComponentThemeDefinitions({ components: ["Button", "CustomPanel"] }),
-    createStandardComponentThemeDefinitionsFromModule({ components: ["Button", "CustomPanel"] }),
+    createStandardComponentThemeDefinitions({ components: ["Button", "CustomPanel"] }).Button?.variants,
+    {
+      primary: { base: ["surface", "accent"], active: ["surface", "success"] },
+      quiet: { base: "muted", focused: "accent" },
+      danger: { base: "danger", focused: "warning", active: "danger" },
+      warning: { base: "warning", focused: "accent", active: "warning" },
+      success: { base: "success", focused: "accent", active: "success" },
+    },
+  );
+  assertEquals(
+    createStandardComponentThemeDefinitions({ components: ["Button", "CustomPanel"] }).CustomPanel?.variants,
+    {
+      muted: { base: "muted" },
+      danger: { base: "danger" },
+      warning: { base: "warning" },
+      success: { base: "success" },
+    },
   );
 });
 

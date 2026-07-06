@@ -1056,143 +1056,6 @@ function sortedSetValues(values) {
   return sorted;
 }
 
-// src/theme_standard_components.ts
-var standardComponentEntries = [...componentCatalog].sort((a, b) => a.name.localeCompare(b.name));
-var standardComponentNames = standardComponentEntries.map((entry) => entry.name);
-var standardComponentKeySet = new Set(
-  standardComponentEntries.flatMap((entry) => [normalizeThemeComponentName(entry.id), normalizeThemeComponentName(entry.name)])
-);
-function createStandardComponentThemeDefinitions(options = {}) {
-  const requested = options.components ? new Set([...options.components].map(normalizeThemeComponentName)) : void 0;
-  const definitions = {};
-  for (const entry of standardComponentEntries) {
-    if (requested && !requested.has(normalizeThemeComponentName(entry.id)) && !requested.has(normalizeThemeComponentName(entry.name))) {
-      continue;
-    }
-    definitions[entry.name] = standardComponentDefinition(entry);
-  }
-  if (requested) {
-    for (const name of options.components ?? []) {
-      if (!standardComponentKeySet.has(normalizeThemeComponentName(name))) {
-        definitions[name] = standardGenericComponentDefinition();
-      }
-    }
-  }
-  return definitions;
-}
-function standardComponentDefinition(entry) {
-  if (entry.name === "Button") return standardInteractiveComponentDefinition();
-  if (entry.name === "Frame" || entry.name === "Box" || entry.name === "WindowManager") {
-    return standardSurfaceComponentDefinition();
-  }
-  if (entry.category === "data") return standardDataComponentDefinition();
-  if (entry.category === "input" || entry.capabilities.includes("selection")) {
-    return standardInteractiveComponentDefinition();
-  }
-  if (entry.category === "overlay") return standardOverlayComponentDefinition();
-  if (entry.category === "feedback" || entry.category === "visualization") return standardFeedbackComponentDefinition();
-  if (entry.category === "navigation" || entry.category === "layout") return standardSurfaceComponentDefinition();
-  return standardGenericComponentDefinition();
-}
-function standardGenericComponentDefinition() {
-  return {
-    base: {
-      base: "foreground",
-      focused: "accent",
-      active: "success",
-      disabled: "muted"
-    },
-    variants: {
-      muted: { base: "muted" },
-      danger: { base: "danger" },
-      warning: { base: "warning" },
-      success: { base: "success" }
-    }
-  };
-}
-function standardSurfaceComponentDefinition() {
-  return {
-    base: {
-      base: ["surface", "foreground"],
-      focused: ["surface", "accent"],
-      active: ["surface", "success"],
-      disabled: ["surface", "muted"]
-    },
-    variants: {
-      chrome: { base: ["surface", "accent"], active: ["surface", "success"] },
-      quiet: { base: "muted", focused: "accent" },
-      danger: { base: ["surface", "danger"], focused: ["surface", "warning"] }
-    }
-  };
-}
-function standardInteractiveComponentDefinition() {
-  return {
-    base: {
-      base: ["surface", "foreground"],
-      focused: ["surface", "accent"],
-      active: ["surface", "success"],
-      disabled: ["surface", "muted"]
-    },
-    variants: {
-      primary: { base: ["surface", "accent"], active: ["surface", "success"] },
-      quiet: { base: "muted", focused: "accent" },
-      danger: { base: "danger", focused: "warning", active: "danger" },
-      warning: { base: "warning", focused: "accent", active: "warning" },
-      success: { base: "success", focused: "accent", active: "success" }
-    }
-  };
-}
-function standardDataComponentDefinition() {
-  return {
-    base: {
-      base: "foreground",
-      focused: "accent",
-      active: ["surface", "foreground"],
-      disabled: "muted"
-    },
-    variants: {
-      header: { base: ["surface", "accent"], active: ["surface", "success"] },
-      selected: { base: ["surface", "foreground"], focused: ["surface", "accent"], active: ["surface", "success"] },
-      stale: { base: "warning", focused: "accent" },
-      danger: { base: "danger", focused: "warning" }
-    }
-  };
-}
-function standardOverlayComponentDefinition() {
-  return {
-    base: {
-      base: ["surface", "foreground"],
-      focused: ["surface", "accent"],
-      active: ["surface", "success"],
-      disabled: ["surface", "muted"]
-    },
-    variants: {
-      palette: { base: ["surface", "foreground"], focused: ["surface", "accent"], active: ["surface", "success"] },
-      warning: { base: ["surface", "warning"], focused: ["surface", "accent"] },
-      danger: { base: ["surface", "danger"], focused: ["surface", "warning"] }
-    }
-  };
-}
-function standardFeedbackComponentDefinition() {
-  return {
-    base: {
-      base: "foreground",
-      focused: "accent",
-      active: "success",
-      disabled: "muted"
-    },
-    variants: {
-      info: { base: "accent", active: "accent" },
-      success: { base: "success", active: "success" },
-      warning: { base: "warning", active: "warning" },
-      danger: { base: "danger", active: "danger" }
-    }
-  };
-}
-function normalizeThemeComponentName(value) {
-  return value.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
-}
-
 // src/theme_ansi.ts
 function emptyStyle(text) {
   return text;
@@ -1339,11 +1202,143 @@ function createAnsiStyle2(spec) {
 function composeThemeOptions(...options) {
   return composeThemeOptionsCore(...options);
 }
-function createStandardComponentThemeDefinitions2(options = {}) {
-  return createStandardComponentThemeDefinitions(options);
+var standardComponentEntries = [...componentCatalog].sort((a, b) => a.name.localeCompare(b.name));
+var standardComponentNames = standardComponentEntries.map((entry) => entry.name);
+var standardComponentKeySet = new Set(
+  standardComponentEntries.flatMap((entry) => [normalizeThemeComponentName(entry.id), normalizeThemeComponentName(entry.name)])
+);
+function createStandardComponentThemeDefinitions(options = {}) {
+  const requested = options.components ? new Set([...options.components].map(normalizeThemeComponentName)) : void 0;
+  const definitions = {};
+  for (const entry of standardComponentEntries) {
+    if (requested && !requested.has(normalizeThemeComponentName(entry.id)) && !requested.has(normalizeThemeComponentName(entry.name))) {
+      continue;
+    }
+    definitions[entry.name] = standardComponentDefinition(entry);
+  }
+  if (requested) {
+    for (const name of options.components ?? []) {
+      if (!standardComponentKeySet.has(normalizeThemeComponentName(name))) {
+        definitions[name] = standardGenericComponentDefinition();
+      }
+    }
+  }
+  return definitions;
 }
 function composeStandardThemeOptions(options = {}) {
-  return composeThemeOptions({ components: createStandardComponentThemeDefinitions2() }, options);
+  return composeThemeOptions({ components: createStandardComponentThemeDefinitions() }, options);
+}
+function standardComponentDefinition(entry) {
+  if (entry.name === "Button") return standardInteractiveComponentDefinition();
+  if (entry.name === "Frame" || entry.name === "Box" || entry.name === "WindowManager") {
+    return standardSurfaceComponentDefinition();
+  }
+  if (entry.category === "data") return standardDataComponentDefinition();
+  if (entry.category === "input" || entry.capabilities.includes("selection")) {
+    return standardInteractiveComponentDefinition();
+  }
+  if (entry.category === "overlay") return standardOverlayComponentDefinition();
+  if (entry.category === "feedback" || entry.category === "visualization") return standardFeedbackComponentDefinition();
+  if (entry.category === "navigation" || entry.category === "layout") return standardSurfaceComponentDefinition();
+  return standardGenericComponentDefinition();
+}
+function standardGenericComponentDefinition() {
+  return {
+    base: {
+      base: "foreground",
+      focused: "accent",
+      active: "success",
+      disabled: "muted"
+    },
+    variants: {
+      muted: { base: "muted" },
+      danger: { base: "danger" },
+      warning: { base: "warning" },
+      success: { base: "success" }
+    }
+  };
+}
+function standardSurfaceComponentDefinition() {
+  return {
+    base: {
+      base: ["surface", "foreground"],
+      focused: ["surface", "accent"],
+      active: ["surface", "success"],
+      disabled: ["surface", "muted"]
+    },
+    variants: {
+      chrome: { base: ["surface", "accent"], active: ["surface", "success"] },
+      quiet: { base: "muted", focused: "accent" },
+      danger: { base: ["surface", "danger"], focused: ["surface", "warning"] }
+    }
+  };
+}
+function standardInteractiveComponentDefinition() {
+  return {
+    base: {
+      base: ["surface", "foreground"],
+      focused: ["surface", "accent"],
+      active: ["surface", "success"],
+      disabled: ["surface", "muted"]
+    },
+    variants: {
+      primary: { base: ["surface", "accent"], active: ["surface", "success"] },
+      quiet: { base: "muted", focused: "accent" },
+      danger: { base: "danger", focused: "warning", active: "danger" },
+      warning: { base: "warning", focused: "accent", active: "warning" },
+      success: { base: "success", focused: "accent", active: "success" }
+    }
+  };
+}
+function standardDataComponentDefinition() {
+  return {
+    base: {
+      base: "foreground",
+      focused: "accent",
+      active: ["surface", "foreground"],
+      disabled: "muted"
+    },
+    variants: {
+      header: { base: ["surface", "accent"], active: ["surface", "success"] },
+      selected: { base: ["surface", "foreground"], focused: ["surface", "accent"], active: ["surface", "success"] },
+      stale: { base: "warning", focused: "accent" },
+      danger: { base: "danger", focused: "warning" }
+    }
+  };
+}
+function standardOverlayComponentDefinition() {
+  return {
+    base: {
+      base: ["surface", "foreground"],
+      focused: ["surface", "accent"],
+      active: ["surface", "success"],
+      disabled: ["surface", "muted"]
+    },
+    variants: {
+      palette: { base: ["surface", "foreground"], focused: ["surface", "accent"], active: ["surface", "success"] },
+      warning: { base: ["surface", "warning"], focused: ["surface", "accent"] },
+      danger: { base: ["surface", "danger"], focused: ["surface", "warning"] }
+    }
+  };
+}
+function standardFeedbackComponentDefinition() {
+  return {
+    base: {
+      base: "foreground",
+      focused: "accent",
+      active: "success",
+      disabled: "muted"
+    },
+    variants: {
+      info: { base: "accent", active: "accent" },
+      success: { base: "success", active: "success" },
+      warning: { base: "warning", active: "warning" },
+      danger: { base: "danger", active: "danger" }
+    }
+  };
+}
+function normalizeThemeComponentName(value) {
+  return value.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
 }
 var defaultThemePacks = [
   { id: "plain", label: "Plain", palette: "plain", options: composeStandardThemeOptions() },
