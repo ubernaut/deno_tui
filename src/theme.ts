@@ -14,13 +14,6 @@ import {
   type Style as StyleInternal,
 } from "./theme_ansi.ts";
 import {
-  defaultThemePaletteDefinitionsInternal,
-  normalizeThemePaletteInternal,
-  resolveThemePaletteTokensInternal,
-  themePaletteIdInternal,
-  themePalettesInternal,
-} from "./theme_palettes.ts";
-import {
   composeStylesCore,
   composeThemeOptionsCore,
   createThemeCore,
@@ -435,6 +428,40 @@ export interface ThemePaletteInspection {
   tokens: ThemeTokenName[];
 }
 
+const themePalettesInternal: Record<ThemePaletteName, Partial<ThemeTokens>> = {
+  plain: {
+    foreground: emptyStyleInternal,
+    muted: emptyStyleInternal,
+    accent: emptyStyleInternal,
+    success: emptyStyleInternal,
+    warning: emptyStyleInternal,
+    danger: emptyStyleInternal,
+    surface: emptyStyleInternal,
+  },
+  neon: {
+    ...createAnsiStyleMap<ThemeTokenName>({
+      foreground: { foreground: [230, 255, 246] },
+      muted: { foreground: [104, 124, 132] },
+      accent: { foreground: [31, 231, 210] },
+      success: { foreground: [156, 255, 58] },
+      warning: { foreground: [255, 196, 87] },
+      danger: { foreground: [255, 79, 216] },
+      surface: { background: [7, 16, 23] },
+    }),
+  },
+  terminal: {
+    ...createAnsiStyleMap<ThemeTokenName>({
+      foreground: { foreground: "white" },
+      muted: { foreground: "brightBlack" },
+      accent: { foreground: "cyan" },
+      success: { foreground: "green" },
+      warning: { foreground: "yellow" },
+      danger: { foreground: "red" },
+    }),
+    surface: emptyStyleInternal,
+  },
+};
+
 /** Public constant for a theme Palettes. */
 export const themePalettes: Record<ThemePaletteName, Partial<ThemeTokens>> = themePalettesInternal;
 
@@ -530,6 +557,40 @@ export class ThemePaletteNotFoundError extends Error {
     super(`Theme palette "${id}" is not registered`);
     this.name = "ThemePaletteNotFoundError";
   }
+}
+
+function defaultThemePaletteDefinitionsInternal(): ThemePalette[] {
+  return (Object.entries(themePalettesInternal) as [ThemePaletteName, Partial<ThemeTokens>][]).map(([id, tokens]) => ({
+    id,
+    label: titleCaseThemePaletteId(id),
+    tokens,
+  }));
+}
+
+function normalizeThemePaletteInternal(palette: ThemePalette | ThemePaletteName): ThemePalette {
+  if (typeof palette === "string") {
+    return {
+      id: palette,
+      label: titleCaseThemePaletteId(palette),
+      tokens: { ...themePalettesInternal[palette] },
+    };
+  }
+  return {
+    ...palette,
+    tokens: { ...palette.tokens },
+  };
+}
+
+function resolveThemePaletteTokensInternal(palette: ThemePaletteReference): Partial<ThemeTokens> {
+  return typeof palette === "string" ? themePalettesInternal[palette] : palette.tokens;
+}
+
+function themePaletteIdInternal(palette: ThemePaletteReference): string {
+  return typeof palette === "string" ? palette : palette.id;
+}
+
+function titleCaseThemePaletteId(value: string): string {
+  return value.replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 /** Public helper for merge Component Theme Definition. */

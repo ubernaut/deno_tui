@@ -1122,41 +1122,6 @@ function clampAnsiByte(value) {
   return Math.max(0, Math.min(255, Math.round(value)));
 }
 
-// src/theme_palettes.ts
-var themePalettesInternal = {
-  plain: {
-    foreground: emptyStyle,
-    muted: emptyStyle,
-    accent: emptyStyle,
-    success: emptyStyle,
-    warning: emptyStyle,
-    danger: emptyStyle,
-    surface: emptyStyle
-  },
-  neon: {
-    ...createAnsiStyleMap({
-      foreground: { foreground: [230, 255, 246] },
-      muted: { foreground: [104, 124, 132] },
-      accent: { foreground: [31, 231, 210] },
-      success: { foreground: [156, 255, 58] },
-      warning: { foreground: [255, 196, 87] },
-      danger: { foreground: [255, 79, 216] },
-      surface: { background: [7, 16, 23] }
-    })
-  },
-  terminal: {
-    ...createAnsiStyleMap({
-      foreground: { foreground: "white" },
-      muted: { foreground: "brightBlack" },
-      accent: { foreground: "cyan" },
-      success: { foreground: "green" },
-      warning: { foreground: "yellow" },
-      danger: { foreground: "red" }
-    }),
-    surface: emptyStyle
-  }
-};
-
 // src/theme_core.ts
 function mergeComponentThemeDefinitionCore(base = {}, extension = {}) {
   const variants = { ...base.variants ?? {} };
@@ -1199,6 +1164,39 @@ function normalizeThemeExtends(value) {
 function createAnsiStyle2(spec) {
   return createAnsiStyle(spec);
 }
+var themePalettesInternal = {
+  plain: {
+    foreground: emptyStyle,
+    muted: emptyStyle,
+    accent: emptyStyle,
+    success: emptyStyle,
+    warning: emptyStyle,
+    danger: emptyStyle,
+    surface: emptyStyle
+  },
+  neon: {
+    ...createAnsiStyleMap({
+      foreground: { foreground: [230, 255, 246] },
+      muted: { foreground: [104, 124, 132] },
+      accent: { foreground: [31, 231, 210] },
+      success: { foreground: [156, 255, 58] },
+      warning: { foreground: [255, 196, 87] },
+      danger: { foreground: [255, 79, 216] },
+      surface: { background: [7, 16, 23] }
+    })
+  },
+  terminal: {
+    ...createAnsiStyleMap({
+      foreground: { foreground: "white" },
+      muted: { foreground: "brightBlack" },
+      accent: { foreground: "cyan" },
+      success: { foreground: "green" },
+      warning: { foreground: "yellow" },
+      danger: { foreground: "red" }
+    }),
+    surface: emptyStyle
+  }
+};
 function composeThemeOptions(...options) {
   return composeThemeOptionsCore(...options);
 }
