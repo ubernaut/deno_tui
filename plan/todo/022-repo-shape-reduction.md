@@ -217,6 +217,9 @@ The library core is real and valuable, but it needs clearer boundaries:
   - API workbench titlebar, scrollbar, touch-target, and hit-window resolution helpers are folded into
     `app/api_workbench_controls.ts`, keeping pointer routing policy with the app-local controls facade and removing
     another standalone workbench helper shard.
+  - Workbench Kitty graphics passthrough detection, status formatting, and paired auto/forced surface ownership are
+    folded into `src/runtime/graphics_surface.ts`, keeping raster terminal capability policy with the graphics surface
+    runtime and removing a single-caller app helper shard.
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

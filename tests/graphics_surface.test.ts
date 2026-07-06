@@ -1,16 +1,14 @@
 import { assert, assertEquals, assertStrictEquals, assertThrows } from "./deps.ts";
 import {
   createKittyGraphicsSurface,
+  detectTmuxPassthroughAllowed,
   DiagnosticsCollector,
+  formatWorkbenchKittyGraphicsStatus,
   type KittyGraphicsCapability,
   KittyGraphicsSurface,
   NoopGraphicsSurface,
-} from "../mod.ts";
-import {
-  detectTmuxPassthroughAllowed,
-  formatWorkbenchKittyGraphicsStatus,
   WorkbenchKittyGraphicsController,
-} from "../app/workbench_kitty_graphics.ts";
+} from "../mod.ts";
 import {
   chunkKittyGraphicsCommand,
   createKittyGraphicsDeleteCommand,

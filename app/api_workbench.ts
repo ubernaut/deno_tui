@@ -340,7 +340,10 @@ import {
   workspaceRenamedModalContent,
   workspaceSavedModalContent,
 } from "../src/app/workbench_workspace_menu.ts";
-import { formatWorkbenchKittyGraphicsStatus, WorkbenchKittyGraphicsController } from "./workbench_kitty_graphics.ts";
+import {
+  formatWorkbenchKittyGraphicsStatus,
+  WorkbenchKittyGraphicsController,
+} from "../src/runtime/graphics_surface.ts";
 import {
   type WorkbenchFrameRenderCommand,
   workbenchFrameRenderCommandsInto,

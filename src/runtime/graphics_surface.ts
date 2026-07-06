@@ -91,6 +91,41 @@ export interface KittyGraphicsSurfaceOptions {
   force?: boolean;
 }
 
+export interface TmuxPassthroughProbeResult {
+  success: boolean;
+  stdout: Uint8Array;
+}
+
+export interface DetectTmuxPassthroughOptions {
+  tmux?: string | null;
+  command?: () => Promise<TmuxPassthroughProbeResult>;
+  decoder?: TextDecoder;
+}
+
+export interface WorkbenchKittyGraphicsControllerOptions {
+  writer: GraphicsSurfaceWriter;
+  diagnostics?: DiagnosticsCollector;
+  capability?: KittyGraphicsCapability;
+  tmux?: string | null;
+  tmuxPassthroughAllowed: boolean;
+}
+
+export interface CreateWorkbenchKittyGraphicsControllerOptions
+  extends Omit<WorkbenchKittyGraphicsControllerOptions, "tmuxPassthroughAllowed"> {
+  command?: DetectTmuxPassthroughOptions["command"];
+}
+
+export interface WorkbenchKittyGraphicsSelection {
+  kittyGraphics?: boolean;
+}
+
+export interface WorkbenchKittyGraphicsStatusOptions {
+  selected: WorkbenchKittyGraphicsSelection;
+  tmux?: string | null;
+  tmuxPassthroughAllowed: boolean;
+  surface: GraphicsSurfaceInspection;
+}
+
 /** No-op graphics surface used when raster terminal graphics are unavailable. */
 export class NoopGraphicsSurface implements GraphicsSurface {
   readonly kind = "none" as const;
@@ -269,6 +304,77 @@ export function createKittyGraphicsSurface(options: KittyGraphicsSurfaceOptions)
   return new NoopGraphicsSurface();
 }
 
+/** Detects whether the current tmux session permits Kitty graphics passthrough. */
+export async function detectTmuxPassthroughAllowed(options: DetectTmuxPassthroughOptions = {}): Promise<boolean> {
+  const tmux = options.tmux ?? Deno.env.get("TMUX");
+  if (!tmux) return true;
+
+  try {
+    const output = await (options.command ?? defaultTmuxPassthroughCommand)();
+    if (!output.success) return false;
+    const value = (options.decoder ?? new TextDecoder()).decode(output.stdout).trim().toLowerCase();
+    return value === "on" || value === "all" || value === "1" || value === "yes";
+  } catch {
+    return false;
+  }
+}
+
+/** Owns paired auto and forced Kitty graphics surfaces for interactive workbench renderers. */
+export class WorkbenchKittyGraphicsController {
+  readonly tmux: string | null;
+  readonly tmuxPassthroughAllowed: boolean;
+  readonly autoSurface: GraphicsSurface;
+  readonly forcedSurface: GraphicsSurface;
+
+  static async create(
+    options: CreateWorkbenchKittyGraphicsControllerOptions,
+  ): Promise<WorkbenchKittyGraphicsController> {
+    const tmux = options.tmux ?? Deno.env.get("TMUX") ?? null;
+    const tmuxPassthroughAllowed = await detectTmuxPassthroughAllowed({ tmux, command: options.command });
+    return new WorkbenchKittyGraphicsController({ ...options, tmux, tmuxPassthroughAllowed });
+  }
+
+  constructor(options: WorkbenchKittyGraphicsControllerOptions) {
+    this.tmux = options.tmux ?? null;
+    this.tmuxPassthroughAllowed = options.tmuxPassthroughAllowed;
+    this.autoSurface = this.createSurface(options, false);
+    this.forcedSurface = this.createSurface(options, true);
+  }
+
+  surfaceFor(options: WorkbenchKittyGraphicsSelection): GraphicsSurface {
+    return options.kittyGraphics ? this.forcedSurface : this.autoSurface;
+  }
+
+  async clear(scope: GraphicsClearScope = "visible"): Promise<void> {
+    await Promise.all([
+      this.autoSurface.clear(scope),
+      this.forcedSurface.clear(scope),
+    ]);
+  }
+
+  private createSurface(options: WorkbenchKittyGraphicsControllerOptions, force: boolean): GraphicsSurface {
+    const canForce = force && (!this.tmux || this.tmuxPassthroughAllowed);
+    return createKittyGraphicsSurface({
+      writer: options.writer,
+      capability: options.capability,
+      detection: canForce && this.tmux ? { tmuxPassthrough: true } : undefined,
+      force: canForce,
+      quiet: 2,
+      maxChunkBytes: 16384,
+      diagnostics: options.diagnostics,
+    });
+  }
+}
+
+/** Formats the status suffix shown beside the Kitty graphics checkbox. */
+export function formatWorkbenchKittyGraphicsStatus(options: WorkbenchKittyGraphicsStatusOptions): string {
+  if (options.selected.kittyGraphics && options.tmux && !options.tmuxPassthroughAllowed) {
+    return "[unavailable: tmux allow-passthrough off]";
+  }
+  if (options.surface.available) return `[${options.surface.mode ?? "available"}]`;
+  return `[unavailable: ${options.surface.reason ?? "not detected"}]`;
+}
+
 function createGraphicsHandle(
   kind: GraphicsSurfaceKind,
   imageId: number,
@@ -297,4 +403,10 @@ function normalizePlacement(placement: GraphicsPlacement): GraphicsPlacement {
 
 function cursorMove(row: number, column: number): string {
   return `\x1b[${Math.max(1, Math.floor(row) + 1)};${Math.max(1, Math.floor(column) + 1)}H`;
+}
+
+async function defaultTmuxPassthroughCommand(): Promise<TmuxPassthroughProbeResult> {
+  return await new Deno.Command("tmux", {
+    args: ["show-options", "-gqv", "allow-passthrough"],
+  }).output();
 }
