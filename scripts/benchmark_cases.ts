@@ -90,13 +90,13 @@ import {
 import { resolveThreePanelAdaptiveRenderBudget } from "../src/app/three_panel_policy.ts";
 import { LayoutMeasurementCache, simpleLayoutSolver } from "../src/layout/mod.ts";
 import { TerminalScreenController } from "../src/runtime/terminal_screen.ts";
-import {
-  type SystemMetricsCommandOutput,
-  type SystemMetricsDirEntry,
-  type SystemMetricsNetworkInterface,
-  type SystemMetricsProvider,
-  SystemMonitor,
-} from "../app/system_metrics.ts";
+import { SystemMonitor } from "../app/system_metrics.ts";
+import type {
+  SystemMetricsCommandOutput,
+  SystemMetricsDirEntry,
+  SystemMetricsNetworkInterface,
+  SystemMetricsProvider,
+} from "../app/system_metrics_sources.ts";
 import { syntheticWorkbenchSystem } from "../app/workbench_synthetic.ts";
 import { cpuHexTileLayoutInto } from "../app/visualizations.ts";
 import {

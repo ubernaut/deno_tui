@@ -24,23 +24,6 @@ import type {
   TemperatureSnapshot,
 } from "./types.ts";
 
-export {
-  type GpuSample,
-  NvidiaSmiGpuMetricsProvider,
-  type SystemGpuMetricsProvider,
-  type SystemGpuMetricsProviderContext,
-} from "./system_metrics_sources.ts";
-export {
-  DenoSystemMetricsProvider,
-  emptyGpuSnapshot,
-  parseNvidiaSmiGpuRow,
-  type SystemMetricsCommandOptions,
-  type SystemMetricsCommandOutput,
-  type SystemMetricsDirEntry,
-  type SystemMetricsNetworkInterface,
-  type SystemMetricsProvider,
-} from "./system_metrics_sources.ts";
-
 const COMMAND_OUTPUT_DECODER = new TextDecoder();
 
 type SystemProcessSortKey = "cpu" | "memory" | "pid" | "name";

@@ -1,17 +1,15 @@
 import { assertEquals } from "./deps.ts";
-import {
-  compactDiagnostics,
-  type GpuSample,
-  processDiagnostics,
-  type SystemGpuMetricsProvider,
-  type SystemGpuMetricsProviderContext,
-  type SystemMetricsCommandOptions,
-  type SystemMetricsCommandOutput,
-  type SystemMetricsDirEntry,
-  type SystemMetricsNetworkInterface,
-  type SystemMetricsProvider,
-  SystemMonitor,
-} from "../app/system_metrics.ts";
+import { compactDiagnostics, processDiagnostics, SystemMonitor } from "../app/system_metrics.ts";
+import type {
+  GpuSample,
+  SystemGpuMetricsProvider,
+  SystemGpuMetricsProviderContext,
+  SystemMetricsCommandOptions,
+  SystemMetricsCommandOutput,
+  SystemMetricsDirEntry,
+  SystemMetricsNetworkInterface,
+  SystemMetricsProvider,
+} from "../app/system_metrics_sources.ts";
 import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 
 const encoder = new TextEncoder();
