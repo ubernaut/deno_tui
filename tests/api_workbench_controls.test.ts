@@ -1,8 +1,5 @@
 import { assertEquals } from "./deps.ts";
 import {
-  apiWorkbenchButtonRowInto,
-  apiWorkbenchCheckboxRowsInto,
-  apiWorkbenchComboHeaderRowsInto,
   apiWorkbenchControlAt,
   apiWorkbenchControlAtEdge,
   apiWorkbenchControlBaseStyle,
@@ -15,15 +12,9 @@ import {
   type ApiWorkbenchControlLineSegment,
   apiWorkbenchControlsSnapshotRowsInto,
   apiWorkbenchControlTrack,
-  apiWorkbenchDropdownHeaderRowInto,
   apiWorkbenchDropdownPopoverRect,
-  apiWorkbenchInputRowInto,
-  apiWorkbenchProgressRowInto,
-  apiWorkbenchRadioRowsInto,
-  apiWorkbenchSliderRowInto,
   apiWorkbenchSliderSetHitInto,
   apiWorkbenchStepperHitPlacementsInto,
-  apiWorkbenchStepperRowInto,
   apiWorkbenchTextboxCommandStyle,
   apiWorkbenchTextboxProjectionInto,
   type ApiWorkbenchTextboxRenderCommand,
@@ -733,154 +724,6 @@ Deno.test("api workbench textbox projection reuses caller-owned visual lines", (
   assertEquals(projection.rows[0]?.visualLine === firstVisualLine, true);
   assertEquals(projection.rows[0]?.visualLine.text, "short");
   assertEquals(visualLines.length, 1);
-});
-
-Deno.test("api workbench option rows project checkbox and radio controls with reusable storage", () => {
-  const rows = apiWorkbenchCheckboxRowsInto([], [
-    { label: "live preview", checked: true },
-    { label: "compact rows", checked: false },
-  ]);
-  const first = rows[0];
-
-  assertEquals(rows, [
-    { id: "checkbox", value: "Checkboxes", options: undefined },
-    { id: "checkbox", value: "✓ live preview", options: { indent: true, index: 0 } },
-    { id: "checkbox", value: "✗ compact rows", options: { indent: true, index: 1 } },
-  ]);
-
-  apiWorkbenchRadioRowsInto(rows, [
-    { label: "Fast", selected: false },
-    { label: "Unit-01 Signal", selected: true },
-  ], 1);
-
-  assertEquals(rows[0] === first, true);
-  assertEquals(rows, [
-    { id: "radio", value: "Radio", options: { previous: true, next: true } },
-    { id: "radio", value: "  ○ Fast", options: { indent: true, index: 0 } },
-    { id: "radio", value: "> ● Unit-01 Signal", options: { indent: true, index: 1 } },
-  ]);
-});
-
-Deno.test("api workbench combo header projection preserves responsive split and hit options", () => {
-  assertEquals(
-    apiWorkbenchComboHeaderRowsInto([], {
-      title: "Theme",
-      label: "Unit-01 Signal",
-      expanded: true,
-      rectWidth: 48,
-    }),
-    [
-      {
-        id: "combo",
-        value: "Theme  ▾ Unit-01 Signal",
-        options: { action: "activate", previous: undefined, next: undefined },
-      },
-    ],
-  );
-
-  assertEquals(
-    apiWorkbenchComboHeaderRowsInto([], {
-      title: "Theme combo",
-      label: "Unit-01 Signal",
-      expanded: false,
-      rectWidth: 18,
-      expandedGlyph: "v",
-      collapsedGlyph: ">",
-      previous: true,
-      next: true,
-    }),
-    [
-      {
-        id: "combo",
-        value: "Theme combo  >",
-        options: { action: "activate", previous: true, next: true },
-      },
-      { id: "combo", value: "Unit-01 Signal", options: { indent: true } },
-    ],
-  );
-});
-
-Deno.test("api workbench simple control row projectors preserve renderer-neutral values", () => {
-  const button = apiWorkbenchButtonRowInto(undefined, {
-    id: "genericButton",
-    label: "Generic Button",
-    detail: "presses=3",
-  });
-  assertEquals(button, {
-    id: "genericButton",
-    value: "[ Generic Button ] presses=3",
-    options: { button: true, action: undefined },
-  });
-
-  const reused = apiWorkbenchDropdownHeaderRowInto(button, {
-    title: "Dropdown",
-    label: "Primary",
-    expanded: false,
-    expandedGlyph: "v",
-    collapsedGlyph: ">",
-  });
-  assertEquals(reused === button, true);
-  assertEquals(reused, {
-    id: "dropdown",
-    value: "Dropdown  > Primary",
-    options: { action: "toggle" },
-  });
-
-  assertEquals(
-    apiWorkbenchInputRowInto(undefined, {
-      title: "Input",
-      text: "deno task health",
-      active: true,
-      cursorGlyph: "|",
-    }),
-    {
-      id: "input",
-      value: "Input     deno task health|",
-      options: { action: "focus" },
-    },
-  );
-
-  assertEquals(
-    apiWorkbenchSliderRowInto(undefined, {
-      track: { text: "██░░" },
-      value: 5,
-      max: 10,
-    }),
-    {
-      id: "slider",
-      value: "Slider    ██░░ 5/10",
-      options: { previous: true, next: true },
-    },
-  );
-
-  assertEquals(
-    apiWorkbenchStepperRowInto(undefined, {
-      steps: [
-        { id: "draft", label: "Draft", completed: true },
-        { id: "review", label: "Review" },
-        { id: "ship", label: "Ship" },
-      ],
-      activeIndex: 1,
-      rectWidth: 48,
-    }),
-    {
-      id: "stepper",
-      value: "Stepper   ✓ Draft → [Review] → Ship",
-      options: { previous: true, next: true },
-    },
-  );
-
-  assertEquals(
-    apiWorkbenchProgressRowInto(undefined, {
-      track: { text: "██░░" },
-      value: 50,
-    }),
-    {
-      id: "slider",
-      value: "Progress  ██░░ 50%",
-      options: undefined,
-    },
-  );
 });
 
 Deno.test("api workbench controls panel rows project shared adapter order", () => {

@@ -994,7 +994,7 @@ export interface ApiWorkbenchControlsSnapshotOptions<Value extends string = stri
   buffers: ApiWorkbenchControlsSnapshotBuffers;
 }
 
-export function apiWorkbenchCheckboxRowsInto(
+function apiWorkbenchCheckboxRowsInto(
   target: ApiWorkbenchOptionControlRow[],
   items: readonly ApiWorkbenchCheckboxOption[],
   options: { header?: string } = {},
@@ -1004,7 +1004,7 @@ export function apiWorkbenchCheckboxRowsInto(
   return target;
 }
 
-export function apiWorkbenchRadioRowsInto(
+function apiWorkbenchRadioRowsInto(
   target: ApiWorkbenchOptionControlRow[],
   items: readonly ApiWorkbenchRadioOption[],
   activeIndex: number,
@@ -1015,7 +1015,7 @@ export function apiWorkbenchRadioRowsInto(
   return target;
 }
 
-export function apiWorkbenchComboHeaderRowsInto(
+function apiWorkbenchComboHeaderRowsInto(
   target: ApiWorkbenchProjectedControlRow[],
   options: ApiWorkbenchComboHeaderRowsOptions,
 ): ApiWorkbenchProjectedControlRow[] {
@@ -1024,7 +1024,7 @@ export function apiWorkbenchComboHeaderRowsInto(
   return target;
 }
 
-export function apiWorkbenchButtonRowInto(
+function apiWorkbenchButtonRowInto(
   target: ApiWorkbenchProjectedControlRow | undefined,
   options: ApiWorkbenchButtonRowOptions,
 ): ApiWorkbenchProjectedControlRow {
@@ -1037,7 +1037,7 @@ export function apiWorkbenchButtonRowInto(
   );
 }
 
-export function apiWorkbenchDropdownHeaderRowInto(
+function apiWorkbenchDropdownHeaderRowInto(
   target: ApiWorkbenchProjectedControlRow | undefined,
   options: ApiWorkbenchDropdownHeaderRowOptions,
 ): ApiWorkbenchProjectedControlRow {
@@ -1051,7 +1051,7 @@ export function apiWorkbenchDropdownHeaderRowInto(
   );
 }
 
-export function apiWorkbenchInputRowInto(
+function apiWorkbenchInputRowInto(
   target: ApiWorkbenchProjectedControlRow | undefined,
   options: ApiWorkbenchInputRowOptions,
 ): ApiWorkbenchProjectedControlRow {
@@ -1063,7 +1063,7 @@ export function apiWorkbenchInputRowInto(
   );
 }
 
-export function apiWorkbenchSliderRowInto(
+function apiWorkbenchSliderRowInto(
   target: ApiWorkbenchProjectedControlRow | undefined,
   options: ApiWorkbenchSliderRowOptions,
 ): ApiWorkbenchProjectedControlRow {
@@ -1075,7 +1075,7 @@ export function apiWorkbenchSliderRowInto(
   );
 }
 
-export function apiWorkbenchStepperRowInto(
+function apiWorkbenchStepperRowInto(
   target: ApiWorkbenchProjectedControlRow | undefined,
   options: ApiWorkbenchStepperRowOptions,
 ): ApiWorkbenchProjectedControlRow {
@@ -1091,7 +1091,7 @@ export function apiWorkbenchStepperRowInto(
   );
 }
 
-export function apiWorkbenchProgressRowInto(
+function apiWorkbenchProgressRowInto(
   target: ApiWorkbenchProjectedControlRow | undefined,
   options: ApiWorkbenchProgressRowOptions,
 ): ApiWorkbenchProjectedControlRow {
