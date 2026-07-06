@@ -18272,19 +18272,6 @@ function addControlHits(placements, addHit) {
   }
 }
 
-// app/api_workbench_button_row_view.ts
-function renderApiWorkbenchButtonRow(options) {
-  const { frame, rect, startRow, items, placements, commands, theme: theme2, contrastText: contrastText2, paint: paint2, write: write2, addHit, hitAction } = options;
-  const nextRow = layoutWorkbenchButtonRowInto(placements, items, rect, startRow);
-  workbenchButtonRowRenderCommandsInto(commands, placements);
-  for (const command of commands) {
-    const projection = projectWorkbenchButtonCommand(command, theme2, contrastText2);
-    write2(frame, command.rect.row, command.rect.column, paint2(projection.text, projection.style));
-    if (!command.item.disabled) addHit(command.hitRect, hitAction(command.item.action));
-  }
-  return nextRow;
-}
-
 // app/html_css_layout_view.ts
 function htmlCssLayoutSummaryRows(profile = "terminal") {
   if (profile === "web") {
@@ -18588,6 +18575,17 @@ function writeTextCommand2(target, line, style2) {
 }
 
 // app/api_workbench_window_view.ts
+function renderApiWorkbenchButtonRow(options) {
+  const { frame, rect, startRow, items, placements, commands, theme: theme2, contrastText: contrastText2, paint: paint2, write: write2, addHit, hitAction } = options;
+  const nextRow = layoutWorkbenchButtonRowInto(placements, items, rect, startRow);
+  workbenchButtonRowRenderCommandsInto(commands, placements);
+  for (const command of commands) {
+    const projection = projectWorkbenchButtonCommand(command, theme2, contrastText2);
+    write2(frame, command.rect.row, command.rect.column, paint2(projection.text, projection.style));
+    if (!command.item.disabled) addHit(command.hitRect, hitAction(command.item.action));
+  }
+  return nextRow;
+}
 function renderApiWorkbenchChromeHeader(options) {
   const {
     frame,

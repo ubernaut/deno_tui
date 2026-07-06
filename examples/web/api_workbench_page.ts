@@ -111,10 +111,10 @@ import {
   ApiWorkbenchControlsViewBufferCache,
   renderApiWorkbenchControls,
 } from "../../app/api_workbench_controls_view.ts";
-import { renderApiWorkbenchButtonRow } from "../../app/api_workbench_button_row_view.ts";
 import { renderApiWorkbenchHtmlCssLayout } from "../../app/html_css_layout_view.ts";
 import {
   type ApiWorkbenchDropdownOverlay,
+  renderApiWorkbenchButtonRow,
   renderApiWorkbenchChromeHeader,
   renderApiWorkbenchDropdownOverlay,
   renderApiWorkbenchShelf,

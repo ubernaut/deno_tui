@@ -16,7 +16,7 @@ import {
   workbenchModalRowRenderCommandsInto,
 } from "../src/app/workbench_overlay.ts";
 import type { Rectangle } from "../src/types.ts";
-import { renderApiWorkbenchButtonRow } from "./api_workbench_button_row_view.ts";
+import { renderApiWorkbenchButtonRow } from "./api_workbench_window_view.ts";
 import type { ApiWorkbenchThemeSpec } from "./api_workbench_catalog.ts";
 
 interface ApiWorkbenchPaintStyle {

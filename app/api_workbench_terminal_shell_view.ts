@@ -36,7 +36,7 @@ import {
   apiWorkbenchTerminalStatusToneColor,
   type ApiWorkbenchThemeSpec,
 } from "./api_workbench_catalog.ts";
-import { renderApiWorkbenchButtonRow } from "./api_workbench_button_row_view.ts";
+import { renderApiWorkbenchButtonRow } from "./api_workbench_window_view.ts";
 
 type TerminalShellViewHitAction =
   | { type: "terminalShellPane"; id: string }
