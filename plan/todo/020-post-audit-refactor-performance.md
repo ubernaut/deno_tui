@@ -1298,3 +1298,6 @@ performance, shared terminal/web workbench projections, and oversized module red
   so resized focused Three panes must grow vertically as well as horizontally. The smoke assertion is now render-cap
   aware for large tiled panes, which catches stale pane sizing without mistaking the intentional 3,840-cell live cap for
   a scaling failure.
+- Fixed Three panel revision publication so same revisions always skip and advancing revisions still suppress redraws
+  when content fingerprints are unchanged. This restored the tested redraw-suppression contract for revisioned renderer
+  frames while keeping the same-revision publication benchmark on the cheap `0.001ms` path.

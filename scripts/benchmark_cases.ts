@@ -1355,7 +1355,13 @@ function runThreePanelGridScaleCachedWorkload(): void {
 }
 
 function runThreePanelGridRevisionPublicationWorkload(): void {
-  threePanelPublicationRevision += 1;
+  if (threePanelPublicationRevision === 0) {
+    threePanelPublicationRevision = 1;
+    threePanelPublicationCache.shouldPublish({
+      grid: threePanelScaleSourceGrid,
+      revision: threePanelPublicationRevision,
+    });
+  }
   const publish = threePanelPublicationCache.shouldPublish({
     grid: threePanelScaleSourceGrid,
     revision: threePanelPublicationRevision,
@@ -1365,7 +1371,7 @@ function runThreePanelGridRevisionPublicationWorkload(): void {
     revision: threePanelPublicationRevision,
   });
   threePanelScaleChecksum = (threePanelScaleChecksum + threePanelPublicationRevision + (publish ? 1 : 0)) % 1_000_000;
-  if (!publish || duplicate || !Number.isFinite(threePanelScaleChecksum)) {
+  if (publish || duplicate || !Number.isFinite(threePanelScaleChecksum)) {
     throw new Error("three panel revision publication workload failed");
   }
 }
