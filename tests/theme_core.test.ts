@@ -1,5 +1,4 @@
-import { assertEquals, assertInstanceOf, assertRejects, assertThrows } from "./deps.ts";
-import { inspectThemeCoverageCore } from "../src/theme_coverage_core.ts";
+import { assertEquals, assertInstanceOf, assertThrows } from "./deps.ts";
 import { mergeThemeCatalogComponents } from "../src/theme_provider_preview.ts";
 import {
   ThemeEngine as ThemeEngineModule,
@@ -25,6 +24,7 @@ import {
   createThemeRegistry,
   diffThemeEngines,
   emptyStyle,
+  inspectThemeCoverage,
   standardThemeComponentNames,
   ThemeEngine,
   ThemeInheritanceError,
@@ -334,19 +334,20 @@ Deno.test("theme diff can include unchanged values and custom variants", () => {
   ]);
 });
 
-Deno.test("theme coverage core reports inherited component and variant state coverage", () => {
-  const coverage = inspectThemeCoverageCore({
-    Field: {
-      base: { base: "base", focused: "focused" },
-    },
-    Button: {
-      extends: "Field",
-      variants: {
-        danger: { active: "active", disabled: "disabled" },
+Deno.test("theme coverage reports inherited component and variant state coverage", () => {
+  const coverage = inspectThemeCoverage({
+    components: {
+      Field: {
+        base: { base: emptyStyle, focused: emptyStyle },
+      },
+      Button: {
+        extends: "Field",
+        variants: {
+          danger: { active: emptyStyle, disabled: emptyStyle },
+        },
       },
     },
   }, {
-    states: ["base", "focused", "active", "disabled"],
     components: ["Button", "Field", "Missing"],
   });
 
@@ -396,31 +397,29 @@ Deno.test("theme coverage core reports inherited component and variant state cov
   });
 });
 
-Deno.test("theme coverage core supports custom variant enumeration and injected cycle errors", async () => {
-  const coverage = inspectThemeCoverageCore({
-    Button: {
-      variants: { danger: { base: "base" } },
+Deno.test("theme coverage supports custom variant enumeration and inheritance cycle errors", () => {
+  const coverage = inspectThemeCoverage({
+    components: {
+      Button: {
+        variants: { danger: { base: emptyStyle } },
+      },
     },
   }, {
-    states: ["base"],
     variants: () => ["quiet"],
   });
 
   assertEquals(coverage.components[0]?.variants.map((variant) => variant.name), ["default", "quiet"]);
 
-  await assertRejects(
+  assertThrows(
     () =>
-      Promise.resolve().then(() =>
-        inspectThemeCoverageCore({
+      inspectThemeCoverage({
+        components: {
           A: { extends: "B" },
           B: { extends: "A" },
-        }, {
-          states: ["base"],
-          createInheritanceError: (cycle) => new TypeError(cycle.join(">")),
-        })
-      ),
-    TypeError,
-    "A>B>A",
+        },
+      }),
+    ThemeInheritanceError,
+    "A -> B -> A",
   );
 });
 
