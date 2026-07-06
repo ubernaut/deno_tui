@@ -16,7 +16,6 @@ import {
 import { createNeonThreeScene } from "../../app/neon_three.ts";
 import {
   layoutThreeAsciiDemoWindow,
-  THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH,
   threeAsciiDemoBodyRect,
   threeAsciiDemoControlRect,
   threeAsciiDemoControlText,
@@ -164,10 +163,7 @@ new TextObject({
   rectangle: new Computed<TextRectangle>(() => threeAsciiDemoTitleRect(renderWindowRectangle.value)),
   value: new Computed(() => {
     const label = renderMinimized.value ? "THREE ASCII WEBGPU · MINIMIZED" : "THREE ASCII WEBGPU";
-    return ` ${label} `.slice(
-      0,
-      Math.max(0, renderWindowRectangle.value.width - THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH - 3),
-    );
+    return ` ${label} `.slice(0, threeAsciiDemoTitleRect(renderWindowRectangle.value).width);
   }),
   overwriteRectangle: true,
   style: createAnsiStyle({ foreground: [3, 5, 10], background: [185, 242, 255], bold: true }),

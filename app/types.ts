@@ -270,8 +270,8 @@ interface ThreeAsciiDemoWindowOptions {
 
 type ThreeAsciiDemoTitlebarControl = "minimize" | "maximize" | "restore" | "close";
 
-export const THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT = "[-] [M] [R] [x]";
-export const THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH = 15;
+const THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT = "[-] [M] [R] [x]";
+const THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH = 15;
 const THREE_ASCII_DEMO_WINDOW_COMPACT_CONTROL_TEXT = "[-][M][R][x]";
 const THREE_ASCII_DEMO_WINDOW_COMPACT_CONTROL_WIDTH = 12;
 

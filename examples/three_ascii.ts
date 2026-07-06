@@ -33,7 +33,6 @@ import { TERMINAL_GLYPH_STYLES, type TerminalGlyphStyle } from "../src/three_asc
 import { requireInteractiveTerminal } from "../app/styles.ts";
 import {
   layoutThreeAsciiDemoWindow,
-  THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH,
   threeAsciiDemoBodyRect,
   threeAsciiDemoControlRect,
   threeAsciiDemoControlText,
@@ -304,10 +303,7 @@ new Text({
   theme: { base: crayon.bgBlack.white.bold },
   text: new Computed<string>(() => {
     const label = renderMinimized.value ? "THREE ASCII RENDERER · MINIMIZED" : "THREE ASCII RENDERER";
-    return ` ${label} `.slice(
-      0,
-      Math.max(0, renderWindowRectangle.value.width - THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH - 3),
-    );
+    return ` ${label} `.slice(0, threeAsciiDemoTitleRect(renderWindowRectangle.value).width);
   }),
   rectangle: new Computed<TextRectangle>(() => threeAsciiDemoTitleRect(renderWindowRectangle.value)),
   zIndex: 12,
