@@ -195,8 +195,8 @@ interface QueueFullyVisibleIntegerRangesOptions extends QueueChangedCellsInterna
 }
 
 function queueChangedFullyVisibleIntegerRanges(options: QueueFullyVisibleIntegerRangesOptions): boolean {
-  const { grid, rectangle, rerenderRanges, previous, cacheValid, columns, rows } = options;
-  if (!cacheValid) {
+  const { grid, rectangle, rerenderRanges, previous, columns, rows } = options;
+  if (!options.cacheValid) {
     return queueInitialFullyVisibleIntegerRanges(options);
   }
   let changed = false;
@@ -214,7 +214,7 @@ function queueChangedFullyVisibleIntegerRanges(options: QueueFullyVisibleInteger
       for (let column = 0; column < columns; column += 1) {
         const index = rowOffset + column;
         const cell = outputRow[column] as string;
-        if (cacheValid && previousCells[index] === cell) {
+        if (previousCells[index] === cell) {
           if (runStart !== -1) {
             queueFullyVisibleRangeRun(rerenderRanges, canvasRow, rectangleColumn + runStart, rectangleColumn + column);
             runStart = -1;
@@ -234,7 +234,7 @@ function queueChangedFullyVisibleIntegerRanges(options: QueueFullyVisibleInteger
     for (let column = 0; column < columns; column += 1) {
       const index = rowOffset + column;
       const cell = outputRow?.[column] ?? " ";
-      if (cacheValid && previousCells[index] === cell) {
+      if (previousCells[index] === cell) {
         if (runStart !== -1) {
           queueFullyVisibleRangeRun(rerenderRanges, canvasRow, rectangleColumn + runStart, rectangleColumn + column);
           runStart = -1;

@@ -158,6 +158,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     panel live-probe support together instead of split across tiny internal probe shards
   - Three ASCII direct range copies now collapse repeated output cells through the existing range helper, reducing
     per-cell work in block-heavy workbench panes without adding another renderer module
+  - Three ASCII fully visible range diffing now removes a redundant per-cell cache-valid branch from recurring frames,
+    keeping the range-queue hot path lean while preserving the cache-invalidation startup path
   - ANSI canvas range flushing now caches parsed SGR prefix state, reducing repeated string scans while compacting
     truecolor Three ASCII block spans across warm frames
   - Workbench Three pressure probe support now lives in `src/app/workbench_three_pressure_probe.ts`, keeping
