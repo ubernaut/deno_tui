@@ -1,6 +1,5 @@
 import { assertEquals, assertInstanceOf, assertRejects, assertThrows } from "./deps.ts";
 import { inspectThemeCoverageCore } from "../src/theme_coverage_core.ts";
-import { diffThemeEnginesCore } from "../src/theme_diff_core.ts";
 import { mergeThemeCatalogComponents } from "../src/theme_provider_preview.ts";
 import {
   ThemeEngine as ThemeEngineModule,
@@ -24,6 +23,7 @@ import {
   createThemeEngineFromPalette,
   createThemeLayerStack,
   createThemeRegistry,
+  diffThemeEngines,
   emptyStyle,
   standardThemeComponentNames,
   ThemeEngine,
@@ -32,7 +32,7 @@ import {
   ThemePackNotFoundError,
   ThemeRegistry,
 } from "../src/theme.ts";
-import type { ThemeStyleReference } from "../src/theme.ts";
+import type { ComponentThemeDefinition, ThemeStyleReference } from "../src/theme.ts";
 import { validateThemeComponentsCore } from "../src/theme_validation_core.ts";
 
 Deno.test("theme catalog merge sorts components and variants with default first", () => {
@@ -251,40 +251,43 @@ Deno.test("theme engine module preserves inheritance and extension behavior", ()
   );
 });
 
-Deno.test("theme diff core previews token and component state changes", () => {
-  const base = {
-    theme: {
-      tokens: {
-        foreground: (value: string) => `fg:${value}`,
-        accent: (value: string) => `accent:${value}`,
+Deno.test("theme diff previews token and component state changes", () => {
+  const buttonDefinition: ComponentThemeDefinition = {
+    base: {
+      base: "foreground",
+      focused: (value: string) => `focus:${value}`,
+      active: (value: string) => `active:${value}`,
+      disabled: (value: string) => `disabled:${value}`,
+    },
+    variants: {
+      danger: {
+        base: (value: string) => `danger:${value}`,
+        focused: (value: string) => `focus:${value}`,
+        active: (value: string) => `active:${value}`,
+        disabled: (value: string) => `disabled:${value}`,
       },
     },
-    componentNames: () => ["Button"],
-    variants: () => ["danger"],
-    component: (_component: string, variant = "default") => ({
-      base: variant === "danger" ? (value: string) => `danger:${value}` : (value: string) => `fg:${value}`,
-      focused: (value: string) => `focus:${value}`,
-    }),
-  };
-  const next = {
-    theme: {
-      tokens: {
-        foreground: (value: string) => `bright:${value}`,
-        accent: (value: string) => `accent:${value}`,
-      },
-    },
-    componentNames: () => ["Button"],
-    variants: () => ["danger"],
-    component: (_component: string, variant = "default") => ({
-      base: variant === "danger" ? (value: string) => `danger:${value}` : (value: string) => `bright:${value}`,
-      focused: (value: string) => `focus:${value}`,
-    }),
   };
 
-  const diff = diffThemeEnginesCore(base, next, {
+  const base = createThemeEngine("plain", {
+    tokens: {
+      foreground: (value: string) => `fg:${value}`,
+      accent: (value: string) => `accent:${value}`,
+    },
+    components: { Button: buttonDefinition },
+  });
+  const next = createThemeEngine("plain", {
+    tokens: {
+      foreground: (value: string) => `bright:${value}`,
+      accent: (value: string) => `accent:${value}`,
+    },
+    components: { Button: buttonDefinition },
+  });
+
+  const diff = diffThemeEngines(base, next, {
     sample: "x",
-    tokenNames: ["foreground", "accent"],
-    states: ["base", "focused"],
+    components: ["Button"],
+    variants: () => ["default", "danger"],
   });
 
   assertEquals(diff.tokens.map((entry) => [entry.token, entry.before.styled, entry.after.styled]), [
@@ -298,24 +301,37 @@ Deno.test("theme diff core previews token and component state changes", () => {
   );
 });
 
-Deno.test("theme diff core can include unchanged values and custom variants", () => {
-  const engine = {
-    theme: { tokens: { foreground: (value: string) => `fg:${value}` } },
-    componentNames: () => ["Button"],
-    variants: () => ["ignored"],
-    component: () => ({ base: (value: string) => `base:${value}` }),
-  };
+Deno.test("theme diff can include unchanged values and custom variants", () => {
+  const engine = createThemeEngine("plain", {
+    tokens: { foreground: (value: string) => `fg:${value}` },
+    components: {
+      Button: {
+        variants: {
+          custom: {
+            base: (value: string) => `base:${value}`,
+            focused: (value: string) => `focus:${value}`,
+            active: (value: string) => `active:${value}`,
+            disabled: (value: string) => `disabled:${value}`,
+          },
+        },
+      },
+    },
+  });
 
-  const diff = diffThemeEnginesCore(engine, engine, {
+  const diff = diffThemeEngines(engine, engine, {
     sample: "x",
-    tokenNames: ["foreground"],
-    states: ["base"],
+    components: ["Button"],
     variants: () => ["custom"],
     includeUnchanged: true,
   });
 
-  assertEquals(diff.tokens.length, 1);
-  assertEquals(diff.components.map((entry) => [entry.variant, entry.before.styled]), [["custom", "base:x"]]);
+  assertEquals(diff.tokens.find((entry) => entry.token === "foreground")?.before.styled, "fg:x");
+  assertEquals(diff.components.map((entry) => [entry.variant, entry.state, entry.before.styled]), [
+    ["custom", "base", "base:x"],
+    ["custom", "focused", "focus:x"],
+    ["custom", "active", "active:x"],
+    ["custom", "disabled", "disabled:x"],
+  ]);
 });
 
 Deno.test("theme coverage core reports inherited component and variant state coverage", () => {

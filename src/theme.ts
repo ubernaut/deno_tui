@@ -34,7 +34,6 @@ import {
   resolveThemeStyleReferenceCore,
 } from "./theme_core.ts";
 import { inspectThemeCoverageCore } from "./theme_coverage_core.ts";
-import { diffThemeEnginesCore } from "./theme_diff_core.ts";
 import { validateThemeComponentsCore } from "./theme_validation_core.ts";
 import { createThemeProviderReportCore, formatThemeProviderReportMarkdownFromReport } from "./theme_provider_report.ts";
 import {
@@ -792,16 +791,41 @@ export function diffThemeEngines(
   after: ThemeEngine,
   options: ThemeEngineDiffOptions = {},
 ): ThemeEngineDiff {
-  return diffThemeEnginesCore(before, after, {
-    sample: options.sample,
-    tokenNames: themeTokenNames,
-    states: themeStates,
-    components: options.components,
-    variants: options.variants
-      ? (component, engines) => options.variants?.(component, engines as readonly [ThemeEngine, ThemeEngine]) ?? []
-      : undefined,
-    includeUnchanged: options.includeUnchanged,
-  }) as ThemeEngineDiff;
+  const sample = options.sample ?? "Aa";
+  const includeUnchanged = options.includeUnchanged ?? false;
+  const tokens: ThemeTokenDiff[] = [];
+  const components: ThemeComponentStateDiff[] = [];
+
+  for (const token of themeTokenNames) {
+    const beforePreview = previewStyle(before.theme.tokens[token], sample);
+    const afterPreview = previewStyle(after.theme.tokens[token], sample);
+    if (includeUnchanged || beforePreview.styled !== afterPreview.styled) {
+      tokens.push({ token, before: beforePreview, after: afterPreview });
+    }
+  }
+
+  const componentNames = options.components
+    ? [...options.components]
+    : [...new Set([...before.componentNames(), ...after.componentNames()])].sort();
+
+  for (const component of componentNames) {
+    const variants = options.variants
+      ? [...options.variants(component, [before, after])]
+      : themeDiffVariants(component, before, after);
+    for (const variant of variants) {
+      const beforeTheme = before.component(component, variant);
+      const afterTheme = after.component(component, variant);
+      for (const state of themeStates) {
+        const beforePreview = previewStyle(beforeTheme[state], sample);
+        const afterPreview = previewStyle(afterTheme[state], sample);
+        if (includeUnchanged || beforePreview.styled !== afterPreview.styled) {
+          components.push({ component, variant, state, before: beforePreview, after: afterPreview });
+        }
+      }
+    }
+  }
+
+  return { sample, tokens, components };
 }
 
 /** Creates a serializable inspection snapshot for theme Coverage. */
@@ -1338,6 +1362,14 @@ function inspectThemeProviderIssues(
 
 function previewStyle(style: Style, sample: string): ThemeStylePreview {
   return { raw: sample, styled: style(sample) };
+}
+
+function themeDiffVariants(component: string, before: ThemeEngine, after: ThemeEngine): string[] {
+  return [...new Set(["default", ...before.variants(component), ...after.variants(component)])].sort((a, b) => {
+    if (a === "default") return -1;
+    if (b === "default") return 1;
+    return a.localeCompare(b);
+  });
 }
 
 function sortedThemeTokenNames(values: Iterable<string>): ThemeTokenName[] {
