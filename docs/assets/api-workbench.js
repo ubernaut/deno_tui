@@ -18572,6 +18572,241 @@ function renderApiWorkbenchDataPanel(options) {
   }
 }
 
+// app/html_css_layout_view.ts
+function htmlCssLayoutSummaryRows(profile = "terminal") {
+  if (profile === "web") {
+    return WEB_HTML_CSS_LAYOUT_SUMMARY_ROWS;
+  }
+  return TERMINAL_HTML_CSS_LAYOUT_SUMMARY_ROWS;
+}
+var TERMINAL_HTML_CSS_LAYOUT_SUMMARY_ROWS = [
+  "parseTuiMarkup -> parseCssStylesheet -> applyCssCascade -> LayoutEngine",
+  "Default solver supports flex-wrap, CSS Grid tracks, fr units, and absolute inset.",
+  "Resize this window: metric cards wrap; nested grid retessellates with media rules."
+];
+var WEB_HTML_CSS_LAYOUT_SUMMARY_ROWS = [
+  "parseTuiMarkup -> parseCssStylesheet -> applyCssCascade -> LayoutEngine",
+  "Flex rows wrap; nested CSS Grid uses fr tracks, spans, and media rules.",
+  "Resize the browser to recalculate terminal-cell layout through the web host."
+];
+function htmlCssLayoutBoxStyle(box, theme2, contrast) {
+  if (box.id === "layout-toolbar") {
+    return {
+      fg: contrast(theme2.accentDeep, theme2.background, theme2.text),
+      bg: theme2.accentDeep,
+      border: theme2.accent,
+      bold: true
+    };
+  }
+  if (box.id === "layout-stage") {
+    return { fg: theme2.text, bg: theme2.panelSoft, border: theme2.borderStrong, bold: true };
+  }
+  if (box.id === "layout-grid") {
+    return { fg: theme2.text, bg: theme2.surface, border: theme2.accent, bold: true };
+  }
+  if (box.id === "grid-shell") {
+    return { fg: theme2.buttonActiveText, bg: theme2.buttonActiveBg, border: theme2.accent, bold: true };
+  }
+  if (box.id === "grid-worker") {
+    return {
+      fg: contrast(theme2.warn, theme2.background, theme2.text),
+      bg: theme2.warn,
+      border: theme2.danger,
+      bold: true
+    };
+  }
+  if (box.id.startsWith("grid-")) {
+    return { fg: theme2.text, bg: theme2.panel, border: theme2.accent };
+  }
+  if (box.id === "layout-badge") {
+    return {
+      fg: contrast(theme2.warn, theme2.background, theme2.text),
+      bg: theme2.warn,
+      border: theme2.danger,
+      bold: true
+    };
+  }
+  if (box.id === "layout-footer") {
+    return { fg: theme2.muted, bg: theme2.panel, border: theme2.border };
+  }
+  if (box.id === "metric-cpu") {
+    return { fg: theme2.buttonActiveText, bg: theme2.buttonActiveBg, border: theme2.accent, bold: true };
+  }
+  if (box.id.startsWith("metric-")) {
+    return { fg: theme2.text, bg: theme2.panel, border: theme2.accent };
+  }
+  return { fg: theme2.text, bg: theme2.surface, border: theme2.border };
+}
+function htmlCssLayoutBoxPaintOrder(box) {
+  if (box.id === "layout-demo") return 0;
+  if (box.id === "layout-stage") return 1;
+  if (box.id === "layout-grid") return 2;
+  if (box.id.startsWith("grid-")) return 3;
+  if (box.id.startsWith("metric-")) return 2;
+  if (box.id === "layout-badge") return 4;
+  return 2;
+}
+function htmlCssVisibleLayoutBoxesInto(target, boxes) {
+  target.length = 0;
+  for (let index = 0; index < boxes.length; index += 1) {
+    const box = boxes[index];
+    if (box.visible) target.push(box);
+  }
+  target.sort(compareHtmlCssLayoutPaintOrder);
+  return target;
+}
+function compareHtmlCssLayoutPaintOrder(left, right) {
+  return left.zIndex - right.zIndex || htmlCssLayoutBoxPaintOrder(left) - htmlCssLayoutBoxPaintOrder(right);
+}
+function htmlCssLayoutRenderCommandsInto(target, options) {
+  target.length = 0;
+  let written = 0;
+  for (const box of options.boxes) {
+    written = writeHtmlCssLayoutBoxCommands(target, written, box, options);
+  }
+  const summaryStart = Math.max(
+    options.bounds.row,
+    options.bounds.row + options.bounds.height - options.summaryRows.length
+  );
+  for (let index = 0; index < options.summaryRows.length && summaryStart + index < options.bounds.row + options.bounds.height; index += 1) {
+    written = writeTextCommand(target, written, {
+      row: summaryStart + index,
+      column: options.bounds.column,
+      text: options.summaryRows[index],
+      maxWidth: options.bounds.width,
+      fg: index === 0 ? options.theme.accent : options.theme.soft,
+      bg: options.theme.panelSoft,
+      bold: index === 0
+    });
+  }
+  target.length = written;
+  return target;
+}
+function writeHtmlCssLayoutBoxCommands(target, written, box, options) {
+  const rect = clipRect(box.rect, options.bounds);
+  if (rect.width <= 0 || rect.height <= 0) return written;
+  const style2 = htmlCssLayoutBoxStyle(box, options.theme, options.contrast);
+  written = writeFillCommand(target, written, rect, style2.bg);
+  if (box.id !== "layout-demo") {
+    written = writeHtmlCssLayoutOutlineCommands(target, written, rect, style2);
+  }
+  const content = clipRect(box.contentRect, options.bounds);
+  if (content.width <= 0 || content.height <= 0) return written;
+  written = writeTextCommand(target, written, {
+    row: content.row,
+    column: content.column,
+    text: htmlCssLayoutDemoBoxLabel(box),
+    maxWidth: content.width,
+    fg: style2.fg,
+    bg: style2.bg,
+    bold: style2.bold
+  });
+  if (content.height > 1 && box.text) {
+    written = writeTextCommand(target, written, {
+      row: content.row + 1,
+      column: content.column,
+      text: box.text,
+      maxWidth: content.width,
+      fg: options.theme.text,
+      bg: style2.bg
+    });
+  }
+  if (content.height > 2 && (box.id.startsWith("metric-") || box.id.startsWith("grid-"))) {
+    written = writeTextCommand(target, written, {
+      row: content.row + 2,
+      column: content.column,
+      text: `${box.rect.width}x${box.rect.height} content ${box.contentRect.width}x${box.contentRect.height}`,
+      maxWidth: content.width,
+      fg: options.theme.muted,
+      bg: style2.bg
+    });
+  }
+  return written;
+}
+function writeHtmlCssLayoutOutlineCommands(target, written, rect, style2) {
+  if (rect.width < 2 || rect.height < 2) return written;
+  written = writeTextCommand(target, written, {
+    row: rect.row,
+    column: rect.column,
+    text: `\u250C${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2510`,
+    maxWidth: rect.width,
+    fg: style2.border,
+    bg: style2.bg,
+    bold: style2.bold
+  });
+  for (let row = rect.row + 1; row < rect.row + rect.height - 1; row += 1) {
+    written = writeTextCommand(target, written, {
+      row,
+      column: rect.column,
+      text: "\u2502",
+      maxWidth: 1,
+      fg: style2.border,
+      bg: style2.bg,
+      bold: style2.bold
+    });
+    written = writeTextCommand(target, written, {
+      row,
+      column: rect.column + rect.width - 1,
+      text: "\u2502",
+      maxWidth: 1,
+      fg: style2.border,
+      bg: style2.bg,
+      bold: style2.bold
+    });
+  }
+  return writeTextCommand(target, written, {
+    row: rect.row + rect.height - 1,
+    column: rect.column,
+    text: `\u2514${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2518`,
+    maxWidth: rect.width,
+    fg: style2.border,
+    bg: style2.bg,
+    bold: style2.bold
+  });
+}
+function writeFillCommand(target, index, rect, bg) {
+  target[index] = {
+    kind: "fill",
+    rect,
+    bg
+  };
+  return index + 1;
+}
+function writeTextCommand(target, index, command) {
+  target[index] = { kind: "text", ...command };
+  return index + 1;
+}
+
+// app/api_workbench_html_css_view.ts
+function renderApiWorkbenchHtmlCssLayout(options) {
+  const { frame, rect, boxes, commands, theme: theme2, contrastText: contrastText2, fit: fit2, paint: paint2, write: write2, fillRect: fillRect2 } = options;
+  const result = createHtmlCssLayoutDemo(rect);
+  const visibleBoxes = htmlCssVisibleLayoutBoxesInto(boxes, result.layout.boxes);
+  const renderCommands = htmlCssLayoutRenderCommandsInto(commands, {
+    bounds: rect,
+    boxes: visibleBoxes,
+    theme: theme2,
+    contrast: contrastText2,
+    summaryRows: htmlCssLayoutSummaryRows(options.summaryProfile ?? "terminal")
+  });
+  for (const command of renderCommands) {
+    if (command.kind === "fill") {
+      fillRect2(frame, command.rect, command.bg);
+      continue;
+    }
+    write2(
+      frame,
+      command.row,
+      command.column,
+      paint2(fit2(command.text, command.maxWidth), {
+        fg: command.fg,
+        bg: command.bg,
+        bold: command.bold
+      })
+    );
+  }
+}
+
 // app/api_workbench_chrome_view.ts
 function renderApiWorkbenchChromeHeader(options) {
   const {
@@ -19228,211 +19463,6 @@ function renderApiWorkbenchThreeConfigModal(options) {
       }
     )
   );
-}
-
-// app/html_css_layout_view.ts
-function htmlCssLayoutSummaryRows(profile = "terminal") {
-  if (profile === "web") {
-    return WEB_HTML_CSS_LAYOUT_SUMMARY_ROWS;
-  }
-  return TERMINAL_HTML_CSS_LAYOUT_SUMMARY_ROWS;
-}
-var TERMINAL_HTML_CSS_LAYOUT_SUMMARY_ROWS = [
-  "parseTuiMarkup -> parseCssStylesheet -> applyCssCascade -> LayoutEngine",
-  "Default solver supports flex-wrap, CSS Grid tracks, fr units, and absolute inset.",
-  "Resize this window: metric cards wrap; nested grid retessellates with media rules."
-];
-var WEB_HTML_CSS_LAYOUT_SUMMARY_ROWS = [
-  "parseTuiMarkup -> parseCssStylesheet -> applyCssCascade -> LayoutEngine",
-  "Flex rows wrap; nested CSS Grid uses fr tracks, spans, and media rules.",
-  "Resize the browser to recalculate terminal-cell layout through the web host."
-];
-function htmlCssLayoutBoxStyle(box, theme2, contrast) {
-  if (box.id === "layout-toolbar") {
-    return {
-      fg: contrast(theme2.accentDeep, theme2.background, theme2.text),
-      bg: theme2.accentDeep,
-      border: theme2.accent,
-      bold: true
-    };
-  }
-  if (box.id === "layout-stage") {
-    return { fg: theme2.text, bg: theme2.panelSoft, border: theme2.borderStrong, bold: true };
-  }
-  if (box.id === "layout-grid") {
-    return { fg: theme2.text, bg: theme2.surface, border: theme2.accent, bold: true };
-  }
-  if (box.id === "grid-shell") {
-    return { fg: theme2.buttonActiveText, bg: theme2.buttonActiveBg, border: theme2.accent, bold: true };
-  }
-  if (box.id === "grid-worker") {
-    return {
-      fg: contrast(theme2.warn, theme2.background, theme2.text),
-      bg: theme2.warn,
-      border: theme2.danger,
-      bold: true
-    };
-  }
-  if (box.id.startsWith("grid-")) {
-    return { fg: theme2.text, bg: theme2.panel, border: theme2.accent };
-  }
-  if (box.id === "layout-badge") {
-    return {
-      fg: contrast(theme2.warn, theme2.background, theme2.text),
-      bg: theme2.warn,
-      border: theme2.danger,
-      bold: true
-    };
-  }
-  if (box.id === "layout-footer") {
-    return { fg: theme2.muted, bg: theme2.panel, border: theme2.border };
-  }
-  if (box.id === "metric-cpu") {
-    return { fg: theme2.buttonActiveText, bg: theme2.buttonActiveBg, border: theme2.accent, bold: true };
-  }
-  if (box.id.startsWith("metric-")) {
-    return { fg: theme2.text, bg: theme2.panel, border: theme2.accent };
-  }
-  return { fg: theme2.text, bg: theme2.surface, border: theme2.border };
-}
-function htmlCssLayoutBoxPaintOrder(box) {
-  if (box.id === "layout-demo") return 0;
-  if (box.id === "layout-stage") return 1;
-  if (box.id === "layout-grid") return 2;
-  if (box.id.startsWith("grid-")) return 3;
-  if (box.id.startsWith("metric-")) return 2;
-  if (box.id === "layout-badge") return 4;
-  return 2;
-}
-function htmlCssVisibleLayoutBoxesInto(target, boxes) {
-  target.length = 0;
-  for (let index = 0; index < boxes.length; index += 1) {
-    const box = boxes[index];
-    if (box.visible) target.push(box);
-  }
-  target.sort(compareHtmlCssLayoutPaintOrder);
-  return target;
-}
-function compareHtmlCssLayoutPaintOrder(left, right) {
-  return left.zIndex - right.zIndex || htmlCssLayoutBoxPaintOrder(left) - htmlCssLayoutBoxPaintOrder(right);
-}
-function htmlCssLayoutRenderCommandsInto(target, options) {
-  target.length = 0;
-  let written = 0;
-  for (const box of options.boxes) {
-    written = writeHtmlCssLayoutBoxCommands(target, written, box, options);
-  }
-  const summaryStart = Math.max(
-    options.bounds.row,
-    options.bounds.row + options.bounds.height - options.summaryRows.length
-  );
-  for (let index = 0; index < options.summaryRows.length && summaryStart + index < options.bounds.row + options.bounds.height; index += 1) {
-    written = writeTextCommand(target, written, {
-      row: summaryStart + index,
-      column: options.bounds.column,
-      text: options.summaryRows[index],
-      maxWidth: options.bounds.width,
-      fg: index === 0 ? options.theme.accent : options.theme.soft,
-      bg: options.theme.panelSoft,
-      bold: index === 0
-    });
-  }
-  target.length = written;
-  return target;
-}
-function writeHtmlCssLayoutBoxCommands(target, written, box, options) {
-  const rect = clipRect(box.rect, options.bounds);
-  if (rect.width <= 0 || rect.height <= 0) return written;
-  const style2 = htmlCssLayoutBoxStyle(box, options.theme, options.contrast);
-  written = writeFillCommand(target, written, rect, style2.bg);
-  if (box.id !== "layout-demo") {
-    written = writeHtmlCssLayoutOutlineCommands(target, written, rect, style2);
-  }
-  const content = clipRect(box.contentRect, options.bounds);
-  if (content.width <= 0 || content.height <= 0) return written;
-  written = writeTextCommand(target, written, {
-    row: content.row,
-    column: content.column,
-    text: htmlCssLayoutDemoBoxLabel(box),
-    maxWidth: content.width,
-    fg: style2.fg,
-    bg: style2.bg,
-    bold: style2.bold
-  });
-  if (content.height > 1 && box.text) {
-    written = writeTextCommand(target, written, {
-      row: content.row + 1,
-      column: content.column,
-      text: box.text,
-      maxWidth: content.width,
-      fg: options.theme.text,
-      bg: style2.bg
-    });
-  }
-  if (content.height > 2 && (box.id.startsWith("metric-") || box.id.startsWith("grid-"))) {
-    written = writeTextCommand(target, written, {
-      row: content.row + 2,
-      column: content.column,
-      text: `${box.rect.width}x${box.rect.height} content ${box.contentRect.width}x${box.contentRect.height}`,
-      maxWidth: content.width,
-      fg: options.theme.muted,
-      bg: style2.bg
-    });
-  }
-  return written;
-}
-function writeHtmlCssLayoutOutlineCommands(target, written, rect, style2) {
-  if (rect.width < 2 || rect.height < 2) return written;
-  written = writeTextCommand(target, written, {
-    row: rect.row,
-    column: rect.column,
-    text: `\u250C${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2510`,
-    maxWidth: rect.width,
-    fg: style2.border,
-    bg: style2.bg,
-    bold: style2.bold
-  });
-  for (let row = rect.row + 1; row < rect.row + rect.height - 1; row += 1) {
-    written = writeTextCommand(target, written, {
-      row,
-      column: rect.column,
-      text: "\u2502",
-      maxWidth: 1,
-      fg: style2.border,
-      bg: style2.bg,
-      bold: style2.bold
-    });
-    written = writeTextCommand(target, written, {
-      row,
-      column: rect.column + rect.width - 1,
-      text: "\u2502",
-      maxWidth: 1,
-      fg: style2.border,
-      bg: style2.bg,
-      bold: style2.bold
-    });
-  }
-  return writeTextCommand(target, written, {
-    row: rect.row + rect.height - 1,
-    column: rect.column,
-    text: `\u2514${"\u2500".repeat(Math.max(0, rect.width - 2))}\u2518`,
-    maxWidth: rect.width,
-    fg: style2.border,
-    bg: style2.bg,
-    bold: style2.bold
-  });
-}
-function writeFillCommand(target, index, rect, bg) {
-  target[index] = {
-    kind: "fill",
-    rect,
-    bg
-  };
-  return index + 1;
-}
-function writeTextCommand(target, index, command) {
-  target[index] = { kind: "text", ...command };
-  return index + 1;
 }
 
 // src/app/workbench_frame_render.ts
@@ -20602,28 +20632,19 @@ function writeThreePreviewLine(frame, rect, index, line) {
   return index + 1;
 }
 function renderHtmlCssLayout(frame, rect) {
-  const t = theme();
-  const result = createHtmlCssLayoutDemo(rect);
-  const boxes = htmlCssVisibleLayoutBoxesInto(htmlCssLayoutBoxes, result.layout.boxes);
-  const commands = htmlCssLayoutRenderCommandsInto(htmlCssLayoutRenderCommands, {
-    bounds: rect,
-    boxes,
-    theme: t,
-    contrast: contrastText,
-    summaryRows: htmlCssLayoutSummaryRows("web")
+  renderApiWorkbenchHtmlCssLayout({
+    frame,
+    rect,
+    boxes: htmlCssLayoutBoxes,
+    commands: htmlCssLayoutRenderCommands,
+    summaryProfile: "web",
+    theme: theme(),
+    contrastText,
+    fit,
+    paint: (value, style2) => paint(value, style2.fg, style2.bg, style2.bold),
+    write,
+    fillRect
   });
-  for (const command of commands) {
-    if (command.kind === "fill") {
-      fillRect(frame, command.rect, command.bg);
-    } else {
-      write(
-        frame,
-        command.row,
-        command.column,
-        paint(fit(command.text, command.maxWidth), command.fg, command.bg, command.bold)
-      );
-    }
-  }
 }
 function renderTerminalProtocol(frame, rect) {
   const t = theme();

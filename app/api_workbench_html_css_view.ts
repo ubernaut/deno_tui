@@ -10,22 +10,23 @@ import {
   htmlCssVisibleLayoutBoxesInto,
 } from "./html_css_layout_view.ts";
 
-export interface ApiWorkbenchHtmlCssLayoutRenderOptions {
-  frame: WorkbenchFrame;
+export interface ApiWorkbenchHtmlCssLayoutRenderOptions<Frame = WorkbenchFrame> {
+  frame: Frame;
   rect: Rectangle;
   boxes: ComputedLayoutBox[];
   commands: HtmlCssLayoutRenderCommand[];
+  summaryProfile?: "terminal" | "web";
   theme: HtmlCssLayoutTheme;
   contrastText: (background: string, dark: string, light: string) => string;
   fit: (text: string, width: number) => string;
   paint: (text: string, style: { fg: string; bg: string; bold?: boolean }) => string;
-  write: (frame: WorkbenchFrame, row: number, column: number, value: string) => void;
-  fillRect: (frame: WorkbenchFrame, rect: Rectangle, bg: string) => void;
+  write: (frame: Frame, row: number, column: number, value: string) => void;
+  fillRect: (frame: Frame, rect: Rectangle, bg: string) => void;
 }
 
 /** Renders the HTML/CSS layout demo in the terminal workbench using shared layout commands. */
-export function renderApiWorkbenchHtmlCssLayout(
-  options: ApiWorkbenchHtmlCssLayoutRenderOptions,
+export function renderApiWorkbenchHtmlCssLayout<Frame = WorkbenchFrame>(
+  options: ApiWorkbenchHtmlCssLayoutRenderOptions<Frame>,
 ): void {
   const { frame, rect, boxes, commands, theme, contrastText, fit, paint, write, fillRect } = options;
   const result = createHtmlCssLayoutDemo(rect);
@@ -35,7 +36,7 @@ export function renderApiWorkbenchHtmlCssLayout(
     boxes: visibleBoxes,
     theme,
     contrast: contrastText,
-    summaryRows: htmlCssLayoutSummaryRows("terminal"),
+    summaryRows: htmlCssLayoutSummaryRows(options.summaryProfile ?? "terminal"),
   });
   for (const command of renderCommands) {
     if (command.kind === "fill") {

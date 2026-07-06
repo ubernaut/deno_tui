@@ -130,6 +130,7 @@ import {
   renderApiWorkbenchExplorerPanel,
   renderApiWorkbenchInspectorPanel,
 } from "../../app/api_workbench_builtin_panels_view.ts";
+import { renderApiWorkbenchHtmlCssLayout } from "../../app/api_workbench_html_css_view.ts";
 import {
   type ApiWorkbenchDropdownOverlay,
   renderApiWorkbenchChromeHeader,
@@ -140,12 +141,7 @@ import {
   renderApiWorkbenchModalOverlay,
   renderApiWorkbenchThreeConfigModal,
 } from "../../app/api_workbench_modal_view.ts";
-import {
-  type HtmlCssLayoutRenderCommand,
-  htmlCssLayoutRenderCommandsInto,
-  htmlCssLayoutSummaryRows,
-  htmlCssVisibleLayoutBoxesInto,
-} from "../../app/html_css_layout_view.ts";
+import { type HtmlCssLayoutRenderCommand } from "../../app/html_css_layout_view.ts";
 import {
   workbenchDemoModalContent,
   workbenchHelpModalContent,
@@ -187,7 +183,6 @@ import {
   inspectWorkbenchWindowSignalState,
   WorkbenchController,
 } from "../../src/app/workbench/controller.ts";
-import { createHtmlCssLayoutDemo } from "../../src/markup/demo_fixtures.ts";
 import { DiagnosticsCollector } from "../../src/runtime/diagnostics.ts";
 import { StorageFallbackDiagnostics } from "../../src/runtime/storage_diagnostics.ts";
 import { asciiDemoPresetIds } from "../../src/three_ascii/demo_presets.ts";
@@ -1000,28 +995,19 @@ function writeThreePreviewLine(frame: string[], rect: Rectangle, index: number, 
 }
 
 function renderHtmlCssLayout(frame: string[], rect: Rectangle): void {
-  const t = theme();
-  const result = createHtmlCssLayoutDemo(rect);
-  const boxes = htmlCssVisibleLayoutBoxesInto(htmlCssLayoutBoxes, result.layout.boxes);
-  const commands = htmlCssLayoutRenderCommandsInto(htmlCssLayoutRenderCommands, {
-    bounds: rect,
-    boxes,
-    theme: t,
-    contrast: contrastText,
-    summaryRows: htmlCssLayoutSummaryRows("web"),
+  renderApiWorkbenchHtmlCssLayout<string[]>({
+    frame,
+    rect,
+    boxes: htmlCssLayoutBoxes,
+    commands: htmlCssLayoutRenderCommands,
+    summaryProfile: "web",
+    theme: theme(),
+    contrastText,
+    fit,
+    paint: (value, style) => paint(value, style.fg, style.bg, style.bold),
+    write,
+    fillRect,
   });
-  for (const command of commands) {
-    if (command.kind === "fill") {
-      fillRect(frame, command.rect, command.bg);
-    } else {
-      write(
-        frame,
-        command.row,
-        command.column,
-        paint(fit(command.text, command.maxWidth), command.fg, command.bg, command.bold),
-      );
-    }
-  }
 }
 
 function renderTerminalProtocol(frame: string[], rect: Rectangle): void {
