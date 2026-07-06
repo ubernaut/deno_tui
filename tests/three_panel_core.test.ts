@@ -29,6 +29,7 @@ import {
   fingerprintThreePanelGrid,
   hasThreePanelGridCells,
   resolveThreePanelRendererStateUpdate,
+  scaleThreePanelGridToSize,
   threePanelAdaptiveRenderCellsDiagnostic,
   threePanelAsciiEffectOptionsEqual,
   threePanelBlankGrid,
@@ -718,6 +719,20 @@ Deno.test("emptyThreePanelRendererState forces initial renderer configuration", 
 Deno.test("threePanelBlankGrid creates stable space-filled rows", () => {
   assertEquals(threePanelBlankGrid(-1, 2), [[], []]);
   assertEquals(threePanelBlankGrid(3, 2), [
+    [" ", " ", " "],
+    [" ", " ", " "],
+  ]);
+});
+
+Deno.test("scaleThreePanelGridToSize fills display bounds from capped renderer grids", () => {
+  assertEquals(scaleThreePanelGridToSize([["A", "B"], ["C", "D"]], 4, 4), [
+    ["A", "A", "B", "B"],
+    ["A", "A", "B", "B"],
+    ["C", "C", "D", "D"],
+    ["C", "C", "D", "D"],
+  ]);
+  assertEquals(scaleThreePanelGridToSize([["A", "B"], ["C", "D"]], 1, 1), [["A"]]);
+  assertEquals(scaleThreePanelGridToSize([], 3, 2), [
     [" ", " ", " "],
     [" ", " ", " "],
   ]);

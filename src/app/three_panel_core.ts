@@ -511,6 +511,32 @@ export function threePanelBlankGrid(width: number, height: number): string[][] {
   return grid;
 }
 
+export function scaleThreePanelGridToSize(
+  grid: readonly (readonly string[] | undefined)[],
+  columns: number,
+  rows: number,
+): string[][] {
+  const targetColumns = Math.max(1, Math.floor(columns));
+  const targetRows = Math.max(1, Math.floor(rows));
+  const sourceRows = grid.length;
+  const sourceColumns = grid[0]?.length ?? 0;
+  if (sourceRows === targetRows && sourceColumns === targetColumns) {
+    return grid.map((row) => Array.from(row ?? []));
+  }
+  if (sourceRows <= 0 || sourceColumns <= 0) {
+    return threePanelBlankGrid(targetColumns, targetRows);
+  }
+
+  return Array.from({ length: targetRows }, (_, row) => {
+    const sourceRow = Math.min(sourceRows - 1, Math.floor((row * sourceRows) / targetRows));
+    const source = grid[sourceRow] ?? [];
+    return Array.from({ length: targetColumns }, (_, column) => {
+      const sourceColumn = Math.min(sourceColumns - 1, Math.floor((column * sourceColumns) / targetColumns));
+      return source[sourceColumn] ?? " ";
+    });
+  });
+}
+
 export function fingerprintThreePanelGrid(grid: readonly (readonly string[] | undefined)[]): string {
   let hash = mixThreePanelGridHash(2166136261, grid.length);
   for (const row of grid) {

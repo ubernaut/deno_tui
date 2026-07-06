@@ -17010,6 +17010,10 @@ var WorkbenchTitlebarBufferCache = class {
 };
 
 // app/api_workbench_catalog.ts
+function nextApiWorkbenchTerminalSessionDraft(sessions, options = {}) {
+  const id2 = nextWorkbenchTerminalSessionId(sessions, options);
+  return { id: id2, title: workbenchTerminalSessionTitleFromId(id2, options) };
+}
 var apiWorkbenchPanelTitles = {
   explorer: "Explorer",
   inspector: "Inspector",
@@ -17113,7 +17117,7 @@ var apiWorkbenchDocs = [
   "Use Tab or 1-8 to focus built-in windows; use M, F, R for window controls."
 ];
 
-// app/api_workbench_controls.ts
+// app/api_workbench_control_base.ts
 var apiWorkbenchControlIds = [
   "button",
   "genericButton",
@@ -17127,6 +17131,33 @@ var apiWorkbenchControlIds = [
   "stepper",
   "textbox"
 ];
+
+// app/api_workbench_control_keys.ts
+function resolveApiWorkbenchControlKey(id2, event, options = {}) {
+  if (id2 === "input" || id2 === "textbox") return { type: "textInput" };
+  if (id2 === "dropdown" && options.dropdownExpanded) {
+    if (event.key === "up") return { type: "dropdown", action: "move", delta: -1 };
+    if (event.key === "down") return { type: "dropdown", action: "move", delta: 1 };
+    if (event.key === "home") return { type: "dropdown", action: "first" };
+    if (event.key === "end") return { type: "dropdown", action: "last" };
+    if (event.key === "escape") return { type: "dropdown", action: "close" };
+    if (event.key === "return" || event.key === "space") return { type: "dropdown", action: "select" };
+    if (event.key === "left") return { type: "control", action: "previous" };
+    if (event.key === "right") return { type: "control", action: "next" };
+    return { type: "none" };
+  }
+  if (id2 === "radio" && (event.key === "up" || event.key === "down")) {
+    return { type: "radio", delta: event.key === "up" ? -1 : 1 };
+  }
+  if (event.key === "up") return { type: "focus", delta: -1 };
+  if (event.key === "down") return { type: "focus", delta: 1 };
+  if (event.key === "left") return { type: "control", action: "previous" };
+  if (event.key === "right") return { type: "control", action: "next" };
+  if (event.key === "space" || event.key === "return") return { type: "control", action: "activate" };
+  return { type: "none" };
+}
+
+// app/api_workbench_control_line.ts
 function apiWorkbenchControlLineInto(segments, hits, id2, value, rect, row, activeId, options = {}) {
   let segmentCount = 0;
   let hitCount = 0;
@@ -17224,6 +17255,80 @@ function apiWorkbenchControlLineRenderCommandsInto(target, segments, options) {
   target.length = written;
   return target;
 }
+function writeControlLineSegment(target, index, kind, text, column, row, width, active2) {
+  const segment = target[index] ?? {
+    kind,
+    text: "",
+    column: 0,
+    row: 0,
+    width: 0,
+    active: false
+  };
+  segment.kind = kind;
+  segment.text = text;
+  segment.column = column;
+  segment.row = row;
+  segment.width = width;
+  segment.active = active2;
+  target[index] = segment;
+}
+function writeControlLineRenderCommand(target, index, options) {
+  const command = target[index] ?? {
+    kind: "segment",
+    role: "base",
+    text: "",
+    column: 0,
+    row: 0,
+    width: 0,
+    active: false
+  };
+  command.kind = options.kind;
+  command.role = options.role;
+  command.text = options.text;
+  command.column = options.column;
+  command.row = options.row;
+  command.width = options.width;
+  command.active = options.active;
+  target[index] = command;
+}
+function writeControlHit(target, index, source) {
+  const hit = target[index] ?? {
+    column: 0,
+    row: 0,
+    width: 0,
+    height: 1,
+    id: source.id,
+    action: source.action
+  };
+  hit.column = source.column;
+  hit.row = source.row;
+  hit.width = source.width;
+  hit.height = source.height;
+  hit.id = source.id;
+  hit.action = source.action;
+  hit.index = source.index;
+  target[index] = hit;
+}
+
+// app/api_workbench_control_traversal.ts
+function nextApiWorkbenchControlId(current, delta, options = {}) {
+  const index = apiWorkbenchControlIds.indexOf(current);
+  if (index < 0) return options.wrap ? apiWorkbenchControlIds[0] : void 0;
+  const next = index + delta;
+  if (!options.wrap && (next < 0 || next >= apiWorkbenchControlIds.length)) return void 0;
+  return apiWorkbenchControlIds[(next % apiWorkbenchControlIds.length + apiWorkbenchControlIds.length) % apiWorkbenchControlIds.length];
+}
+function apiWorkbenchControlAt(current, delta, fallback = "button") {
+  return nextApiWorkbenchControlId(current, delta, { wrap: true }) ?? fallback;
+}
+function apiWorkbenchControlAtEdge(current, delta) {
+  return nextApiWorkbenchControlId(current, delta);
+}
+function isApiWorkbenchTextControlActive(activeWindowId, controlsWindowId, activeControl2) {
+  return activeWindowId === controlsWindowId && (activeControl2 === "input" || activeControl2 === "textbox");
+}
+
+// app/api_workbench_control_slider.ts
 function apiWorkbenchControlTrack(options) {
   const minWidth = Math.max(1, Math.floor(options.minWidth ?? 8));
   const maxWidth = Math.max(minWidth, Math.floor(options.maxWidth ?? 24));
@@ -17250,6 +17355,8 @@ function apiWorkbenchSliderSetHitInto(target, rect, row, track, options = {}) {
   target.index = void 0;
   return target;
 }
+
+// app/api_workbench_control_styles.ts
 function apiWorkbenchControlBaseStyle(theme2, active2) {
   return {
     fg: active2 ? theme2.background : theme2.text,
@@ -17275,6 +17382,93 @@ function apiWorkbenchTextboxCommandStyle(theme2, command, active2) {
 function apiWorkbenchWrappedOptionStyle(theme2, active2) {
   return apiWorkbenchControlBaseStyle(theme2, active2);
 }
+
+// app/api_workbench_dropdown_popover.ts
+function apiWorkbenchDropdownPopoverRect(options) {
+  const rect = options.rect;
+  const horizontalInset = Math.max(0, Math.floor(options.horizontalInset ?? 2));
+  const padding = Math.max(0, Math.floor(options.padding ?? 6));
+  const minContentWidth = Math.max(1, Math.floor(options.minContentWidth ?? 12));
+  const maxWidth = Math.max(1, Math.floor(rect.width) - horizontalInset * 2);
+  const contentWidth = Math.max(
+    minContentWidth,
+    maxItemTextWidth(options.items),
+    textWidth(options.label ?? "")
+  );
+  const width = Math.max(1, Math.min(Math.max(16, contentWidth + padding), Math.max(16, maxWidth)));
+  return {
+    column: rect.column + horizontalInset,
+    row: options.row,
+    width,
+    height: Math.max(2, options.items.length + 2)
+  };
+}
+function maxItemTextWidth(items) {
+  let width = 0;
+  for (const item of items) width = Math.max(width, textWidth(item));
+  return width;
+}
+
+// app/api_workbench_stepper_hits.ts
+function apiWorkbenchStepperHitPlacementsInto(target, steps, activeIndex, rect, row, options = {}) {
+  const columnOffset = Math.max(0, Math.floor(options.columnOffset ?? 12));
+  const gap = Math.max(0, Math.floor(options.gap ?? 3));
+  const endColumn = rect.column + rect.width;
+  let column = rect.column + columnOffset;
+  let written = 0;
+  for (let index = 0; index < steps.length; index += 1) {
+    const step = steps[index];
+    const label = step.disabled ? `(${step.label})` : step.completed ? `\u2713 ${step.label}` : step.label;
+    const token = index === activeIndex ? `[${label}]` : label;
+    const width = textWidth(token);
+    if (column + width > endColumn) break;
+    const placement = target[written] ?? {
+      column: 0,
+      row: 0,
+      width: 0,
+      height: 1,
+      id: "stepper",
+      action: "activate"
+    };
+    placement.column = column;
+    placement.row = row;
+    placement.width = width;
+    placement.height = 1;
+    placement.id = "stepper";
+    placement.action = "activate";
+    placement.index = index;
+    target[written] = placement;
+    written += 1;
+    column += width + gap;
+  }
+  target.length = written;
+  return target;
+}
+
+// app/api_workbench_table_navigation.ts
+function nextSortableDataColumn(columns2, currentColumnId, delta) {
+  let sortableCount = 0;
+  let currentSortableIndex = -1;
+  for (let index = 0; index < columns2.length; index += 1) {
+    const column = columns2[index];
+    if (column.sortable === false) continue;
+    if (column.id === currentColumnId) currentSortableIndex = sortableCount;
+    sortableCount += 1;
+  }
+  if (sortableCount === 0) return void 0;
+  let targetSortableIndex = currentSortableIndex < 0 ? 0 : currentSortableIndex;
+  targetSortableIndex = ((targetSortableIndex + delta) % sortableCount + sortableCount) % sortableCount;
+  let sortableIndex = 0;
+  for (let index = 0; index < columns2.length; index += 1) {
+    const column = columns2[index];
+    if (column.sortable === false) continue;
+    if (sortableIndex === targetSortableIndex) return column;
+    sortableIndex += 1;
+  }
+  return void 0;
+}
+
+// app/api_workbench_controls.ts
 function apiWorkbenchTextboxProjectionInto(rows2, options) {
   const rect = options.rect;
   const bottom = rect.row + Math.max(0, rect.height);
@@ -17510,7 +17704,7 @@ function apiWorkbenchWrappedOptionsRenderCommandsInto(target, hits, options) {
     });
     for (let index = 0; index < line.tokens.length; index += 1) {
       const token = line.tokens[index];
-      writeControlHit(hits, hitCount++, {
+      writeControlHit2(hits, hitCount++, {
         column: column + token.columnOffset,
         row,
         width: token.width,
@@ -17524,90 +17718,6 @@ function apiWorkbenchWrappedOptionsRenderCommandsInto(target, hits, options) {
   target.length = written;
   hits.length = hitCount;
   return target;
-}
-function nextApiWorkbenchControlId(current, delta, options = {}) {
-  const index = apiWorkbenchControlIds.indexOf(current);
-  if (index < 0) return options.wrap ? apiWorkbenchControlIds[0] : void 0;
-  const next = index + delta;
-  if (!options.wrap && (next < 0 || next >= apiWorkbenchControlIds.length)) return void 0;
-  return apiWorkbenchControlIds[(next % apiWorkbenchControlIds.length + apiWorkbenchControlIds.length) % apiWorkbenchControlIds.length];
-}
-function apiWorkbenchControlAt(current, delta, fallback = "button") {
-  return nextApiWorkbenchControlId(current, delta, { wrap: true }) ?? fallback;
-}
-function apiWorkbenchControlAtEdge(current, delta) {
-  return nextApiWorkbenchControlId(current, delta);
-}
-function isApiWorkbenchTextControlActive(activeWindowId, controlsWindowId, activeControl2) {
-  return activeWindowId === controlsWindowId && (activeControl2 === "input" || activeControl2 === "textbox");
-}
-function resolveApiWorkbenchControlKey(id2, event, options = {}) {
-  if (id2 === "input" || id2 === "textbox") return { type: "textInput" };
-  if (id2 === "dropdown" && options.dropdownExpanded) {
-    if (event.key === "up") return { type: "dropdown", action: "move", delta: -1 };
-    if (event.key === "down") return { type: "dropdown", action: "move", delta: 1 };
-    if (event.key === "home") return { type: "dropdown", action: "first" };
-    if (event.key === "end") return { type: "dropdown", action: "last" };
-    if (event.key === "escape") return { type: "dropdown", action: "close" };
-    if (event.key === "return" || event.key === "space") return { type: "dropdown", action: "select" };
-    if (event.key === "left") return { type: "control", action: "previous" };
-    if (event.key === "right") return { type: "control", action: "next" };
-    return { type: "none" };
-  }
-  if (id2 === "radio" && (event.key === "up" || event.key === "down")) {
-    return { type: "radio", delta: event.key === "up" ? -1 : 1 };
-  }
-  if (event.key === "up") return { type: "focus", delta: -1 };
-  if (event.key === "down") return { type: "focus", delta: 1 };
-  if (event.key === "left") return { type: "control", action: "previous" };
-  if (event.key === "right") return { type: "control", action: "next" };
-  if (event.key === "space" || event.key === "return") return { type: "control", action: "activate" };
-  return { type: "none" };
-}
-function nextSortableDataColumn(columns2, currentColumnId, delta) {
-  let sortableCount = 0;
-  let currentSortableIndex = -1;
-  for (let index = 0; index < columns2.length; index += 1) {
-    const column = columns2[index];
-    if (column.sortable === false) continue;
-    if (column.id === currentColumnId) currentSortableIndex = sortableCount;
-    sortableCount += 1;
-  }
-  if (sortableCount === 0) return void 0;
-  let targetSortableIndex = currentSortableIndex < 0 ? 0 : currentSortableIndex;
-  targetSortableIndex = ((targetSortableIndex + delta) % sortableCount + sortableCount) % sortableCount;
-  let sortableIndex = 0;
-  for (let index = 0; index < columns2.length; index += 1) {
-    const column = columns2[index];
-    if (column.sortable === false) continue;
-    if (sortableIndex === targetSortableIndex) return column;
-    sortableIndex += 1;
-  }
-  return void 0;
-}
-function apiWorkbenchDropdownPopoverRect(options) {
-  const rect = options.rect;
-  const horizontalInset = Math.max(0, Math.floor(options.horizontalInset ?? 2));
-  const padding = Math.max(0, Math.floor(options.padding ?? 6));
-  const minContentWidth = Math.max(1, Math.floor(options.minContentWidth ?? 12));
-  const maxWidth = Math.max(1, Math.floor(rect.width) - horizontalInset * 2);
-  const contentWidth = Math.max(
-    minContentWidth,
-    maxItemTextWidth(options.items),
-    textWidth(options.label ?? "")
-  );
-  const width = Math.max(1, Math.min(Math.max(16, contentWidth + padding), Math.max(16, maxWidth)));
-  return {
-    column: rect.column + horizontalInset,
-    row: options.row,
-    width,
-    height: Math.max(2, options.items.length + 2)
-  };
-}
-function maxItemTextWidth(items) {
-  let width = 0;
-  for (const item of items) width = Math.max(width, textWidth(item));
-  return width;
 }
 function writeWrappedOptionRenderCommand(target, index, options) {
   const command = target[index] ?? {
@@ -17624,43 +17734,7 @@ function writeWrappedOptionRenderCommand(target, index, options) {
   command.active = options.active;
   target[index] = command;
 }
-function writeControlLineSegment(target, index, kind, text, column, row, width, active2) {
-  const segment = target[index] ?? {
-    kind: "line",
-    text: "",
-    column: 0,
-    row: 0,
-    width: 0,
-    active: false
-  };
-  segment.kind = kind;
-  segment.text = text;
-  segment.column = column;
-  segment.row = row;
-  segment.width = width;
-  segment.active = active2;
-  target[index] = segment;
-}
-function writeControlLineRenderCommand(target, index, options) {
-  const command = target[index] ?? {
-    kind: "segment",
-    role: "base",
-    text: "",
-    column: 0,
-    row: 0,
-    width: 0,
-    active: false
-  };
-  command.kind = options.kind;
-  command.role = options.role;
-  command.text = options.text;
-  command.column = options.column;
-  command.row = options.row;
-  command.width = options.width;
-  command.active = options.active;
-  target[index] = command;
-}
-function writeControlHit(target, index, source) {
+function writeControlHit2(target, index, source) {
   const hit = target[index] ?? {
     column: 0,
     row: 0,
@@ -17696,40 +17770,6 @@ function writeTextboxRenderCommand(target, index, options) {
   command.active = options.active;
   command.header = options.header;
   target[index] = command;
-}
-function apiWorkbenchStepperHitPlacementsInto(target, steps, activeIndex, rect, row, options = {}) {
-  const columnOffset = Math.max(0, Math.floor(options.columnOffset ?? 12));
-  const gap = Math.max(0, Math.floor(options.gap ?? 3));
-  const endColumn = rect.column + rect.width;
-  let column = rect.column + columnOffset;
-  let written = 0;
-  for (let index = 0; index < steps.length; index += 1) {
-    const step = steps[index];
-    const label = step.disabled ? `(${step.label})` : step.completed ? `\u2713 ${step.label}` : step.label;
-    const token = index === activeIndex ? `[${label}]` : label;
-    const width = textWidth(token);
-    if (column + width > endColumn) break;
-    const placement = target[written] ?? {
-      column: 0,
-      row: 0,
-      width: 0,
-      height: 1,
-      id: "stepper",
-      action: "activate"
-    };
-    placement.column = column;
-    placement.row = row;
-    placement.width = width;
-    placement.height = 1;
-    placement.id = "stepper";
-    placement.action = "activate";
-    placement.index = index;
-    target[written] = placement;
-    written += 1;
-    column += width + gap;
-  }
-  target.length = written;
-  return target;
 }
 function appendCheckboxRows(target, start, items, header, writeRow) {
   let written = start;
@@ -20110,11 +20150,13 @@ function syncWebTerminalScreen(sessionId, width, height) {
 function applyWebTerminalAction(action) {
   const inspection = webTerminalWorkspace.inspect();
   if (action === "new") {
-    const id2 = nextWebTerminalSessionId();
-    const title = webTerminalSessionTitle(id2);
+    const draft = nextApiWorkbenchTerminalSessionDraft(webTerminalWorkspace.inspect().sessions, {
+      prefix: "pages-shell",
+      label: "Pages Shell"
+    });
     webTerminalWorkspace.add({
-      id: id2,
-      title,
+      id: draft.id,
+      title: draft.title,
       kind: "command",
       command: "web-shell",
       metadata: { source: "browser-demo" }
@@ -20124,7 +20166,7 @@ function applyWebTerminalAction(action) {
       status: "running",
       running: true
     });
-    push(`terminal new ${title}`);
+    push(`terminal new ${draft.title}`);
   } else if (action === "previous") {
     const descriptor = webTerminalWorkspace.activateRelative(-1);
     push(descriptor ? `terminal session ${descriptor.title}` : "terminal previous unavailable");
@@ -20137,11 +20179,13 @@ function applyWebTerminalAction(action) {
       push("terminal session closed");
     }
   } else if (action === "splitRow" || action === "splitColumn") {
-    const id2 = nextWebTerminalSessionId();
-    const title = webTerminalSessionTitle(id2);
+    const draft = nextApiWorkbenchTerminalSessionDraft(webTerminalWorkspace.inspect().sessions, {
+      prefix: "pages-shell",
+      label: "Pages Shell"
+    });
     const descriptor = webTerminalWorkspace.add({
-      id: id2,
-      title,
+      id: draft.id,
+      title: draft.title,
       kind: "command",
       command: "web-shell",
       metadata: { source: "browser-demo" }
@@ -20155,7 +20199,7 @@ function applyWebTerminalAction(action) {
       title: descriptor.title
     });
     webTerminalWorkspace.activate(descriptor.id);
-    push(`terminal split ${title}`);
+    push(`terminal split ${draft.title}`);
   } else if (action === "zoomPane") {
     const paneId = webTerminalWorkspace.inspect().layout.activePaneId;
     if (paneId) {
@@ -20188,12 +20232,6 @@ function applyWebTerminalAction(action) {
   }
   webTerminalScreenKeys.clear();
   active.value = "terminal";
-}
-function nextWebTerminalSessionId() {
-  return nextWorkbenchTerminalSessionId(webTerminalWorkspace.inspect().sessions, { prefix: "pages-shell" });
-}
-function webTerminalSessionTitle(id2) {
-  return workbenchTerminalSessionTitleFromId(id2, { prefix: "pages-shell", label: "Pages Shell" });
 }
 function ensureLines() {
   for (let row = lineSignals.length; row < rowsCount(); row++) {

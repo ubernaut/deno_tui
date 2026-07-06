@@ -38,7 +38,6 @@ import {
   MenuBarController,
   modalContentHeight,
   ModalController,
-  nextWorkbenchTerminalSessionDraft,
   normalizeTerminalWorkspaceSnapshot,
   normalizeWorkbenchPanelWorkspaceState,
   parseHexColor,
@@ -124,6 +123,7 @@ import {
   apiWorkbenchShortPanelTitle,
   type ApiWorkbenchThemeSpec,
   createApiWorkbenchThemes,
+  nextApiWorkbenchTerminalSessionDraft,
 } from "../../app/api_workbench_catalog.ts";
 import {
   apiWorkbenchButtonRowInto,
@@ -1461,7 +1461,7 @@ function syncWebTerminalScreen(sessionId: string | undefined, width: number, hei
 function applyWebTerminalAction(action: WebTerminalAction): void {
   const inspection = webTerminalWorkspace.inspect();
   if (action === "new") {
-    const draft = nextWorkbenchTerminalSessionDraft(webTerminalWorkspace.inspect().sessions, {
+    const draft = nextApiWorkbenchTerminalSessionDraft(webTerminalWorkspace.inspect().sessions, {
       prefix: "pages-shell",
       label: "Pages Shell",
     });
@@ -1490,7 +1490,7 @@ function applyWebTerminalAction(action: WebTerminalAction): void {
       push("terminal session closed");
     }
   } else if (action === "splitRow" || action === "splitColumn") {
-    const draft = nextWorkbenchTerminalSessionDraft(webTerminalWorkspace.inspect().sessions, {
+    const draft = nextApiWorkbenchTerminalSessionDraft(webTerminalWorkspace.inspect().sessions, {
       prefix: "pages-shell",
       label: "Pages Shell",
     });

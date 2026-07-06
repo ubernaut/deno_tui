@@ -178,7 +178,6 @@ import {
 import { maxTextWidth, type VisibleMenuSlice } from "../src/app/workbench_text.ts";
 import {
   applyWorkbenchTerminalSearchPromptInput,
-  nextWorkbenchTerminalSessionDraft,
   resolveWorkbenchShellBackend,
   resolveWorkbenchTerminalProcessInputModeToggle,
   resolveWorkbenchTerminalShellInputModeToggle,
@@ -214,6 +213,7 @@ import {
   apiWorkbenchWindowTitle,
   createApiWorkbenchThemes,
   createApiWorkbenchWindowCatalog,
+  nextApiWorkbenchTerminalSessionDraft,
   TERMINAL_OUTPUT_WINDOW_ID,
   TERMINAL_SHELL_WINDOW_ID,
 } from "./api_workbench_catalog.ts";
@@ -2351,7 +2351,7 @@ function activeTerminalShell(): TerminalShellController | undefined {
 }
 
 function addSplitTerminalShell(direction: "row" | "column") {
-  const draft = nextWorkbenchTerminalSessionDraft(terminalShell.inspect().sessions);
+  const draft = nextApiWorkbenchTerminalSessionDraft(terminalShell.inspect().sessions);
   const descriptor = terminalShell.add(shellTerminalTemplate(draft), {
     activate: false,
   });
@@ -3731,7 +3731,7 @@ async function applyTerminalShellAction(action: TerminalShellAction): Promise<vo
   const shell = activeTerminalShell();
   if (action === "new") {
     const descriptor = terminalShell.add(
-      shellTerminalTemplate(nextWorkbenchTerminalSessionDraft(terminalShell.inspect().sessions)),
+      shellTerminalTemplate(nextApiWorkbenchTerminalSessionDraft(terminalShell.inspect().sessions)),
       {
         activate: true,
         start: true,

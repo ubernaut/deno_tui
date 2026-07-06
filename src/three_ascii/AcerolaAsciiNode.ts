@@ -92,7 +92,7 @@ export interface AcerolaAsciiRenderProfile {
 }
 
 /** Returns whether the full-resolution composite target is needed for the current render profile. */
-export function shouldRenderAcerolaAsciiComposite(profile: Pick<AcerolaAsciiRenderProfile, "image">): boolean {
+function shouldRenderAcerolaAsciiComposite(profile: Pick<AcerolaAsciiRenderProfile, "image">): boolean {
   return profile.image;
 }
 

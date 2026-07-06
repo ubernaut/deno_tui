@@ -9,10 +9,7 @@ import {
   assertStringIncludes,
   assertThrows,
 } from "./deps.ts";
-import {
-  type AcerolaAsciiRenderProfile,
-  shouldRenderAcerolaAsciiComposite,
-} from "../src/three_ascii/AcerolaAsciiNode.ts";
+import type { AcerolaAsciiRenderProfile } from "../src/three_ascii/AcerolaAsciiNode.ts";
 import type { ThreeAsciiAnsiGridInput } from "../src/three_ascii/ansi_grid.ts";
 import {
   fillGlyphKeyForIndex,
@@ -561,18 +558,6 @@ Deno.test("three ascii render profile follows output and glyph requirements", ()
     }),
     { image: false, terminalEdges: false, terminalDepthColor: false },
   );
-});
-
-Deno.test("Acerola ASCII composite target renders only for image output", () => {
-  const profile: AcerolaAsciiRenderProfile = {
-    image: false,
-    terminalEdges: false,
-    terminalDepthColor: false,
-  };
-  assertEquals(shouldRenderAcerolaAsciiComposite(profile), false);
-
-  profile.image = true;
-  assertEquals(shouldRenderAcerolaAsciiComposite(profile), true);
 });
 
 Deno.test("three ascii render profile reuses caller-owned profile objects", () => {

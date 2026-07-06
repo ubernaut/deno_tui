@@ -16,6 +16,7 @@ import {
   apiWorkbenchWindowTitle,
   createApiWorkbenchThemes,
   createApiWorkbenchWindowCatalog,
+  nextApiWorkbenchTerminalSessionDraft,
   TERMINAL_OUTPUT_OPTION_ID,
   TERMINAL_OUTPUT_WINDOW_ID,
   TERMINAL_SHELL_OPTION_ID,
@@ -512,6 +513,16 @@ Deno.test("api workbench catalog maps terminal output line styles through active
     bg: theme.panelSoft,
     bold: true,
   });
+});
+
+Deno.test("api workbench catalog creates terminal session drafts", () => {
+  assertEquals(
+    nextApiWorkbenchTerminalSessionDraft([{ id: "pages-shell-1" }], {
+      prefix: "pages-shell",
+      label: "Pages Shell",
+    }),
+    { id: "pages-shell-2", title: "Pages Shell 2" },
+  );
 });
 
 Deno.test("api workbench catalog maps ANSI terminal cell colors through active theme colors", () => {

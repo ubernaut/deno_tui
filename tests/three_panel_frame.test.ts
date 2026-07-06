@@ -2,7 +2,6 @@ import { assert, assertEquals } from "./deps.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import {
-  scaleThreePanelGridToSize,
   type ThreePanelFrameUpdate,
   ThreePanelFrameView,
   type ThreePanelGridRenderer,
@@ -612,18 +611,42 @@ Deno.test("ThreePanelFrameView caps large ASCII renderer sizes", async () => {
   }
 });
 
-Deno.test("scaleThreePanelGridToSize fills display bounds from capped renderer grids", () => {
-  assertEquals(scaleThreePanelGridToSize([["A", "B"], ["C", "D"]], 4, 4), [
-    ["A", "A", "B", "B"],
-    ["A", "A", "B", "B"],
-    ["C", "C", "D", "D"],
-    ["C", "C", "D", "D"],
-  ]);
-  assertEquals(scaleThreePanelGridToSize([["A", "B"], ["C", "D"]], 1, 1), [["A"]]);
-  assertEquals(scaleThreePanelGridToSize([], 3, 2), [
-    [" ", " ", " "],
-    [" ", " ", " "],
-  ]);
+Deno.test("ThreePanelFrameView republishes visible resize when capped renderer size is unchanged", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 40, height: 20 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal({ ...createDefaultAsciiOptions("sharp"), renderMaxCells: 4 });
+  let renderer: FakeGridRenderer | undefined;
+  const updates: ThreePanelFrameUpdate[] = [];
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    frameInterval: 10_000,
+    maxRenderCells: 4,
+    onUpdate: (update) => {
+      if (update) updates.push(update);
+    },
+    rendererFactory: (options) => renderer = new FakeGridRenderer(options.columns, options.rows),
+  });
+
+  try {
+    await waitFor(() => (renderer?.renderCount ?? 0) >= 1);
+    await waitFor(() => panel.grid.peek().length === 20);
+    assertEquals(panel.grid.peek()[0]?.length, 40);
+    assertEquals(renderer?.sizes.at(-1), [2, 1]);
+
+    rectangle.value = { column: 0, row: 0, width: 80, height: 40 };
+
+    await waitFor(() => panel.grid.peek().length === 40);
+    assertEquals(panel.grid.peek()[0]?.length, 80);
+    assertEquals(renderer?.sizes.at(-1), [2, 1]);
+    assert(updates.some((update) => update.rows === 40 && update.columns === 80));
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+  }
 });
 
 Deno.test("ThreePanelFrameView accepts reactive render cell caps", async () => {

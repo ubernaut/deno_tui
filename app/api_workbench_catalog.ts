@@ -9,6 +9,13 @@ import { grWizardThemePalettes } from "../src/grwizard_themes.ts";
 import { HTML_CSS_LAYOUT_OPTION_ID, HTML_CSS_LAYOUT_WINDOW_ID } from "../src/markup/demo_fixtures.ts";
 import type { ProcessSessionStatus } from "../src/runtime/process_session.ts";
 import { terminalStatusTone } from "../src/runtime/terminal_status.ts";
+import {
+  nextWorkbenchTerminalSessionId,
+  type WorkbenchTerminalSessionIdOptions,
+  type WorkbenchTerminalSessionIdSource,
+  workbenchTerminalSessionTitleFromId,
+  type WorkbenchTerminalSessionTitleOptions,
+} from "../src/app/workbench_terminal.ts";
 
 export interface ApiWorkbenchThemeSpec {
   id: string;
@@ -48,6 +55,22 @@ export interface ApiWorkbenchTerminalCellStyleInput {
   foreground?: number;
   background?: number;
   bold?: boolean;
+}
+
+export interface ApiWorkbenchTerminalSessionDraftOptions
+  extends WorkbenchTerminalSessionIdOptions, WorkbenchTerminalSessionTitleOptions {}
+
+export interface ApiWorkbenchTerminalSessionDraft {
+  id: string;
+  title: string;
+}
+
+export function nextApiWorkbenchTerminalSessionDraft(
+  sessions: readonly WorkbenchTerminalSessionIdSource[],
+  options: ApiWorkbenchTerminalSessionDraftOptions = {},
+): ApiWorkbenchTerminalSessionDraft {
+  const id = nextWorkbenchTerminalSessionId(sessions, options);
+  return { id, title: workbenchTerminalSessionTitleFromId(id, options) };
 }
 
 export function apiWorkbenchTerminalStatusToneColor(

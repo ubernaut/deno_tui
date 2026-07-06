@@ -92,16 +92,6 @@ export interface WorkbenchTerminalSessionTitleOptions {
   label?: string;
 }
 
-/** Options for creating a terminal session id and title together. */
-export interface WorkbenchTerminalSessionDraftOptions
-  extends WorkbenchTerminalSessionIdOptions, WorkbenchTerminalSessionTitleOptions {}
-
-/** Generated id/title pair for a new workbench terminal session. */
-export interface WorkbenchTerminalSessionDraft {
-  id: string;
-  title: string;
-}
-
 /** Projected terminal session tab geometry and label. */
 export interface WorkbenchTerminalSessionTabPlacement {
   id: string;
@@ -612,15 +602,6 @@ export function workbenchTerminalSessionTitleFromId(
   if (!id.startsWith(expectedPrefix)) return label;
   const suffix = id.slice(expectedPrefix.length);
   return /^\d+$/.test(suffix) ? `${label} ${suffix}` : label;
-}
-
-/** Creates the next terminal session id and matching display title from the same prefix policy. */
-export function nextWorkbenchTerminalSessionDraft(
-  sessions: readonly WorkbenchTerminalSessionIdSource[],
-  options: WorkbenchTerminalSessionDraftOptions = {},
-): WorkbenchTerminalSessionDraft {
-  const id = nextWorkbenchTerminalSessionId(sessions, options);
-  return { id, title: workbenchTerminalSessionTitleFromId(id, options) };
 }
 
 /** Projects terminal session-like controller state into caller-owned tab sources. */

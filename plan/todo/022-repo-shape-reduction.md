@@ -197,6 +197,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     caps when resized panes keep similar total area but change aspect ratio
   - Workbench Three grid projection pre-sizes zero-column target rows before copying cells, reducing array-growth churn
     in resized/maximized Three panes while preserving cells outside the projected region
+  - Three panel display-grid scaling is folded into `src/app/three_panel_core.ts`, keeping the pure capped-renderer
+    projection helper out of the app-facing Three panel facade while preserving the live resize behavior.
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
@@ -366,6 +368,8 @@ The library core is real and valuable, but it needs clearer boundaries:
   - standalone visualization app layout and retained panel resize assertions are now bundled into
     `tests/visualization_primitives.test.ts`, keeping app-local monitor layout and panel rendering coverage with the
     lower-level visualization drawing helpers that use them.
+  - Three panel display-grid scaling assertions are bundled into `tests/three_panel_core.test.ts`; the live frame suite
+    now only checks that capped renderer output still fills the panel after resize.
   - Health script catalog and result-formatting assertions are now bundled into `tests/e2e_script.test.ts`, keeping repo
     gate script coverage together and removing another standalone script micro-suite.
 - Prefer subsystem-level runtime smoke coverage for workbench, Three ASCII, terminal shell, and web interaction.
