@@ -10,11 +10,9 @@ import {
 import { unitWave } from "../app/visualization_primitives.ts";
 import {
   cpuActivityRgb,
-  cpuHexTileLayout,
   cpuHexTileLayoutInto,
   cpuHexTileScrollTarget,
   nextCpuHexLabel,
-  processMatchesCpuLabel,
   selectedCpuHexTilesWith,
   topCpuProcessLabelForCpu,
 } from "../app/visualization_system.ts";
@@ -428,9 +426,9 @@ Deno.test("cpu hex grid renders every core with unique truecolor activity shades
 
   assertEquals((gridPlain.match(/CPU\d{3}/g) ?? []).length, 16);
   assert(gridPlain.includes("CPU015"));
-  assertEquals(cpuHexTileLayout(manyCoreSystem.cpuCores, 36, 5).length, 16);
-  assertEquals(cpuHexTileLayout(manyCoreSystem.cpuCores, 36, 5)[0]?.height, 2);
-  const tileBuffer = cpuHexTileLayout(manyCoreSystem.cpuCores, 36, 5);
+  const tileBuffer = cpuHexTileLayoutInto([], manyCoreSystem.cpuCores, 36, 5);
+  assertEquals(tileBuffer.length, 16);
+  assertEquals(tileBuffer[0]?.height, 2);
   const firstTile = tileBuffer[0];
   assertStrictEquals(cpuHexTileLayoutInto(tileBuffer, manyCoreSystem.cpuCores.slice(0, 2), 20, 4), tileBuffer);
   assertEquals(tileBuffer.length, 2);
@@ -536,15 +534,13 @@ Deno.test("cpu hex helpers navigate tiles and summarize processor samples", () =
     { pid: 2, name: "beta", state: "S", cpuPercent: 9.6, memoryPercent: 1, memoryBytes: 1, processor: 2 },
     { pid: 3, name: "gamma", state: "S", cpuPercent: 4.1, memoryPercent: 1, memoryBytes: 1, processor: 3 },
   ];
-  assertEquals(processMatchesCpuLabel(processes[0]!, "2"), true);
-  assertEquals(processMatchesCpuLabel(processes[2]!, "2"), false);
   assertEquals(topCpuProcessLabelForCpu("2", processes), "alpha:18%, beta:10%");
   assertEquals(topCpuProcessLabelForCpu("4", processes), "no top process in sample");
 
   const selections = selectedCpuHexTilesWith({ cpu: "1" }, "gpu", "2");
   assertEquals(selections, { cpu: "1", gpu: "2" });
 
-  const tiles = cpuHexTileLayout(cores, 24, 4);
+  const tiles = cpuHexTileLayoutInto([], cores, 24, 4);
   assertEquals(
     cpuHexTileScrollTarget({
       label: "7",

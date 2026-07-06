@@ -410,7 +410,7 @@ export function cpuHexGridColumnCount(
   return cpuHexColumns(width, cpuHexTileWidth(mode, labelWidth));
 }
 
-export function cpuHexTileLayout(
+function cpuHexTileLayout(
   cores: RenderContext["system"]["cpuCores"],
   width: number,
   height: number,
@@ -458,7 +458,7 @@ export function cpuHexTileLayoutInto(
   return target;
 }
 
-export function processMatchesCpuLabel(process: CpuProcessSnapshot, label: string): boolean {
+function processMatchesCpuLabel(process: CpuProcessSnapshot, label: string): boolean {
   const cpuId = Number(label);
   return Number.isFinite(cpuId) ? process.processor === cpuId : String(process.processor) === label;
 }
