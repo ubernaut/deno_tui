@@ -78,7 +78,6 @@ import {
   workbenchTerminalPaneTitleRenderCommandsInto,
   workbenchTerminalProtocolHeaderRowsInto,
   type WorkbenchTerminalToolbarAction,
-  workbenchTerminalToolbarItemsInto,
   workbenchTerminalToolbarStateFromSnapshot,
   type WorkbenchTitlebarButtonKind,
   workbenchTitlebarButtonRenderCommandsInto,
@@ -128,7 +127,10 @@ import {
   renderApiWorkbenchInspectorPanel,
 } from "../../app/api_workbench_builtin_panels_view.ts";
 import { renderApiWorkbenchHtmlCssLayout } from "../../app/api_workbench_html_css_view.ts";
-import { renderApiWorkbenchTerminalSessionTabs } from "../../app/api_workbench_terminal_shell_view.ts";
+import {
+  renderApiWorkbenchTerminalSessionTabs,
+  renderApiWorkbenchTerminalShellToolbar,
+} from "../../app/api_workbench_terminal_shell_view.ts";
 import {
   type ApiWorkbenchDropdownOverlay,
   renderApiWorkbenchChromeHeader,
@@ -1038,7 +1040,26 @@ function renderTerminalProtocol(frame: string[], rect: Rectangle): void {
     write(frame, rect.row + index, rect.column, paint(fit(line, rect.width), fg, bg, index === 0));
   }
   renderTerminalSessionTabs(frame, { column: rect.column, row: rect.row + 2, width: rect.width, height: 1 }, workspace);
-  renderTerminalToolbar(frame, { column: rect.column, row: rect.row + 3, width: rect.width, height: 1 }, workspace);
+  renderApiWorkbenchTerminalShellToolbar<string[], "terminalAction">({
+    frame,
+    rect: { column: rect.column, row: rect.row + 3, width: rect.width, height: 1 },
+    startRow: rect.row + 3,
+    state: workbenchTerminalToolbarStateFromSnapshot({
+      activeId: workspace.activeId,
+      sessionCount: workspace.sessions.length,
+      paneCount: workspace.layout.count,
+      zoomedPaneId: workspace.layout.zoomedPaneId,
+      scrollback: activeWebTerminalScrollback()?.inspect(),
+    }),
+    buffers: webTerminalButtonBuffers,
+    actions: webTerminalActions,
+    theme: t,
+    contrastText,
+    paint: (value, style) => paint(value, style.fg, style.bg, style.bold),
+    write,
+    addHit: (hitRect, action) => hitTargets.add(hitRect, action),
+    hitType: "terminalAction",
+  });
 
   fillRect(frame, screenRect, t.background);
   renderWebTerminalPanes(frame, screenRect, workspace);
@@ -1051,48 +1072,13 @@ function renderTerminalProtocol(frame: string[], rect: Rectangle): void {
   }
 }
 
-function renderTerminalToolbar(
-  frame: string[],
-  rect: Rectangle,
-  workspace = webTerminalWorkspace.inspect(),
-): void {
-  if (rect.height <= 0 || rect.width <= 0) return;
-  const scrollback = activeWebTerminalScrollback();
-  const scrollbackInspection = scrollback?.inspect();
-  workbenchTerminalToolbarItemsInto(
-    webTerminalButtonBuffers.items,
-    workbenchTerminalToolbarStateFromSnapshot({
-      activeId: workspace.activeId,
-      sessionCount: workspace.sessions.length,
-      paneCount: workspace.layout.count,
-      zoomedPaneId: workspace.layout.zoomedPaneId,
-      scrollback: scrollbackInspection,
-    }),
-    { actions: webTerminalActions },
-  );
-  layoutWorkbenchButtonRowInto(webTerminalButtonBuffers.placements, webTerminalButtonBuffers.items, rect, rect.row);
-  workbenchButtonRowRenderCommandsInto(webTerminalButtonBuffers.commands, webTerminalButtonBuffers.placements);
-  for (const command of webTerminalButtonBuffers.commands) {
-    const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
-    write(
-      frame,
-      command.rect.row,
-      command.rect.column,
-      paint(button.text, button.style.fg, button.style.bg, button.style.bold),
-    );
-    if (!command.item.disabled) {
-      hitTargets.add(command.hitRect, { type: "terminalAction", action: command.item.action });
-    }
-  }
-}
-
 function renderTerminalSessionTabs(
   frame: string[],
   rect: Rectangle,
   workspace = webTerminalWorkspace.inspect(),
 ): void {
   if (rect.height <= 0 || rect.width <= 0) return;
-  renderApiWorkbenchTerminalSessionTabs<string[], Hit>({
+  renderApiWorkbenchTerminalSessionTabs<string[], "terminalSession">({
     frame,
     rect,
     startRow: rect.row,
@@ -1103,7 +1089,7 @@ function renderTerminalSessionTabs(
     paint: (value, style) => paint(value, style.fg, style.bg, style.bold),
     write,
     addHit: (hitRect, action) => hitTargets.add(hitRect, action),
-    sessionHitAction: (id) => ({ type: "terminalSession", id }),
+    hitType: "terminalSession",
   });
 }
 

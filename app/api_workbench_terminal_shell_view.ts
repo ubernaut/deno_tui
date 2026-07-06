@@ -56,7 +56,7 @@ export interface ApiWorkbenchTerminalSessionTabsInspection {
 
 export interface ApiWorkbenchTerminalSessionTabsRenderOptions<
   Frame = WorkbenchFrame,
-  HitAction = { type: "terminalShellSession"; id: string },
+  HitType extends string = "terminalShellSession",
 > {
   frame: Frame;
   rect: Rectangle;
@@ -67,21 +67,26 @@ export interface ApiWorkbenchTerminalSessionTabsRenderOptions<
   contrastText: (background: string, dark: string, light: string) => string;
   paint: (text: string, style: { fg: string; bg: string; bold?: boolean }) => string;
   write: (frame: Frame, row: number, column: number, value: string) => void;
-  addHit: (rect: Rectangle, action: HitAction) => void;
-  sessionHitAction?: (id: string) => HitAction;
+  addHit: (rect: Rectangle, action: { type: HitType; id: string }) => void;
+  hitType?: HitType;
 }
 
-export interface ApiWorkbenchTerminalShellToolbarRenderOptions {
-  frame: WorkbenchFrame;
+export interface ApiWorkbenchTerminalShellToolbarRenderOptions<
+  Frame = WorkbenchFrame,
+  HitType extends string = "terminalShell",
+> {
+  frame: Frame;
   rect: Rectangle;
   startRow: number;
   state: WorkbenchTerminalToolbarState;
   buffers: WorkbenchButtonRowBufferCache<WorkbenchTerminalToolbarAction>;
+  actions?: readonly WorkbenchTerminalToolbarAction[];
   theme: ApiWorkbenchThemeSpec;
   contrastText: (background: string, dark: string, light: string) => string;
   paint: (text: string, style: { fg: string; bg: string; bold?: boolean }) => string;
-  write: (frame: WorkbenchFrame, row: number, column: number, value: string) => void;
-  addHit: (rect: Rectangle, action: { type: "terminalShell"; action: WorkbenchTerminalToolbarAction }) => void;
+  write: (frame: Frame, row: number, column: number, value: string) => void;
+  addHit: (rect: Rectangle, action: { type: HitType; action: WorkbenchTerminalToolbarAction }) => void;
+  hitType?: HitType;
 }
 
 export interface ApiWorkbenchTerminalShellHeaderRenderOptions extends ApiWorkbenchTerminalShellPaintCallbacks {
@@ -145,11 +150,15 @@ export interface ApiWorkbenchTerminalShellPanesRenderOptions extends ApiWorkbenc
 }
 
 /** Renders the shell toolbar with shared button-row projection helpers. */
-export function renderApiWorkbenchTerminalShellToolbar(
-  options: ApiWorkbenchTerminalShellToolbarRenderOptions,
+export function renderApiWorkbenchTerminalShellToolbar<
+  Frame = WorkbenchFrame,
+  HitType extends string = "terminalShell",
+>(
+  options: ApiWorkbenchTerminalShellToolbarRenderOptions<Frame, HitType>,
 ): number {
   const { frame, rect, startRow, state, buffers, theme, contrastText, paint, write, addHit } = options;
-  workbenchTerminalToolbarItemsInto(buffers.items, state);
+  const hitType = (options.hitType ?? "terminalShell") as HitType;
+  workbenchTerminalToolbarItemsInto(buffers.items, state, options.actions ? { actions: options.actions } : undefined);
   const nextRow = layoutWorkbenchButtonRowInto(
     buffers.placements,
     buffers.items,
@@ -162,7 +171,7 @@ export function renderApiWorkbenchTerminalShellToolbar(
     const projection = projectWorkbenchButtonCommand(button, theme, contrastText);
     write(frame, button.rect.row, button.rect.column, paint(projection.text, projection.style));
     if (!button.item.disabled) {
-      addHit(button.hitRect, { type: "terminalShell", action: button.item.action });
+      addHit(button.hitRect, { type: hitType, action: button.item.action });
     }
   }
   return nextRow;
@@ -365,12 +374,13 @@ export function renderApiWorkbenchTerminalShellPanes(
 /** Renders the shell session tab strip while keeping terminal shell lifecycle state in the app. */
 export function renderApiWorkbenchTerminalSessionTabs<
   Frame = WorkbenchFrame,
-  HitAction = { type: "terminalShellSession"; id: string },
+  HitType extends string = "terminalShellSession",
 >(
-  options: ApiWorkbenchTerminalSessionTabsRenderOptions<Frame, HitAction>,
+  options: ApiWorkbenchTerminalSessionTabsRenderOptions<Frame, HitType>,
 ): number {
   const { frame, rect, startRow, inspection, buffers, theme, contrastText, paint, write, addHit } = options;
   if (startRow >= rect.row + rect.height) return startRow;
+  const hitType = (options.hitType ?? "terminalShellSession") as HitType;
 
   workbenchTerminalSessionTabSourcesInto(buffers.sources, inspection.sessions);
   workbenchTerminalSessionTabsInto(
@@ -391,9 +401,7 @@ export function renderApiWorkbenchTerminalSessionTabs<
       : { fg: theme.text, bg: theme.panelSoft, bold: false };
     write(frame, command.rect.row, command.rect.column, paint(command.text, style));
     if (command.kind === "tab" && command.id) {
-      const hitAction = options.sessionHitAction?.(command.id) ??
-        ({ type: "terminalShellSession", id: command.id } as HitAction);
-      addHit(command.rect, hitAction);
+      addHit(command.rect, { type: hitType, id: command.id });
     }
   }
   return startRow + 1;
