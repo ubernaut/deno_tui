@@ -1,9 +1,5 @@
 import { assertEquals, assertInstanceOf, assertThrows } from "./deps.ts";
 import {
-  ThemeEngine as ThemeEngineModule,
-  ThemeInheritanceError as ThemeInheritanceErrorModule,
-} from "../src/theme_engine.ts";
-import {
   createAnsiStyle as createAnsiStyleFromModule,
   createAnsiStyleMap,
   emptyStyle as emptyStyleFromModule,
@@ -200,10 +196,7 @@ Deno.test("theme registry composes pack options and overrides", () => {
   assertEquals(engine.resolve("button", "active")("x"), "bx");
 });
 
-Deno.test("theme engine module backs the public facade classes", () => {
-  assertEquals(ThemeEngine.prototype instanceof ThemeEngineModule, true);
-  assertEquals(ThemeInheritanceError.prototype instanceof ThemeInheritanceErrorModule, true);
-
+Deno.test("theme engine exposes inspection and variant behavior", () => {
   const engine = createThemeEngine("plain", {
     components: {
       button: {
@@ -213,7 +206,6 @@ Deno.test("theme engine module backs the public facade classes", () => {
     },
   });
 
-  assertInstanceOf(engine, ThemeEngineModule);
   assertInstanceOf(engine, ThemeEngine);
   assertEquals(engine.inspect().tokens, [
     "foreground",
@@ -246,13 +238,13 @@ Deno.test("theme engine module preserves inheritance and extension behavior", ()
   assertEquals(extended.variants("child"), ["danger", "selected"]);
   assertThrows(
     () =>
-      new ThemeEngineModule({
+      new ThemeEngine({
         components: {
           a: { extends: "b" },
           b: { extends: "a" },
         },
       }).component("a"),
-    ThemeInheritanceErrorModule,
+    ThemeInheritanceError,
     "a -> b -> a",
   );
   assertThrows(
