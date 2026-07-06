@@ -34,21 +34,19 @@ import {
   type ApiWorkbenchWrappedOptionsRenderCommand,
   apiWorkbenchWrappedOptionsRenderCommandsInto,
   apiWorkbenchWrappedOptionStyle,
+  expandedApiWorkbenchTouchHitRect,
+  findApiWorkbenchHitTarget,
   isApiWorkbenchTextControlActive,
+  isApiWorkbenchTouchOptimizedLayout,
   nextApiWorkbenchControlId,
   nextSortableDataColumn,
   resolveApiWorkbenchControlKey,
-} from "../app/api_workbench_controls.ts";
-import {
-  expandedApiWorkbenchTouchHitRect,
-  findApiWorkbenchHitTarget,
-  isApiWorkbenchTouchOptimizedLayout,
   resolveApiWorkbenchHitWindowId,
   resolveApiWorkbenchTitlebarHitAction,
   resolveApiWorkbenchWindowHScrollbarOffset,
   resolveApiWorkbenchWindowVScrollbarOffset,
   resolveApiWorkbenchWorkspaceScrollbarOffset,
-} from "../app/api_workbench_hit.ts";
+} from "../app/api_workbench_controls.ts";
 import type { Rectangle } from "../src/types.ts";
 
 const controlTheme = {

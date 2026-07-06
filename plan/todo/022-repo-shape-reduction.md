@@ -212,6 +212,9 @@ The library core is real and valuable, but it needs clearer boundaries:
     `app/api_workbench_controls.ts`, preserving the facade while removing five app-only helper shards.
   - API workbench control ids, line projection, and slider helpers are folded into `app/api_workbench_controls.ts`,
     making the controls facade the single app-local implementation surface for the workbench controls panel.
+  - API workbench titlebar, scrollbar, touch-target, and hit-window resolution helpers are folded into
+    `app/api_workbench_controls.ts`, keeping pointer routing policy with the app-local controls facade and removing
+    another standalone workbench helper shard.
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

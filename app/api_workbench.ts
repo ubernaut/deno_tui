@@ -218,15 +218,6 @@ import {
   TERMINAL_SHELL_WINDOW_ID,
 } from "./api_workbench_catalog.ts";
 import {
-  findApiWorkbenchHitTarget,
-  isApiWorkbenchTouchOptimizedLayout,
-  resolveApiWorkbenchHitWindowId,
-  resolveApiWorkbenchTitlebarHitAction,
-  resolveApiWorkbenchWindowHScrollbarOffset,
-  resolveApiWorkbenchWindowVScrollbarOffset,
-  resolveApiWorkbenchWorkspaceScrollbarOffset,
-} from "./api_workbench_hit.ts";
-import {
   apiWorkbenchButtonRowInto,
   type ApiWorkbenchCheckboxOption,
   apiWorkbenchCheckboxRowsInto,
@@ -263,9 +254,16 @@ import {
   type ApiWorkbenchWrappedOptionsRenderCommand,
   apiWorkbenchWrappedOptionsRenderCommandsInto,
   apiWorkbenchWrappedOptionStyle,
+  findApiWorkbenchHitTarget,
   isApiWorkbenchTextControlActive,
+  isApiWorkbenchTouchOptimizedLayout,
   nextSortableDataColumn,
   resolveApiWorkbenchControlKey,
+  resolveApiWorkbenchHitWindowId,
+  resolveApiWorkbenchTitlebarHitAction,
+  resolveApiWorkbenchWindowHScrollbarOffset,
+  resolveApiWorkbenchWindowVScrollbarOffset,
+  resolveApiWorkbenchWorkspaceScrollbarOffset,
 } from "./api_workbench_controls.ts";
 import { createHtmlCssLayoutDemo, HTML_CSS_LAYOUT_WINDOW_ID } from "../src/markup/demo_fixtures.ts";
 import {
