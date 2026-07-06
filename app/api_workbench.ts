@@ -70,20 +70,64 @@ import {
 } from "../src/app/workbench/mod.ts";
 import {
   API_WORKBENCH_WORKSPACE_STORE_KEY,
+  apiWorkbenchWorkspaceStorageLabel,
   apiWorkbenchWorkspaceStorageOptions,
+  buildWorkspaceMenuEntriesInto,
   createApiWorkbenchWorkspaceStore,
+  currentWorkspaceVisualizationIdsInto as workspaceVisualizationIdsFromWindowsInto,
+  currentWorkspaceWindowsInto as currentWorkspaceWindowsFromIdsInto,
+  defaultWorkspaceName as defaultWorkspaceNameFromCount,
+  deleteWorkspaceModalContent,
+  deleteWorkspaceState,
+  renameWorkspaceModalContent,
+  renameWorkspaceState,
+  resolveWorkspaceMenuCommand,
+  saveWorkspaceModalContent,
+  saveWorkspaceState,
+  workbenchWindowClosePlan,
+  workspaceDeletedModalContent,
+  workspaceLoadClosePlan,
+  type WorkspaceMenuEntry,
+  workspaceMenuLabelsInto,
+  workspaceMissingModalContent,
+  workspaceNameModalBody as buildWorkspaceNameModalBody,
+  workspaceRenamedModalContent,
+  workspaceSavedModalContent,
 } from "../src/app/workbench_workspace_menu.ts";
 import {
   readWorkbenchVerifiedConsoleSize,
   syncWorkbenchTerminalSize,
   WorkbenchFullRepaintPolicy,
 } from "../src/app/workbench_repaint_policy.ts";
-import { WorkbenchThreeCadenceMeter, WorkbenchThreeOverlayPressureGate } from "../src/app/workbench_three_runtime.ts";
 import {
+  type ApiWorkbenchThreePressureInspection,
+  ApiWorkbenchThreeRuntimeController,
+  WorkbenchThreeCadenceMeter,
+  WorkbenchThreeOverlayPressureGate,
+} from "../src/app/workbench_three_runtime.ts";
+import {
+  apiWorkbenchThreeFrameIntervalForCells,
   createWorkbenchThreeWindowState,
+  hideWorkbenchThreeRect,
+  resolveWorkbenchThreeFullscreenAsciiOptions,
+  resolveWorkbenchThreeLiveAsciiOptions,
+  resolveWorkbenchThreeRuntimeBudgetSnapshot,
+  resolveWorkbenchThreeTiledAsciiOptions,
   resolveWorkbenchThreeWindowStateInto,
+  sameWorkbenchThreeAsciiOptions,
+  setWorkbenchThreeRect,
+  setWorkbenchThreeSceneSignal,
+  WORKBENCH_THREE_DRAW_INTERVAL_MS,
+  WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
+  WORKBENCH_THREE_INITIAL_CELLS,
+  workbenchStudioScene,
+  workbenchThreeBodyRect,
+  workbenchThreeContentGraphicsRect,
+  workbenchThreeLiveRenderCells,
+  type WorkbenchThreeScene as SharedWorkbenchThreeScene,
   type WorkbenchThreeWindowState,
   workbenchThreeWindowStateIsInteractive,
+  workbenchVisualizationThreeScene,
 } from "../src/app/workbench_three_policy.ts";
 import {
   inspectWorkbenchWindowSignalState,
@@ -91,7 +135,13 @@ import {
   workbenchWindowActionLog,
   type WorkbenchWindowActionLogKind,
 } from "../src/app/workbench/controller.ts";
-import { WorkbenchShelfBufferCache } from "../src/app/workbench_buffers.ts";
+import {
+  WorkbenchButtonRowBufferCache,
+  WorkbenchModalBufferCache,
+  WorkbenchShelfBufferCache,
+  WorkbenchTerminalBufferCache,
+  WorkbenchTerminalSessionTabBufferCache,
+} from "../src/app/workbench_buffers.ts";
 import {
   applyWorkbenchAsciiConfigRowAction,
   createDefaultWorkbenchAsciiOptions,
@@ -130,12 +180,6 @@ import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts
 import { Tui } from "../src/tui.ts";
 import type { Rectangle } from "../src/types.ts";
 import { textWidth } from "../src/utils/strings.ts";
-import {
-  WorkbenchButtonRowBufferCache,
-  WorkbenchModalBufferCache,
-  WorkbenchTerminalBufferCache,
-  WorkbenchTerminalSessionTabBufferCache,
-} from "../src/app/workbench_buffers.ts";
 import { maxTextWidth, type VisibleMenuSlice } from "../src/app/workbench_text.ts";
 import {
   applyWorkbenchTerminalSearchPromptInput,
@@ -207,39 +251,6 @@ import {
 } from "./workbench_panels.ts";
 import { WorkbenchThreeGridProjectionCache } from "../src/app/workbench_three_grid.ts";
 import {
-  hideWorkbenchThreeRect,
-  setWorkbenchThreeRect,
-  setWorkbenchThreeSceneSignal,
-  workbenchStudioScene,
-  workbenchThreeBodyRect,
-  workbenchThreeContentGraphicsRect,
-  type WorkbenchThreeScene as SharedWorkbenchThreeScene,
-  workbenchVisualizationThreeScene,
-} from "../src/app/workbench_three_policy.ts";
-import {
-  apiWorkbenchWorkspaceStorageLabel,
-  buildWorkspaceMenuEntriesInto,
-  currentWorkspaceVisualizationIdsInto as workspaceVisualizationIdsFromWindowsInto,
-  currentWorkspaceWindowsInto as currentWorkspaceWindowsFromIdsInto,
-  defaultWorkspaceName as defaultWorkspaceNameFromCount,
-  deleteWorkspaceModalContent,
-  deleteWorkspaceState,
-  renameWorkspaceModalContent,
-  renameWorkspaceState,
-  resolveWorkspaceMenuCommand,
-  saveWorkspaceModalContent,
-  saveWorkspaceState,
-  workbenchWindowClosePlan,
-  workspaceDeletedModalContent,
-  workspaceLoadClosePlan,
-  type WorkspaceMenuEntry,
-  workspaceMenuLabelsInto,
-  workspaceMissingModalContent,
-  workspaceNameModalBody as buildWorkspaceNameModalBody,
-  workspaceRenamedModalContent,
-  workspaceSavedModalContent,
-} from "../src/app/workbench_workspace_menu.ts";
-import {
   formatWorkbenchKittyGraphicsStatus,
   WorkbenchKittyGraphicsController,
 } from "../src/runtime/graphics_surface.ts";
@@ -247,26 +258,10 @@ import { WorkbenchFramePainter } from "../src/app/workbench_row_render.ts";
 import { type RowStyle, type ThreeHeaderPerformance } from "../src/app/workbench_rows.ts";
 import { shouldCountWorkbenchThreeGridPressure } from "../src/app/workbench_three_terminal_pressure.ts";
 import {
-  apiWorkbenchThreeFrameIntervalForCells,
-  resolveWorkbenchThreeFullscreenAsciiOptions,
-  resolveWorkbenchThreeLiveAsciiOptions,
-  resolveWorkbenchThreeRuntimeBudgetSnapshot,
-  resolveWorkbenchThreeTiledAsciiOptions,
-  sameWorkbenchThreeAsciiOptions,
-  WORKBENCH_THREE_DRAW_INTERVAL_MS,
-  WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
-  WORKBENCH_THREE_INITIAL_CELLS,
-  workbenchThreeLiveRenderCells,
-} from "../src/app/workbench_three_policy.ts";
-import {
   type WorkbenchThreePanelEntry,
   WorkbenchThreePanelRegistry,
   WorkbenchThreeViewportInteractionController,
 } from "../src/app/workbench_three_panel_registry.ts";
-import {
-  type ApiWorkbenchThreePressureInspection,
-  ApiWorkbenchThreeRuntimeController,
-} from "../src/app/workbench_three_runtime.ts";
 import type { AsciiOptions, PanelRender, RenderContext, SlotConfig, SourceFrame, ThreeSceneMode } from "./types.ts";
 import {
   cpuHexGridColumnCount,
