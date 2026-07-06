@@ -432,7 +432,9 @@ const systemMonitor = new SystemMonitor({ historyLength: 72, diagnostics: workbe
 await systemMonitor.start(1000);
 const workbenchAudioRegistry = new AudioRegistry([]);
 const workspaceStore = createApiWorkbenchWorkspaceStore();
-const savedWorkspaces = new Signal<SavedWorkspace[]>(await loadSavedWorkspaces(), { deepObserve: true });
+const savedWorkspaces = new Signal<SavedWorkspace[]>(await loadWorkbenchWorkspaceStorage(workspaceStorageOptions()), {
+  deepObserve: true,
+});
 const threeAsciiAvailable = new Signal(await probeCompatibleWebGPUDevice());
 const asciiConfigs = new WorkbenchAsciiConfigController<WindowId>("three");
 const ascii = asciiConfigs.root;
@@ -602,8 +604,8 @@ const currentWorkspaceWindowBuffer: SavedWorkspaceWindow[] = [];
 const currentWorkspaceVisualizationIdBuffer: string[] = [];
 const workbenchThreeWindowState = createWorkbenchThreeWindowState<WindowId>("three");
 const workbenchThreeRuntime = new ApiWorkbenchThreeRuntimeController({
-  hasLiveThreeWindow: hasLiveThreeRenderedWindow,
-  hasFullscreenThreeWindow,
+  hasLiveThreeWindow: () => workbenchThreeWindowState.live,
+  hasFullscreenThreeWindow: () => workbenchThreeWindowState.fullscreenThree,
   onPressureChange: pushLog,
 });
 const workbenchThreeLiveMaxCells = workbenchThreeRuntime.liveMaxCells;
@@ -1035,7 +1037,7 @@ draw();
 
 function draw(): void {
   syncTerminalSize();
-  const forceFullRepaint = shouldForceWorkbenchFullRepaint(performance.now());
+  const forceFullRepaint = repaintPolicy.shouldForceFullRepaint(performance.now());
   const width = currentWidth();
   const height = currentHeight();
   hitTargets.clear();
@@ -1046,17 +1048,13 @@ function draw(): void {
   renderHeader(frame);
   renderWorkspace(frame);
   syncWorkbenchThreeRuntimeBudget(width, height);
-  syncWorkbenchThreeFrameInterval();
+  workbenchThreeRuntime.syncFrameInterval();
   renderStatus(frame);
   renderActiveDropdownOverlay(frame);
   renderModalOverlay(frame);
   if (forceFullRepaint) screenPainter.reset();
   const flushStats = screenPainter.flush(frame, width, height, renderFrameRow, renderFrameSlice);
   updateThreeTerminalPressure(flushStats, { ignoreSample: forceFullRepaint });
-}
-
-function shouldForceWorkbenchFullRepaint(now: number): boolean {
-  return repaintPolicy.shouldForceFullRepaint(now);
 }
 
 function syncWorkbenchThreeRuntimeBudget(width: number, height: number): void {
@@ -1079,7 +1077,7 @@ function syncWorkbenchThreeRuntimeBudgetForViewport(
     fullscreenViewportPadding: { columns: 6, rows: 10 },
     isThreeWindow: (id) => isThreeRenderedWindow(id),
   });
-  const fullscreenThree = hasFullscreenThreeWindow();
+  const fullscreenThree = workbenchThreeWindowState.fullscreenThree;
   const syncedFullscreenMaxCells = workbenchThreeRuntime.syncFullscreenTargetCells(
     snapshot.fullscreenTargetCells,
     fullscreenThree,
@@ -1088,7 +1086,7 @@ function syncWorkbenchThreeRuntimeBudgetForViewport(
   const liveViewportCells = Math.max(1, Math.floor(liveViewport.width) * Math.floor(liveViewport.height));
   const syncedLiveMaxCells = workbenchThreeRuntime.syncLiveTargetCells(
     workbenchThreeLiveRenderCells(liveViewport),
-    hasLiveThreeRenderedWindow() && !fullscreenThree,
+    workbenchThreeWindowState.live && !fullscreenThree,
     liveViewportCells,
   );
   if (workbenchThreeFullscreenTargetCells.peek() !== snapshot.fullscreenTargetCells) {
@@ -1130,10 +1128,6 @@ function updateThreeTerminalPressure(
   workbenchThreeRuntime.updatePressureFromCadence(stats, threeCadence.inspect());
 }
 
-function hasFullscreenThreeWindow(): boolean {
-  return workbenchThreeWindowState.fullscreenThree;
-}
-
 function scheduleDraw(): void {
   drawScheduler.schedule(draw);
 }
@@ -1170,7 +1164,7 @@ function renderHeader(frame: Frame): void {
       ? {
         workspace: {
           visible: workspaceMenuSlice,
-          labels: workspaceMenuLabels(),
+          labels: workspaceMenuLabelsInto(workspaceMenuLabelBuffer, workspaceMenuEntries()),
           selectedIndex: workspaceMenuIndex.peek(),
           preferredWidth: 30,
           maxVisibleItems: Math.max(6, currentHeight() - 5),
@@ -1220,7 +1214,14 @@ function renderWorkspace(frame: Frame): void {
   if (layout.rects.size === 0) {
     hideBuiltinThreeRects();
     hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
-    write(frame, bounds.row + 1, 2, paint(emptyWorkspaceMessage(), { fg: theme().warn }));
+    write(
+      frame,
+      bounds.row + 1,
+      2,
+      paint(workbenchEmptyWorkspaceMessage({ windows: windowManager.inspect().windows }), {
+        fg: theme().warn,
+      }),
+    );
     renderShelf(frame);
     return;
   }
@@ -1344,7 +1345,7 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
       writeRows,
     });
     addHit(sceneRect, { type: "threeViewport", id });
-    const entry = ensureVisualizationThreePanel(id);
+    const entry = visualizationThreePanels.ensure(id);
     const resized = setWorkbenchThreeRect(entry.rectangle, {
       column: 0,
       row: 0,
@@ -2004,10 +2005,6 @@ function renderActiveDropdownOverlay(frame: Frame): void {
   });
 }
 
-function emptyWorkspaceMessage(): string {
-  return workbenchEmptyWorkspaceMessage({ windows: windowManager.inspect().windows });
-}
-
 function renderModalOverlay(frame: Frame): void {
   if (threeConfigOpen.peek()) {
     renderThreeConfigModal(frame);
@@ -2246,10 +2243,6 @@ function translateDropdownOverlayForWindow(
   };
 }
 
-function ensureVisualizationThreePanel(id: VisualizationWindowId): DynamicThreePanel {
-  return visualizationThreePanels.ensure(id);
-}
-
 function createVisualizationThreePanel(id: VisualizationWindowId): DynamicThreePanel {
   const rectangle = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
   const graphicsRectangle = new Signal<Rectangle>({ column: 0, row: 0, width: 0, height: 0 }, { deepObserve: true });
@@ -2290,14 +2283,6 @@ function createVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
     onUpdate: scheduleDraw,
   });
   return { rectangle, graphicsRectangle, scene, panel, resources: [runtimeAscii] };
-}
-
-function syncWorkbenchThreeFrameInterval(): void {
-  workbenchThreeRuntime.syncFrameInterval();
-}
-
-function hasLiveThreeRenderedWindow(): boolean {
-  return workbenchThreeWindowState.live;
 }
 
 function syncWorkbenchThreeWindowState(): WorkbenchThreeWindowState<WindowId> {
@@ -2486,10 +2471,6 @@ function focusWindowSilently(id: WindowId): void {
   syncWindowSignalsFromManager();
 }
 
-function windowScrollPage(id: WindowId): number {
-  return Math.max(1, windowScroll(id).viewportHeight.peek() - 1);
-}
-
 function windowAt(x: number, y: number): WindowId | undefined {
   const hit = findHit(x, y);
   if (!hit) return undefined;
@@ -2576,7 +2557,7 @@ function openSaveWorkspaceModal(): void {
   closeTopMenus();
   workspaceNameMode.value = "save";
   workspaceTargetName.value = null;
-  workspaceNameDraft.value = defaultWorkspaceName();
+  workspaceNameDraft.value = defaultWorkspaceNameFromCount(savedWorkspaces.peek().length);
   modal.open(saveWorkspaceModalContent(workspaceNameModalBody()));
   pushLog("save workspace prompt");
 }
@@ -2604,7 +2585,10 @@ function workspaceNameModalBody(): string[] {
     mode: mode === "rename" ? "rename" : "save",
     draftName: workspaceNameDraft.peek(),
     cursor: mode ? "▌" : "",
-    loadedVisualizationIds: currentWorkspaceVisualizationIds(),
+    loadedVisualizationIds: workspaceVisualizationIdsFromWindowsInto(
+      currentWorkspaceVisualizationIdBuffer,
+      currentWorkspaceWindows(),
+    ),
     storageLabel: apiWorkbenchWorkspaceStorageLabel(),
     targetName: workspaceTargetName.peek(),
     targetWorkspace: workspaceByName(workspaceTargetName.peek()) ?? null,
@@ -2751,16 +2735,8 @@ function workspaceMenuEntries(): WorkspaceMenuEntry[] {
   return buildWorkspaceMenuEntriesInto(workspaceMenuEntryBuffer, savedWorkspaces.peek());
 }
 
-function workspaceMenuLabels(): string[] {
-  return workspaceMenuLabelsInto(workspaceMenuLabelBuffer, workspaceMenuEntries());
-}
-
 function workspaceMenuItemCount(): number {
   return workspaceMenuEntries().length;
-}
-
-function currentWorkspaceVisualizationIds(): string[] {
-  return workspaceVisualizationIdsFromWindowsInto(currentWorkspaceVisualizationIdBuffer, currentWorkspaceWindows());
 }
 
 function currentWorkspaceWindows(): SavedWorkspaceWindow[] {
@@ -2771,10 +2747,6 @@ function currentWorkspaceWindows(): SavedWorkspaceWindow[] {
     visualizationIdForWindow: (windowId) => isVisualizationWindow(windowId) ? dynamicWindows[windowId] : undefined,
     asciiForWindow: (windowId) => cloneAsciiOptions(asciiForWindow(windowId).peek()),
   });
-}
-
-function defaultWorkspaceName(): string {
-  return defaultWorkspaceNameFromCount(savedWorkspaces.peek().length);
 }
 
 function workspaceByName(name: string | null | undefined): SavedWorkspace | undefined {
@@ -2799,10 +2771,6 @@ async function persistActiveWorkspaceState(): Promise<void> {
     windows: currentWorkspaceWindows(),
   }).workspaces;
   await persistSavedWorkspaces();
-}
-
-async function loadSavedWorkspaces(): Promise<SavedWorkspace[]> {
-  return await loadWorkbenchWorkspaceStorage(workspaceStorageOptions());
 }
 
 async function persistSavedWorkspaces(): Promise<void> {
@@ -3181,7 +3149,7 @@ function applyWorkbenchGlobalKeyAction(
       action.delta < 0 ? focusPrevious() : focusNext();
       return true;
     case "focusWindowNumber": {
-      const target = windowIds()[action.index];
+      const target = (windowManager.ids() as WindowId[])[action.index];
       if (!target) return false;
       focus(target);
       return true;
@@ -3194,7 +3162,7 @@ function applyWorkbenchGlobalKeyAction(
       return true;
     case "scrollPage":
       if (options.phase !== "preWindow") return false;
-      scrollWindow(id, 0, action.delta * windowScrollPage(id));
+      scrollWindow(id, 0, action.delta * Math.max(1, windowScroll(id).viewportHeight.peek() - 1));
       return true;
     case "scrollHome":
       if (options.phase !== "preWindow") return false;
@@ -3905,10 +3873,6 @@ function terminalShellWindowTitle(): string {
   const mode = terminalShellInputMode.peek() === "raw" ? "RAW" : "WB";
   const shell = activeTerminalShell();
   return shell ? formatTerminalShellWindowTitle(shell.inspect(), { mode }) : `Shell ${mode} EMPTY`;
-}
-
-function windowIds(): WindowId[] {
-  return windowManager.ids() as WindowId[];
 }
 
 function isVisualizationWindow(id: WindowId): id is VisualizationWindowId {
