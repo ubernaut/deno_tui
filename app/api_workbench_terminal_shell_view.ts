@@ -1,8 +1,3 @@
-import {
-  layoutWorkbenchButtonRowInto,
-  workbenchButtonRowRenderCommandsInto,
-} from "../src/app/workbench_control_layout.ts";
-import { projectWorkbenchButtonCommand } from "../src/app/workbench_button_style.ts";
 import type { WorkbenchButtonRowBufferCache, WorkbenchTerminalBufferCache } from "../src/app/workbench_buffers.ts";
 import type { WorkbenchFrame } from "../src/app/workbench/mod.ts";
 import { type WorkbenchTerminalSessionTabBufferCache } from "../src/app/workbench_buffers.ts";
@@ -31,6 +26,7 @@ import {
   apiWorkbenchTerminalStatusToneColor,
   type ApiWorkbenchThemeSpec,
 } from "./api_workbench_catalog.ts";
+import { renderApiWorkbenchButtonRow } from "./api_workbench_button_row_view.ts";
 
 type TerminalShellViewHitAction =
   | { type: "terminalShellPane"; id: string }
@@ -159,22 +155,20 @@ export function renderApiWorkbenchTerminalShellToolbar<
   const { frame, rect, startRow, state, buffers, theme, contrastText, paint, write, addHit } = options;
   const hitType = (options.hitType ?? "terminalShell") as HitType;
   workbenchTerminalToolbarItemsInto(buffers.items, state, options.actions ? { actions: options.actions } : undefined);
-  const nextRow = layoutWorkbenchButtonRowInto(
-    buffers.placements,
-    buffers.items,
+  return renderApiWorkbenchButtonRow({
+    frame,
     rect,
     startRow,
-  );
-
-  workbenchButtonRowRenderCommandsInto(buffers.commands, buffers.placements);
-  for (const button of buffers.commands) {
-    const projection = projectWorkbenchButtonCommand(button, theme, contrastText);
-    write(frame, button.rect.row, button.rect.column, paint(projection.text, projection.style));
-    if (!button.item.disabled) {
-      addHit(button.hitRect, { type: hitType, action: button.item.action });
-    }
-  }
-  return nextRow;
+    items: buffers.items,
+    placements: buffers.placements,
+    commands: buffers.commands,
+    theme,
+    contrastText,
+    paint,
+    write,
+    addHit,
+    hitAction: (action) => ({ type: hitType, action }),
+  });
 }
 
 /** Renders the active shell status and hint rows above pane content. */

@@ -1,16 +1,11 @@
 import { modalContentHeight, type ModalInspection } from "../src/components/modal.ts";
-import {
-  layoutWorkbenchButtonRowInto,
-  workbenchButtonRowRenderCommandsInto,
-} from "../src/app/workbench_control_layout.ts";
-import { projectWorkbenchButtonCommand } from "../src/app/workbench_button_style.ts";
 import { type WorkbenchModalBufferCache } from "../src/app/workbench_buffers.ts";
 import type { WorkbenchFrame } from "../src/app/workbench_frame.ts";
 import type { WorkbenchAsciiConfigRow } from "../src/app/workbench_ascii.ts";
 import {
   layoutWorkbenchAsciiConfigModal,
   type WorkbenchAsciiConfigModalAction,
-  workbenchAsciiConfigModalActionRenderCommandsInto,
+  workbenchAsciiConfigModalActionItemsInto,
   type WorkbenchAsciiConfigModalBufferCache,
   workbenchAsciiConfigRowPlacementsInto,
   workbenchAsciiConfigRowRenderCommandsInto,
@@ -21,6 +16,7 @@ import {
   workbenchModalRowRenderCommandsInto,
 } from "../src/app/workbench_overlay.ts";
 import type { Rectangle } from "../src/types.ts";
+import { renderApiWorkbenchButtonRow } from "./api_workbench_button_row_view.ts";
 import type { ApiWorkbenchThemeSpec } from "./api_workbench_catalog.ts";
 
 interface ApiWorkbenchPaintStyle {
@@ -119,23 +115,20 @@ export function renderApiWorkbenchModalOverlay<Frame = WorkbenchFrame>(
 
   if (inspection.actions.length === 0 || actionRow === undefined) return;
   workbenchModalActionButtonsInto(buffers.actionItems, inspection);
-  layoutWorkbenchButtonRowInto(
-    buffers.actionPlacements,
-    buffers.actionItems,
-    { column: inner.column, row: actionRow, width: inner.width, height: 1 },
-    actionRow,
-  );
-  workbenchButtonRowRenderCommandsInto(buffers.actionCommands, buffers.actionPlacements);
-  for (const command of buffers.actionCommands) {
-    const button = projectWorkbenchButtonCommand(command, theme, contrastText);
-    write(
-      frame,
-      command.rect.row,
-      command.rect.column,
-      paint(button.text, button.style),
-    );
-    addHit(command.hitRect, { type: "modalAction", index: command.item.action });
-  }
+  renderApiWorkbenchButtonRow({
+    frame,
+    rect: { column: inner.column, row: actionRow, width: inner.width, height: 1 },
+    startRow: actionRow,
+    items: buffers.actionItems,
+    placements: buffers.actionPlacements,
+    commands: buffers.actionCommands,
+    theme,
+    contrastText,
+    paint,
+    write,
+    addHit,
+    hitAction: (index) => ({ type: "modalAction" as const, index }),
+  });
 }
 
 /** Renders the Three ASCII configuration modal while keeping state mutation in the host workbench. */
@@ -234,25 +227,21 @@ export function renderApiWorkbenchThreeConfigModal<Frame = WorkbenchFrame>(
       action: "next",
     });
   }
-  workbenchAsciiConfigModalActionRenderCommandsInto(
-    buffers.actionCommands,
-    buffers.actionItems,
-    buffers.actionPlacements,
-    { inner, actionRow: layout.actionRow },
-  );
-  for (const command of buffers.actionCommands) {
-    const button = projectWorkbenchButtonCommand(command, theme, contrastText);
-    write(
-      frame,
-      command.rect.row,
-      command.rect.column,
-      paint(button.text, button.style),
-    );
-    addHit(command.hitRect, {
-      type: "asciiConfigAction",
-      action: command.item.action,
-    });
-  }
+  workbenchAsciiConfigModalActionItemsInto(buffers.actionItems);
+  renderApiWorkbenchButtonRow({
+    frame,
+    rect: { column: inner.column, row: layout.actionRow, width: inner.width, height: 1 },
+    startRow: layout.actionRow,
+    items: buffers.actionItems,
+    placements: buffers.actionPlacements,
+    commands: buffers.actionCommands,
+    theme,
+    contrastText,
+    paint,
+    write,
+    addHit,
+    hitAction: (action) => ({ type: "asciiConfigAction" as const, action }),
+  });
   const footer = options.footerText ?? "Up/Down select  Left/Right change  Enter toggle  A apply  O OK  Esc cancel";
   write(
     frame,

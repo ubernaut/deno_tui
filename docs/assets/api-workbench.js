@@ -18572,6 +18572,19 @@ function renderApiWorkbenchDataPanel(options) {
   }
 }
 
+// app/api_workbench_button_row_view.ts
+function renderApiWorkbenchButtonRow(options) {
+  const { frame, rect, startRow, items, placements, commands, theme: theme2, contrastText: contrastText2, paint: paint2, write: write2, addHit, hitAction } = options;
+  const nextRow = layoutWorkbenchButtonRowInto(placements, items, rect, startRow);
+  workbenchButtonRowRenderCommandsInto(commands, placements);
+  for (const command of commands) {
+    const projection = projectWorkbenchButtonCommand(command, theme2, contrastText2);
+    write2(frame, command.rect.row, command.rect.column, paint2(projection.text, projection.style));
+    if (!command.item.disabled) addHit(command.hitRect, hitAction(command.item.action));
+  }
+  return nextRow;
+}
+
 // app/html_css_layout_view.ts
 function htmlCssLayoutSummaryRows(profile = "terminal") {
   if (profile === "web") {
@@ -18812,21 +18825,20 @@ function renderApiWorkbenchTerminalShellToolbar(options) {
   const { frame, rect, startRow, state, buffers, theme: theme2, contrastText: contrastText2, paint: paint2, write: write2, addHit } = options;
   const hitType = options.hitType ?? "terminalShell";
   workbenchTerminalToolbarItemsInto(buffers.items, state, options.actions ? { actions: options.actions } : void 0);
-  const nextRow = layoutWorkbenchButtonRowInto(
-    buffers.placements,
-    buffers.items,
+  return renderApiWorkbenchButtonRow({
+    frame,
     rect,
-    startRow
-  );
-  workbenchButtonRowRenderCommandsInto(buffers.commands, buffers.placements);
-  for (const button of buffers.commands) {
-    const projection = projectWorkbenchButtonCommand(button, theme2, contrastText2);
-    write2(frame, button.rect.row, button.rect.column, paint2(projection.text, projection.style));
-    if (!button.item.disabled) {
-      addHit(button.hitRect, { type: hitType, action: button.item.action });
-    }
-  }
-  return nextRow;
+    startRow,
+    items: buffers.items,
+    placements: buffers.placements,
+    commands: buffers.commands,
+    theme: theme2,
+    contrastText: contrastText2,
+    paint: paint2,
+    write: write2,
+    addHit,
+    hitAction: (action) => ({ type: hitType, action })
+  });
 }
 function renderApiWorkbenchTerminalSessionTabs(options) {
   const { frame, rect, startRow, inspection, buffers, theme: theme2, contrastText: contrastText2, paint: paint2, write: write2, addHit } = options;
@@ -19314,16 +19326,6 @@ function workbenchAsciiConfigModalActionItemsInto(target) {
   );
   return target;
 }
-function workbenchAsciiConfigModalActionRenderCommandsInto(target, items, placements, options) {
-  workbenchAsciiConfigModalActionItemsInto(items);
-  layoutWorkbenchButtonRowInto(
-    placements,
-    items,
-    { column: options.inner.column, row: options.actionRow, width: options.inner.width, height: 1 },
-    options.actionRow
-  );
-  return workbenchButtonRowRenderCommandsInto(target, placements);
-}
 function normalizeRect4(rect) {
   return {
     column: Math.floor(rect.column),
@@ -19368,23 +19370,20 @@ function renderApiWorkbenchModalOverlay(options) {
   }
   if (inspection.actions.length === 0 || actionRow === void 0) return;
   workbenchModalActionButtonsInto(buffers.actionItems, inspection);
-  layoutWorkbenchButtonRowInto(
-    buffers.actionPlacements,
-    buffers.actionItems,
-    { column: inner.column, row: actionRow, width: inner.width, height: 1 },
-    actionRow
-  );
-  workbenchButtonRowRenderCommandsInto(buffers.actionCommands, buffers.actionPlacements);
-  for (const command of buffers.actionCommands) {
-    const button = projectWorkbenchButtonCommand(command, theme2, contrastText2);
-    write2(
-      frame,
-      command.rect.row,
-      command.rect.column,
-      paint2(button.text, button.style)
-    );
-    addHit(command.hitRect, { type: "modalAction", index: command.item.action });
-  }
+  renderApiWorkbenchButtonRow({
+    frame,
+    rect: { column: inner.column, row: actionRow, width: inner.width, height: 1 },
+    startRow: actionRow,
+    items: buffers.actionItems,
+    placements: buffers.actionPlacements,
+    commands: buffers.actionCommands,
+    theme: theme2,
+    contrastText: contrastText2,
+    paint: paint2,
+    write: write2,
+    addHit,
+    hitAction: (index) => ({ type: "modalAction", index })
+  });
 }
 function renderApiWorkbenchThreeConfigModal(options) {
   const {
@@ -19478,25 +19477,21 @@ function renderApiWorkbenchThreeConfigModal(options) {
       action: "next"
     });
   }
-  workbenchAsciiConfigModalActionRenderCommandsInto(
-    buffers.actionCommands,
-    buffers.actionItems,
-    buffers.actionPlacements,
-    { inner, actionRow: layout.actionRow }
-  );
-  for (const command of buffers.actionCommands) {
-    const button = projectWorkbenchButtonCommand(command, theme2, contrastText2);
-    write2(
-      frame,
-      command.rect.row,
-      command.rect.column,
-      paint2(button.text, button.style)
-    );
-    addHit(command.hitRect, {
-      type: "asciiConfigAction",
-      action: command.item.action
-    });
-  }
+  workbenchAsciiConfigModalActionItemsInto(buffers.actionItems);
+  renderApiWorkbenchButtonRow({
+    frame,
+    rect: { column: inner.column, row: layout.actionRow, width: inner.width, height: 1 },
+    startRow: layout.actionRow,
+    items: buffers.actionItems,
+    placements: buffers.actionPlacements,
+    commands: buffers.actionCommands,
+    theme: theme2,
+    contrastText: contrastText2,
+    paint: paint2,
+    write: write2,
+    addHit,
+    hitAction: (action) => ({ type: "asciiConfigAction", action })
+  });
   const footer = options.footerText ?? "Up/Down select  Left/Right change  Enter toggle  A apply  O OK  Esc cancel";
   write2(
     frame,
@@ -20489,23 +20484,20 @@ function renderMobileCommandStrip(frame) {
     controlsActive: active.peek() === "controls",
     themeActive: themeMenuOpen.peek()
   });
-  layoutWorkbenchButtonRowInto(
-    mobileCommandButtonBuffers.placements,
-    mobileCommandButtonBuffers.items,
-    { column: 1, row: 1, width: Math.max(0, cols() - 2), height: 2 },
-    1
-  );
-  workbenchButtonRowRenderCommandsInto(mobileCommandButtonBuffers.commands, mobileCommandButtonBuffers.placements);
-  for (const command of mobileCommandButtonBuffers.commands) {
-    const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
-    write(
-      frame,
-      command.rect.row,
-      command.rect.column,
-      paint(button.text, button.style.fg, button.style.bg, button.style.bold)
-    );
-    hitTargets.add(command.hitRect, { type: "mobileAction", action: command.item.action });
-  }
+  renderApiWorkbenchButtonRow({
+    frame,
+    rect: { column: 1, row: 1, width: Math.max(0, cols() - 2), height: 2 },
+    startRow: 1,
+    items: mobileCommandButtonBuffers.items,
+    placements: mobileCommandButtonBuffers.placements,
+    commands: mobileCommandButtonBuffers.commands,
+    theme: theme(),
+    contrastText,
+    paint: (value, style2) => paint(value, style2.fg, style2.bg, style2.bold),
+    write,
+    addHit: (hitRect, action) => hitTargets.add(hitRect, action),
+    hitAction: (action) => ({ type: "mobileAction", action })
+  });
 }
 function renderWindowTabs(frame) {
   const row = rowsCount() - 2;
@@ -20647,36 +20639,32 @@ function renderData(frame, rect) {
   });
 }
 function renderThreePreview(frame, rect) {
+  const t = theme();
   const phase = Math.floor(performance.now() / 90);
   const rows2 = workbenchThreePreviewRowsInto(threePreviewRows, {
     width: rect.width,
     height: rect.height,
     phase,
     tileDensity: tileDensity.peek(),
-    themeLabel: theme().label,
+    themeLabel: t.label,
     asciiOptions: ascii.peek(),
     orbRows: threePreviewOrbRows
   });
   for (let index = 0; index < rows2.length && index < rect.height; index += 1) {
-    writeThreePreviewLine(frame, rect, index, rows2[index]);
+    const header = index === 0;
+    const accent = index % 3 === 0 ? t.accent : index % 3 === 1 ? t.good : t.warn;
+    write(
+      frame,
+      rect.row + index,
+      rect.column,
+      paint(
+        fit(rows2[index], rect.width),
+        header ? contrastText(t.accent, t.background, t.text) : accent,
+        header ? t.accent : t.surface,
+        header || index > 3
+      )
+    );
   }
-}
-function writeThreePreviewLine(frame, rect, index, line) {
-  if (index >= rect.height) return index;
-  const header = index === 0;
-  const accent = index % 3 === 0 ? theme().accent : index % 3 === 1 ? theme().good : theme().warn;
-  write(
-    frame,
-    rect.row + index,
-    rect.column,
-    paint(
-      fit(line, rect.width),
-      header ? contrastText(theme().accent, theme().background, theme().text) : accent,
-      header ? theme().accent : theme().surface,
-      header || index > 3
-    )
-  );
-  return index + 1;
 }
 function renderHtmlCssLayout(frame, rect) {
   renderApiWorkbenchHtmlCssLayout({
@@ -20722,7 +20710,19 @@ function renderTerminalProtocol(frame, rect) {
     const fg = index === 0 ? contrastText(t.accentDeep, t.background, t.text) : index === 1 ? t.warn : t.soft;
     write(frame, rect.row + index, rect.column, paint(fit(line, rect.width), fg, bg, index === 0));
   }
-  renderTerminalSessionTabs(frame, { column: rect.column, row: rect.row + 2, width: rect.width, height: 1 }, workspace);
+  renderApiWorkbenchTerminalSessionTabs({
+    frame,
+    rect: { column: rect.column, row: rect.row + 2, width: rect.width, height: 1 },
+    startRow: rect.row + 2,
+    inspection: workspace,
+    buffers: webTerminalSessionTabBuffers,
+    theme: t,
+    contrastText,
+    paint: (value, style2) => paint(value, style2.fg, style2.bg, style2.bold),
+    write,
+    addHit: (hitRect, action) => hitTargets.add(hitRect, action),
+    hitType: "terminalSession"
+  });
   renderApiWorkbenchTerminalShellToolbar({
     frame,
     rect: { column: rect.column, row: rect.row + 3, width: rect.width, height: 1 },
@@ -20750,22 +20750,6 @@ function renderTerminalProtocol(frame, rect) {
     const footer = "GitHub Pages uses this safe mock; hosted apps attach a PTY/process backend over the remote protocol.";
     write(frame, footerRow, rect.column, paint(fit(footer, rect.width), t.muted, t.surface));
   }
-}
-function renderTerminalSessionTabs(frame, rect, workspace = webTerminalWorkspace.inspect()) {
-  if (rect.height <= 0 || rect.width <= 0) return;
-  renderApiWorkbenchTerminalSessionTabs({
-    frame,
-    rect,
-    startRow: rect.row,
-    inspection: workspace,
-    buffers: webTerminalSessionTabBuffers,
-    theme: theme(),
-    contrastText,
-    paint: (value, style2) => paint(value, style2.fg, style2.bg, style2.bold),
-    write,
-    addHit: (hitRect, action) => hitTargets.add(hitRect, action),
-    hitType: "terminalSession"
-  });
 }
 function renderWebTerminalPanes(frame, rect, workspace = webTerminalWorkspace.inspect()) {
   if (rect.width <= 0 || rect.height <= 0) return;

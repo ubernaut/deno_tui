@@ -1,8 +1,3 @@
-import {
-  layoutWorkbenchButtonRowInto,
-  workbenchButtonRowRenderCommandsInto,
-} from "../src/app/workbench_control_layout.ts";
-import { projectWorkbenchButtonCommand } from "../src/app/workbench_button_style.ts";
 import type { WorkbenchButtonRowBufferCache } from "../src/app/workbench_buffers.ts";
 import type {
   WorkbenchTerminalOutputToolbarAction,
@@ -27,6 +22,7 @@ import {
   apiWorkbenchTerminalStatusToneColor,
   type ApiWorkbenchThemeSpec,
 } from "./api_workbench_catalog.ts";
+import { renderApiWorkbenchButtonRow } from "./api_workbench_button_row_view.ts";
 
 interface ApiWorkbenchTerminalOutputPaintStyle {
   fg: string;
@@ -68,22 +64,20 @@ export function renderApiWorkbenchTerminalOutputToolbar(
 ): number {
   const { frame, rect, startRow, state, buffers, theme, contrastText, paint, write, addHit } = options;
   workbenchTerminalOutputToolbarItemsInto(buffers.items, state);
-  const nextRow = layoutWorkbenchButtonRowInto(
-    buffers.placements,
-    buffers.items,
+  return renderApiWorkbenchButtonRow({
+    frame,
     rect,
     startRow,
-  );
-
-  workbenchButtonRowRenderCommandsInto(buffers.commands, buffers.placements);
-  for (const button of buffers.commands) {
-    const projection = projectWorkbenchButtonCommand(button, theme, contrastText);
-    write(frame, button.rect.row, button.rect.column, paint(projection.text, projection.style));
-    if (!button.item.disabled) {
-      addHit(button.hitRect, { type: "terminalOutput", action: button.item.action });
-    }
-  }
-  return nextRow;
+    items: buffers.items,
+    placements: buffers.placements,
+    commands: buffers.commands,
+    theme,
+    contrastText,
+    paint,
+    write,
+    addHit,
+    hitAction: (action) => ({ type: "terminalOutput" as const, action }),
+  });
 }
 
 /** Renders the process-output terminal body below the toolbar. */
