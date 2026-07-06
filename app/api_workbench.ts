@@ -5,7 +5,7 @@ import { DataTableController } from "../src/components/data_table.ts";
 import { createFileExplorerTree, FileExplorerController } from "../src/components/file_explorer.ts";
 import { InputController } from "../src/components/input.ts";
 import { MenuBarController } from "../src/components/menu_bar.ts";
-import { ModalController, type ModalInspection } from "../src/components/modal.ts";
+import { ModalController } from "../src/components/modal.ts";
 import { ProgressBarController } from "../src/components/progressbar.ts";
 import { RadioGroupController } from "../src/components/radio_group.ts";
 import { ScrollAreaController } from "../src/components/scroll_area.ts";
@@ -260,7 +260,6 @@ import {
   ApiWorkbenchThreeRuntimeController,
 } from "../src/app/workbench_three_runtime.ts";
 import type {
-  Accent,
   AsciiOptions,
   PanelRender,
   RenderContext,
@@ -727,7 +726,9 @@ const modal = new ModalController({
     { id: "confirm", label: "Confirm", default: true },
   ],
   onAction: (action) => applyModalAction(action.id),
-  onOpenChange: (open, inspection) => setGenericModalBlocksThree(open, inspection),
+  onOpenChange: (open) => {
+    genericModalBlocksThree.value = open && !threeConfigOpen.peek();
+  },
 });
 const modeRadio = new RadioGroupController({
   options: [
@@ -832,7 +833,7 @@ const threePanel = createWorkbenchThreePanelFrameView({
   graphicsSurface: () => kittyGraphics.surfaceFor(ascii.peek()),
   frameInterval: workbenchThreeFrameInterval,
   idleFrameInterval: workbenchThreeIdleFrameInterval,
-  interactive: () => isThreeWindowInteractive("three"),
+  interactive: () => workbenchThreeWindowStateIsInteractive(workbenchThreeWindowState, "three"),
   maxRenderCells: workbenchThreeEffectiveMaxCells,
   diagnostics: workbenchDiagnostics,
   onFrame: () => {
@@ -849,8 +850,12 @@ const visualizationThreePanels = new WorkbenchThreePanelRegistry<
 const visualizationThreeSupport = new Map<string, boolean>();
 const threeViewportInteraction = new WorkbenchThreeViewportInteractionController<WindowId>({
   findHit,
-  panelForWindow: threePanelForWindow,
-  focusWindow: focusWindowSilently,
+  panelForWindow: (id) =>
+    id === "three" ? threePanel : isVisualizationWindow(id) ? visualizationThreePanels.get(id)?.panel : undefined,
+  focusWindow: (id) => {
+    windowManager.focus(id);
+    syncWindowSignalsFromManager();
+  },
 });
 
 tui.canvas.size.subscribe(() => {
@@ -1321,7 +1326,15 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
   }
   const context = buildVisualizationContext(visualizationId, rect, { windowId: id });
   const rendered = renderVisualization(context);
-  const accent = accentColor(rendered.accent);
+  const accent = rendered.accent === "alarm"
+    ? t.danger
+    : rendered.accent === "amber"
+    ? t.warn
+    : rendered.accent === "phosphor"
+    ? t.good
+    : rendered.accent === "violet"
+    ? t.borderStrong
+    : t.accent;
   const threeScene = workbenchVisualizationThreeScene({
     scene: rendered.three ?? null,
     available: threeAsciiAvailable.peek(),
@@ -2273,7 +2286,7 @@ function createVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
     graphicsSurface: () => kittyGraphics.surfaceFor(asciiForWindow(id).peek()),
     frameInterval: workbenchThreeFrameInterval,
     idleFrameInterval: workbenchThreeIdleFrameInterval,
-    interactive: () => isThreeWindowInteractive(id),
+    interactive: () => workbenchThreeWindowStateIsInteractive(workbenchThreeWindowState, id),
     maxRenderCells: workbenchThreeEffectiveMaxCells,
     diagnostics: workbenchDiagnostics,
     onFrame: () => {
@@ -2293,14 +2306,6 @@ function syncWorkbenchThreeWindowState(): WorkbenchThreeWindowState<WindowId> {
     isThreeWindow: (id) => isThreeRenderedWindow(id as WindowId),
     blocked: genericModalBlocksThree.peek(),
   });
-}
-
-function isThreeWindowInteractive(id: WindowId): boolean {
-  return workbenchThreeWindowStateIsInteractive(workbenchThreeWindowState, id);
-}
-
-function setGenericModalBlocksThree(open: boolean, _inspection?: ModalInspection): void {
-  genericModalBlocksThree.value = open && !threeConfigOpen.peek();
 }
 
 function hideVisualizationThreePanel(id: VisualizationWindowId): void {
@@ -2455,16 +2460,6 @@ function renderWorkspaceScrollbar(frame: Frame, bounds: Rectangle): void {
 
 function scrollWindow(id: WindowId, columns: number, rows: number): void {
   windowScroll(id).scrollBy(columns, rows);
-}
-
-function threePanelForWindow(id: WindowId): ThreePanelFrameView | undefined {
-  if (id === "three") return threePanel;
-  return isVisualizationWindow(id) ? visualizationThreePanels.get(id)?.panel : undefined;
-}
-
-function focusWindowSilently(id: WindowId): void {
-  windowManager.focus(id);
-  syncWindowSignalsFromManager();
 }
 
 function windowAt(x: number, y: number): WindowId | undefined {
@@ -3837,26 +3832,26 @@ function windowTitle(id: WindowId): string {
   const visualizationLabel = isVisualizationWindow(id)
     ? visualizationOption(dynamicVisualizationWindows.peek()[id])?.label ?? ""
     : undefined;
+  const terminalOutputTitle = id === TERMINAL_OUTPUT_WINDOW_ID
+    ? formatTerminalOutputWindowTitle(terminalOutputSession.inspect(), {
+      mode: terminalInputMode.peek() === "raw" ? "RAW" : "WB",
+    })
+    : undefined;
+  let terminalShellTitle: string | undefined;
+  if (id === TERMINAL_SHELL_WINDOW_ID) {
+    const mode = terminalShellInputMode.peek() === "raw" ? "RAW" : "WB";
+    const shell = activeTerminalShell();
+    terminalShellTitle = shell ? formatTerminalShellWindowTitle(shell.inspect(), { mode }) : `Shell ${mode} EMPTY`;
+  }
   return apiWorkbenchWindowTitle({
     id,
     visualizationLabel,
     terminalOutputId: TERMINAL_OUTPUT_WINDOW_ID,
-    terminalOutputTitle: id === TERMINAL_OUTPUT_WINDOW_ID ? terminalOutputWindowTitle() : undefined,
+    terminalOutputTitle,
     terminalShellId: TERMINAL_SHELL_WINDOW_ID,
-    terminalShellTitle: id === TERMINAL_SHELL_WINDOW_ID ? terminalShellWindowTitle() : undefined,
+    terminalShellTitle,
     fallback: "Three ASCII",
   });
-}
-
-function terminalOutputWindowTitle(): string {
-  const mode = terminalInputMode.peek() === "raw" ? "RAW" : "WB";
-  return formatTerminalOutputWindowTitle(terminalOutputSession.inspect(), { mode });
-}
-
-function terminalShellWindowTitle(): string {
-  const mode = terminalShellInputMode.peek() === "raw" ? "RAW" : "WB";
-  const shell = activeTerminalShell();
-  return shell ? formatTerminalShellWindowTitle(shell.inspect(), { mode }) : `Shell ${mode} EMPTY`;
 }
 
 function isVisualizationWindow(id: WindowId): id is VisualizationWindowId {
@@ -3865,19 +3860,6 @@ function isVisualizationWindow(id: WindowId): id is VisualizationWindowId {
 
 function visualizationOption(visualizationId: string | undefined): NewWindowOption | undefined {
   return visualizationId ? visualizationWindowOptionById.get(visualizationId) : undefined;
-}
-
-function accentColor(accent: Accent): string {
-  const t = theme();
-  return accent === "alarm"
-    ? t.danger
-    : accent === "amber"
-    ? t.warn
-    : accent === "phosphor"
-    ? t.good
-    : accent === "violet"
-    ? t.borderStrong
-    : t.accent;
 }
 
 function theme(): ThemeSpec {
