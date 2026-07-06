@@ -73,6 +73,7 @@ import {
   createWorkbenchThreeTerminalPressureState,
   resolveWorkbenchThreeTerminalPressureBudget,
 } from "../src/app/workbench_three_terminal_pressure.ts";
+import { writeWorkbenchThreeGrid } from "../src/app/workbench_three_grid.ts";
 import {
   scaleThreePanelGridToSize,
   scaleThreePanelGridToSizeInto,
@@ -107,7 +108,6 @@ import { applyThreeAsciiRerenderRanges } from "../src/canvas/three_ascii_ranges.
 import { createTextObjectFullRowCanvasBenchmark } from "./benchmark_textobject_canvas.ts";
 import { threeAsciiBenchmarkCases } from "./benchmark_three_ascii.ts";
 import { createWorkbenchThreeBlockFlushBenchmark } from "./benchmark_workbench_three_block.ts";
-import { createWorkbenchThreeGridBenchmark } from "./benchmark_workbench_three_grid.ts";
 
 const sparklineValues = Array.from({ length: 200 }, (_, index) => Math.sin(index / 8));
 const ansiSinkStyledRangeValues = Array.from(
@@ -159,12 +159,29 @@ const ansiSink = new AnsiCanvasSink({
   },
 });
 const textObjectFullRowCanvasBenchmark = createTextObjectFullRowCanvasBenchmark({ columns: 220, rows: 70 });
-const workbenchThreeGridBenchmark = createWorkbenchThreeGridBenchmark({
-  sourceColumns: 109,
-  sourceRows: 34,
-  targetColumns: 220,
-  targetRows: 70,
-});
+const workbenchThreeGridSourceColumns = 109;
+const workbenchThreeGridSourceRows = 34;
+const workbenchThreeGridTargetColumns = 220;
+const workbenchThreeGridTargetRows = 70;
+const workbenchThreeGridFrame: WorkbenchFrame = [];
+const workbenchThreeGridRowBuffer: string[] = [];
+const workbenchThreeGridSourceRowIndexes: number[] = [];
+const workbenchThreeGridSourceColumnIndexes: number[] = [];
+const workbenchThreeGridSource = Array.from(
+  { length: workbenchThreeGridSourceRows },
+  (_, row) =>
+    Array.from({ length: workbenchThreeGridSourceColumns }, (_, column) => {
+      const red = (row * 17 + column * 11) % 256;
+      const green = (64 + row * 7 + column * 13) % 256;
+      const blue = (160 + row * 5 + column * 3) % 256;
+      return `\x1b[48;2;${red};${green};${blue}m \x1b[0m`;
+    }),
+);
+const workbenchThreeGridSparseSource = Array.from(
+  { length: workbenchThreeGridSourceRows },
+  (_, row) => row % 3 === 0 ? workbenchThreeGridSource[row] : undefined,
+);
+let workbenchThreeGridChecksum = 0;
 const threePanelScaleSourceGrid = Array.from(
   { length: 34 },
   (_, row) =>
@@ -1326,6 +1343,96 @@ function runThreePanelGridScaleCachedWorkload(): void {
   }
 }
 
+function runWorkbenchThreeGridScaledWorkload(): void {
+  const preparedFrame = prepareWorkbenchFrame(workbenchThreeGridFrame, workbenchThreeGridTargetRows);
+  writeWorkbenchThreeGrid(
+    preparedFrame,
+    { column: 0, row: 0, width: workbenchThreeGridTargetColumns, height: workbenchThreeGridTargetRows },
+    workbenchThreeGridSource,
+    " ",
+    {
+      scale: true,
+      rowBuffer: workbenchThreeGridRowBuffer,
+      sourceColumns: workbenchThreeGridSourceColumns,
+      sourceRowIndexes: workbenchThreeGridSourceRowIndexes,
+      sourceColumnIndexes: workbenchThreeGridSourceColumnIndexes,
+    },
+  );
+  checksumWorkbenchThreeGridFrame("workbench scaled Three grid checksum failed");
+}
+
+function runWorkbenchThreeGridCappedWorkload(): void {
+  const preparedFrame = prepareWorkbenchFrame(workbenchThreeGridFrame, workbenchThreeGridTargetRows);
+  writeWorkbenchThreeGrid(
+    preparedFrame,
+    { column: 0, row: 0, width: workbenchThreeGridTargetColumns, height: workbenchThreeGridTargetRows },
+    workbenchThreeGridSource,
+    "\x1b[48;2;8;6;18m \x1b[0m",
+    {
+      scale: "down",
+      rowBuffer: workbenchThreeGridRowBuffer,
+      sourceColumns: workbenchThreeGridSourceColumns,
+      sourceRowIndexes: workbenchThreeGridSourceRowIndexes,
+      sourceColumnIndexes: workbenchThreeGridSourceColumnIndexes,
+    },
+  );
+  checksumWorkbenchThreeGridFrame("workbench capped Three grid checksum failed");
+}
+
+function runWorkbenchThreeGridVerticalOnlyWorkload(): void {
+  const preparedFrame = prepareWorkbenchFrame(workbenchThreeGridFrame, workbenchThreeGridTargetRows);
+  writeWorkbenchThreeGrid(
+    preparedFrame,
+    { column: 0, row: 0, width: workbenchThreeGridSourceColumns, height: workbenchThreeGridTargetRows },
+    workbenchThreeGridSource,
+    " ",
+    {
+      scale: true,
+      rowBuffer: workbenchThreeGridRowBuffer,
+      sourceColumns: workbenchThreeGridSourceColumns,
+      sourceRowIndexes: workbenchThreeGridSourceRowIndexes,
+    },
+  );
+  checksumWorkbenchThreeGridFrame(
+    "workbench vertical-only Three grid checksum failed",
+    workbenchThreeGridSourceColumns,
+    workbenchThreeGridTargetRows,
+  );
+}
+
+function runWorkbenchThreeGridSparseFallbackWorkload(): void {
+  const preparedFrame = prepareWorkbenchFrame(workbenchThreeGridFrame, workbenchThreeGridTargetRows);
+  writeWorkbenchThreeGrid(
+    preparedFrame,
+    { column: 0, row: 0, width: workbenchThreeGridTargetColumns, height: workbenchThreeGridTargetRows },
+    workbenchThreeGridSparseSource,
+    "\x1b[48;2;8;6;18m \x1b[0m",
+    {
+      scale: true,
+      rowBuffer: workbenchThreeGridRowBuffer,
+      sourceColumns: workbenchThreeGridSourceColumns,
+      sourceRowIndexes: workbenchThreeGridSourceRowIndexes,
+      sourceColumnIndexes: workbenchThreeGridSourceColumnIndexes,
+    },
+  );
+  checksumWorkbenchThreeGridFrame("workbench sparse Three grid checksum failed");
+}
+
+function checksumWorkbenchThreeGridFrame(
+  errorMessage: string,
+  width = workbenchThreeGridTargetColumns,
+  rows = workbenchThreeGridTargetRows,
+): void {
+  let total = 0;
+  for (let row = 0; row < rows; row += 1) {
+    total += renderFrameRow(workbenchThreeGridFrame[row] ?? [], width).length;
+  }
+  workbenchThreeGridChecksum = (workbenchThreeGridChecksum + total) % 1_000_000;
+  if (!Number.isFinite(workbenchThreeGridChecksum)) {
+    throw new Error(errorMessage);
+  }
+}
+
 function runAnsiStyledCharacterSplitWorkload(): void {
   const cells = getMultiCodePointCharacters(ansiStyledSplitRow);
   if (cells.length !== 160) {
@@ -1835,7 +1942,7 @@ export const benchmarkCases: BenchmarkCase[] = [
     tags: ["render", "workbench", "three", "ascii", "frame"],
     iterations: 200,
     maxAverageMs: 8,
-    run: workbenchThreeGridBenchmark.runScaled,
+    run: runWorkbenchThreeGridScaledWorkload,
   },
   {
     name: "render/workbench-capped-three-grid-220x70",
@@ -1844,7 +1951,7 @@ export const benchmarkCases: BenchmarkCase[] = [
     tags: ["render", "workbench", "three", "ascii", "frame", "terminal"],
     iterations: 200,
     maxAverageMs: 6,
-    run: workbenchThreeGridBenchmark.runCapped,
+    run: runWorkbenchThreeGridCappedWorkload,
   },
   {
     name: "render/workbench-vertical-three-grid-109x70",
@@ -1853,7 +1960,7 @@ export const benchmarkCases: BenchmarkCase[] = [
     tags: ["render", "workbench", "three", "ascii", "frame"],
     iterations: 200,
     maxAverageMs: 5,
-    run: workbenchThreeGridBenchmark.runVerticalOnly,
+    run: runWorkbenchThreeGridVerticalOnlyWorkload,
   },
   {
     name: "render/workbench-sparse-three-grid-220x70",
@@ -1862,7 +1969,7 @@ export const benchmarkCases: BenchmarkCase[] = [
     tags: ["render", "workbench", "three", "ascii", "frame", "sparse"],
     iterations: 200,
     maxAverageMs: 6,
-    run: workbenchThreeGridBenchmark.runSparseFallback,
+    run: runWorkbenchThreeGridSparseFallbackWorkload,
   },
   {
     name: "render/ansi-styled-character-split-160",
