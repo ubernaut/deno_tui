@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "./deps.ts";
-import { Signal } from "../src/signals/mod.ts";
+import { Computed, Signal } from "../src/signals/mod.ts";
 import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import { ThreePanelFrameView, type ThreePanelGridRenderer, type ThreeSceneState } from "../app/three_panel.ts";
 import { type ThreePanelFrameUpdate, ThreePanelRenderQueue } from "../src/app/three_panel_core.ts";
@@ -1502,6 +1502,45 @@ Deno.test("ThreeAsciiObject skips redundant renderer size sync on steady frames"
     await waitFor(() => (renderer?.renderCount ?? 0) >= 3);
     assertEquals(renderer?.setSizeCalls, 0);
     assertEquals(renderer?.sizes, [[12, 6]]);
+  } finally {
+    object.erase();
+    rectangle.dispose();
+  }
+});
+
+Deno.test("ThreeAsciiObject follows canvas-sized rectangles after console resize", async () => {
+  const sink = new MemoryCanvasSink();
+  const canvas = new Canvas({ sink, size: { columns: 12, rows: 6 } });
+  const rectangle = new Computed(() => ({
+    column: 0,
+    row: 0,
+    width: canvas.size.value.columns,
+    height: canvas.size.value.rows,
+  }));
+  let renderer: FakeGridRenderer | undefined;
+  const object = new ThreeAsciiObject({
+    canvas,
+    rectangle,
+    scene: {} as Scene,
+    camera: {} as Camera,
+    style: emptyStyle,
+    zIndex: 1,
+    frameInterval: 10_000,
+    rendererFactory: (options) => renderer = new FakeGridRenderer(options.columns, options.rows),
+  });
+
+  object.draw();
+
+  try {
+    await waitFor(() => (renderer?.renderCount ?? 0) >= 1);
+    assertEquals(renderer?.sizes, [[12, 6]]);
+
+    canvas.size.value = { columns: 20, rows: 8 };
+
+    await waitFor(() => renderer?.sizes.some(([columns, rows]) => columns === 20 && rows === 8) === true);
+    await waitFor(() => (renderer?.renderCount ?? 0) >= 2);
+    assertEquals(object.grid.length, 8);
+    assertEquals(object.grid[0]?.length, 20);
   } finally {
     object.erase();
     rectangle.dispose();

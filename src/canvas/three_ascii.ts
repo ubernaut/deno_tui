@@ -75,6 +75,8 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   private destroyPending = false;
   private syncPending = false;
   private failed = false;
+  private active = false;
+  private canvasResizeQueued = false;
   private frameGeneration = 0;
   private frameTimer?: ReturnType<typeof setTimeout>;
   private pendingEffectOptions?: Partial<AcerolaAsciiNodeOptions>;
@@ -112,8 +114,10 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   }
 
   override draw(): void {
+    this.active = true;
     this.invalidateFrame();
     this.rectangle.subscribe(this.handleResize);
+    this.canvas.size.subscribe(this.handleCanvasResize);
     this.running = true;
     this.failed = false;
     this.destroyPending = false;
@@ -125,14 +129,17 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
   }
 
   override erase(): void {
+    this.active = false;
     this.invalidateFrame();
     this.running = false;
     this.syncPending = false;
+    this.canvasResizeQueued = false;
     if (this.frameTimer !== undefined) {
       clearTimeout(this.frameTimer);
       this.frameTimer = undefined;
     }
     this.rectangle.unsubscribe(this.handleResize);
+    this.canvas.size.unsubscribe(this.handleCanvasResize);
     this.grid = [];
     this.clearPreviousGridCells();
     if (this.rendering) {
@@ -221,6 +228,19 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
     this.moved = true;
     this.updated = false;
     this.canvas.updateObjects.push(this);
+    if (resized && this.running) {
+      this.scheduleFrame(0);
+    }
+  };
+
+  private readonly handleCanvasResize = () => {
+    if (this.canvasResizeQueued) return;
+    this.canvasResizeQueued = true;
+    queueMicrotask(() => {
+      this.canvasResizeQueued = false;
+      if (!this.active) return;
+      this.handleResize(this.rectangle.peek());
+    });
   };
 
   setEffectOptions(options: Partial<AcerolaAsciiNodeOptions>): void {
@@ -270,6 +290,7 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
 
   private async renderLoop(): Promise<void> {
     if (!this.running || this.rendering) return;
+    this.frameTimer = undefined;
 
     const renderer = this.renderer;
     const frameGeneration = this.frameGeneration;
@@ -328,14 +349,18 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
       if (this.syncPending && !this.destroyPending) {
         this.syncPending = false;
         this.running = true;
-        this.frameTimer = setTimeout(() => void this.renderLoop(), 0);
+        this.scheduleFrame(0);
       } else if (this.running) {
-        this.frameTimer = setTimeout(
-          () => void this.renderLoop(),
-          nextFrameDelay(this.frameInterval, frameStartedAt, performance.now()),
-        );
+        this.scheduleFrame(nextFrameDelay(this.frameInterval, frameStartedAt, performance.now()));
       }
     }
+  }
+
+  private scheduleFrame(delay: number): void {
+    if (this.frameTimer !== undefined) {
+      clearTimeout(this.frameTimer);
+    }
+    this.frameTimer = setTimeout(() => void this.renderLoop(), Math.max(0, delay));
   }
 
   private invalidateFrame(): void {
