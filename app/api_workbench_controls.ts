@@ -15,10 +15,14 @@ import type { ApiWorkbenchControlLineOptions } from "./api_workbench_control_lin
 import type { ApiWorkbenchControlTrack } from "./api_workbench_control_slider.ts";
 
 export {
+  apiWorkbenchControlAt,
+  apiWorkbenchControlAtEdge,
   type ApiWorkbenchControlHitAction,
   type ApiWorkbenchControlHitPlacement,
   type ApiWorkbenchControlId,
   apiWorkbenchControlIds,
+  isApiWorkbenchTextControlActive,
+  nextApiWorkbenchControlId,
 } from "./api_workbench_control_base.ts";
 export {
   type ApiWorkbenchControlKeyEvent,
@@ -35,12 +39,6 @@ export {
   type ApiWorkbenchControlLineSegment,
   type ApiWorkbenchControlLineSegmentKind,
 } from "./api_workbench_control_line.ts";
-export {
-  apiWorkbenchControlAt,
-  apiWorkbenchControlAtEdge,
-  isApiWorkbenchTextControlActive,
-  nextApiWorkbenchControlId,
-} from "./api_workbench_control_traversal.ts";
 export {
   type ApiWorkbenchControlTrack,
   apiWorkbenchControlTrack,

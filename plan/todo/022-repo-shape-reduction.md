@@ -81,6 +81,7 @@ The library core is real and valuable, but it needs clearer boundaries:
   - API workbench primitive control ids and hit types are folded into `app/api_workbench_controls.ts`
   - API workbench control row projection is folded into `app/api_workbench_controls.ts`
   - API workbench textbox projection is folded into `app/api_workbench_controls.ts`
+  - API workbench control traversal is folded into `app/api_workbench_control_base.ts`
   - API workbench window catalog construction is folded into `app/api_workbench_catalog.ts`
   - Neon Three ASCII wire overlays are folded into `app/neon_three.ts`
   - Three panel value, lifecycle, and frame-update helpers are folded into `src/app/three_panel_core.ts`

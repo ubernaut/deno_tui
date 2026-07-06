@@ -26,6 +26,7 @@ import {
   resolveThreePanelLiveValue,
   resolveThreePanelRendererStateUpdate,
   resolveThreePanelValue,
+  scaleThreePanelGridToSize,
   threePanelAdaptiveRenderCellsDiagnostic,
   type ThreePanelFrameUpdate,
   threePanelFrameUpdate,
@@ -259,6 +260,7 @@ export class ThreePanelFrameView {
   private readonly adaptiveBudget = new ThreePanelAdaptiveRenderBudgetController();
   private readonly gridPublisher = new ThreePanelGridPublisher();
   private readonly gridScaleCache = new ThreePanelGridScaleCache();
+  private lastPublishedGridRendererBacked = false;
   private displayColumns = 0;
   private displayRows = 0;
   private rendererFailureRetries = 0;
@@ -651,6 +653,7 @@ export class ThreePanelFrameView {
     });
     if (!decision.publish) return;
     this.grid.jink(decision.grid);
+    this.lastPublishedGridRendererBacked = decision.rendererBacked;
     this.onUpdate?.(threePanelFrameUpdate(decision.grid, decision.rendererBacked));
   }
 
@@ -745,6 +748,7 @@ export class ThreePanelFrameView {
     this.activeWireframeThickness = undefined;
     this.activeDeferredReadbackSlots = undefined;
     this.gridScaleCache.reset();
+    this.lastPublishedGridRendererBacked = false;
     this.interaction.clearBaseTransform();
     this.adaptiveBudget.reset();
   }
@@ -798,6 +802,11 @@ export class ThreePanelFrameView {
   }
 
   private publishTransitionGrid(columns: number, rows: number, title: string, detail: string): void {
+    const currentGrid = this.grid.peek();
+    if (this.lastPublishedGridRendererBacked && hasThreePanelGridCells(currentGrid)) {
+      this.setGrid(scaleThreePanelGridToSize(currentGrid, columns, rows), true);
+      return;
+    }
     this.setGrid(buildFallbackGrid(columns, rows, title, detail));
   }
 

@@ -649,6 +649,40 @@ Deno.test("ThreePanelFrameView republishes visible resize when capped renderer s
   }
 });
 
+Deno.test("ThreePanelFrameView keeps last rendered grid visible while resize frame warms", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
+  const scene = new Signal<ThreeSceneState | null>(sceneState());
+  const ascii = new Signal(createDefaultAsciiOptions("sharp"));
+  let renderer: SlowGridRenderer | undefined;
+  const panel = new ThreePanelFrameView({
+    rectangle,
+    scene,
+    ascii,
+    frameInterval: 10_000,
+    rendererFactory: (options) => renderer = new SlowGridRenderer(options.columns, options.rows, "X"),
+  });
+
+  try {
+    await waitFor(() => (renderer?.startCount ?? 0) >= 1);
+    renderer?.completeFrame();
+    await waitFor(() => gridCellsText(panel.grid.peek()).includes("X"));
+
+    rectangle.value = { column: 0, row: 0, width: 36, height: 14 };
+    await waitFor(() => panel.grid.peek().length === 14);
+
+    assertEquals(panel.grid.peek()[0]?.length, 36);
+    assertEquals(gridCellsText(panel.grid.peek()).includes("ASCII RENDERER"), false);
+    assertEquals(gridCellsText(panel.grid.peek()).includes("X"), true);
+    await waitFor(() => (renderer?.startCount ?? 0) >= 2);
+    renderer?.completeFrame();
+  } finally {
+    panel.dispose();
+    rectangle.dispose();
+    scene.dispose();
+    ascii.dispose();
+  }
+});
+
 Deno.test("ThreePanelFrameView fills visible bounds when a capped renderer fails", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 80, height: 40 }, { deepObserve: true });
   const scene = new Signal<ThreeSceneState | null>(sceneState());
