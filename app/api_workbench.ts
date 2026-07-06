@@ -11,7 +11,7 @@ import { RadioGroupController } from "../src/components/radio_group.ts";
 import { ScrollAreaController } from "../src/components/scroll_area.ts";
 import { SliderController } from "../src/components/slider.ts";
 import { StepperController } from "../src/components/stepper.ts";
-import { TextBoxController, type TextBoxVisualLine } from "../src/components/textbox.ts";
+import { TextBoxController } from "../src/components/textbox.ts";
 import {
   appendBoundedWorkbenchLogRow,
   blitWorkbenchFrameCells,
@@ -50,7 +50,6 @@ import {
   type WorkbenchAnsiScreenFlushStats,
   WorkbenchAnsiScreenPainter,
   workbenchBuiltInWindowTogglePlan,
-  workbenchButtonPaintOptions,
   type WorkbenchButtonTone,
   workbenchContentViewport,
   type WorkbenchDropdownOverlayRenderCommand,
@@ -155,7 +154,6 @@ import { textWidth } from "../src/utils/strings.ts";
 import {
   layoutWorkbenchButtonRowInto,
   workbenchButtonRowRenderCommandsInto,
-  wrappedControlOptionRowCount,
 } from "../src/app/workbench_control_layout.ts";
 import {
   WorkbenchButtonRowBufferCache,
@@ -194,32 +192,9 @@ import {
   TERMINAL_SHELL_WINDOW_ID,
 } from "./api_workbench_catalog.ts";
 import {
-  type ApiWorkbenchCheckboxOption,
   apiWorkbenchControlAt,
   apiWorkbenchControlAtEdge,
-  apiWorkbenchControlBaseStyle,
-  apiWorkbenchControlButtonDetailStyle,
-  type ApiWorkbenchControlHitPlacement,
   type ApiWorkbenchControlId,
-  apiWorkbenchControlLineInto,
-  type ApiWorkbenchControlLineRenderCommand,
-  apiWorkbenchControlLineRenderCommandsInto,
-  type ApiWorkbenchControlLineSegment,
-  apiWorkbenchControlsSnapshotRowsInto,
-  apiWorkbenchControlTrack,
-  apiWorkbenchDropdownPopoverRect,
-  type ApiWorkbenchProjectedControlRow,
-  type ApiWorkbenchRadioOption,
-  apiWorkbenchSliderSetHitInto,
-  apiWorkbenchStepperHitPlacementsInto,
-  apiWorkbenchTextboxCommandStyle,
-  apiWorkbenchTextboxProjectionInto,
-  type ApiWorkbenchTextboxProjectionRow,
-  type ApiWorkbenchTextboxRenderCommand,
-  apiWorkbenchTextboxRenderCommandsInto,
-  type ApiWorkbenchWrappedOptionsRenderCommand,
-  apiWorkbenchWrappedOptionsRenderCommandsInto,
-  apiWorkbenchWrappedOptionStyle,
   findApiWorkbenchHitTarget,
   isApiWorkbenchTextControlActive,
   isApiWorkbenchTouchOptimizedLayout,
@@ -372,6 +347,7 @@ import {
   renderApiWorkbenchTerminalOutputBody,
   renderApiWorkbenchTerminalOutputToolbar,
 } from "./api_workbench_terminal_output_view.ts";
+import { ApiWorkbenchControlsViewBufferCache, renderApiWorkbenchControls } from "./api_workbench_controls_view.ts";
 import { renderApiWorkbenchHtmlCssLayout } from "./api_workbench_html_css_view.ts";
 import { renderApiWorkbenchShelf, renderApiWorkbenchWindowTabs } from "./api_workbench_shelf_view.ts";
 
@@ -432,26 +408,7 @@ const terminalShellButtonBuffers = new WorkbenchButtonRowBufferCache<TerminalShe
 const terminalShellSessionTabBuffers = new WorkbenchTerminalSessionTabBufferCache();
 const terminalShellBuffers = new WorkbenchTerminalBufferCache();
 const terminalShellHeaderRows: WorkbenchTerminalShellHeaderRow[] = [];
-const controlLineSegments: ApiWorkbenchControlLineSegment[] = [];
-const controlLineRenderCommands: ApiWorkbenchControlLineRenderCommand[] = [];
-const controlLineHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
-const controlProjectedRows: ApiWorkbenchProjectedControlRow[] = [];
-const controlCheckboxOptions: ApiWorkbenchCheckboxOption[] = [];
-const controlRadioOptions: ApiWorkbenchRadioOption[] = [];
-const controlTextboxProjectionRows: ApiWorkbenchTextboxProjectionRow[] = [];
-const controlTextboxRenderCommands: ApiWorkbenchTextboxRenderCommand[] = [];
-const controlTextboxVisualLines: TextBoxVisualLine[] = [];
-const controlWrappedOptionRenderCommands: ApiWorkbenchWrappedOptionsRenderCommand[] = [];
-const controlWrappedOptionHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
-const controlSliderSetHit: ApiWorkbenchControlHitPlacement = {
-  column: 0,
-  row: 0,
-  width: 0,
-  height: 1,
-  id: "slider",
-  action: "set",
-};
-const controlStepperHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
+const controlViewBuffers = new ApiWorkbenchControlsViewBufferCache();
 const modalBuffers = new WorkbenchModalBufferCache<number>();
 const themes: ThemeSpec[] = createApiWorkbenchThemes();
 const themeLabels = themes.map((entry) => entry.label);
@@ -1733,210 +1690,67 @@ function renderData(frame: Frame, rect: Rectangle): void {
 }
 
 function renderControls(frame: Frame, rect: Rectangle): void {
-  const t = theme();
-  let row = rect.row;
-  const writeControl = (
-    id: ControlId,
-    value: string,
-    options: {
-      previous?: boolean;
-      next?: boolean;
-      action?: ControlHitAction;
-      indent?: boolean;
-      index?: number;
-      button?: boolean;
-    } = {},
-  ) => {
-    const startRow = row;
-    const nextRow = apiWorkbenchControlLineInto(
-      controlLineSegments,
-      controlLineHitPlacements,
-      id,
-      value,
-      rect,
-      row,
-      activeControl.peek(),
-      options,
-    );
-    if (nextRow === row) return;
-    const active = activeControl.peek() === id;
-    const baseStyle = apiWorkbenchControlBaseStyle(t, active);
-    const renderCommands = apiWorkbenchControlLineRenderCommandsInto(controlLineRenderCommands, controlLineSegments, {
-      rect,
-      row: startRow,
-      button: options.button,
-    });
-    for (const command of renderCommands) {
-      if (command.kind === "fill") {
-        write(frame, command.row, command.column, paint(" ".repeat(command.width), { fg: t.text, bg: t.surface }));
-        continue;
-      }
-      if (options.button) {
-        const style = command.role === "button"
-          ? workbenchButtonPaintOptions(t, contrastText, active ? "active" : "base")
-          : command.role === "detail"
-          ? apiWorkbenchControlButtonDetailStyle(t, active)
-          : baseStyle;
-        write(
-          frame,
-          command.row,
-          command.column,
-          paint(command.text, style),
-        );
-      } else {
-        write(frame, command.row, command.column, paint(command.text, baseStyle));
-      }
-    }
-    for (let index = 0; index < controlLineHitPlacements.length; index += 1) {
-      const hit = controlLineHitPlacements[index]!;
-      addHit({
-        column: hit.column,
-        row: hit.row,
-        width: hit.width,
-        height: hit.height,
-      }, { type: "control", id: hit.id, action: hit.action, index: hit.index });
-    }
-    row = nextRow;
-  };
   const slider = density.inspect();
-  const sliderTrack = apiWorkbenchControlTrack({
-    ratio: slider.normalizedValue,
-    boundsWidth: rect.width,
-    reservedWidth: 20,
-    maxWidth: 24,
-  });
-  const progressTrack = apiWorkbenchControlTrack({
-    ratio: progress.ratio(),
-    boundsWidth: rect.width,
-    reservedWidth: 18,
-    maxWidth: 24,
-  });
-  apiWorkbenchControlsSnapshotRowsInto(controlProjectedRows, {
-    buttonPressCount: actionButton.pressCount.peek(),
-    genericButtonPressCount: genericButton.pressCount.peek(),
-    modalOpen: modal.openState.peek(),
-    slider: {
-      track: sliderTrack,
-      value: density.value.peek(),
-      max: 10,
-    },
-    checkboxLivePreview: livePreview.checked.peek(),
-    checkboxCompactRows: compactRows.checked.peek(),
-    radioOptions: modeRadio.options.peek(),
-    radioSelectedValue: modeRadio.selectedValue.peek(),
-    radioActiveIndex: modeRadio.activeIndex.peek(),
-    combo: {
-      title: "Theme",
-      label: themeCombo.label(),
-      expanded: themeCombo.expanded.peek(),
-      rectWidth: rect.width,
-    },
-    dropdown: {
-      title: "Dropdown",
-      label: dropdown.label(),
-      expanded: dropdown.expanded.peek(),
-    },
-    input: {
-      title: "Input",
-      text: commandInput.text.peek(),
-      active: activeControl.peek() === "input",
-    },
-    stepper: {
-      steps: workflowStepper.steps.peek(),
-      activeIndex: workflowStepper.activeIndex.peek(),
-      rectWidth: rect.width,
-    },
-    progress: {
-      track: progressTrack,
-      value: progress.value.peek(),
-    },
-    buffers: {
-      checkboxes: controlCheckboxOptions,
-      radio: controlRadioOptions,
-    },
-  });
-  for (let index = 0; index < controlProjectedRows.length; index += 1) {
-    const controlRow = controlProjectedRows[index]!;
-    if (controlRow.id === "slider" && controlRow.value.startsWith("Progress")) {
-      if (row < rect.row + rect.height) {
-        write(
-          frame,
-          row,
-          rect.column,
-          paint(fit(controlRow.value, rect.width), {
-            fg: t.text,
-            bg: t.surface,
-          }),
-        );
-      }
-      continue;
-    }
-
-    if (controlRow.id === "textbox") {
-      row = renderTextboxControl(frame, rect, row, t);
-      continue;
-    }
-
-    const beforeRow = row;
-    writeControl(controlRow.id, controlRow.value, controlRow.options);
-    if (controlRow.id === "slider") {
-      const sliderSetHit = apiWorkbenchSliderSetHitInto(controlSliderSetHit, rect, beforeRow, sliderTrack);
-      addHit({
-        column: sliderSetHit.column,
-        row: sliderSetHit.row,
-        width: sliderSetHit.width,
-        height: sliderSetHit.height,
-      }, {
-        type: "control",
-        id: sliderSetHit.id,
-        action: sliderSetHit.action,
-      });
-    } else if (controlRow.id === "combo" && controlProjectedRows[index + 1]?.id !== "combo") {
-      writeWrappedOptions(frame, rect, row, "combo", themeCombo.items.peek(), themeCombo.selectedIndex.peek(), t);
-      row += wrappedControlOptionRowCount(themeCombo.items.peek(), undefined, rect.width - 4);
-    } else if (controlRow.id === "dropdown") {
-      if (dropdown.expanded.peek()) {
-        const items = dropdown.items.peek();
-        dropdownOverlay = {
-          kind: "control",
-          coordinate: "workspace",
-          rect: apiWorkbenchDropdownPopoverRect({ rect, row, items, label: dropdown.label() }),
-          items,
-          selectedIndex: dropdown.selectedIndex.peek(),
-        };
-      }
-    } else if (controlRow.id === "stepper") {
-      addInlineStepperHits(rect, beforeRow);
-    }
-  }
-}
-
-function renderTextboxControl(frame: Frame, rect: Rectangle, row: number, t: ThemeSpec): number {
-  const active = activeControl.peek() === "textbox";
-  const projection = apiWorkbenchTextboxProjectionInto(controlTextboxProjectionRows, {
+  const currentControl = activeControl.peek();
+  const result = renderApiWorkbenchControls({
+    frame,
     rect,
-    row,
-    lines: notes.lines.peek(),
-    visualLines: controlTextboxVisualLines,
-    cursor: notes.cursorPosition.peek(),
-    active,
+    state: {
+      activeControl: currentControl,
+      buttonPressCount: actionButton.pressCount.peek(),
+      genericButtonPressCount: genericButton.pressCount.peek(),
+      modalOpen: modal.openState.peek(),
+      slider: {
+        ratio: slider.normalizedValue,
+        value: density.value.peek(),
+        max: 10,
+      },
+      checkboxLivePreview: livePreview.checked.peek(),
+      checkboxCompactRows: compactRows.checked.peek(),
+      radioOptions: modeRadio.options.peek(),
+      radioSelectedValue: modeRadio.selectedValue.peek(),
+      radioActiveIndex: modeRadio.activeIndex.peek(),
+      combo: {
+        title: "Theme",
+        label: themeCombo.label(),
+        expanded: themeCombo.expanded.peek(),
+        items: themeCombo.items.peek(),
+        selectedIndex: themeCombo.selectedIndex.peek(),
+      },
+      dropdown: {
+        title: "Dropdown",
+        label: dropdown.label(),
+        expanded: dropdown.expanded.peek(),
+        items: dropdown.items.peek(),
+        selectedIndex: dropdown.selectedIndex.peek(),
+      },
+      input: {
+        title: "Input",
+        text: commandInput.text.peek(),
+        active: currentControl === "input",
+      },
+      stepper: {
+        steps: workflowStepper.steps.peek(),
+        activeIndex: workflowStepper.activeIndex.peek(),
+      },
+      progress: {
+        ratio: progress.ratio(),
+        value: progress.value.peek(),
+      },
+      textbox: {
+        lines: notes.lines.peek(),
+        cursor: notes.cursorPosition.peek(),
+      },
+    },
+    buffers: controlViewBuffers,
+    theme: theme(),
+    contrastText,
+    fit,
+    paint,
+    write,
+    addHit,
   });
-  if (projection.height <= 0) return projection.nextRow;
-  const commands = apiWorkbenchTextboxRenderCommandsInto(controlTextboxRenderCommands, projection.rows);
-  for (const command of commands) {
-    write(
-      frame,
-      command.row,
-      command.column,
-      paint(command.text, apiWorkbenchTextboxCommandStyle(t, command, active)),
-    );
-  }
-  addHit(projection.hit, {
-    type: "control",
-    id: "textbox",
-    action: "focus",
-  });
-  return projection.nextRow;
+  if (result.dropdownOverlay) dropdownOverlay = result.dropdownOverlay;
 }
 
 function renderLogs(frame: Frame, rect: Rectangle): void {
@@ -2258,70 +2072,6 @@ function renderHtmlCssLayout(frame: Frame, rect: Rectangle): void {
     write,
     fillRect,
   });
-}
-
-function writeWrappedOptions(
-  frame: Frame,
-  rect: Rectangle,
-  startRow: number,
-  id: ControlId,
-  items: readonly string[],
-  selectedIndex: number | undefined,
-  t: ThemeSpec,
-): void {
-  const commands = apiWorkbenchWrappedOptionsRenderCommandsInto(
-    controlWrappedOptionRenderCommands,
-    controlWrappedOptionHitPlacements,
-    {
-      rect,
-      startRow,
-      id,
-      items,
-      selectedIndex,
-      activeId: activeControl.peek(),
-    },
-  );
-  for (const command of commands) {
-    write(
-      frame,
-      command.row,
-      command.column,
-      paint(command.text, apiWorkbenchWrappedOptionStyle(t, command.active)),
-    );
-  }
-  for (let index = 0; index < controlWrappedOptionHitPlacements.length; index += 1) {
-    const hit = controlWrappedOptionHitPlacements[index]!;
-    addHit({ column: hit.column, row: hit.row, width: hit.width, height: hit.height }, {
-      type: "control",
-      id: hit.id,
-      action: hit.action,
-      index: hit.index,
-    });
-  }
-}
-
-function addInlineStepperHits(rect: Rectangle, row: number): void {
-  const placements = apiWorkbenchStepperHitPlacementsInto(
-    controlStepperHitPlacements,
-    workflowStepper.steps.peek(),
-    workflowStepper.activeIndex.peek(),
-    rect,
-    row,
-  );
-  for (let index = 0; index < placements.length; index += 1) {
-    const placement = placements[index]!;
-    addHit({
-      column: placement.column,
-      row: placement.row,
-      width: placement.width,
-      height: placement.height,
-    }, {
-      type: "control",
-      id: placement.id,
-      action: placement.action,
-      index: placement.index,
-    });
-  }
 }
 
 function renderShelf(frame: Frame): void {

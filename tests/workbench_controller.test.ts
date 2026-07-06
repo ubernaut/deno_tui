@@ -67,6 +67,7 @@ import {
   renderApiWorkbenchTerminalShellHeader,
   renderApiWorkbenchTerminalShellToolbar,
 } from "../app/api_workbench_terminal_shell_view.ts";
+import { ApiWorkbenchControlsViewBufferCache, renderApiWorkbenchControls } from "../app/api_workbench_controls_view.ts";
 import type { ProcessSessionInspection } from "../src/runtime/process_session.ts";
 import type { TerminalShellInspection } from "../src/runtime/terminal_shell.ts";
 import type { TerminalShellWorkspaceInspection } from "../src/runtime/terminal_shell_workspace.ts";
@@ -968,6 +969,88 @@ Deno.test("renderApiWorkbenchWindowTabs paints tab strip and registers tab hits"
     { label: "● Three", state: "active", tone: "default" },
   ]);
   assertEquals(hits.map((hit) => hit.id), ["logs", "three"]);
+});
+
+Deno.test("renderApiWorkbenchControls paints controls, hits, and dropdown overlay", () => {
+  const buffers = new ApiWorkbenchControlsViewBufferCache();
+  const frame: string[][] = [];
+  const hits: Array<{ id: string; action?: string; index?: number; row: number; width: number }> = [];
+
+  const result = renderApiWorkbenchControls({
+    frame,
+    rect: { column: 1, row: 0, width: 64, height: 20 },
+    state: {
+      activeControl: "combo",
+      buttonPressCount: 2,
+      genericButtonPressCount: 1,
+      modalOpen: false,
+      slider: { ratio: 0.5, value: 5, max: 10 },
+      checkboxLivePreview: true,
+      checkboxCompactRows: false,
+      radioOptions: [
+        { value: "fast", label: "Fast" },
+        { value: "slow", label: "Slow" },
+      ],
+      radioSelectedValue: "slow",
+      radioActiveIndex: 1,
+      combo: {
+        title: "Theme",
+        label: "Test",
+        expanded: true,
+        items: ["Light", "Dark"],
+        selectedIndex: 1,
+      },
+      dropdown: {
+        title: "Dropdown",
+        label: "CPU",
+        expanded: true,
+        items: ["CPU", "GPU"],
+        selectedIndex: 0,
+      },
+      input: { title: "Input", text: "deno task", active: false },
+      stepper: {
+        steps: [
+          { id: "draft", label: "Draft", completed: true },
+          { id: "review", label: "Review" },
+          { id: "ship", label: "Ship" },
+        ],
+        activeIndex: 1,
+      },
+      progress: { ratio: 0.42, value: 42 },
+      textbox: {
+        lines: ["hello world from textbox"],
+        cursor: { x: 5, y: 0 },
+      },
+    },
+    buffers,
+    theme: testWorkbenchTheme(),
+    contrastText: () => "#000",
+    fit: (text, width) => text.slice(0, width),
+    paint: (text, style) => `${style.bg}:${style.fg}:${style.bold ? "b:" : ""}${text}`,
+    write: (target, row, column, value) => {
+      target[row] ??= [];
+      target[row]![column] = value;
+    },
+    addHit: (rect, action) =>
+      hits.push({
+        id: action.id,
+        action: action.action,
+        index: action.index,
+        row: rect.row,
+        width: rect.width,
+      }),
+  });
+
+  const painted = frame.flat().filter(Boolean).join("|");
+  assertEquals(painted.includes("Run Action"), true);
+  assertEquals(painted.includes("Theme"), true);
+  assertEquals(painted.includes("TextBox"), true);
+  assertEquals(hits.some((hit) => hit.id === "slider" && hit.action === "set"), true);
+  assertEquals(hits.some((hit) => hit.id === "combo" && hit.index === 1), true);
+  assertEquals(hits.some((hit) => hit.id === "stepper" && hit.index === 1), true);
+  assertEquals(result.dropdownOverlay?.kind, "control");
+  assertEquals(result.dropdownOverlay?.items, ["CPU", "GPU"]);
+  assertEquals(buffers.projectedRows.length > 0, true);
 });
 
 Deno.test("renderApiWorkbenchTerminalOutputToolbar paints actions and registers enabled hits", () => {
