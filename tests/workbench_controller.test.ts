@@ -46,19 +46,24 @@ import {
   workbenchWindowOptionWindowId,
 } from "../src/app/workbench_window_registry.ts";
 import {
+  type WorkbenchTerminalCopyRowProjection,
   workbenchTerminalCopyRowsInto,
   workbenchTerminalPaneProjectionsInto,
   workbenchTerminalPaneTitleRenderCommandsInto,
   workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
+  type WorkbenchTerminalShellHeaderRow,
   type WorkbenchTerminalToolbarAction,
 } from "../src/app/workbench_terminal.ts";
 import { renderApiWorkbenchTerminalOutputToolbar } from "../app/api_workbench_terminal_output_view.ts";
 import { renderApiWorkbenchShelf, renderApiWorkbenchWindowTabs } from "../app/api_workbench_shelf_view.ts";
 import {
   renderApiWorkbenchTerminalSessionTabs,
+  renderApiWorkbenchTerminalShellCopyPane,
+  renderApiWorkbenchTerminalShellHeader,
   renderApiWorkbenchTerminalShellToolbar,
 } from "../app/api_workbench_terminal_shell_view.ts";
+import type { TerminalShellInspection } from "../src/runtime/terminal_shell.ts";
 import type { TerminalShellWorkspaceInspection } from "../src/runtime/terminal_shell_workspace.ts";
 
 Deno.test("WorkbenchController coordinates menus and window state", () => {
@@ -1066,6 +1071,86 @@ Deno.test("renderApiWorkbenchTerminalSessionTabs paints tabs and registers tab h
   assertEquals(frame[0]?.some((cell) => cell?.startsWith("#0f0:#000:")), true);
 });
 
+Deno.test("renderApiWorkbenchTerminalShellHeader paints status and hint rows", () => {
+  const frame: string[][] = [];
+  const rowBuffer: WorkbenchTerminalShellHeaderRow[] = [];
+
+  const nextRow = renderApiWorkbenchTerminalShellHeader({
+    frame,
+    rect: { column: 2, row: 0, width: 120, height: 4 },
+    startRow: 1,
+    inspection: testTerminalShellInspection({
+      status: "running",
+      backendLabel: "sigma-pty",
+      commandLine: "/bin/bash",
+      pty: true,
+      scrollback: {
+        offset: 4,
+        viewportRows: 10,
+        totalRows: 100,
+      },
+    }),
+    inputMode: "raw",
+    copyMode: false,
+    rows: rowBuffer,
+    theme: testWorkbenchTheme(),
+    contrastText: () => "#000",
+    fit: (text, width) => text.slice(0, width),
+    paint: (text, style) => `${style.bg}:${style.fg}:${text}`,
+    write: (target, row, column, value) => {
+      target[row] ??= [];
+      target[row]![column] = value;
+    },
+  });
+
+  assertEquals(nextRow, 3);
+  assertEquals(rowBuffer.length, 2);
+  assertEquals(frame[1]?.[2], "#0f0:#000:RAW SHELL RUNNING PTY sigma-pty · /bin/bash · rows 5-14/100");
+  assertEquals(
+    frame[2]?.[2],
+    "#222:#ccc:raw shell input: keys go to shell  Ctrl+C interrupts shell  Esc returns to Workbench",
+  );
+});
+
+Deno.test("renderApiWorkbenchTerminalShellCopyPane paints copy rows and registers row hits", () => {
+  const frame: string[][] = [];
+  const copyRows: WorkbenchTerminalCopyRowProjection[] = [];
+  const hits: Array<{ index: number; row: number; width: number }> = [];
+
+  renderApiWorkbenchTerminalShellCopyPane({
+    frame,
+    rect: { column: 3, row: 5, width: 16, height: 2 },
+    inspection: testTerminalShellInspection({
+      scrollback: {
+        offset: 7,
+        viewportRows: 2,
+        totalRows: 12,
+        visibleRows: ["alpha", "beta"],
+        selection: { anchor: 7, focus: 7 },
+      },
+    }),
+    rows: copyRows,
+    theme: testWorkbenchTheme(),
+    fit: (text, width) => text.slice(0, width),
+    paint: (text, style) => `${style.bg}:${style.fg}:${style.bold ? "b:" : ""}${text}`,
+    write: (target, row, column, value) => {
+      target[row] ??= [];
+      target[row]![column] = value;
+    },
+    addHit: (rect, action) => hits.push({ index: action.index, row: rect.row, width: rect.width }),
+  });
+
+  assertEquals(hits, [
+    { index: 7, row: 5, width: 16 },
+    { index: 8, row: 6, width: 16 },
+  ]);
+  assertEquals(frame[5]?.[3], "#ff0:#000:b:   8 ");
+  assertEquals(frame[5]?.[8], "#ff0:#000:b:alpha");
+  assertEquals(frame[6]?.[3], "#222:#ccc:   9 ");
+  assertEquals(frame[6]?.[8], "#111:#fff:beta");
+  assertEquals(copyRows.length, 2);
+});
+
 function testWorkbenchTheme() {
   return {
     id: "test",
@@ -1091,6 +1176,54 @@ function testWorkbenchTheme() {
     buttonActiveText: "#000",
     buttonMutedBg: "#111",
     buttonMutedText: "#777",
+  };
+}
+
+function testTerminalShellInspection(
+  overrides: Omit<Partial<TerminalShellInspection>, "scrollback"> & {
+    scrollback?: Partial<TerminalShellInspection["scrollback"]>;
+  } = {},
+): TerminalShellInspection {
+  const { scrollback: scrollbackOverrides, ...inspectionOverrides } = overrides;
+  const scrollback = {
+    mode: "live" as const,
+    offset: 0,
+    maxOffset: 0,
+    viewportRows: 3,
+    totalRows: 3,
+    scrollbackRows: 0,
+    liveRows: 3,
+    visibleRows: [],
+    matches: [],
+    activeMatch: undefined,
+    query: undefined,
+    selection: undefined,
+    ...scrollbackOverrides,
+  };
+  return {
+    title: undefined,
+    status: "idle",
+    running: false,
+    backendId: undefined,
+    backendLabel: undefined,
+    pty: false,
+    command: { command: "bash", args: [] },
+    commandLine: "bash",
+    columns: 80,
+    rows: 24,
+    resizeSupported: true,
+    screen: {
+      columns: 80,
+      rows: 24,
+      cursor: { column: 0, row: 0 },
+      cursorVisible: true,
+      cursorStyle: { shape: "block", blinking: true },
+      privateModes: [],
+      scrollbackRows: 0,
+      alternate: false,
+    },
+    scrollback,
+    ...inspectionOverrides,
   };
 }
 

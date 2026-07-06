@@ -177,14 +177,8 @@ import {
   resolveWorkbenchShellBackend,
   resolveWorkbenchTerminalProcessInputModeToggle,
   resolveWorkbenchTerminalShellInputModeToggle,
-  workbenchTerminalCopyRowsInto,
-  type WorkbenchTerminalPaneProjection,
-  workbenchTerminalPaneProjectionsInto,
-  type WorkbenchTerminalPaneTitleRenderCommand,
-  workbenchTerminalPaneTitleRenderCommandsInto,
   workbenchTerminalSearchModalBody,
   type WorkbenchTerminalShellHeaderRow,
-  workbenchTerminalShellHeaderRowsInto,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarStateFromSnapshot,
 } from "../src/app/workbench_terminal.ts";
@@ -197,7 +191,6 @@ import {
   apiWorkbenchPanelTitle,
   type ApiWorkbenchProcessRow,
   apiWorkbenchRows,
-  apiWorkbenchTerminalCellStyle,
   apiWorkbenchTerminalOutputLineStyle,
   apiWorkbenchTerminalStatusToneColor,
   type ApiWorkbenchThemeSpec,
@@ -380,6 +373,8 @@ import {
 import type { ComputedLayoutBox } from "../src/layout/mod.ts";
 import {
   renderApiWorkbenchTerminalSessionTabs,
+  renderApiWorkbenchTerminalShellHeader,
+  renderApiWorkbenchTerminalShellPanes,
   renderApiWorkbenchTerminalShellToolbar,
 } from "./api_workbench_terminal_shell_view.ts";
 import { renderApiWorkbenchTerminalOutputToolbar } from "./api_workbench_terminal_output_view.ts";
@@ -2050,42 +2045,20 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
     return;
   }
   const copyMode = inspection.scrollback.mode === "copy";
-  const statusTone = apiWorkbenchTerminalStatusToneColor(inspection.status, t);
-  const mode = copyMode ? "COPY MODE" : terminalInputModeDisplayLabel(terminalShellInputMode.peek(), {
-    rawLabel: "RAW SHELL",
+  row = renderApiWorkbenchTerminalShellHeader({
+    frame,
+    rect,
+    startRow: row,
+    inspection,
+    inputMode: terminalShellInputMode.peek(),
+    copyMode,
+    rows: terminalShellHeaderRows,
+    theme: t,
+    contrastText,
+    fit,
+    paint,
+    write,
   });
-  const headerRows = workbenchTerminalShellHeaderRowsInto(terminalShellHeaderRows, {
-    status: {
-      mode,
-      status: inspection.status,
-      pty: inspection.pty,
-      backendLabel: inspection.backendLabel,
-      commandLine: inspection.commandLine,
-      scrollbackOffset: inspection.scrollback.offset,
-      scrollbackViewportRows: inspection.scrollback.viewportRows,
-      scrollbackTotalRows: inspection.scrollback.totalRows,
-    },
-    hint: { copyMode, inputMode: terminalShellInputMode.peek() },
-  });
-  for (const header of headerRows) {
-    const statusRow = header.kind === "status";
-    write(
-      frame,
-      row,
-      rect.column,
-      paint(
-        fit(header.text, rect.width),
-        statusRow
-          ? {
-            fg: contrastText(statusTone, t.background, t.text),
-            bg: statusTone,
-            bold: true,
-          }
-          : { fg: t.soft, bg: t.panelSoft },
-      ),
-    );
-    row += 1;
-  }
 
   const bodyRect = {
     column: rect.column,
@@ -2119,125 +2092,23 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
     return;
   }
 
-  renderTerminalShellPanes(frame, bodyRect, copyMode);
-}
-
-function renderTerminalShellPanes(frame: Frame, rect: Rectangle, copyMode: boolean): void {
-  if (rect.width <= 0 || rect.height <= 0) return;
-  const workspace = terminalShell.inspect().workspace;
-  const projections = workbenchTerminalPaneProjectionsInto(
-    terminalShellBuffers.paneProjections,
-    workspace.layout,
-    rect,
-    {
-      gap: 1,
-      fallbackSessionId: workspace.activeId,
-      titleForSession: (sessionId) => workspace.sessions.find((entry) => entry.id === sessionId)?.title,
-    },
-  );
-  const titleCommands = workbenchTerminalPaneTitleRenderCommandsInto(
-    terminalShellBuffers.paneTitleCommands,
-    projections,
-    theme(),
+  renderApiWorkbenchTerminalShellPanes({
+    frame,
+    rect: bodyRect,
+    inspection: terminalShell.inspect(),
+    activeShell: activeTerminalShell(),
+    shellForSession: (sessionId) => terminalShell.shell(sessionId),
+    copyMode,
+    rawInputActive: activeWindow.peek() === TERMINAL_SHELL_WINDOW_ID && terminalShellInputMode.peek() === "raw",
+    buffers: terminalShellBuffers,
+    theme: t,
     contrastText,
-  );
-  let titleIndex = 0;
-  for (const projection of projections) {
-    const shell = projection.sessionId ? terminalShell.shell(projection.sessionId) : activeTerminalShell();
-    if (!shell) continue;
-    const titleCommand = projection.titleVisible ? titleCommands[titleIndex++] : undefined;
-    renderTerminalShellPane(frame, projection, shell, copyMode && projection.active, titleCommand);
-  }
-}
-
-function renderTerminalShellPane(
-  frame: Frame,
-  projection: WorkbenchTerminalPaneProjection,
-  shell: TerminalShellController,
-  copyMode: boolean,
-  titleCommand?: WorkbenchTerminalPaneTitleRenderCommand,
-): void {
-  const rect = projection.rect;
-  if (rect.width <= 0 || rect.height <= 0) return;
-  const active = projection.active;
-  const t = theme();
-  fillRect(frame, rect, active ? t.surface : t.background);
-  const content = projection.contentRect;
-  if (titleCommand) {
-    write(
-      frame,
-      titleCommand.rect.row,
-      titleCommand.rect.column,
-      paint(titleCommand.text, titleCommand.style),
-    );
-    if (titleCommand.paneId) {
-      addHit(titleCommand.hitRect, {
-        type: "terminalShellPane",
-        id: titleCommand.paneId,
-      });
-    }
-  }
-  if (content.width <= 0 || content.height <= 0) return;
-  shell.resize(content.width, content.height);
-  if (active) addHit(content, { type: "terminalShellContent" });
-  if (copyMode) {
-    renderTerminalShellCopyPane(frame, content, shell);
-    return;
-  }
-  const cursor = shell.screen.cursor;
-  const cursorActive = activeWindow.peek() === TERMINAL_SHELL_WINDOW_ID && terminalShellInputMode.peek() === "raw" &&
-    active && shell.running;
-  const rows = shell.screen.cellRows();
-  for (let screenRow = 0; screenRow < content.height; screenRow += 1) {
-    const cells = rows[screenRow] ?? [];
-    for (let column = 0; column < content.width; column += 1) {
-      const cell = cells[column] ?? { char: " " };
-      const atCursor = cursorActive && cursor.row === screenRow && cursor.column === column;
-      const style = apiWorkbenchTerminalCellStyle(cell, t, atCursor);
-      const char = atCursor && cell.char === " " ? " " : cell.char;
-      write(frame, content.row + screenRow, content.column + column, paint(char, style));
-    }
-  }
-}
-
-function renderTerminalShellCopyPane(frame: Frame, rect: Rectangle, shell: TerminalShellController): void {
-  const t = theme();
-  const inspection = shell.inspect();
-  const rows = workbenchTerminalCopyRowsInto(terminalShellBuffers.copyRows, {
-    visibleRows: inspection.scrollback.visibleRows,
-    offset: inspection.scrollback.offset,
-    height: rect.height,
-    selection: inspection.scrollback.selection,
-    prefixWidth: 5,
+    fit,
+    paint,
+    write,
+    fillRect,
+    addHit,
   });
-  for (const row of rows) {
-    addHit({ column: rect.column, row: rect.row + row.screenRow, width: rect.width, height: 1 }, {
-      type: "terminalShellCopyRow",
-      index: row.rowIndex,
-    });
-    write(
-      frame,
-      rect.row + row.screenRow,
-      rect.column,
-      paint(fit(row.prefix, Math.min(5, rect.width)), {
-        fg: row.selected ? t.background : t.soft,
-        bg: row.selected ? t.warn : t.panelSoft,
-        bold: row.selected,
-      }),
-    );
-    if (rect.width > 5) {
-      write(
-        frame,
-        rect.row + row.screenRow,
-        rect.column + 5,
-        paint(fit(row.text, rect.width - 5), {
-          fg: row.selected ? t.background : t.text,
-          bg: row.selected ? t.warn : t.surface,
-          bold: row.selected,
-        }),
-      );
-    }
-  }
 }
 
 function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: number): number {
