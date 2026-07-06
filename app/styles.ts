@@ -16,6 +16,15 @@ export const palette = {
   shade: "#000000",
 };
 
+export const neonColors = {
+  void: palette.void,
+  alarm: palette.alarm,
+  amber: palette.amber,
+  phosphor: palette.phosphor,
+  signal: palette.signal,
+  violet: palette.violet,
+};
+
 export function accentColor(accent: Accent): string {
   return palette[accent];
 }

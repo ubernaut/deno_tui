@@ -6,7 +6,6 @@ import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts
 import { Tui } from "../src/tui.ts";
 import { adaptiveGridItemRect, adaptiveGridPage } from "../src/layout/mod.ts";
 import { createDefaultAsciiOptions, terminalGlyphStyleLabel } from "../src/three_ascii/options.ts";
-import { demos, formatCountdown, type NeonDemo } from "./neon_theme.ts";
 import {
   emptyNeonSuiteRender,
   fitText as crop,
@@ -20,6 +19,7 @@ import { accentColor, makeStyle, palette, requireInteractiveTerminal, severityAc
 import { ThreePanelView } from "./three_panel.ts";
 import type { Accent, AsciiOptions, BorderMode, PanelRender, Rect } from "./types.ts";
 import { PanelView } from "./ui.ts";
+import { demos, formatCountdown, type NeonDemo } from "./visualizations.ts";
 
 requireInteractiveTerminal("deno task showcase");
 

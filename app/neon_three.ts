@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { colors } from "./neon_theme.ts";
+import { neonColors as colors } from "./styles.ts";
 import { type ThreeSceneMode, type ThreeSceneSignal } from "./types.ts";
 
 function neonLine(color: string) {

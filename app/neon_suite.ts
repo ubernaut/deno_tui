@@ -1,5 +1,4 @@
 import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
-import { demos, type NeonDemo, type NeonSection } from "./neon_theme.ts";
 import type {
   Accent,
   AsciiOptions,
@@ -11,7 +10,7 @@ import type {
   SystemSnapshot,
 } from "./types.ts";
 import { stringSeed, unitWave, waveSeries } from "./visualization_primitives.ts";
-import { renderVisualization } from "./visualizations.ts";
+import { demos, type NeonDemo, type NeonSection, renderVisualization } from "./visualizations.ts";
 
 export type NeonSuiteSection = NeonSection | "all";
 type NeonRenderMode = "card" | "compact" | "dense" | "max";

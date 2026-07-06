@@ -1,8 +1,6 @@
 import { assert, assertEquals } from "./deps.ts";
 import type { Object3D } from "three";
 import { createNeonThreeScene, neonThreeSceneModeLabel } from "../app/neon_three.ts";
-import { demos } from "../app/neon_theme.ts";
-import { colors } from "../app/neon_theme.ts";
 import {
   cycleDemo,
   demoIndex,
@@ -13,8 +11,9 @@ import {
   neonSuiteSummary,
   renderNeonSuiteDemo,
 } from "../app/neon_suite.ts";
-import { palette } from "../app/styles.ts";
+import { neonColors as colors, palette } from "../app/styles.ts";
 import { threeSceneModes, type ThreeSceneSignal } from "../app/types.ts";
+import { demos } from "../app/visualizations.ts";
 
 const signal: ThreeSceneSignal = {
   x: 0.5,

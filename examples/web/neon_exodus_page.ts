@@ -16,7 +16,7 @@ import {
   renderNeonSuiteDemo,
 } from "../../app/neon_suite.ts";
 import { accentColor, makeStyle, palette } from "../../app/styles.ts";
-import type { NeonDemo } from "../../app/neon_theme.ts";
+import type { NeonDemo } from "../../app/visualizations.ts";
 
 const root = document.querySelector<HTMLElement>("#app");
 if (!root) throw new Error("Missing #app mount element.");

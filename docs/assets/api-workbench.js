@@ -2745,29 +2745,29 @@ var grWizardThemePalettes = [
     subtitle: "#52706b"
   }
 ];
-var grWizardThemePacks = grWizardThemePalettes.map((palette) => ({
-  id: `grwizard-${palette.name}`,
-  label: palette.label,
-  description: palette.description,
-  palette: grWizardThemePaletteDefinition(palette),
-  options: grWizardThemeOptions(palette)
+var grWizardThemePacks = grWizardThemePalettes.map((palette2) => ({
+  id: `grwizard-${palette2.name}`,
+  label: palette2.label,
+  description: palette2.description,
+  palette: grWizardThemePaletteDefinition(palette2),
+  options: grWizardThemeOptions(palette2)
 }));
-function grWizardThemePaletteDefinition(palette) {
+function grWizardThemePaletteDefinition(palette2) {
   return {
-    id: `grwizard-${palette.name}`,
-    label: palette.label,
+    id: `grwizard-${palette2.name}`,
+    label: palette2.label,
     tokens: {
-      foreground: style({ foreground: palette.text }),
-      muted: style({ foreground: palette.textMuted, dim: true }),
-      accent: style({ foreground: palette.accent, bold: true }),
-      success: style({ foreground: palette.success, bold: true }),
-      warning: style({ foreground: palette.warning, bold: true }),
-      danger: style({ foreground: palette.danger, bold: true }),
-      surface: style({ foreground: palette.text, background: palette.panelAlt })
+      foreground: style({ foreground: palette2.text }),
+      muted: style({ foreground: palette2.textMuted, dim: true }),
+      accent: style({ foreground: palette2.accent, bold: true }),
+      success: style({ foreground: palette2.success, bold: true }),
+      warning: style({ foreground: palette2.warning, bold: true }),
+      danger: style({ foreground: palette2.danger, bold: true }),
+      surface: style({ foreground: palette2.text, background: palette2.panelAlt })
     }
   };
 }
-function grWizardThemeOptions(palette) {
+function grWizardThemeOptions(palette2) {
   return composeStandardThemeOptions({
     components: {
       Badge: {
@@ -2779,8 +2779,8 @@ function grWizardThemeOptions(palette) {
         },
         variants: {
           blocked: { base: "danger" },
-          review: { base: style({ foreground: palette.review, bold: true }) },
-          idle: { base: style({ foreground: palette.idle }) }
+          review: { base: style({ foreground: palette2.review, bold: true }) },
+          idle: { base: style({ foreground: palette2.idle }) }
         }
       },
       Button: {
@@ -2805,9 +2805,9 @@ function grWizardThemeOptions(palette) {
       },
       Frame: {
         base: {
-          base: style({ foreground: palette.border, background: palette.panel }),
-          focused: style({ foreground: palette.borderStrong, background: palette.panelAlt, bold: true }),
-          active: style({ foreground: palette.accent, background: palette.surface, bold: true }),
+          base: style({ foreground: palette2.border, background: palette2.panel }),
+          focused: style({ foreground: palette2.borderStrong, background: palette2.panelAlt, bold: true }),
+          active: style({ foreground: palette2.accent, background: palette2.surface, bold: true }),
           disabled: "muted"
         }
       },
@@ -2847,8 +2847,8 @@ function grWizardThemeOptions(palette) {
           disabled: "muted"
         },
         variants: {
-          subtitle: { base: style({ foreground: palette.subtitle, italic: true }) },
-          soft: { base: style({ foreground: palette.textSoft }) }
+          subtitle: { base: style({ foreground: palette2.subtitle, italic: true }) },
+          soft: { base: style({ foreground: palette2.textSoft }) }
         }
       }
     }
@@ -17140,30 +17140,30 @@ function apiWorkbenchShortPanelTitle(id2, fallback) {
   return apiWorkbenchShortPanelTitles[id2] ?? apiWorkbenchPanelTitle(id2, fallback);
 }
 function createApiWorkbenchThemes() {
-  return grWizardThemePalettes.map((palette) => ({
-    id: palette.name,
-    label: palette.label,
-    background: palette.bg,
-    backgroundSoft: palette.bgAlt,
-    panel: palette.panel,
-    panelSoft: palette.panelAlt,
-    surface: palette.surface,
-    border: palette.border,
-    borderStrong: palette.borderStrong,
-    accent: palette.accent,
-    accentDeep: palette.accentDeep,
-    text: palette.text,
-    muted: palette.textMuted,
-    soft: palette.textSoft,
-    good: palette.success,
-    warn: palette.warning,
-    danger: palette.danger,
-    buttonBg: palette.accentDeep,
-    buttonText: contrastText(palette.accentDeep, palette.bg, palette.text),
-    buttonActiveBg: palette.accent,
-    buttonActiveText: contrastText(palette.accent, palette.bg, palette.text),
-    buttonMutedBg: palette.panelAlt,
-    buttonMutedText: palette.textMuted
+  return grWizardThemePalettes.map((palette2) => ({
+    id: palette2.name,
+    label: palette2.label,
+    background: palette2.bg,
+    backgroundSoft: palette2.bgAlt,
+    panel: palette2.panel,
+    panelSoft: palette2.panelAlt,
+    surface: palette2.surface,
+    border: palette2.border,
+    borderStrong: palette2.borderStrong,
+    accent: palette2.accent,
+    accentDeep: palette2.accentDeep,
+    text: palette2.text,
+    muted: palette2.textMuted,
+    soft: palette2.textSoft,
+    good: palette2.success,
+    warn: palette2.warning,
+    danger: palette2.danger,
+    buttonBg: palette2.accentDeep,
+    buttonText: contrastText(palette2.accentDeep, palette2.bg, palette2.text),
+    buttonActiveBg: palette2.accent,
+    buttonActiveText: contrastText(palette2.accent, palette2.bg, palette2.text),
+    buttonMutedBg: palette2.panelAlt,
+    buttonMutedText: palette2.textMuted
   }));
 }
 var apiWorkbenchRows = [
@@ -19075,6 +19075,28 @@ function renderApiWorkbenchWindowTitlebar(options) {
 }
 
 // app/styles.ts
+var palette = {
+  void: "#05070d",
+  voidSoft: "#0f1b34",
+  panel: "#0a1020",
+  panelSoft: "#111932",
+  alarm: "#ff4231",
+  amber: "#ff9f24",
+  phosphor: "#7dffba",
+  signal: "#5bb0ff",
+  violet: "#b17cff",
+  paper: "#eff7ff",
+  dim: "#5a6478",
+  shade: "#000000"
+};
+var neonColors = {
+  void: palette.void,
+  alarm: palette.alarm,
+  amber: palette.amber,
+  phosphor: palette.phosphor,
+  signal: palette.signal,
+  violet: palette.violet
+};
 function hexToRgb(hex) {
   const normalized = hex.replace(/^#/, "");
   const value = normalized.length === 3 ? expandShortHex(normalized) : normalized;

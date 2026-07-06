@@ -6,7 +6,6 @@ import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts
 import { Tui } from "../src/tui.ts";
 import { adaptiveGridItemRect, adaptiveGridPage } from "../src/layout/mod.ts";
 import { createDefaultAsciiOptions, terminalGlyphStyleLabel } from "../src/three_ascii/options.ts";
-import { formatCountdown, type NeonDemo } from "./neon_theme.ts";
 import {
   cycleDemo,
   demoIndex,
@@ -26,6 +25,7 @@ import { accentColor, makeStyle, palette, requireInteractiveTerminal, severityAc
 import { ThreePanelView } from "./three_panel.ts";
 import type { Accent, AsciiOptions, BorderMode, PanelRender, Rect } from "./types.ts";
 import { PanelView } from "./ui.ts";
+import { formatCountdown, type NeonDemo } from "./visualizations.ts";
 
 type NeonSuiteSource = "opentui" | "web" | "extended";
 
