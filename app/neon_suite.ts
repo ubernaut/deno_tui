@@ -14,7 +14,7 @@ import { stringSeed, unitWave, waveSeries } from "./visualization_primitives.ts"
 import { renderVisualization } from "./visualizations.ts";
 
 export type NeonSuiteSection = NeonSection | "all";
-export type NeonRenderMode = "card" | "compact" | "dense" | "max";
+type NeonRenderMode = "card" | "compact" | "dense" | "max";
 
 export const neonSuiteSections: readonly NeonSuiteSection[] = ["all", "overview", "signals", "control", "three"];
 
@@ -55,10 +55,6 @@ export function neonDemosForSection(
     if (demo.section === section) filtered.push(demo);
   }
   return filtered;
-}
-
-export function demoById(id: string): NeonDemo | undefined {
-  return demosById.get(id);
 }
 
 export function demoIndex(id: string, section: NeonSuiteSection, source: "opentui" | "web" | "extended" = "extended") {
@@ -121,7 +117,7 @@ export function renderNeonSuiteDemo(options: {
   return renderVisualization(context);
 }
 
-export function buildNeonRenderContext(options: {
+function buildNeonRenderContext(options: {
   demo: NeonDemo;
   phase: number;
   width: number;
