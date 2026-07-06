@@ -10,7 +10,7 @@ import {
   htmlCssVisibleLayoutBoxesInto,
 } from "./html_css_layout_view.ts";
 
-export interface ApiWorkbenchHtmlCssLayoutRenderOptions<Frame = WorkbenchFrame> {
+interface ApiWorkbenchHtmlCssLayoutRenderOptions<Frame = WorkbenchFrame> {
   frame: Frame;
   rect: Rectangle;
   boxes: ComputedLayoutBox[];

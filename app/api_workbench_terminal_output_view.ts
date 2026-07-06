@@ -30,7 +30,7 @@ interface ApiWorkbenchTerminalOutputPaintStyle {
   bold?: boolean;
 }
 
-export interface ApiWorkbenchTerminalOutputToolbarRenderOptions {
+interface ApiWorkbenchTerminalOutputToolbarRenderOptions {
   frame: WorkbenchFrame;
   rect: Rectangle;
   startRow: number;
@@ -43,7 +43,7 @@ export interface ApiWorkbenchTerminalOutputToolbarRenderOptions {
   addHit: (rect: Rectangle, action: { type: "terminalOutput"; action: WorkbenchTerminalOutputToolbarAction }) => void;
 }
 
-export interface ApiWorkbenchTerminalOutputBodyRenderOptions {
+interface ApiWorkbenchTerminalOutputBodyRenderOptions {
   frame: WorkbenchFrame;
   rect: Rectangle;
   startRow: number;

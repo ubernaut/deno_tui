@@ -12,7 +12,7 @@ import {
   workbenchLogRowsFromSourcesInto,
 } from "./workbench_panels.ts";
 
-export interface ApiWorkbenchExplorerPanelRenderOptions<Frame = WorkbenchFrame> {
+interface ApiWorkbenchExplorerPanelRenderOptions<Frame = WorkbenchFrame> {
   frame: Frame;
   rect: Rectangle;
   rows: readonly TreeRow[];
@@ -24,7 +24,7 @@ export interface ApiWorkbenchExplorerPanelRenderOptions<Frame = WorkbenchFrame> 
   addHit: (rect: Rectangle, action: { type: "explorerRow"; index: number }) => void;
 }
 
-export interface ApiWorkbenchInspectorPanelRenderOptions<Frame = WorkbenchFrame> {
+interface ApiWorkbenchInspectorPanelRenderOptions<Frame = WorkbenchFrame> {
   frame: Frame;
   rect: Rectangle;
   themeLabel: string;
@@ -37,13 +37,13 @@ export interface ApiWorkbenchInspectorPanelRenderOptions<Frame = WorkbenchFrame>
   writeRows: (frame: Frame, rect: Rectangle, rows: readonly RowStyle[]) => void;
 }
 
-export interface ApiWorkbenchDataPanelRenderBuffers {
+interface ApiWorkbenchDataPanelRenderBuffers {
   renderRows: RowStyle[];
   textRows: string[];
   bodyRows: RowStyle[];
 }
 
-export interface ApiWorkbenchDataPanelRenderOptions<TRow extends Record<string, unknown>, Frame = WorkbenchFrame> {
+interface ApiWorkbenchDataPanelRenderOptions<TRow extends Record<string, unknown>, Frame = WorkbenchFrame> {
   frame: Frame;
   rect: Rectangle;
   columns: readonly DataColumn<TRow>[];
@@ -58,7 +58,7 @@ export interface ApiWorkbenchDataPanelRenderOptions<TRow extends Record<string, 
   addHit: (rect: Rectangle, action: { type: "dataRow"; index: number }) => void;
 }
 
-export interface ApiWorkbenchLogsPanelRenderOptions<Frame = WorkbenchFrame> {
+interface ApiWorkbenchLogsPanelRenderOptions<Frame = WorkbenchFrame> {
   frame: Frame;
   rect: Rectangle;
   sources: readonly (readonly string[])[];

@@ -12,7 +12,7 @@ import {
 import type { Rectangle } from "../src/types.ts";
 import type { ApiWorkbenchThemeSpec } from "./api_workbench_catalog.ts";
 
-export interface ApiWorkbenchShelfRenderOptions<TId extends string, Frame = WorkbenchFrame> {
+interface ApiWorkbenchShelfRenderOptions<TId extends string, Frame = WorkbenchFrame> {
   frame: Frame;
   row: number;
   column: number;
@@ -38,7 +38,7 @@ export interface ApiWorkbenchShelfRenderOptions<TId extends string, Frame = Work
   addHit: (rect: Rectangle, action: { type: "restore"; id: TId }) => void;
 }
 
-export interface ApiWorkbenchWindowTabsRenderOptions<
+interface ApiWorkbenchWindowTabsRenderOptions<
   TId extends string,
   Frame = WorkbenchFrame,
   HitAction = { type: "windowTab"; id: TId },

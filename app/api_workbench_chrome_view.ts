@@ -40,15 +40,15 @@ export interface ApiWorkbenchDropdownOverlay {
   selectedIndex?: number;
 }
 
-export type ApiWorkbenchChromeHeaderHitAction = { type: "menu"; index: number } | { type: "quit" };
+type ApiWorkbenchChromeHeaderHitAction = { type: "menu"; index: number } | { type: "quit" };
 
-export type ApiWorkbenchDropdownOverlayHitAction =
+type ApiWorkbenchDropdownOverlayHitAction =
   | { type: "theme"; index: number }
   | { type: "newWindow"; index: number }
   | { type: "workspace"; index: number }
   | { type: "control"; id: "dropdown"; action: "activate"; index: number };
 
-export interface ApiWorkbenchChromeHeaderRenderOptions<Frame = WorkbenchFrame> {
+interface ApiWorkbenchChromeHeaderRenderOptions<Frame = WorkbenchFrame> {
   frame: Frame;
   width: number;
   menuItems: readonly WorkbenchMenuBarItemShape[];
@@ -75,7 +75,7 @@ export interface ApiWorkbenchChromeHeaderRenderOptions<Frame = WorkbenchFrame> {
   addHit: (rect: Rectangle, action: ApiWorkbenchChromeHeaderHitAction) => void;
 }
 
-export interface ApiWorkbenchStatusRenderOptions<Frame = WorkbenchFrame> {
+interface ApiWorkbenchStatusRenderOptions<Frame = WorkbenchFrame> {
   frame: Frame;
   row: number;
   width: number;
@@ -89,7 +89,7 @@ export interface ApiWorkbenchStatusRenderOptions<Frame = WorkbenchFrame> {
   write: (frame: Frame, row: number, column: number, value: string) => void;
 }
 
-export interface ApiWorkbenchDropdownOverlayRenderOptions<Frame = WorkbenchFrame> {
+interface ApiWorkbenchDropdownOverlayRenderOptions<Frame = WorkbenchFrame> {
   frame: Frame;
   overlay: ApiWorkbenchDropdownOverlay | null;
   workspaceBounds: Rectangle;

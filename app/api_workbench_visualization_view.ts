@@ -17,14 +17,14 @@ interface ApiWorkbenchVisualizationPaintStyle {
   bold?: boolean;
 }
 
-export interface ApiWorkbenchVisualizationMissingRenderOptions {
+interface ApiWorkbenchVisualizationMissingRenderOptions {
   frame: WorkbenchFrame;
   rect: Rectangle;
   theme: ApiWorkbenchThemeSpec;
   writeRows: (frame: WorkbenchFrame, rect: Rectangle, rows: readonly RowStyle[]) => void;
 }
 
-export interface ApiWorkbenchVisualizationThreeChromeRenderOptions {
+interface ApiWorkbenchVisualizationThreeChromeRenderOptions {
   frame: WorkbenchFrame;
   rect: Rectangle;
   option: WorkbenchVisualizationWindowOption;
@@ -39,7 +39,7 @@ export interface ApiWorkbenchVisualizationThreeChromeRenderOptions {
   writeRows: (frame: WorkbenchFrame, rect: Rectangle, rows: readonly RowStyle[]) => void;
 }
 
-export interface ApiWorkbenchVisualizationTextRenderOptions {
+interface ApiWorkbenchVisualizationTextRenderOptions {
   frame: WorkbenchFrame;
   rect: Rectangle;
   option: WorkbenchVisualizationWindowOption;
@@ -52,7 +52,7 @@ export interface ApiWorkbenchVisualizationTextRenderOptions {
   writeRows: (frame: WorkbenchFrame, rect: Rectangle, rows: readonly RowStyle[]) => void;
 }
 
-export interface ApiWorkbenchCpuHexTileHitOptions<TId extends string> {
+interface ApiWorkbenchCpuHexTileHitOptions<TId extends string> {
   id: TId;
   rect: Rectangle;
   cores: SystemSnapshot["cpuCores"];

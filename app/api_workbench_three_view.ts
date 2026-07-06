@@ -22,7 +22,7 @@ interface ApiWorkbenchThreePaintStyle {
   bg?: string;
 }
 
-export interface ApiWorkbenchThreeHeaderRenderOptions {
+interface ApiWorkbenchThreeHeaderRenderOptions {
   frame: WorkbenchFrame;
   rect: Rectangle;
   mode: string;
@@ -37,7 +37,7 @@ export interface ApiWorkbenchThreeHeaderRenderOptions {
   writeRows: (frame: WorkbenchFrame, rect: Rectangle, rows: readonly RowStyle[]) => void;
 }
 
-export interface ApiWorkbenchThreeFallbackRenderOptions {
+interface ApiWorkbenchThreeFallbackRenderOptions {
   frame: WorkbenchFrame;
   rect: Rectangle;
   terminalGlyphStyle: AsciiOptions["terminalGlyphStyle"];
@@ -48,7 +48,7 @@ export interface ApiWorkbenchThreeFallbackRenderOptions {
   writeRows: (frame: WorkbenchFrame, rect: Rectangle, rows: readonly RowStyle[]) => void;
 }
 
-export interface ApiWorkbenchThreeSurfaceRenderOptions {
+interface ApiWorkbenchThreeSurfaceRenderOptions {
   frame: WorkbenchFrame;
   rect: Rectangle;
   grid: readonly (readonly string[] | undefined)[];

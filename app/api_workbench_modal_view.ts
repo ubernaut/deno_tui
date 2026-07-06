@@ -25,7 +25,7 @@ interface ApiWorkbenchPaintStyle {
   bold?: boolean;
 }
 
-export interface ApiWorkbenchModalRenderOptions<Frame = WorkbenchFrame> {
+interface ApiWorkbenchModalRenderOptions<Frame = WorkbenchFrame> {
   frame: Frame;
   bounds: Rectangle;
   inspection: ModalInspection;
@@ -41,7 +41,7 @@ export interface ApiWorkbenchModalRenderOptions<Frame = WorkbenchFrame> {
   addHit: (rect: Rectangle, action: { type: "modalAction"; index: number }) => void;
 }
 
-export interface ApiWorkbenchThreeConfigModalRenderOptions<Frame = WorkbenchFrame> {
+interface ApiWorkbenchThreeConfigModalRenderOptions<Frame = WorkbenchFrame> {
   frame: Frame;
   bounds: Rectangle;
   rows: readonly WorkbenchAsciiConfigRow[];

@@ -45,12 +45,12 @@ interface ApiWorkbenchTerminalShellPaintCallbacks {
   write: (frame: WorkbenchFrame, row: number, column: number, value: string) => void;
 }
 
-export interface ApiWorkbenchTerminalSessionTabsInspection {
+interface ApiWorkbenchTerminalSessionTabsInspection {
   activeId?: string;
   sessions: readonly { id: string; title: string }[];
 }
 
-export interface ApiWorkbenchTerminalSessionTabsRenderOptions<
+interface ApiWorkbenchTerminalSessionTabsRenderOptions<
   Frame = WorkbenchFrame,
   HitType extends string = "terminalShellSession",
 > {
@@ -67,7 +67,7 @@ export interface ApiWorkbenchTerminalSessionTabsRenderOptions<
   hitType?: HitType;
 }
 
-export interface ApiWorkbenchTerminalShellToolbarRenderOptions<
+interface ApiWorkbenchTerminalShellToolbarRenderOptions<
   Frame = WorkbenchFrame,
   HitType extends string = "terminalShell",
 > {
@@ -85,7 +85,7 @@ export interface ApiWorkbenchTerminalShellToolbarRenderOptions<
   hitType?: HitType;
 }
 
-export interface ApiWorkbenchTerminalShellHeaderRenderOptions extends ApiWorkbenchTerminalShellPaintCallbacks {
+interface ApiWorkbenchTerminalShellHeaderRenderOptions extends ApiWorkbenchTerminalShellPaintCallbacks {
   frame: WorkbenchFrame;
   rect: Rectangle;
   startRow: number;
@@ -97,7 +97,7 @@ export interface ApiWorkbenchTerminalShellHeaderRenderOptions extends ApiWorkben
   contrastText: (background: string, dark: string, light: string) => string;
 }
 
-export interface ApiWorkbenchTerminalShellCopyPaneRenderOptions extends ApiWorkbenchTerminalShellPaintCallbacks {
+interface ApiWorkbenchTerminalShellCopyPaneRenderOptions extends ApiWorkbenchTerminalShellPaintCallbacks {
   frame: WorkbenchFrame;
   rect: Rectangle;
   inspection: TerminalShellInspection;
@@ -106,7 +106,7 @@ export interface ApiWorkbenchTerminalShellCopyPaneRenderOptions extends ApiWorkb
   addHit: (rect: Rectangle, action: { type: "terminalShellCopyRow"; index: number }) => void;
 }
 
-export interface ApiWorkbenchTerminalShellPaneRenderOptions extends ApiWorkbenchTerminalShellPaintCallbacks {
+interface ApiWorkbenchTerminalShellPaneRenderOptions extends ApiWorkbenchTerminalShellPaintCallbacks {
   frame: WorkbenchFrame;
   projection: WorkbenchTerminalPaneProjection;
   shell: TerminalShellController;
@@ -119,7 +119,7 @@ export interface ApiWorkbenchTerminalShellPaneRenderOptions extends ApiWorkbench
   addHit: (rect: Rectangle, action: TerminalShellViewHitAction) => void;
 }
 
-export interface ApiWorkbenchTerminalShellPanesRenderOptions extends ApiWorkbenchTerminalShellPaintCallbacks {
+interface ApiWorkbenchTerminalShellPanesRenderOptions extends ApiWorkbenchTerminalShellPaintCallbacks {
   frame: WorkbenchFrame;
   rect: Rectangle;
   inspection: TerminalShellWorkspaceInspection;

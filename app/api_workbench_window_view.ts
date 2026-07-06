@@ -38,16 +38,16 @@ export class ApiWorkbenchWindowShellBufferCache<TId extends string> {
   readonly scrollbarCommands: WorkbenchScrollbarRenderCommand[] = [];
 }
 
-export interface ApiWorkbenchWindowContentContext {
+interface ApiWorkbenchWindowContentContext {
   viewport: Rectangle;
   offset: { columns: number; rows: number };
 }
 
-export interface ApiWorkbenchWindowContentRenderedContext extends ApiWorkbenchWindowContentContext {
+interface ApiWorkbenchWindowContentRenderedContext extends ApiWorkbenchWindowContentContext {
   contentHitStart: number;
 }
 
-export interface ApiWorkbenchWindowFrameRenderOptions<TId extends string = string> {
+interface ApiWorkbenchWindowFrameRenderOptions<TId extends string = string> {
   frame: WorkbenchFrame;
   rect: Rectangle;
   title: string;
@@ -59,7 +59,7 @@ export interface ApiWorkbenchWindowFrameRenderOptions<TId extends string = strin
   fillRect: (frame: WorkbenchFrame, rect: Rectangle, bg: string) => void;
 }
 
-export interface ApiWorkbenchWindowShellRenderOptions<TId extends string, TAction> {
+interface ApiWorkbenchWindowShellRenderOptions<TId extends string, TAction> {
   frame: WorkbenchFrame;
   id: TId;
   rect: Rectangle;

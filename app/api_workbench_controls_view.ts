@@ -63,14 +63,14 @@ export class ApiWorkbenchControlsViewBufferCache {
   readonly stepperHitPlacements: ApiWorkbenchControlHitPlacement[] = [];
 }
 
-export interface ApiWorkbenchControlsViewHitAction {
+interface ApiWorkbenchControlsViewHitAction {
   type: "control";
   id: ApiWorkbenchControlId;
   action?: ApiWorkbenchControlHitAction;
   index?: number;
 }
 
-export interface ApiWorkbenchControlsDropdownOverlay {
+interface ApiWorkbenchControlsDropdownOverlay {
   kind: "control";
   coordinate: "workspace";
   rect: Rectangle;
@@ -78,7 +78,7 @@ export interface ApiWorkbenchControlsDropdownOverlay {
   selectedIndex?: number;
 }
 
-export interface ApiWorkbenchControlsViewState<Value extends string = string> {
+interface ApiWorkbenchControlsViewState<Value extends string = string> {
   activeControl: ApiWorkbenchControlId;
   buttonPressCount: number;
   genericButtonPressCount: number;
@@ -127,7 +127,7 @@ export interface ApiWorkbenchControlsViewState<Value extends string = string> {
   };
 }
 
-export interface ApiWorkbenchControlsViewOptions<Frame = WorkbenchFrame, Value extends string = string> {
+interface ApiWorkbenchControlsViewOptions<Frame = WorkbenchFrame, Value extends string = string> {
   frame: Frame;
   rect: Rectangle;
   state: ApiWorkbenchControlsViewState<Value>;
@@ -140,7 +140,7 @@ export interface ApiWorkbenchControlsViewOptions<Frame = WorkbenchFrame, Value e
   addHit: (rect: Rectangle, action: ApiWorkbenchControlsViewHitAction) => void;
 }
 
-export interface ApiWorkbenchControlsViewResult {
+interface ApiWorkbenchControlsViewResult {
   dropdownOverlay?: ApiWorkbenchControlsDropdownOverlay;
 }
 
