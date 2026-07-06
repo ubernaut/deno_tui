@@ -897,7 +897,7 @@ Deno.test("hasThreePanelGridCells reports visible grid dimensions", () => {
 
 Deno.test("ThreePanelGraphicsImageController replaces and clears image handles", async () => {
   const surface = new FakeGraphicsSurface();
-  let generation = 1;
+  const generation = 1;
   let disposed = false;
   const controller = new ThreePanelGraphicsImageController({
     currentGeneration: () => generation,

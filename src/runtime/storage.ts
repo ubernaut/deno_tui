@@ -13,16 +13,18 @@ export interface AsyncStore<T = unknown> {
 export class MemoryStore<T = unknown> implements AsyncStore<T> {
   private readonly values = new Map<string, T>();
 
-  async get(key: string): Promise<T | undefined> {
-    return this.values.get(key);
+  get(key: string): Promise<T | undefined> {
+    return Promise.resolve(this.values.get(key));
   }
 
-  async set(key: string, value: T): Promise<void> {
+  set(key: string, value: T): Promise<void> {
     this.values.set(key, value);
+    return Promise.resolve();
   }
 
-  async delete(key: string): Promise<void> {
+  delete(key: string): Promise<void> {
     this.values.delete(key);
+    return Promise.resolve();
   }
 }
 

@@ -140,26 +140,29 @@ export class NoopGraphicsSurface implements GraphicsSurface {
   #nextPlacementId = 1;
   #commandCount = 0;
 
-  async putImage(_image: GraphicsImage, placement: GraphicsPlacement): Promise<GraphicsHandle> {
+  putImage(_image: GraphicsImage, placement: GraphicsPlacement): Promise<GraphicsHandle> {
     const handle = createGraphicsHandle(this.kind, this.#nextImageId++, this.#nextPlacementId++, placement);
     this.#handles.set(handle.id, handle);
-    return handle;
+    return Promise.resolve(handle);
   }
 
-  async moveImage(handle: GraphicsHandle, placement: GraphicsPlacement): Promise<void> {
+  moveImage(handle: GraphicsHandle, placement: GraphicsPlacement): Promise<void> {
     const current = this.#handles.get(handle.id);
-    if (!current) return;
+    if (!current) return Promise.resolve();
     this.#handles.set(handle.id, { ...current, placement: normalizePlacement(placement) });
+    return Promise.resolve();
   }
 
-  async deleteImage(handle: GraphicsHandle): Promise<void> {
+  deleteImage(handle: GraphicsHandle): Promise<void> {
     this.#handles.delete(handle.id);
     this.#commandCount += 1;
+    return Promise.resolve();
   }
 
-  async clear(): Promise<void> {
+  clear(): Promise<void> {
     if (this.#handles.size > 0) this.#commandCount += 1;
     this.#handles.clear();
+    return Promise.resolve();
   }
 
   inspect(): GraphicsSurfaceInspection {

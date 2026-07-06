@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertNotEquals } from "jsr:@std/assert";
+import { assert, assertEquals, assertNotEquals } from "./deps.ts";
 import {
   applyWorkbenchAsciiConfigRowAction,
   asciiNumericOptionRatio,

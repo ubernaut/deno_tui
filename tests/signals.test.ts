@@ -672,11 +672,11 @@ Deno.test("signals/mod.ts", async (t) => {
     await t.step("effects can dispose during propagation", async () => {
       const signal = new Signal(0);
       const seen: number[] = [];
-      let effect!: Effect;
-      effect = new Effect(() => {
+      const effectRef: { current?: Effect } = {};
+      effectRef.current = new Effect(() => {
         seen.push(signal.value);
         if (signal.value === 1) {
-          effect.dispose();
+          effectRef.current?.dispose();
         }
       });
       await Promise.resolve();

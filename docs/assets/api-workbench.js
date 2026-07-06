@@ -11795,14 +11795,16 @@ function createRuntimeProfileLookupIndex(definitions) {
 // src/runtime/storage.ts
 var MemoryStore = class {
   values = /* @__PURE__ */ new Map();
-  async get(key) {
-    return this.values.get(key);
+  get(key) {
+    return Promise.resolve(this.values.get(key));
   }
-  async set(key, value) {
+  set(key, value) {
     this.values.set(key, value);
+    return Promise.resolve();
   }
-  async delete(key) {
+  delete(key) {
     this.values.delete(key);
+    return Promise.resolve();
   }
 };
 var IndexedDbStore = class {

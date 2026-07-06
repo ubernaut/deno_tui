@@ -259,7 +259,7 @@ Deno.test("ApiWorkbenchThreeRuntimeController does not undo fullscreen pressure 
 });
 
 Deno.test("ApiWorkbenchThreeRuntimeController promotes downshifted fullscreen budget when viewport grows", () => {
-  let fullscreen = true;
+  const fullscreen = true;
   const controller = new ApiWorkbenchThreeRuntimeController({
     hasLiveThreeWindow: () => true,
     hasFullscreenThreeWindow: () => fullscreen,

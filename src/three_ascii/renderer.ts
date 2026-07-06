@@ -762,7 +762,7 @@ export class ThreeAsciiRenderer {
     forceBlockingDeferredReadback = false,
   ): Promise<string[][]> {
     const computeMode = resolveThreeAsciiComputeMode(effectState, this.terminalGlyphStyle);
-    await this.ensureComputeResources(
+    this.ensureComputeResources(
       effectState,
       computeMode.includeFill,
       computeMode.includeEdges,
@@ -1020,12 +1020,12 @@ export class ThreeAsciiRenderer {
     }
   }
 
-  private async ensureComputeResources(
+  private ensureComputeResources(
     effectState: ThreeAsciiEffectState,
     includeTerminalFill = true,
     includeTerminalEdges = effectState.edges,
     includeTerminalDepthColor = effectState.depthFalloff > 0,
-  ): Promise<void> {
+  ): void {
     if (!this.device || !this.renderer || !this.asciiNode) {
       throw new Error("ThreeAsciiRenderer has not been initialized.");
     }

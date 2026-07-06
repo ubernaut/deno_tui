@@ -1615,18 +1615,18 @@ class BenchmarkMetricsProvider implements SystemMetricsProvider {
     return [{ name: "eth0", address: "192.0.2.20" }];
   }
 
-  async readTextFile(path: string): Promise<string> {
-    if (path === "/proc/stat") return benchmarkProcStat(this.step);
-    if (path === "/proc/uptime") return `${10_000 + this.step}.00 0.00\n`;
-    if (path === "/proc/net/dev") return benchmarkProcNetDev(this.step);
+  readTextFile(path: string): Promise<string> {
+    if (path === "/proc/stat") return Promise.resolve(benchmarkProcStat(this.step));
+    if (path === "/proc/uptime") return Promise.resolve(`${10_000 + this.step}.00 0.00\n`);
+    if (path === "/proc/net/dev") return Promise.resolve(benchmarkProcNetDev(this.step));
     if (path.startsWith("/proc/") && path.endsWith("/stat")) {
       const pid = Number(path.split("/")[2] ?? 0);
       this.processStatReads += 1;
-      return benchmarkProcessStat(pid, this.step);
+      return Promise.resolve(benchmarkProcessStat(pid, this.step));
     }
-    if (path === "/sys/class/thermal/thermal_zone0/type") return "bench_pkg\n";
-    if (path === "/sys/class/thermal/thermal_zone0/temp") return "61000\n";
-    throw new Error(`missing benchmark fixture: ${path}`);
+    if (path === "/sys/class/thermal/thermal_zone0/type") return Promise.resolve("bench_pkg\n");
+    if (path === "/sys/class/thermal/thermal_zone0/temp") return Promise.resolve("61000\n");
+    return Promise.reject(new Error(`missing benchmark fixture: ${path}`));
   }
 
   async *readDir(path: string): AsyncIterable<SystemMetricsDirEntry> {
@@ -1641,18 +1641,18 @@ class BenchmarkMetricsProvider implements SystemMetricsProvider {
     }
   }
 
-  async command(command: string, _args: string[]): Promise<SystemMetricsCommandOutput> {
+  command(command: string, _args: string[]): Promise<SystemMetricsCommandOutput> {
     if (command === "df") {
-      return commandOutput([
+      return Promise.resolve(commandOutput([
         "Filesystem 1B-blocks Used Available Use% Mounted on",
         "/dev/nvme0n1p2 1000000000 610000000 390000000 61% /",
         "/dev/nvme1n1p1 2000000000 900000000 1100000000 45% /data",
-      ].join("\n"));
+      ].join("\n")));
     }
     if (command === "nvidia-smi") {
-      return commandOutput("Bench GPU, 82, 8192, 24576, 71, 220, 2100, 10500\n");
+      return Promise.resolve(commandOutput("Bench GPU, 82, 8192, 24576, 71, 220, 2100, 10500\n"));
     }
-    return { success: false, stdout: new Uint8Array() };
+    return Promise.resolve({ success: false, stdout: new Uint8Array() });
   }
 }
 
