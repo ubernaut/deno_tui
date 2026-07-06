@@ -4,9 +4,7 @@ import { type WorkbenchTerminalSessionTabBufferCache } from "../src/app/workbenc
 import {
   type WorkbenchTerminalCopyRowProjection,
   workbenchTerminalCopyRowsInto,
-  type WorkbenchTerminalPaneProjection,
   workbenchTerminalPaneProjectionsInto,
-  type WorkbenchTerminalPaneTitleRenderCommand,
   workbenchTerminalPaneTitleRenderCommandsInto,
   workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
@@ -104,19 +102,6 @@ interface ApiWorkbenchTerminalShellCopyPaneRenderOptions extends ApiWorkbenchTer
   rows: WorkbenchTerminalCopyRowProjection[];
   theme: ApiWorkbenchThemeSpec;
   addHit: (rect: Rectangle, action: { type: "terminalShellCopyRow"; index: number }) => void;
-}
-
-interface ApiWorkbenchTerminalShellPaneRenderOptions extends ApiWorkbenchTerminalShellPaintCallbacks {
-  frame: WorkbenchFrame;
-  projection: WorkbenchTerminalPaneProjection;
-  shell: TerminalShellController;
-  copyMode: boolean;
-  cursorActive: boolean;
-  titleCommand?: WorkbenchTerminalPaneTitleRenderCommand;
-  copyRows: WorkbenchTerminalCopyRowProjection[];
-  theme: ApiWorkbenchThemeSpec;
-  fillRect: (frame: WorkbenchFrame, rect: Rectangle, background: string) => void;
-  addHit: (rect: Rectangle, action: TerminalShellViewHitAction) => void;
 }
 
 interface ApiWorkbenchTerminalShellPanesRenderOptions extends ApiWorkbenchTerminalShellPaintCallbacks {
@@ -246,62 +231,11 @@ export function renderApiWorkbenchTerminalShellCopyPane(
   }
 }
 
-/** Renders one terminal workspace pane, including its title, content hit target, and copy/live body. */
-export function renderApiWorkbenchTerminalShellPane(
-  options: ApiWorkbenchTerminalShellPaneRenderOptions,
-): void {
-  const { frame, projection, shell, copyMode, cursorActive, titleCommand, theme, fillRect, write, paint, addHit } =
-    options;
-  const rect = projection.rect;
-  if (rect.width <= 0 || rect.height <= 0) return;
-  const active = projection.active;
-  fillRect(frame, rect, active ? theme.surface : theme.background);
-  const content = projection.contentRect;
-  if (titleCommand) {
-    write(
-      frame,
-      titleCommand.rect.row,
-      titleCommand.rect.column,
-      paint(titleCommand.text, titleCommand.style),
-    );
-    if (titleCommand.paneId) {
-      addHit(titleCommand.hitRect, {
-        type: "terminalShellPane",
-        id: titleCommand.paneId,
-      });
-    }
-  }
-  if (content.width <= 0 || content.height <= 0) return;
-  shell.resize(content.width, content.height);
-  if (active) addHit(content, { type: "terminalShellContent" });
-  if (copyMode) {
-    renderApiWorkbenchTerminalShellCopyPane({
-      ...options,
-      rect: content,
-      inspection: shell.inspect(),
-      rows: options.copyRows,
-    });
-    return;
-  }
-  const cursor = shell.screen.cursor;
-  const rows = shell.screen.cellRows();
-  for (let screenRow = 0; screenRow < content.height; screenRow += 1) {
-    const cells = rows[screenRow] ?? [];
-    for (let column = 0; column < content.width; column += 1) {
-      const cell = cells[column] ?? { char: " " };
-      const atCursor = cursorActive && cursor.row === screenRow && cursor.column === column;
-      const style = apiWorkbenchTerminalCellStyle(cell, theme, atCursor);
-      const char = atCursor && cell.char === " " ? " " : cell.char;
-      write(frame, content.row + screenRow, content.column + column, paint(char, style));
-    }
-  }
-}
-
 /** Renders all terminal workspace panes for the shell window. */
 export function renderApiWorkbenchTerminalShellPanes(
   options: ApiWorkbenchTerminalShellPanesRenderOptions,
 ): void {
-  const { rect, inspection, buffers, theme, contrastText } = options;
+  const { frame, rect, inspection, buffers, theme, contrastText, fillRect, write, paint, addHit } = options;
   if (rect.width <= 0 || rect.height <= 0) return;
   const projections = workbenchTerminalPaneProjectionsInto(
     buffers.paneProjections,
@@ -324,15 +258,42 @@ export function renderApiWorkbenchTerminalShellPanes(
     const shell = projection.sessionId ? options.shellForSession(projection.sessionId) : options.activeShell;
     if (!shell) continue;
     const titleCommand = projection.titleVisible ? titleCommands[titleIndex++] : undefined;
-    renderApiWorkbenchTerminalShellPane({
-      ...options,
-      projection,
-      shell,
-      copyMode: options.copyMode && projection.active,
-      cursorActive: options.rawInputActive && projection.active && shell.running,
-      titleCommand,
-      copyRows: buffers.copyRows,
-    });
+    const paneRect = projection.rect;
+    if (paneRect.width <= 0 || paneRect.height <= 0) continue;
+    const active = projection.active;
+    fillRect(frame, paneRect, active ? theme.surface : theme.background);
+    const content = projection.contentRect;
+    if (titleCommand) {
+      write(frame, titleCommand.rect.row, titleCommand.rect.column, paint(titleCommand.text, titleCommand.style));
+      if (titleCommand.paneId) {
+        addHit(titleCommand.hitRect, { type: "terminalShellPane", id: titleCommand.paneId });
+      }
+    }
+    if (content.width <= 0 || content.height <= 0) continue;
+    shell.resize(content.width, content.height);
+    if (active) addHit(content, { type: "terminalShellContent" });
+    if (options.copyMode && active) {
+      renderApiWorkbenchTerminalShellCopyPane({
+        ...options,
+        rect: content,
+        inspection: shell.inspect(),
+        rows: buffers.copyRows,
+      });
+      continue;
+    }
+    const cursor = shell.screen.cursor;
+    const rows = shell.screen.cellRows();
+    const cursorActive = options.rawInputActive && active && shell.running;
+    for (let screenRow = 0; screenRow < content.height; screenRow += 1) {
+      const cells = rows[screenRow] ?? [];
+      for (let column = 0; column < content.width; column += 1) {
+        const cell = cells[column] ?? { char: " " };
+        const atCursor = cursorActive && cursor.row === screenRow && cursor.column === column;
+        const style = apiWorkbenchTerminalCellStyle(cell, theme, atCursor);
+        const char = atCursor && cell.char === " " ? " " : cell.char;
+        write(frame, content.row + screenRow, content.column + column, paint(char, style));
+      }
+    }
   }
 }
 
