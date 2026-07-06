@@ -206,6 +206,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     Markdown formatting together behind the public `src/theme.ts` facade.
   - Workbench Three grid benchmark setup is folded into `scripts/benchmark_cases.ts`, keeping renderer performance
     coverage in the catalog while removing a single-use benchmark helper shard.
+  - Workbench Three block-span flush benchmark setup is folded into `scripts/benchmark_cases.ts`, keeping the terminal
+    output pressure guard in the catalog while removing another single-use benchmark helper shard.
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

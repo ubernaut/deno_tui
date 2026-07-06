@@ -107,7 +107,6 @@ import {
 import { applyThreeAsciiRerenderRanges } from "../src/canvas/three_ascii_ranges.ts";
 import { createTextObjectFullRowCanvasBenchmark } from "./benchmark_textobject_canvas.ts";
 import { threeAsciiBenchmarkCases } from "./benchmark_three_ascii.ts";
-import { createWorkbenchThreeBlockFlushBenchmark } from "./benchmark_workbench_three_block.ts";
 
 const sparklineValues = Array.from({ length: 200 }, (_, index) => Math.sin(index / 8));
 const ansiSinkStyledRangeValues = Array.from(
@@ -195,13 +194,22 @@ const threePanelScaleSourceGrid = Array.from(
 const threePanelScaleTargetGrid: string[][] = [];
 const threePanelScaleCache = new ThreePanelGridScaleCache();
 let threePanelScaleChecksum = 0;
-const workbenchThreeBlockBenchmark = createWorkbenchThreeBlockFlushBenchmark({
-  frameWidth: 168,
-  frameRows: 54,
-  panelColumn: 96,
-  panelRow: 12,
-  panelWidth: 40,
-  panelRows: 24,
+const workbenchThreeBlockFrameWidth = 168;
+const workbenchThreeBlockFrameRows = 54;
+const workbenchThreeBlockPanelColumn = 96;
+const workbenchThreeBlockPanelRow = 12;
+const workbenchThreeBlockPanelWidth = 40;
+const workbenchThreeBlockPanelRows = 24;
+const workbenchThreeBlockFrame: WorkbenchFrame = [];
+const workbenchThreeBlockPanelCells = new Array<string>(workbenchThreeBlockPanelWidth);
+let workbenchThreeBlockWave = 0;
+let workbenchThreeBlockChecksum = 0;
+let workbenchThreeBlockBytesWritten = 0;
+const workbenchThreeBlockPainter = new WorkbenchAnsiScreenPainter({
+  writeSync(data) {
+    workbenchThreeBlockBytesWritten += data.byteLength;
+    return data.byteLength;
+  },
 });
 const ansiRichRows = Array.from({ length: 250 }, (_, index) => {
   const red = (index * 17) % 256;
@@ -1343,6 +1351,58 @@ function runThreePanelGridScaleCachedWorkload(): void {
   }
 }
 
+function runWorkbenchThreeBlockFlushWorkload(): void {
+  workbenchThreeBlockWave = (workbenchThreeBlockWave + 1) % 64;
+  const prepared = prepareWorkbenchFrame(workbenchThreeBlockFrame, workbenchThreeBlockFrameRows);
+  for (let row = 0; row < workbenchThreeBlockFrameRows; row += 1) {
+    writeFrame(
+      prepared,
+      workbenchThreeBlockFrameWidth,
+      row,
+      0,
+      `\x1b[38;2;210;220;235;48;2;8;6;18m${"WORKBENCH ".repeat(17)}\x1b[0m`,
+    );
+  }
+
+  for (let row = 0; row < workbenchThreeBlockPanelRows; row += 1) {
+    const outputRow = workbenchThreeBlockPanelRow + row;
+    for (let column = 0; column < workbenchThreeBlockPanelWidth; column += 1) {
+      const red = (column * 9 + row * 5 + workbenchThreeBlockWave * 7) % 256;
+      const green = (96 + column * 3 + row * 11 + workbenchThreeBlockWave * 13) % 256;
+      const blue = (180 + column * 7 + row * 2 + workbenchThreeBlockWave * 5) % 256;
+      workbenchThreeBlockPanelCells[column] = `\x1b[48;2;${red};${green};${blue}m \x1b[0m`;
+    }
+    writeFrameCells(prepared[outputRow]!, workbenchThreeBlockPanelColumn, workbenchThreeBlockPanelCells);
+  }
+
+  const first = workbenchThreeBlockPainter.flush(
+    prepared,
+    workbenchThreeBlockFrameWidth,
+    workbenchThreeBlockFrameRows,
+    renderFrameRow,
+    renderFrameSlice,
+  );
+  const second = workbenchThreeBlockPainter.flush(
+    prepared,
+    workbenchThreeBlockFrameWidth,
+    workbenchThreeBlockFrameRows,
+    renderFrameRow,
+    renderFrameSlice,
+  );
+  workbenchThreeBlockChecksum = (workbenchThreeBlockChecksum + first.changed + first.bytes + second.changed +
+    second.bytes) % 1_000_000;
+  if (
+    (first.changed !== workbenchThreeBlockPanelRows && first.changed !== workbenchThreeBlockFrameRows) ||
+    first.bytes <= 0 ||
+    first.bytes >= workbenchThreeBlockFrameRows * workbenchThreeBlockFrameWidth * 12 ||
+    second.changed !== 0 ||
+    second.bytes !== 0 ||
+    !Number.isFinite(workbenchThreeBlockChecksum + workbenchThreeBlockBytesWritten)
+  ) {
+    throw new Error("workbench Three block span flush workload failed");
+  }
+}
+
 function runWorkbenchThreeGridScaledWorkload(): void {
   const preparedFrame = prepareWorkbenchFrame(workbenchThreeGridFrame, workbenchThreeGridTargetRows);
   writeWorkbenchThreeGrid(
@@ -1861,7 +1921,7 @@ export const benchmarkCases: BenchmarkCase[] = [
     tags: ["render", "workbench", "three", "ansi", "terminal", "span", "blocks"],
     iterations: 250,
     maxAverageMs: 8,
-    run: workbenchThreeBlockBenchmark.run,
+    run: runWorkbenchThreeBlockFlushWorkload,
   },
   {
     name: "render/workbench-three-header-telemetry",
