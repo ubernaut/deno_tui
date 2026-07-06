@@ -39,7 +39,6 @@ import {
   ThemeInheritanceError as ThemeInheritanceErrorImplementation,
 } from "./theme_engine.ts";
 import { createThemeCatalogFromInspection, previewThemeProviderCore } from "./theme_provider_preview.ts";
-import { ThemeProviderImplementation } from "./theme_provider.ts";
 
 /** Function that's supposed to return styled text given string as parameter */
 export type Style = StyleInternal;
@@ -1422,20 +1421,156 @@ export interface ThemeProviderOptions {
 }
 
 /** Public class implementing a theme Provider. */
-export class ThemeProvider extends ThemeProviderImplementation<ThemeRegistry, ThemeLayerStack, ThemeEngine> {
+export class ThemeProvider {
+  readonly registry: ThemeRegistry;
+  readonly activeId: Signal<string>;
+  readonly engine: Computed<ThemeEngine>;
+  readonly layers: ThemeLayerStack;
+  readonly ready: Promise<string>;
+  readonly #overrides: ThemeEngineOptions;
+  readonly #store?: AsyncStore<string>;
+  readonly #storageKey: string;
+  readonly #onError?: (error: unknown) => void;
+  #loaded = false;
+  #dirtyBeforeLoad = false;
+  #suspendWrites = false;
+  #pendingWrite: Promise<void> = Promise.resolve();
+
   constructor(options: ThemeProviderOptions = {}) {
-    super({
-      ...options,
-      createDefaultRegistry: () => createThemeRegistry(defaultThemePacks),
-      createLayerStack: createThemeLayerStack,
-      isLayerStack: (layers): layers is ThemeLayerStack => layers instanceof ThemeLayerStack,
-      composeOptions: composeThemeOptions,
-    });
+    this.registry = options.registry ?? createThemeRegistry(defaultThemePacks);
+    this.activeId = options.activeId instanceof Signal
+      ? options.activeId
+      : new Signal(options.activeId ?? this.registry.ids()[0] ?? "plain");
+    this.#overrides = composeThemeOptions(options.overrides ?? {});
+    this.layers = options.layers instanceof ThemeLayerStack
+      ? options.layers
+      : createThemeLayerStack(options.layers ?? []);
+    this.#store = options.store;
+    this.#storageKey = options.storageKey ?? "theme.active";
+    this.#onError = options.onError;
+    this.engine = new Computed(() => this.engineFor(this.activeId.value));
+    this.activeId.subscribe((id) => this.#persistTheme(id));
+    this.ready = this.#loadTheme();
   }
 
   catalog(): ThemeCatalog {
     return createThemeCatalog(this);
   }
+
+  setTheme(id: string): boolean {
+    if (!this.registry.has(id)) return false;
+    this.activeId.value = id;
+    return true;
+  }
+
+  themeIds(): string[] {
+    return this.registry.ids();
+  }
+
+  cycleTheme(direction = 1): string {
+    const ids = this.themeIds();
+    if (ids.length === 0) return this.activeId.peek();
+
+    const currentIndex = Math.max(0, ids.indexOf(this.activeId.peek()));
+    const nextIndex = positiveModulo(currentIndex + direction, ids.length);
+    this.setTheme(ids[nextIndex]!);
+    return this.activeId.peek();
+  }
+
+  nextTheme(): string {
+    return this.cycleTheme(1);
+  }
+
+  previousTheme(): string {
+    return this.cycleTheme(-1);
+  }
+
+  engineFor(id: string): ThemeEngine {
+    return this.registry.engine(
+      id,
+      composeThemeOptions(this.#overrides, this.layers.options.value),
+    );
+  }
+
+  async flush(): Promise<void> {
+    await this.ready;
+    await this.#pendingWrite;
+  }
+
+  async resetTheme(id = this.themeIds()[0] ?? this.activeId.peek()): Promise<boolean> {
+    if (!this.registry.has(id)) return false;
+    await this.ready;
+    this.#suspendWrites = true;
+    this.activeId.value = id;
+    this.#suspendWrites = false;
+    this.#pendingWrite = this.#pendingWrite
+      .catch(() => undefined)
+      .then(() => this.#store?.delete(this.#storageKey))
+      .catch((error) => this.#onError?.(error));
+    await this.#pendingWrite;
+    return true;
+  }
+
+  component(componentName: string, variant = "default"): Computed<Theme> {
+    return new Computed(() => this.engine.value.component(componentName, variant));
+  }
+
+  resolve(componentName: string, state: ThemeState, variant = "default"): Computed<Style> {
+    return new Computed(() => this.engine.value.resolve(componentName, state, variant));
+  }
+
+  inspect(): ThemeProviderInspection {
+    return {
+      activeId: this.activeId.peek(),
+      themes: this.registry.inspect(),
+      layers: this.layers.inspect(),
+      engine: this.engine.peek().inspect(),
+    };
+  }
+
+  async #loadTheme(): Promise<string> {
+    if (!this.#store) {
+      this.#loaded = true;
+      return this.activeId.peek();
+    }
+
+    try {
+      const storedId = await this.#store.get(this.#storageKey);
+      this.#loaded = true;
+      if (storedId && this.registry.has(storedId) && !this.#dirtyBeforeLoad) {
+        this.#suspendWrites = true;
+        this.activeId.value = storedId;
+        this.#suspendWrites = false;
+      } else if (this.#dirtyBeforeLoad) {
+        this.#writeTheme(this.activeId.peek());
+      }
+      return this.activeId.peek();
+    } catch (error) {
+      this.#loaded = true;
+      this.#onError?.(error);
+      return this.activeId.peek();
+    }
+  }
+
+  #persistTheme(id: string): void {
+    if (this.#suspendWrites || !this.#store) return;
+    if (!this.#loaded) {
+      this.#dirtyBeforeLoad = true;
+      return;
+    }
+    this.#writeTheme(id);
+  }
+
+  #writeTheme(id: string): void {
+    this.#pendingWrite = this.#pendingWrite
+      .catch(() => undefined)
+      .then(() => this.#store?.set(this.#storageKey, id))
+      .catch((error) => this.#onError?.(error));
+  }
+}
+
+function positiveModulo(value: number, divisor: number): number {
+  return ((value % divisor) + divisor) % divisor;
 }
 
 /** Public constant for a default Theme Packs. */

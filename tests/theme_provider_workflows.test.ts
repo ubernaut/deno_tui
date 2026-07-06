@@ -16,13 +16,12 @@ import {
   themeTokenNames,
 } from "../src/theme.ts";
 import { createThemeCatalogFromInspection, previewThemeProviderCore } from "../src/theme_provider_preview.ts";
-import { ThemeProviderImplementation } from "../src/theme_provider.ts";
 import {
   createThemeProviderReportCore,
   formatThemeProviderReportMarkdownFromReport,
 } from "../src/theme_provider_report.ts";
 
-Deno.test("theme provider module backs the public facade class", async () => {
+Deno.test("theme provider exposes public persistence and resolution behavior", async () => {
   const store = new MemoryStore<string>();
   await store.set("theme.active", "ops");
 
@@ -42,7 +41,6 @@ Deno.test("theme provider module backs the public facade class", async () => {
   });
 
   assertInstanceOf(provider, ThemeProvider);
-  assertInstanceOf(provider, ThemeProviderImplementation);
   assertEquals(await provider.ready, "ops");
   assertEquals(provider.activeId.peek(), "ops");
   assertEquals(provider.resolve("button", "active").peek()("go"), "!go!");
