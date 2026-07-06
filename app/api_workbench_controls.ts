@@ -745,12 +745,6 @@ export interface ApiWorkbenchTextboxRenderOptions {
   continuationGlyph?: string;
 }
 
-export function apiWorkbenchTextboxProjection(
-  options: ApiWorkbenchTextboxProjectionOptions,
-): ApiWorkbenchTextboxProjection {
-  return apiWorkbenchTextboxProjectionInto([], options);
-}
-
 export function apiWorkbenchTextboxProjectionInto(
   rows: ApiWorkbenchTextboxProjectionRow[],
   options: ApiWorkbenchTextboxProjectionOptions,
@@ -965,21 +959,24 @@ export interface ApiWorkbenchProgressRowOptions {
   title?: string;
 }
 
-export interface ApiWorkbenchControlsRowsOptions {
+interface ApiWorkbenchControlsRowsBaseOptions {
   buttonPressCount: number;
   genericButtonPressCount: number;
   modalOpen: boolean;
   slider: ApiWorkbenchSliderRowOptions;
-  checkboxes: readonly ApiWorkbenchCheckboxOption[];
-  radio: {
-    items: readonly ApiWorkbenchRadioOption[];
-    activeIndex: number;
-  };
   combo: ApiWorkbenchComboHeaderRowsOptions;
   dropdown: ApiWorkbenchDropdownHeaderRowOptions;
   input: ApiWorkbenchInputRowOptions;
   stepper: ApiWorkbenchStepperRowOptions;
   progress: ApiWorkbenchProgressRowOptions;
+}
+
+interface ApiWorkbenchControlsRowsOptions extends ApiWorkbenchControlsRowsBaseOptions {
+  checkboxes: readonly ApiWorkbenchCheckboxOption[];
+  radio: {
+    items: readonly ApiWorkbenchRadioOption[];
+    activeIndex: number;
+  };
 }
 
 export interface ApiWorkbenchControlsSnapshotBuffers {
@@ -988,7 +985,7 @@ export interface ApiWorkbenchControlsSnapshotBuffers {
 }
 
 export interface ApiWorkbenchControlsSnapshotOptions<Value extends string = string>
-  extends Omit<ApiWorkbenchControlsRowsOptions, "checkboxes" | "radio"> {
+  extends ApiWorkbenchControlsRowsBaseOptions {
   checkboxLivePreview: boolean;
   checkboxCompactRows: boolean;
   radioOptions: readonly ApiWorkbenchRadioSourceOption<Value>[];
@@ -1106,7 +1103,7 @@ export function apiWorkbenchProgressRowInto(
   );
 }
 
-export function apiWorkbenchControlsRowsInto(
+function apiWorkbenchControlsRowsInto(
   target: ApiWorkbenchProjectedControlRow[],
   options: ApiWorkbenchControlsRowsOptions,
 ): ApiWorkbenchProjectedControlRow[] {

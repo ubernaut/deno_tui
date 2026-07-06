@@ -13,7 +13,6 @@ import {
   type ApiWorkbenchControlLineRenderCommand,
   apiWorkbenchControlLineRenderCommandsInto,
   type ApiWorkbenchControlLineSegment,
-  apiWorkbenchControlsRowsInto,
   apiWorkbenchControlsSnapshotRowsInto,
   apiWorkbenchControlTrack,
   apiWorkbenchDropdownHeaderRowInto,
@@ -26,7 +25,6 @@ import {
   apiWorkbenchStepperHitPlacementsInto,
   apiWorkbenchStepperRowInto,
   apiWorkbenchTextboxCommandStyle,
-  apiWorkbenchTextboxProjection,
   apiWorkbenchTextboxProjectionInto,
   type ApiWorkbenchTextboxRenderCommand,
   apiWorkbenchTextboxRenderCommandsInto,
@@ -539,7 +537,7 @@ Deno.test("api workbench wrapped option render commands clip and reuse caller st
 });
 
 Deno.test("api workbench textbox projection wraps reveals cursor and emits shared hit geometry", () => {
-  const projection = apiWorkbenchTextboxProjection({
+  const projection = apiWorkbenchTextboxProjectionInto([], {
     rect: { column: 5, row: 10, width: 24, height: 8 },
     row: 12,
     lines: ["alpha beta gamma delta", "second line"],
@@ -617,7 +615,7 @@ Deno.test("api workbench textbox projection wraps reveals cursor and emits share
 });
 
 Deno.test("api workbench textbox projection can reuse caller-owned rows", () => {
-  const rows = apiWorkbenchTextboxProjection({
+  const rows = apiWorkbenchTextboxProjectionInto([], {
     rect: { column: 2, row: 4, width: 22, height: 6 },
     row: 5,
     lines: ["alpha beta gamma", "tail"],
@@ -653,7 +651,7 @@ Deno.test("api workbench textbox projection can reuse caller-owned rows", () => 
 });
 
 Deno.test("api workbench textbox render commands project label and body rows", () => {
-  const projection = apiWorkbenchTextboxProjection({
+  const projection = apiWorkbenchTextboxProjectionInto([], {
     rect: { column: 5, row: 10, width: 24, height: 8 },
     row: 12,
     lines: ["alpha beta gamma delta"],
@@ -714,7 +712,7 @@ Deno.test("api workbench textbox render commands support glyph overrides and reu
 });
 
 Deno.test("api workbench textbox projection reuses caller-owned visual lines", () => {
-  const visualLines = apiWorkbenchTextboxProjection({
+  const visualLines = apiWorkbenchTextboxProjectionInto([], {
     rect: { column: 2, row: 4, width: 18, height: 4 },
     row: 5,
     lines: ["alpha beta gamma"],
@@ -723,7 +721,7 @@ Deno.test("api workbench textbox projection reuses caller-owned visual lines", (
   }).rows.map((row) => row.visualLine);
   const firstVisualLine = visualLines[0];
 
-  const projection = apiWorkbenchTextboxProjection({
+  const projection = apiWorkbenchTextboxProjectionInto([], {
     rect: { column: 2, row: 4, width: 18, height: 4 },
     row: 5,
     lines: ["short"],
@@ -886,22 +884,21 @@ Deno.test("api workbench simple control row projectors preserve renderer-neutral
 });
 
 Deno.test("api workbench controls panel rows project shared adapter order", () => {
-  const rows = apiWorkbenchControlsRowsInto([], {
+  const checkboxBuffer = [{ label: "stale", checked: false }];
+  const radioBuffer = [{ label: "old", selected: true }];
+  const rows = apiWorkbenchControlsSnapshotRowsInto([], {
     buttonPressCount: 2,
     genericButtonPressCount: 3,
     modalOpen: true,
     slider: { track: { text: "██░░" }, value: 5, max: 10 },
-    checkboxes: [
-      { label: "live preview", checked: true },
-      { label: "compact rows", checked: false },
+    checkboxLivePreview: true,
+    checkboxCompactRows: false,
+    radioOptions: [
+      { label: "Fast", value: "fast" },
+      { label: "Unit-01 Signal", value: "unit" },
     ],
-    radio: {
-      items: [
-        { label: "Fast", selected: false },
-        { label: "Unit-01 Signal", selected: true },
-      ],
-      activeIndex: 1,
-    },
+    radioSelectedValue: "unit",
+    radioActiveIndex: 1,
     combo: {
       title: "Theme",
       label: "Unit-01 Signal",
@@ -930,6 +927,10 @@ Deno.test("api workbench controls panel rows project shared adapter order", () =
       track: { text: "███░" },
       value: 75,
     },
+    buffers: {
+      checkboxes: checkboxBuffer,
+      radio: radioBuffer,
+    },
   });
 
   assertEquals(rows.map((row) => [row.id, row.value, row.options]), [
@@ -953,18 +954,25 @@ Deno.test("api workbench controls panel rows project shared adapter order", () =
   ]);
 
   const first = rows[0];
-  apiWorkbenchControlsRowsInto(rows, {
+  apiWorkbenchControlsSnapshotRowsInto(rows, {
     buttonPressCount: 4,
     genericButtonPressCount: 0,
     modalOpen: false,
     slider: { track: { text: "░░░░" }, value: 1, max: 10 },
-    checkboxes: [],
-    radio: { items: [], activeIndex: 0 },
+    checkboxLivePreview: false,
+    checkboxCompactRows: false,
+    radioOptions: [],
+    radioSelectedValue: undefined,
+    radioActiveIndex: 0,
     combo: { title: "Theme", label: "A", expanded: false, rectWidth: 80 },
     dropdown: { title: "Dropdown", label: "A", expanded: true },
     input: { title: "Input", text: "", active: false },
     stepper: { steps: [], activeIndex: 0, rectWidth: 20 },
     progress: { track: { text: "░░░░" }, value: 0 },
+    buffers: {
+      checkboxes: checkboxBuffer,
+      radio: radioBuffer,
+    },
   });
   assertEquals(rows[0] === first, true);
   assertEquals(rows.at(-1), { id: "slider", value: "Progress  ░░░░ 0%", options: undefined });
@@ -1040,19 +1048,19 @@ Deno.test("api workbench controls snapshot rows assemble state into reusable buf
 });
 
 Deno.test("api workbench controls panel rows keep terminal and web geometry in parity", () => {
-  const projectedRows = apiWorkbenchControlsRowsInto([], {
+  const projectedRows = apiWorkbenchControlsSnapshotRowsInto([], {
     buttonPressCount: 1,
     genericButtonPressCount: 0,
     modalOpen: false,
     slider: { track: { text: "██░░" }, value: 5, max: 10 },
-    checkboxes: [{ label: "live preview", checked: true }],
-    radio: {
-      items: [
-        { label: "Fast", selected: true },
-        { label: "Ship", selected: false },
-      ],
-      activeIndex: 0,
-    },
+    checkboxLivePreview: true,
+    checkboxCompactRows: false,
+    radioOptions: [
+      { label: "Fast", value: "fast" },
+      { label: "Ship", value: "ship" },
+    ],
+    radioSelectedValue: "fast",
+    radioActiveIndex: 0,
     combo: {
       title: "Theme",
       label: "Unit-01 Signal",
@@ -1080,6 +1088,10 @@ Deno.test("api workbench controls panel rows keep terminal and web geometry in p
       rectWidth: 40,
     },
     progress: { track: { text: "███░" }, value: 75 },
+    buffers: {
+      checkboxes: [],
+      radio: [],
+    },
   });
   const terminal = projectRowsForAdapter(projectedRows, "radio");
   const web = projectRowsForAdapter(projectedRows, "radio");
