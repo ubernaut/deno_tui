@@ -7,7 +7,6 @@ import {
   apiWorkbenchPanelTitle,
   apiWorkbenchRows,
   apiWorkbenchShortPanelTitle,
-  apiWorkbenchTerminalAnsiColor,
   apiWorkbenchTerminalCellStyle,
   apiWorkbenchTerminalOutputLineStyle,
   apiWorkbenchTerminalStatusToneColor,
@@ -501,23 +500,6 @@ Deno.test("api workbench catalog creates terminal session drafts", () => {
   );
 });
 
-Deno.test("api workbench catalog maps ANSI terminal cell colors through active theme colors", () => {
-  const theme = createApiWorkbenchThemes()[0]!;
-
-  assertEquals(apiWorkbenchTerminalAnsiColor(30, theme, false), theme.background);
-  assertEquals(apiWorkbenchTerminalAnsiColor(31, theme, false), theme.danger);
-  assertEquals(apiWorkbenchTerminalAnsiColor(32, theme, false), theme.good);
-  assertEquals(apiWorkbenchTerminalAnsiColor(33, theme, false), theme.warn);
-  assertEquals(apiWorkbenchTerminalAnsiColor(34, theme, false), theme.accent);
-  assertEquals(apiWorkbenchTerminalAnsiColor(35, theme, false), theme.borderStrong);
-  assertEquals(apiWorkbenchTerminalAnsiColor(36, theme, false), theme.accent);
-  assertEquals(apiWorkbenchTerminalAnsiColor(37, theme, false), theme.text);
-  assertEquals(apiWorkbenchTerminalAnsiColor(40, theme, true), theme.background);
-  assertEquals(apiWorkbenchTerminalAnsiColor(47, theme, true), theme.text);
-  assertEquals(apiWorkbenchTerminalAnsiColor(undefined, theme, false), undefined);
-  assertEquals(apiWorkbenchTerminalAnsiColor(99, theme, false), undefined);
-});
-
 Deno.test("api workbench catalog projects terminal cell style defaults and cursor state", () => {
   const theme = createApiWorkbenchThemes()[0]!;
 
@@ -527,6 +509,16 @@ Deno.test("api workbench catalog projects terminal cell style defaults and curso
     bold: true,
   });
   assertEquals(apiWorkbenchTerminalCellStyle({}, theme, false), {
+    fg: theme.text,
+    bg: theme.surface,
+    bold: undefined,
+  });
+  assertEquals(apiWorkbenchTerminalCellStyle({ foreground: 35, background: 47 }, theme, false), {
+    fg: theme.borderStrong,
+    bg: theme.text,
+    bold: undefined,
+  });
+  assertEquals(apiWorkbenchTerminalCellStyle({ foreground: 99, background: 99 }, theme, false), {
     fg: theme.text,
     bg: theme.surface,
     bold: undefined,

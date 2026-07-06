@@ -100,7 +100,7 @@ export function apiWorkbenchTerminalOutputLineStyle(
   return { fg: theme.text, bg: theme.surface };
 }
 
-export function apiWorkbenchTerminalAnsiColor(
+function apiWorkbenchTerminalAnsiColor(
   code: number | undefined,
   theme: ApiWorkbenchThemeSpec,
   background: boolean,
