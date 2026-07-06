@@ -31,28 +31,28 @@ export type ApiWorkbenchControlId = typeof apiWorkbenchControlIds[number];
 
 export type ApiWorkbenchControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
 
-export interface ApiWorkbenchHitWindowIds<TWindowId extends string> {
+interface ApiWorkbenchHitWindowIds<TWindowId extends string> {
   terminalShell: TWindowId;
   controls: TWindowId;
   data: TWindowId;
   explorer: TWindowId;
 }
 
-export type ApiWorkbenchTitlebarButtonKind = "minimize" | "maximize" | "restore" | "close" | "config";
+type ApiWorkbenchTitlebarButtonKind = "minimize" | "maximize" | "restore" | "close" | "config";
 
-export type ApiWorkbenchTitlebarHitAction<TWindowId extends string> =
+type ApiWorkbenchTitlebarHitAction<TWindowId extends string> =
   | { type: "threeConfig"; id: TWindowId }
   | { type: "minimize"; id: TWindowId }
   | { type: "maximize"; id: TWindowId }
   | { type: "restore"; id: TWindowId }
   | { type: "close"; id: TWindowId };
 
-export interface ApiWorkbenchHitActionWindowSource {
+interface ApiWorkbenchHitActionWindowSource {
   type: string;
   id?: unknown;
 }
 
-export interface ApiWorkbenchScrollbarOffsetInput {
+interface ApiWorkbenchScrollbarOffsetInput {
   contentWidth?: number;
   contentHeight?: number;
   viewportWidth?: number;
@@ -63,28 +63,28 @@ export interface ApiWorkbenchScrollbarOffsetInput {
   pointerRow?: number;
 }
 
-export interface ApiWorkbenchScrollbarOffset {
+interface ApiWorkbenchScrollbarOffset {
   columns: number;
   rows: number;
 }
 
-export interface ApiWorkbenchTouchLayoutInput {
+interface ApiWorkbenchTouchLayoutInput {
   coarsePointer?: boolean;
   columns: number;
   rows: number;
 }
 
-export interface ApiWorkbenchTouchHitRectInput {
+interface ApiWorkbenchTouchHitRectInput {
   rect: Rectangle;
   bounds: Rectangle;
 }
 
-export interface ApiWorkbenchHitTarget<TAction> {
+interface ApiWorkbenchHitTarget<TAction> {
   rect: Rectangle;
   action: TAction;
 }
 
-export interface ApiWorkbenchHitTargetStack<TAction> {
+interface ApiWorkbenchHitTargetStack<TAction> {
   find(x: number, y: number): ApiWorkbenchHitTarget<TAction> | undefined;
   findExpanded(
     x: number,
@@ -93,7 +93,7 @@ export interface ApiWorkbenchHitTargetStack<TAction> {
   ): ApiWorkbenchHitTarget<TAction> | undefined;
 }
 
-export interface FindApiWorkbenchHitTargetInput<TAction> {
+interface FindApiWorkbenchHitTargetInput<TAction> {
   targets: ApiWorkbenchHitTargetStack<TAction>;
   x: number;
   y: number;
@@ -307,13 +307,13 @@ export interface ApiWorkbenchControlLineOptions {
   button?: boolean;
 }
 
-export interface ApiWorkbenchControlTrack {
+interface ApiWorkbenchControlTrack {
   width: number;
   filled: number;
   text: string;
 }
 
-export interface ApiWorkbenchControlTrackOptions {
+interface ApiWorkbenchControlTrackOptions {
   ratio: number;
   boundsWidth: number;
   minWidth?: number;
@@ -323,14 +323,14 @@ export interface ApiWorkbenchControlTrackOptions {
   emptyGlyph?: string;
 }
 
-export interface ApiWorkbenchControlKeyEvent {
+interface ApiWorkbenchControlKeyEvent {
   key: string;
   ctrl?: boolean;
   meta?: boolean;
   shift?: boolean;
 }
 
-export type ApiWorkbenchControlKeyResolution =
+type ApiWorkbenchControlKeyResolution =
   | { type: "textInput" }
   | { type: "focus"; delta: number }
   | { type: "control"; action: Extract<ApiWorkbenchControlHitAction, "previous" | "next" | "activate"> }
@@ -339,7 +339,7 @@ export type ApiWorkbenchControlKeyResolution =
   | { type: "dropdown"; action: "first" | "last" | "close" | "select" }
   | { type: "none" };
 
-export interface ResolveApiWorkbenchControlKeyOptions {
+interface ResolveApiWorkbenchControlKeyOptions {
   dropdownExpanded?: boolean;
 }
 
@@ -523,7 +523,7 @@ export function apiWorkbenchSliderSetHitInto(
   return target;
 }
 
-export interface ApiWorkbenchControlStyleTheme {
+interface ApiWorkbenchControlStyleTheme {
   background: string;
   text: string;
   surface: string;
@@ -536,7 +536,7 @@ export interface ApiWorkbenchControlPaintStyle {
   bold: boolean;
 }
 
-export interface ApiWorkbenchTextboxStyleCommand {
+interface ApiWorkbenchTextboxStyleCommand {
   role: "label" | "body";
   header: boolean;
 }
@@ -583,7 +583,7 @@ export function apiWorkbenchWrappedOptionStyle(
   return apiWorkbenchControlBaseStyle(theme, active);
 }
 
-export interface ApiWorkbenchDropdownPopoverOptions {
+interface ApiWorkbenchDropdownPopoverOptions {
   rect: Rectangle;
   row: number;
   items: readonly string[];
@@ -615,7 +615,7 @@ export function apiWorkbenchDropdownPopoverRect(
   };
 }
 
-export interface ApiWorkbenchStepperHitStep {
+interface ApiWorkbenchStepperHitStep {
   label: string;
   disabled?: boolean;
   completed?: boolean;
@@ -691,7 +691,7 @@ export function nextSortableDataColumn<TRow extends Record<string, unknown>>(
   return undefined;
 }
 
-export interface ApiWorkbenchTextboxProjectionOptions {
+interface ApiWorkbenchTextboxProjectionOptions {
   rect: Rectangle;
   row: number;
   lines: readonly string[];
@@ -720,7 +720,7 @@ export interface ApiWorkbenchTextboxProjectionRow {
   header: boolean;
 }
 
-export interface ApiWorkbenchTextboxProjection {
+interface ApiWorkbenchTextboxProjection {
   rows: ApiWorkbenchTextboxProjectionRow[];
   hit: ApiWorkbenchControlHitPlacement;
   nextRow: number;
@@ -875,7 +875,7 @@ export function apiWorkbenchTextboxRenderCommandsInto(
   return target;
 }
 
-export interface ApiWorkbenchOptionControlRow {
+interface ApiWorkbenchOptionControlRow {
   id: Extract<ApiWorkbenchControlId, "checkbox" | "radio">;
   value: string;
   options?: ApiWorkbenchControlLineOptions;
@@ -914,7 +914,7 @@ export interface ApiWorkbenchComboHeaderRowsOptions {
   next?: boolean;
 }
 
-export interface ApiWorkbenchButtonRowOptions {
+interface ApiWorkbenchButtonRowOptions {
   id: Extract<ApiWorkbenchControlId, "button" | "genericButton" | "modal">;
   label: string;
   detail?: string;
@@ -937,14 +937,14 @@ export interface ApiWorkbenchInputRowOptions {
   cursorGlyph?: string;
 }
 
-export interface ApiWorkbenchSliderRowOptions {
+interface ApiWorkbenchSliderRowOptions {
   track: Pick<ApiWorkbenchControlTrack, "text">;
   value: number;
   max: number;
   title?: string;
 }
 
-export interface ApiWorkbenchStepperRowOptions {
+interface ApiWorkbenchStepperRowOptions {
   steps: readonly StepperStep[];
   activeIndex: number;
   rectWidth: number;
@@ -952,7 +952,7 @@ export interface ApiWorkbenchStepperRowOptions {
   columnReserveWidth?: number;
 }
 
-export interface ApiWorkbenchProgressRowOptions {
+interface ApiWorkbenchProgressRowOptions {
   track: Pick<ApiWorkbenchControlTrack, "text">;
   value: number;
   suffix?: string;
@@ -979,12 +979,12 @@ interface ApiWorkbenchControlsRowsOptions extends ApiWorkbenchControlsRowsBaseOp
   };
 }
 
-export interface ApiWorkbenchControlsSnapshotBuffers {
+interface ApiWorkbenchControlsSnapshotBuffers {
   checkboxes: ApiWorkbenchCheckboxOption[];
   radio: ApiWorkbenchRadioOption[];
 }
 
-export interface ApiWorkbenchControlsSnapshotOptions<Value extends string = string>
+interface ApiWorkbenchControlsSnapshotOptions<Value extends string = string>
   extends ApiWorkbenchControlsRowsBaseOptions {
   checkboxLivePreview: boolean;
   checkboxCompactRows: boolean;
