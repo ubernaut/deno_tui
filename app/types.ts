@@ -90,7 +90,7 @@ export interface CpuCoreSnapshot {
   usage: number;
 }
 
-export interface MemorySnapshot {
+interface MemorySnapshot {
   total: number;
   used: number;
   available: number;
@@ -272,7 +272,7 @@ export type Rect = {
   height: number;
 };
 
-export interface ThreeAsciiDemoWindowOptions {
+interface ThreeAsciiDemoWindowOptions {
   terminalWidth: number;
   terminalHeight: number;
   menuVisible: boolean;
@@ -287,8 +287,8 @@ type ThreeAsciiDemoTitlebarControl = "minimize" | "maximize" | "restore" | "clos
 
 export const THREE_ASCII_DEMO_WINDOW_CONTROL_TEXT = "[-] [M] [R] [x]";
 export const THREE_ASCII_DEMO_WINDOW_CONTROL_WIDTH = 15;
-export const THREE_ASCII_DEMO_WINDOW_COMPACT_CONTROL_TEXT = "[-][M][R][x]";
-export const THREE_ASCII_DEMO_WINDOW_COMPACT_CONTROL_WIDTH = 12;
+const THREE_ASCII_DEMO_WINDOW_COMPACT_CONTROL_TEXT = "[-][M][R][x]";
+const THREE_ASCII_DEMO_WINDOW_COMPACT_CONTROL_WIDTH = 12;
 
 export function threeAsciiDemoSidePanelVisible(
   options: Pick<ThreeAsciiDemoWindowOptions, "menuVisible" | "minimized" | "maximized">,
