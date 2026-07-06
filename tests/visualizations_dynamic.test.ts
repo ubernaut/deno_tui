@@ -7,8 +7,8 @@ import {
   syntheticWorkbenchSources,
   syntheticWorkbenchSourcesInto,
   syntheticWorkbenchSystem,
-  unitWave,
 } from "../app/workbench_synthetic.ts";
+import { unitWave } from "../app/visualization_primitives.ts";
 import {
   buildVisualizationDrive,
   cpuActivityRgb,

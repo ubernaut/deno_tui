@@ -2,8 +2,6 @@ import type { WorkbenchWindowOptionGroup } from "../src/app/workbench_window_reg
 import type { Accent, SourceFrame, SystemSnapshot } from "./types.ts";
 import { stringSeed, unitWave, waveSeries } from "./visualization_primitives.ts";
 
-export { unitWave } from "./visualization_primitives.ts";
-
 type WorkbenchSyntheticGroup = WorkbenchWindowOptionGroup;
 
 interface SyntheticWorkbenchSystemOptions {
