@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { colors } from "./neon_theme.ts";
-import { type ThreeSceneMode, threeSceneModes, type ThreeSceneSignal } from "./types.ts";
+import { type ThreeSceneMode, type ThreeSceneSignal } from "./types.ts";
 
 function neonLine(color: string) {
   return new THREE.LineBasicMaterial({ color });
@@ -239,12 +239,6 @@ interface NeonThreeSceneOptions {
   wireframeThickness?: number;
 }
 
-interface NeonThreeSceneDescriptor {
-  mode: ThreeSceneMode;
-  label: string;
-  family: "acerola" | "monitor" | "nge";
-}
-
 export interface NeonThreeSceneBundle {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
@@ -298,43 +292,6 @@ const modeLabels = {
   angel: "ANGEL",
   gate: "GATE",
 } as const satisfies Record<ThreeSceneMode, string>;
-
-const modeFamilies = {
-  lattice: "monitor",
-  atfield: "monitor",
-  hexshell: "monitor",
-  capture: "monitor",
-  mapslab: "monitor",
-  solenoid: "monitor",
-  studio: "acerola",
-  emergency: "nge",
-  counter: "nge",
-  plug: "nge",
-  surveillance: "nge",
-  relay: "nge",
-  rack: "nge",
-  scope: "nge",
-  biosignal: "nge",
-  harmonic: "nge",
-  psychograph: "nge",
-  field: "nge",
-  heat: "nge",
-  route: "nge",
-  topology: "nge",
-  command: "nge",
-  launch: "nge",
-  magi: "nge",
-  target: "nge",
-  waveform: "nge",
-  angel: "nge",
-  gate: "nge",
-} as const satisfies Record<ThreeSceneMode, NeonThreeSceneDescriptor["family"]>;
-
-export const neonThreeSceneCatalog: readonly NeonThreeSceneDescriptor[] = threeSceneModes.map((mode) => ({
-  mode,
-  label: modeLabels[mode],
-  family: modeFamilies[mode],
-}));
 
 export function neonThreeSceneModeLabel(mode: ThreeSceneMode): string {
   return modeLabels[mode];

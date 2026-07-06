@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "./deps.ts";
 import type { Object3D } from "three";
-import { createNeonThreeScene, neonThreeSceneCatalog, neonThreeSceneModeLabel } from "../app/neon_three.ts";
+import { createNeonThreeScene, neonThreeSceneModeLabel } from "../app/neon_three.ts";
 import { demos } from "../app/neon_theme.ts";
 import { colors } from "../app/neon_theme.ts";
 import {
@@ -125,17 +125,9 @@ Deno.test("neon suite maps geometric widgets to dedicated NGE primitive modes", 
   }
 });
 
-Deno.test("neon three scene catalog covers every mode with labels", () => {
-  const catalogModes = neonThreeSceneCatalog.map((entry) => entry.mode);
-  assert(catalogModes.length === threeSceneModes.length);
-  for (const mode of threeSceneModes) {
-    assert(catalogModes.includes(mode));
-    assert(neonThreeSceneModeLabel(mode).length > 0);
-  }
-});
-
-for (const { mode } of neonThreeSceneCatalog) {
+for (const mode of threeSceneModes) {
   Deno.test(`createNeonThreeScene supports ${mode}`, () => {
+    assert(neonThreeSceneModeLabel(mode).length > 0);
     const bundle = createNeonThreeScene(mode);
     bundle.tick(performance.now(), signal);
     bundle.dispose();
