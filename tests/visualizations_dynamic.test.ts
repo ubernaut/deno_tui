@@ -19,8 +19,8 @@ import {
   selectedCpuHexTilesWith,
   topCpuProcessLabelForCpu,
 } from "../app/visualization_system.ts";
+import { buildVisualizationDrive } from "../app/visualization_drive.ts";
 import {
-  buildVisualizationDrive,
   renderVisualization,
   visualizationCatalog,
   visualizationFamily,

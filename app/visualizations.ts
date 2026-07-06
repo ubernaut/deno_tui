@@ -54,9 +54,6 @@ import type {
   VisualizationDescriptor,
 } from "./types.ts";
 
-export { buildVisualizationDrive } from "./visualization_drive.ts";
-export type { VisualizationDrive, VisualizationSourceDrive } from "./visualization_drive.ts";
-
 function normalizeFieldRows(lines: readonly string[], width: number, height: number) {
   const visible = Math.min(lines.length, Math.max(1, height));
   const rows = new Array<string>(Math.max(visible, height));
