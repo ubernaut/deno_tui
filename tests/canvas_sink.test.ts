@@ -363,8 +363,13 @@ Deno.test("coalesceCanvasRowRanges groups sorted adjacent cells only", () => {
     ],
   );
   const target = [{ row: 9, startColumn: 9, values: ["stale"] }];
+  const retainedRange = target[0];
+  const retainedValues = target[0]!.values;
   assertEquals(coalesceCanvasRowRanges(updates, target), target);
   assertEquals(target.length, 3);
+  assertEquals(target[0], retainedRange);
+  assertEquals(target[0]!.values, retainedValues);
+  assertEquals(target[0]!.values, ["A", "B"]);
   assertEquals(coalesceCanvasRowRanges([], target), target);
   assertEquals(target, []);
 });

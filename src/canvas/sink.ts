@@ -353,19 +353,27 @@ export function coalesceCanvasRowRanges(
   updates: readonly CanvasCellUpdate[],
   target: CanvasRowRangeUpdate[] = [],
 ): CanvasRowRangeUpdate[] {
-  target.length = 0;
   let active: { row: number; startColumn: number; nextColumn: number; values: (string | Uint8Array)[] } | undefined;
+  let written = 0;
 
   for (const update of updates) {
     if (!active || update.row !== active.row || update.column !== active.nextColumn) {
       if (active) {
-        target.push({ row: active.row, startColumn: active.startColumn, values: active.values });
+        target[written] = writeCanvasRowRangeUpdate(
+          target[written],
+          active.row,
+          active.startColumn,
+          active.values,
+        );
+        written += 1;
       }
+      const values = retainedCanvasRowRangeValues(target[written]);
+      values.length = 0;
       active = {
         row: update.row,
         startColumn: update.column,
         nextColumn: update.column,
-        values: [],
+        values,
       };
     }
     active.values.push(update.value);
@@ -373,8 +381,32 @@ export function coalesceCanvasRowRanges(
   }
 
   if (active) {
-    target.push({ row: active.row, startColumn: active.startColumn, values: active.values });
+    target[written] = writeCanvasRowRangeUpdate(
+      target[written],
+      active.row,
+      active.startColumn,
+      active.values,
+    );
+    written += 1;
   }
+  target.length = written;
+  return target;
+}
+
+function retainedCanvasRowRangeValues(range: CanvasRowRangeUpdate | undefined): (string | Uint8Array)[] {
+  return Array.isArray(range?.values) ? range.values as (string | Uint8Array)[] : [];
+}
+
+function writeCanvasRowRangeUpdate(
+  target: CanvasRowRangeUpdate | undefined,
+  row: number,
+  startColumn: number,
+  values: readonly (string | Uint8Array)[],
+): CanvasRowRangeUpdate {
+  if (!target) return { row, startColumn, values };
+  target.row = row;
+  target.startColumn = startColumn;
+  target.values = values;
   return target;
 }
 

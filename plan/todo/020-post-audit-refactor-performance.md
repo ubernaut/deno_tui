@@ -1286,3 +1286,6 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Trimmed ANSI canvas range compaction on the Three block-output path by carrying span body text directly instead of
   constructing and slicing full styled cells. The mixed truecolor-background range benchmark improved from roughly
   `0.045ms` to `0.025ms` on this run, with canvas sink tests preserving reset/coalescing behavior.
+- Reused caller-owned row-range records and value arrays in `coalesceCanvasRowRanges`, reducing allocation churn for
+  dense range-aware canvas flushes while preserving the public sink contract. Focused canvas and Three ASCII range tests
+  passed; `render/three-ascii-frame-diff-96x40` measured roughly `1.36ms` on this run.
