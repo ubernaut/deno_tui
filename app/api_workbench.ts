@@ -308,7 +308,7 @@ import {
   workbenchStudioScene,
   type WorkbenchThreeScene as SharedWorkbenchThreeScene,
   workbenchVisualizationThreeScene,
-} from "../src/app/workbench_three_scene.ts";
+} from "../src/app/workbench_three_policy.ts";
 import {
   threeRendererModeLabel,
   visualizationTextContentSize,

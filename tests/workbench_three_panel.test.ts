@@ -34,7 +34,7 @@ import {
   workbenchStudioScene,
   type WorkbenchThreeScene,
   workbenchVisualizationThreeScene,
-} from "../src/app/workbench_three_scene.ts";
+} from "../src/app/workbench_three_policy.ts";
 import type { TerminalGlyphStyle } from "../src/three_ascii/glyphs.ts";
 import type {
   ThreeAsciiRendererOptions,

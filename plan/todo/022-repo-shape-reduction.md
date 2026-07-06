@@ -229,6 +229,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     coverage with the existing layout/repaint suite instead of preserving a one-purpose test shard.
   - GPU probe lock CLI behavior is folded into `scripts/gpu_probe_lock.ts`, removing the wrapper script while keeping
     serialized WebGPU probe tasks on the same lock implementation.
+  - Workbench Three scene gating and equality helpers are folded into `src/app/workbench_three_policy.ts`, keeping the
+    app-internal scene signal policy with the existing Three workbench runtime policy module.
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
