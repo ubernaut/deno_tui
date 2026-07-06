@@ -494,6 +494,7 @@ export function writeFrameCellsUnchecked(
   column: number,
   values: readonly string[],
   count = values.length,
+  renderedLine?: string,
 ): void {
   const writeColumn = Math.floor(column);
   const sourceCount = Math.max(0, Math.min(values.length, Math.floor(count)));
@@ -501,7 +502,10 @@ export function writeFrameCellsUnchecked(
   for (let index = 0; index < sourceCount; index += 1) {
     cells[writeColumn + index] = values[index]!;
   }
-  updateFrameRowMetadata(cells);
+  const metadata = updateFrameRowMetadata(cells);
+  if (renderedLine !== undefined && writeColumn === 0) {
+    metadata.renderedHint = { width: sourceCount, line: renderedLine };
+  }
 }
 
 function writeFrameCellsUncheckedRange(

@@ -278,6 +278,23 @@ Deno.test("workbench frame unchecked span writes caller-clipped cells", () => {
   assertEquals(row, ["x", "A", "B"]);
 });
 
+Deno.test("workbench frame unchecked full-row writes can provide rendered hints", () => {
+  const row: string[] = [];
+  writeFrameCellsUnchecked(row, 0, ["A", "B"], 2, "cached");
+
+  assertEquals(renderFrameRow(row, 2), "cached");
+
+  writeFrameCellsUnchecked(row, 1, ["C"], 1);
+  assertEquals(renderFrameRow(row, 2), "AC");
+});
+
+Deno.test("workbench frame unchecked partial-row hints are ignored", () => {
+  const row = ["x"];
+  writeFrameCellsUnchecked(row, 1, ["A", "B"], 2, "wrong");
+
+  assertEquals(renderFrameRow(row, 3), "xAB");
+});
+
 Deno.test("workbench frame writes ANSI strings into string-backed rows", () => {
   const frame = ["....."];
   writeStringFrameRow(frame, 5, 0, 1, "\x1b[31mAB\x1b[0m");

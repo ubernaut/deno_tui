@@ -1,6 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
-import { type WorkbenchFrame, writeFrameCells, writeFrameCellsUnchecked } from "./workbench_frame.ts";
+import { renderFrameRow, type WorkbenchFrame, writeFrameCells, writeFrameCellsUnchecked } from "./workbench_frame.ts";
 
 export type WorkbenchThreeGridScaleMode = boolean | "down";
 
@@ -67,6 +67,7 @@ export function writeWorkbenchThreeGrid(
   if (!projection) return undefined;
   const { sourceRows, sourceColumns, targetHeight, targetWidth, rowOffset, columnOffset } = projection;
   const shouldScale = projection.scaled;
+  const targetColumn = rect.column + columnOffset;
   const rowBuffer = options.rowBuffer ?? [];
   const sourceRowIndexes = shouldScale && sourceRows > 0 && sourceRows !== targetHeight
     ? scaledIndexesInto(options.sourceRowIndexes ?? [], targetHeight, sourceRows)
@@ -77,6 +78,7 @@ export function writeWorkbenchThreeGrid(
     : undefined;
   let lastProjectedSourceRow = -1;
   let lastProjectedRow: readonly string[] | undefined;
+  let lastProjectedLine: string | undefined;
   let lastProjectedFallback = false;
 
   for (let row = 0; row < targetHeight; row += 1) {
@@ -86,25 +88,27 @@ export function writeWorkbenchThreeGrid(
     const target = frame[rect.row + rowOffset + row] ??= [];
     if (!source || sourceWidth <= 0) {
       if (lastProjectedFallback && lastProjectedRow && lastProjectedRow.length >= targetWidth) {
-        writeProjectedGridRow(target, rect.column + columnOffset, lastProjectedRow, targetWidth);
+        writeProjectedGridRow(target, targetColumn, lastProjectedRow, targetWidth, lastProjectedLine);
         continue;
       }
       rowBuffer.length = targetWidth;
       rowBuffer.fill(fallbackCell, 0, targetWidth);
-      writeProjectedGridRow(target, rect.column + columnOffset, rowBuffer, targetWidth);
+      lastProjectedLine = renderProjectedGridRowForColumn(targetColumn, rowBuffer, targetWidth);
+      writeProjectedGridRow(target, targetColumn, rowBuffer, targetWidth, lastProjectedLine);
       lastProjectedSourceRow = -1;
       lastProjectedFallback = true;
       lastProjectedRow = rowBuffer;
       continue;
     }
     if (sourceRow === lastProjectedSourceRow && lastProjectedRow && lastProjectedRow.length >= targetWidth) {
-      writeProjectedGridRow(target, rect.column + columnOffset, lastProjectedRow, targetWidth);
+      writeProjectedGridRow(target, targetColumn, lastProjectedRow, targetWidth, lastProjectedLine);
       continue;
     }
     lastProjectedFallback = false;
 
     if (shouldScale && source && sourceColumns === targetWidth && sourceWidth >= sourceColumns && sourceColumns > 0) {
-      writeProjectedGridRow(target, rect.column + columnOffset, source, targetWidth);
+      lastProjectedLine = renderProjectedGridRowForColumn(targetColumn, source, targetWidth);
+      writeProjectedGridRow(target, targetColumn, source, targetWidth, lastProjectedLine);
       lastProjectedSourceRow = sourceRow;
       lastProjectedRow = source;
       continue;
@@ -112,21 +116,24 @@ export function writeWorkbenchThreeGrid(
 
     if (shouldScale && source && sourceColumnIndexes && sourceWidth >= sourceColumns && sourceColumns > 0) {
       projectScaledGridRowInto(rowBuffer, source, sourceColumnIndexes, targetWidth, fallbackCell);
-      writeProjectedGridRow(target, rect.column + columnOffset, rowBuffer, targetWidth);
+      lastProjectedLine = renderProjectedGridRowForColumn(targetColumn, rowBuffer, targetWidth);
+      writeProjectedGridRow(target, targetColumn, rowBuffer, targetWidth, lastProjectedLine);
       lastProjectedSourceRow = sourceRow;
       lastProjectedRow = rowBuffer;
       continue;
     }
 
     if (shouldScale && source && sourceWidth === targetWidth && !sourceColumnIndexes) {
-      writeProjectedGridRow(target, rect.column + columnOffset, source, targetWidth);
+      lastProjectedLine = renderProjectedGridRowForColumn(targetColumn, source, targetWidth);
+      writeProjectedGridRow(target, targetColumn, source, targetWidth, lastProjectedLine);
       lastProjectedSourceRow = sourceRow;
       lastProjectedRow = source;
       continue;
     }
 
     if (!shouldScale && source && sourceWidth >= targetWidth) {
-      writeProjectedGridRow(target, rect.column + columnOffset, source, targetWidth);
+      lastProjectedLine = renderProjectedGridRowForColumn(targetColumn, source, targetWidth);
+      writeProjectedGridRow(target, targetColumn, source, targetWidth, lastProjectedLine);
       lastProjectedSourceRow = sourceRow;
       lastProjectedRow = source;
       continue;
@@ -140,7 +147,8 @@ export function writeWorkbenchThreeGrid(
           : column);
       rowBuffer[column] = source?.[sourceColumn] ?? fallbackCell;
     }
-    writeProjectedGridRow(target, rect.column + columnOffset, rowBuffer, targetWidth);
+    lastProjectedLine = renderProjectedGridRowForColumn(targetColumn, rowBuffer, targetWidth);
+    writeProjectedGridRow(target, targetColumn, rowBuffer, targetWidth, lastProjectedLine);
     lastProjectedSourceRow = sourceRow;
     lastProjectedRow = rowBuffer;
   }
@@ -152,13 +160,23 @@ function writeProjectedGridRow(
   column: number,
   values: readonly string[],
   targetWidth: number,
+  renderedLine?: string,
 ): void {
   if (column < 0 || targetWidth > values.length) {
     writeFrameCells(target, column, values, 0, targetWidth);
     return;
   }
   if (column === 0 && target.length < targetWidth) target.length = targetWidth;
-  writeFrameCellsUnchecked(target, column, values, targetWidth);
+  writeFrameCellsUnchecked(target, column, values, targetWidth, renderedLine);
+}
+
+function renderProjectedGridRowForColumn(
+  column: number,
+  values: readonly string[],
+  targetWidth: number,
+): string | undefined {
+  if (column !== 0 || targetWidth > values.length) return undefined;
+  return renderFrameRow(values as string[], targetWidth);
 }
 
 function projectScaledGridRowInto(
