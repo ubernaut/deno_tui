@@ -1136,11 +1136,11 @@ function draw(): void {
   dropdownOverlay = null;
   syncWorkbenchThreeWindowState();
   workbenchThreeRuntime.resetPressureSample();
-  syncWorkbenchThreeRuntimeBudget(width, height);
-  syncWorkbenchThreeFrameInterval();
   const frame = prepareWorkbenchFrame(screenFrame, height);
   renderHeader(frame);
   renderWorkspace(frame);
+  syncWorkbenchThreeRuntimeBudget(width, height);
+  syncWorkbenchThreeFrameInterval();
   renderStatus(frame);
   renderActiveDropdownOverlay(frame);
   renderModalOverlay(frame);
