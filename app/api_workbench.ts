@@ -190,6 +190,10 @@ import { SystemMonitor } from "./system_metrics.ts";
 import { createWorkbenchThreePanelFrameView, ThreePanelFrameView } from "./three_panel.ts";
 import {
   explorerTextRowsInto,
+  renderApiWorkbenchDataPanel,
+  renderApiWorkbenchExplorerPanel,
+  renderApiWorkbenchInspectorPanel,
+  renderApiWorkbenchLogsPanel,
   workbenchDemoModalContent,
   workbenchHelpModalContent,
   workbenchModalConfirmedContent,
@@ -278,12 +282,6 @@ import {
   syntheticWorkbenchSystem,
 } from "./workbench_synthetic.ts";
 import type { ComputedLayoutBox } from "../src/layout/mod.ts";
-import {
-  renderApiWorkbenchDataPanel,
-  renderApiWorkbenchExplorerPanel,
-  renderApiWorkbenchInspectorPanel,
-  renderApiWorkbenchLogsPanel,
-} from "./api_workbench_builtin_panels_view.ts";
 import {
   type ApiWorkbenchDropdownOverlay,
   renderApiWorkbenchChromeHeader,

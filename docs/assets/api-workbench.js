@@ -18272,304 +18272,6 @@ function addControlHits(placements, addHit) {
   }
 }
 
-// src/app/workbench_rows.ts
-var THREE_HEADER_GEOMETRY = "torus knot \xB7 sphere \xB7 block \xB7 floor plane";
-var THREE_HEADER_GEOMETRY_WIDTH = textWidth(THREE_HEADER_GEOMETRY);
-function dataFooterRows(options) {
-  const selected = options.selectedKey ?? "-";
-  const full = compactSpaces(
-    `page ${options.page}/${options.pageCount}  selected ${selected}  arrows/page keys  S sort`
-  );
-  const texts = textWidth(full) <= options.width ? [full] : wrapPlainText(
-    `page ${options.page}/${options.pageCount} selected ${selected} arrows/page keys S sort`,
-    options.width,
-    options.fit
-  );
-  const rows2 = new Array(texts.length);
-  for (let index = 0; index < texts.length; index++) {
-    rows2[index] = { text: texts[index], fg: options.theme.muted, bg: options.theme.panelSoft };
-  }
-  return rows2;
-}
-
-// app/workbench_panels.ts
-function workbenchDemoModalContent(options = {}) {
-  const web = options.profile === "web";
-  return {
-    title: "Confirm Action",
-    tone: "confirm",
-    body: web ? [
-      "Modal windows sit above the browser workbench and use the same renderer-neutral controller as terminal modals.",
-      "Keyboard focus is trapped while the modal is open. Use Tab, arrows, Enter, Escape, or click an action."
-    ] : [
-      "Modal windows sit above the workspace and can contain text, menus, warnings, errors, and buttons.",
-      "Keyboard focus is trapped while the modal is open. Use Tab, arrows, Enter, Escape, or click an action."
-    ],
-    actions: [
-      { id: "cancel", label: "Cancel" },
-      { id: "details", label: "Details" },
-      { id: "confirm", label: "Confirm", default: true }
-    ]
-  };
-}
-function workbenchHelpModalContent(options = {}) {
-  const web = options.profile === "web";
-  return {
-    title: web ? "Web Workbench Help" : "Workbench Help",
-    tone: "info",
-    body: workbenchHelpRows(options),
-    actions: [
-      { id: "dismiss", label: "Dismiss", default: true },
-      { id: "controls", label: "Focus Controls" }
-    ]
-  };
-}
-function workbenchQuitModalContent(options = {}) {
-  const web = options.profile === "web";
-  return {
-    title: web ? "Close Web Workbench?" : "Quit Workbench?",
-    tone: "warning",
-    body: web ? [
-      "Hide the API workbench browser demo?",
-      "This only removes the demo host from the page; reload the page to mount it again."
-    ] : [
-      "Close the API workbench and return to the terminal?",
-      "Use Enter to confirm, Escape to cancel, or Tab to choose an action."
-    ],
-    actions: [
-      { id: "cancel", label: "Cancel" },
-      { id: "quit", label: web ? "Close" : "Quit", destructive: true, default: true }
-    ]
-  };
-}
-function workbenchModalDetailsContent(options = {}) {
-  const web = options.profile === "web";
-  return {
-    title: "Modal Details",
-    tone: "info",
-    body: web ? [
-      "ModalController owns open state, body rows, action focus, and keyboard behavior.",
-      "The browser renderer adds a centered overlay, backdrop click blocking, and theme-aware action buttons."
-    ] : [
-      "The ModalController is renderer-neutral and exposes open state, tone, content, action focus, and callbacks.",
-      "Workbench rendering adds a theme-aware pop-over, blocks background clicks, and routes action hit targets back to the controller."
-    ],
-    actions: [
-      { id: "back", label: "Back" },
-      { id: "confirm", label: "Confirm", default: true },
-      { id: "dismiss", label: "Dismiss" }
-    ]
-  };
-}
-function workbenchModalConfirmedContent(options = {}) {
-  const web = options.profile === "web";
-  return {
-    title: "Action Confirmed",
-    tone: "success",
-    body: web ? "The web modal action completed." : "The modal action completed. This same surface can be used for confirmations, alerts, menus, and error dialogs.",
-    actions: [{ id: "dismiss", label: "Dismiss", default: true }]
-  };
-}
-function workbenchDataTableRowsInto(target, options) {
-  const { view, columns: columns2, width, theme: t, fit: fit2, contrast, buffers } = options;
-  const textRows = renderDataTableRowsInto(buffers.textRows, view.rows, columns2, view.selectedIndex);
-  buffers.bodyRows.length = textRows.length;
-  for (let index = 0; index < textRows.length; index += 1) {
-    const selected = index === view.selectedIndex;
-    const row = buffers.bodyRows[index] ?? { text: "" };
-    row.text = textRows[index];
-    row.fg = selected ? contrast(t.warn, t.background, t.text) : t.text;
-    row.bg = selected ? t.warn : t.surface;
-    row.bold = selected;
-    buffers.bodyRows[index] = row;
-  }
-  const footerRows = dataFooterRows({
-    page: view.page + 1,
-    pageCount: view.pageCount,
-    selectedKey: view.selectedKey,
-    width,
-    theme: t,
-    fit: fit2
-  });
-  target.length = 0;
-  target.push({
-    text: renderDataTableHeader(columns2, options.sort),
-    fg: contrast(t.accentDeep, t.background, t.text),
-    bg: t.accentDeep,
-    bold: true
-  });
-  for (let index = 0; index < buffers.bodyRows.length; index += 1) {
-    target.push(buffers.bodyRows[index]);
-  }
-  target.push({ text: "", bg: t.surface });
-  for (let index = 0; index < footerRows.length; index += 1) {
-    target.push(footerRows[index]);
-  }
-  return target;
-}
-function workbenchDataTablePageSize(options) {
-  const footerRows = dataFooterRows({
-    page: options.page,
-    pageCount: options.pageCount,
-    selectedKey: options.selectedKey,
-    width: options.width,
-    theme: options.theme,
-    fit: options.fit
-  });
-  return Math.max(1, Math.floor(options.height) - 2 - footerRows.length);
-}
-function workbenchExplorerRowsInto(target, options) {
-  const { rows: rows2, selectedIndex, theme: t, contrast } = options;
-  target.length = rows2.length;
-  for (let index = 0; index < rows2.length; index += 1) {
-    const treeRow = rows2[index];
-    const selected = treeRow.index === selectedIndex;
-    const node = treeRow.node;
-    const icon = treeRow.hasChildren ? treeRow.expanded ? "\u25BE" : "\u25B8" : node.kind === "file" ? "\xB7" : " ";
-    const row = target[index] ?? { text: "" };
-    row.text = `${"  ".repeat(treeRow.depth)}${icon} ${treeRow.label}`;
-    row.fg = selected ? contrast(t.warn, t.background, t.text) : node.kind === "directory" ? t.good : t.text;
-    row.bg = selected ? t.warn : t.surface;
-    row.bold = selected || node.kind === "directory";
-    target[index] = row;
-  }
-  return target;
-}
-function workbenchInspectorRowsInto(target, options) {
-  const t = options.theme;
-  target.length = 0;
-  target.push(
-    { text: " Composable API surfaces ", fg: t.background, bg: t.accent, bold: true },
-    { text: "explorer  FileExplorerController", fg: t.good, bg: t.surface },
-    { text: "menu      MenuBarController", fg: t.good, bg: t.surface },
-    { text: "layout    WindowManagerController", fg: t.good, bg: t.surface },
-    { text: "viewport  ScrollAreaController", fg: t.good, bg: t.surface },
-    { text: "data      DataTableController", fg: t.good, bg: t.surface },
-    { text: "controls  SliderController / CheckBoxController", fg: t.good, bg: t.surface },
-    { text: "three     ThreePanelFrameView + Acerola ASCII", fg: t.good, bg: t.surface },
-    { text: `theme     ${options.themeLabel}`, fg: t.warn, bg: t.surface, bold: true },
-    { text: "", bg: t.surface },
-    { text: " Recent actions ", fg: t.background, bg: t.border, bold: true }
-  );
-  const availableActionRows = Math.max(0, Math.floor(options.height) - target.length);
-  const actionRows = options.buffers.actionTextRows;
-  const wrappedRows = options.buffers.wrappedTextRows;
-  actionRows.length = 0;
-  if (availableActionRows <= 0) return target;
-  const start = Math.max(0, options.logs.length - Math.max(4, availableActionRows));
-  for (let index = start; index < options.logs.length; index += 1) {
-    const wrapped = wrapPlainTextInto(wrappedRows, `\u2022 ${options.logs[index]}`, options.width, options.fit);
-    for (let row = 0; row < wrapped.length; row += 1) {
-      actionRows.push(wrapped[row]);
-    }
-  }
-  const firstActionRow = Math.max(0, actionRows.length - availableActionRows);
-  for (let index = firstActionRow; index < actionRows.length; index += 1) {
-    target.push({
-      text: actionRows[index],
-      fg: t.text,
-      bg: t.panelSoft
-    });
-  }
-  return target;
-}
-function workbenchLogRowsFromSourcesInto(target, sources, theme2) {
-  let rowCount = 0;
-  for (let sourceIndex = 0; sourceIndex < sources.length; sourceIndex += 1) {
-    rowCount += sources[sourceIndex].length;
-  }
-  target.length = rowCount;
-  let targetIndex = 0;
-  for (let sourceIndex = 0; sourceIndex < sources.length; sourceIndex += 1) {
-    const source = sources[sourceIndex];
-    for (let index = 0; index < source.length; index += 1) {
-      const row = target[targetIndex] ?? { text: "" };
-      row.text = source[index];
-      row.fg = theme2.text;
-      row.bg = theme2.surface;
-      row.bold = void 0;
-      target[targetIndex] = row;
-      targetIndex += 1;
-    }
-  }
-  return target;
-}
-
-// app/api_workbench_builtin_panels_view.ts
-function renderApiWorkbenchExplorerPanel(options) {
-  const { frame, rect, rows: rows2, selectedIndex, renderRows, theme: theme2, contrastText: contrastText2, writeRows, addHit } = options;
-  writeRows(
-    frame,
-    rect,
-    workbenchExplorerRowsInto(renderRows, {
-      rows: rows2,
-      selectedIndex,
-      theme: theme2,
-      contrast: contrastText2
-    })
-  );
-  for (let index = 0; index < rows2.length; index += 1) {
-    const row = rows2[index];
-    addHit({ column: rect.column, row: rect.row + index, width: rect.width, height: 1 }, {
-      type: "explorerRow",
-      index: row.index
-    });
-  }
-}
-function renderApiWorkbenchInspectorPanel(options) {
-  const { frame, rect, themeLabel, logs, renderRows, actionTextRows, wrappedTextRows, theme: theme2, fit: fit2, writeRows } = options;
-  writeRows(
-    frame,
-    rect,
-    workbenchInspectorRowsInto(renderRows, {
-      width: rect.width,
-      height: rect.height,
-      themeLabel,
-      logs,
-      theme: theme2,
-      fit: fit2,
-      buffers: {
-        actionTextRows,
-        wrappedTextRows
-      }
-    })
-  );
-}
-function renderApiWorkbenchDataPanel(options) {
-  const { frame, rect, columns: columns2, view, sort, setPageSize, buffers, theme: theme2, fit: fit2, contrastText: contrastText2, writeRows, addHit } = options;
-  const pendingView = view();
-  setPageSize(workbenchDataTablePageSize({
-    height: rect.height,
-    width: rect.width,
-    page: pendingView.page + 1,
-    pageCount: pendingView.pageCount,
-    selectedKey: pendingView.selectedKey,
-    theme: theme2,
-    fit: fit2
-  }));
-  const currentView = view();
-  writeRows(
-    frame,
-    rect,
-    workbenchDataTableRowsInto(buffers.renderRows, {
-      view: currentView,
-      columns: columns2,
-      sort: sort(),
-      width: rect.width,
-      theme: theme2,
-      fit: fit2,
-      contrast: contrastText2,
-      buffers: { textRows: buffers.textRows, bodyRows: buffers.bodyRows }
-    })
-  );
-  for (let index = 0; index < Math.min(currentView.rows.length, Math.max(0, rect.height - 1)); index += 1) {
-    addHit({ column: rect.column, row: rect.row + 1 + index, width: rect.width, height: 1 }, {
-      type: "dataRow",
-      index
-    });
-  }
-}
-
 // app/api_workbench_button_row_view.ts
 function renderApiWorkbenchButtonRow(options) {
   const { frame, rect, startRow, items, placements, commands, theme: theme2, contrastText: contrastText2, paint: paint2, write: write2, addHit, hitAction } = options;
@@ -19643,6 +19345,302 @@ function renderApiWorkbenchThreeConfigModal(options) {
       }
     )
   );
+}
+
+// src/app/workbench_rows.ts
+var THREE_HEADER_GEOMETRY = "torus knot \xB7 sphere \xB7 block \xB7 floor plane";
+var THREE_HEADER_GEOMETRY_WIDTH = textWidth(THREE_HEADER_GEOMETRY);
+function dataFooterRows(options) {
+  const selected = options.selectedKey ?? "-";
+  const full = compactSpaces(
+    `page ${options.page}/${options.pageCount}  selected ${selected}  arrows/page keys  S sort`
+  );
+  const texts = textWidth(full) <= options.width ? [full] : wrapPlainText(
+    `page ${options.page}/${options.pageCount} selected ${selected} arrows/page keys S sort`,
+    options.width,
+    options.fit
+  );
+  const rows2 = new Array(texts.length);
+  for (let index = 0; index < texts.length; index++) {
+    rows2[index] = { text: texts[index], fg: options.theme.muted, bg: options.theme.panelSoft };
+  }
+  return rows2;
+}
+
+// app/workbench_panels.ts
+function workbenchDemoModalContent(options = {}) {
+  const web = options.profile === "web";
+  return {
+    title: "Confirm Action",
+    tone: "confirm",
+    body: web ? [
+      "Modal windows sit above the browser workbench and use the same renderer-neutral controller as terminal modals.",
+      "Keyboard focus is trapped while the modal is open. Use Tab, arrows, Enter, Escape, or click an action."
+    ] : [
+      "Modal windows sit above the workspace and can contain text, menus, warnings, errors, and buttons.",
+      "Keyboard focus is trapped while the modal is open. Use Tab, arrows, Enter, Escape, or click an action."
+    ],
+    actions: [
+      { id: "cancel", label: "Cancel" },
+      { id: "details", label: "Details" },
+      { id: "confirm", label: "Confirm", default: true }
+    ]
+  };
+}
+function workbenchHelpModalContent(options = {}) {
+  const web = options.profile === "web";
+  return {
+    title: web ? "Web Workbench Help" : "Workbench Help",
+    tone: "info",
+    body: workbenchHelpRows(options),
+    actions: [
+      { id: "dismiss", label: "Dismiss", default: true },
+      { id: "controls", label: "Focus Controls" }
+    ]
+  };
+}
+function workbenchQuitModalContent(options = {}) {
+  const web = options.profile === "web";
+  return {
+    title: web ? "Close Web Workbench?" : "Quit Workbench?",
+    tone: "warning",
+    body: web ? [
+      "Hide the API workbench browser demo?",
+      "This only removes the demo host from the page; reload the page to mount it again."
+    ] : [
+      "Close the API workbench and return to the terminal?",
+      "Use Enter to confirm, Escape to cancel, or Tab to choose an action."
+    ],
+    actions: [
+      { id: "cancel", label: "Cancel" },
+      { id: "quit", label: web ? "Close" : "Quit", destructive: true, default: true }
+    ]
+  };
+}
+function workbenchModalDetailsContent(options = {}) {
+  const web = options.profile === "web";
+  return {
+    title: "Modal Details",
+    tone: "info",
+    body: web ? [
+      "ModalController owns open state, body rows, action focus, and keyboard behavior.",
+      "The browser renderer adds a centered overlay, backdrop click blocking, and theme-aware action buttons."
+    ] : [
+      "The ModalController is renderer-neutral and exposes open state, tone, content, action focus, and callbacks.",
+      "Workbench rendering adds a theme-aware pop-over, blocks background clicks, and routes action hit targets back to the controller."
+    ],
+    actions: [
+      { id: "back", label: "Back" },
+      { id: "confirm", label: "Confirm", default: true },
+      { id: "dismiss", label: "Dismiss" }
+    ]
+  };
+}
+function workbenchModalConfirmedContent(options = {}) {
+  const web = options.profile === "web";
+  return {
+    title: "Action Confirmed",
+    tone: "success",
+    body: web ? "The web modal action completed." : "The modal action completed. This same surface can be used for confirmations, alerts, menus, and error dialogs.",
+    actions: [{ id: "dismiss", label: "Dismiss", default: true }]
+  };
+}
+function workbenchDataTableRowsInto(target, options) {
+  const { view, columns: columns2, width, theme: t, fit: fit2, contrast, buffers } = options;
+  const textRows = renderDataTableRowsInto(buffers.textRows, view.rows, columns2, view.selectedIndex);
+  buffers.bodyRows.length = textRows.length;
+  for (let index = 0; index < textRows.length; index += 1) {
+    const selected = index === view.selectedIndex;
+    const row = buffers.bodyRows[index] ?? { text: "" };
+    row.text = textRows[index];
+    row.fg = selected ? contrast(t.warn, t.background, t.text) : t.text;
+    row.bg = selected ? t.warn : t.surface;
+    row.bold = selected;
+    buffers.bodyRows[index] = row;
+  }
+  const footerRows = dataFooterRows({
+    page: view.page + 1,
+    pageCount: view.pageCount,
+    selectedKey: view.selectedKey,
+    width,
+    theme: t,
+    fit: fit2
+  });
+  target.length = 0;
+  target.push({
+    text: renderDataTableHeader(columns2, options.sort),
+    fg: contrast(t.accentDeep, t.background, t.text),
+    bg: t.accentDeep,
+    bold: true
+  });
+  for (let index = 0; index < buffers.bodyRows.length; index += 1) {
+    target.push(buffers.bodyRows[index]);
+  }
+  target.push({ text: "", bg: t.surface });
+  for (let index = 0; index < footerRows.length; index += 1) {
+    target.push(footerRows[index]);
+  }
+  return target;
+}
+function workbenchDataTablePageSize(options) {
+  const footerRows = dataFooterRows({
+    page: options.page,
+    pageCount: options.pageCount,
+    selectedKey: options.selectedKey,
+    width: options.width,
+    theme: options.theme,
+    fit: options.fit
+  });
+  return Math.max(1, Math.floor(options.height) - 2 - footerRows.length);
+}
+function workbenchExplorerRowsInto(target, options) {
+  const { rows: rows2, selectedIndex, theme: t, contrast } = options;
+  target.length = rows2.length;
+  for (let index = 0; index < rows2.length; index += 1) {
+    const treeRow = rows2[index];
+    const selected = treeRow.index === selectedIndex;
+    const node = treeRow.node;
+    const icon = treeRow.hasChildren ? treeRow.expanded ? "\u25BE" : "\u25B8" : node.kind === "file" ? "\xB7" : " ";
+    const row = target[index] ?? { text: "" };
+    row.text = `${"  ".repeat(treeRow.depth)}${icon} ${treeRow.label}`;
+    row.fg = selected ? contrast(t.warn, t.background, t.text) : node.kind === "directory" ? t.good : t.text;
+    row.bg = selected ? t.warn : t.surface;
+    row.bold = selected || node.kind === "directory";
+    target[index] = row;
+  }
+  return target;
+}
+function workbenchInspectorRowsInto(target, options) {
+  const t = options.theme;
+  target.length = 0;
+  target.push(
+    { text: " Composable API surfaces ", fg: t.background, bg: t.accent, bold: true },
+    { text: "explorer  FileExplorerController", fg: t.good, bg: t.surface },
+    { text: "menu      MenuBarController", fg: t.good, bg: t.surface },
+    { text: "layout    WindowManagerController", fg: t.good, bg: t.surface },
+    { text: "viewport  ScrollAreaController", fg: t.good, bg: t.surface },
+    { text: "data      DataTableController", fg: t.good, bg: t.surface },
+    { text: "controls  SliderController / CheckBoxController", fg: t.good, bg: t.surface },
+    { text: "three     ThreePanelFrameView + Acerola ASCII", fg: t.good, bg: t.surface },
+    { text: `theme     ${options.themeLabel}`, fg: t.warn, bg: t.surface, bold: true },
+    { text: "", bg: t.surface },
+    { text: " Recent actions ", fg: t.background, bg: t.border, bold: true }
+  );
+  const availableActionRows = Math.max(0, Math.floor(options.height) - target.length);
+  const actionRows = options.buffers.actionTextRows;
+  const wrappedRows = options.buffers.wrappedTextRows;
+  actionRows.length = 0;
+  if (availableActionRows <= 0) return target;
+  const start = Math.max(0, options.logs.length - Math.max(4, availableActionRows));
+  for (let index = start; index < options.logs.length; index += 1) {
+    const wrapped = wrapPlainTextInto(wrappedRows, `\u2022 ${options.logs[index]}`, options.width, options.fit);
+    for (let row = 0; row < wrapped.length; row += 1) {
+      actionRows.push(wrapped[row]);
+    }
+  }
+  const firstActionRow = Math.max(0, actionRows.length - availableActionRows);
+  for (let index = firstActionRow; index < actionRows.length; index += 1) {
+    target.push({
+      text: actionRows[index],
+      fg: t.text,
+      bg: t.panelSoft
+    });
+  }
+  return target;
+}
+function workbenchLogRowsFromSourcesInto(target, sources, theme2) {
+  let rowCount = 0;
+  for (let sourceIndex = 0; sourceIndex < sources.length; sourceIndex += 1) {
+    rowCount += sources[sourceIndex].length;
+  }
+  target.length = rowCount;
+  let targetIndex = 0;
+  for (let sourceIndex = 0; sourceIndex < sources.length; sourceIndex += 1) {
+    const source = sources[sourceIndex];
+    for (let index = 0; index < source.length; index += 1) {
+      const row = target[targetIndex] ?? { text: "" };
+      row.text = source[index];
+      row.fg = theme2.text;
+      row.bg = theme2.surface;
+      row.bold = void 0;
+      target[targetIndex] = row;
+      targetIndex += 1;
+    }
+  }
+  return target;
+}
+function renderApiWorkbenchExplorerPanel(options) {
+  const { frame, rect, rows: rows2, selectedIndex, renderRows, theme: theme2, contrastText: contrastText2, writeRows, addHit } = options;
+  writeRows(
+    frame,
+    rect,
+    workbenchExplorerRowsInto(renderRows, {
+      rows: rows2,
+      selectedIndex,
+      theme: theme2,
+      contrast: contrastText2
+    })
+  );
+  for (let index = 0; index < rows2.length; index += 1) {
+    const row = rows2[index];
+    addHit({ column: rect.column, row: rect.row + index, width: rect.width, height: 1 }, {
+      type: "explorerRow",
+      index: row.index
+    });
+  }
+}
+function renderApiWorkbenchInspectorPanel(options) {
+  const { frame, rect, themeLabel, logs, renderRows, actionTextRows, wrappedTextRows, theme: theme2, fit: fit2, writeRows } = options;
+  writeRows(
+    frame,
+    rect,
+    workbenchInspectorRowsInto(renderRows, {
+      width: rect.width,
+      height: rect.height,
+      themeLabel,
+      logs,
+      theme: theme2,
+      fit: fit2,
+      buffers: {
+        actionTextRows,
+        wrappedTextRows
+      }
+    })
+  );
+}
+function renderApiWorkbenchDataPanel(options) {
+  const { frame, rect, columns: columns2, view, sort, setPageSize, buffers, theme: theme2, fit: fit2, contrastText: contrastText2, writeRows, addHit } = options;
+  const pendingView = view();
+  setPageSize(workbenchDataTablePageSize({
+    height: rect.height,
+    width: rect.width,
+    page: pendingView.page + 1,
+    pageCount: pendingView.pageCount,
+    selectedKey: pendingView.selectedKey,
+    theme: theme2,
+    fit: fit2
+  }));
+  const currentView = view();
+  writeRows(
+    frame,
+    rect,
+    workbenchDataTableRowsInto(buffers.renderRows, {
+      view: currentView,
+      columns: columns2,
+      sort: sort(),
+      width: rect.width,
+      theme: theme2,
+      fit: fit2,
+      contrast: contrastText2,
+      buffers: { textRows: buffers.textRows, bodyRows: buffers.bodyRows }
+    })
+  );
+  for (let index = 0; index < Math.min(currentView.rows.length, Math.max(0, rect.height - 1)); index += 1) {
+    addHit({ column: rect.column, row: rect.row + 1 + index, width: rect.width, height: 1 }, {
+      type: "dataRow",
+      index
+    });
+  }
 }
 
 // src/app/workbench_row_render.ts

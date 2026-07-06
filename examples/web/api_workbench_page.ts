@@ -111,11 +111,6 @@ import {
   ApiWorkbenchControlsViewBufferCache,
   renderApiWorkbenchControls,
 } from "../../app/api_workbench_controls_view.ts";
-import {
-  renderApiWorkbenchDataPanel,
-  renderApiWorkbenchExplorerPanel,
-  renderApiWorkbenchInspectorPanel,
-} from "../../app/api_workbench_builtin_panels_view.ts";
 import { renderApiWorkbenchButtonRow } from "../../app/api_workbench_button_row_view.ts";
 import { renderApiWorkbenchHtmlCssLayout } from "../../app/html_css_layout_view.ts";
 import {
@@ -139,6 +134,9 @@ import {
 } from "../../app/api_workbench_modal_view.ts";
 import { type HtmlCssLayoutRenderCommand } from "../../app/html_css_layout_view.ts";
 import {
+  renderApiWorkbenchDataPanel,
+  renderApiWorkbenchExplorerPanel,
+  renderApiWorkbenchInspectorPanel,
   workbenchDemoModalContent,
   workbenchHelpModalContent,
   workbenchLogRowsFromSourcesInto,

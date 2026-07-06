@@ -71,7 +71,7 @@ import {
   renderApiWorkbenchExplorerPanel,
   renderApiWorkbenchInspectorPanel,
   renderApiWorkbenchLogsPanel,
-} from "../app/api_workbench_builtin_panels_view.ts";
+} from "../app/workbench_panels.ts";
 import {
   renderApiWorkbenchChromeHeader,
   renderApiWorkbenchDropdownOverlay,
