@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Color } from "npm:three@0.183.2";
+import { Color } from "three";
 
 import {
   CELL_GLYPH_KEY_STRIDE,

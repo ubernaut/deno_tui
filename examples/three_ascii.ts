@@ -1,4 +1,4 @@
-import { crayon } from "https://deno.land/x/crayon@3.3.3/mod.ts";
+import { crayon } from "crayon";
 import {
   AmbientLight,
   BoxGeometry,
@@ -12,7 +12,7 @@ import {
   Scene,
   SphereGeometry,
   TorusKnotGeometry,
-} from "npm:three@0.183.2";
+} from "three";
 
 import { handleInput } from "../src/input.ts";
 import { handleKeyboardControls, handleMouseControls } from "../src/controls.ts";

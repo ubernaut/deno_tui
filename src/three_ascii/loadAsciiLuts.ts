@@ -1,4 +1,4 @@
-import { ClampToEdgeWrapping, LinearFilter, NoColorSpace, Texture } from "npm:three@0.183.2";
+import { ClampToEdgeWrapping, LinearFilter, NoColorSpace, Texture } from "three";
 
 export interface AcerolaAsciiLuts {
   edgesTexture: Texture;

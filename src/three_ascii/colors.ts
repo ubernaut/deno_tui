@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Color } from "npm:three@0.183.2";
+import { Color } from "three";
 
 const MAX_LINEAR_BYTE_CACHE_SIZE = 65536;
 const RESET = "\x1b[0m";

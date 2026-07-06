@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 // Simple calculator demo using grid layout
 
-import { crayon } from "https://deno.land/x/crayon@3.3.3/mod.ts";
+import { crayon } from "crayon";
 
 import { Tui } from "../src/tui.ts";
 import { handleInput } from "../src/input.ts";

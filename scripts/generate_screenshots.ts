@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
-import jpeg from "npm:jpeg-js@0.4.4";
-import { PNG } from "npm:pngjs@7.0.0";
+import jpeg from "jpeg-js";
+import { PNG } from "pngjs";
 
 interface ScreenshotTarget {
   filename: string;

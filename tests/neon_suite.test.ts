@@ -1,6 +1,6 @@
-import * as THREE from "npm:three@0.183.2";
+import * as THREE from "three";
 import { assert, assertEquals, assertInstanceOf } from "./deps.ts";
-import type { Object3D } from "npm:three@0.183.2";
+import type { Object3D } from "three";
 import {
   addBoxWire,
   addPanel,

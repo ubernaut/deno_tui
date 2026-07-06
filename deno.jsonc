@@ -11,6 +11,13 @@
     "./layout/yoga": "./src/layout/solvers/yoga.ts"
   },
   "imports": {
+    "crayon": "https://deno.land/x/crayon@3.3.3/mod.ts",
+    "esbuild": "npm:esbuild@0.24.2",
+    "jpeg-js": "npm:jpeg-js@0.4.4",
+    "pngjs": "npm:pngjs@7.0.0",
+    "three": "npm:three@0.183.2",
+    "three/tsl": "npm:three@0.183.2/tsl",
+    "three/webgpu": "npm:three@0.183.2/webgpu",
     "yoga-layout": "npm:yoga-layout@3.2.1"
   },
   "tasks": {

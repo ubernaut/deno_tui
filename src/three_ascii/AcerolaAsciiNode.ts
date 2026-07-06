@@ -11,7 +11,7 @@ import {
   TempNode,
   Texture,
   Vector2,
-} from "npm:three@0.183.2/webgpu";
+} from "three/webgpu";
 import {
   abs,
   clamp,
@@ -43,7 +43,7 @@ import {
   vec3,
   vec4,
   viewZToOrthographicDepth,
-} from "npm:three@0.183.2/tsl";
+} from "three/tsl";
 
 import { colorValue } from "./colors.ts";
 

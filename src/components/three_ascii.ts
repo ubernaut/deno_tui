@@ -1,4 +1,4 @@
-import type { Camera, Scene } from "npm:three@0.183.2";
+import type { Camera, Scene } from "three";
 
 import { Component, type ComponentOptions } from "../component.ts";
 import { ThreeAsciiObject } from "../canvas/three_ascii.ts";

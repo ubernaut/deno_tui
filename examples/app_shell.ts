@@ -1,4 +1,4 @@
-import { crayon } from "https://deno.land/x/crayon@3.3.3/mod.ts";
+import { crayon } from "crayon";
 
 import {
   bindModalFocus,

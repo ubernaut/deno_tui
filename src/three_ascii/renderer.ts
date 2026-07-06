@@ -1,6 +1,6 @@
-import { Camera, type Color, PerspectiveCamera, Scene } from "npm:three@0.183.2";
-import { RenderPipeline, WebGPURenderer } from "npm:three@0.183.2/webgpu";
-import { pass } from "npm:three@0.183.2/tsl";
+import { Camera, type Color, PerspectiveCamera, Scene } from "three";
+import { RenderPipeline, WebGPURenderer } from "three/webgpu";
+import { pass } from "three/tsl";
 
 import { AcerolaAsciiNode, type AcerolaAsciiNodeOptions, type AcerolaAsciiRenderProfile } from "./AcerolaAsciiNode.ts";
 import {

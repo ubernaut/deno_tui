@@ -1,4 +1,4 @@
-import { PerspectiveCamera, Scene } from "npm:three@0.183.2";
+import { PerspectiveCamera, Scene } from "three";
 import {
   BenchmarkCase,
   buildThreeAsciiAnsiGrid,

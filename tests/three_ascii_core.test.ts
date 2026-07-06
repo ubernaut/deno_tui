@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Color, PerspectiveCamera, Scene } from "npm:three@0.183.2";
+import { Color, PerspectiveCamera, Scene } from "three";
 
 import {
   assertEquals,

@@ -4,7 +4,7 @@ import { Signal, type SignalOfObject } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import type { Rectangle } from "../types.ts";
 import type { DirtyRowSegment } from "./dirty_region.ts";
-import type { Camera, Scene } from "npm:three@0.183.2";
+import type { Camera, Scene } from "three";
 import type { AcerolaAsciiNodeOptions } from "../three_ascii/AcerolaAsciiNode.ts";
 import type { TerminalGlyphStyle } from "../three_ascii/glyphs.ts";
 import {

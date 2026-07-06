@@ -1,6 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 
-import type { Color } from "npm:three@0.183.2";
+import type { Color } from "three";
 
 import type { ThreeAsciiAnsiGridInput } from "./ansi_grid.ts";
 import type { TerminalGlyphStyle } from "./glyphs.ts";

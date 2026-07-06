@@ -1,4 +1,4 @@
-import * as THREE from "npm:three@0.183.2";
+import * as THREE from "three";
 import { colors } from "./neon_theme.ts";
 import { type ThreeSceneMode, threeSceneModes, type ThreeSceneSignal } from "./types.ts";
 

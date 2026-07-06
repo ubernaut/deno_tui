@@ -21,7 +21,7 @@ import type {
 import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import { emptyStyle } from "../src/theme.ts";
 import { View } from "../src/view.ts";
-import type { Camera, Scene } from "npm:three@0.183.2";
+import type { Camera, Scene } from "three";
 import type { TerminalGlyphStyle } from "../src/three_ascii/glyphs.ts";
 import type {
   ThreeAsciiRendererOptions,

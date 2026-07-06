@@ -1,5 +1,5 @@
 import { assertEquals } from "./deps.ts";
-import { Color } from "npm:three@0.183.2";
+import { Color } from "three";
 import {
   layoutThreeAsciiDemoWindow,
   THREE_ASCII_DEMO_WINDOW_COMPACT_CONTROL_TEXT,
