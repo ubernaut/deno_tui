@@ -295,7 +295,6 @@ import {
   renderApiWorkbenchTerminalShellToolbar,
 } from "./api_workbench_terminal_shell_view.ts";
 import { ApiWorkbenchControlsViewBufferCache, renderApiWorkbenchControls } from "./api_workbench_controls_view.ts";
-import { renderApiWorkbenchModalOverlay, renderApiWorkbenchThreeConfigModal } from "./api_workbench_modal_view.ts";
 import {
   renderApiWorkbenchThreeFallback,
   renderApiWorkbenchThreeHeader,
@@ -306,8 +305,10 @@ import {
   ApiWorkbenchWindowShellBufferCache,
   renderApiWorkbenchChromeHeader,
   renderApiWorkbenchDropdownOverlay,
+  renderApiWorkbenchModalOverlay,
   renderApiWorkbenchShelf,
   renderApiWorkbenchStatus,
+  renderApiWorkbenchThreeConfigModal,
   renderApiWorkbenchWindowFrame,
   renderApiWorkbenchWindowShell,
   renderApiWorkbenchWindowTabs,

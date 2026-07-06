@@ -117,8 +117,10 @@ import {
   renderApiWorkbenchButtonRow,
   renderApiWorkbenchChromeHeader,
   renderApiWorkbenchDropdownOverlay,
+  renderApiWorkbenchModalOverlay,
   renderApiWorkbenchShelf,
   renderApiWorkbenchStatus,
+  renderApiWorkbenchThreeConfigModal,
   renderApiWorkbenchWindowTabs,
   renderApiWorkbenchWindowTitlebar,
 } from "../../app/api_workbench_window_view.ts";
@@ -126,10 +128,6 @@ import {
   renderApiWorkbenchTerminalSessionTabs,
   renderApiWorkbenchTerminalShellToolbar,
 } from "../../app/api_workbench_terminal_shell_view.ts";
-import {
-  renderApiWorkbenchModalOverlay,
-  renderApiWorkbenchThreeConfigModal,
-} from "../../app/api_workbench_modal_view.ts";
 import { type HtmlCssLayoutRenderCommand } from "../../app/html_css_layout_view.ts";
 import {
   renderApiWorkbenchDataPanel,

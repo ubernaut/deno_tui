@@ -18505,342 +18505,6 @@ function writeTextCommand(target, index, command) {
   return index + 1;
 }
 
-// src/app/workbench_frame_render.ts
-function workbenchFrameRenderCommandsInto(target, lineBuffer, options) {
-  if (options.rect.width <= 0 || options.rect.height <= 0) {
-    target.length = 0;
-    return target;
-  }
-  const t = options.theme;
-  const background = options.active ? t.panelSoft : t.panel;
-  const borderStyle = {
-    fg: options.active ? t.accent : t.borderStrong,
-    bg: background,
-    bold: options.active
-  };
-  const titleStyle = {
-    fg: t.background,
-    bg: options.active ? t.accent : t.border,
-    bold: true
-  };
-  target[0] = writeFillCommand2(target[0], options.rect, background);
-  const lines = workbenchFrameBoxLinesInto(lineBuffer, options.rect, options.title);
-  let written = 1;
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index];
-    target[written] = writeTextCommand2(
-      target[written],
-      line,
-      line.kind === "title" ? titleStyle : borderStyle
-    );
-    written += 1;
-  }
-  target.length = written;
-  return target;
-}
-function writeFillCommand2(target, source, bg) {
-  if (!target || target.kind !== "fill") {
-    return {
-      kind: "fill",
-      rect: { column: source.column, row: source.row, width: source.width, height: source.height },
-      bg
-    };
-  }
-  target.rect.column = source.column;
-  target.rect.row = source.row;
-  target.rect.width = source.width;
-  target.rect.height = source.height;
-  target.bg = bg;
-  return target;
-}
-function writeTextCommand2(target, line, style2) {
-  if (!target || target.kind !== "text") {
-    return {
-      kind: "text",
-      row: line.row,
-      column: line.column,
-      text: line.text,
-      style: { ...style2 },
-      lineKind: line.kind
-    };
-  }
-  target.row = line.row;
-  target.column = line.column;
-  target.text = line.text;
-  target.style.fg = style2.fg;
-  target.style.bg = style2.bg;
-  target.style.bold = style2.bold;
-  target.lineKind = line.kind;
-  return target;
-}
-
-// app/api_workbench_window_view.ts
-function renderApiWorkbenchButtonRow(options) {
-  const { frame, rect, startRow, items, placements, commands, theme: theme2, contrastText: contrastText2, paint: paint2, write: write2, addHit, hitAction } = options;
-  const nextRow = layoutWorkbenchButtonRowInto(placements, items, rect, startRow);
-  workbenchButtonRowRenderCommandsInto(commands, placements);
-  for (const command of commands) {
-    const projection = projectWorkbenchButtonCommand(command, theme2, contrastText2);
-    write2(frame, command.rect.row, command.rect.column, paint2(projection.text, projection.style));
-    if (!command.item.disabled) addHit(command.hitRect, hitAction(command.item.action));
-  }
-  return nextRow;
-}
-function renderApiWorkbenchChromeHeader(options) {
-  const {
-    frame,
-    width,
-    menuItems,
-    menuActiveIndex,
-    openMenuId,
-    dropdownEntries,
-    headerLayout: headerLayout2,
-    menuHitLayouts,
-    theme: theme2,
-    paint: paint2,
-    write: write2,
-    fillRow,
-    writeButton: writeButton2,
-    addHit
-  } = options;
-  fillRow(frame, 0, theme2.backgroundSoft);
-  fillRow(frame, 1, theme2.panel);
-  write2(
-    frame,
-    0,
-    options.titleColumn ?? 0,
-    paint2(" API WORKBENCH ", { fg: theme2.background, bg: theme2.accent, bold: true })
-  );
-  const closeLabel = width >= 20 || options.reserveCloseWhenHidden ? buttonText("x", { compact: true }) : "";
-  const closeWidth = textWidth(closeLabel);
-  const header = layoutWorkbenchHeaderInto(headerLayout2, {
-    width,
-    menuStart: 17,
-    closeWidth,
-    closeMinWidth: options.closeMinWidth ?? 20,
-    reserveCloseWhenHidden: options.reserveCloseWhenHidden
-  });
-  const hits = layoutWorkbenchMenuBarHitsInto(menuHitLayouts, {
-    column: header.menu.column,
-    row: header.menu.row,
-    width: header.menu.width,
-    items: menuItems,
-    activeIndex: menuActiveIndex,
-    measureText: textWidth
-  });
-  for (const hit of hits) {
-    addHit(hit.rect, { type: "menu", index: hit.index });
-  }
-  write2(
-    frame,
-    header.menu.row,
-    header.menu.column,
-    paint2(fitCellText(renderMenuBar(menuItems, menuActiveIndex), header.menu.width), {
-      fg: theme2.text,
-      bg: theme2.backgroundSoft
-    })
-  );
-  if (header.close) {
-    writeButton2(frame, header.close.row, header.close.column, "x", { compact: true, tone: "danger" });
-    addHit(header.close, { type: "quit" });
-  }
-  const overlay = workbenchStandardTopMenuDropdownOverlayInto({
-    openId: openMenuId,
-    menuStart: header.menu.column,
-    menuItems,
-    menuActiveIndex,
-    maxWidth: width,
-    entries: dropdownEntries,
-    measureText: textWidth
-  });
-  const help = options.showHelp === false ? "" : workbenchHeaderHelp({ width });
-  const helpWidth = textWidth(help);
-  const showHelp = help.length > 0;
-  const helpStart = showHelp ? Math.max(0, width - helpWidth) : width;
-  if (showHelp) {
-    write2(
-      frame,
-      1,
-      helpStart,
-      paint2(help, {
-        fg: theme2.muted,
-        bg: theme2.panel
-      })
-    );
-  }
-  return overlay;
-}
-function renderApiWorkbenchStatus(options) {
-  const { frame, row, width, focus: focus2, themeLabel, tileDensity: tileDensity2, diagnostics, theme: theme2, paint: paint2, write: write2 } = options;
-  const line = workbenchStatusSnapshotLine({
-    snapshot: {
-      focus: focus2,
-      theme: themeLabel,
-      tileDensity: tileDensity2,
-      diagnostics
-    },
-    width,
-    shortcutProfile: options.shortcutProfile
-  });
-  write2(frame, row, 0, paint2(line, { fg: theme2.text, bg: theme2.panelSoft }));
-}
-function renderApiWorkbenchDropdownOverlay(options) {
-  const {
-    frame,
-    overlay,
-    workspaceBounds,
-    screenBounds,
-    workspaceOffsetRows,
-    commands,
-    theme: theme2,
-    paint: paint2,
-    write: write2,
-    fillRect: fillRect2
-  } = options;
-  if (!overlay || overlay.items.length === 0) return;
-  const clip = overlay.coordinate === "workspace" ? workspaceBounds : screenBounds;
-  const rect = overlay.coordinate === "workspace" ? { ...overlay.rect, row: overlay.rect.row + workspaceBounds.row - workspaceOffsetRows } : overlay.rect;
-  if (!intersects(rect, clip)) return;
-  const renderedCommands = workbenchDropdownOverlayRenderCommandsInto(commands, {
-    rect,
-    bounds: clip,
-    items: overlay.items,
-    itemIndexes: overlay.itemIndexes,
-    selectedIndex: overlay.selectedIndex
-  });
-  for (const command of renderedCommands) {
-    if (command.kind === "fill") {
-      fillRect2(frame, command.rect, theme2.panelSoft);
-      continue;
-    }
-    const style2 = command.selected ? { fg: theme2.background, bg: theme2.warn, bold: true } : command.kind === "item" ? { fg: theme2.text, bg: theme2.panelSoft, bold: false } : { fg: theme2.accent, bg: theme2.panelSoft, bold: true };
-    write2(frame, command.rect.row, command.rect.column, paint2(command.text ?? "", style2));
-    if (command.kind === "item" && command.hitRect && command.hitRect.width > 0 && command.hitRect.height > 0) {
-      const index = command.itemIndex ?? command.sourceIndex ?? 0;
-      const action = overlay.kind === "control" ? { type: "control", id: "dropdown", action: "activate", index } : { type: overlay.kind, index };
-      options.addHit(command.hitRect, action);
-    }
-  }
-}
-function renderApiWorkbenchShelf(options) {
-  const { frame, row, column, width, windows, buffers, theme: theme2, titleForId, paint: paint2, write: write2, writeButton: writeButton2, addHit } = options;
-  const entries = workbenchShelfEntriesInto(buffers.entries, windows, titleForId);
-  if (entries.length === 0) return;
-  const layout = layoutWorkbenchShelfInto(buffers.shelfLayout, {
-    row,
-    column,
-    width,
-    entries
-  });
-  const commands = workbenchShelfRenderCommandsInto(buffers.shelfCommands, layout);
-  for (const command of commands) {
-    if (command.kind === "prefix") {
-      write2(
-        frame,
-        command.rect.row,
-        command.rect.column,
-        paint2(command.text, { fg: theme2.muted, bg: theme2.backgroundSoft })
-      );
-      continue;
-    }
-    writeButton2(frame, command.rect.row, command.rect.column, command.label, {
-      state: command.state,
-      tone: command.tone,
-      maxWidth: command.rect.width
-    });
-    addHit(command.hitRect, { type: "restore", id: command.id });
-  }
-}
-function renderApiWorkbenchWindowTabs(options) {
-  const { frame, row, column, width, tabs, buffers, theme: theme2, titleForId, paint: paint2, write: write2, fillRow, writeButton: writeButton2, addHit } = options;
-  fillRow?.(frame, row, theme2.backgroundSoft);
-  const layout = layoutWorkbenchTabsInto(buffers.tabLayout, {
-    row,
-    column,
-    width,
-    tabs: workbenchTabEntriesInto(buffers.tabs, tabs, titleForId)
-  });
-  const commands = workbenchShelfRenderCommandsInto(buffers.tabCommands, layout);
-  for (const command of commands) {
-    if (command.kind === "prefix") {
-      write2(
-        frame,
-        command.rect.row,
-        command.rect.column,
-        paint2(command.text, { fg: theme2.muted, bg: theme2.backgroundSoft })
-      );
-      continue;
-    }
-    writeButton2(frame, command.rect.row, command.rect.column, command.label, {
-      state: command.state,
-      tone: command.tone,
-      maxWidth: command.rect.width
-    });
-    addHit(command.hitRect, options.hitAction?.(command.id) ?? { type: "windowTab", id: command.id });
-  }
-}
-function renderApiWorkbenchWindowTitlebar(options) {
-  const titlebar = layoutWorkbenchTitlebarInto(options.buffers.layout(options.id), {
-    rect: options.rect,
-    title: options.title,
-    showConfig: options.showConfig
-  });
-  const commands = workbenchTitlebarButtonRenderCommandsInto(options.buffers.renderCommands(options.id), titlebar);
-  for (const command of commands) {
-    options.writeButton(options.frame, command.rect.row, command.rect.column, command.label, {
-      compact: command.compact,
-      tone: command.tone
-    });
-    options.addHit(command.hitRect, options.titlebarAction(options.id, command.kind));
-  }
-}
-
-// app/api_workbench_terminal_shell_view.ts
-function renderApiWorkbenchTerminalShellToolbar(options) {
-  const { frame, rect, startRow, state, buffers, theme: theme2, contrastText: contrastText2, paint: paint2, write: write2, addHit } = options;
-  const hitType = options.hitType ?? "terminalShell";
-  workbenchTerminalToolbarItemsInto(buffers.items, state, options.actions ? { actions: options.actions } : void 0);
-  return renderApiWorkbenchButtonRow({
-    frame,
-    rect,
-    startRow,
-    items: buffers.items,
-    placements: buffers.placements,
-    commands: buffers.commands,
-    theme: theme2,
-    contrastText: contrastText2,
-    paint: paint2,
-    write: write2,
-    addHit,
-    hitAction: (action) => ({ type: hitType, action })
-  });
-}
-function renderApiWorkbenchTerminalSessionTabs(options) {
-  const { frame, rect, startRow, inspection, buffers, theme: theme2, contrastText: contrastText2, paint: paint2, write: write2, addHit } = options;
-  if (startRow >= rect.row + rect.height) return startRow;
-  const hitType = options.hitType ?? "terminalShellSession";
-  workbenchTerminalSessionTabSourcesInto(buffers.sources, inspection.sessions);
-  workbenchTerminalSessionTabsInto(
-    buffers.placements,
-    buffers.sources,
-    inspection.activeId,
-    { column: rect.column, row: startRow, width: rect.width, height: 1 }
-  );
-  workbenchTerminalSessionTabRenderCommandsInto(
-    buffers.commands,
-    buffers.placements,
-    { column: rect.column, row: startRow, width: rect.width, height: 1 }
-  );
-  for (const command of buffers.commands) {
-    const style2 = command.active ? { fg: contrastText2(theme2.accent, theme2.background, theme2.text), bg: theme2.accent, bold: true } : { fg: theme2.text, bg: theme2.panelSoft, bold: false };
-    write2(frame, command.rect.row, command.rect.column, paint2(command.text, style2));
-    if (command.kind === "tab" && command.id) {
-      addHit(command.rect, { type: hitType, id: command.id });
-    }
-  }
-  return startRow + 1;
-}
-
 // src/app/workbench_ascii.ts
 var defaultWorkbenchAsciiConfigRows = [
   { kind: "preset", label: "Preset" },
@@ -19171,7 +18835,87 @@ function normalizeRect4(rect) {
   };
 }
 
-// app/api_workbench_modal_view.ts
+// src/app/workbench_frame_render.ts
+function workbenchFrameRenderCommandsInto(target, lineBuffer, options) {
+  if (options.rect.width <= 0 || options.rect.height <= 0) {
+    target.length = 0;
+    return target;
+  }
+  const t = options.theme;
+  const background = options.active ? t.panelSoft : t.panel;
+  const borderStyle = {
+    fg: options.active ? t.accent : t.borderStrong,
+    bg: background,
+    bold: options.active
+  };
+  const titleStyle = {
+    fg: t.background,
+    bg: options.active ? t.accent : t.border,
+    bold: true
+  };
+  target[0] = writeFillCommand2(target[0], options.rect, background);
+  const lines = workbenchFrameBoxLinesInto(lineBuffer, options.rect, options.title);
+  let written = 1;
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    target[written] = writeTextCommand2(
+      target[written],
+      line,
+      line.kind === "title" ? titleStyle : borderStyle
+    );
+    written += 1;
+  }
+  target.length = written;
+  return target;
+}
+function writeFillCommand2(target, source, bg) {
+  if (!target || target.kind !== "fill") {
+    return {
+      kind: "fill",
+      rect: { column: source.column, row: source.row, width: source.width, height: source.height },
+      bg
+    };
+  }
+  target.rect.column = source.column;
+  target.rect.row = source.row;
+  target.rect.width = source.width;
+  target.rect.height = source.height;
+  target.bg = bg;
+  return target;
+}
+function writeTextCommand2(target, line, style2) {
+  if (!target || target.kind !== "text") {
+    return {
+      kind: "text",
+      row: line.row,
+      column: line.column,
+      text: line.text,
+      style: { ...style2 },
+      lineKind: line.kind
+    };
+  }
+  target.row = line.row;
+  target.column = line.column;
+  target.text = line.text;
+  target.style.fg = style2.fg;
+  target.style.bg = style2.bg;
+  target.style.bold = style2.bold;
+  target.lineKind = line.kind;
+  return target;
+}
+
+// app/api_workbench_window_view.ts
+function renderApiWorkbenchButtonRow(options) {
+  const { frame, rect, startRow, items, placements, commands, theme: theme2, contrastText: contrastText2, paint: paint2, write: write2, addHit, hitAction } = options;
+  const nextRow = layoutWorkbenchButtonRowInto(placements, items, rect, startRow);
+  workbenchButtonRowRenderCommandsInto(commands, placements);
+  for (const command of commands) {
+    const projection = projectWorkbenchButtonCommand(command, theme2, contrastText2);
+    write2(frame, command.rect.row, command.rect.column, paint2(projection.text, projection.style));
+    if (!command.item.disabled) addHit(command.hitRect, hitAction(command.item.action));
+  }
+  return nextRow;
+}
 function renderApiWorkbenchModalOverlay(options) {
   const { frame, bounds, inspection, buffers, theme: theme2, contrastText: contrastText2, fit: fit2, paint: paint2, write: write2, fillRect: fillRect2, drawFrame: drawFrame2, addHit } = options;
   addHit(bounds, { type: "modalAction", index: -1 });
@@ -19341,6 +19085,260 @@ function renderApiWorkbenchThreeConfigModal(options) {
       }
     )
   );
+}
+function renderApiWorkbenchChromeHeader(options) {
+  const {
+    frame,
+    width,
+    menuItems,
+    menuActiveIndex,
+    openMenuId,
+    dropdownEntries,
+    headerLayout: headerLayout2,
+    menuHitLayouts,
+    theme: theme2,
+    paint: paint2,
+    write: write2,
+    fillRow,
+    writeButton: writeButton2,
+    addHit
+  } = options;
+  fillRow(frame, 0, theme2.backgroundSoft);
+  fillRow(frame, 1, theme2.panel);
+  write2(
+    frame,
+    0,
+    options.titleColumn ?? 0,
+    paint2(" API WORKBENCH ", { fg: theme2.background, bg: theme2.accent, bold: true })
+  );
+  const closeLabel = width >= 20 || options.reserveCloseWhenHidden ? buttonText("x", { compact: true }) : "";
+  const closeWidth = textWidth(closeLabel);
+  const header = layoutWorkbenchHeaderInto(headerLayout2, {
+    width,
+    menuStart: 17,
+    closeWidth,
+    closeMinWidth: options.closeMinWidth ?? 20,
+    reserveCloseWhenHidden: options.reserveCloseWhenHidden
+  });
+  const hits = layoutWorkbenchMenuBarHitsInto(menuHitLayouts, {
+    column: header.menu.column,
+    row: header.menu.row,
+    width: header.menu.width,
+    items: menuItems,
+    activeIndex: menuActiveIndex,
+    measureText: textWidth
+  });
+  for (const hit of hits) {
+    addHit(hit.rect, { type: "menu", index: hit.index });
+  }
+  write2(
+    frame,
+    header.menu.row,
+    header.menu.column,
+    paint2(fitCellText(renderMenuBar(menuItems, menuActiveIndex), header.menu.width), {
+      fg: theme2.text,
+      bg: theme2.backgroundSoft
+    })
+  );
+  if (header.close) {
+    writeButton2(frame, header.close.row, header.close.column, "x", { compact: true, tone: "danger" });
+    addHit(header.close, { type: "quit" });
+  }
+  const overlay = workbenchStandardTopMenuDropdownOverlayInto({
+    openId: openMenuId,
+    menuStart: header.menu.column,
+    menuItems,
+    menuActiveIndex,
+    maxWidth: width,
+    entries: dropdownEntries,
+    measureText: textWidth
+  });
+  const help = options.showHelp === false ? "" : workbenchHeaderHelp({ width });
+  const helpWidth = textWidth(help);
+  const showHelp = help.length > 0;
+  const helpStart = showHelp ? Math.max(0, width - helpWidth) : width;
+  if (showHelp) {
+    write2(
+      frame,
+      1,
+      helpStart,
+      paint2(help, {
+        fg: theme2.muted,
+        bg: theme2.panel
+      })
+    );
+  }
+  return overlay;
+}
+function renderApiWorkbenchStatus(options) {
+  const { frame, row, width, focus: focus2, themeLabel, tileDensity: tileDensity2, diagnostics, theme: theme2, paint: paint2, write: write2 } = options;
+  const line = workbenchStatusSnapshotLine({
+    snapshot: {
+      focus: focus2,
+      theme: themeLabel,
+      tileDensity: tileDensity2,
+      diagnostics
+    },
+    width,
+    shortcutProfile: options.shortcutProfile
+  });
+  write2(frame, row, 0, paint2(line, { fg: theme2.text, bg: theme2.panelSoft }));
+}
+function renderApiWorkbenchDropdownOverlay(options) {
+  const {
+    frame,
+    overlay,
+    workspaceBounds,
+    screenBounds,
+    workspaceOffsetRows,
+    commands,
+    theme: theme2,
+    paint: paint2,
+    write: write2,
+    fillRect: fillRect2
+  } = options;
+  if (!overlay || overlay.items.length === 0) return;
+  const clip = overlay.coordinate === "workspace" ? workspaceBounds : screenBounds;
+  const rect = overlay.coordinate === "workspace" ? { ...overlay.rect, row: overlay.rect.row + workspaceBounds.row - workspaceOffsetRows } : overlay.rect;
+  if (!intersects(rect, clip)) return;
+  const renderedCommands = workbenchDropdownOverlayRenderCommandsInto(commands, {
+    rect,
+    bounds: clip,
+    items: overlay.items,
+    itemIndexes: overlay.itemIndexes,
+    selectedIndex: overlay.selectedIndex
+  });
+  for (const command of renderedCommands) {
+    if (command.kind === "fill") {
+      fillRect2(frame, command.rect, theme2.panelSoft);
+      continue;
+    }
+    const style2 = command.selected ? { fg: theme2.background, bg: theme2.warn, bold: true } : command.kind === "item" ? { fg: theme2.text, bg: theme2.panelSoft, bold: false } : { fg: theme2.accent, bg: theme2.panelSoft, bold: true };
+    write2(frame, command.rect.row, command.rect.column, paint2(command.text ?? "", style2));
+    if (command.kind === "item" && command.hitRect && command.hitRect.width > 0 && command.hitRect.height > 0) {
+      const index = command.itemIndex ?? command.sourceIndex ?? 0;
+      const action = overlay.kind === "control" ? { type: "control", id: "dropdown", action: "activate", index } : { type: overlay.kind, index };
+      options.addHit(command.hitRect, action);
+    }
+  }
+}
+function renderApiWorkbenchShelf(options) {
+  const { frame, row, column, width, windows, buffers, theme: theme2, titleForId, paint: paint2, write: write2, writeButton: writeButton2, addHit } = options;
+  const entries = workbenchShelfEntriesInto(buffers.entries, windows, titleForId);
+  if (entries.length === 0) return;
+  const layout = layoutWorkbenchShelfInto(buffers.shelfLayout, {
+    row,
+    column,
+    width,
+    entries
+  });
+  const commands = workbenchShelfRenderCommandsInto(buffers.shelfCommands, layout);
+  for (const command of commands) {
+    if (command.kind === "prefix") {
+      write2(
+        frame,
+        command.rect.row,
+        command.rect.column,
+        paint2(command.text, { fg: theme2.muted, bg: theme2.backgroundSoft })
+      );
+      continue;
+    }
+    writeButton2(frame, command.rect.row, command.rect.column, command.label, {
+      state: command.state,
+      tone: command.tone,
+      maxWidth: command.rect.width
+    });
+    addHit(command.hitRect, { type: "restore", id: command.id });
+  }
+}
+function renderApiWorkbenchWindowTabs(options) {
+  const { frame, row, column, width, tabs, buffers, theme: theme2, titleForId, paint: paint2, write: write2, fillRow, writeButton: writeButton2, addHit } = options;
+  fillRow?.(frame, row, theme2.backgroundSoft);
+  const layout = layoutWorkbenchTabsInto(buffers.tabLayout, {
+    row,
+    column,
+    width,
+    tabs: workbenchTabEntriesInto(buffers.tabs, tabs, titleForId)
+  });
+  const commands = workbenchShelfRenderCommandsInto(buffers.tabCommands, layout);
+  for (const command of commands) {
+    if (command.kind === "prefix") {
+      write2(
+        frame,
+        command.rect.row,
+        command.rect.column,
+        paint2(command.text, { fg: theme2.muted, bg: theme2.backgroundSoft })
+      );
+      continue;
+    }
+    writeButton2(frame, command.rect.row, command.rect.column, command.label, {
+      state: command.state,
+      tone: command.tone,
+      maxWidth: command.rect.width
+    });
+    addHit(command.hitRect, options.hitAction?.(command.id) ?? { type: "windowTab", id: command.id });
+  }
+}
+function renderApiWorkbenchWindowTitlebar(options) {
+  const titlebar = layoutWorkbenchTitlebarInto(options.buffers.layout(options.id), {
+    rect: options.rect,
+    title: options.title,
+    showConfig: options.showConfig
+  });
+  const commands = workbenchTitlebarButtonRenderCommandsInto(options.buffers.renderCommands(options.id), titlebar);
+  for (const command of commands) {
+    options.writeButton(options.frame, command.rect.row, command.rect.column, command.label, {
+      compact: command.compact,
+      tone: command.tone
+    });
+    options.addHit(command.hitRect, options.titlebarAction(options.id, command.kind));
+  }
+}
+
+// app/api_workbench_terminal_shell_view.ts
+function renderApiWorkbenchTerminalShellToolbar(options) {
+  const { frame, rect, startRow, state, buffers, theme: theme2, contrastText: contrastText2, paint: paint2, write: write2, addHit } = options;
+  const hitType = options.hitType ?? "terminalShell";
+  workbenchTerminalToolbarItemsInto(buffers.items, state, options.actions ? { actions: options.actions } : void 0);
+  return renderApiWorkbenchButtonRow({
+    frame,
+    rect,
+    startRow,
+    items: buffers.items,
+    placements: buffers.placements,
+    commands: buffers.commands,
+    theme: theme2,
+    contrastText: contrastText2,
+    paint: paint2,
+    write: write2,
+    addHit,
+    hitAction: (action) => ({ type: hitType, action })
+  });
+}
+function renderApiWorkbenchTerminalSessionTabs(options) {
+  const { frame, rect, startRow, inspection, buffers, theme: theme2, contrastText: contrastText2, paint: paint2, write: write2, addHit } = options;
+  if (startRow >= rect.row + rect.height) return startRow;
+  const hitType = options.hitType ?? "terminalShellSession";
+  workbenchTerminalSessionTabSourcesInto(buffers.sources, inspection.sessions);
+  workbenchTerminalSessionTabsInto(
+    buffers.placements,
+    buffers.sources,
+    inspection.activeId,
+    { column: rect.column, row: startRow, width: rect.width, height: 1 }
+  );
+  workbenchTerminalSessionTabRenderCommandsInto(
+    buffers.commands,
+    buffers.placements,
+    { column: rect.column, row: startRow, width: rect.width, height: 1 }
+  );
+  for (const command of buffers.commands) {
+    const style2 = command.active ? { fg: contrastText2(theme2.accent, theme2.background, theme2.text), bg: theme2.accent, bold: true } : { fg: theme2.text, bg: theme2.panelSoft, bold: false };
+    write2(frame, command.rect.row, command.rect.column, paint2(command.text, style2));
+    if (command.kind === "tab" && command.id) {
+      addHit(command.rect, { type: hitType, id: command.id });
+    }
+  }
+  return startRow + 1;
 }
 
 // src/app/workbench_rows.ts
