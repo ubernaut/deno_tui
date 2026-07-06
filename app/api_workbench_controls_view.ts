@@ -347,14 +347,14 @@ export function renderApiWorkbenchControls<Frame = WorkbenchFrame, Value extends
         };
       }
     } else if (controlRow.id === "stepper") {
-      addInlineStepperHits({
+      const stepperHits = apiWorkbenchStepperHitPlacementsInto(
+        buffers.stepperHitPlacements,
+        state.stepper.steps,
+        state.stepper.activeIndex,
         rect,
-        row: beforeRow,
-        steps: state.stepper.steps,
-        activeIndex: state.stepper.activeIndex,
-        target: buffers.stepperHitPlacements,
-        addHit,
-      });
+        beforeRow,
+      );
+      addControlHits(stepperHits, addHit);
     }
   }
 
@@ -457,24 +457,4 @@ function addControlHits(
       index: hit.index,
     });
   }
-}
-
-interface AddInlineStepperHitsOptions {
-  rect: Rectangle;
-  row: number;
-  steps: readonly StepperStep[];
-  activeIndex: number;
-  target: ApiWorkbenchControlHitPlacement[];
-  addHit: (rect: Rectangle, action: ApiWorkbenchControlsViewHitAction) => void;
-}
-
-function addInlineStepperHits(options: AddInlineStepperHitsOptions): void {
-  const placements = apiWorkbenchStepperHitPlacementsInto(
-    options.target,
-    options.steps,
-    options.activeIndex,
-    options.rect,
-    options.row,
-  );
-  addControlHits(placements, options.addHit);
 }

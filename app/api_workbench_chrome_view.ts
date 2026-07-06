@@ -255,20 +255,11 @@ export function renderApiWorkbenchDropdownOverlay<Frame = WorkbenchFrame>(
       : { fg: theme.accent, bg: theme.panelSoft, bold: true };
     write(frame, command.rect.row, command.rect.column, paint(command.text ?? "", style));
     if (command.kind === "item" && command.hitRect && command.hitRect.width > 0 && command.hitRect.height > 0) {
-      options.addHit(command.hitRect, dropdownHitAction(overlay, command.itemIndex ?? command.sourceIndex ?? 0));
+      const index = command.itemIndex ?? command.sourceIndex ?? 0;
+      const action: ApiWorkbenchDropdownOverlayHitAction = overlay.kind === "control"
+        ? { type: "control", id: "dropdown", action: "activate", index }
+        : { type: overlay.kind, index };
+      options.addHit(command.hitRect, action);
     }
   }
-}
-
-function dropdownHitAction(
-  overlay: ApiWorkbenchDropdownOverlay,
-  index: number,
-): ApiWorkbenchDropdownOverlayHitAction {
-  return overlay.kind === "theme"
-    ? { type: "theme", index }
-    : overlay.kind === "newWindow"
-    ? { type: "newWindow", index }
-    : overlay.kind === "workspace"
-    ? { type: "workspace", index }
-    : { type: "control", id: "dropdown", action: "activate", index };
 }

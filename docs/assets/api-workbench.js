@@ -18197,14 +18197,14 @@ function renderApiWorkbenchControls(options) {
         };
       }
     } else if (controlRow.id === "stepper") {
-      addInlineStepperHits({
+      const stepperHits = apiWorkbenchStepperHitPlacementsInto(
+        buffers.stepperHitPlacements,
+        state.stepper.steps,
+        state.stepper.activeIndex,
         rect,
-        row: beforeRow,
-        steps: state.stepper.steps,
-        activeIndex: state.stepper.activeIndex,
-        target: buffers.stepperHitPlacements,
-        addHit
-      });
+        beforeRow
+      );
+      addControlHits(stepperHits, addHit);
     }
   }
   return result;
@@ -18270,16 +18270,6 @@ function addControlHits(placements, addHit) {
       index: hit.index
     });
   }
-}
-function addInlineStepperHits(options) {
-  const placements = apiWorkbenchStepperHitPlacementsInto(
-    options.target,
-    options.steps,
-    options.activeIndex,
-    options.rect,
-    options.row
-  );
-  addControlHits(placements, options.addHit);
 }
 
 // src/app/workbench_rows.ts
@@ -19150,12 +19140,11 @@ function renderApiWorkbenchDropdownOverlay(options) {
     const style2 = command.selected ? { fg: theme2.background, bg: theme2.warn, bold: true } : command.kind === "item" ? { fg: theme2.text, bg: theme2.panelSoft, bold: false } : { fg: theme2.accent, bg: theme2.panelSoft, bold: true };
     write2(frame, command.rect.row, command.rect.column, paint2(command.text ?? "", style2));
     if (command.kind === "item" && command.hitRect && command.hitRect.width > 0 && command.hitRect.height > 0) {
-      options.addHit(command.hitRect, dropdownHitAction(overlay, command.itemIndex ?? command.sourceIndex ?? 0));
+      const index = command.itemIndex ?? command.sourceIndex ?? 0;
+      const action = overlay.kind === "control" ? { type: "control", id: "dropdown", action: "activate", index } : { type: overlay.kind, index };
+      options.addHit(command.hitRect, action);
     }
   }
-}
-function dropdownHitAction(overlay, index) {
-  return overlay.kind === "theme" ? { type: "theme", index } : overlay.kind === "newWindow" ? { type: "newWindow", index } : overlay.kind === "workspace" ? { type: "workspace", index } : { type: "control", id: "dropdown", action: "activate", index };
 }
 
 // src/app/workbench_ascii.ts
