@@ -51,6 +51,13 @@ export interface ApiWorkbenchThreeConfigModalRenderOptions<Frame = WorkbenchFram
   rows: readonly WorkbenchAsciiConfigRow[];
   selectedIndex: number;
   title: string;
+  frameTitle?: string;
+  titleStyle?: ApiWorkbenchPaintStyle;
+  helpText?: string;
+  footerText?: string;
+  footerStyle?: ApiWorkbenchPaintStyle;
+  rowSplitMinWidth?: number;
+  activateRowHits?: boolean;
   buffers: WorkbenchAsciiConfigModalBufferCache<WorkbenchAsciiConfigRow>;
   theme: ApiWorkbenchThemeSpec;
   contrastText: (background: string, dark: string, light: string) => string;
@@ -59,7 +66,8 @@ export interface ApiWorkbenchThreeConfigModalRenderOptions<Frame = WorkbenchFram
   write: (frame: Frame, row: number, column: number, value: string) => void;
   fillRect: (frame: Frame, rect: Rectangle, background: string) => void;
   drawFrame: (frame: Frame, rect: Rectangle, title: string, active: boolean) => void;
-  rowText: (row: WorkbenchAsciiConfigRow) => string;
+  rowText: (row: WorkbenchAsciiConfigRow, layout: { inner: Rectangle }) => string;
+  rowStyle?: (selected: boolean, theme: ApiWorkbenchThemeSpec) => ApiWorkbenchPaintStyle;
   addHit: (
     rect: Rectangle,
     action:
@@ -155,41 +163,66 @@ export function renderApiWorkbenchThreeConfigModal<Frame = WorkbenchFrame>(
   const layout = layoutWorkbenchAsciiConfigModal({ bounds, rowCount: rows.length });
   if (layout.shadow.width > 0 && layout.shadow.height > 0) fillRect(frame, layout.shadow, theme.background);
   fillRect(frame, layout.rect, theme.panelSoft);
-  drawFrame(frame, layout.rect, "Three Renderer Config", true);
+  drawFrame(frame, layout.rect, options.frameTitle ?? "Three Renderer Config", true);
 
   const inner = layout.inner;
   write(
     frame,
     inner.row,
     inner.column,
-    paint(fit(title, inner.width), {
-      fg: theme.accent,
-      bg: theme.panelSoft,
-      bold: true,
-    }),
+    paint(
+      fit(title, inner.width),
+      options.titleStyle ?? {
+        fg: theme.accent,
+        bg: theme.panelSoft,
+        bold: true,
+      },
+    ),
   );
+  if (options.helpText) {
+    write(
+      frame,
+      inner.row + 1,
+      inner.column,
+      paint(fit(options.helpText, inner.width), {
+        fg: theme.muted,
+        bg: theme.panelSoft,
+      }),
+    );
+  }
   const placements = workbenchAsciiConfigRowPlacementsInto(buffers.rowPlacements, rows, {
     inner,
     rowsTop: layout.rowsTop,
     visibleRows: layout.visibleRows,
     selectedIndex,
+    splitMinWidth: options.rowSplitMinWidth ?? 6,
   });
   const rowCommands = workbenchAsciiConfigRowRenderCommandsInto(buffers.rowRenderCommands, placements, {
-    text: rowText,
+    text: (row) => rowText(row, { inner }),
   });
   for (const command of rowCommands) {
     const selected = command.selected;
-    const bg = selected ? theme.warn : theme.surface;
-    const fg = selected ? theme.background : theme.text;
+    const style = options.rowStyle?.(selected, theme) ?? {
+      fg: selected ? theme.background : theme.text,
+      bg: selected ? theme.warn : theme.surface,
+      bold: selected,
+    };
     const text = command.kind === "fill" ? " ".repeat(command.rect.width) : fit(command.text, command.rect.width);
     write(
       frame,
       command.rect.row,
       command.rect.column,
-      paint(text, { fg, bg, bold: command.kind === "text" && selected }),
+      paint(text, { ...style, bold: command.kind === "text" && style.bold }),
     );
   }
   for (const placement of placements) {
+    if (options.activateRowHits) {
+      addHit(placement.rect, {
+        type: "asciiConfig",
+        index: placement.rowIndex,
+        action: "activate",
+      });
+    }
     addHit(placement.previousRect, {
       type: "asciiConfig",
       index: placement.rowIndex,
@@ -220,14 +253,17 @@ export function renderApiWorkbenchThreeConfigModal<Frame = WorkbenchFrame>(
       action: command.item.action,
     });
   }
-  const footer = "Up/Down select  Left/Right change  Enter toggle  A apply  O OK  Esc cancel";
+  const footer = options.footerText ?? "Up/Down select  Left/Right change  Enter toggle  A apply  O OK  Esc cancel";
   write(
     frame,
     layout.footerRow,
     inner.column,
-    paint(fit(footer, inner.width), {
-      fg: theme.muted,
-      bg: theme.panel,
-    }),
+    paint(
+      fit(footer, inner.width),
+      options.footerStyle ?? {
+        fg: theme.muted,
+        bg: theme.panel,
+      },
+    ),
   );
 }

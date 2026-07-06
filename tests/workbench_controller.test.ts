@@ -1330,7 +1330,7 @@ Deno.test("renderApiWorkbenchExplorerPanel paints tree rows and registers row hi
       id: "src",
       label: "src",
       depth: 0,
-      index: 0,
+      index: 10,
       hasChildren: true,
       expanded: true,
       node: { id: "src", label: "src", expanded: true, children: [] },
@@ -1340,7 +1340,7 @@ Deno.test("renderApiWorkbenchExplorerPanel paints tree rows and registers row hi
       id: "mod",
       label: "mod.ts",
       depth: 1,
-      index: 1,
+      index: 11,
       hasChildren: false,
       expanded: false,
       node: { id: "mod", label: "mod.ts" },
@@ -1352,7 +1352,7 @@ Deno.test("renderApiWorkbenchExplorerPanel paints tree rows and registers row hi
     frame,
     rect: { column: 2, row: 3, width: 24, height: 4 },
     rows,
-    selectedIndex: 1,
+    selectedIndex: 11,
     renderRows,
     theme: testWorkbenchTheme(),
     contrastText: () => "#000",
@@ -1363,8 +1363,8 @@ Deno.test("renderApiWorkbenchExplorerPanel paints tree rows and registers row hi
   assertEquals(written, ["▾ src", "    mod.ts"]);
   assertEquals(renderRows[1]?.bold, true);
   assertEquals(hits, [
-    { index: 0, row: 3, width: 24 },
-    { index: 1, row: 4, width: 24 },
+    { index: 10, row: 3, width: 24 },
+    { index: 11, row: 4, width: 24 },
   ]);
 });
 
@@ -1600,6 +1600,8 @@ Deno.test("renderApiWorkbenchThreeConfigModal paints rows, footer, and config hi
     rows,
     selectedIndex: 0,
     title: "Three Test",
+    helpText: "Use arrows/clicks",
+    activateRowHits: true,
     buffers,
     theme: testWorkbenchTheme(),
     contrastText: () => "#000",
@@ -1623,11 +1625,13 @@ Deno.test("renderApiWorkbenchThreeConfigModal paints rows, footer, and config hi
 
   const painted = frame.flat().filter(Boolean).join("|");
   assertEquals(painted.includes("Three Test"), true);
+  assertEquals(painted.includes("Use arrows/clicks"), true);
   assertEquals(painted.includes("Preset"), true);
   assertEquals(painted.includes("Up/Down select"), true);
   assertEquals(frames, [{ title: "Three Renderer Config", active: true }]);
   assertEquals(fills.some((fill) => fill.bg === "#222"), true);
   assertEquals(hits.some((hit) => hit.type === "asciiConfigBackdrop" && hit.width === 82), true);
+  assertEquals(hits.some((hit) => hit.type === "asciiConfig" && hit.action === "activate" && hit.index === 0), true);
   assertEquals(hits.some((hit) => hit.type === "asciiConfig" && hit.action === "previous" && hit.index === 0), true);
   assertEquals(hits.some((hit) => hit.type === "asciiConfigAction" && hit.action === "ok"), true);
   assertEquals(buffers.rowRenderCommands.length > 0, true);

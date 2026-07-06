@@ -12,20 +12,20 @@ import {
   workbenchLogRowsFromSourcesInto,
 } from "./workbench_panels.ts";
 
-export interface ApiWorkbenchExplorerPanelRenderOptions {
-  frame: WorkbenchFrame;
+export interface ApiWorkbenchExplorerPanelRenderOptions<Frame = WorkbenchFrame> {
+  frame: Frame;
   rect: Rectangle;
   rows: readonly TreeRow[];
   selectedIndex: number;
   renderRows: RowStyle[];
   theme: ApiWorkbenchThemeSpec;
   contrastText: (background: string, dark: string, light: string) => string;
-  writeRows: (frame: WorkbenchFrame, rect: Rectangle, rows: readonly RowStyle[]) => void;
+  writeRows: (frame: Frame, rect: Rectangle, rows: readonly RowStyle[]) => void;
   addHit: (rect: Rectangle, action: { type: "explorerRow"; index: number }) => void;
 }
 
-export interface ApiWorkbenchInspectorPanelRenderOptions {
-  frame: WorkbenchFrame;
+export interface ApiWorkbenchInspectorPanelRenderOptions<Frame = WorkbenchFrame> {
+  frame: Frame;
   rect: Rectangle;
   themeLabel: string;
   logs: readonly string[];
@@ -34,7 +34,7 @@ export interface ApiWorkbenchInspectorPanelRenderOptions {
   wrappedTextRows: string[];
   theme: ApiWorkbenchThemeSpec;
   fit: (text: string, width: number) => string;
-  writeRows: (frame: WorkbenchFrame, rect: Rectangle, rows: readonly RowStyle[]) => void;
+  writeRows: (frame: Frame, rect: Rectangle, rows: readonly RowStyle[]) => void;
 }
 
 export interface ApiWorkbenchDataPanelRenderBuffers {
@@ -43,8 +43,8 @@ export interface ApiWorkbenchDataPanelRenderBuffers {
   bodyRows: RowStyle[];
 }
 
-export interface ApiWorkbenchDataPanelRenderOptions<TRow extends Record<string, unknown>> {
-  frame: WorkbenchFrame;
+export interface ApiWorkbenchDataPanelRenderOptions<TRow extends Record<string, unknown>, Frame = WorkbenchFrame> {
+  frame: Frame;
   rect: Rectangle;
   columns: readonly DataColumn<TRow>[];
   view: () => DataTableView<TRow>;
@@ -54,21 +54,23 @@ export interface ApiWorkbenchDataPanelRenderOptions<TRow extends Record<string, 
   theme: ApiWorkbenchThemeSpec;
   fit: (text: string, width: number) => string;
   contrastText: (background: string, dark: string, light: string) => string;
-  writeRows: (frame: WorkbenchFrame, rect: Rectangle, rows: readonly RowStyle[]) => void;
+  writeRows: (frame: Frame, rect: Rectangle, rows: readonly RowStyle[]) => void;
   addHit: (rect: Rectangle, action: { type: "dataRow"; index: number }) => void;
 }
 
-export interface ApiWorkbenchLogsPanelRenderOptions {
-  frame: WorkbenchFrame;
+export interface ApiWorkbenchLogsPanelRenderOptions<Frame = WorkbenchFrame> {
+  frame: Frame;
   rect: Rectangle;
   sources: readonly (readonly string[])[];
   renderRows: RowStyle[];
   theme: ApiWorkbenchThemeSpec;
-  writeRows: (frame: WorkbenchFrame, rect: Rectangle, rows: readonly RowStyle[]) => void;
+  writeRows: (frame: Frame, rect: Rectangle, rows: readonly RowStyle[]) => void;
 }
 
 /** Renders the file explorer panel and row hit targets from a visible tree snapshot. */
-export function renderApiWorkbenchExplorerPanel(options: ApiWorkbenchExplorerPanelRenderOptions): void {
+export function renderApiWorkbenchExplorerPanel<Frame = WorkbenchFrame>(
+  options: ApiWorkbenchExplorerPanelRenderOptions<Frame>,
+): void {
   const { frame, rect, rows, selectedIndex, renderRows, theme, contrastText, writeRows, addHit } = options;
   writeRows(
     frame,
@@ -81,15 +83,18 @@ export function renderApiWorkbenchExplorerPanel(options: ApiWorkbenchExplorerPan
     }),
   );
   for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index]!;
     addHit({ column: rect.column, row: rect.row + index, width: rect.width, height: 1 }, {
       type: "explorerRow",
-      index,
+      index: row.index,
     });
   }
 }
 
 /** Renders the API surface inspector panel from current theme/log snapshots. */
-export function renderApiWorkbenchInspectorPanel(options: ApiWorkbenchInspectorPanelRenderOptions): void {
+export function renderApiWorkbenchInspectorPanel<Frame = WorkbenchFrame>(
+  options: ApiWorkbenchInspectorPanelRenderOptions<Frame>,
+): void {
   const { frame, rect, themeLabel, logs, renderRows, actionTextRows, wrappedTextRows, theme, fit, writeRows } = options;
   writeRows(
     frame,
@@ -110,8 +115,8 @@ export function renderApiWorkbenchInspectorPanel(options: ApiWorkbenchInspectorP
 }
 
 /** Renders the process data table panel and keeps page size synchronized with the visible viewport. */
-export function renderApiWorkbenchDataPanel<TRow extends Record<string, unknown>>(
-  options: ApiWorkbenchDataPanelRenderOptions<TRow>,
+export function renderApiWorkbenchDataPanel<TRow extends Record<string, unknown>, Frame = WorkbenchFrame>(
+  options: ApiWorkbenchDataPanelRenderOptions<TRow, Frame>,
 ): void {
   const { frame, rect, columns, view, sort, setPageSize, buffers, theme, fit, contrastText, writeRows, addHit } =
     options;
@@ -149,7 +154,9 @@ export function renderApiWorkbenchDataPanel<TRow extends Record<string, unknown>
 }
 
 /** Renders static docs and recent command-log sources into the log/detail panel. */
-export function renderApiWorkbenchLogsPanel(options: ApiWorkbenchLogsPanelRenderOptions): void {
+export function renderApiWorkbenchLogsPanel<Frame = WorkbenchFrame>(
+  options: ApiWorkbenchLogsPanelRenderOptions<Frame>,
+): void {
   const { frame, rect, sources, renderRows, theme, writeRows } = options;
   writeRows(frame, rect, workbenchLogRowsFromSourcesInto(renderRows, sources, theme));
 }

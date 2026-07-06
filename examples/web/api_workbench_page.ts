@@ -133,7 +133,15 @@ import {
   ApiWorkbenchControlsViewBufferCache,
   renderApiWorkbenchControls,
 } from "../../app/api_workbench_controls_view.ts";
-import { renderApiWorkbenchModalOverlay } from "../../app/api_workbench_modal_view.ts";
+import {
+  renderApiWorkbenchDataPanel,
+  renderApiWorkbenchExplorerPanel,
+  renderApiWorkbenchInspectorPanel,
+} from "../../app/api_workbench_builtin_panels_view.ts";
+import {
+  renderApiWorkbenchModalOverlay,
+  renderApiWorkbenchThreeConfigModal,
+} from "../../app/api_workbench_modal_view.ts";
 import {
   type HtmlCssLayoutRenderCommand,
   htmlCssLayoutRenderCommandsInto,
@@ -141,12 +149,8 @@ import {
   htmlCssVisibleLayoutBoxesInto,
 } from "../../app/html_css_layout_view.ts";
 import {
-  workbenchDataTablePageSize,
-  workbenchDataTableRowsInto,
   workbenchDemoModalContent,
-  workbenchExplorerRowsInto,
   workbenchHelpModalContent,
-  workbenchInspectorRowsInto,
   workbenchLogRowsFromSourcesInto,
   workbenchModalConfirmedContent,
   workbenchModalDetailsContent,
@@ -177,11 +181,8 @@ import {
   type WorkbenchAsciiConfigRow,
 } from "../../src/app/workbench_ascii.ts";
 import {
-  layoutWorkbenchAsciiConfigModal,
   type WorkbenchAsciiConfigModalAction,
-  workbenchAsciiConfigModalActionRenderCommandsInto,
   WorkbenchAsciiConfigModalBufferCache,
-  workbenchAsciiConfigRowPlacementsInto,
 } from "../../src/app/workbench_ascii_modal.ts";
 import {
   applyWorkbenchWindowSignalState,
@@ -955,68 +956,55 @@ function renderLogs(frame: string[], rect: Rectangle): void {
 
 function renderExplorer(frame: string[], rect: Rectangle): void {
   const visible = explorer.tree.visibleRows();
-  const projected = workbenchExplorerRowsInto(explorerRenderRows, {
+  renderApiWorkbenchExplorerPanel({
+    frame,
+    rect,
     rows: visible,
     selectedIndex: explorer.tree.selectedIndex.peek(),
     theme: theme(),
-    contrast: contrastText,
+    renderRows: explorerRenderRows,
+    contrastText,
+    writeRows: writeStyledRows,
+    addHit: (hitRect, action) => hitTargets.add(hitRect, action),
   });
-  writeStyledRows(frame, rect, projected);
-  for (let offset = 0; offset < Math.min(projected.length, rect.height); offset += 1) {
-    hitTargets.add({ column: rect.column, row: rect.row + offset, width: rect.width, height: 1 }, {
-      type: "explorerRow",
-      index: visible[offset]!.index,
-    });
-  }
 }
 
 function renderInspector(frame: string[], rect: Rectangle): void {
   const t = theme();
-  const rows = workbenchInspectorRowsInto(inspectorRenderRows, {
-    width: rect.width,
-    height: rect.height,
+  renderApiWorkbenchInspectorPanel({
+    frame,
+    rect,
     themeLabel: t.label,
     logs: log.peek(),
+    renderRows: inspectorRenderRows,
     theme: t,
     fit,
-    buffers: {
-      actionTextRows: inspectorActionTextRows,
-      wrappedTextRows: inspectorWrappedTextRows,
-    },
+    actionTextRows: inspectorActionTextRows,
+    wrappedTextRows: inspectorWrappedTextRows,
+    writeRows: writeStyledRows,
   });
-  writeStyledRows(frame, rect, rows);
 }
 
 function renderData(frame: string[], rect: Rectangle): void {
   const t = theme();
-  const pendingView = table.view.peek();
-  table.setPageSize(workbenchDataTablePageSize({
-    height: rect.height,
-    width: rect.width,
-    page: pendingView.page + 1,
-    pageCount: pendingView.pageCount,
-    selectedKey: pendingView.selectedKey,
-    theme: t,
-    fit,
-  }));
-  const view = table.view.peek();
-  const rows = workbenchDataTableRowsInto(dataTableRenderRows, {
-    view,
+  renderApiWorkbenchDataPanel({
+    frame,
+    rect,
     columns,
-    sort: table.state.peek().sort,
-    width: rect.width,
+    view: () => table.view.peek(),
+    sort: () => table.state.peek().sort,
+    setPageSize: (pageSize) => table.setPageSize(pageSize),
+    buffers: {
+      renderRows: dataTableRenderRows,
+      textRows: dataTableTextRows,
+      bodyRows: dataTableBodyRows,
+    },
     theme: t,
     fit,
-    contrast: contrastText,
-    buffers: { textRows: dataTableTextRows, bodyRows: dataTableBodyRows },
+    contrastText,
+    writeRows: writeStyledRows,
+    addHit: (hitRect, action) => hitTargets.add(hitRect, action),
   });
-  writeStyledRows(frame, rect, rows);
-  for (let index = 0; index < Math.min(view.rows.length, Math.max(0, rect.height - 1)); index += 1) {
-    hitTargets.add({ column: rect.column, row: rect.row + 1 + index, width: rect.width, height: 1 }, {
-      type: "dataRow",
-      index,
-    });
-  }
 }
 
 function renderThreePreview(frame: string[], rect: Rectangle): void {
@@ -1855,87 +1843,43 @@ function renderDropdownOverlay(frame: string[]): void {
 
 function renderThreeConfigModal(frame: string[]): void {
   if (!threeConfigOpen.peek()) return;
-  const layout = layoutWorkbenchAsciiConfigModal({
-    bounds: { column: 0, row: 0, width: cols(), height: rowsCount() },
-    rowCount: asciiConfigRows.length,
-  });
-  hitTargets.add({ column: 0, row: 0, width: cols(), height: rowsCount() }, { type: "asciiConfigBackdrop" });
-  if (layout.shadow.width > 0 && layout.shadow.height > 0) fillRect(frame, layout.shadow, theme().background);
-  fillRect(frame, layout.rect, theme().panelSoft);
-  drawFrame(frame, layout.rect, "Three ASCII Config", true);
-
+  const currentTheme = theme();
   const options = currentThreeConfigSignal().peek();
   const header = ` ${asciiPresetLabel(options.preset)} · ${
     terminalGlyphStyleLabel(options.terminalGlyphStyle)
   } · web preview `;
-  write(
+  renderApiWorkbenchThreeConfigModal({
     frame,
-    layout.inner.row,
-    layout.inner.column,
-    paint(fit(header, layout.inner.width), theme().background, theme().accent, true),
-  );
-  write(
-    frame,
-    layout.inner.row + 1,
-    layout.inner.column,
-    paint(
-      fit("Use arrows/clicks to adjust. A apply, Enter OK, Esc cancel.", layout.inner.width),
-      theme().muted,
-      theme().panelSoft,
-    ),
-  );
-
-  const placements = workbenchAsciiConfigRowPlacementsInto(asciiConfigBuffers.rowPlacements, asciiConfigRows, {
-    inner: layout.inner,
-    rowsTop: layout.rowsTop,
-    visibleRows: layout.visibleRows,
+    bounds: { column: 0, row: 0, width: cols(), height: rowsCount() },
+    rows: asciiConfigRows,
     selectedIndex: threeConfigSelected.peek(),
-    splitMinWidth: 1,
+    title: header,
+    frameTitle: "Three ASCII Config",
+    titleStyle: { fg: currentTheme.background, bg: currentTheme.accent, bold: true },
+    helpText: "Use arrows/clicks to adjust. A apply, Enter OK, Esc cancel.",
+    footerText: "This editor persists to the web workspace snapshot.",
+    footerStyle: { fg: currentTheme.soft, bg: currentTheme.panelSoft },
+    rowSplitMinWidth: 1,
+    activateRowHits: true,
+    buffers: asciiConfigBuffers,
+    theme: currentTheme,
+    contrastText,
+    fit,
+    paint: (value, style) => paint(value, style.fg, style.bg, style.bold),
+    write,
+    fillRect,
+    drawFrame,
+    rowText: (row, layout) =>
+      formatWorkbenchAsciiConfigRowText(row, options, {
+        kittyStatus: "browser preview",
+        trackWidth: Math.max(8, Math.min(18, layout.inner.width - 42)),
+      }),
+    rowStyle: (selected, nextTheme) =>
+      selected
+        ? { fg: contrastText(nextTheme.warn, nextTheme.background, nextTheme.text), bg: nextTheme.warn, bold: true }
+        : { fg: nextTheme.text, bg: nextTheme.panelSoft },
+    addHit: (rect, action) => hitTargets.add(rect, action),
   });
-  for (const placement of placements) {
-    const text = formatWorkbenchAsciiConfigRowText(placement.row, options, {
-      kittyStatus: "browser preview",
-      trackWidth: Math.max(8, Math.min(18, layout.inner.width - 42)),
-    });
-    const bg = placement.selected ? theme().warn : theme().panelSoft;
-    const fg = placement.selected ? contrastText(theme().warn, theme().background, theme().text) : theme().text;
-    write(
-      frame,
-      placement.rect.row,
-      layout.inner.column,
-      paint(fit(text, layout.inner.width), fg, bg, placement.selected),
-    );
-    hitTargets.add(placement.rect, { type: "asciiConfig", index: placement.rowIndex, action: "activate" });
-    hitTargets.add(placement.previousRect, { type: "asciiConfig", index: placement.rowIndex, action: "previous" });
-    hitTargets.add(placement.nextRect, { type: "asciiConfig", index: placement.rowIndex, action: "next" });
-  }
-
-  workbenchAsciiConfigModalActionRenderCommandsInto(
-    asciiConfigBuffers.actionCommands,
-    asciiConfigBuffers.actionItems,
-    asciiConfigBuffers.actionPlacements,
-    { inner: layout.inner, actionRow: layout.actionRow },
-  );
-  for (const command of asciiConfigBuffers.actionCommands) {
-    const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
-    write(
-      frame,
-      command.rect.row,
-      command.rect.column,
-      paint(button.text, button.style.fg, button.style.bg, button.style.bold),
-    );
-    hitTargets.add(command.hitRect, { type: "asciiConfigAction", action: command.item.action });
-  }
-  write(
-    frame,
-    layout.footerRow,
-    layout.inner.column,
-    paint(
-      fit("This editor persists to the web workspace snapshot.", layout.inner.width),
-      theme().soft,
-      theme().panelSoft,
-    ),
-  );
 }
 
 function renderModalOverlay(frame: string[]): void {
