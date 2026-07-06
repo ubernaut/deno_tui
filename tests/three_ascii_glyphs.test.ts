@@ -15,6 +15,10 @@ import { buildFallbackGrid, formatThreeAsciiFallbackDetail } from "../src/canvas
 import { blockFillGlyphForBucket, bucketAsciiLuminance, glyphForTile } from "../src/three_ascii/glyphs.ts";
 import { buildThreeAsciiAnsiGrid, ThreeAsciiAnsiGridAssembler } from "../src/three_ascii/renderer.ts";
 
+const blockCell = (red: number, green: number, blue: number) =>
+  `\x1b[48;2;${red};${green};${blue}m\x1b[38;2;${red};${green};${blue}m█\x1b[0m`;
+const blankCell = (red: number, green: number, blue: number) => `\x1b[48;2;${red};${green};${blue}m \x1b[0m`;
+
 Deno.test("ascii luminance keeps empty tiles blank but promotes low non-zero fill to block glyphs", () => {
   assertEquals(bucketAsciiLuminance(0), 0);
   assertEquals(bucketAsciiLuminance(0.01), 0);
@@ -44,8 +48,8 @@ Deno.test("three ascii ANSI grid assembly defaults to block glyphs", () => {
 
   assertEquals(grid.length, 1);
   assertEquals(grid[0].length, 2);
-  assertEquals(grid[0][0], "\x1b[38;2;255;0;0m█\x1b[0m");
-  assertEquals(grid[0][1], "\x1b[48;2;0;0;0m \x1b[0m");
+  assertEquals(grid[0][0], blockCell(255, 0, 0));
+  assertEquals(grid[0][1], blankCell(0, 0, 0));
 });
 
 Deno.test("three ascii ANSI grid assembly keeps sparse fill-only fallback", () => {
@@ -57,8 +61,8 @@ Deno.test("three ascii ANSI grid assembly keeps sparse fill-only fallback", () =
     backgroundColor: 0x000000,
   });
 
-  assertEquals(grid[0][0], "\x1b[38;2;255;0;0m█\x1b[0m");
-  assertEquals(grid[0][1], "\x1b[48;2;0;0;0m \x1b[0m");
+  assertEquals(grid[0][0], blockCell(255, 0, 0));
+  assertEquals(grid[0][1], blankCell(0, 0, 0));
 });
 
 Deno.test("three ascii ANSI grid assembly skips color work for proven blank cells", () => {
@@ -71,7 +75,7 @@ Deno.test("three ascii ANSI grid assembly skips color work for proven blank cell
     backgroundColor: 0x000000,
   });
 
-  assertEquals(grid[0][0], "\x1b[48;2;0;0;0m \x1b[0m");
+  assertEquals(grid[0][0], blankCell(0, 0, 0));
 });
 
 Deno.test("three ascii block grid assembly paints full cells with source truecolor", () => {
@@ -84,8 +88,8 @@ Deno.test("three ascii block grid assembly paints full cells with source truecol
     backgroundColor: 0x0000ff,
   });
 
-  assertEquals(grid[0][0], "\x1b[38;2;255;0;0m█\x1b[0m");
-  assertEquals(grid[0][1], "\x1b[38;2;255;0;0m█\x1b[0m");
+  assertEquals(grid[0][0], blockCell(255, 0, 0));
+  assertEquals(grid[0][1], blockCell(255, 0, 0));
 });
 
 Deno.test("three ascii dense block grid assembly fills same-color visible runs", () => {
@@ -119,10 +123,10 @@ Deno.test("three ascii dense block grid assembly fills same-color visible runs",
     backgroundColor: 0x000000,
   });
 
-  assertEquals(grid[0][0], "\x1b[38;2;188;137;255m█\x1b[0m");
+  assertEquals(grid[0][0], blockCell(188, 137, 255));
   assertEquals(grid[0][1], grid[0][0]);
-  assertEquals(grid[0][2], "\x1b[48;2;0;0;0m \x1b[0m");
-  assertEquals(grid[0][3], "\x1b[38;2;0;255;0m█\x1b[0m");
+  assertEquals(grid[0][2], blankCell(0, 0, 0));
+  assertEquals(grid[0][3], blockCell(0, 255, 0));
   assertEquals(grid[0][4], grid[0][3]);
 });
 
@@ -136,9 +140,9 @@ Deno.test("three ascii block mode preserves truecolor backgrounds for low visibl
     backgroundColor: 0x000000,
   });
 
-  assertEquals(grid[0][0], "\x1b[38;2;137;188;255m█\x1b[0m");
+  assertEquals(grid[0][0], blockCell(137, 188, 255));
   assertEquals(grid[0][0].includes("\x1b[38;2;"), true);
-  assertEquals(grid[0][1], "\x1b[48;2;0;0;0m \x1b[0m");
+  assertEquals(grid[0][1], blankCell(0, 0, 0));
   assertEquals(grid[0][1].includes("\x1b[38;2;"), false);
 });
 
@@ -169,10 +173,10 @@ Deno.test("three ascii block mode preserves rounded visibility threshold", () =>
     backgroundColor: 0x000000,
   });
 
-  assertEquals(grid[0][0], "\x1b[48;2;0;0;0m \x1b[0m");
-  assertEquals(grid[0][1], "\x1b[38;2;0;255;0m█\x1b[0m");
-  assertEquals(grid[0][2], "\x1b[38;2;0;0;255m█\x1b[0m");
-  assertEquals(grid[0][3], "\x1b[38;2;255;255;0m█\x1b[0m");
+  assertEquals(grid[0][0], blankCell(0, 0, 0));
+  assertEquals(grid[0][1], blockCell(0, 255, 0));
+  assertEquals(grid[0][2], blockCell(0, 0, 255));
+  assertEquals(grid[0][3], blockCell(255, 255, 0));
 });
 
 Deno.test("three ascii ANSI grid assembly reuses repeated non-adjacent block cells", () => {
@@ -201,8 +205,8 @@ Deno.test("three ascii ANSI grid assembly reuses repeated non-adjacent block cel
     backgroundColor: 0x000000,
   });
 
-  assertEquals(grid[0][0], "\x1b[38;2;255;0;0m█\x1b[0m");
-  assertEquals(grid[0][1], "\x1b[38;2;0;255;0m█\x1b[0m");
+  assertEquals(grid[0][0], blockCell(255, 0, 0));
+  assertEquals(grid[0][1], blockCell(0, 255, 0));
   assertEquals(grid[0][2], grid[0][0]);
   assertEquals(grid[0][3], grid[0][1]);
 });
@@ -234,10 +238,10 @@ Deno.test("three ascii block mode keeps full-cell backgrounds without quantizing
     backgroundColor: 0x000000,
   });
 
-  assertEquals(grid[0][0], "\x1b[38;2;0;255;0m█\x1b[0m");
-  assertEquals(grid[0][1], "\x1b[38;2;0;255;0m█\x1b[0m");
-  assertEquals(grid[0][2], "\x1b[38;2;0;255;0m█\x1b[0m");
-  assertEquals(grid[0][3], "\x1b[38;2;0;255;0m█\x1b[0m");
+  assertEquals(grid[0][0], blockCell(0, 255, 0));
+  assertEquals(grid[0][1], blockCell(0, 255, 0));
+  assertEquals(grid[0][2], blockCell(0, 255, 0));
+  assertEquals(grid[0][3], blockCell(0, 255, 0));
 });
 
 Deno.test("three ascii block mode treats visible fill buckets as the same full-cell block", () => {
@@ -263,7 +267,7 @@ Deno.test("three ascii block mode treats visible fill buckets as the same full-c
     backgroundColor: 0x000000,
   });
 
-  assertEquals(grid[0][0], "\x1b[38;2;89;124;149m█\x1b[0m");
+  assertEquals(grid[0][0], blockCell(89, 124, 149));
   assertEquals(grid[0][1], grid[0][0]);
   assertEquals(grid[0][2], grid[0][0]);
 });
@@ -279,7 +283,7 @@ Deno.test("three ascii block mode ignores edge glyph promotion for solid color f
     backgroundColor: 0x000000,
   });
 
-  assertEquals(grid[0][0], "\x1b[38;2;137;225;255m█\x1b[0m");
+  assertEquals(grid[0][0], blockCell(137, 225, 255));
 });
 
 Deno.test("three ascii glyph mode can still promote strong edge glyphs", () => {
@@ -314,8 +318,8 @@ Deno.test("three ascii ANSI grid assembly clamps saturated color channels on the
     backgroundColor: 0x000000,
   });
 
-  assertEquals(grid[0][0], "\x1b[38;2;0;255;188m█\x1b[0m");
-  assertEquals(grid[0][1], "\x1b[38;2;255;0;255m█\x1b[0m");
+  assertEquals(grid[0][0], blockCell(0, 255, 188));
+  assertEquals(grid[0][1], blockCell(255, 0, 255));
 });
 
 Deno.test("three ascii ANSI grid assembler matches stateless output across frames", () => {
@@ -364,8 +368,8 @@ Deno.test("three ascii ANSI grid assembler returns fresh grids by default", () =
 
   assertEquals(first === second, false);
   assertEquals(first[0] === second[0], false);
-  assertEquals(first[0][0], "\x1b[38;2;255;0;0m█\x1b[0m");
-  assertEquals(second[0][0], "\x1b[38;2;0;255;0m█\x1b[0m");
+  assertEquals(first[0][0], blockCell(255, 0, 0));
+  assertEquals(second[0][0], blockCell(0, 255, 0));
 });
 
 Deno.test("three ascii ANSI grid assembler can reuse grid storage for renderer-owned frames", () => {
@@ -389,7 +393,7 @@ Deno.test("three ascii ANSI grid assembler can reuse grid storage for renderer-o
   assertEquals(first === second, true);
   assertEquals(second[0] === firstRow, true);
   assertEquals(second[0].length, 1);
-  assertEquals(second[0][0], "\x1b[38;2;0;255;0m█\x1b[0m");
+  assertEquals(second[0][0], blockCell(0, 255, 0));
 });
 
 Deno.test("three ascii ANSI grid assembler keeps solid block cells stable across background changes", () => {
@@ -427,8 +431,8 @@ Deno.test("three ascii ANSI grid assembler keeps partial block truecolor indepen
   const blue = assembler.build({ ...base, backgroundColor: 0x0000ff })[0][0];
   const blueAgain = assembler.build({ ...base, backgroundColor: 0x0000ff })[0][0];
 
-  assertEquals(dark, "\x1b[38;2;255;0;0m█\x1b[0m");
-  assertEquals(blue, "\x1b[38;2;255;0;0m█\x1b[0m");
+  assertEquals(dark, blockCell(255, 0, 0));
+  assertEquals(blue, blockCell(255, 0, 0));
   assertEquals(blueAgain, blue);
 });
 
@@ -449,7 +453,7 @@ Deno.test("three ascii ANSI grid assembler observes reused Color background muta
   const blue = assembler.build(base)[0][0];
 
   assertEquals(darkAgain, dark);
-  assertEquals(blue, "\x1b[38;2;255;0;0m█\x1b[0m");
+  assertEquals(blue, blockCell(255, 0, 0));
 });
 
 Deno.test("three ascii ANSI grid assembler observes reused color buffer mutations", () => {
@@ -468,9 +472,9 @@ Deno.test("three ascii ANSI grid assembler observes reused color buffer mutation
   colors[2] = 1;
   const second = assembler.build(base);
 
-  assertEquals(first[0][0], "\x1b[38;2;255;0;0m█\x1b[0m");
-  assertEquals(second[0][0], "\x1b[38;2;0;0;255m█\x1b[0m");
-  assertEquals(second[0][1], "\x1b[38;2;0;255;0m█\x1b[0m");
+  assertEquals(first[0][0], blockCell(255, 0, 0));
+  assertEquals(second[0][0], blockCell(0, 0, 255));
+  assertEquals(second[0][1], blockCell(0, 255, 0));
 });
 
 Deno.test("three ascii ANSI grid assembler keeps glyph style cache keys distinct", () => {
@@ -490,7 +494,7 @@ Deno.test("three ascii ANSI grid assembler keeps glyph style cache keys distinct
   assertEquals(blocks, buildThreeAsciiAnsiGrid({ ...base, terminalGlyphStyle: "blocks" })[0][0]);
   assertEquals(glyphs, buildThreeAsciiAnsiGrid({ ...base, terminalGlyphStyle: "glyphs" })[0][0]);
   assertEquals(mixed, buildThreeAsciiAnsiGrid({ ...base, terminalGlyphStyle: "mixed" })[0][0]);
-  assertEquals(blocks, "\x1b[38;2;255;255;255m█\x1b[0m");
+  assertEquals(blocks, blockCell(255, 255, 255));
   assertEquals(blocks.includes("\x1b[38;2;255;255;255m"), true);
   assertEquals(glyphs.includes("="), true);
   assertEquals(blocks !== glyphs, true);
@@ -532,12 +536,12 @@ Deno.test("three ascii ANSI grid assembler can use color alpha for block visibil
     blockVisibilityFromColorAlpha: true,
   });
 
-  assertEquals(grid[0][0], "\x1b[38;2;255;0;0m█\x1b[0m");
-  assertEquals(grid[0][1], "\x1b[38;2;255;0;0m█\x1b[0m");
-  assertEquals(grid[0][2], "\x1b[48;2;0;0;0m \x1b[0m");
-  assertEquals(grid[0][3], "\x1b[48;2;0;0;0m \x1b[0m");
-  assertEquals(grid[0][4], "\x1b[38;2;0;0;255m█\x1b[0m");
-  assertEquals(grid[0][5], "\x1b[38;2;0;0;255m█\x1b[0m");
+  assertEquals(grid[0][0], blockCell(255, 0, 0));
+  assertEquals(grid[0][1], blockCell(255, 0, 0));
+  assertEquals(grid[0][2], blankCell(0, 0, 0));
+  assertEquals(grid[0][3], blankCell(0, 0, 0));
+  assertEquals(grid[0][4], blockCell(0, 0, 255));
+  assertEquals(grid[0][5], blockCell(0, 0, 255));
 });
 
 Deno.test("three ascii fallback detail hides raw GPU validation text", () => {

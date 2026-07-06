@@ -371,6 +371,9 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Rechecked the block-mode color path after a regression report: focused tests still confirm source truecolor background
   fills in terminal ANSI and browser Canvas2D sinks; remaining color-depth concerns should be verified visually in the
   exact terminal/browser surface before changing the assembler again.
+- Restored source-color truecolor backgrounds on terminal Three ASCII solid block cells after confirming the focused
+  ANSI-grid and workbench block-span benchmarks stayed below thresholds. The wide resize PTY visual smoke now reports
+  the default featured Three pane at `147/147` body columns with substantially higher truecolor-background coverage.
 - Re-ran Three ASCII focused benchmarks after the report; ANSI grid cases returned near prior ranges on a second run,
   while frame diff measured slower than the last committed baseline and needs another isolated sample before further
   hot-loop edits.
