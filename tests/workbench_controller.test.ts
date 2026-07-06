@@ -1,4 +1,5 @@
 import { assertEquals, assertStrictEquals } from "./deps.ts";
+import type { DataColumn, DataTableView } from "../src/components/data_table.ts";
 import type { ModalInspection } from "../src/components/modal.ts";
 import {
   createDefaultWorkbenchAsciiOptions,
@@ -68,6 +69,12 @@ import {
   renderApiWorkbenchTerminalOutputBody,
   renderApiWorkbenchTerminalOutputToolbar,
 } from "../app/api_workbench_terminal_output_view.ts";
+import {
+  renderApiWorkbenchDataPanel,
+  renderApiWorkbenchExplorerPanel,
+  renderApiWorkbenchInspectorPanel,
+  renderApiWorkbenchLogsPanel,
+} from "../app/api_workbench_builtin_panels_view.ts";
 import { renderApiWorkbenchModalOverlay, renderApiWorkbenchThreeConfigModal } from "../app/api_workbench_modal_view.ts";
 import { renderApiWorkbenchShelf, renderApiWorkbenchWindowTabs } from "../app/api_workbench_shelf_view.ts";
 import {
@@ -978,6 +985,140 @@ Deno.test("renderApiWorkbenchWindowTabs paints tab strip and registers tab hits"
     { label: "● Three", state: "active", tone: "default" },
   ]);
   assertEquals(hits.map((hit) => hit.id), ["logs", "three"]);
+});
+
+Deno.test("renderApiWorkbenchExplorerPanel paints tree rows and registers row hits", () => {
+  const frame: string[][] = [];
+  const renderRows: Array<{ text: string; fg?: string; bg?: string; bold?: boolean }> = [];
+  const written: string[] = [];
+  const hits: Array<{ index: number; row: number; width: number }> = [];
+  const rows = [
+    {
+      id: "src",
+      label: "src",
+      depth: 0,
+      index: 0,
+      hasChildren: true,
+      expanded: true,
+      node: { id: "src", label: "src", expanded: true, children: [] },
+      text: "▾ src",
+    },
+    {
+      id: "mod",
+      label: "mod.ts",
+      depth: 1,
+      index: 1,
+      hasChildren: false,
+      expanded: false,
+      node: { id: "mod", label: "mod.ts" },
+      text: "  · mod.ts",
+    },
+  ];
+
+  renderApiWorkbenchExplorerPanel({
+    frame,
+    rect: { column: 2, row: 3, width: 24, height: 4 },
+    rows,
+    selectedIndex: 1,
+    renderRows,
+    theme: testWorkbenchTheme(),
+    contrastText: () => "#000",
+    writeRows: (_target, _rect, outputRows) => written.push(...outputRows.map((row) => row.text)),
+    addHit: (rect, action) => hits.push({ index: action.index, row: rect.row, width: rect.width }),
+  });
+
+  assertEquals(written, ["▾ src", "    mod.ts"]);
+  assertEquals(renderRows[1]?.bold, true);
+  assertEquals(hits, [
+    { index: 0, row: 3, width: 24 },
+    { index: 1, row: 4, width: 24 },
+  ]);
+});
+
+Deno.test("renderApiWorkbenchDataPanel syncs page size paints rows and registers hits", () => {
+  type ProcessTestRow = { name: string; cpu: number } & Record<string, unknown>;
+  const frame: string[][] = [];
+  const columns: DataColumn<ProcessTestRow>[] = [
+    { id: "name", label: "Name", width: 8, sortable: true },
+    { id: "cpu", label: "CPU", width: 5, sortable: true },
+  ];
+  const allRows: ProcessTestRow[] = [
+    { name: "deno", cpu: 42 },
+    { name: "bash", cpu: 7 },
+  ];
+  let pageSize = 1;
+  const view = (): DataTableView<ProcessTestRow> => ({
+    rows: allRows.slice(0, pageSize),
+    totalRows: allRows.length,
+    page: 0,
+    pageSize,
+    pageCount: 1,
+    selectedIndex: 0,
+    selectedKey: "deno",
+    selectedRow: allRows[0],
+  });
+  const buffers = { renderRows: [], textRows: [], bodyRows: [] };
+  let written: string[] = [];
+  const hits: Array<{ index: number; row: number; width: number }> = [];
+
+  renderApiWorkbenchDataPanel({
+    frame,
+    rect: { column: 4, row: 5, width: 32, height: 8 },
+    columns,
+    view,
+    sort: () => ({ columnId: "cpu", direction: "desc" }),
+    setPageSize: (nextPageSize) => pageSize = nextPageSize,
+    buffers,
+    theme: testWorkbenchTheme(),
+    fit: (text, width) => text.slice(0, width),
+    contrastText: () => "#000",
+    writeRows: (_target, _rect, outputRows) => written = outputRows.map((row) => row.text),
+    addHit: (rect, action) => hits.push({ index: action.index, row: rect.row, width: rect.width }),
+  });
+
+  assertEquals(pageSize > 1, true);
+  assertEquals(written[0]?.includes("Name"), true);
+  assertEquals(written.some((row) => row.includes("deno")), true);
+  assertEquals(hits, [
+    { index: 0, row: 6, width: 32 },
+    { index: 1, row: 7, width: 32 },
+  ]);
+});
+
+Deno.test("renderApiWorkbenchInspectorPanel and logs panel project text rows", () => {
+  const frame: string[][] = [];
+  const inspectorRows: Array<{ text: string; fg?: string; bg?: string; bold?: boolean }> = [];
+  const logsRows: Array<{ text: string; fg?: string; bg?: string; bold?: boolean }> = [];
+  const actionTextRows: string[] = [];
+  const wrappedTextRows: string[] = [];
+  const written: string[][] = [];
+
+  renderApiWorkbenchInspectorPanel({
+    frame,
+    rect: { column: 0, row: 0, width: 48, height: 16 },
+    themeLabel: "Test Theme",
+    logs: ["opened modal", "ran command"],
+    renderRows: inspectorRows,
+    actionTextRows,
+    wrappedTextRows,
+    theme: testWorkbenchTheme(),
+    fit: (text, width) => text.slice(0, width),
+    writeRows: (_target, _rect, outputRows) => written.push(outputRows.map((row) => row.text)),
+  });
+
+  renderApiWorkbenchLogsPanel({
+    frame,
+    rect: { column: 0, row: 0, width: 48, height: 4 },
+    sources: [["docs"], ["event one", "event two"]],
+    renderRows: logsRows,
+    theme: testWorkbenchTheme(),
+    writeRows: (_target, _rect, outputRows) => written.push(outputRows.map((row) => row.text)),
+  });
+
+  assertEquals(written[0]?.some((row) => row.includes("Composable API surfaces")), true);
+  assertEquals(written[0]?.some((row) => row.includes("opened modal")), true);
+  assertEquals(written[1], ["docs", "event one", "event two"]);
+  assertEquals(actionTextRows.length > 0, true);
 });
 
 Deno.test("renderApiWorkbenchControls paints controls, hits, and dropdown overlay", () => {

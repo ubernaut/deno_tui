@@ -204,13 +204,8 @@ import { SystemMonitor } from "./system_metrics.ts";
 import { createWorkbenchThreePanelFrameView, ThreePanelFrameView } from "./three_panel.ts";
 import {
   explorerTextRowsInto,
-  workbenchDataTablePageSize,
-  workbenchDataTableRowsInto,
   workbenchDemoModalContent,
-  workbenchExplorerRowsInto,
   workbenchHelpModalContent,
-  workbenchInspectorRowsInto,
-  workbenchLogRowsFromSourcesInto,
   workbenchModalConfirmedContent,
   workbenchModalDetailsContent,
   workbenchQuitModalContent,
@@ -325,6 +320,12 @@ import {
   syntheticWorkbenchSystem,
 } from "./workbench_synthetic.ts";
 import type { ComputedLayoutBox } from "../src/layout/mod.ts";
+import {
+  renderApiWorkbenchDataPanel,
+  renderApiWorkbenchExplorerPanel,
+  renderApiWorkbenchInspectorPanel,
+  renderApiWorkbenchLogsPanel,
+} from "./api_workbench_builtin_panels_view.ts";
 import {
   renderApiWorkbenchTerminalSessionTabs,
   renderApiWorkbenchTerminalShellHeader,
@@ -1606,76 +1607,53 @@ function threeGridScaleModeForWindow(_id: WindowId): boolean | "down" {
 
 function renderExplorer(frame: Frame, rect: Rectangle): void {
   const visible = explorer.tree.visibleRows();
-  writeRows(
+  renderApiWorkbenchExplorerPanel({
     frame,
     rect,
-    workbenchExplorerRowsInto(explorerRenderRows, {
-      rows: visible,
-      selectedIndex: explorer.tree.selectedIndex.peek(),
-      theme: theme(),
-      contrast: contrastText,
-    }),
-  );
-  for (let index = 0; index < visible.length; index += 1) {
-    addHit({ column: rect.column, row: rect.row + index, width: rect.width, height: 1 }, {
-      type: "explorerRow",
-      index,
-    });
-  }
+    rows: visible,
+    selectedIndex: explorer.tree.selectedIndex.peek(),
+    renderRows: explorerRenderRows,
+    theme: theme(),
+    contrastText,
+    writeRows,
+    addHit,
+  });
 }
 
 function renderInspector(frame: Frame, rect: Rectangle): void {
-  writeRows(
+  renderApiWorkbenchInspectorPanel({
     frame,
     rect,
-    workbenchInspectorRowsInto(inspectorRenderRows, {
-      width: rect.width,
-      height: rect.height,
-      themeLabel: themes[themeIndex.peek()]!.label,
-      logs: commandLog.peek(),
-      theme: theme(),
-      fit,
-      buffers: {
-        actionTextRows: inspectorActionTextRows,
-        wrappedTextRows: inspectorWrappedTextRows,
-      },
-    }),
-  );
+    themeLabel: themes[themeIndex.peek()]!.label,
+    logs: commandLog.peek(),
+    renderRows: inspectorRenderRows,
+    actionTextRows: inspectorActionTextRows,
+    wrappedTextRows: inspectorWrappedTextRows,
+    theme: theme(),
+    fit,
+    writeRows,
+  });
 }
 
 function renderData(frame: Frame, rect: Rectangle): void {
-  const t = theme();
-  const pendingView = table.view.peek();
-  table.setPageSize(workbenchDataTablePageSize({
-    height: rect.height,
-    width: rect.width,
-    page: pendingView.page + 1,
-    pageCount: pendingView.pageCount,
-    selectedKey: pendingView.selectedKey,
-    theme: t,
-    fit,
-  }));
-  const view = table.view.peek();
-  writeRows(
+  renderApiWorkbenchDataPanel({
     frame,
     rect,
-    workbenchDataTableRowsInto(dataTableRenderRows, {
-      view,
-      columns,
-      sort: table.state.peek().sort,
-      width: rect.width,
-      theme: t,
-      fit,
-      contrast: contrastText,
-      buffers: { textRows: dataTableTextRows, bodyRows: dataTableBodyRows },
-    }),
-  );
-  for (let index = 0; index < Math.min(view.rows.length, Math.max(0, rect.height - 1)); index += 1) {
-    addHit({ column: rect.column, row: rect.row + 1 + index, width: rect.width, height: 1 }, {
-      type: "dataRow",
-      index,
-    });
-  }
+    columns,
+    view: () => table.view.peek(),
+    sort: () => table.state.peek().sort,
+    setPageSize: (pageSize) => table.setPageSize(pageSize),
+    buffers: {
+      renderRows: dataTableRenderRows,
+      textRows: dataTableTextRows,
+      bodyRows: dataTableBodyRows,
+    },
+    theme: theme(),
+    fit,
+    contrastText,
+    writeRows,
+    addHit,
+  });
 }
 
 function renderControls(frame: Frame, rect: Rectangle): void {
@@ -1743,7 +1721,14 @@ function renderControls(frame: Frame, rect: Rectangle): void {
 }
 
 function renderLogs(frame: Frame, rect: Rectangle): void {
-  writeRows(frame, rect, workbenchLogRowsFromSourcesInto(logRenderRows, [docs, commandLog.peek()], theme()));
+  renderApiWorkbenchLogsPanel({
+    frame,
+    rect,
+    sources: [docs, commandLog.peek()],
+    renderRows: logRenderRows,
+    theme: theme(),
+    writeRows,
+  });
 }
 
 function renderTerminalOutput(frame: Frame, rect: Rectangle): void {
