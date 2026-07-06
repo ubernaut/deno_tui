@@ -235,6 +235,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     keeping hidden-rect, body-rect, and clipped graphics rect policy with the rest of the workbench Three surface.
   - Workbench Three header performance formatting is folded into `src/app/workbench_rows.ts`, keeping header row layout
     and telemetry text projection in one row-rendering module.
+  - Fullscreen workbench visual-smoke driving is folded into `scripts/workbench_visual_smoke.ts`, removing the wrapper
+    script while keeping fullscreen, resize, replay, and inspection logic in one smoke-test module.
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

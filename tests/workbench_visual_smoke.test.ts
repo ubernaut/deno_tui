@@ -7,11 +7,11 @@ import {
   inspectWorkbenchThreePaneCoverage,
   inspectWorkbenchVisualSmokeOutput,
   isTransientWorkbenchThreeResizeResult,
+  parseWorkbenchFullscreenVisualSmokeArgs,
   parseWorkbenchVisualSmokeArgs,
   replayWorkbenchScreen,
   replayWorkbenchStyledScreen,
 } from "../scripts/workbench_visual_smoke.ts";
-import { parseWorkbenchFullscreenVisualSmokeArgs } from "../scripts/workbench_fullscreen_visual_smoke.ts";
 
 Deno.test("visual smoke inspector validates required anchors and strips ANSI", () => {
   const result = inspectVisualSmokeOutput({
