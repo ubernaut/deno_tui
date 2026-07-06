@@ -11,7 +11,7 @@ import {
   NoopLifecycleController,
   type PlatformInputEmitter,
   type TuiPlatform,
-} from "../platform/mod.ts";
+} from "../platform/types.ts";
 import type { Key, MousePressEvent } from "../input_reader/types.ts";
 
 /** Options for the browser platform adapter. */

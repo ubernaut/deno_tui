@@ -13,23 +13,25 @@ import {
   UNICODE_CHAR_REGEXP,
 } from "../src/utils/strings.ts";
 import {
+  createTestFocusable,
+  createTestKeyPress,
+  createTestMousePress,
+  createTestMouseScroll,
+  TestKeyPressTarget,
+  TestMouseTarget,
+} from "../src/testing/input.ts";
+import {
   assertTerminalSnapshot,
   canvasRowText,
   canvasSnapshot,
   compareTerminalSnapshot,
   createTestCanvas,
-  createTestFocusable,
-  createTestKeyPress,
-  createTestMousePress,
-  createTestMouseScroll,
   createTestStdout,
   formatTerminalSnapshotDiff,
   frameBufferToSnapshot,
   normalizeTerminalSnapshot,
   stripAnsi,
-  TestKeyPressTarget,
-  TestMouseTarget,
-} from "../src/testing/mod.ts";
+} from "../src/testing/snapshot.ts";
 import { assert, assertEquals } from "./deps.ts";
 
 const unicodeString = "♥☭👀f🌏g⚠5✌💢✅💛🌻";

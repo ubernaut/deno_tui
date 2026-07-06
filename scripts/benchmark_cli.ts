@@ -1,4 +1,4 @@
-import { type BenchmarkCase, type BenchmarkCatalogQuery, queryBenchmarkCases } from "../src/perf/mod.ts";
+import { type BenchmarkCase, type BenchmarkCatalogQuery, queryBenchmarkCases } from "../src/perf/benchmark.ts";
 
 /** Parsed command-line options for the benchmark executable. */
 export interface BenchmarkCliOptions {

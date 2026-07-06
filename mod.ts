@@ -36,5 +36,6 @@ export * from "./src/input_reader/mod.ts";
 
 export * from "./src/app/mod.ts";
 export * from "./src/runtime/mod.ts";
-export * from "./src/testing/mod.ts";
-export * from "./src/perf/mod.ts";
+export * from "./src/testing/input.ts";
+export * from "./src/testing/snapshot.ts";
+export * from "./src/perf/benchmark.ts";

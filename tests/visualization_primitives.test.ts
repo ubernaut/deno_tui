@@ -1,6 +1,6 @@
 import { assertEquals, assertStringIncludes } from "./deps.ts";
 import { Signal } from "../src/signals/mod.ts";
-import { canvasRowText, createTestCanvas } from "../src/testing/mod.ts";
+import { canvasRowText, createTestCanvas } from "../src/testing/snapshot.ts";
 import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import { emptySystemSnapshot } from "./fixtures/system_snapshot.ts";
 import { ListView, MultilineTextView, PanelView } from "../app/ui.ts";

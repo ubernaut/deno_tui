@@ -14,7 +14,7 @@ Every new feature cluster should include:
 
 ## Snapshot Helpers
 
-`src/testing/mod.ts` exports helpers for terminal-output tests:
+`./testing` exports helpers for terminal-output tests:
 
 - `stripAnsi(value)` removes ANSI control sequences.
 - `normalizeTerminalSnapshot(value)` strips ANSI and trailing cell whitespace.

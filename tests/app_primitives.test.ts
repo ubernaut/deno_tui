@@ -103,7 +103,7 @@ import {
   createTestMouseScroll,
   TestKeyPressTarget,
   TestMouseTarget,
-} from "../src/testing/mod.ts";
+} from "../src/testing/input.ts";
 import { createThemeLayerStack, createThemeProvider, createThemeRegistry } from "../src/theme.ts";
 import { createThemeEnginePipeline } from "../src/theme_engine_pipeline.ts";
 import { createThemeWorkspace } from "../src/theme_workspace.ts";

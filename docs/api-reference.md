@@ -6,8 +6,8 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 ## Summary
 
 - Entrypoints: 9
-- Module visits: 497
-- Re-export declarations: 488
+- Module visits: 492
+- Re-export declarations: 483
 - Exported symbols: 5368
 - Documented symbols: 5368
 - Documentation coverage: 100.00%
@@ -18,14 +18,14 @@ of stable, beta, and experimental modules and exported symbols that make up the 
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     221 |    2305 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     200 |    2156 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     219 |    2305 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     198 |    2156 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      87 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
 | `./runtime`     | `./mod.runtime.ts`             | shared   | beta         |      31 |     402 | 100.00% |
 | `./terminal`    | `./mod.terminal.ts`            | terminal | beta         |      15 |     157 | 100.00% |
-| `./testing`     | `./mod.testing.ts`             | shared   | beta         |       4 |      22 | 100.00% |
+| `./testing`     | `./mod.testing.ts`             | shared   | beta         |       3 |      22 | 100.00% |
 | `./layout/yoga` | `./src/layout/solvers/yoga.ts` | shared   | experimental |       1 |       3 | 100.00% |
 
 ## Entrypoint .
@@ -39,8 +39,8 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 ### Summary
 
 - Entrypoint: `mod.ts`
-- Modules: 221
-- Re-export declarations: 220
+- Modules: 219
+- Re-export declarations: 218
 - Exported symbols: 2305
 - Documented symbols: 2305
 - Documentation coverage: 100.00%
@@ -51,7 +51,7 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 
 | Module                                                                                          | Re-exports | Symbols | Documented |
 | ----------------------------------------------------------------------------------------------- | ---------: | ------: | ---------: |
-| [`mod.ts`](#mod-ts)                                                                             |         33 |       0 |          0 |
+| [`mod.ts`](#mod-ts)                                                                             |         34 |       0 |          0 |
 | [`src/api_stability.ts`](#src-api-stability-ts)                                                 |          0 |      14 |         14 |
 | [`src/app/actions.ts`](#src-app-actions-ts)                                                     |          0 |       7 |          7 |
 | [`src/app/app.ts`](#src-app-app-ts)                                                             |          0 |      13 |         13 |
@@ -197,7 +197,6 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/markup/support.ts`](#src-markup-support-ts)                                               |          0 |       2 |          2 |
 | [`src/markup/widgets.ts`](#src-markup-widgets-ts)                                               |          0 |      15 |         15 |
 | [`src/perf/benchmark.ts`](#src-perf-benchmark-ts)                                               |          0 |      20 |         20 |
-| [`src/perf/mod.ts`](#src-perf-mod-ts)                                                           |          1 |       0 |          0 |
 | [`src/runtime/capabilities.ts`](#src-runtime-capabilities-ts)                                   |          0 |      16 |         16 |
 | [`src/runtime/data_pipeline_bindings.ts`](#src-runtime-data-pipeline-bindings-ts)               |          0 |       4 |          4 |
 | [`src/runtime/data_pipeline.ts`](#src-runtime-data-pipeline-ts)                                 |          0 |      19 |         19 |
@@ -240,7 +239,6 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | [`src/signals/signal.ts`](#src-signals-signal-ts)                                               |          0 |      11 |         11 |
 | [`src/signals/types.ts`](#src-signals-types-ts)                                                 |          0 |       4 |          4 |
 | [`src/testing/input.ts`](#src-testing-input-ts)                                                 |          0 |       7 |          7 |
-| [`src/testing/mod.ts`](#src-testing-mod-ts)                                                     |          2 |       0 |          0 |
 | [`src/testing/snapshot.ts`](#src-testing-snapshot-ts)                                           |          0 |      15 |         15 |
 | [`src/theme_binding.ts`](#src-theme-binding-ts)                                                 |          0 |       8 |          8 |
 | [`src/theme_engine_cache.ts`](#src-theme-engine-cache-ts)                                       |          0 |       6 |          6 |
@@ -310,8 +308,9 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 | `src/input_reader/mod.ts`      | star | -     |
 | `src/app/mod.ts`               | star | -     |
 | `src/runtime/mod.ts`           | star | -     |
-| `src/testing/mod.ts`           | star | -     |
-| `src/perf/mod.ts`              | star | -     |
+| `src/testing/input.ts`         | star | -     |
+| `src/testing/snapshot.ts`      | star | -     |
+| `src/perf/benchmark.ts`        | star | -     |
 
 _No direct exported symbols._
 
@@ -2664,14 +2663,6 @@ _No direct exported symbols._
 | `summarizeBenchmarkResults`       | function  | no        | yes   |
 | `summarizeBestBenchmarkSummaries` | function  | no        | yes   |
 
-#### src/perf/mod.ts
-
-| Re-export Target        | Kind | Names |
-| ----------------------- | ---- | ----- |
-| `src/perf/benchmark.ts` | star | -     |
-
-_No direct exported symbols._
-
 #### src/runtime/capabilities.ts
 
 | Symbol                         | Kind      | Type Only | JSDoc |
@@ -3389,15 +3380,6 @@ _No direct exported symbols._
 | `TestKeyPressTarget`    | class     | no        | yes   |
 | `TestMouseTarget`       | class     | no        | yes   |
 
-#### src/testing/mod.ts
-
-| Re-export Target          | Kind | Names |
-| ------------------------- | ---- | ----- |
-| `src/testing/input.ts`    | star | -     |
-| `src/testing/snapshot.ts` | star | -     |
-
-_No direct exported symbols._
-
 #### src/testing/snapshot.ts
 
 | Symbol                        | Kind      | Type Only | JSDoc |
@@ -3945,8 +3927,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 ### Summary
 
 - Entrypoint: `mod.web.ts`
-- Modules: 200
-- Re-export declarations: 199
+- Modules: 198
+- Re-export declarations: 197
 - Exported symbols: 2156
 - Documented symbols: 2156
 - Documentation coverage: 100.00%
@@ -4095,8 +4077,6 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | [`src/markup/support.ts`](#src-markup-support-ts)                                               |          0 |       2 |          2 |
 | [`src/markup/widgets.ts`](#src-markup-widgets-ts)                                               |          0 |      15 |         15 |
 | [`src/perf/benchmark.ts`](#src-perf-benchmark-ts)                                               |          0 |      20 |         20 |
-| [`src/perf/mod.ts`](#src-perf-mod-ts)                                                           |          1 |       0 |          0 |
-| [`src/platform/mod.ts`](#src-platform-mod-ts)                                                   |          1 |       0 |          0 |
 | [`src/platform/types.ts`](#src-platform-types-ts)                                               |          0 |      10 |         10 |
 | [`src/runtime/capabilities.ts`](#src-runtime-capabilities-ts)                                   |          0 |      16 |         16 |
 | [`src/runtime/data_pipeline_bindings.ts`](#src-runtime-data-pipeline-bindings-ts)               |          0 |       4 |          4 |
@@ -4183,9 +4163,9 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 | `src/layout/mod.ts`                     | star | -     |
 | `src/markup/mod.ts`                     | star | -     |
 | `src/components/mod.ts`                 | star | -     |
-| `src/platform/mod.ts`                   | star | -     |
+| `src/platform/types.ts`                 | star | -     |
 | `src/web/mod.ts`                        | star | -     |
-| `src/perf/mod.ts`                       | star | -     |
+| `src/perf/benchmark.ts`                 | star | -     |
 | `src/canvas/box.ts`                     | star | -     |
 | `src/canvas/canvas.ts`                  | star | -     |
 | `src/canvas/draw_object.ts`             | star | -     |
@@ -6497,22 +6477,6 @@ _No direct exported symbols._
 | `queryBenchmarkCases`             | function  | no        | yes   |
 | `summarizeBenchmarkResults`       | function  | no        | yes   |
 | `summarizeBestBenchmarkSummaries` | function  | no        | yes   |
-
-#### src/perf/mod.ts
-
-| Re-export Target        | Kind | Names |
-| ----------------------- | ---- | ----- |
-| `src/perf/benchmark.ts` | star | -     |
-
-_No direct exported symbols._
-
-#### src/platform/mod.ts
-
-| Re-export Target        | Kind | Names |
-| ----------------------- | ---- | ----- |
-| `src/platform/types.ts` | star | -     |
-
-_No direct exported symbols._
 
 #### src/platform/types.ts
 
@@ -9072,8 +9036,8 @@ Testing helpers for snapshots, fake input events, focus targets, stdout capture,
 ### Summary
 
 - Entrypoint: `mod.testing.ts`
-- Modules: 4
-- Re-export declarations: 3
+- Modules: 3
+- Re-export declarations: 2
 - Exported symbols: 22
 - Documented symbols: 22
 - Documentation coverage: 100.00%
@@ -9084,18 +9048,18 @@ Testing helpers for snapshots, fake input events, focus targets, stdout capture,
 
 | Module                                                | Re-exports | Symbols | Documented |
 | ----------------------------------------------------- | ---------: | ------: | ---------: |
-| [`mod.testing.ts`](#mod-testing-ts)                   |          1 |       0 |          0 |
+| [`mod.testing.ts`](#mod-testing-ts)                   |          2 |       0 |          0 |
 | [`src/testing/input.ts`](#src-testing-input-ts)       |          0 |       7 |          7 |
-| [`src/testing/mod.ts`](#src-testing-mod-ts)           |          2 |       0 |          0 |
 | [`src/testing/snapshot.ts`](#src-testing-snapshot-ts) |          0 |      15 |         15 |
 
 ### Modules
 
 #### mod.testing.ts
 
-| Re-export Target     | Kind | Names |
-| -------------------- | ---- | ----- |
-| `src/testing/mod.ts` | star | -     |
+| Re-export Target          | Kind | Names |
+| ------------------------- | ---- | ----- |
+| `src/testing/input.ts`    | star | -     |
+| `src/testing/snapshot.ts` | star | -     |
 
 _No direct exported symbols._
 
@@ -9110,15 +9074,6 @@ _No direct exported symbols._
 | `TestKeyPressOptions`   | interface | yes       | yes   |
 | `TestKeyPressTarget`    | class     | no        | yes   |
 | `TestMouseTarget`       | class     | no        | yes   |
-
-#### src/testing/mod.ts
-
-| Re-export Target          | Kind | Names |
-| ------------------------- | ---- | ----- |
-| `src/testing/input.ts`    | star | -     |
-| `src/testing/snapshot.ts` | star | -     |
-
-_No direct exported symbols._
 
 #### src/testing/snapshot.ts
 

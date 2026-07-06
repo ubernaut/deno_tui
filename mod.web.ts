@@ -19,9 +19,9 @@ export * from "./src/signals/mod.ts";
 export * from "./src/layout/mod.ts";
 export * from "./src/markup/mod.ts";
 export * from "./src/components/mod.ts";
-export * from "./src/platform/mod.ts";
+export * from "./src/platform/types.ts";
 export * from "./src/web/mod.ts";
-export * from "./src/perf/mod.ts";
+export * from "./src/perf/benchmark.ts";
 
 export * from "./src/canvas/box.ts";
 export * from "./src/canvas/canvas.ts";

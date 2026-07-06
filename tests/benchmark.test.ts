@@ -9,7 +9,7 @@ import {
   queryBenchmarkCases,
   summarizeBenchmarkResults,
   summarizeBestBenchmarkSummaries,
-} from "../src/perf/mod.ts";
+} from "../src/perf/benchmark.ts";
 import {
   formatEmptyBenchmarkSelectionError,
   formatUnmatchedBenchmarkNamesError,

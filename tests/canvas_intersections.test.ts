@@ -9,7 +9,7 @@ import {
 import { DrawObjectSpatialIndex } from "../src/canvas/spatial_index.ts";
 import { TextObject, type TextRectangle } from "../src/canvas/text.ts";
 import { Signal } from "../src/signals/mod.ts";
-import { assertTerminalSnapshot, canvasRowText, canvasSnapshot, createTestCanvas } from "../src/testing/mod.ts";
+import { assertTerminalSnapshot, canvasRowText, canvasSnapshot, createTestCanvas } from "../src/testing/snapshot.ts";
 import { View } from "../src/view.ts";
 import { BrowserCellCanvasSink } from "../src/web/mod.ts";
 
