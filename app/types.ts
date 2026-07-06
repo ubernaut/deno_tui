@@ -265,15 +265,6 @@ export interface MenuState {
   targetSlotId: SlotId;
 }
 
-export interface AppState {
-  layout: LayoutId;
-  selectedSlotId: SlotId;
-  phase: number;
-  sourceCatalog: SourceDescriptor[];
-  slots: Record<SlotId, SlotConfig>;
-  menu: MenuState | null;
-}
-
 export type Rect = {
   column: number;
   row: number;
