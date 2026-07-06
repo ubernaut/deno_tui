@@ -53,8 +53,6 @@ import {
 import { applyWorkbenchThreePanelFrameDefaults } from "../src/app/workbench_three_policy.ts";
 import type { AsciiOptions, Rect, ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 
-export type { ThreePanelFrameUpdate, ThreePanelInteractionState } from "../src/app/three_panel_core.ts";
-
 export interface ThreeSceneState {
   mode: ThreeSceneMode;
   signal: ThreeSceneSignal;
