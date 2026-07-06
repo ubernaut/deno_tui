@@ -1258,3 +1258,7 @@ performance, shared terminal/web workbench projections, and oversized module red
   query/category/tag discovery, while repeated exact names now report unknown selectors before executing any subset.
 - Removed web API Workbench terminal session-id/title forwarding wrappers so the browser adapter calls the same shared
   terminal session helpers directly as the console adapter.
+- Scaled capped Three panel renderer grids to the current display rectangle before publication, keeping internal
+  render-cell pressure caps while ensuring resized and fullscreen workbench panes repaint their full visible bounds.
+- Added a shared workbench terminal session draft helper and routed console/browser terminal session creation through
+  it, keeping id/title prefix policy in one tested place.

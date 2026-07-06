@@ -178,7 +178,7 @@ import {
 import { maxTextWidth, type VisibleMenuSlice } from "../src/app/workbench_text.ts";
 import {
   applyWorkbenchTerminalSearchPromptInput,
-  nextWorkbenchTerminalSessionId,
+  nextWorkbenchTerminalSessionDraft,
   resolveWorkbenchShellBackend,
   resolveWorkbenchTerminalProcessInputModeToggle,
   resolveWorkbenchTerminalShellInputModeToggle,
@@ -191,7 +191,6 @@ import {
   workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
   workbenchTerminalSessionTabSourcesInto,
-  workbenchTerminalSessionTitleFromId,
   type WorkbenchTerminalShellHeaderRow,
   workbenchTerminalShellHeaderRowsInto,
   type WorkbenchTerminalToolbarAction,
@@ -2352,8 +2351,8 @@ function activeTerminalShell(): TerminalShellController | undefined {
 }
 
 function addSplitTerminalShell(direction: "row" | "column") {
-  const id = nextWorkbenchTerminalSessionId(terminalShell.inspect().sessions);
-  const descriptor = terminalShell.add(shellTerminalTemplate({ id, title: workbenchTerminalSessionTitleFromId(id) }), {
+  const draft = nextWorkbenchTerminalSessionDraft(terminalShell.inspect().sessions);
+  const descriptor = terminalShell.add(shellTerminalTemplate(draft), {
     activate: false,
   });
   terminalShell.workspace.splitActive(direction, descriptor.id, { title: descriptor.title });
@@ -3731,9 +3730,8 @@ async function applyTerminalShellAction(action: TerminalShellAction): Promise<vo
   focus(TERMINAL_SHELL_WINDOW_ID);
   const shell = activeTerminalShell();
   if (action === "new") {
-    const id = nextWorkbenchTerminalSessionId(terminalShell.inspect().sessions);
     const descriptor = terminalShell.add(
-      shellTerminalTemplate({ id, title: workbenchTerminalSessionTitleFromId(id) }),
+      shellTerminalTemplate(nextWorkbenchTerminalSessionDraft(terminalShell.inspect().sessions)),
       {
         activate: true,
         start: true,

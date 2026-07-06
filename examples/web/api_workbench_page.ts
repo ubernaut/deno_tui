@@ -38,7 +38,7 @@ import {
   MenuBarController,
   modalContentHeight,
   ModalController,
-  nextWorkbenchTerminalSessionId,
+  nextWorkbenchTerminalSessionDraft,
   normalizeTerminalWorkspaceSnapshot,
   normalizeWorkbenchPanelWorkspaceState,
   parseHexColor,
@@ -94,7 +94,6 @@ import {
   workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
   workbenchTerminalSessionTabSourcesInto,
-  workbenchTerminalSessionTitleFromId,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarItemsInto,
   workbenchTerminalToolbarStateFromSnapshot,
@@ -1462,11 +1461,13 @@ function syncWebTerminalScreen(sessionId: string | undefined, width: number, hei
 function applyWebTerminalAction(action: WebTerminalAction): void {
   const inspection = webTerminalWorkspace.inspect();
   if (action === "new") {
-    const id = nextWorkbenchTerminalSessionId(webTerminalWorkspace.inspect().sessions, { prefix: "pages-shell" });
-    const title = workbenchTerminalSessionTitleFromId(id, { prefix: "pages-shell", label: "Pages Shell" });
+    const draft = nextWorkbenchTerminalSessionDraft(webTerminalWorkspace.inspect().sessions, {
+      prefix: "pages-shell",
+      label: "Pages Shell",
+    });
     webTerminalWorkspace.add({
-      id,
-      title,
+      id: draft.id,
+      title: draft.title,
       kind: "command",
       command: "web-shell",
       metadata: { source: "browser-demo" },
@@ -1476,7 +1477,7 @@ function applyWebTerminalAction(action: WebTerminalAction): void {
       status: "running",
       running: true,
     });
-    push(`terminal new ${title}`);
+    push(`terminal new ${draft.title}`);
   } else if (action === "previous") {
     const descriptor = webTerminalWorkspace.activateRelative(-1);
     push(descriptor ? `terminal session ${descriptor.title}` : "terminal previous unavailable");
@@ -1489,11 +1490,13 @@ function applyWebTerminalAction(action: WebTerminalAction): void {
       push("terminal session closed");
     }
   } else if (action === "splitRow" || action === "splitColumn") {
-    const id = nextWorkbenchTerminalSessionId(webTerminalWorkspace.inspect().sessions, { prefix: "pages-shell" });
-    const title = workbenchTerminalSessionTitleFromId(id, { prefix: "pages-shell", label: "Pages Shell" });
+    const draft = nextWorkbenchTerminalSessionDraft(webTerminalWorkspace.inspect().sessions, {
+      prefix: "pages-shell",
+      label: "Pages Shell",
+    });
     const descriptor = webTerminalWorkspace.add({
-      id,
-      title,
+      id: draft.id,
+      title: draft.title,
       kind: "command",
       command: "web-shell",
       metadata: { source: "browser-demo" },
@@ -1507,7 +1510,7 @@ function applyWebTerminalAction(action: WebTerminalAction): void {
       title: descriptor.title,
     });
     webTerminalWorkspace.activate(descriptor.id);
-    push(`terminal split ${title}`);
+    push(`terminal split ${draft.title}`);
   } else if (action === "zoomPane") {
     const paneId = webTerminalWorkspace.inspect().layout.activePaneId;
     if (paneId) {

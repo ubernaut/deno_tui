@@ -14,6 +14,7 @@ import type {
 import {
   applyWorkbenchTerminalSearchPromptInput,
   createWorkbenchShellSession,
+  nextWorkbenchTerminalSessionDraft,
   nextWorkbenchTerminalSessionId,
   resolveWorkbenchShellBackend,
   resolveWorkbenchTerminalOutputKeyAction,
@@ -304,6 +305,10 @@ Deno.test("workbench terminal session id helpers avoid collisions and format tit
     "Pages Shell 8",
   );
   assertEquals(workbenchTerminalSessionTitleFromId("custom", { label: "Session" }), "Session");
+  assertEquals(
+    nextWorkbenchTerminalSessionDraft([{ id: "pages-shell-1" }], { prefix: "pages-shell", label: "Pages Shell" }),
+    { id: "pages-shell-2", title: "Pages Shell 2" },
+  );
 });
 
 Deno.test("workbenchTerminalSessionTabSourcesInto projects direct and shell-backed session state", () => {
