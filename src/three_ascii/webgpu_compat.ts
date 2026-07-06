@@ -160,9 +160,10 @@ export async function getCompatibleWebGPUDevice(): Promise<GPUDevice> {
       throw new Error("WebGPU is not available in this Deno runtime.");
     }
 
-    const adapter = await navigator.gpu.requestAdapter({
+    const adapterOptions: GPURequestAdapterOptions & { featureLevel: "compatibility" } = {
       featureLevel: "compatibility",
-    } as any);
+    };
+    const adapter = await navigator.gpu.requestAdapter(adapterOptions);
 
     if (!adapter) {
       throw new Error("Unable to acquire a WebGPU adapter.");

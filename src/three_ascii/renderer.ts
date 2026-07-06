@@ -93,6 +93,9 @@ type ThreeBackendRenderer = WebGPURenderer & {
     get(object: unknown): { texture?: GPUTexture };
   };
 };
+type WebGPURendererParameters = NonNullable<ConstructorParameters<typeof WebGPURenderer>[0]>;
+type WebGPURendererCanvas = NonNullable<WebGPURendererParameters["canvas"]>;
+type WebGPURendererContext = NonNullable<WebGPURendererParameters["context"]>;
 
 /** Options for configuring three Ascii Renderer. */
 export interface ThreeAsciiRendererOptions {
@@ -962,8 +965,8 @@ export class ThreeAsciiRenderer {
     const renderer = new WebGPURenderer({
       alpha: false,
       antialias: false,
-      canvas: this.canvas as any,
-      context: this.canvas.getContext("webgpu") as any,
+      canvas: this.canvas as unknown as WebGPURendererCanvas,
+      context: this.canvas.getContext("webgpu") as WebGPURendererContext,
       device,
     }) as ThreeBackendRenderer;
 

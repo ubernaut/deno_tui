@@ -22,7 +22,7 @@ export type DataTransform<TInput, TOutput> = (
   context: DataPipelineContext,
 ) => TOutput | Promise<TOutput>;
 
-type AnyDataTransform = DataTransform<any, any>;
+type AnyDataTransform = DataTransform<never, unknown>;
 
 /** Minimal async worker-like runner used by worker-backed transforms. */
 export interface WorkerTaskRunner<TPayload, TResult> {
@@ -86,11 +86,11 @@ export async function runDataPipeline<TInput, TOutput = unknown>(
     throwIfAborted(context.signal);
     try {
       current = options.scheduler
-        ? await options.scheduler.run(() => transform(current, context), {
+        ? await options.scheduler.run(() => runAnyDataTransform(transform, current, context), {
           priority: options.priority,
           signal: options.signal,
         })
-        : await transform(current, context);
+        : await runAnyDataTransform(transform, current, context);
     } catch (error) {
       if (context.signal?.aborted && isAbortError(error)) {
         throw new DataPipelineAbortError();
@@ -219,10 +219,18 @@ export class CachedDataPipeline<TInput, TOutput, Stored = TOutput> {
 
 /** Creates a cached latest-only data pipeline. */
 export function createCachedDataPipeline<TInput, TOutput, Stored = TOutput>(
-  transforms: readonly DataTransform<any, any>[],
+  transforms: readonly AnyDataTransform[],
   options: CachedDataPipelineOptions<TInput, TOutput, Stored> = {},
 ): CachedDataPipeline<TInput, TOutput, Stored> {
   return new CachedDataPipeline(transforms, options);
+}
+
+function runAnyDataTransform(
+  transform: AnyDataTransform,
+  input: unknown,
+  context: DataPipelineContext,
+): unknown | Promise<unknown> {
+  return (transform as DataTransform<unknown, unknown>)(input, context);
 }
 
 /** Creates a transform that maps every row in an array. */

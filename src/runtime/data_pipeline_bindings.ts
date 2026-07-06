@@ -7,6 +7,8 @@ import {
   runDataPipeline,
 } from "./data_pipeline.ts";
 
+type AnyDataTransform = DataTransform<never, unknown>;
+
 /** Options for configuring data Pipeline Binding. */
 export interface DataPipelineBindingOptions<TOutput> extends Omit<DataPipelineOptions, "signal" | "revision"> {
   initialRun?: boolean;
@@ -38,7 +40,7 @@ export interface DataPipelineBinding<TInput> {
 export function bindDataPipeline<TInput, TOutput>(
   input: Signal<TInput>,
   output: Signal<TOutput | undefined>,
-  transforms: readonly DataTransform<any, any>[],
+  transforms: readonly AnyDataTransform[],
   options: DataPipelineBindingOptions<TOutput> = {},
 ): DataPipelineBinding<TInput> {
   const debounceMs = Math.max(0, options.debounceMs ?? 0);
