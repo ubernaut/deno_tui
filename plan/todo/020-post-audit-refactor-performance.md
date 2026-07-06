@@ -238,6 +238,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   keeping the existing controls facade stable while isolating button/detail segment geometry.
 - Added a driven fullscreen visual smoke for the API Workbench default Three pane so future checks verify fullscreen
   render-cell scale and truecolor body repainting instead of relying on text-only ANSI replay.
+- Changed Three panel grid publication to trust renderer `gridRevision` values instead of hashing full ANSI grids on
+  every renderer-backed frame, with a benchmark guard for revisioned publication and focused workbench visual probes.
 - Added exact repeated `--name` benchmark selectors so Three/workbench hot-path runs can target only the intended cases
   instead of accidentally running the full catalog.
 - Extracted API Workbench terminal screen-size synchronization into a tested helper so resize polling, clamping, and

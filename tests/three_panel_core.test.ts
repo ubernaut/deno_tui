@@ -805,15 +805,18 @@ Deno.test("fingerprintThreePanelGrid distinguishes content shape and text", () =
   assertNotEquals(fingerprintThreePanelGrid([["A", "B"], undefined, ["C", "D"]]), base);
 });
 
-Deno.test("ThreePanelGridPublicationCache skips repeated revisioned grids", () => {
+Deno.test("ThreePanelGridPublicationCache treats renderer revisions as authoritative", () => {
   const cache = new ThreePanelGridPublicationCache();
   const grid = [["A"]];
 
   assertEquals(cache.shouldPublish({ grid, revision: 1 }), true);
   assertEquals(cache.shouldPublish({ grid, revision: 1 }), false);
-  assertEquals(cache.shouldPublish({ grid: [["A"]], revision: 2 }), false);
-  assertEquals(cache.shouldPublish({ grid: [["A", "A"]], revision: 2 }), true);
+  assertEquals(cache.shouldPublish({ grid: [["A"]], revision: 2 }), true);
+  assertEquals(cache.shouldPublish({ grid: [["A", "A"]], revision: 2 }), false);
   assertEquals(cache.shouldPublish({ grid: [["B"]], revision: 3 }), true);
+  assertEquals(cache.shouldPublish({ grid: [["B"]] }), true);
+  assertEquals(cache.shouldPublish({ grid: [["B"]] }), false);
+  assertEquals(cache.shouldPublish({ grid: [["C"]] }), true);
 });
 
 Deno.test("ThreePanelGridPublicationCache preserves unrevisioned identity and fingerprint behavior", () => {

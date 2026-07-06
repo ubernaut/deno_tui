@@ -77,6 +77,7 @@ import { writeWorkbenchThreeGrid } from "../src/app/workbench_three_grid.ts";
 import {
   scaleThreePanelGridToSize,
   scaleThreePanelGridToSizeInto,
+  ThreePanelGridPublicationCache,
   ThreePanelGridScaleCache,
 } from "../src/app/three_panel_core.ts";
 import {
@@ -193,6 +194,8 @@ const threePanelScaleSourceGrid = Array.from(
 );
 const threePanelScaleTargetGrid: string[][] = [];
 const threePanelScaleCache = new ThreePanelGridScaleCache();
+const threePanelPublicationCache = new ThreePanelGridPublicationCache();
+let threePanelPublicationRevision = 0;
 let threePanelScaleChecksum = 0;
 const workbenchThreeBlockFrameWidth = 168;
 const workbenchThreeBlockFrameRows = 54;
@@ -1351,6 +1354,22 @@ function runThreePanelGridScaleCachedWorkload(): void {
   }
 }
 
+function runThreePanelGridRevisionPublicationWorkload(): void {
+  threePanelPublicationRevision += 1;
+  const publish = threePanelPublicationCache.shouldPublish({
+    grid: threePanelScaleSourceGrid,
+    revision: threePanelPublicationRevision,
+  });
+  const duplicate = threePanelPublicationCache.shouldPublish({
+    grid: threePanelScaleSourceGrid,
+    revision: threePanelPublicationRevision,
+  });
+  threePanelScaleChecksum = (threePanelScaleChecksum + threePanelPublicationRevision + (publish ? 1 : 0)) % 1_000_000;
+  if (!publish || duplicate || !Number.isFinite(threePanelScaleChecksum)) {
+    throw new Error("three panel revision publication workload failed");
+  }
+}
+
 function runWorkbenchThreeBlockFlushWorkload(): void {
   workbenchThreeBlockWave = (workbenchThreeBlockWave + 1) % 64;
   const prepared = prepareWorkbenchFrame(workbenchThreeBlockFrame, workbenchThreeBlockFrameRows);
@@ -1985,6 +2004,15 @@ export const benchmarkCases: BenchmarkCase[] = [
     iterations: 500,
     maxAverageMs: 4,
     run: runThreePanelGridScaleCachedWorkload,
+  },
+  {
+    name: "render/three-panel-grid-revision-publication",
+    category: "render",
+    description: "Publish revisioned Three panel renderer grids without content fingerprint scans.",
+    tags: ["render", "three", "ascii", "grid", "publication", "revision"],
+    iterations: 10_000,
+    maxAverageMs: 0.02,
+    run: runThreePanelGridRevisionPublicationWorkload,
   },
   {
     name: "render/textobject-full-row-canvas-220x70",
