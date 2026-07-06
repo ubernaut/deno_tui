@@ -52,6 +52,13 @@ const _renderSize = /* @__PURE__ */ new Vector2();
 
 let _rendererState: unknown;
 
+type TslNode = ReturnType<typeof vec4>;
+type TslFragmentFactory = () => TslNode;
+interface AcerolaRenderTargetRenderer {
+  getDrawingBufferSize(target: Vector2): void;
+  setRenderTarget(target: RenderTarget | null): void;
+}
+
 /** Options for configuring acerola Ascii Node. */
 export interface AcerolaAsciiNodeOptions {
   resolutionScale?: number;
@@ -119,8 +126,8 @@ function copyOffsetValue(target: Vector2, input: Vector2 | { x: number; y: numbe
 
 /** Public class implementing an acerola Ascii Node. */
 export class AcerolaAsciiNode extends TempNode {
-  readonly colorNode: any;
-  readonly depthNode: any;
+  readonly colorNode: TslNode;
+  readonly depthNode: TslNode;
   readonly camera: Camera;
   readonly edgesTexture: Texture;
   readonly fillTexture: Texture;
@@ -177,9 +184,9 @@ export class AcerolaAsciiNode extends TempNode {
   private readonly edgesTextureNode = texture(this.edgesTarget.texture);
   private readonly sobelXTextureNode = texture(this.sobelXTarget.texture);
   private readonly sobelTextureNode = texture(this.sobelTarget.texture);
-  private readonly edgesLutNode: any;
-  private readonly fillLutNode: any;
-  private readonly outputTextureNode: any;
+  private readonly edgesLutNode: TslNode;
+  private readonly fillLutNode: TslNode;
+  private readonly outputTextureNode: TslNode;
 
   private luminanceMaterial?: NodeMaterial;
   private downscaleMaterial?: NodeMaterial;
@@ -201,8 +208,8 @@ export class AcerolaAsciiNode extends TempNode {
   };
 
   constructor(
-    colorNode: any,
-    depthNode: any,
+    colorNode: TslNode,
+    depthNode: TslNode,
     camera: Camera,
     luts: { edgesTexture: Texture; fillTexture: Texture },
     options: AcerolaAsciiNodeOptions = {},
@@ -233,7 +240,8 @@ export class AcerolaAsciiNode extends TempNode {
     configureMaskRenderTarget(this.sobelTarget, "AcerolaAscii.sobel");
     configureMaskRenderTarget(this.asciiTarget, "AcerolaAscii.output");
 
-    (this as any).updateBeforeType = NodeUpdateType.FRAME;
+    (this as unknown as AcerolaAsciiNode & { updateBeforeType: NodeUpdateType }).updateBeforeType =
+      NodeUpdateType.FRAME;
   }
 
   applyOptions(options: Partial<AcerolaAsciiNodeOptions>): void {
@@ -379,7 +387,7 @@ export class AcerolaAsciiNode extends TempNode {
     this.downscaleTarget.setSize(downscaleWidth, downscaleHeight);
   }
 
-  updateBefore(frame: { renderer: any }): void {
+  updateBefore(frame: { renderer: AcerolaRenderTargetRenderer }): void {
     const { renderer } = frame;
 
     if (!this.asciiMaterial) {
@@ -438,13 +446,13 @@ export class AcerolaAsciiNode extends TempNode {
     RendererUtils.restoreRendererState(renderer, _rendererState);
   }
 
-  getTextureNode(): any {
+  getTextureNode(): TslNode {
     return this.outputTextureNode;
   }
 
-  setup(): any {
+  setup(): TslNode {
     if (!this.luminanceMaterial) {
-      const sourceSample = (uvNode: any) => {
+      const sourceSample = (uvNode: TslNode) => {
         const transformed = uvNode.mul(2).sub(1)
           .add(vec2(this.offset.x.negate(), this.offset.y).mul(2))
           .mul(this.zoom)
@@ -463,7 +471,7 @@ export class AcerolaAsciiNode extends TempNode {
         return sample;
       };
 
-      const sourceLinearDepth = (uvNode: any) => {
+      const sourceLinearDepth = (uvNode: TslNode) => {
         const transformed = uvNode.mul(2).sub(1)
           .add(vec2(this.offset.x.negate(), this.offset.y).mul(2))
           .mul(this.zoom)
@@ -487,18 +495,18 @@ export class AcerolaAsciiNode extends TempNode {
         return rawDepth;
       };
 
-      const sampleNearest = (textureNode: any, pixelCoord: any, sizeNode: any) => {
+      const sampleNearest = (textureNode: TslNode, pixelCoord: TslNode, sizeNode: TslNode) => {
         const texel = clamp(pixelCoord, vec2(0), sizeNode.sub(1));
         return textureNode.sample(texel.add(0.5).div(sizeNode));
       };
 
-      const gaussian = (sigmaNode: any, position: number) => {
+      const gaussian = (sigmaNode: TslNode, position: number) => {
         const sigmaSquared = sigmaNode.mul(sigmaNode);
         const coefficient = float(1).div(sqrt(float(2).mul(PI).mul(sigmaSquared)));
         return coefficient.mul(exp(float(-(position * position)).div(float(2).mul(sigmaSquared))));
       };
 
-      const classifyDirection = (thetaNode: any, validNode: any) => {
+      const classifyDirection = (thetaNode: TslNode, validNode: TslNode) => {
         const direction = float(-1).toVar();
         const absTheta = abs(thetaNode).div(PI).toVar();
 
@@ -716,7 +724,7 @@ export class AcerolaAsciiNode extends TempNode {
         const dominantDirection = float(-1).toVar();
         const maxCount = float(0).toVar();
 
-        const updateDominant = (direction: number, count: any) => {
+        const updateDominant = (direction: number, count: TslNode) => {
           If(count.greaterThan(maxCount), () => {
             dominantDirection.assign(direction);
             maxCount.assign(count);
@@ -803,7 +811,7 @@ export class AcerolaAsciiNode extends TempNode {
         return vec4(asciiColor, 1);
       });
 
-      const makeMaterial = (name: string, fragmentNode: any) => {
+      const makeMaterial = (name: string, fragmentNode: TslFragmentFactory) => {
         const material = new NodeMaterial();
         material.name = name;
         material.fragmentNode = fragmentNode();
@@ -852,7 +860,12 @@ export class AcerolaAsciiNode extends TempNode {
     this.asciiMaterial?.dispose();
   }
 
-  private renderMaterial(renderer: any, target: RenderTarget, material?: NodeMaterial, label = "AcerolaAscii"): void {
+  private renderMaterial(
+    renderer: AcerolaRenderTargetRenderer,
+    target: RenderTarget,
+    material?: NodeMaterial,
+    label = "AcerolaAscii",
+  ): void {
     if (!material) return;
 
     _quadMesh.material = material;
