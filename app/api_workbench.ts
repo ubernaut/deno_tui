@@ -294,7 +294,7 @@ import {
   workbenchQuitModalContent,
   workbenchWindowContentSize,
 } from "./workbench_panels.ts";
-import { WorkbenchThreeGridProjectionCache, writeWorkbenchThreeGrid } from "../src/app/workbench_three_grid.ts";
+import { WorkbenchThreeGridProjectionCache } from "../src/app/workbench_three_grid.ts";
 import {
   hideWorkbenchThreeRect,
   setWorkbenchThreeRect,
@@ -307,6 +307,7 @@ import {
   type WorkbenchThreeScene as SharedWorkbenchThreeScene,
   workbenchVisualizationThreeScene,
 } from "../src/app/workbench_three_scene.ts";
+import { renderWorkbenchThreeSurface } from "../src/app/workbench_three_surface.ts";
 import {
   threeRendererModeLabel,
   visualizationTextContentSize,
@@ -1611,18 +1612,10 @@ function renderThree(frame: Frame, rect: Rectangle): void {
 }
 
 function renderThreeResizePlaceholder(frame: Frame, rect: Rectangle, t: ThemeSpec): void {
-  if (rect.width <= 0 || rect.height <= 0) return;
-  writeRows(
-    frame,
-    rect,
-    workbenchThreeStatusRowsInto(threeStatusRowsBuffer, {
-      width: rect.width,
-      height: rect.height,
-      message: "renderer resizing",
-      theme: t,
-      center: centerText,
-    }),
-  );
+  renderThreeSurface(frame, rect, [], t, {
+    statusMessage: "renderer resizing",
+    countForPressure: false,
+  });
 }
 
 function renderThreeGridOrResizePlaceholder(
@@ -1635,11 +1628,12 @@ function renderThreeGridOrResizePlaceholder(
     countForPressure?: boolean;
   } = {},
 ): void {
-  if (grid.length > 0 && (grid[0]?.length ?? 0) > 0) {
-    renderThreeGrid(frame, rect, grid, t, options);
-    return;
-  }
-  renderThreeResizePlaceholder(frame, rect, t);
+  const resizeScale = grid.length > 0 && (grid[0]?.length ?? 0) > 0 ? true : options.scale;
+  renderThreeSurface(frame, rect, grid, t, {
+    ...options,
+    scale: resizeScale,
+    statusMessage: "renderer resizing",
+  });
 }
 
 function renderThreeGrid(
@@ -1649,34 +1643,42 @@ function renderThreeGrid(
   t: ThemeSpec,
   options: { countForPressure?: boolean; scale?: boolean | "down" } = {},
 ): void {
-  if (rect.width <= 0 || rect.height <= 0) return;
+  renderThreeSurface(frame, rect, grid, t, {
+    ...options,
+    statusMessage: threeAsciiAvailable.peek() ? "renderer warming up" : "renderer unavailable",
+  });
+}
 
-  if (grid.length === 0) {
-    const message = threeAsciiAvailable.peek() ? "renderer warming up" : "renderer unavailable";
-    writeRows(
-      frame,
-      rect,
-      workbenchThreeStatusRowsInto(threeStatusRowsBuffer, {
-        width: rect.width,
-        height: rect.height,
-        message,
-        theme: t,
-        center: centerText,
-      }),
-    );
-    return;
-  }
-
-  const projection = writeWorkbenchThreeGrid(
+function renderThreeSurface(
+  frame: Frame,
+  rect: Rectangle,
+  grid: string[][],
+  t: ThemeSpec,
+  options: {
+    countForPressure?: boolean;
+    scale?: boolean | "down";
+    statusMessage: string;
+  },
+): void {
+  renderWorkbenchThreeSurface({
     frame,
     rect,
     grid,
-    paint(" ", { bg: t.surface }),
-    threeGridProjectionCache.options(grid, options.scale ?? "down"),
-  );
-  if ((options.countForPressure ?? true) && projection) {
-    workbenchThreeRuntime.recordRenderedGridForPressure(projection.targetHeight);
-  }
+    fallbackCell: paint(" ", { bg: t.surface }),
+    projectionCache: threeGridProjectionCache,
+    writeRows,
+    statusRows: () =>
+      workbenchThreeStatusRowsInto(threeStatusRowsBuffer, {
+        width: rect.width,
+        height: rect.height,
+        message: options.statusMessage,
+        theme: t,
+        center: centerText,
+      }),
+    scale: options.scale,
+    countForPressure: options.countForPressure,
+    onPressureRows: (rows) => workbenchThreeRuntime.recordRenderedGridForPressure(rows),
+  });
 }
 
 function threeGridScaleModeForWindow(_id: WindowId): boolean | "down" {
@@ -4607,7 +4609,7 @@ function pushLog(message: string): void {
   );
 }
 
-function writeRows(frame: Frame, rect: Rectangle, rows: RowStyle[]): void {
+function writeRows(frame: Frame, rect: Rectangle, rows: readonly RowStyle[]): void {
   framePainter.writeRows(frame, rect, rows);
 }
 
