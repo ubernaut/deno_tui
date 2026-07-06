@@ -90,6 +90,12 @@ import {
   renderApiWorkbenchThreeGridOrResizePlaceholder,
   renderApiWorkbenchThreeHeader,
 } from "../app/api_workbench_three_view.ts";
+import {
+  addApiWorkbenchCpuHexTileHits,
+  renderApiWorkbenchVisualizationMissing,
+  renderApiWorkbenchVisualizationTextWindow,
+  renderApiWorkbenchVisualizationThreeChrome,
+} from "../app/api_workbench_visualization_view.ts";
 import { ApiWorkbenchWindowShellBufferCache, renderApiWorkbenchWindowShell } from "../app/api_workbench_window_view.ts";
 import {
   renderApiWorkbenchTerminalSessionTabs,
@@ -101,6 +107,8 @@ import { ApiWorkbenchControlsViewBufferCache, renderApiWorkbenchControls } from 
 import type { ProcessSessionInspection } from "../src/runtime/process_session.ts";
 import type { TerminalShellInspection } from "../src/runtime/terminal_shell.ts";
 import type { TerminalShellWorkspaceInspection } from "../src/runtime/terminal_shell_workspace.ts";
+import type { RowStyle } from "../src/app/workbench_rows.ts";
+import type { PanelRender } from "../app/types.ts";
 
 Deno.test("WorkbenchController coordinates menus and window state", () => {
   const events: unknown[] = [];
@@ -1625,6 +1633,109 @@ Deno.test("renderApiWorkbenchThreeConfigModal paints rows, footer, and config hi
   assertEquals(buffers.rowRenderCommands.length > 0, true);
 });
 
+Deno.test("renderApiWorkbenchVisualizationMissing paints missing visualization state", () => {
+  const captured: RowStyle[] = [];
+
+  renderApiWorkbenchVisualizationMissing({
+    frame: [],
+    rect: { column: 2, row: 3, width: 30, height: 4 },
+    theme: testWorkbenchTheme(),
+    writeRows: (_frame, _rect, rows) => captured.push(...rows),
+  });
+
+  assertEquals(captured, [
+    { text: "Visualization window not found", fg: "#ff0", bg: "#111", bold: true },
+  ]);
+});
+
+Deno.test("renderApiWorkbenchVisualizationThreeChrome paints chrome and returns scene rect", () => {
+  const frame: string[][] = [];
+  const rows: RowStyle[] = [];
+  const writes: string[] = [];
+  const rect = { column: 2, row: 3, width: 40, height: 10 };
+
+  const sceneRect = renderApiWorkbenchVisualizationThreeChrome({
+    frame,
+    rect,
+    option: { group: "Monitor", label: "CPU", description: "CPU monitor" },
+    rendered: testPanelRender({
+      three: {
+        mode: "lattice",
+        signal: { x: 0, y: 0, depth: 0, twist: 0, lift: 0, pulse: 0, active: true, pressed: false },
+      },
+    }),
+    ascii: createDefaultWorkbenchAsciiOptions(),
+    accent: "#0f0",
+    theme: testWorkbenchTheme(),
+    contrastText: () => "#000",
+    fit: (text, width) => text.slice(0, width),
+    paint: (text, style) => `${style.bg}:${style.fg}:${text}`,
+    write: (target, row, column, value) => {
+      target[row] ??= [];
+      target[row]![column] = value;
+      writes.push(`${row}:${column}:${value}`);
+    },
+    writeRows: (_frame, _rect, nextRows) => rows.push(...nextRows),
+  });
+
+  assertEquals(sceneRect, { column: 2, row: 6, width: 40, height: 6 });
+  assertEquals(rows[0], { text: " MONITOR · Load ", fg: "#000", bg: "#0f0", bold: true });
+  assertEquals(rows[1], { text: "CPU monitor", fg: "#ccc", bg: "#111", bold: false });
+  assertEquals(rows[2]?.text.includes("CPU"), true);
+  assertEquals(writes, ["12:2:#222:#aaa:footer detail"]);
+});
+
+Deno.test("renderApiWorkbenchVisualizationTextWindow projects text visualization rows", () => {
+  const captured: RowStyle[] = [];
+
+  renderApiWorkbenchVisualizationTextWindow({
+    frame: [],
+    rect: { column: 1, row: 2, width: 32, height: 6 },
+    option: { group: "Monitor", label: "CPU", description: "CPU monitor" },
+    rendered: testPanelRender({ alert: "thermal", severity: "warning" }),
+    accent: "#0f0",
+    rows: [],
+    textRows: [],
+    theme: testWorkbenchTheme(),
+    contrastText: () => "#000",
+    writeRows: (_frame, _rect, rows) => captured.push(...rows),
+  });
+
+  assertEquals(captured.map((row) => row.text), [
+    " MONITOR · Load ",
+    "! thermal",
+    "core 0",
+    "core 1",
+    "footer detail",
+  ]);
+  assertEquals(captured[1], { text: "! thermal", fg: "#ff0", bg: "#111", bold: true });
+});
+
+Deno.test("addApiWorkbenchCpuHexTileHits registers CPU tile hit rectangles", () => {
+  const hits: Array<{
+    rect: { column: number; row: number; width: number; height: number };
+    action: { type: "cpuHexTile"; id: string; label: string };
+  }> = [];
+
+  addApiWorkbenchCpuHexTileHits({
+    id: "viz:cpu",
+    rect: { column: 10, row: 5, width: 40, height: 12 },
+    cores: [
+      { label: "0", usage: 60 },
+      { label: "1", usage: 20 },
+    ],
+    width: 40,
+    height: 12,
+    tiles: [],
+    addHit: (rect, action) => hits.push({ rect, action }),
+  });
+
+  assertEquals(hits.length, 2);
+  assertEquals(hits[0]!.action, { type: "cpuHexTile", id: "viz:cpu", label: "0" });
+  assertEquals(hits[0]!.rect.row >= 9, true);
+  assertEquals(hits[0]!.rect.width > 0, true);
+});
+
 Deno.test("renderApiWorkbenchTerminalOutputToolbar paints actions and registers enabled hits", () => {
   const cache = new WorkbenchButtonRowBufferCache<"run" | "stop" | "clear" | "raw">();
   const frame: string[][] = [[]];
@@ -1870,6 +1981,18 @@ function testWorkbenchTheme() {
     buttonActiveText: "#000",
     buttonMutedBg: "#111",
     buttonMutedText: "#777",
+  };
+}
+
+function testPanelRender(overrides: Partial<PanelRender> = {}): PanelRender {
+  return {
+    title: "Load",
+    body: "core 0\ncore 1",
+    footer: "footer detail",
+    alert: "",
+    accent: "signal",
+    severity: "info",
+    ...overrides,
   };
 }
 

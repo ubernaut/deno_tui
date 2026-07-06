@@ -207,12 +207,7 @@ import {
   type WorkbenchThreeScene as SharedWorkbenchThreeScene,
   workbenchVisualizationThreeScene,
 } from "../src/app/workbench_three_policy.ts";
-import {
-  threeRendererModeLabel,
-  visualizationTextContentSize,
-  visualizationThreeStatusLine,
-  workbenchVisualizationRowsInto,
-} from "./workbench_visualization_window.ts";
+import { threeRendererModeLabel, visualizationTextContentSize } from "./workbench_visualization_window.ts";
 import {
   apiWorkbenchWorkspaceStorageLabel,
   buildWorkspaceMenuEntriesInto,
@@ -326,6 +321,12 @@ import {
   renderApiWorkbenchThreeGridOrResizePlaceholder,
   renderApiWorkbenchThreeHeader,
 } from "./api_workbench_three_view.ts";
+import {
+  addApiWorkbenchCpuHexTileHits,
+  renderApiWorkbenchVisualizationMissing,
+  renderApiWorkbenchVisualizationTextWindow,
+  renderApiWorkbenchVisualizationThreeChrome,
+} from "./api_workbench_visualization_view.ts";
 import {
   ApiWorkbenchWindowShellBufferCache,
   renderApiWorkbenchWindowFrame,
@@ -1314,7 +1315,7 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
   const option = visualizationOption(visualizationId);
   const t = theme();
   if (!visualizationId || !option) {
-    writeRows(frame, rect, [{ text: "Visualization window not found", fg: t.warn, bg: t.surface, bold: true }]);
+    renderApiWorkbenchVisualizationMissing({ frame, rect, theme: t, writeRows });
     return;
   }
   const context = buildVisualizationContext(visualizationId, rect, { windowId: id });
@@ -1328,35 +1329,20 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
     height: rect.height,
   });
   if (threeScene) {
-    writeRows(frame, rect, [
-      {
-        text: ` ${option.group.toUpperCase()} · ${rendered.title ?? option.label.toUpperCase()} `,
-        fg: contrastText(accent, t.background, t.text),
-        bg: accent,
-        bold: true,
-      },
-      {
-        text: rendered.alert ? `! ${rendered.alert}` : option.description,
-        fg: rendered.severity === "alarm" ? t.danger : rendered.severity === "warning" ? t.warn : t.soft,
-        bg: t.surface,
-        bold: rendered.severity !== "info",
-      },
-      {
-        text: visualizationThreeStatusLine(rendered, option, context.slot.ascii),
-        fg: t.buttonActiveText,
-        bg: t.buttonActiveBg,
-        bold: true,
-      },
-    ]);
-    if (rect.height > 3) {
-      write(
-        frame,
-        rect.row + rect.height - 1,
-        rect.column,
-        paint(fit(rendered.footer, rect.width), { fg: t.muted, bg: t.panelSoft }),
-      );
-    }
-    const sceneRect = workbenchThreeBodyRect(rect, { headerRows: 3, footerRows: 1 });
+    const sceneRect = renderApiWorkbenchVisualizationThreeChrome({
+      frame,
+      rect,
+      option,
+      rendered,
+      ascii: context.slot.ascii,
+      accent,
+      theme: t,
+      contrastText,
+      fit,
+      paint,
+      write,
+      writeRows,
+    });
     addHit(sceneRect, { type: "threeViewport", id });
     const entry = ensureVisualizationThreePanel(id);
     const resized = setWorkbenchThreeRect(entry.rectangle, {
@@ -1406,32 +1392,28 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
     return;
   }
   hideVisualizationThreePanel(id);
-  writeRows(
+  renderApiWorkbenchVisualizationTextWindow({
     frame,
     rect,
-    workbenchVisualizationRowsInto(visualizationRenderRows, visualizationTextRows, option, rendered, {
-      accent,
-      theme: t,
-      contrast: contrastText,
-    }),
-  );
+    option,
+    rendered,
+    accent,
+    rows: visualizationRenderRows,
+    textRows: visualizationTextRows,
+    theme: t,
+    contrastText,
+    writeRows,
+  });
   if (visualizationId === "cpu-hex-grid") {
-    addCpuHexTileHits(id, rect, context);
-  }
-}
-
-function addCpuHexTileHits(id: VisualizationWindowId, rect: Rectangle, context: RenderContext): void {
-  const tiles = cpuHexTileLayoutInto(cpuHexHitTileBuffer, context.system.cpuCores, context.width, context.height);
-  const bodyHeaderRows = 2;
-  const cpuHexSummaryRows = 2;
-  const rowOffset = rect.row + bodyHeaderRows + cpuHexSummaryRows;
-  for (const tile of tiles) {
-    addHit({
-      column: rect.column + tile.column,
-      row: rowOffset + tile.row,
-      width: tile.width,
-      height: tile.height,
-    }, { type: "cpuHexTile", id, label: tile.label });
+    addApiWorkbenchCpuHexTileHits({
+      id,
+      rect,
+      cores: context.system.cpuCores,
+      width: context.width,
+      height: context.height,
+      tiles: cpuHexHitTileBuffer,
+      addHit,
+    });
   }
 }
 
