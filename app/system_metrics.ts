@@ -2,10 +2,8 @@ import { Signal } from "../src/signals/mod.ts";
 import type { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import { clamp } from "./styles.ts";
 import {
-  type CpuTimes,
   DenoSystemMetricsProvider,
   emptyGpuSnapshot,
-  type NetCounters,
   NvidiaSmiGpuMetricsProvider,
   parseDfDiskRows,
   sampleCpuStatRows,
@@ -46,6 +44,8 @@ export {
 const COMMAND_OUTPUT_DECODER = new TextDecoder();
 
 type SystemProcessSortKey = "cpu" | "memory" | "pid" | "name";
+type CpuTimes = ReturnType<typeof sampleCpuStatRows>["times"][number];
+type NetworkCounters = ReturnType<typeof sampleNetworkStats>["counters"];
 
 interface ParsedProcessStat {
   name: string;
@@ -461,7 +461,7 @@ export class SystemMonitor {
   #provider: SystemMetricsProvider;
   #gpuProvider: SystemGpuMetricsProvider;
   #cpuTimes: CpuTimes[] = [];
-  #netCounters = new Map<string, NetCounters>();
+  #netCounters: NetworkCounters = new Map();
   #processCpu = new Map<number, number>();
   #timer: number | undefined;
   #sampleInFlight = false;

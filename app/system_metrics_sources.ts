@@ -119,30 +119,30 @@ export class DenoSystemMetricsProvider implements SystemMetricsProvider {
   }
 }
 
-export interface CpuTimes {
+interface CpuTimes {
   total: number;
   idle: number;
 }
 
-export interface CpuStatSample {
+interface CpuStatSample {
   times: CpuTimes[];
   overall: number;
   cores: CpuCoreSnapshot[];
   totalDelta: number;
 }
 
-export interface TemperatureSample {
+interface TemperatureSample {
   temperatures: TemperatureSnapshot[];
   diagnostic?: SystemMetricDiagnostic;
 }
 
-export interface NetCounters {
+interface NetCounters {
   rxBytes: number;
   txBytes: number;
   sampledAt: number;
 }
 
-export interface NetworkStatsSample {
+interface NetworkStatsSample {
   networks: NetworkSnapshot[];
   totalRxRate: number;
   totalTxRate: number;
