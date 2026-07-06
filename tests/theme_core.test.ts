@@ -33,7 +33,6 @@ import {
   ThemeRegistry,
 } from "../src/theme.ts";
 import { ThemeLayerStackImplementation } from "../src/theme_layer_stack.ts";
-import { ThemePackNotFoundErrorImplementation, ThemeRegistryImplementation } from "../src/theme_registry.ts";
 import type { ThemeStyleReference } from "../src/theme.ts";
 import { validateThemeComponentsCore } from "../src/theme_validation_core.ts";
 
@@ -130,10 +129,7 @@ Deno.test("theme layer stack implementation composes enabled layers only", () =>
   layers.dispose();
 });
 
-Deno.test("theme registry module backs the public facade classes", () => {
-  assertEquals(ThemeRegistry.prototype instanceof ThemeRegistryImplementation, true);
-  assertEquals(ThemePackNotFoundError.prototype instanceof ThemePackNotFoundErrorImplementation, true);
-
+Deno.test("theme registry public facade stores packs and builds engines", () => {
   const registry = createThemeRegistry([
     {
       id: "ops",
@@ -148,7 +144,6 @@ Deno.test("theme registry module backs the public facade classes", () => {
   ]);
 
   assertInstanceOf(registry, ThemeRegistry);
-  assertInstanceOf(registry, ThemeRegistryImplementation);
   assertEquals(registry.ids(), ["ops"]);
   assertEquals(registry.inspect(), [
     {
@@ -162,9 +157,8 @@ Deno.test("theme registry module backs the public facade classes", () => {
   assertThrows(() => registry.engine("missing"), ThemePackNotFoundError, 'Theme pack "missing" is not registered');
 });
 
-Deno.test("theme registry implementation composes packs overrides and custom errors", () => {
-  class CustomMissingPack extends Error {}
-  const registry = new ThemeRegistryImplementation([
+Deno.test("theme registry composes pack options and overrides", () => {
+  const registry = createThemeRegistry([
     {
       id: "base",
       palette: "plain",
@@ -175,9 +169,7 @@ Deno.test("theme registry implementation composes packs overrides and custom err
         },
       },
     },
-  ], {
-    createNotFoundError: (id) => new CustomMissingPack(id),
-  });
+  ]);
 
   const engine = registry.engine("base", {
     tokens: { accent: (text) => `b${text}` },
@@ -193,7 +185,6 @@ Deno.test("theme registry implementation composes packs overrides and custom err
     { name: "label", variants: [] },
   ]);
   assertEquals(engine.resolve("button", "active")("x"), "bx");
-  assertThrows(() => registry.engine("missing"), CustomMissingPack);
 });
 
 Deno.test("theme engine module backs the public facade classes", () => {

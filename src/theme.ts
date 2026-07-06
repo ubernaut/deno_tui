@@ -42,7 +42,6 @@ import {
   ThemeInheritanceError as ThemeInheritanceErrorImplementation,
 } from "./theme_engine.ts";
 import { ThemeLayerStackImplementation } from "./theme_layer_stack.ts";
-import { ThemePackNotFoundErrorImplementation, ThemeRegistryImplementation } from "./theme_registry.ts";
 import { createThemeCatalogFromInspection, previewThemeProviderCore } from "./theme_provider_preview.ts";
 import { ThemeProviderImplementation } from "./theme_provider.ts";
 
@@ -908,22 +907,85 @@ export interface ThemeCatalog {
 export class ThemeLayerStack extends ThemeLayerStackImplementation {}
 
 /** Registry for storing and querying theme definitions. */
-export class ThemeRegistry extends ThemeRegistryImplementation {
+export class ThemeRegistry {
+  readonly #packs = new Map<string, ThemePack>();
+  #ids?: string[];
+
   constructor(packs: Iterable<ThemePack> = []) {
-    super(packs, {
-      createEngine: (pack, overrides) => createThemeEngine(pack.palette ?? "plain", overrides),
-      paletteId: (palette) => themePaletteIdInternal(palette ?? "plain"),
-      createNotFoundError: (id) => new ThemePackNotFoundError(id),
-    });
+    for (const pack of packs) {
+      this.register(pack);
+    }
   }
 
-  override engine(id: string, overrides: ThemeEngineOptions = {}): ThemeEngine {
-    return super.engine(id, overrides) as ThemeEngine;
+  register(pack: ThemePack): this {
+    this.#packs.set(pack.id, {
+      ...pack,
+      options: pack.options ? composeThemeOptionsCore(pack.options) : undefined,
+    });
+    this.#ids = undefined;
+    return this;
+  }
+
+  has(id: string): boolean {
+    return this.#packs.has(id);
+  }
+
+  get(id: string): ThemePack | undefined {
+    const pack = this.#packs.get(id);
+    return pack
+      ? {
+        ...pack,
+        options: pack.options ? composeThemeOptionsCore(pack.options) : undefined,
+      }
+      : undefined;
+  }
+
+  ids(): string[] {
+    return [...this.#sortedIds()];
+  }
+
+  engine(id: string, overrides: ThemeEngineOptions = {}): ThemeEngine {
+    const pack = this.#packs.get(id);
+    if (!pack) {
+      throw new ThemePackNotFoundError(id);
+    }
+    return createThemeEngine(
+      pack.palette ?? "plain",
+      composeThemeOptionsCore(pack.options ?? {}, overrides),
+    );
+  }
+
+  inspect(): ThemePackInspection[] {
+    const ids = this.#sortedIds();
+    const inspections = new Array<ThemePackInspection>(ids.length);
+    for (let index = 0; index < ids.length; index += 1) {
+      const id = ids[index]!;
+      const pack = this.#packs.get(id)!;
+      inspections[index] = {
+        id,
+        label: pack.label ?? id,
+        palette: themePaletteIdInternal(pack.palette ?? "plain"),
+        components: this.engine(id).inspect().components,
+      };
+    }
+    return inspections;
+  }
+
+  #sortedIds(): readonly string[] {
+    if (!this.#ids) {
+      this.#ids = [...this.#packs.keys()].sort();
+    }
+    return this.#ids;
   }
 }
 
 /** Error thrown for invalid theme Pack Not Found operations. */
-export class ThemePackNotFoundError extends ThemePackNotFoundErrorImplementation {}
+export class ThemePackNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Theme pack "${id}" is not registered`);
+    this.name = "ThemePackNotFoundError";
+  }
+}
 
 /** Options for configuring theme Provider. */
 export interface ThemeProviderOptions {
