@@ -383,13 +383,19 @@ export class ThreePanelGraphicsImageController {
 export class ThreePanelGridPublicationCache {
   #fingerprint = "";
   #revision?: number;
+  #columns = -1;
+  #rows = -1;
 
   shouldPublish(input: ThreePanelGridPublicationInput): boolean {
     const { grid, currentGrid, forceUpdate = false, revision } = input;
+    const rows = grid.length;
+    const columns = grid[0]?.length ?? 0;
     if (revision !== undefined) {
-      if (this.#revision === revision) return false;
+      if (this.#revision === revision && this.#rows === rows && this.#columns === columns) return false;
       const fingerprint = fingerprintThreePanelGrid(grid);
       this.#revision = revision;
+      this.#rows = rows;
+      this.#columns = columns;
       if (this.#fingerprint === fingerprint) return false;
       this.#fingerprint = fingerprint;
       return true;
@@ -400,12 +406,16 @@ export class ThreePanelGridPublicationCache {
     if (!forceUpdate && currentGrid === grid) return false;
     if (this.#fingerprint === fingerprint) return false;
     this.#fingerprint = fingerprint;
+    this.#rows = rows;
+    this.#columns = columns;
     return true;
   }
 
   reset(): void {
     this.#fingerprint = "";
     this.#revision = undefined;
+    this.#columns = -1;
+    this.#rows = -1;
   }
 }
 

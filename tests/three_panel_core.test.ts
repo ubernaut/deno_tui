@@ -811,12 +811,22 @@ Deno.test("ThreePanelGridPublicationCache treats renderer revisions as authorita
 
   assertEquals(cache.shouldPublish({ grid, revision: 1 }), true);
   assertEquals(cache.shouldPublish({ grid, revision: 1 }), false);
-  assertEquals(cache.shouldPublish({ grid: [["A"]], revision: 2 }), true);
-  assertEquals(cache.shouldPublish({ grid: [["A", "A"]], revision: 2 }), false);
+  assertEquals(cache.shouldPublish({ grid: [["A"]], revision: 2 }), false);
+  assertEquals(cache.shouldPublish({ grid: [["B"]], revision: 2 }), false);
   assertEquals(cache.shouldPublish({ grid: [["B"]], revision: 3 }), true);
-  assertEquals(cache.shouldPublish({ grid: [["B"]] }), true);
+  assertEquals(cache.shouldPublish({ grid: [["B"]] }), false);
   assertEquals(cache.shouldPublish({ grid: [["B"]] }), false);
   assertEquals(cache.shouldPublish({ grid: [["C"]] }), true);
+});
+
+Deno.test("ThreePanelGridPublicationCache publishes same renderer revision at a new output size", () => {
+  const cache = new ThreePanelGridPublicationCache();
+
+  assertEquals(cache.shouldPublish({ grid: [["A"]], revision: 1 }), true);
+  assertEquals(cache.shouldPublish({ grid: [["A"]], revision: 1 }), false);
+  assertEquals(cache.shouldPublish({ grid: [["A", "A"]], revision: 1 }), true);
+  assertEquals(cache.shouldPublish({ grid: [["A", "A"]], revision: 1 }), false);
+  assertEquals(cache.shouldPublish({ grid: [["A"], ["A"]], revision: 1 }), true);
 });
 
 Deno.test("ThreePanelGridPublicationCache preserves unrevisioned identity and fingerprint behavior", () => {
