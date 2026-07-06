@@ -1294,3 +1294,7 @@ performance, shared terminal/web workbench projections, and oversized module red
 - Reused caller-owned row-range records and value arrays in `coalesceCanvasRowRanges`, reducing allocation churn for
   dense range-aware canvas flushes while preserving the public sink contract. Focused canvas and Three ASCII range tests
   passed; `render/three-ascii-frame-diff-96x40` measured roughly `1.36ms` on this run.
+- Enlarged the active Three featured pane in the normal landscape workbench layout and strengthened the PTY visual smoke
+  so resized focused Three panes must grow vertically as well as horizontally. The smoke assertion is now render-cap
+  aware for large tiled panes, which catches stale pane sizing without mistaking the intentional 3,840-cell live cap for
+  a scaling failure.

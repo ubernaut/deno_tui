@@ -2844,7 +2844,7 @@ function workspaceLayout(bounds: Rectangle): {
     featuredId: isThreeRenderedWindow(active) ? active : undefined,
     featuredMinWidth: 118,
     featuredMinHeight: 18,
-    featuredHeightRatio: 0.48,
+    featuredHeightRatio: 0.62,
   });
 }
 

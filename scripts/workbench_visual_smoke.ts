@@ -97,6 +97,7 @@ const REQUIRED_TOKENS: readonly string[] = ["API WORKBENCH", "THREE ASCII"];
 const FORBIDDEN_TOKENS: readonly string[] = ["ReferenceError", "RangeError", "Maximum call stack", ")F10"];
 const FULLSCREEN_THREE_CELL_PATTERN = /(\d+)c(?: cap (\d+)c)?/;
 const THREE_RENDERED_CELL_PATTERN = /(\d+)c/;
+const THREE_RENDER_CAP_PATTERN = /\bcap\s+(\d+)c\b/;
 const THREE_RENDERER_UNAVAILABLE_PATTERN =
   /ASCII RENDERER OFFLINE|ASCII RENDERER UNAVAILABLE|THREE ASCII GPU READBACK UNAVAILABLE|renderer unavailable|WebGPU\/WebGL backend unavailable|text preview active/i;
 
@@ -491,6 +492,7 @@ export function inspectWorkbenchVisualSmokeOutput(
   const nonBlankRows = lines.filter((line) => line.trim().length > 0).length;
   const truecolorBackgroundWrites = countOccurrences(output, "\x1b[48;2;");
   const threeRenderedCells = parseThreeRenderedCells(threeLine);
+  const threeRenderCap = parseThreeRenderCap(threeLine);
   if (threeLine.length === 0 && !rendererUnavailable) missing.push("three telemetry line");
   if (statusLine.trim().length === 0) missing.push("status line");
   if (threePane?.found && truecolorBackgroundWrites > 0) {
@@ -500,6 +502,9 @@ export function inspectWorkbenchVisualSmokeOutput(
     const focusedThreeWideColumns = statusLine.includes("focus Three ASCII") && options.columns >= 130
       ? Math.floor(options.columns * 0.65)
       : 0;
+    const focusedThreeTallRows = statusLine.includes("focus Three ASCII") && options.rows >= 40
+      ? Math.floor(options.rows * 0.38)
+      : 0;
     if (threePane.truecolorRows < minPaneRows) missing.push(`three pane truecolor rows >= ${minPaneRows}`);
     if (threePane.truecolorMaxColumns < minPaneColumns) {
       missing.push(`three pane truecolor columns >= ${minPaneColumns}`);
@@ -507,14 +512,20 @@ export function inspectWorkbenchVisualSmokeOutput(
     if (focusedThreeWideColumns > 0 && threePane.bodyColumns < focusedThreeWideColumns) {
       missing.push(`focused three pane columns >= ${focusedThreeWideColumns}`);
     }
+    if (focusedThreeTallRows > 0 && threePane.bodyRows < focusedThreeTallRows) {
+      missing.push(`focused three pane body rows >= ${focusedThreeTallRows}`);
+    }
     if (threePane.visibleRows < minPaneRows) missing.push(`three pane visible rows >= ${minPaneRows}`);
     if (threePane.visibleMaxColumns < minVisibleColumns) {
       missing.push(`three pane visible columns >= ${minVisibleColumns}`);
     }
     if (!rendererUnavailable && threeRenderedCells > 0) {
       const minRenderedCells = paneBodyRenderCellMinimum(threePane);
-      if (minRenderedCells >= 1_000 && threeRenderedCells < minRenderedCells) {
-        missing.push(`three rendered cells >= ${minRenderedCells}`);
+      const cappedMinRenderedCells = threeRenderCap > 0
+        ? Math.min(minRenderedCells, Math.max(1, Math.floor(threeRenderCap * 0.9)))
+        : minRenderedCells;
+      if (cappedMinRenderedCells >= 1_000 && threeRenderedCells < cappedMinRenderedCells) {
+        missing.push(`three rendered cells >= ${cappedMinRenderedCells}`);
       }
     }
   }
@@ -765,6 +776,11 @@ export function formatWorkbenchFullscreenVisualSmokeResult(result: WorkbenchFull
 
 function parseThreeRenderedCells(line: string): number {
   const match = line.match(THREE_RENDERED_CELL_PATTERN);
+  return match ? Number.parseInt(match[1]!, 10) : 0;
+}
+
+function parseThreeRenderCap(line: string): number {
+  const match = line.match(THREE_RENDER_CAP_PATTERN);
   return match ? Number.parseInt(match[1]!, 10) : 0;
 }
 

@@ -135,6 +135,33 @@ Deno.test("workbenchAdaptiveWindowLayout can feature an active visual window acr
   assertEquals(layout.contentHeight, 42);
 });
 
+Deno.test("workbenchAdaptiveWindowLayout gives featured visual panes most tall landscape space", () => {
+  const bounds = { column: 0, row: 0, width: 150, height: 40 };
+  const layout = workbenchAdaptiveWindowLayout<"a" | "b" | "three">({
+    layout() {
+      return {
+        contentHeight: 40,
+        visible: [
+          { id: "a", rect: { column: 0, row: 0, width: 49, height: 19 } },
+          { id: "b", rect: { column: 50, row: 0, width: 49, height: 19 } },
+          { id: "three", rect: { column: 100, row: 0, width: 50, height: 19 } },
+        ],
+      };
+    },
+  }, {
+    bounds,
+    featuredId: "three",
+    featuredMinWidth: 118,
+    featuredMinHeight: 18,
+    featuredHeightRatio: 0.62,
+  });
+
+  assertEquals(layout.rects.get("three"), { column: 0, row: 0, width: 150, height: 24 });
+  assertEquals(layout.rects.get("a")?.row, 25);
+  assertEquals(layout.rects.get("b")?.row, 25);
+  assertEquals(layout.contentHeight, 40);
+});
+
 Deno.test("featuredWorkbenchWindowLayout leaves narrow workbench layouts alone", () => {
   const result = featuredWorkbenchWindowLayout<"a" | "three">(
     { column: 0, row: 0, width: 90, height: 32 },
