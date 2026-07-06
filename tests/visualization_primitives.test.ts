@@ -2,7 +2,7 @@ import { assertEquals, assertStringIncludes } from "./deps.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { canvasRowText, createTestCanvas } from "../src/testing/mod.ts";
 import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
-import { emptySnapshot } from "../app/system_metrics.ts";
+import { emptySystemSnapshot } from "./fixtures/system_snapshot.ts";
 import { ListView, MultilineTextView, PanelView } from "../app/ui.ts";
 import { buildVisualizationDrive } from "../app/visualization_drive.ts";
 import {
@@ -64,7 +64,7 @@ const context: RenderContext = {
     ascii: createDefaultAsciiOptions(),
   },
   system: {
-    ...emptySnapshot("host", "os", 4),
+    ...emptySystemSnapshot("host", "os", 4),
     alerts: [{ title: "GPU HOT", detail: "96%", severity: "warning" }],
   },
   sources,

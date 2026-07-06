@@ -83,7 +83,7 @@ interface SystemMonitorOptions {
   commandTimeoutMs?: number;
 }
 
-export function compactDiagnostics(
+function compactDiagnostics(
   diagnostics: Array<SystemMetricDiagnostic | undefined>,
 ): SystemMetricDiagnostic[] {
   const compacted: SystemMetricDiagnostic[] = [];
@@ -94,7 +94,7 @@ export function compactDiagnostics(
   return compacted;
 }
 
-export function processDiagnostics(sample: ProcessDiagnosticsInput, sampledAt: number): SystemMetricDiagnostic {
+function processDiagnostics(sample: ProcessDiagnosticsInput, sampledAt: number): SystemMetricDiagnostic {
   if (sample.scanError) {
     return {
       source: "process",
@@ -131,7 +131,7 @@ export function processDiagnostics(sample: ProcessDiagnosticsInput, sampledAt: n
   };
 }
 
-export function processComparator(
+function processComparator(
   sortKey: SystemProcessSortKey,
 ): (left: ProcessSnapshot, right: ProcessSnapshot) => number {
   switch (sortKey) {
@@ -152,7 +152,7 @@ export function processComparator(
   }
 }
 
-export function insertTopProcessSnapshot(
+function insertTopProcessSnapshot(
   processes: ProcessSnapshot[],
   process: ProcessSnapshot,
   limit: number,
@@ -171,7 +171,7 @@ export function insertTopProcessSnapshot(
   if (processes.length > limit) processes.length = limit;
 }
 
-export function pushHistory(history: number[], value: number, limit: number): number[] {
+function pushHistory(history: number[], value: number, limit: number): number[] {
   const safeLimit = Math.max(0, limit);
   if (safeLimit === 0) return [];
 
@@ -189,7 +189,7 @@ export function pushHistory(history: number[], value: number, limit: number): nu
   return next;
 }
 
-export function collectAlerts(input: {
+function collectAlerts(input: {
   cpuOverall: number;
   memoryPercent: number;
   swapPercent: number;
@@ -305,7 +305,7 @@ export function collectAlerts(input: {
   return capped;
 }
 
-export function emptySnapshot(hostname: string, osRelease: string, historyLength: number): SystemSnapshot {
+function emptySnapshot(hostname: string, osRelease: string, historyLength: number): SystemSnapshot {
   return {
     timestamp: 0,
     hostname,
@@ -341,7 +341,7 @@ export function emptySnapshot(hostname: string, osRelease: string, historyLength
   };
 }
 
-export function parseProcessStat(stat: string, pageSize: number): ParsedProcessStat | null {
+function parseProcessStat(stat: string, pageSize: number): ParsedProcessStat | null {
   const open = stat.indexOf("(");
   const close = stat.lastIndexOf(")");
   if (open === -1 || close === -1) {

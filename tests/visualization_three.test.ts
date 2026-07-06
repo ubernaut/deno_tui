@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertMatch, assertStringIncludes } from "./deps.ts";
 import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
-import { emptySnapshot } from "../app/system_metrics.ts";
+import { emptySystemSnapshot } from "./fixtures/system_snapshot.ts";
 import type { RenderContext, SlotConfig, SourceFrame, SystemSnapshot } from "../app/types.ts";
 import { compactSpaces, maxTrimmedTextWidth } from "../src/app/workbench_text.ts";
 import { createNeonThreeScene } from "../app/neon_three.ts";
@@ -20,7 +20,7 @@ const fallbackContext: RenderContext = {
     cycleIntervalMs: 1000,
     ascii: createDefaultAsciiOptions(),
   },
-  system: emptySnapshot("host", "linux", 4),
+  system: emptySystemSnapshot("host", "linux", 4),
   sources: [{
     id: "sys:cpu",
     name: "cpu-main-node",

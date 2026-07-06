@@ -1,5 +1,5 @@
 import { assertEquals } from "./deps.ts";
-import { compactDiagnostics, processDiagnostics, SystemMonitor } from "../app/system_metrics.ts";
+import { SystemMonitor } from "../app/system_metrics.ts";
 import type {
   GpuSample,
   SystemGpuMetricsProvider,
@@ -14,49 +14,12 @@ import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 
 const encoder = new TextEncoder();
 
-Deno.test("system metric diagnostics sort severe diagnostics before ok entries", () => {
-  assertEquals(
-    compactDiagnostics([
-      { source: "gpu", status: "ok", detail: "sampled", sampledAt: 1 },
-      undefined,
-      { source: "cpu", status: "unavailable", detail: "missing", sampledAt: 1 },
-      { source: "process", status: "limited", detail: "capped", sampledAt: 1 },
-      { source: "disk", status: "degraded", detail: "partial", sampledAt: 1 },
-    ]).map((diagnostic) => [diagnostic.source, diagnostic.status]),
-    [
-      ["cpu", "unavailable"],
-      ["disk", "degraded"],
-      ["process", "limited"],
-      ["gpu", "ok"],
-    ],
-  );
-});
-
-Deno.test("process diagnostics reports scan error limited degraded and ok states", () => {
-  assertEquals(
-    processDiagnostics({ scanned: 0, failedReads: 0, limited: false, durationMs: 2, scanError: "EACCES" }, 5),
-    {
-      source: "process",
-      status: "unavailable",
-      detail: "/proc scan failed: EACCES",
-      durationMs: 2,
-      sampledAt: 5,
-    },
-  );
-  assertEquals(processDiagnostics({ scanned: 100, failedReads: 0, limited: true, durationMs: 3 }, 5).status, "limited");
-  assertEquals(
-    processDiagnostics({ scanned: 100, failedReads: 2, limited: false, durationMs: 4 }, 5).status,
-    "degraded",
-  );
-  assertEquals(processDiagnostics({ scanned: 100, failedReads: 0, limited: false, durationMs: 5 }, 5).status, "ok");
-});
-
 Deno.test("SystemMonitor samples through an injectable metrics provider", async () => {
   const provider = new FixtureMetricsProvider();
   provider.files.set("/proc/stat", procStatFirst());
   provider.files.set("/proc/uptime", "123.45 100.00\n");
   provider.files.set("/proc/net/dev", procNetDev(1_000, 2_000));
-  provider.files.set("/proc/42/stat", processStat(100, 256, 7));
+  provider.files.set("/proc/42/stat", processStat(100, 256, 7, "worker (render) thread"));
   provider.files.set("/sys/class/thermal/thermal_zone0/type", "x86_pkg_temp\n");
   provider.files.set("/sys/class/thermal/thermal_zone0/temp", "55000\n");
   provider.dirs.set("/proc", [{ name: "42", isDirectory: true }, { name: "self", isDirectory: false }]);
@@ -70,7 +33,7 @@ Deno.test("SystemMonitor samples through an injectable metrics provider", async 
   provider.nowValue = 2_000;
   provider.files.set("/proc/stat", procStatSecond());
   provider.files.set("/proc/net/dev", procNetDev(126_000, 252_000));
-  provider.files.set("/proc/42/stat", processStat(140, 256, 7));
+  provider.files.set("/proc/42/stat", processStat(140, 256, 7, "worker (render) thread"));
   await monitor.sample();
 
   const snapshot = monitor.snapshot.peek();
@@ -90,6 +53,7 @@ Deno.test("SystemMonitor samples through an injectable metrics provider", async 
   assertEquals(snapshot.gpu.name, "Fixture RTX");
   assertEquals(snapshot.gpu.memoryPercent, 25);
   assertEquals(snapshot.processes[0]?.pid, 42);
+  assertEquals(snapshot.processes[0]?.name, "worker (render) thread");
   assertEquals(snapshot.processes[0]?.processor, 7);
   assertEquals(
     snapshot.diagnostics.some((diagnostic) => diagnostic.source === "gpu" && diagnostic.status === "ok"),
@@ -99,6 +63,18 @@ Deno.test("SystemMonitor samples through an injectable metrics provider", async 
     snapshot.diagnostics.some((diagnostic) => diagnostic.source === "process" && diagnostic.status === "ok"),
     true,
   );
+});
+
+Deno.test("SystemMonitor initializes fixed-length empty histories", () => {
+  const monitor = new SystemMonitor(3, new FixtureMetricsProvider());
+  const snapshot = monitor.snapshot.peek();
+
+  assertEquals(snapshot.hostname, "fixture-host");
+  assertEquals(snapshot.osRelease, "fixture-os");
+  assertEquals(snapshot.cpuHistory, [0, 0, 0]);
+  assertEquals(snapshot.gpu.available, false);
+  assertEquals(snapshot.memoryHistory, [0, 0, 0]);
+  assertEquals(snapshot.rxHistory, [0, 0, 0]);
 });
 
 Deno.test("SystemMonitor accepts a pluggable GPU metrics provider", async () => {
@@ -128,6 +104,46 @@ Deno.test("SystemMonitor accepts a pluggable GPU metrics provider", async () => 
     ),
     true,
   );
+});
+
+Deno.test("SystemMonitor emits capped pressure alerts", async () => {
+  const provider = new FixtureMetricsProvider();
+  provider.memoryInfo = {
+    total: 100,
+    free: 1,
+    available: 7,
+    buffers: 0,
+    cached: 0,
+    swapTotal: 100,
+    swapFree: 7,
+  };
+  provider.files.set("/proc/stat", procStatFirst());
+  provider.files.set("/proc/uptime", "123.45 100.00\n");
+  provider.files.set("/proc/net/dev", procNetDev(1_000, 2_000));
+  provider.files.set("/sys/class/thermal/thermal_zone0/type", "pkg\n");
+  provider.files.set("/sys/class/thermal/thermal_zone0/temp", "88000\n");
+  provider.dirs.set("/proc", []);
+  provider.dirs.set("/sys/class/thermal", [{ name: "thermal_zone0", isDirectory: true }]);
+  provider.commands.set("df", commandOutput(highPressureDfOutput()));
+  provider.commands.set("nvidia-smi", commandOutput("Fixture GPU, 99, 92, 100, 66, 120, 1800, 5000\n"));
+
+  const monitor = new SystemMonitor({
+    historyLength: 4,
+    provider,
+  });
+  await monitor.sample();
+
+  provider.nowValue = 2_000;
+  provider.files.set("/proc/stat", procStatHot());
+  provider.files.set("/proc/net/dev", procNetDev(130_001_000, 2_002_000));
+  await monitor.sample();
+
+  assertEquals(monitor.snapshot.peek().alerts.map((alert) => alert.title), [
+    "CPU LIMIT",
+    "MEMORY SATURATION",
+    "SWAP CRITICAL",
+    "THERMAL LIMIT",
+  ]);
 });
 
 Deno.test("SystemMonitor reports metadata fallback diagnostics", () => {
@@ -193,6 +209,16 @@ Deno.test("SystemMonitor bounds process scans and reports degraded sources", asy
     true,
   );
   assertEquals(
+    snapshot.diagnostics.map((diagnostic) => [diagnostic.source, diagnostic.status]),
+    [
+      ["disk", "unavailable"],
+      ["gpu", "unavailable"],
+      ["temperature", "unavailable"],
+      ["process", "limited"],
+      ["sample", "ok"],
+    ],
+  );
+  assertEquals(
     snapshot.diagnostics.some((diagnostic) => diagnostic.source === "gpu" && diagnostic.status === "unavailable"),
     true,
   );
@@ -209,6 +235,29 @@ Deno.test("SystemMonitor bounds process scans and reports degraded sources", asy
       diagnostic.source === "temperature" && diagnostic.status === "unavailable"
     ),
     true,
+  );
+});
+
+Deno.test("SystemMonitor reports degraded process diagnostics for failed stat reads", async () => {
+  const provider = new FixtureMetricsProvider();
+  provider.files.set("/proc/stat", procStatFirst());
+  provider.files.set("/proc/uptime", "123.45 100.00\n");
+  provider.files.set("/proc/net/dev", procNetDev(1_000, 2_000));
+  provider.files.set("/proc/40/stat", processStatForPid(40, 100, 256, 0));
+  provider.dirs.set("/proc", [
+    { name: "40", isDirectory: true },
+    { name: "41", isDirectory: true },
+  ]);
+
+  const monitor = new SystemMonitor({
+    historyLength: 4,
+    provider,
+  });
+  await monitor.sample();
+
+  assertEquals(
+    monitor.snapshot.peek().diagnostics.find((diagnostic) => diagnostic.source === "process")?.status,
+    "degraded",
   );
 });
 
@@ -423,6 +472,15 @@ class FixtureGpuProvider implements SystemGpuMetricsProvider {
 
 class FixtureMetricsProvider implements SystemMetricsProvider {
   nowValue = 1_000;
+  memoryInfo: Deno.SystemMemoryInfo = {
+    total: 1_000_000,
+    free: 300_000,
+    available: 400_000,
+    buffers: 0,
+    cached: 0,
+    swapTotal: 200_000,
+    swapFree: 100_000,
+  };
   files = new Map<string, string>();
   dirs = new Map<string, SystemMetricsDirEntry[]>();
   dirErrors = new Map<string, Error>();
@@ -448,15 +506,7 @@ class FixtureMetricsProvider implements SystemMetricsProvider {
   }
 
   systemMemoryInfo(): Deno.SystemMemoryInfo {
-    return {
-      total: 1_000_000,
-      free: 300_000,
-      available: 400_000,
-      buffers: 0,
-      cached: 0,
-      swapTotal: 200_000,
-      swapFree: 100_000,
-    };
+    return this.memoryInfo;
   }
 
   loadavg(): [number, number, number] {
@@ -536,6 +586,14 @@ function procStatSecond(): string {
   ].join("\n");
 }
 
+function procStatHot(): string {
+  return [
+    "cpu 290 0 100 810 0 0 0 0 0 0",
+    "cpu0 145 0 50 405 0 0 0 0 0 0",
+    "cpu1 145 0 50 405 0 0 0 0 0 0",
+  ].join("\n");
+}
+
 function procNetDev(rxBytes: number, txBytes: number): string {
   return [
     "Inter-|   Receive                                                |  Transmit",
@@ -545,23 +603,36 @@ function procNetDev(rxBytes: number, txBytes: number): string {
   ].join("\n");
 }
 
-function processStat(cpuTime: number, rssPages: number, processor: number): string {
-  return processStatForPid(42, cpuTime, rssPages, processor);
+function processStat(cpuTime: number, rssPages: number, processor: number, name?: string): string {
+  return processStatForPid(42, cpuTime, rssPages, processor, name);
 }
 
-function processStatForPid(pid: number, cpuTime: number, rssPages: number, processor: number): string {
+function processStatForPid(
+  pid: number,
+  cpuTime: number,
+  rssPages: number,
+  processor: number,
+  name = `fixture worker ${pid}`,
+): string {
   const tail = Array.from({ length: 37 }, () => "0");
   tail[0] = "R";
   tail[11] = String(cpuTime);
   tail[12] = "0";
   tail[21] = String(rssPages);
   tail[36] = String(processor);
-  return `${pid} (fixture worker ${pid}) ${tail.join(" ")}`;
+  return `${pid} (${name}) ${tail.join(" ")}`;
 }
 
 function dfOutput(): string {
   return [
     "Filesystem 1B-blocks Used Available Use% Mounted on",
     "/dev/sda1 100000 50000 50000 50% /",
+  ].join("\n");
+}
+
+function highPressureDfOutput(): string {
+  return [
+    "Filesystem 1B-blocks Used Available Use% Mounted on",
+    "/dev/sda1 100000 96000 4000 96% /",
   ].join("\n");
 }
