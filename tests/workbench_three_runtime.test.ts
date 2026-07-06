@@ -196,6 +196,24 @@ Deno.test("ApiWorkbenchThreeRuntimeController promotes fullscreen budget on entr
   controller.dispose();
 });
 
+Deno.test("ApiWorkbenchThreeRuntimeController accepts fullscreen targets above the pressure tier cap", () => {
+  const controller = new ApiWorkbenchThreeRuntimeController({
+    hasLiveThreeWindow: () => true,
+    hasFullscreenThreeWindow: () => true,
+  });
+  const consoleCells = WORKBENCH_THREE_FULLSCREEN_MAX_CELLS + 12_480;
+
+  assertEquals(controller.syncFullscreenTargetCells(consoleCells, true, consoleCells), consoleCells);
+  assertEquals(controller.fullscreenMaxCells.peek(), consoleCells);
+  assertEquals(controller.inspectPressure().currentCells, consoleCells);
+  assertEquals(
+    controller.frameInterval.peek(),
+    apiWorkbenchThreeFrameIntervalForCells(consoleCells, { live: true }),
+  );
+
+  controller.dispose();
+});
+
 Deno.test("ApiWorkbenchThreeRuntimeController promotes live budget on pane growth", () => {
   let live = true;
   const controller = new ApiWorkbenchThreeRuntimeController({

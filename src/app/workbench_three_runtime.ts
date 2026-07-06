@@ -11,7 +11,6 @@ import {
   API_WORKBENCH_THREE_FULLSCREEN_PRESSURE_POLICY,
   API_WORKBENCH_THREE_PRESSURE_POLICY,
   apiWorkbenchThreeFrameIntervalForCells,
-  WORKBENCH_THREE_FULLSCREEN_MAX_CELLS,
   WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
   WORKBENCH_THREE_INITIAL_CELLS,
 } from "./workbench_three_policy.ts";
@@ -393,7 +392,7 @@ export class ApiWorkbenchThreeRuntimeController {
     active = this.hasFullscreenThreeWindow(),
     viewportCells = targetCells,
   ): number {
-    const target = Math.max(1, Math.min(WORKBENCH_THREE_FULLSCREEN_MAX_CELLS, Math.floor(targetCells)));
+    const target = Math.max(1, Math.floor(targetCells));
     const viewport = Math.max(1, Math.floor(viewportCells));
     if (!active) {
       this.#fullscreenTargetActive = false;

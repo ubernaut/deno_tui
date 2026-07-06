@@ -107,11 +107,11 @@ Deno.test("API workbench Three policy keeps live panes faster than idle panes", 
   assertEquals(apiWorkbenchThreeFrameIntervalForCells(30_720, { live: false }), 1000 / 4);
 });
 
-Deno.test("API workbench Three fullscreen render target follows viewport within policy bounds", () => {
+Deno.test("API workbench Three fullscreen render target matches viewport area by default", () => {
   assertEquals(workbenchThreeFullscreenRenderCells({ width: 20, height: 10 }), 200);
   assertEquals(workbenchThreeFullscreenRenderCells({ width: 100, height: 50 }), 5_000);
   assertEquals(workbenchThreeFullscreenRenderCells({ width: 240, height: 90 }), 21_600);
-  assertEquals(workbenchThreeFullscreenRenderCells({ width: 360, height: 120 }), WORKBENCH_THREE_FULLSCREEN_MAX_CELLS);
+  assertEquals(workbenchThreeFullscreenRenderCells({ width: 360, height: 120 }), 43_200);
   assertEquals(
     workbenchThreeFullscreenRenderCells(
       { width: 100, height: 50 },
@@ -122,9 +122,10 @@ Deno.test("API workbench Three fullscreen render target follows viewport within 
 });
 
 Deno.test("API workbench Three live render target follows tiled pane size", () => {
-  assertEquals(workbenchThreeLiveRenderCells({ width: 20, height: 10 }), 480);
+  assertEquals(workbenchThreeLiveRenderCells({ width: 20, height: 10 }), 200);
   assertEquals(workbenchThreeLiveRenderCells({ width: 51, height: 17 }), 867);
-  assertEquals(workbenchThreeLiveRenderCells({ width: 100, height: 40 }), 3_840);
+  assertEquals(workbenchThreeLiveRenderCells({ width: 100, height: 40 }), 4_000);
+  assertEquals(workbenchThreeLiveRenderCells({ width: 100, height: 40 }, { maxCells: 3_840 }), 3_840);
 });
 
 Deno.test("API workbench Three policy leaves non-fullscreen ASCII options unchanged", () => {
@@ -281,6 +282,22 @@ Deno.test("API workbench Three policy raises live runtime ASCII to resized tiled
 
   assertEquals(snapshot.effectiveMaxCells, 1_562);
   assertEquals(snapshot.runtimeAscii.renderMaxCells, 1_562);
+  assertEquals(ascii.renderMaxCells, 960);
+});
+
+Deno.test("API workbench Three policy tracks large tiled panes at console cell resolution", () => {
+  const ascii = createDefaultWorkbenchAsciiOptions();
+  const snapshot = resolveWorkbenchThreeRuntimeBudgetSnapshot({
+    id: "three",
+    ascii,
+    liveMaxCells: 960,
+    liveViewport: { width: 100, height: 50 },
+    fullscreenMaxCells: 1_920,
+    viewport: { width: 220, height: 60 },
+  });
+
+  assertEquals(snapshot.effectiveMaxCells, 5_000);
+  assertEquals(snapshot.runtimeAscii.renderMaxCells, 5_000);
   assertEquals(ascii.renderMaxCells, 960);
 });
 

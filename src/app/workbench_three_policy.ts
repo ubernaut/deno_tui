@@ -606,7 +606,9 @@ export function workbenchThreeFullscreenRenderCells(
   options: { minCells?: number; maxCells?: number } = {},
 ): number {
   const minCells = Math.max(1, Math.floor(options.minCells ?? WORKBENCH_THREE_FULLSCREEN_MIN_CELLS));
-  const maxCells = Math.max(minCells, Math.floor(options.maxCells ?? WORKBENCH_THREE_FULLSCREEN_MAX_CELLS));
+  const maxCells = options.maxCells === undefined
+    ? Number.POSITIVE_INFINITY
+    : Math.max(minCells, Math.floor(options.maxCells));
   const area = Math.max(1, Math.floor(rect.width) * Math.floor(rect.height));
   return Math.min(maxCells, area);
 }
@@ -616,8 +618,10 @@ export function workbenchThreeLiveRenderCells(
   rect: { width: number; height: number },
   options: { minCells?: number; maxCells?: number; areaRatio?: number } = {},
 ): number {
-  const minCells = Math.max(1, Math.floor(options.minCells ?? 480));
-  const maxCells = Math.max(minCells, Math.floor(options.maxCells ?? WORKBENCH_THREE_FULLSCREEN_MIN_CELLS));
+  const minCells = Math.max(1, Math.floor(options.minCells ?? 1));
+  const maxCells = options.maxCells === undefined
+    ? Number.POSITIVE_INFINITY
+    : Math.max(minCells, Math.floor(options.maxCells));
   const areaRatio = Math.min(1, Math.max(0.1, options.areaRatio ?? 1));
   const area = Math.max(1, Math.floor(rect.width) * Math.floor(rect.height));
   return Math.max(minCells, Math.min(maxCells, Math.floor(area * areaRatio)));
