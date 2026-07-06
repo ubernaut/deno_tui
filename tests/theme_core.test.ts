@@ -1,7 +1,7 @@
 import { assertEquals, assertInstanceOf, assertRejects, assertThrows } from "./deps.ts";
-import { mergeThemeCatalogComponents } from "../src/theme_catalog.ts";
 import { inspectThemeCoverageCore } from "../src/theme_coverage_core.ts";
 import { diffThemeEnginesCore } from "../src/theme_diff_core.ts";
+import { mergeThemeCatalogComponents } from "../src/theme_provider_preview.ts";
 import {
   ThemeEngine as ThemeEngineModule,
   ThemeInheritanceError as ThemeInheritanceErrorModule,
