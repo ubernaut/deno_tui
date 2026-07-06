@@ -220,6 +220,9 @@ The library core is real and valuable, but it needs clearer boundaries:
   - Workbench Kitty graphics passthrough detection, status formatting, and paired auto/forced surface ownership are
     folded into `src/runtime/graphics_surface.ts`, keeping raster terminal capability policy with the graphics surface
     runtime and removing a single-caller app helper shard.
+  - The stale standalone visualization app layout shard was removed after the monitor switched to
+    `WindowManagerController`; the only live viewport-mode helper is now local to `app/main.ts`, and tests no longer
+    preserve unused slot-rectangle helpers.
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

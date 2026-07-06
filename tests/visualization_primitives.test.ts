@@ -2,7 +2,6 @@ import { assertEquals, assertStringIncludes } from "./deps.ts";
 import { Signal } from "../src/signals/mod.ts";
 import { canvasRowText, createTestCanvas } from "../src/testing/mod.ts";
 import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
-import { detectViewportMode, resolveResponsiveLayout, slotRect, visibleSlotIds } from "../app/layout.ts";
 import { emptySnapshot } from "../app/system_metrics.ts";
 import { ListView, MultilineTextView, PanelView } from "../app/ui.ts";
 import { buildVisualizationDrive } from "../app/visualization_drive.ts";
@@ -83,98 +82,6 @@ const context: RenderContext = {
   },
   sources,
 };
-
-const bounds: Rect = {
-  column: 1,
-  row: 2,
-  width: 80,
-  height: 24,
-};
-
-Deno.test("app layout modes project visible monitor slots responsively", () => {
-  assertEquals(visibleSlotIds("single", "processes"), ["processes"]);
-  assertEquals(slotRect("single", bounds, "processes", "processes"), bounds);
-  assertEquals(slotRect("single", bounds, "cpu", "processes"), {
-    column: 0,
-    row: 0,
-    width: 0,
-    height: 0,
-  });
-
-  assertEquals(visibleSlotIds("vertical", "network"), ["cpu", "memory"]);
-  assertEquals(slotRect("vertical", bounds, "cpu", "network"), {
-    column: 1,
-    row: 2,
-    width: 39,
-    height: 24,
-  });
-  assertEquals(slotRect("vertical", bounds, "memory", "network"), {
-    column: 41,
-    row: 2,
-    width: 40,
-    height: 24,
-  });
-
-  assertEquals(visibleSlotIds("quad", "disk"), ["cpu", "memory", "network", "processes"]);
-  assertEquals(slotRect("quad", bounds, "network", "disk"), {
-    column: 1,
-    row: 14,
-    width: 39,
-    height: 12,
-  });
-  assertEquals(slotRect("quad", bounds, "processes", "disk"), {
-    column: 41,
-    row: 14,
-    width: 40,
-    height: 12,
-  });
-});
-
-Deno.test("app monitor layout keeps wall slots bounded and collapses on compact screens", () => {
-  assertEquals(visibleSlotIds("monitor", "memory"), [
-    "cpu",
-    "cpuLegend",
-    "gpu",
-    "gpuChip",
-    "gpuMemory",
-    "memory",
-    "temperature",
-    "disk",
-    "network",
-    "processes",
-  ]);
-  assertEquals(slotRect("monitor", { column: 0, row: 0, width: 0, height: 0 }, "cpu", "memory"), {
-    column: 0,
-    row: 0,
-    width: 0,
-    height: 0,
-  });
-  assertEquals(slotRect("monitor", { column: 0, row: 0, width: 160, height: 48 }, "gpu", "memory"), {
-    column: 0,
-    row: 12,
-    width: 90,
-    height: 12,
-  });
-
-  const cramped = { column: 0, row: 0, width: 28, height: 13 };
-  const cpu = slotRect("monitor", cramped, "cpu", "memory");
-  const legend = slotRect("monitor", cramped, "cpuLegend", "memory");
-  const network = slotRect("monitor", cramped, "network", "memory");
-  const processes = slotRect("monitor", cramped, "processes", "memory");
-
-  assertEquals(cpu.column + cpu.width <= legend.column, true);
-  assertEquals(legend.column + legend.width <= cramped.width, true);
-  assertEquals(network.column + network.width <= processes.column, true);
-  assertEquals(processes.column + processes.width <= cramped.width, true);
-  assertEquals(network.row + network.height <= cramped.height, true);
-  assertEquals(processes.row + processes.height <= cramped.height, true);
-
-  assertEquals(detectViewportMode({ column: 0, row: 0, width: 120, height: 30 }), "compact");
-  assertEquals(resolveResponsiveLayout("monitor", { column: 0, row: 0, width: 120, height: 30 }), "quad");
-  assertEquals(detectViewportMode({ column: 0, row: 0, width: 78, height: 24 }), "mobile");
-  assertEquals(resolveResponsiveLayout("monitor", { column: 0, row: 0, width: 78, height: 24 }), "single");
-  assertEquals(resolveResponsiveLayout("vertical", { column: 0, row: 0, width: 78, height: 24 }), "vertical");
-});
 
 Deno.test("app multiline and list views allocate visible rows and grow on resize", () => {
   const canvas = createTestCanvas({ size: { columns: 40, rows: 30 } });

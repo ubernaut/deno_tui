@@ -18,7 +18,6 @@ import {
   terminalGlyphStyleLabel,
 } from "../src/three_ascii/options.ts";
 import { AudioRegistry, discoverAudioSources } from "./audio.ts";
-import { detectViewportMode } from "./layout.ts";
 import { buildSourceCatalog, resolveSourceFramesInto } from "./sources.ts";
 import {
   accentColor,
@@ -68,6 +67,12 @@ type MonitorHit =
   | { type: "close"; id: SlotId }
   | { type: "tab"; id: SlotId }
   | { type: "quit" };
+
+function detectViewportMode(bounds: Rect): ViewportMode {
+  if (bounds.width < 90 || bounds.height < 26) return "mobile";
+  if (bounds.width < 128 || bounds.height < 34) return "compact";
+  return "desktop";
+}
 
 requireInteractiveTerminal("deno task viz");
 
