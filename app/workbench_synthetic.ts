@@ -4,9 +4,9 @@ import { stringSeed, unitWave, waveSeries } from "./visualization_primitives.ts"
 
 export { unitWave } from "./visualization_primitives.ts";
 
-export type WorkbenchSyntheticGroup = WorkbenchWindowOptionGroup;
+type WorkbenchSyntheticGroup = WorkbenchWindowOptionGroup;
 
-export interface SyntheticWorkbenchSystemOptions {
+interface SyntheticWorkbenchSystemOptions {
   cpuCoreCount?: number;
   timestamp?: number;
 }

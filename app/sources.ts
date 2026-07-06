@@ -158,7 +158,7 @@ export function resolveSourceFramesInto(
   return target;
 }
 
-export function getSourceFrame(
+function getSourceFrame(
   sourceId: string,
   system: SystemSnapshot,
   audio: AudioRegistry,

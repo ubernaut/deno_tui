@@ -21,15 +21,10 @@ import {
 } from "../app/api_workbench_catalog.ts";
 import {
   explorerTextRowsInto,
-  type WorkbenchDataTableBuffers,
   workbenchDataTablePageSize,
   workbenchDataTableRowsInto,
-  type WorkbenchDataTableTheme,
   workbenchExplorerRowsInto,
-  type WorkbenchExplorerTheme,
-  type WorkbenchInspectorBuffers,
   workbenchInspectorRowsInto,
-  type WorkbenchInspectorTheme,
   workbenchLogRowsFromSourcesInto,
   workbenchWindowContentSize,
 } from "../app/workbench_panels.ts";
@@ -44,7 +39,7 @@ interface DataRow extends Record<string, unknown> {
   state: string;
 }
 
-const explorerTheme: WorkbenchExplorerTheme = {
+const explorerTheme = {
   background: "#000000",
   good: "#44dd66",
   surface: "#050510",
@@ -52,7 +47,7 @@ const explorerTheme: WorkbenchExplorerTheme = {
   warn: "#ffaa00",
 };
 
-const inspectorTheme: WorkbenchInspectorTheme = {
+const inspectorTheme = {
   background: "#000000",
   accent: "#aaff00",
   border: "#663399",
@@ -62,7 +57,7 @@ const inspectorTheme: WorkbenchInspectorTheme = {
   text: "#eeeeee",
   warn: "#ffaa00",
 };
-const dataTableTheme: WorkbenchDataTableTheme = {
+const dataTableTheme = {
   accentDeep: "#552288",
   background: "#000000",
   buttonActiveBg: "#aaff00",
@@ -206,7 +201,7 @@ Deno.test("workbench inspector projects API surface rows and theme label", () =>
 });
 
 Deno.test("workbench inspector wraps and clips recent action rows", () => {
-  const buffers: WorkbenchInspectorBuffers = { actionTextRows: [], wrappedTextRows: [] };
+  const buffers = { actionTextRows: [], wrappedTextRows: [] };
   const rows = workbenchInspectorRowsInto([], {
     width: 18,
     height: 14,
@@ -226,7 +221,7 @@ Deno.test("workbench inspector wraps and clips recent action rows", () => {
 
 Deno.test("workbench inspector reuses caller-owned row storage", () => {
   const target: RowStyle[] = [{ text: "stale" }];
-  const buffers: WorkbenchInspectorBuffers = {
+  const buffers = {
     actionTextRows: ["stale action"],
     wrappedTextRows: ["stale wrapped"],
   };
@@ -306,7 +301,7 @@ Deno.test("workbench data table projects header body spacer and footer rows", ()
 Deno.test("workbench data table rows reuse caller-owned body buffers", () => {
   const target: RowStyle[] = [];
   const bodyRow: RowStyle = { text: "stale", fg: "x", bg: "y", bold: true };
-  const buffers: WorkbenchDataTableBuffers = { textRows: ["stale"], bodyRows: [bodyRow] };
+  const buffers = { textRows: ["stale"], bodyRows: [bodyRow] };
   const rows = workbenchDataTableRowsInto(target, {
     view: { ...dataView, rows: dataView.rows.slice(0, 1), selectedIndex: 0 },
     columns: dataColumns,

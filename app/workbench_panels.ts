@@ -14,12 +14,12 @@ import { workbenchHelpRows, type WorkbenchHelpRowsOptions } from "../src/app/wor
 import type { Rectangle } from "../src/types.ts";
 
 /** Minimal column metadata needed to estimate API workbench data-table width. */
-export interface WorkbenchContentSizeColumn {
+interface WorkbenchContentSizeColumn {
   width?: number;
 }
 
 /** Static and dynamic inputs used to estimate scrollable workbench window content size. */
-export interface WorkbenchContentSizeOptions {
+interface WorkbenchContentSizeOptions {
   id: string;
   viewport: Rectangle;
   docs: readonly string[];
@@ -39,13 +39,13 @@ export interface WorkbenchContentSizeOptions {
 }
 
 /** Scrollable content dimensions for a workbench window. */
-export interface WorkbenchContentSize {
+interface WorkbenchContentSize {
   width: number;
   height: number;
 }
 
 /** Minimal theme tokens needed by the API workbench explorer panel. */
-export interface WorkbenchExplorerTheme {
+interface WorkbenchExplorerTheme {
   background: string;
   good: string;
   surface: string;
@@ -54,7 +54,7 @@ export interface WorkbenchExplorerTheme {
 }
 
 /** Options for projecting file/tree explorer rows. */
-export interface WorkbenchExplorerRowsOptions {
+interface WorkbenchExplorerRowsOptions {
   rows: readonly TreeRow[];
   selectedIndex: number;
   theme: WorkbenchExplorerTheme;
@@ -62,7 +62,7 @@ export interface WorkbenchExplorerRowsOptions {
 }
 
 /** Minimal theme tokens needed by the API workbench inspector panel. */
-export interface WorkbenchInspectorTheme {
+interface WorkbenchInspectorTheme {
   background: string;
   accent: string;
   border: string;
@@ -74,13 +74,13 @@ export interface WorkbenchInspectorTheme {
 }
 
 /** Caller-owned buffers used to project inspector rows without per-frame arrays. */
-export interface WorkbenchInspectorBuffers {
+interface WorkbenchInspectorBuffers {
   actionTextRows: string[];
   wrappedTextRows: string[];
 }
 
 /** Options for projecting the API workbench inspector panel. */
-export interface WorkbenchInspectorRowsOptions {
+interface WorkbenchInspectorRowsOptions {
   width: number;
   height: number;
   themeLabel: string;
@@ -91,13 +91,13 @@ export interface WorkbenchInspectorRowsOptions {
 }
 
 /** Minimal theme tokens needed by the API workbench logs panel. */
-export interface WorkbenchLogsTheme {
+interface WorkbenchLogsTheme {
   surface: string;
   text: string;
 }
 
 /** Minimal theme tokens needed by the API workbench data-table panel. */
-export interface WorkbenchDataTableTheme extends WorkbenchRowTheme {
+interface WorkbenchDataTableTheme extends WorkbenchRowTheme {
   accentDeep: string;
   background: string;
   surface: string;
@@ -106,13 +106,13 @@ export interface WorkbenchDataTableTheme extends WorkbenchRowTheme {
 }
 
 /** Caller-owned buffers used to project workbench data table rows. */
-export interface WorkbenchDataTableBuffers {
+interface WorkbenchDataTableBuffers {
   textRows: string[];
   bodyRows: RowStyle[];
 }
 
 /** Options for projecting a data-table view into terminal row styles. */
-export interface WorkbenchDataTableRowsOptions<TRow extends Record<string, unknown>> {
+interface WorkbenchDataTableRowsOptions<TRow extends Record<string, unknown>> {
   view: DataTableView<TRow>;
   columns: readonly DataColumn<TRow>[];
   sort?: DataSort;

@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertNotEquals, assertStrictEquals } from "./deps.ts";
 import { AudioRegistry, type AudioRuntimeOptions, discoverAudioSources } from "../app/audio.ts";
-import { getSourceFrame, resolveSourceFramesInto } from "../app/sources.ts";
+import { resolveSourceFramesInto } from "../app/sources.ts";
 import {
   monitorSourceIds,
   monitorSourceIdsInto,
@@ -355,7 +355,7 @@ Deno.test("cpu legend exposes every core for scrollable panels", () => {
       usage: 10 + index,
     })),
   };
-  const source = getSourceFrame("sys:cpu-cores", manyCoreSystem, new AudioRegistry([]), 0);
+  const source = resolveSourceFramesInto([], ["sys:cpu-cores"], manyCoreSystem, new AudioRegistry([]), 0)[0]!;
   const legend = renderVisualization({
     ...makeContext("cpu-legend", manyCoreSystem, [source], 0),
     height: 4,
