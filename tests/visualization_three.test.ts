@@ -12,8 +12,6 @@ import type {
 } from "../app/types.ts";
 import { buildVisualizationDrive } from "../app/visualization_drive.ts";
 import {
-  compactSpaces,
-  maxTrimmedTextWidth,
   threeRendererModeLabel,
   visualizationTextContentSize,
   visualizationThreeStatusLine,
@@ -23,6 +21,7 @@ import {
   workbenchVisualizationRowsInto,
   type WorkbenchVisualizationWindowOption,
 } from "../app/workbench_visualization_window.ts";
+import { compactSpaces, maxTrimmedTextWidth } from "../src/app/workbench_text.ts";
 import { studioCameraFramingForAspect } from "../app/neon_three.ts";
 import {
   appendThreeSceneFooter,

@@ -437,13 +437,13 @@ export function componentIndex(
   return normalizeFieldRows([header, ...gridify(entries, width).split("\n")], width, height);
 }
 
-export type VisualizationFamily = "monitor" | "neon" | "neon3d";
+type VisualizationFamily = "monitor" | "neon" | "neon3d";
 
-export interface VisualizationCatalogEntry extends VisualizationDescriptor {
+interface VisualizationCatalogEntry extends VisualizationDescriptor {
   family: VisualizationFamily;
 }
 
-export const monitorVisualizationCatalog: readonly VisualizationCatalogEntry[] = [
+const monitorVisualizationCatalog: readonly VisualizationCatalogEntry[] = [
   {
     id: "cpu-monitor",
     name: "CPU Monitor",
@@ -628,7 +628,7 @@ export function orderVisualizationsForSlot<T extends { id: string }>(slotId: Slo
   });
 }
 
-export const neonThreeVisualizationIds = [
+const neonThreeVisualizationIds = [
   "three-lattice",
   "three-atfield",
   "three-hexshell",
@@ -638,7 +638,7 @@ export const neonThreeVisualizationIds = [
   "three-ascii-studio",
 ] as const;
 
-export const neonVisualizationIds = [
+const neonVisualizationIds = [
   "warning-stack",
   "counter-board",
   "profile-card",
@@ -667,7 +667,7 @@ const neonVisualizationMap = new Map(
     .map((demo) => [demo.id, demo] as const),
 );
 
-export const neonThreeVisualizationCatalog: readonly VisualizationCatalogEntry[] = neonThreeVisualizationIds.map((
+const neonThreeVisualizationCatalog: readonly VisualizationCatalogEntry[] = neonThreeVisualizationIds.map((
   id,
 ) => {
   const demo = neonVisualizationMap.get(id);
@@ -680,7 +680,7 @@ export const neonThreeVisualizationCatalog: readonly VisualizationCatalogEntry[]
   };
 });
 
-export const neonVisualizationCatalog: readonly VisualizationCatalogEntry[] = neonVisualizationIds.map((id) => {
+const neonVisualizationCatalog: readonly VisualizationCatalogEntry[] = neonVisualizationIds.map((id) => {
   const demo = neonVisualizationMap.get(id);
   return {
     id,
@@ -697,7 +697,7 @@ export const visualizationCatalog: readonly VisualizationCatalogEntry[] = [
   ...neonVisualizationCatalog,
 ];
 
-export const visualizationCatalogById = new Map(visualizationCatalog.map((entry) => [entry.id, entry]));
+const visualizationCatalogById = new Map(visualizationCatalog.map((entry) => [entry.id, entry]));
 
 export function visualizationFamily(id: string): VisualizationFamily | undefined {
   return visualizationCatalogById.get(id)?.family;
@@ -746,7 +746,7 @@ const threeSceneVisualizationModes: Record<string, ThreeSceneMode> = {
   "three-ascii-studio": "studio",
 };
 
-export const THREE_FALLBACK_BLOCKS = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"] as const;
+const THREE_FALLBACK_BLOCKS = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"] as const;
 
 export function threeSceneModeLabel(mode: ThreeSceneMode) {
   return neonThreeSceneModeLabel(mode);

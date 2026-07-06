@@ -1,6 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { workbenchAsciiRendererModeLabel } from "../src/app/workbench_ascii.ts";
-import { compactSpaces, maxTrimmedTextWidth } from "../src/app/workbench_text.ts";
+import { compactSpaces } from "../src/app/workbench_text.ts";
 import { prepareWorkbenchRows } from "../src/app/workbench_frame.ts";
 import { terminalGlyphStyleLabel } from "../src/three_ascii/options.ts";
 import type { RowStyle } from "../src/app/workbench_rows.ts";
@@ -277,8 +277,6 @@ export function workbenchThreePreviewRowsInto(
 function workbenchThreePreviewMode(tileDensity: number): string {
   return ["BLOCKS", "GLYPHS", "MIXED"][Math.abs(Math.trunc(tileDensity)) % 3] ?? "MIXED";
 }
-
-export { compactSpaces, maxTrimmedTextWidth };
 
 function appendBodyLines(target: string[], body: string): void {
   let start = 0;
