@@ -262,6 +262,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   the existing grid suite, preserving resize/status projection behavior while reducing app-helper/test shards.
 - Folded theme provider report aggregation into the report module that owns formatting, removing a tiny internal builder
   shard without changing the public `theme.ts` facade.
+- Cached the base TUI resize verifier's `stty` run-permission check and decoder so robust tmux/PTY size polling avoids
+  repeated permission queries and transient allocations.
 - Extracted API Workbench terminal ANSI color and shell-cell style projection into the catalog helper with direct tests,
   removing another pure presentation branch from the oversized terminal adapter.
 - Routed API Workbench workspace-name modal storage labeling through the shared workspace storage helper instead of a

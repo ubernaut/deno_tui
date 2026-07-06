@@ -21,6 +21,8 @@ import {
 import { RenderLoop } from "./runtime/render_loop.ts";
 
 const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+let canRunSttyCached: boolean | undefined;
 
 /** Options for configuring tui. */
 export interface TuiOptions {
@@ -249,7 +251,7 @@ function sttyTerminalSize(): { columns: number; rows: number } | undefined {
       stderr: "null",
     }).outputSync();
     if (!output.success) return undefined;
-    const text = new TextDecoder().decode(output.stdout).trim();
+    const text = textDecoder.decode(output.stdout).trim();
     const [rowsText, columnsText] = text.split(/\s+/, 2);
     const rows = Number.parseInt(rowsText ?? "", 10);
     const columns = Number.parseInt(columnsText ?? "", 10);
@@ -261,9 +263,12 @@ function sttyTerminalSize(): { columns: number; rows: number } | undefined {
 }
 
 function canRunStty(): boolean {
+  if (canRunSttyCached !== undefined) return canRunSttyCached;
   try {
-    return Deno.permissions.querySync({ name: "run", command: "stty" }).state === "granted";
+    canRunSttyCached = Deno.permissions.querySync({ name: "run", command: "stty" }).state === "granted";
+    return canRunSttyCached;
   } catch {
+    canRunSttyCached = false;
     return false;
   }
 }
