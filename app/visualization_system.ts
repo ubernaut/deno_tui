@@ -344,18 +344,18 @@ export function renderGpuMemoryMonitor(
   };
 }
 
-export function gpuAccent(utilization: number, memory: number, available: boolean): Accent {
+function gpuAccent(utilization: number, memory: number, available: boolean): Accent {
   if (!available) return "violet";
   const pressure = Math.max(utilization, memory);
   return pressure >= 92 ? "alarm" : pressure >= 75 ? "amber" : memory > utilization ? "phosphor" : "violet";
 }
 
-export function gpuSeverity(utilization: number, memory: number): Severity {
+function gpuSeverity(utilization: number, memory: number): Severity {
   const pressure = Math.max(utilization, memory);
   return pressure >= 92 ? "alarm" : pressure >= 75 ? "warning" : "info";
 }
 
-export function gpuAlert(context: RenderContext) {
+function gpuAlert(context: RenderContext) {
   const { gpu } = context.system;
   if (!gpu.available) return "";
   if (gpu.memoryPercent >= 92) return "VRAM LIMIT";
@@ -364,7 +364,7 @@ export function gpuAlert(context: RenderContext) {
   return "";
 }
 
-export function formatNullable(value: number | null, suffix: string) {
+function formatNullable(value: number | null, suffix: string) {
   return value === null ? "--" : `${value.toFixed(value >= 100 ? 0 : 1)}${suffix}`;
 }
 

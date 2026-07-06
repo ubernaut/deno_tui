@@ -1,10 +1,6 @@
 import { assert, assertEquals, assertStringIncludes } from "./deps.ts";
 import {
-  formatNullable,
-  gpuAccent,
-  gpuAlert,
   type GpuMonitorRenderDependencies,
-  gpuSeverity,
   renderCpuLegend,
   renderCpuMonitor,
   renderDiskMonitor,
@@ -285,18 +281,46 @@ Deno.test("system process monitor caps output at the top 100 processes", () => {
   assertEquals(panel.alert, "PROCESS SPIKE DETECTED");
 });
 
-Deno.test("GPU monitor helpers classify pressure and nullable telemetry", () => {
-  assertEquals(gpuAccent(20, 15, true), "violet");
-  assertEquals(gpuAccent(20, 60, true), "phosphor");
-  assertEquals(gpuAccent(80, 20, true), "amber");
-  assertEquals(gpuAccent(95, 20, true), "alarm");
-  assertEquals(gpuAccent(95, 20, false), "violet");
-  assertEquals(gpuSeverity(74, 20), "info");
-  assertEquals(gpuSeverity(75, 20), "warning");
-  assertEquals(gpuSeverity(20, 92), "alarm");
-  assertEquals(formatNullable(null, "W"), "--");
-  assertEquals(formatNullable(99.4, "W"), "99.4W");
-  assertEquals(formatNullable(1815, "MHz"), "1815MHz");
+Deno.test("GPU monitors classify pressure and nullable telemetry through rendered panels", () => {
+  const idle = renderGpuCombinedMonitor(gpuContext(), gpuDependencies);
+  assertStringIncludes(idle.body, "TEMP 51.0C  POWER 120W");
+  assertStringIncludes(idle.footer, "GFX 1815MHz");
+  assertEquals(idle.accent, "violet");
+  assertEquals(idle.severity, "info");
+
+  const memoryLed = renderGpuCombinedMonitor(
+    gpuContext(gpuSystem({ utilizationPercent: 20, memoryPercent: 60 })),
+    gpuDependencies,
+  );
+  assertEquals(memoryLed.accent, "phosphor");
+  assertEquals(memoryLed.severity, "info");
+
+  const warning = renderGpuCombinedMonitor(
+    gpuContext(gpuSystem({ utilizationPercent: 80, memoryPercent: 20 })),
+    gpuDependencies,
+  );
+  assertEquals(warning.accent, "amber");
+  assertEquals(warning.severity, "warning");
+
+  const alarm = renderGpuCombinedMonitor(
+    gpuContext(gpuSystem({ utilizationPercent: 95, memoryPercent: 20 })),
+    gpuDependencies,
+  );
+  assertEquals(alarm.alert, "GPU EXECUTION WALL");
+  assertEquals(alarm.accent, "alarm");
+  assertEquals(alarm.severity, "alarm");
+
+  const nullable = renderGpuChipMonitor(
+    gpuContext(gpuSystem({
+      temperatureCelsius: null,
+      powerWatts: null,
+      graphicsClockMhz: null,
+      memoryClockMhz: null,
+    })),
+    gpuDependencies,
+  );
+  assertStringIncludes(nullable.body, "TEMP --  POWER --");
+  assertStringIncludes(nullable.body, "GFX --  MEMORY --");
 });
 
 Deno.test("GPU combined monitor renders chip and memory telemetry", () => {
@@ -337,7 +361,9 @@ Deno.test("GPU chip and memory monitors surface alarm states", () => {
   assertStringIncludes(memory.body, "VRAM 94.0%");
   assertEquals(memory.alert, "VRAM CAPACITY WALL");
   assertEquals(memory.accent, "alarm");
-  assertEquals(gpuAlert(gpuContext(hot)), "VRAM LIMIT");
+
+  const combined = renderGpuCombinedMonitor(gpuContext(hot, 30, 8), gpuDependencies);
+  assertEquals(combined.alert, "VRAM LIMIT");
 });
 
 Deno.test("GPU memory monitor keeps narrow bank charts bounded", () => {
