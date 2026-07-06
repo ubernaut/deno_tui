@@ -378,7 +378,7 @@ function formatDuration(seconds: number) {
   return `${String(hours).padStart(2, "0")}h ${String(minutes).padStart(2, "0")}m`;
 }
 
-export function cpuActivityRgb(percent: number): [number, number, number] {
+function cpuActivityRgb(percent: number): [number, number, number] {
   const value = Number.isFinite(percent) ? clamp(percent, 0, 100) : 0;
   let upperIndex = cpuHexColorStops.length - 1;
   for (let index = 0; index < cpuHexColorStops.length; index += 1) {

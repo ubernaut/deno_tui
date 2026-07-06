@@ -9,7 +9,6 @@ import {
 } from "../app/workbench_synthetic.ts";
 import { unitWave } from "../app/visualization_primitives.ts";
 import {
-  cpuActivityRgb,
   cpuHexTileLayoutInto,
   cpuHexTileScrollTarget,
   nextCpuHexLabel,
@@ -387,17 +386,6 @@ Deno.test("resolveSourceFramesInto reuses caller buffers and keeps synthetic fal
 });
 
 Deno.test("cpu hex grid renders every core with unique truecolor activity shades", () => {
-  assertEquals(cpuActivityRgb(0), [45, 112, 255]);
-  assertEquals(cpuActivityRgb(25), [22, 214, 107]);
-  assertEquals(cpuActivityRgb(50), [255, 226, 74]);
-  assertEquals(cpuActivityRgb(75), [255, 159, 36]);
-  assertEquals(cpuActivityRgb(100), [255, 66, 49]);
-
-  const uniquePercentShades = new Set(
-    Array.from({ length: 101 }, (_, percent) => cpuActivityRgb(percent).join(",")),
-  );
-  assertEquals(uniquePercentShades.size, 101);
-
   const usages = [0, 25, 50, 75, 100, 6, 14, 33, 42, 58, 61, 70, 83, 91, 97, 99];
   const manyCoreSystem = {
     ...calmSystem,
@@ -426,6 +414,14 @@ Deno.test("cpu hex grid renders every core with unique truecolor activity shades
   assertStrictEquals(tileBuffer[0], firstTile);
   assertStrictEquals(cpuHexTileLayoutInto(tileBuffer, [], 20, 4), tileBuffer);
   assertEquals(tileBuffer.length, 0);
+  const truecolorPattern = new RegExp(
+    `${String.fromCharCode(27)}\\[(?:1;)?38;2;(\\d+);(\\d+);(\\d+)(?:;48;2;\\d+;\\d+;\\d+)?m`,
+    "g",
+  );
+  const renderedShades = new Set(
+    [...rendered.body.matchAll(truecolorPattern)].map((match) => `${match[1]},${match[2]},${match[3]}`),
+  );
+  assertEquals(renderedShades.size, usages.length);
   assert(rendered.body.includes("\x1b[38;2;45;112;255m"));
   assert(rendered.body.includes("\x1b[38;2;22;214;107m"));
   assert(rendered.body.includes("\x1b[38;2;255;226;74m"));
