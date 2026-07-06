@@ -51,16 +51,16 @@ export interface ApiWorkbenchProcessRow extends Record<string, unknown> {
   latency: number;
 }
 
-export interface ApiWorkbenchTerminalCellStyleInput {
+interface ApiWorkbenchTerminalCellStyleInput {
   foreground?: number;
   background?: number;
   bold?: boolean;
 }
 
-export interface ApiWorkbenchTerminalSessionDraftOptions
+interface ApiWorkbenchTerminalSessionDraftOptions
   extends WorkbenchTerminalSessionIdOptions, WorkbenchTerminalSessionTitleOptions {}
 
-export interface ApiWorkbenchTerminalSessionDraft {
+interface ApiWorkbenchTerminalSessionDraft {
   id: string;
   title: string;
 }
@@ -166,7 +166,7 @@ export function apiWorkbenchShortPanelTitle(id: string, fallback?: string): stri
   return apiWorkbenchShortPanelTitles[id] ?? apiWorkbenchPanelTitle(id, fallback);
 }
 
-export interface ApiWorkbenchWindowTitleOptions {
+interface ApiWorkbenchWindowTitleOptions {
   id: string;
   visualizationLabel?: string;
   terminalOutputId?: string;
@@ -205,7 +205,7 @@ export type ApiWorkbenchBuiltInWindowId =
   | typeof TERMINAL_OUTPUT_WINDOW_ID
   | typeof TERMINAL_SHELL_WINDOW_ID;
 
-export interface ApiWorkbenchWindowCatalog {
+interface ApiWorkbenchWindowCatalog {
   builtInWindowOrder: readonly ApiWorkbenchBuiltInWindowId[];
   htmlCssLayoutWindowOption: WorkbenchWindowOption;
   terminalOutputWindowOption: WorkbenchWindowOption;
@@ -280,7 +280,7 @@ export function createApiWorkbenchWindowCatalog(
   };
 }
 
-export interface ApiWorkbenchVisualizationThreeProbe {
+interface ApiWorkbenchVisualizationThreeProbe {
   three?: unknown;
 }
 
