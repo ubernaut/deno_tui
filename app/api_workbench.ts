@@ -1499,10 +1499,20 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
     const sceneRect = workbenchThreeBodyRect(rect, { headerRows: 3, footerRows: 1 });
     addHit(sceneRect, { type: "threeViewport", id });
     const entry = ensureVisualizationThreePanel(id);
-    setWorkbenchThreeRect(entry.rectangle, { column: 0, row: 0, width: sceneRect.width, height: sceneRect.height });
+    const resized = setWorkbenchThreeRect(entry.rectangle, {
+      column: 0,
+      row: 0,
+      width: sceneRect.width,
+      height: sceneRect.height,
+    });
     setWorkbenchThreeRect(entry.graphicsRectangle, contentRectToGraphicsRect(sceneRect));
     setWorkbenchThreeSceneSignal(entry.scene, threeScene);
     renderedVisualizationThreePanels.add(id);
+    if (resized) {
+      renderThreeResizePlaceholder(frame, sceneRect, t);
+      scheduleDraw();
+      return;
+    }
     const grid = entry.panel.grid.peek();
     renderThreeGrid(frame, sceneRect, grid, t, {
       scale: threeGridScaleModeForWindow(id),
@@ -1545,7 +1555,7 @@ function renderThree(frame: Frame, rect: Rectangle): void {
   const mode = threeRendererModeLabel(ascii.peek()).toUpperCase();
   if (threeAsciiAvailable.peek()) {
     const sceneRect = workbenchThreeBodyRect(rect, { headerRows: 3 });
-    setThreeBodyRect(sceneRect);
+    const resized = setThreeBodyRect(sceneRect);
     const performance = threePanel.inspectPerformance();
     const pressure = workbenchThreeRuntime.inspectPressureDetailsInto(workbenchThreePressureDetails);
     writeRows(
@@ -1568,6 +1578,10 @@ function renderThree(frame: Frame, rect: Rectangle): void {
     );
     addHit(sceneRect, { type: "threeViewport", id: "three" });
     setThreeGraphicsRect(contentRectToGraphicsRect(sceneRect));
+    if (resized) {
+      renderThreeResizePlaceholder(frame, sceneRect, t);
+      return;
+    }
     const grid = threePanel.grid.peek();
     renderThreeGrid(frame, sceneRect, grid, t, {
       scale: threeGridScaleModeForWindow("three"),
@@ -1586,6 +1600,17 @@ function renderThree(frame: Frame, rect: Rectangle): void {
     center: centerText,
   });
   writeRows(frame, rect, fallback);
+}
+
+function renderThreeResizePlaceholder(frame: Frame, rect: Rectangle, t: ThemeSpec): void {
+  if (rect.width <= 0 || rect.height <= 0) return;
+  fillRect(frame, rect, t.surface);
+  write(
+    frame,
+    rect.row + Math.floor(rect.height / 2),
+    rect.column,
+    paint(centerText("renderer resizing", rect.width), { fg: t.warn, bg: t.surface }),
+  );
 }
 
 function renderThreeGrid(
@@ -3007,18 +3032,19 @@ function disposeVisualizationThreePanel(id: VisualizationWindowId): void {
   visualizationThreePanels.dispose(id);
 }
 
-function setThreeBodyRect(rect: Rectangle): void {
+function setThreeBodyRect(rect: Rectangle): boolean {
   const changed = setWorkbenchThreeRect(threeBodyRect, {
     column: 0,
     row: 0,
     width: rect.width,
     height: rect.height,
   });
-  if (!changed) return;
+  if (!changed) return false;
   threeCadence.reset();
   workbenchThreeRuntime.resetPressureCounters();
   syncWorkbenchThreeRuntimeBudgetForViewport(currentWidth(), currentHeight(), rect);
   scheduleDraw();
+  return true;
 }
 
 function setThreeGraphicsRect(rect: Rectangle): void {
