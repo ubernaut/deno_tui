@@ -234,7 +234,9 @@ import { SystemMonitor } from "./system_metrics.ts";
 import { createWorkbenchThreePanelFrameView, ThreePanelFrameView } from "./three_panel.ts";
 import {
   addApiWorkbenchCpuHexTileHits,
+  ApiWorkbenchControlsViewBufferCache,
   explorerTextRowsInto,
+  renderApiWorkbenchControls,
   renderApiWorkbenchDataPanel,
   renderApiWorkbenchExplorerPanel,
   renderApiWorkbenchInspectorPanel,
@@ -289,7 +291,6 @@ import {
   renderApiWorkbenchTerminalShellPanes,
   renderApiWorkbenchTerminalShellToolbar,
 } from "./api_workbench_terminal_shell_view.ts";
-import { ApiWorkbenchControlsViewBufferCache, renderApiWorkbenchControls } from "./api_workbench_controls_view.ts";
 import {
   renderApiWorkbenchThreeFallback,
   renderApiWorkbenchThreeHeader,

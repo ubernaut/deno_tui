@@ -68,6 +68,8 @@ import {
 import { WorkbenchThreeGridProjectionCache } from "../src/app/workbench_three_grid.ts";
 import {
   addApiWorkbenchCpuHexTileHits,
+  ApiWorkbenchControlsViewBufferCache,
+  renderApiWorkbenchControls,
   renderApiWorkbenchDataPanel,
   renderApiWorkbenchExplorerPanel,
   renderApiWorkbenchInspectorPanel,
@@ -100,7 +102,6 @@ import {
   renderApiWorkbenchTerminalShellPanes,
   renderApiWorkbenchTerminalShellToolbar,
 } from "../app/api_workbench_terminal_shell_view.ts";
-import { ApiWorkbenchControlsViewBufferCache, renderApiWorkbenchControls } from "../app/api_workbench_controls_view.ts";
 import type { ProcessSessionInspection } from "../src/runtime/process_session.ts";
 import type { TerminalShellController, TerminalShellInspection } from "../src/runtime/terminal_shell.ts";
 import type { TerminalShellWorkspaceInspection } from "../src/runtime/terminal_shell_workspace.ts";

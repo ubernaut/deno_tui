@@ -17987,291 +17987,6 @@ function clipApiWorkbenchRect(rect, bounds) {
   };
 }
 
-// app/api_workbench_controls_view.ts
-var ApiWorkbenchControlsViewBufferCache = class {
-  lineSegments = [];
-  lineRenderCommands = [];
-  lineHitPlacements = [];
-  projectedRows = [];
-  checkboxOptions = [];
-  radioOptions = [];
-  textboxProjectionRows = [];
-  textboxRenderCommands = [];
-  textboxVisualLines = [];
-  wrappedOptionRenderCommands = [];
-  wrappedOptionHitPlacements = [];
-  sliderSetHit = {
-    column: 0,
-    row: 0,
-    width: 0,
-    height: 1,
-    id: "slider",
-    action: "set"
-  };
-  stepperHitPlacements = [];
-};
-function renderApiWorkbenchControls(options) {
-  const { frame, rect, state, buffers, theme: theme2, contrastText: contrastText2, fit: fit2, paint: paint2, write: write2, addHit } = options;
-  const result = {};
-  let row = rect.row;
-  const writeControl = (id2, value, controlOptions = {}) => {
-    const startRow = row;
-    const nextRow = apiWorkbenchControlLineInto(
-      buffers.lineSegments,
-      buffers.lineHitPlacements,
-      id2,
-      value,
-      rect,
-      row,
-      state.activeControl,
-      controlOptions
-    );
-    if (nextRow === row) return;
-    const active2 = state.activeControl === id2;
-    const baseStyle = apiWorkbenchControlBaseStyle(theme2, active2);
-    const renderCommands = apiWorkbenchControlLineRenderCommandsInto(
-      buffers.lineRenderCommands,
-      buffers.lineSegments,
-      {
-        rect,
-        row: startRow,
-        button: controlOptions.button
-      }
-    );
-    for (const command of renderCommands) {
-      if (command.kind === "fill") {
-        write2(
-          frame,
-          command.row,
-          command.column,
-          paint2(" ".repeat(command.width), { fg: theme2.text, bg: theme2.surface, bold: false })
-        );
-        continue;
-      }
-      if (controlOptions.button) {
-        const style2 = command.role === "button" ? workbenchButtonPaintOptions(theme2, contrastText2, active2 ? "active" : "base") : command.role === "detail" ? apiWorkbenchControlButtonDetailStyle(theme2, active2) : baseStyle;
-        write2(frame, command.row, command.column, paint2(command.text, style2));
-      } else {
-        write2(frame, command.row, command.column, paint2(command.text, baseStyle));
-      }
-    }
-    addControlHits(buffers.lineHitPlacements, addHit);
-    row = nextRow;
-  };
-  const sliderTrack = apiWorkbenchControlTrack({
-    ratio: state.slider.ratio,
-    boundsWidth: rect.width,
-    reservedWidth: 20,
-    maxWidth: 24
-  });
-  const progressTrack = apiWorkbenchControlTrack({
-    ratio: state.progress.ratio,
-    boundsWidth: rect.width,
-    reservedWidth: 18,
-    maxWidth: 24
-  });
-  apiWorkbenchControlsSnapshotRowsInto(buffers.projectedRows, {
-    buttonPressCount: state.buttonPressCount,
-    genericButtonPressCount: state.genericButtonPressCount,
-    modalOpen: state.modalOpen,
-    slider: {
-      track: sliderTrack,
-      value: state.slider.value,
-      max: state.slider.max
-    },
-    checkboxLivePreview: state.checkboxLivePreview,
-    checkboxCompactRows: state.checkboxCompactRows,
-    radioOptions: state.radioOptions,
-    radioSelectedValue: state.radioSelectedValue,
-    radioActiveIndex: state.radioActiveIndex,
-    combo: {
-      title: state.combo.title,
-      label: state.combo.label,
-      expanded: state.combo.expanded,
-      rectWidth: rect.width,
-      expandedGlyph: state.combo.expandedGlyph,
-      collapsedGlyph: state.combo.collapsedGlyph,
-      splitMinWidth: state.combo.splitMinWidth,
-      previous: state.combo.previous,
-      next: state.combo.next
-    },
-    dropdown: {
-      title: state.dropdown.title,
-      label: state.dropdown.label,
-      expanded: state.dropdown.expanded,
-      expandedGlyph: state.dropdown.expandedGlyph,
-      collapsedGlyph: state.dropdown.collapsedGlyph
-    },
-    input: state.input,
-    stepper: {
-      steps: state.stepper.steps,
-      activeIndex: state.stepper.activeIndex,
-      rectWidth: rect.width
-    },
-    progress: {
-      track: progressTrack,
-      value: state.progress.value
-    },
-    buffers: {
-      checkboxes: buffers.checkboxOptions,
-      radio: buffers.radioOptions
-    }
-  });
-  for (let index = 0; index < buffers.projectedRows.length; index += 1) {
-    const controlRow = buffers.projectedRows[index];
-    if (controlRow.id === "slider" && controlRow.value.startsWith("Progress")) {
-      if (row < rect.row + rect.height) {
-        write2(
-          frame,
-          row,
-          rect.column,
-          paint2(fit2(controlRow.value, rect.width), {
-            fg: theme2.text,
-            bg: theme2.surface,
-            bold: false
-          })
-        );
-      }
-      continue;
-    }
-    if (controlRow.id === "textbox") {
-      row = renderApiWorkbenchTextboxControl({
-        frame,
-        rect,
-        row,
-        active: state.activeControl === "textbox",
-        lines: state.textbox.lines,
-        cursor: state.textbox.cursor,
-        renderOptions: state.textbox.renderOptions,
-        buffers,
-        theme: theme2,
-        paint: paint2,
-        write: write2,
-        addHit
-      });
-      continue;
-    }
-    const beforeRow = row;
-    writeControl(controlRow.id, controlRow.value, controlRow.options);
-    if (controlRow.id === "slider") {
-      const sliderSetHit = apiWorkbenchSliderSetHitInto(buffers.sliderSetHit, rect, beforeRow, sliderTrack);
-      addHit({
-        column: sliderSetHit.column,
-        row: sliderSetHit.row,
-        width: sliderSetHit.width,
-        height: sliderSetHit.height
-      }, {
-        type: "control",
-        id: sliderSetHit.id,
-        action: sliderSetHit.action
-      });
-    } else if (controlRow.id === "combo" && buffers.projectedRows[index + 1]?.id !== "combo") {
-      renderApiWorkbenchWrappedOptions({
-        frame,
-        rect,
-        startRow: row,
-        id: "combo",
-        items: state.combo.items,
-        selectedIndex: state.combo.selectedIndex,
-        activeId: state.activeControl,
-        buffers,
-        theme: theme2,
-        paint: paint2,
-        write: write2,
-        addHit
-      });
-      row += wrappedControlOptionRowCount(state.combo.items, void 0, rect.width - 4);
-    } else if (controlRow.id === "dropdown") {
-      if (state.dropdown.expanded) {
-        result.dropdownOverlay = {
-          kind: "control",
-          coordinate: "workspace",
-          rect: apiWorkbenchDropdownPopoverRect({
-            rect,
-            row,
-            items: state.dropdown.items,
-            label: state.dropdown.label
-          }),
-          items: state.dropdown.items,
-          selectedIndex: state.dropdown.selectedIndex
-        };
-      }
-    } else if (controlRow.id === "stepper") {
-      const stepperHits = apiWorkbenchStepperHitPlacementsInto(
-        buffers.stepperHitPlacements,
-        state.stepper.steps,
-        state.stepper.activeIndex,
-        rect,
-        beforeRow
-      );
-      addControlHits(stepperHits, addHit);
-    }
-  }
-  return result;
-}
-function renderApiWorkbenchTextboxControl(options) {
-  const { frame, rect, row, active: active2, lines, cursor, renderOptions, buffers, theme: theme2, paint: paint2, write: write2, addHit } = options;
-  const projection = apiWorkbenchTextboxProjectionInto(buffers.textboxProjectionRows, {
-    rect,
-    row,
-    lines,
-    visualLines: buffers.textboxVisualLines,
-    cursor,
-    active: active2
-  });
-  if (projection.height <= 0) return projection.nextRow;
-  const commands = apiWorkbenchTextboxRenderCommandsInto(buffers.textboxRenderCommands, projection.rows, renderOptions);
-  for (const command of commands) {
-    write2(
-      frame,
-      command.row,
-      command.column,
-      paint2(command.text, apiWorkbenchTextboxCommandStyle(theme2, command, active2))
-    );
-  }
-  addHit(projection.hit, {
-    type: "control",
-    id: "textbox",
-    action: "focus"
-  });
-  return projection.nextRow;
-}
-function renderApiWorkbenchWrappedOptions(options) {
-  const { frame, rect, startRow, id: id2, items, selectedIndex, activeId, buffers, theme: theme2, paint: paint2, write: write2, addHit } = options;
-  const commands = apiWorkbenchWrappedOptionsRenderCommandsInto(
-    buffers.wrappedOptionRenderCommands,
-    buffers.wrappedOptionHitPlacements,
-    {
-      rect,
-      startRow,
-      id: id2,
-      items,
-      selectedIndex,
-      activeId
-    }
-  );
-  for (const command of commands) {
-    write2(
-      frame,
-      command.row,
-      command.column,
-      paint2(command.text, apiWorkbenchWrappedOptionStyle(theme2, command.active))
-    );
-  }
-  addControlHits(buffers.wrappedOptionHitPlacements, addHit);
-}
-function addControlHits(placements, addHit) {
-  for (let index = 0; index < placements.length; index += 1) {
-    const hit = placements[index];
-    addHit({ column: hit.column, row: hit.row, width: hit.width, height: hit.height }, {
-      type: "control",
-      id: hit.id,
-      action: hit.action,
-      index: hit.index
-    });
-  }
-}
-
 // app/html_css_layout_view.ts
 function htmlCssLayoutSummaryRows(profile = "terminal") {
   if (profile === "web") {
@@ -19405,6 +19120,28 @@ function makeStyle(options = {}) {
 }
 
 // app/workbench_panels.ts
+var ApiWorkbenchControlsViewBufferCache = class {
+  lineSegments = [];
+  lineRenderCommands = [];
+  lineHitPlacements = [];
+  projectedRows = [];
+  checkboxOptions = [];
+  radioOptions = [];
+  textboxProjectionRows = [];
+  textboxRenderCommands = [];
+  textboxVisualLines = [];
+  wrappedOptionRenderCommands = [];
+  wrappedOptionHitPlacements = [];
+  sliderSetHit = {
+    column: 0,
+    row: 0,
+    width: 0,
+    height: 1,
+    id: "slider",
+    action: "set"
+  };
+  stepperHitPlacements = [];
+};
 function workbenchDemoModalContent(options = {}) {
   const web = options.profile === "web";
   return {
@@ -19676,6 +19413,267 @@ function renderApiWorkbenchDataPanel(options) {
     addHit({ column: rect.column, row: rect.row + 1 + index, width: rect.width, height: 1 }, {
       type: "dataRow",
       index
+    });
+  }
+}
+function renderApiWorkbenchControls(options) {
+  const { frame, rect, state, buffers, theme: theme2, contrastText: contrastText2, fit: fit2, paint: paint2, write: write2, addHit } = options;
+  const result = {};
+  let row = rect.row;
+  const writeControl = (id2, value, controlOptions = {}) => {
+    const startRow = row;
+    const nextRow = apiWorkbenchControlLineInto(
+      buffers.lineSegments,
+      buffers.lineHitPlacements,
+      id2,
+      value,
+      rect,
+      row,
+      state.activeControl,
+      controlOptions
+    );
+    if (nextRow === row) return;
+    const active2 = state.activeControl === id2;
+    const baseStyle = apiWorkbenchControlBaseStyle(theme2, active2);
+    const renderCommands = apiWorkbenchControlLineRenderCommandsInto(
+      buffers.lineRenderCommands,
+      buffers.lineSegments,
+      {
+        rect,
+        row: startRow,
+        button: controlOptions.button
+      }
+    );
+    for (const command of renderCommands) {
+      if (command.kind === "fill") {
+        write2(
+          frame,
+          command.row,
+          command.column,
+          paint2(" ".repeat(command.width), { fg: theme2.text, bg: theme2.surface, bold: false })
+        );
+        continue;
+      }
+      if (controlOptions.button) {
+        const style2 = command.role === "button" ? workbenchButtonPaintOptions(theme2, contrastText2, active2 ? "active" : "base") : command.role === "detail" ? apiWorkbenchControlButtonDetailStyle(theme2, active2) : baseStyle;
+        write2(frame, command.row, command.column, paint2(command.text, style2));
+      } else {
+        write2(frame, command.row, command.column, paint2(command.text, baseStyle));
+      }
+    }
+    addControlHits(buffers.lineHitPlacements, addHit);
+    row = nextRow;
+  };
+  const sliderTrack = apiWorkbenchControlTrack({
+    ratio: state.slider.ratio,
+    boundsWidth: rect.width,
+    reservedWidth: 20,
+    maxWidth: 24
+  });
+  const progressTrack = apiWorkbenchControlTrack({
+    ratio: state.progress.ratio,
+    boundsWidth: rect.width,
+    reservedWidth: 18,
+    maxWidth: 24
+  });
+  apiWorkbenchControlsSnapshotRowsInto(buffers.projectedRows, {
+    buttonPressCount: state.buttonPressCount,
+    genericButtonPressCount: state.genericButtonPressCount,
+    modalOpen: state.modalOpen,
+    slider: {
+      track: sliderTrack,
+      value: state.slider.value,
+      max: state.slider.max
+    },
+    checkboxLivePreview: state.checkboxLivePreview,
+    checkboxCompactRows: state.checkboxCompactRows,
+    radioOptions: state.radioOptions,
+    radioSelectedValue: state.radioSelectedValue,
+    radioActiveIndex: state.radioActiveIndex,
+    combo: {
+      title: state.combo.title,
+      label: state.combo.label,
+      expanded: state.combo.expanded,
+      rectWidth: rect.width,
+      expandedGlyph: state.combo.expandedGlyph,
+      collapsedGlyph: state.combo.collapsedGlyph,
+      splitMinWidth: state.combo.splitMinWidth,
+      previous: state.combo.previous,
+      next: state.combo.next
+    },
+    dropdown: {
+      title: state.dropdown.title,
+      label: state.dropdown.label,
+      expanded: state.dropdown.expanded,
+      expandedGlyph: state.dropdown.expandedGlyph,
+      collapsedGlyph: state.dropdown.collapsedGlyph
+    },
+    input: state.input,
+    stepper: {
+      steps: state.stepper.steps,
+      activeIndex: state.stepper.activeIndex,
+      rectWidth: rect.width
+    },
+    progress: {
+      track: progressTrack,
+      value: state.progress.value
+    },
+    buffers: {
+      checkboxes: buffers.checkboxOptions,
+      radio: buffers.radioOptions
+    }
+  });
+  for (let index = 0; index < buffers.projectedRows.length; index += 1) {
+    const controlRow = buffers.projectedRows[index];
+    if (controlRow.id === "slider" && controlRow.value.startsWith("Progress")) {
+      if (row < rect.row + rect.height) {
+        write2(
+          frame,
+          row,
+          rect.column,
+          paint2(fit2(controlRow.value, rect.width), {
+            fg: theme2.text,
+            bg: theme2.surface,
+            bold: false
+          })
+        );
+      }
+      continue;
+    }
+    if (controlRow.id === "textbox") {
+      row = renderApiWorkbenchTextboxControl({
+        frame,
+        rect,
+        row,
+        active: state.activeControl === "textbox",
+        lines: state.textbox.lines,
+        cursor: state.textbox.cursor,
+        renderOptions: state.textbox.renderOptions,
+        buffers,
+        theme: theme2,
+        paint: paint2,
+        write: write2,
+        addHit
+      });
+      continue;
+    }
+    const beforeRow = row;
+    writeControl(controlRow.id, controlRow.value, controlRow.options);
+    if (controlRow.id === "slider") {
+      const sliderSetHit = apiWorkbenchSliderSetHitInto(buffers.sliderSetHit, rect, beforeRow, sliderTrack);
+      addHit({
+        column: sliderSetHit.column,
+        row: sliderSetHit.row,
+        width: sliderSetHit.width,
+        height: sliderSetHit.height
+      }, {
+        type: "control",
+        id: sliderSetHit.id,
+        action: sliderSetHit.action
+      });
+    } else if (controlRow.id === "combo" && buffers.projectedRows[index + 1]?.id !== "combo") {
+      renderApiWorkbenchWrappedOptions({
+        frame,
+        rect,
+        startRow: row,
+        id: "combo",
+        items: state.combo.items,
+        selectedIndex: state.combo.selectedIndex,
+        activeId: state.activeControl,
+        buffers,
+        theme: theme2,
+        paint: paint2,
+        write: write2,
+        addHit
+      });
+      row += wrappedControlOptionRowCount(state.combo.items, void 0, rect.width - 4);
+    } else if (controlRow.id === "dropdown") {
+      if (state.dropdown.expanded) {
+        result.dropdownOverlay = {
+          kind: "control",
+          coordinate: "workspace",
+          rect: apiWorkbenchDropdownPopoverRect({
+            rect,
+            row,
+            items: state.dropdown.items,
+            label: state.dropdown.label
+          }),
+          items: state.dropdown.items,
+          selectedIndex: state.dropdown.selectedIndex
+        };
+      }
+    } else if (controlRow.id === "stepper") {
+      const stepperHits = apiWorkbenchStepperHitPlacementsInto(
+        buffers.stepperHitPlacements,
+        state.stepper.steps,
+        state.stepper.activeIndex,
+        rect,
+        beforeRow
+      );
+      addControlHits(stepperHits, addHit);
+    }
+  }
+  return result;
+}
+function renderApiWorkbenchTextboxControl(options) {
+  const { frame, rect, row, active: active2, lines, cursor, renderOptions, buffers, theme: theme2, paint: paint2, write: write2, addHit } = options;
+  const projection = apiWorkbenchTextboxProjectionInto(buffers.textboxProjectionRows, {
+    rect,
+    row,
+    lines,
+    visualLines: buffers.textboxVisualLines,
+    cursor,
+    active: active2
+  });
+  if (projection.height <= 0) return projection.nextRow;
+  const commands = apiWorkbenchTextboxRenderCommandsInto(buffers.textboxRenderCommands, projection.rows, renderOptions);
+  for (const command of commands) {
+    write2(
+      frame,
+      command.row,
+      command.column,
+      paint2(command.text, apiWorkbenchTextboxCommandStyle(theme2, command, active2))
+    );
+  }
+  addHit(projection.hit, {
+    type: "control",
+    id: "textbox",
+    action: "focus"
+  });
+  return projection.nextRow;
+}
+function renderApiWorkbenchWrappedOptions(options) {
+  const { frame, rect, startRow, id: id2, items, selectedIndex, activeId, buffers, theme: theme2, paint: paint2, write: write2, addHit } = options;
+  const commands = apiWorkbenchWrappedOptionsRenderCommandsInto(
+    buffers.wrappedOptionRenderCommands,
+    buffers.wrappedOptionHitPlacements,
+    {
+      rect,
+      startRow,
+      id: id2,
+      items,
+      selectedIndex,
+      activeId
+    }
+  );
+  for (const command of commands) {
+    write2(
+      frame,
+      command.row,
+      command.column,
+      paint2(command.text, apiWorkbenchWrappedOptionStyle(theme2, command.active))
+    );
+  }
+  addControlHits(buffers.wrappedOptionHitPlacements, addHit);
+}
+function addControlHits(placements, addHit) {
+  for (let index = 0; index < placements.length; index += 1) {
+    const hit = placements[index];
+    addHit({ column: hit.column, row: hit.row, width: hit.width, height: hit.height }, {
+      type: "control",
+      id: hit.id,
+      action: hit.action,
+      index: hit.index
     });
   }
 }

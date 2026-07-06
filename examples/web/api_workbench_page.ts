@@ -107,10 +107,6 @@ import {
   resolveApiWorkbenchControlKey,
   resolveApiWorkbenchTitlebarHitAction,
 } from "../../app/api_workbench_controls.ts";
-import {
-  ApiWorkbenchControlsViewBufferCache,
-  renderApiWorkbenchControls,
-} from "../../app/api_workbench_controls_view.ts";
 import { renderApiWorkbenchHtmlCssLayout } from "../../app/html_css_layout_view.ts";
 import {
   type ApiWorkbenchDropdownOverlay,
@@ -130,6 +126,8 @@ import {
 } from "../../app/api_workbench_terminal_shell_view.ts";
 import { type HtmlCssLayoutRenderCommand } from "../../app/html_css_layout_view.ts";
 import {
+  ApiWorkbenchControlsViewBufferCache,
+  renderApiWorkbenchControls,
   renderApiWorkbenchDataPanel,
   renderApiWorkbenchExplorerPanel,
   renderApiWorkbenchInspectorPanel,
