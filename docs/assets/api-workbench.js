@@ -12549,9 +12549,9 @@ function layoutWorkbenchControlButtonLine(prefix, value, width) {
   };
   addSegment("prefix", prefix, safeWidth);
   const match = /^(\[[^\]]+\])(.*)$/.exec(value);
-  const buttonText3 = match?.[1] ?? value;
+  const buttonText2 = match?.[1] ?? value;
   const detailText = match?.[2] ?? "";
-  addSegment("button", buttonText3, safeWidth - columnOffset);
+  addSegment("button", buttonText2, safeWidth - columnOffset);
   addSegment("detail", detailText, safeWidth - columnOffset);
   return segments;
 }
@@ -13671,6 +13671,14 @@ function workbenchStatusSnapshotLine(options) {
     width: options.width,
     shortcutProfile: options.shortcutProfile
   });
+}
+function workbenchHeaderHelp(options) {
+  const width = Math.max(0, Math.floor(options.width));
+  if (width < (options.minVisibleWidth ?? 34)) return "";
+  if (width >= 132) return "F10 menu  N new  T theme  G config  C close  Tab focus  M/F/R  Q quit";
+  if (width >= 96) return "F10 menu  N new  G config  Tab  M/F/R  Q quit";
+  if (width >= 56) return "F10 menu  N new  Tab focus  Q quit";
+  return "F10 menu  Q quit";
 }
 function workbenchHelpRows(options = {}) {
   return options.profile === "web" ? webWorkbenchHelpRows() : terminalWorkbenchHelpRows();
@@ -18564,6 +18572,145 @@ function renderApiWorkbenchDataPanel(options) {
   }
 }
 
+// app/api_workbench_chrome_view.ts
+function renderApiWorkbenchChromeHeader(options) {
+  const {
+    frame,
+    width,
+    menuItems,
+    menuActiveIndex,
+    openMenuId,
+    dropdownEntries,
+    headerLayout: headerLayout2,
+    menuHitLayouts,
+    theme: theme2,
+    paint: paint2,
+    write: write2,
+    fillRow,
+    writeButton: writeButton2,
+    addHit
+  } = options;
+  fillRow(frame, 0, theme2.backgroundSoft);
+  fillRow(frame, 1, theme2.panel);
+  write2(
+    frame,
+    0,
+    options.titleColumn ?? 0,
+    paint2(" API WORKBENCH ", { fg: theme2.background, bg: theme2.accent, bold: true })
+  );
+  const closeLabel = width >= 20 || options.reserveCloseWhenHidden ? buttonText("x", { compact: true }) : "";
+  const closeWidth = textWidth(closeLabel);
+  const header = layoutWorkbenchHeaderInto(headerLayout2, {
+    width,
+    menuStart: 17,
+    closeWidth,
+    closeMinWidth: options.closeMinWidth ?? 20,
+    reserveCloseWhenHidden: options.reserveCloseWhenHidden
+  });
+  const hits = layoutWorkbenchMenuBarHitsInto(menuHitLayouts, {
+    column: header.menu.column,
+    row: header.menu.row,
+    width: header.menu.width,
+    items: menuItems,
+    activeIndex: menuActiveIndex,
+    measureText: textWidth
+  });
+  for (const hit of hits) {
+    addHit(hit.rect, { type: "menu", index: hit.index });
+  }
+  write2(
+    frame,
+    header.menu.row,
+    header.menu.column,
+    paint2(fitCellText(renderMenuBar(menuItems, menuActiveIndex), header.menu.width), {
+      fg: theme2.text,
+      bg: theme2.backgroundSoft
+    })
+  );
+  if (header.close) {
+    writeButton2(frame, header.close.row, header.close.column, "x", { compact: true, tone: "danger" });
+    addHit(header.close, { type: "quit" });
+  }
+  const overlay = workbenchStandardTopMenuDropdownOverlayInto({
+    openId: openMenuId,
+    menuStart: header.menu.column,
+    menuItems,
+    menuActiveIndex,
+    maxWidth: width,
+    entries: dropdownEntries,
+    measureText: textWidth
+  });
+  const help = options.showHelp === false ? "" : workbenchHeaderHelp({ width });
+  const helpWidth = textWidth(help);
+  const showHelp = help.length > 0;
+  const helpStart = showHelp ? Math.max(0, width - helpWidth) : width;
+  if (showHelp) {
+    write2(
+      frame,
+      1,
+      helpStart,
+      paint2(help, {
+        fg: theme2.muted,
+        bg: theme2.panel
+      })
+    );
+  }
+  return overlay;
+}
+function renderApiWorkbenchStatus(options) {
+  const { frame, row, width, focus: focus2, themeLabel, tileDensity: tileDensity2, diagnostics, theme: theme2, paint: paint2, write: write2 } = options;
+  const line = workbenchStatusSnapshotLine({
+    snapshot: {
+      focus: focus2,
+      theme: themeLabel,
+      tileDensity: tileDensity2,
+      diagnostics
+    },
+    width,
+    shortcutProfile: options.shortcutProfile
+  });
+  write2(frame, row, 0, paint2(line, { fg: theme2.text, bg: theme2.panelSoft }));
+}
+function renderApiWorkbenchDropdownOverlay(options) {
+  const {
+    frame,
+    overlay,
+    workspaceBounds,
+    screenBounds,
+    workspaceOffsetRows,
+    commands,
+    theme: theme2,
+    paint: paint2,
+    write: write2,
+    fillRect: fillRect2
+  } = options;
+  if (!overlay || overlay.items.length === 0) return;
+  const clip = overlay.coordinate === "workspace" ? workspaceBounds : screenBounds;
+  const rect = overlay.coordinate === "workspace" ? { ...overlay.rect, row: overlay.rect.row + workspaceBounds.row - workspaceOffsetRows } : overlay.rect;
+  if (!intersects(rect, clip)) return;
+  const renderedCommands = workbenchDropdownOverlayRenderCommandsInto(commands, {
+    rect,
+    bounds: clip,
+    items: overlay.items,
+    itemIndexes: overlay.itemIndexes,
+    selectedIndex: overlay.selectedIndex
+  });
+  for (const command of renderedCommands) {
+    if (command.kind === "fill") {
+      fillRect2(frame, command.rect, theme2.panelSoft);
+      continue;
+    }
+    const style2 = command.selected ? { fg: theme2.background, bg: theme2.warn, bold: true } : command.kind === "item" ? { fg: theme2.text, bg: theme2.panelSoft, bold: false } : { fg: theme2.accent, bg: theme2.panelSoft, bold: true };
+    write2(frame, command.rect.row, command.rect.column, paint2(command.text ?? "", style2));
+    if (command.kind === "item" && command.hitRect && command.hitRect.width > 0 && command.hitRect.height > 0) {
+      options.addHit(command.hitRect, dropdownHitAction(overlay, command.itemIndex ?? command.sourceIndex ?? 0));
+    }
+  }
+}
+function dropdownHitAction(overlay, index) {
+  return overlay.kind === "theme" ? { type: "theme", index } : overlay.kind === "newWindow" ? { type: "newWindow", index } : overlay.kind === "workspace" ? { type: "workspace", index } : { type: "control", id: "dropdown", action: "activate", index };
+}
+
 // src/app/workbench_ascii.ts
 var defaultWorkbenchAsciiConfigRows = [
   { kind: "preset", label: "Preset" },
@@ -20136,48 +20283,33 @@ function draw() {
     () => "",
     () => paint(" ".repeat(width), theme().text, theme().background)
   );
-  write(frame, 0, 0, paint(" ".repeat(width), theme().text, theme().backgroundSoft));
-  write(frame, 1, 0, paint(" ".repeat(width), theme().text, theme().panel));
-  write(frame, 0, 1, paint(` API WORKBENCH `, theme().background, theme().accent, true));
-  const closeLabel = buttonText2("x", true);
-  const closeWidth = textWidth(closeLabel);
-  const header = layoutWorkbenchHeaderInto(headerLayout, {
-    width,
-    menuStart: 17,
-    closeWidth,
-    closeMinWidth: 22,
-    reserveCloseWhenHidden: true
-  });
-  renderMenuHits(header.menu.column, header.menu.row, header.menu.width);
-  write(
+  const currentTheme = theme();
+  dropdownOverlay = renderApiWorkbenchChromeHeader({
     frame,
-    header.menu.row,
-    header.menu.column,
-    paint(
-      fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), header.menu.width),
-      theme().text,
-      theme().backgroundSoft
-    )
-  );
-  if (header.close) {
-    writeButton(frame, header.close.row, header.close.column, "x", { compact: true, tone: "danger" });
-    hitTargets.add(header.close, { type: "quit" });
-  }
-  dropdownOverlay = workbenchStandardTopMenuDropdownOverlayInto({
-    openId: topMenus.inspect().openId,
-    menuStart: header.menu.column,
+    width,
     menuItems: menu.items.peek(),
     menuActiveIndex: menu.activeIndex.peek(),
-    maxWidth: width,
-    entries: {
+    openMenuId: topMenus.inspect().openId,
+    dropdownEntries: topMenus.inspect().openId === "theme" ? {
       theme: {
         visible: themeMenuSlice,
         labels: themeLabels,
         selectedIndex: themeIndex.peek(),
         preferredWidth: themeMenuWidth
       }
-    },
-    measureText: textWidth
+    } : {},
+    titleColumn: 1,
+    closeMinWidth: 22,
+    reserveCloseWhenHidden: true,
+    showHelp: false,
+    headerLayout,
+    menuHitLayouts: menuBarHitLayouts,
+    theme: currentTheme,
+    paint: (value, style2) => paint(value, style2.fg, style2.bg, style2.bold),
+    write,
+    fillRow: (target, row, bg) => write(target, row, 0, paint(" ".repeat(width), currentTheme.text, bg)),
+    writeButton,
+    addHit: (rect, action) => hitTargets.add(rect, action)
   });
   renderMobileCommandStrip(frame);
   const body = { column: 1, row: 3, width: Math.max(10, width - 2), height: Math.max(6, height - 5) };
@@ -20230,26 +20362,22 @@ function draw() {
   blitWorkspace(frame, virtual, body, offset, layout.bounds.width);
   renderWorkspaceScrollbar(frame, body);
   maximized.peek() ? renderWindowTabs(frame) : renderShelf(frame);
-  renderDropdownOverlay(frame);
+  renderDropdownOverlay(frame, body, offset);
   renderThreeConfigModal(frame);
   renderModalOverlay(frame);
-  frame[height - 1] = fit(
-    paint(
-      workbenchStatusSnapshotLine({
-        snapshot: {
-          focus: active.peek(),
-          theme: theme().label,
-          tileDensity: tileDensity.peek(),
-          diagnostics: formatWorkbenchDiagnosticStatus(webDiagnostics)
-        },
-        width,
-        shortcutProfile: "web"
-      }),
-      theme().text,
-      theme().panelSoft
-    ),
-    width
-  );
+  renderApiWorkbenchStatus({
+    frame,
+    row: height - 1,
+    width,
+    focus: active.peek(),
+    themeLabel: currentTheme.label,
+    tileDensity: tileDensity.peek(),
+    diagnostics: formatWorkbenchDiagnosticStatus(webDiagnostics),
+    shortcutProfile: "web",
+    theme: currentTheme,
+    paint: (value, style2) => paint(value, style2.fg, style2.bg, style2.bold),
+    write
+  });
   updateWorkbenchStringLineSignals(lineSignals, frame, width, height);
 }
 function renderShelf(frame) {
@@ -20275,19 +20403,6 @@ function renderShelf(frame) {
       });
       hitTargets.add(command.hitRect, { type: "restore", id: command.id });
     }
-  }
-}
-function renderMenuHits(column, row, width) {
-  const hits = layoutWorkbenchMenuBarHitsInto(menuBarHitLayouts, {
-    column,
-    row,
-    width,
-    items: menu.items.peek(),
-    activeIndex: menu.activeIndex.peek(),
-    measureText: textWidth
-  });
-  for (const hit of hits) {
-    hitTargets.add(hit.rect, { type: "menu", index: hit.index });
   }
 }
 function renderMobileCommandStrip(frame) {
@@ -21178,38 +21293,22 @@ function renderWorkspaceScrollbar(frame, bounds) {
     }
   }
 }
-function renderDropdownOverlay(frame) {
-  const overlay = dropdownOverlay;
-  if (!overlay || overlay.items.length === 0) return;
-  const commands = workbenchDropdownOverlayRenderCommandsInto(dropdownOverlayRenderCommands, {
-    rect: overlay.rect,
-    bounds: { column: 0, row: 0, width: cols(), height: rowsCount() },
-    items: overlay.items,
-    selectedIndex: overlay.selectedIndex
+function renderDropdownOverlay(frame, workspaceBounds, workspaceOffsetRows) {
+  renderApiWorkbenchDropdownOverlay({
+    frame,
+    overlay: dropdownOverlay,
+    workspaceBounds,
+    screenBounds: { column: 0, row: 0, width: cols(), height: rowsCount() },
+    workspaceOffsetRows,
+    commands: dropdownOverlayRenderCommands,
+    theme: theme(),
+    paint: (value, style2) => paint(value, style2.fg, style2.bg, style2.bold),
+    write,
+    fillRect,
+    addHit: (rect, action) => {
+      if (action.type === "theme" || action.type === "control") hitTargets.add(rect, action);
+    }
   });
-  for (const command of commands) {
-    if (command.kind === "fill") {
-      fillRect(frame, command.rect, theme().panelSoft);
-      continue;
-    }
-    write(
-      frame,
-      command.rect.row,
-      command.rect.column,
-      paint(
-        command.text ?? "",
-        command.selected ? contrastText(theme().warn, theme().background, theme().text) : command.kind === "item" ? theme().text : theme().accent,
-        command.selected ? theme().warn : theme().panelSoft,
-        command.selected || command.kind !== "item"
-      )
-    );
-    if (command.kind === "item" && command.hitRect) {
-      hitTargets.add(
-        command.hitRect,
-        overlay.kind === "theme" ? { type: "theme", index: command.itemIndex ?? command.sourceIndex ?? 0 } : { type: "control", id: "dropdown", action: "activate", index: command.itemIndex ?? command.sourceIndex }
-      );
-    }
-  }
 }
 function renderThreeConfigModal(frame) {
   if (!threeConfigOpen.peek()) return;
@@ -21621,9 +21720,6 @@ function drawFrame(frame, rect, title, selected) {
       );
     }
   }
-}
-function buttonText2(label, compact2 = false) {
-  return buttonText(label, { compact: compact2 });
 }
 function writeButton(frame, row, column, label, options = {}) {
   return framePainter.writeButton(frame, row, column, label, options);

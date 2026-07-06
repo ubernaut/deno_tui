@@ -15,7 +15,11 @@ import {
   type WorkbenchDropdownOverlayRenderCommand,
   workbenchDropdownOverlayRenderCommandsInto,
 } from "../src/app/workbench_overlay.ts";
-import { workbenchHeaderHelp, workbenchStatusSnapshotLine } from "../src/app/workbench_status.ts";
+import {
+  workbenchHeaderHelp,
+  type WorkbenchStatusShortcutProfile,
+  workbenchStatusSnapshotLine,
+} from "../src/app/workbench_status.ts";
 import { intersects } from "../src/app/hit_targets.ts";
 import type { Rectangle } from "../src/types.ts";
 import { textWidth } from "../src/utils/strings.ts";
@@ -44,21 +48,25 @@ export type ApiWorkbenchDropdownOverlayHitAction =
   | { type: "workspace"; index: number }
   | { type: "control"; id: "dropdown"; action: "activate"; index: number };
 
-export interface ApiWorkbenchChromeHeaderRenderOptions {
-  frame: WorkbenchFrame;
+export interface ApiWorkbenchChromeHeaderRenderOptions<Frame = WorkbenchFrame> {
+  frame: Frame;
   width: number;
   menuItems: readonly WorkbenchMenuBarItemShape[];
   menuActiveIndex: number;
   openMenuId: WorkbenchStandardTopMenuId | null;
   dropdownEntries: Partial<Record<WorkbenchStandardTopMenuId, WorkbenchStandardTopMenuDropdownEntry>>;
+  titleColumn?: number;
+  closeMinWidth?: number;
+  reserveCloseWhenHidden?: boolean;
+  showHelp?: boolean;
   headerLayout: WorkbenchHeaderLayout;
   menuHitLayouts: WorkbenchMenuBarHitLayout[];
   theme: ApiWorkbenchThemeSpec;
   paint: (text: string, style: ApiWorkbenchPaintStyle) => string;
-  write: (frame: WorkbenchFrame, row: number, column: number, value: string) => void;
-  fillRow: (frame: WorkbenchFrame, row: number, background: string) => void;
+  write: (frame: Frame, row: number, column: number, value: string) => void;
+  fillRow: (frame: Frame, row: number, background: string) => void;
   writeButton: (
-    frame: WorkbenchFrame,
+    frame: Frame,
     row: number,
     column: number,
     label: string,
@@ -67,21 +75,22 @@ export interface ApiWorkbenchChromeHeaderRenderOptions {
   addHit: (rect: Rectangle, action: ApiWorkbenchChromeHeaderHitAction) => void;
 }
 
-export interface ApiWorkbenchStatusRenderOptions {
-  frame: WorkbenchFrame;
+export interface ApiWorkbenchStatusRenderOptions<Frame = WorkbenchFrame> {
+  frame: Frame;
   row: number;
   width: number;
   focus: string;
   themeLabel: string;
   tileDensity: number;
   diagnostics: string;
+  shortcutProfile?: WorkbenchStatusShortcutProfile;
   theme: ApiWorkbenchThemeSpec;
   paint: (text: string, style: ApiWorkbenchPaintStyle) => string;
-  write: (frame: WorkbenchFrame, row: number, column: number, value: string) => void;
+  write: (frame: Frame, row: number, column: number, value: string) => void;
 }
 
-export interface ApiWorkbenchDropdownOverlayRenderOptions {
-  frame: WorkbenchFrame;
+export interface ApiWorkbenchDropdownOverlayRenderOptions<Frame = WorkbenchFrame> {
+  frame: Frame;
   overlay: ApiWorkbenchDropdownOverlay | null;
   workspaceBounds: Rectangle;
   screenBounds: Rectangle;
@@ -89,14 +98,14 @@ export interface ApiWorkbenchDropdownOverlayRenderOptions {
   commands: WorkbenchDropdownOverlayRenderCommand[];
   theme: ApiWorkbenchThemeSpec;
   paint: (text: string, style: ApiWorkbenchPaintStyle) => string;
-  write: (frame: WorkbenchFrame, row: number, column: number, value: string) => void;
-  fillRect: (frame: WorkbenchFrame, rect: Rectangle, background: string) => void;
+  write: (frame: Frame, row: number, column: number, value: string) => void;
+  fillRect: (frame: Frame, rect: Rectangle, background: string) => void;
   addHit: (rect: Rectangle, action: ApiWorkbenchDropdownOverlayHitAction) => void;
 }
 
 /** Renders the top workbench chrome and returns the active top-menu overlay, if any. */
-export function renderApiWorkbenchChromeHeader(
-  options: ApiWorkbenchChromeHeaderRenderOptions,
+export function renderApiWorkbenchChromeHeader<Frame = WorkbenchFrame>(
+  options: ApiWorkbenchChromeHeaderRenderOptions<Frame>,
 ): ApiWorkbenchDropdownOverlay | null {
   const {
     frame,
@@ -116,11 +125,22 @@ export function renderApiWorkbenchChromeHeader(
   } = options;
   fillRow(frame, 0, theme.backgroundSoft);
   fillRow(frame, 1, theme.panel);
-  write(frame, 0, 0, paint(" API WORKBENCH ", { fg: theme.background, bg: theme.accent, bold: true }));
+  write(
+    frame,
+    0,
+    options.titleColumn ?? 0,
+    paint(" API WORKBENCH ", { fg: theme.background, bg: theme.accent, bold: true }),
+  );
 
-  const closeLabel = width >= 20 ? buttonText("x", { compact: true }) : "";
+  const closeLabel = width >= 20 || options.reserveCloseWhenHidden ? buttonText("x", { compact: true }) : "";
   const closeWidth = textWidth(closeLabel);
-  const header = layoutWorkbenchHeaderInto(headerLayout, { width, menuStart: 17, closeWidth, closeMinWidth: 20 });
+  const header = layoutWorkbenchHeaderInto(headerLayout, {
+    width,
+    menuStart: 17,
+    closeWidth,
+    closeMinWidth: options.closeMinWidth ?? 20,
+    reserveCloseWhenHidden: options.reserveCloseWhenHidden,
+  });
   const hits = layoutWorkbenchMenuBarHitsInto(menuHitLayouts, {
     column: header.menu.column,
     row: header.menu.row,
@@ -156,7 +176,7 @@ export function renderApiWorkbenchChromeHeader(
     entries: dropdownEntries,
     measureText: textWidth,
   });
-  const help = workbenchHeaderHelp({ width });
+  const help = options.showHelp === false ? "" : workbenchHeaderHelp({ width });
   const helpWidth = textWidth(help);
   const showHelp = help.length > 0;
   const helpStart = showHelp ? Math.max(0, width - helpWidth) : width;
@@ -175,7 +195,9 @@ export function renderApiWorkbenchChromeHeader(
 }
 
 /** Renders the bottom status line for the current workbench snapshot. */
-export function renderApiWorkbenchStatus(options: ApiWorkbenchStatusRenderOptions): void {
+export function renderApiWorkbenchStatus<Frame = WorkbenchFrame>(
+  options: ApiWorkbenchStatusRenderOptions<Frame>,
+): void {
   const { frame, row, width, focus, themeLabel, tileDensity, diagnostics, theme, paint, write } = options;
   const line = workbenchStatusSnapshotLine({
     snapshot: {
@@ -185,12 +207,15 @@ export function renderApiWorkbenchStatus(options: ApiWorkbenchStatusRenderOption
       diagnostics,
     },
     width,
+    shortcutProfile: options.shortcutProfile,
   });
   write(frame, row, 0, paint(line, { fg: theme.text, bg: theme.panelSoft }));
 }
 
 /** Renders the active top-menu or control dropdown overlay and registers item hits. */
-export function renderApiWorkbenchDropdownOverlay(options: ApiWorkbenchDropdownOverlayRenderOptions): void {
+export function renderApiWorkbenchDropdownOverlay<Frame = WorkbenchFrame>(
+  options: ApiWorkbenchDropdownOverlayRenderOptions<Frame>,
+): void {
   const {
     frame,
     overlay,

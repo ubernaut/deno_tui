@@ -4,7 +4,6 @@ import {
   appendBoundedWorkbenchLogRow,
   BoxObject,
   ButtonController,
-  buttonText as formatButtonText,
   CheckBoxController,
   clampWorkbenchTileDensity,
   ComboBoxController,
@@ -27,8 +26,6 @@ import {
   initialWorkbenchDiagnosticLogRows,
   InputController,
   layoutWorkbenchButtonRowInto,
-  layoutWorkbenchHeaderInto,
-  layoutWorkbenchMenuBarHitsInto,
   layoutWorkbenchShelfInto,
   layoutWorkbenchTabsInto,
   layoutWorkbenchTitlebarInto,
@@ -44,7 +41,6 @@ import {
   ProgressBarController,
   projectWorkbenchButtonCommand,
   RadioGroupController,
-  renderMenuBar,
   resolveWorkbenchScreenDropdownKey,
   ScrollAreaController,
   scrollbarGlyph,
@@ -60,14 +56,12 @@ import {
   TextBoxController,
   TextObject,
   type TextRectangle,
-  textWidth,
   translateHitTargets,
   updateWorkbenchStringLineSignals,
   workbenchAdaptiveWindowLayout,
   workbenchButtonRowRenderCommandsInto,
   type WorkbenchButtonTone,
   type WorkbenchDropdownOverlayRenderCommand,
-  workbenchDropdownOverlayRenderCommandsInto,
   workbenchEmptyWorkspaceMessage,
   type WorkbenchFrameBoxLine,
   type WorkbenchHeaderLayout,
@@ -76,8 +70,6 @@ import {
   type WorkbenchScrollbarRenderCommand,
   workbenchShelfEntriesInto,
   workbenchShelfRenderCommandsInto,
-  workbenchStandardTopMenuDropdownOverlayInto,
-  workbenchStatusSnapshotLine,
   workbenchTabEntriesInto,
   workbenchTerminalCopyRowsInto,
   type WorkbenchTerminalPaneProjection,
@@ -138,6 +130,12 @@ import {
   renderApiWorkbenchExplorerPanel,
   renderApiWorkbenchInspectorPanel,
 } from "../../app/api_workbench_builtin_panels_view.ts";
+import {
+  type ApiWorkbenchDropdownOverlay,
+  renderApiWorkbenchChromeHeader,
+  renderApiWorkbenchDropdownOverlay,
+  renderApiWorkbenchStatus,
+} from "../../app/api_workbench_chrome_view.ts";
 import {
   renderApiWorkbenchModalOverlay,
   renderApiWorkbenchThreeConfigModal,
@@ -236,15 +234,6 @@ type MobileAction = WorkbenchMobileCommandAction;
 type WebTerminalAction = WorkbenchTerminalToolbarAction;
 type AsciiOptions = ThreeAsciiConfigOptions;
 type AsciiConfigRow = WorkbenchAsciiConfigRow;
-
-interface DropdownOverlay {
-  kind: "theme" | "newWindow" | "workspace" | "control";
-  coordinate?: "screen" | "workspace";
-  rect: Rectangle;
-  items: string[];
-  itemIndexes?: number[];
-  selectedIndex?: number;
-}
 
 type ThemeSpec = ApiWorkbenchThemeSpec;
 
@@ -397,7 +386,7 @@ const controlViewBuffers = new ApiWorkbenchControlsViewBufferCache();
 const modalBuffers = new WorkbenchModalBufferCache<number>();
 const dropdownOverlayRenderCommands: WorkbenchDropdownOverlayRenderCommand[] = [];
 const themeMenuSlice: WorkbenchTopMenuVisibleSlice = { items: [], indexes: [] };
-let dropdownOverlay: DropdownOverlay | null = null;
+let dropdownOverlay: ApiWorkbenchDropdownOverlay | null = null;
 let pointerDrag: {
   x: number;
   y: number;
@@ -676,48 +665,35 @@ function draw(): void {
     () => "",
     () => paint(" ".repeat(width), theme().text, theme().background),
   );
-  write(frame, 0, 0, paint(" ".repeat(width), theme().text, theme().backgroundSoft));
-  write(frame, 1, 0, paint(" ".repeat(width), theme().text, theme().panel));
-  write(frame, 0, 1, paint(` API WORKBENCH `, theme().background, theme().accent, true));
-  const closeLabel = buttonText("x", true);
-  const closeWidth = textWidth(closeLabel);
-  const header = layoutWorkbenchHeaderInto(headerLayout, {
-    width,
-    menuStart: 17,
-    closeWidth,
-    closeMinWidth: 22,
-    reserveCloseWhenHidden: true,
-  });
-  renderMenuHits(header.menu.column, header.menu.row, header.menu.width);
-  write(
+  const currentTheme = theme();
+  dropdownOverlay = renderApiWorkbenchChromeHeader<string[]>({
     frame,
-    header.menu.row,
-    header.menu.column,
-    paint(
-      fit(renderMenuBar(menu.items.peek(), menu.activeIndex.peek()), header.menu.width),
-      theme().text,
-      theme().backgroundSoft,
-    ),
-  );
-  if (header.close) {
-    writeButton(frame, header.close.row, header.close.column, "x", { compact: true, tone: "danger" });
-    hitTargets.add(header.close, { type: "quit" });
-  }
-  dropdownOverlay = workbenchStandardTopMenuDropdownOverlayInto({
-    openId: topMenus.inspect().openId,
-    menuStart: header.menu.column,
+    width,
     menuItems: menu.items.peek(),
     menuActiveIndex: menu.activeIndex.peek(),
-    maxWidth: width,
-    entries: {
-      theme: {
-        visible: themeMenuSlice,
-        labels: themeLabels,
-        selectedIndex: themeIndex.peek(),
-        preferredWidth: themeMenuWidth,
-      },
-    },
-    measureText: textWidth,
+    openMenuId: topMenus.inspect().openId,
+    dropdownEntries: topMenus.inspect().openId === "theme"
+      ? {
+        theme: {
+          visible: themeMenuSlice,
+          labels: themeLabels,
+          selectedIndex: themeIndex.peek(),
+          preferredWidth: themeMenuWidth,
+        },
+      }
+      : {},
+    titleColumn: 1,
+    closeMinWidth: 22,
+    reserveCloseWhenHidden: true,
+    showHelp: false,
+    headerLayout,
+    menuHitLayouts: menuBarHitLayouts,
+    theme: currentTheme,
+    paint: (value, style) => paint(value, style.fg, style.bg, style.bold),
+    write,
+    fillRow: (target, row, bg) => write(target, row, 0, paint(" ".repeat(width), currentTheme.text, bg)),
+    writeButton,
+    addHit: (rect, action) => hitTargets.add(rect, action),
   });
   renderMobileCommandStrip(frame);
   const body = { column: 1, row: 3, width: Math.max(10, width - 2), height: Math.max(6, height - 5) };
@@ -770,26 +746,22 @@ function draw(): void {
   blitWorkspace(frame, virtual, body, offset, layout.bounds.width);
   renderWorkspaceScrollbar(frame, body);
   maximized.peek() ? renderWindowTabs(frame) : renderShelf(frame);
-  renderDropdownOverlay(frame);
+  renderDropdownOverlay(frame, body, offset);
   renderThreeConfigModal(frame);
   renderModalOverlay(frame);
-  frame[height - 1] = fit(
-    paint(
-      workbenchStatusSnapshotLine({
-        snapshot: {
-          focus: active.peek(),
-          theme: theme().label,
-          tileDensity: tileDensity.peek(),
-          diagnostics: formatWorkbenchDiagnosticStatus(webDiagnostics),
-        },
-        width,
-        shortcutProfile: "web",
-      }),
-      theme().text,
-      theme().panelSoft,
-    ),
+  renderApiWorkbenchStatus<string[]>({
+    frame,
+    row: height - 1,
     width,
-  );
+    focus: active.peek(),
+    themeLabel: currentTheme.label,
+    tileDensity: tileDensity.peek(),
+    diagnostics: formatWorkbenchDiagnosticStatus(webDiagnostics),
+    shortcutProfile: "web",
+    theme: currentTheme,
+    paint: (value, style) => paint(value, style.fg, style.bg, style.bold),
+    write,
+  });
   updateWorkbenchStringLineSignals(lineSignals, frame, width, height);
 }
 
@@ -816,20 +788,6 @@ function renderShelf(frame: string[]): void {
       });
       hitTargets.add(command.hitRect, { type: "restore", id: command.id });
     }
-  }
-}
-
-function renderMenuHits(column: number, row: number, width: number): void {
-  const hits = layoutWorkbenchMenuBarHitsInto(menuBarHitLayouts, {
-    column,
-    row,
-    width,
-    items: menu.items.peek(),
-    activeIndex: menu.activeIndex.peek(),
-    measureText: textWidth,
-  });
-  for (const hit of hits) {
-    hitTargets.add(hit.rect, { type: "menu", index: hit.index });
   }
 }
 
@@ -1801,44 +1759,22 @@ function renderWorkspaceScrollbar(frame: string[], bounds: Rectangle): void {
   }
 }
 
-function renderDropdownOverlay(frame: string[]): void {
-  const overlay = dropdownOverlay;
-  if (!overlay || overlay.items.length === 0) return;
-  const commands = workbenchDropdownOverlayRenderCommandsInto(dropdownOverlayRenderCommands, {
-    rect: overlay.rect,
-    bounds: { column: 0, row: 0, width: cols(), height: rowsCount() },
-    items: overlay.items,
-    selectedIndex: overlay.selectedIndex,
+function renderDropdownOverlay(frame: string[], workspaceBounds: Rectangle, workspaceOffsetRows: number): void {
+  renderApiWorkbenchDropdownOverlay<string[]>({
+    frame,
+    overlay: dropdownOverlay,
+    workspaceBounds,
+    screenBounds: { column: 0, row: 0, width: cols(), height: rowsCount() },
+    workspaceOffsetRows,
+    commands: dropdownOverlayRenderCommands,
+    theme: theme(),
+    paint: (value, style) => paint(value, style.fg, style.bg, style.bold),
+    write,
+    fillRect,
+    addHit: (rect, action) => {
+      if (action.type === "theme" || action.type === "control") hitTargets.add(rect, action);
+    },
   });
-  for (const command of commands) {
-    if (command.kind === "fill") {
-      fillRect(frame, command.rect, theme().panelSoft);
-      continue;
-    }
-    write(
-      frame,
-      command.rect.row,
-      command.rect.column,
-      paint(
-        command.text ?? "",
-        command.selected
-          ? contrastText(theme().warn, theme().background, theme().text)
-          : command.kind === "item"
-          ? theme().text
-          : theme().accent,
-        command.selected ? theme().warn : theme().panelSoft,
-        command.selected || command.kind !== "item",
-      ),
-    );
-    if (command.kind === "item" && command.hitRect) {
-      hitTargets.add(
-        command.hitRect,
-        overlay.kind === "theme"
-          ? { type: "theme", index: command.itemIndex ?? command.sourceIndex ?? 0 }
-          : { type: "control", id: "dropdown", action: "activate", index: command.itemIndex ?? command.sourceIndex },
-      );
-    }
-  }
 }
 
 function renderThreeConfigModal(frame: string[]): void {
@@ -2288,10 +2224,6 @@ function drawFrame(frame: string[], rect: Rectangle, title: string, selected: bo
       );
     }
   }
-}
-
-function buttonText(label: string, compact = false): string {
-  return formatButtonText(label, { compact });
 }
 
 function writeButton(
