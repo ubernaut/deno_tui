@@ -18,6 +18,7 @@ export interface WorkbenchFullscreenVisualSmokeOptions {
   minTruecolorColumns?: number;
   dumpScreen?: boolean;
   retryTransientResize?: boolean;
+  requireRenderer?: boolean;
 }
 
 const DEFAULT_COMMAND = ["deno", "task", "api-workbench"] as const;
@@ -46,6 +47,10 @@ export function parseWorkbenchFullscreenVisualSmokeArgs(
     const [name, inlineValue] = arg.split("=", 2);
     if (name === "--dump-screen") {
       options.dumpScreen = inlineValue === undefined ? true : inlineValue !== "false";
+      continue;
+    }
+    if (name === "--require-renderer") {
+      options.requireRenderer = inlineValue === undefined ? true : inlineValue !== "false";
       continue;
     }
     const value = inlineValue ?? args[index + 1];
@@ -87,6 +92,7 @@ export async function runWorkbenchFullscreenVisualSmoke(
     minCells: options.minCells,
     minTruecolorRows: options.minTruecolorRows,
     minTruecolorColumns: options.minTruecolorColumns,
+    requireRenderer: options.requireRenderer,
     retryTransientResize: options.retryTransientResize ?? true,
   });
 }
@@ -102,7 +108,8 @@ async function runWorkbenchFullscreenVisualSmokeCapture(
     & Pick<
       WorkbenchFullscreenVisualSmokeOptions,
       "resizeColumns" | "resizeRows" | "minCells" | "minTruecolorRows" | "minTruecolorColumns"
-    >,
+    >
+    & { requireRenderer?: boolean },
 ): Promise<WorkbenchFullscreenVisualSmokeResult> {
   const hasResize = options.resizeColumns !== undefined && options.resizeRows !== undefined;
   const maxAttempts = hasResize && options.retryTransientResize ? 2 : 1;
@@ -116,6 +123,7 @@ async function runWorkbenchFullscreenVisualSmokeCapture(
       minCells: options.minCells,
       minTruecolorRows: options.minTruecolorRows,
       minTruecolorColumns: options.minTruecolorColumns,
+      requireRenderer: options.requireRenderer,
     });
     if (result.passed || !isTransientWorkbenchThreeResizeResult(result)) return result;
   }

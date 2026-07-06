@@ -81,7 +81,7 @@ const FORBIDDEN_TOKENS: readonly string[] = ["ReferenceError", "RangeError", "Ma
 const FULLSCREEN_THREE_CELL_PATTERN = /(\d+)c(?: cap (\d+)c)?/;
 const THREE_RENDERED_CELL_PATTERN = /(\d+)c/;
 const THREE_RENDERER_UNAVAILABLE_PATTERN =
-  /ASCII RENDERER OFFLINE|ASCII RENDERER UNAVAILABLE|THREE ASCII GPU READBACK UNAVAILABLE|renderer unavailable/i;
+  /ASCII RENDERER OFFLINE|ASCII RENDERER UNAVAILABLE|THREE ASCII GPU READBACK UNAVAILABLE|renderer unavailable|WebGPU\/WebGL backend unavailable|text preview active/i;
 
 if (import.meta.main) {
   const options = parseWorkbenchVisualSmokeArgs(Deno.args);
@@ -289,10 +289,8 @@ export function inspectWorkbenchVisualSmokeOutput(
       missing.push(`three pane visible columns >= ${minVisibleColumns}`);
     }
     if (!rendererUnavailable && threeRenderedCells > 0) {
-      const renderedRows = Math.max(threePane.bodyRows, threePane.truecolorRows);
-      const visibleRenderArea = renderedRows * threePane.bodyColumns;
-      const minRenderedCells = Math.max(1, Math.floor(visibleRenderArea * 0.75));
-      if (visibleRenderArea >= 1_000 && threeRenderedCells < minRenderedCells) {
+      const minRenderedCells = paneBodyRenderCellMinimum(threePane);
+      if (minRenderedCells >= 1_000 && threeRenderedCells < minRenderedCells) {
         missing.push(`three rendered cells >= ${minRenderedCells}`);
       }
     }
@@ -324,6 +322,7 @@ export function inspectWorkbenchFullscreenVisualSmokeOutput(
     minCells?: number;
     minTruecolorRows?: number;
     minTruecolorColumns?: number;
+    requireRenderer?: boolean;
   },
 ): WorkbenchFullscreenVisualSmokeResult {
   const base = inspectWorkbenchVisualSmokeOutput(output, options);
@@ -340,7 +339,10 @@ export function inspectWorkbenchFullscreenVisualSmokeOutput(
   const minCells = Math.max(1, Math.floor(options.minCells ?? defaultMinCells), fullscreenBodyMinCells);
   const minTruecolorRows = Math.max(1, Math.floor(options.minTruecolorRows ?? Math.min(12, options.rows)));
   const minTruecolorColumns = Math.max(1, Math.floor(options.minTruecolorColumns ?? options.columns * 0.75));
-  const rendererUnavailable = base.screenLines.join("\n").includes("UNAVAILABLE");
+  const rendererUnavailable = THREE_RENDERER_UNAVAILABLE_PATTERN.test(base.screenLines.join("\n"));
+  if (options.requireRenderer && rendererUnavailable) {
+    missing.push("three renderer telemetry");
+  }
   const bodyVisible = threeBodyVisibleCoverage(base.screenLines);
   if (!rendererUnavailable && fullscreenCells < minCells) missing.push(`fullscreen three cells >= ${minCells}`);
   if (truecolorBackgroundRows < minTruecolorRows) missing.push(`truecolor rows >= ${minTruecolorRows}`);
@@ -388,6 +390,10 @@ export function inspectWorkbenchFullscreenVisualSmokeOutput(
 }
 
 function fullscreenBodyRenderCellMinimum(coverage: WorkbenchThreePaneCoverage | undefined): number {
+  return paneBodyRenderCellMinimum(coverage);
+}
+
+function paneBodyRenderCellMinimum(coverage: WorkbenchThreePaneCoverage | undefined): number {
   if (!coverage?.found || coverage.bodyRows <= 0 || coverage.bodyColumns <= 0) return 0;
   const sceneRows = Math.max(1, coverage.bodyRows - 1);
   return sceneRows * coverage.bodyColumns;

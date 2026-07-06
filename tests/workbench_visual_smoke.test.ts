@@ -445,6 +445,17 @@ Deno.test("workbench fullscreen visual smoke accepts full-pane offline renderer 
   assertEquals(result.fullscreenCells, 0);
   assertEquals(result.bodyTruecolorBackgroundRows, 3);
   assertEquals(result.bodyTruecolorBackgroundMaxColumns, 72);
+
+  const required = inspectWorkbenchFullscreenVisualSmokeOutput(output, {
+    columns: 80,
+    rows: 14,
+    minCells: 1800,
+    minTruecolorRows: 3,
+    minTruecolorColumns: 60,
+    requireRenderer: true,
+  });
+  assertEquals(required.passed, false);
+  assertEquals(required.missing, ["three renderer telemetry"]);
 });
 
 Deno.test("workbench visual smoke transient resize classifier only retries Three warmup evidence", () => {
@@ -490,6 +501,7 @@ Deno.test("workbench fullscreen visual smoke parser accepts resize flags", () =>
       "--min-cells",
       "1800",
       "--min-truecolor-rows=24",
+      "--require-renderer",
     ]),
     {
       columns: 112,
@@ -498,6 +510,7 @@ Deno.test("workbench fullscreen visual smoke parser accepts resize flags", () =>
       resizeRows: 48,
       minCells: 1800,
       minTruecolorRows: 24,
+      requireRenderer: true,
     },
   );
 });
