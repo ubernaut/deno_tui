@@ -516,24 +516,35 @@ export function scaleThreePanelGridToSize(
   columns: number,
   rows: number,
 ): string[][] {
+  return scaleThreePanelGridToSizeInto([], grid, columns, rows);
+}
+
+/** Scales a capped Three panel renderer grid into caller-owned storage. */
+export function scaleThreePanelGridToSizeInto(
+  target: string[][],
+  grid: readonly (readonly string[] | undefined)[],
+  columns: number,
+  rows: number,
+): string[][] {
   const targetColumns = Math.max(1, Math.floor(columns));
   const targetRows = Math.max(1, Math.floor(rows));
   const sourceRows = grid.length;
   const sourceColumns = grid[0]?.length ?? 0;
-  const scaled = new Array<string[]>(targetRows);
+  target.length = targetRows;
   if (sourceRows === targetRows && sourceColumns === targetColumns) {
     for (let row = 0; row < targetRows; row += 1) {
       const source = grid[row] ?? [];
-      const target = new Array<string>(targetColumns);
+      const targetRow = target[row] ?? [];
+      targetRow.length = targetColumns;
       for (let column = 0; column < targetColumns; column += 1) {
-        target[column] = source[column] ?? " ";
+        targetRow[column] = source[column] ?? " ";
       }
-      scaled[row] = target;
+      target[row] = targetRow;
     }
-    return scaled;
+    return target;
   }
   if (sourceRows <= 0 || sourceColumns <= 0) {
-    return threePanelBlankGrid(targetColumns, targetRows);
+    return threePanelBlankGridInto(target, targetColumns, targetRows);
   }
 
   let lastSourceRow = -1;
@@ -541,20 +552,43 @@ export function scaleThreePanelGridToSize(
   for (let row = 0; row < targetRows; row += 1) {
     const sourceRow = Math.min(sourceRows - 1, Math.floor((row * sourceRows) / targetRows));
     if (sourceRow === lastSourceRow && lastProjectedRow) {
-      scaled[row] = lastProjectedRow.slice();
+      const targetRow = target[row] ?? [];
+      targetRow.length = targetColumns;
+      copyThreePanelGridRow(targetRow, lastProjectedRow, targetColumns);
+      target[row] = targetRow;
       continue;
     }
     const source = grid[sourceRow] ?? [];
-    const target = new Array<string>(targetColumns);
+    const targetRow = target[row] ?? [];
+    targetRow.length = targetColumns;
     for (let column = 0; column < targetColumns; column += 1) {
       const sourceColumn = Math.min(sourceColumns - 1, Math.floor((column * sourceColumns) / targetColumns));
-      target[column] = source[sourceColumn] ?? " ";
+      targetRow[column] = source[sourceColumn] ?? " ";
     }
-    scaled[row] = target;
+    target[row] = targetRow;
     lastSourceRow = sourceRow;
-    lastProjectedRow = target;
+    lastProjectedRow = targetRow;
   }
-  return scaled;
+  return target;
+}
+
+function threePanelBlankGridInto(target: string[][], columns: number, rows: number): string[][] {
+  target.length = rows;
+  for (let row = 0; row < rows; row += 1) {
+    const targetRow = target[row] ?? [];
+    targetRow.length = columns;
+    for (let column = 0; column < columns; column += 1) {
+      targetRow[column] = " ";
+    }
+    target[row] = targetRow;
+  }
+  return target;
+}
+
+function copyThreePanelGridRow(target: string[], source: readonly string[], columns: number): void {
+  for (let column = 0; column < columns; column += 1) {
+    target[column] = source[column] ?? " ";
+  }
 }
 
 export function fingerprintThreePanelGrid(grid: readonly (readonly string[] | undefined)[]): string {

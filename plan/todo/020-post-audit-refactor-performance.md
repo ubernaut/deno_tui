@@ -1269,3 +1269,7 @@ performance, shared terminal/web workbench projections, and oversized module red
   renderers repaint against the new screen instead of diffing from stale coordinates. A focused canvas regression now
   proves shrink redraws only emit coordinates inside the resized surface; workbench grow/shrink visual smokes and the
   Three live resize probe passed, followed by full `deno task health`.
+- Added retained-buffer scaling for Three panel display grids and routed `ThreePanelFrameView` through it, avoiding a
+  fresh full-display grid allocation on every capped renderer frame. The allocating wrapper remains compatible, while
+  the new `render/three-panel-grid-scale-into-220x70` benchmark measured about `0.051ms` versus `0.091ms` for the
+  allocating scaler in the full health run; visual resize smoke, live resize probe, and `deno task health` passed.

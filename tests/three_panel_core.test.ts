@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertNotEquals, assertNotStrictEquals } from "./deps.ts";
+import { assert, assertEquals, assertNotEquals, assertNotStrictEquals, assertStrictEquals } from "./deps.ts";
 import { assertRejects } from "./deps.ts";
 import { createNeonThreeScene } from "../app/neon_three.ts";
 import { nextFrameDelay } from "../src/runtime/render_loop.ts";
@@ -30,6 +30,7 @@ import {
   hasThreePanelGridCells,
   resolveThreePanelRendererStateUpdate,
   scaleThreePanelGridToSize,
+  scaleThreePanelGridToSizeInto,
   threePanelAdaptiveRenderCellsDiagnostic,
   threePanelAsciiEffectOptionsEqual,
   threePanelBlankGrid,
@@ -736,6 +737,29 @@ Deno.test("scaleThreePanelGridToSize fills display bounds from capped renderer g
     [" ", " ", " "],
     [" ", " ", " "],
   ]);
+});
+
+Deno.test("scaleThreePanelGridToSizeInto reuses target rows and clears stale cells", () => {
+  const target = [["stale", "stale", "stale"], ["old", "old", "old"]] as string[][];
+  const result = scaleThreePanelGridToSizeInto(target, [["A", "B"], ["C", "D"]], 4, 4);
+  const firstRow = result[0];
+  const secondRow = result[1];
+
+  assertEquals(result, [
+    ["A", "A", "B", "B"],
+    ["A", "A", "B", "B"],
+    ["C", "C", "D", "D"],
+    ["C", "C", "D", "D"],
+  ]);
+  assertStrictEquals(result, target);
+  assertStrictEquals(result[0], firstRow);
+  assertStrictEquals(result[1], secondRow);
+
+  scaleThreePanelGridToSizeInto(target, [["Z"]], 1, 1);
+  assertEquals(target, [["Z"]]);
+  assertStrictEquals(target[0], firstRow);
+  assertEquals(target[1], undefined);
+  assertEquals(firstRow.length, 1);
 });
 
 Deno.test("fingerprintThreePanelGrid distinguishes content shape and text", () => {

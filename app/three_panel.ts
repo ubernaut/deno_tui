@@ -26,7 +26,7 @@ import {
   resolveThreePanelLiveValue,
   resolveThreePanelRendererStateUpdate,
   resolveThreePanelValue,
-  scaleThreePanelGridToSize,
+  scaleThreePanelGridToSizeInto,
   threePanelAdaptiveRenderCellsDiagnostic,
   type ThreePanelFrameUpdate,
   threePanelFrameUpdate,
@@ -258,6 +258,7 @@ export class ThreePanelFrameView {
   private lastSlowFrameReportTime = 0;
   private readonly adaptiveBudget = new ThreePanelAdaptiveRenderBudgetController();
   private readonly gridPublisher = new ThreePanelGridPublisher();
+  private readonly scaledGridBuffer: string[][] = [];
   private displayColumns = 0;
   private displayRows = 0;
   private rendererFailureRetries = 0;
@@ -534,7 +535,7 @@ export class ThreePanelFrameView {
       const displayColumns = Math.max(1, Math.floor(displayRect.width));
       const displayRows = Math.max(1, Math.floor(displayRect.height));
       const nextGrid = policy.renderAscii && hasThreePanelGridCells(frame.grid ?? [])
-        ? scaleThreePanelGridToSize(frame.grid ?? [], displayColumns, displayRows)
+        ? scaleThreePanelGridToSizeInto(this.scaledGridBuffer, frame.grid ?? [], displayColumns, displayRows)
         : this.blankGridFor(displayColumns, displayRows);
       this.onFrame?.(threePanelFrameUpdate(nextGrid, true));
       if (!policy.renderAscii || hasThreePanelGridCells(frame.grid ?? [])) {
@@ -743,6 +744,7 @@ export class ThreePanelFrameView {
     this.activeMode = undefined;
     this.activeWireframeThickness = undefined;
     this.activeDeferredReadbackSlots = undefined;
+    this.scaledGridBuffer.length = 0;
     this.interaction.clearBaseTransform();
     this.adaptiveBudget.reset();
   }
