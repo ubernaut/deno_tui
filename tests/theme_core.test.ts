@@ -31,9 +31,9 @@ import {
   ThemeLayerStack,
   ThemePackNotFoundError,
   ThemeRegistry,
+  validateThemeOptions,
 } from "../src/theme.ts";
 import type { ComponentThemeDefinition, ThemeStyleReference } from "../src/theme.ts";
-import { validateThemeComponentsCore } from "../src/theme_validation_core.ts";
 
 Deno.test("theme catalog merge sorts components and variants with default first", () => {
   assertEquals(
@@ -446,14 +446,16 @@ Deno.test("theme manifest core compiles generic state maps without undefined ent
   assertEquals(Object.keys(state).sort(), ["active", "base"]);
 });
 
-Deno.test("theme validation core reports unknown token references inside pipelines", () => {
-  const issues = validateThemeComponentsCore({
-    Button: {
-      base: {
-        active: ["accent", "missing-token"],
+Deno.test("theme validation reports unknown token references inside pipelines", () => {
+  const issues = validateThemeOptions({
+    components: {
+      Button: {
+        base: {
+          active: ["accent", "missing-token" as unknown as ThemeStyleReference],
+        },
       },
     },
-  }, { tokenNames: ["accent"] });
+  });
 
   assertEquals(issues, [{
     kind: "unknown-token",
@@ -466,11 +468,13 @@ Deno.test("theme validation core reports unknown token references inside pipelin
   }]);
 });
 
-Deno.test("theme validation core reports unknown parents and inheritance cycles", () => {
-  const issues = validateThemeComponentsCore({
-    Panel: { extends: ["Missing", "Card"] },
-    Card: { extends: "Panel" },
-  }, { tokenNames: ["accent"] });
+Deno.test("theme validation reports unknown parents and inheritance cycles", () => {
+  const issues = validateThemeOptions({
+    components: {
+      Panel: { extends: ["Missing", "Card"] },
+      Card: { extends: "Panel" },
+    },
+  });
 
   assertEquals(issues.map((issue) => issue.kind), ["unknown-component", "inheritance-cycle"]);
   assertEquals(issues[0]?.path, "components.Panel.extends");
