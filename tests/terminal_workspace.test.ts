@@ -39,15 +39,8 @@ import {
   describeAttachTerminalTemplate,
   projectTaskTerminalTemplate,
   shellTerminalTemplate,
-  type TerminalSessionDescriptor,
   terminalTemplateToSpawnOptions,
 } from "../src/runtime/terminal_templates.ts";
-import {
-  cloneTerminalSessionDescriptor,
-  descriptorFromTerminalTemplate,
-  duplicateTerminalSessionDescriptor,
-  shouldAdoptRuntimeTitle,
-} from "../src/runtime/terminal_workspace_sessions.ts";
 import {
   createTerminalWorkspaceController,
   createTerminalWorkspaceControllerFromSnapshot,
@@ -166,6 +159,7 @@ Deno.test("attach terminal templates produce reconnectable descriptors", () => {
 });
 
 Deno.test("terminal workspace session descriptors materialize spawn templates", () => {
+  const workspace = createTerminalWorkspaceController({ now: () => 123 });
   const template = commandTerminalTemplate({
     id: "tail-logs",
     title: "Tail Logs",
@@ -180,13 +174,13 @@ Deno.test("terminal workspace session descriptors materialize spawn templates", 
     metadata: { role: "logs" },
   });
 
-  const descriptor = descriptorFromTerminalTemplate(template, {
+  const descriptor = workspace.add(template, {
     title: "Runtime Logs",
     backendId: "pty",
     rows: 40.9,
     status: "running",
     running: true,
-  }, 123);
+  });
 
   assertEquals(descriptor.id, "tail-logs");
   assertEquals(descriptor.title, "Runtime Logs");
@@ -205,18 +199,19 @@ Deno.test("terminal workspace session descriptors materialize spawn templates", 
 });
 
 Deno.test("terminal workspace session descriptors materialize attach templates", () => {
+  const workspace = createTerminalWorkspaceController({ now: () => 99 });
   const template = attachTerminalTemplate("pty/server", {
     title: "Server Attach",
     metadata: { host: "local" },
   });
 
-  const descriptor = descriptorFromTerminalTemplate(template, {
+  const descriptor = workspace.add(template, {
     backendId: "remote",
     columns: 0,
     rows: Number.NaN,
     status: "running",
     running: true,
-  }, 99);
+  });
 
   assertEquals(descriptor.id, "attach-pty-server");
   assertEquals(descriptor.title, "Server Attach");
@@ -231,20 +226,17 @@ Deno.test("terminal workspace session descriptors materialize attach templates",
 });
 
 Deno.test("terminal workspace session descriptors clone nested template state", () => {
-  const descriptor = descriptorFromTerminalTemplate(
-    commandTerminalTemplate({
-      id: "shell",
-      title: "Shell",
-      command: "bash",
-      args: ["-l"],
-      env: { TERM: "xterm-256color" },
-      metadata: { lane: "dev" },
-    }),
-    {},
-    10,
-  );
-
-  const clone = cloneTerminalSessionDescriptor(descriptor);
+  const workspace = createTerminalWorkspaceController({ now: () => 10 });
+  const template = commandTerminalTemplate({
+    id: "shell",
+    title: "Shell",
+    command: "bash",
+    args: ["-l"],
+    env: { TERM: "xterm-256color" },
+    metadata: { lane: "dev" },
+  });
+  const descriptor = workspace.add(template);
+  const clone = workspace.inspect().sessions[0]!;
   assertEquals(clone, descriptor);
   assertNotStrictEquals(clone, descriptor);
   assertNotStrictEquals(clone.template, descriptor.template);
@@ -260,10 +252,16 @@ Deno.test("terminal workspace session descriptors clone nested template state", 
   assertEquals(originalTemplate.args, ["-l"]);
   assertEquals(originalTemplate.env, { TERM: "xterm-256color" });
   assertEquals(originalTemplate.metadata, { lane: "dev" });
+  assertEquals(template.args, ["-l"]);
+  assertEquals(template.env, { TERM: "xterm-256color" });
+  assertEquals(template.metadata, { lane: "dev" });
+  assertEquals((workspace.inspect().sessions[0]!.template as typeof template).args, ["-l"]);
 });
 
 Deno.test("terminal workspace session descriptors duplicate with unique sanitized ids", () => {
-  const source = descriptorFromTerminalTemplate(
+  let now = 10;
+  const workspace = createTerminalWorkspaceController({ now: () => now });
+  const source = workspace.add(
     commandTerminalTemplate({
       id: "dev server",
       title: "Dev Server",
@@ -276,15 +274,16 @@ Deno.test("terminal workspace session descriptors duplicate with unique sanitize
       status: "running",
       running: true,
     },
-    10,
   );
+  workspace.upsert({
+    ...source,
+    id: "dev-server-copy",
+    title: "Collision",
+    template: { ...source.template, id: "dev-server-copy", title: "Collision" },
+  }, { activate: false });
 
-  const duplicate = duplicateTerminalSessionDescriptor(
-    source,
-    [source, { ...source, id: "dev-server-copy" }],
-    {},
-    20,
-  );
+  now = 20;
+  const duplicate = workspace.duplicate(source.id, { activate: false })!;
 
   assertEquals(duplicate.id, "dev-server-copy-2");
   assertEquals(duplicate.title, "Dev Server Copy");
@@ -300,15 +299,18 @@ Deno.test("terminal workspace session descriptors duplicate with unique sanitize
 });
 
 Deno.test("terminal workspace session descriptors preserve attached duplicate runtime state", () => {
-  const source = descriptorFromTerminalTemplate(attachTerminalTemplate("server-1"), {
+  let now = 10;
+  const workspace = createTerminalWorkspaceController({ now: () => now });
+  const source = workspace.add(attachTerminalTemplate("server-1"), {
     status: "running",
     running: true,
-  }, 10);
+  });
 
-  const duplicate = duplicateTerminalSessionDescriptor(source, [source], {
+  now = 20;
+  const duplicate = workspace.duplicate(source.id, {
     id: "server clone",
     title: "Server Clone",
-  }, 20);
+  })!;
 
   assertEquals(duplicate.id, "server-clone");
   assertEquals(duplicate.title, "Server Clone");
@@ -322,20 +324,22 @@ Deno.test("terminal workspace session descriptors preserve attached duplicate ru
 });
 
 Deno.test("terminal workspace session descriptors gate runtime title adoption", () => {
-  const descriptor: TerminalSessionDescriptor = descriptorFromTerminalTemplate(
-    commandTerminalTemplate({
-      id: "shell",
-      title: "Shell",
-      command: "bash",
-    }),
-    {},
-    10,
-  );
+  const workspace = createTerminalWorkspaceController({ now: () => 10 });
+  workspace.add(commandTerminalTemplate({
+    id: "shell",
+    title: "Shell",
+    command: "bash",
+  }));
 
-  assertEquals(shouldAdoptRuntimeTitle(descriptor, undefined), true);
-  assertEquals(shouldAdoptRuntimeTitle({ ...descriptor, title: "vim", runtimeTitle: "vim" }, "repo"), true);
-  assertEquals(shouldAdoptRuntimeTitle({ ...descriptor, title: "repo", runtimeTitle: "vim" }, "repo"), true);
-  assertEquals(shouldAdoptRuntimeTitle({ ...descriptor, title: "Manual", runtimeTitle: "vim" }, "repo"), false);
+  assertEquals(workspace.updateRuntimeTitle("shell", "vim"), true);
+  assertEquals(workspace.inspect().sessions[0]?.title, "vim");
+  assertEquals(workspace.updateRuntimeTitle("shell", "repo"), true);
+  assertEquals(workspace.inspect().sessions[0]?.title, "repo");
+
+  assertEquals(workspace.rename("shell", "Manual"), true);
+  assertEquals(workspace.updateRuntimeTitle("shell", "htop"), true);
+  assertEquals(workspace.inspect().sessions[0]?.title, "Manual");
+  assertEquals(workspace.inspect().sessions[0]?.runtimeTitle, "htop");
 });
 
 Deno.test("terminal workspace controller manages session tabs", () => {
