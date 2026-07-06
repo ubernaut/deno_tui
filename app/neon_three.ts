@@ -2,11 +2,11 @@ import * as THREE from "three";
 import { colors } from "./neon_theme.ts";
 import { type ThreeSceneMode, threeSceneModes, type ThreeSceneSignal } from "./types.ts";
 
-export function neonLine(color: string) {
+function neonLine(color: string) {
   return new THREE.LineBasicMaterial({ color });
 }
 
-export function addBoxWire(group: THREE.Group, size: number, color: string) {
+function addBoxWire(group: THREE.Group, size: number, color: string) {
   const wire = new THREE.LineSegments(
     new THREE.EdgesGeometry(new THREE.BoxGeometry(size, size, size)),
     neonLine(color),
@@ -15,7 +15,7 @@ export function addBoxWire(group: THREE.Group, size: number, color: string) {
   return wire;
 }
 
-export function addPanel(
+function addPanel(
   group: THREE.Group,
   width: number,
   height: number,
@@ -37,7 +37,7 @@ export function addPanel(
   return panel;
 }
 
-export function addWirePanel(
+function addWirePanel(
   group: THREE.Group,
   width: number,
   height: number,
@@ -53,7 +53,7 @@ export function addWirePanel(
   return panel;
 }
 
-export function addSolidBox(
+function addSolidBox(
   group: THREE.Group,
   width: number,
   height: number,
@@ -71,12 +71,12 @@ export function addSolidBox(
   return box;
 }
 
-export function createPolyline(points: THREE.Vector3[], color: string) {
+function createPolyline(points: THREE.Vector3[], color: string) {
   const geometry = new THREE.BufferGeometry().setFromPoints(points);
   return new THREE.Line(geometry, neonLine(color));
 }
 
-export function createHelix(color: string, radius: number, turns: number, height: number) {
+function createHelix(color: string, radius: number, turns: number, height: number) {
   const points: number[] = [];
   const count = 220;
   for (let index = 0; index < count; index += 1) {
@@ -88,7 +88,7 @@ export function createHelix(color: string, radius: number, turns: number, height
   return new THREE.Line(geometry, neonLine(color));
 }
 
-export function createPointsShell() {
+function createPointsShell() {
   const geometry = new THREE.BufferGeometry();
   const points: number[] = [];
   for (let index = 0; index < 90; index += 1) {
@@ -103,7 +103,7 @@ export function createPointsShell() {
   return new THREE.Points(geometry, new THREE.PointsMaterial({ color: colors.amber, size: 0.04 }));
 }
 
-export function createMapSlabMesh() {
+function createMapSlabMesh() {
   const geometry = new THREE.PlaneGeometry(2.8, 2.8, 16, 16);
   const positions = geometry.attributes.position as THREE.Float32BufferAttribute;
   for (let index = 0; index < positions.count; index += 1) {
@@ -124,7 +124,7 @@ export function createMapSlabMesh() {
   return mesh;
 }
 
-export function createWaveRibbon(color: string, count = 96) {
+function createWaveRibbon(color: string, count = 96) {
   const points = new Array<THREE.Vector3>(count);
   for (let index = 0; index < count; index += 1) {
     const x = (index / (count - 1) - 0.5) * 4.2;
@@ -134,7 +134,7 @@ export function createWaveRibbon(color: string, count = 96) {
   return createPolyline(points, color);
 }
 
-export function createLissajousTrace(color: string, scaleX: number, scaleY: number, phase = 0) {
+function createLissajousTrace(color: string, scaleX: number, scaleY: number, phase = 0) {
   const points = new Array<THREE.Vector3>(180);
   for (let index = 0; index < points.length; index += 1) {
     const t = (index / 179) * Math.PI * 2;
@@ -147,7 +147,7 @@ export function createLissajousTrace(color: string, scaleX: number, scaleY: numb
   return createPolyline(points, color);
 }
 
-export function createReticle(color: string, radius: number) {
+function createReticle(color: string, radius: number) {
   const group = new THREE.Group();
   const ring = new THREE.Mesh(
     new THREE.TorusGeometry(radius, 0.018, 12, 96),
@@ -166,7 +166,7 @@ export function createReticle(color: string, radius: number) {
   return group;
 }
 
-export function createGrid(width: number, height: number, columns: number, rows: number, color: string) {
+function createGrid(width: number, height: number, columns: number, rows: number, color: string) {
   const grid = new THREE.Group();
   for (let column = 0; column <= columns; column += 1) {
     const x = (column / columns - 0.5) * width;
@@ -179,7 +179,7 @@ export function createGrid(width: number, height: number, columns: number, rows:
   return grid;
 }
 
-export function createContourField(color: string, layers = 9): THREE.Group {
+function createContourField(color: string, layers = 9): THREE.Group {
   const field = new THREE.Group();
   for (let layer = 0; layer < layers; layer += 1) {
     const points = new Array<THREE.Vector3>(90);
@@ -199,7 +199,7 @@ export function createContourField(color: string, layers = 9): THREE.Group {
   return field;
 }
 
-export function createSegmentBoard(color: string): THREE.Group {
+function createSegmentBoard(color: string): THREE.Group {
   const board = new THREE.Group();
   const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 });
   const segmentSpecs: Array<[number, number, number, number]> = [
@@ -219,7 +219,7 @@ export function createSegmentBoard(color: string): THREE.Group {
   return board;
 }
 
-export function createHexTile(color: string) {
+function createHexTile(color: string) {
   const tile = new THREE.Mesh(
     new THREE.CylinderGeometry(0.18, 0.18, 0.08, 6),
     new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: 0.9 }),
@@ -228,7 +228,7 @@ export function createHexTile(color: string) {
   return tile;
 }
 
-export function createTopologyNode(color: string, radius = 0.09) {
+function createTopologyNode(color: string, radius = 0.09) {
   return new THREE.Mesh(
     new THREE.SphereGeometry(radius, 16, 12),
     new THREE.MeshBasicMaterial({ color, wireframe: true }),
