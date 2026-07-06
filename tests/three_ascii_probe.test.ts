@@ -1,5 +1,5 @@
 import { assertEquals, assertRejects, assertStringIncludes, assertThrows } from "./deps.ts";
-import { acquireGpuProbeLock, withGpuProbeLock } from "../scripts/gpu_probe_lock.ts";
+import { acquireGpuProbeLock, runGpuProbeLockCli, withGpuProbeLock } from "../scripts/gpu_probe_lock.ts";
 import {
   average,
   averageWhere,
@@ -51,6 +51,11 @@ Deno.test("GPU probe lock removes stale files and wraps callbacks", async () => 
   } finally {
     await Deno.remove(dir, { recursive: true }).catch(() => undefined);
   }
+});
+
+Deno.test("GPU probe lock CLI reports usage when no command is provided", async () => {
+  assertEquals(await runGpuProbeLockCli([]), 2);
+  assertEquals(await runGpuProbeLockCli(["--"]), 2);
 });
 
 Deno.test("Three ASCII probe CLI helpers parse typed arguments", () => {

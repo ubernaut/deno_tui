@@ -28,6 +28,7 @@ import {
   type WorkbenchScreenSizeTarget,
   workbenchScreenWidth,
 } from "../src/app/workbench_repaint_policy.ts";
+import { shouldUseRecentlyVerifiedTerminalSize } from "../src/tui.ts";
 import type { ViewportAxisOverflow, ViewportOverflowInspection } from "../src/viewport.ts";
 
 Deno.test("clampWorkbenchTileDensity keeps density in the shared supported range", () => {
@@ -596,6 +597,39 @@ Deno.test("syncWorkbenchTerminalSize can use verified dimensions for resize poll
   assertEquals(result, { changed: true, size: { columns: 180, rows: 50 } });
   assertEquals(target.peek(), { columns: 180, rows: 50 });
   assertEquals(target.writes, 1);
+});
+
+Deno.test("Tui keeps a recent verified terminal size over stale consoleSize reads", () => {
+  assertEquals(
+    shouldUseRecentlyVerifiedTerminalSize(
+      { columns: 100, rows: 30 },
+      { size: { columns: 160, rows: 48 }, readAt: 1_000 },
+      1_500,
+    ),
+    true,
+  );
+});
+
+Deno.test("Tui accepts consoleSize again after the verified resize hold expires", () => {
+  assertEquals(
+    shouldUseRecentlyVerifiedTerminalSize(
+      { columns: 100, rows: 30 },
+      { size: { columns: 160, rows: 48 }, readAt: 1_000 },
+      3_000,
+    ),
+    false,
+  );
+});
+
+Deno.test("Tui does not pin the verified size once consoleSize matches it", () => {
+  assertEquals(
+    shouldUseRecentlyVerifiedTerminalSize(
+      { columns: 160, rows: 48 },
+      { size: { columns: 160, rows: 48 }, readAt: 1_000 },
+      1_500,
+    ),
+    false,
+  );
 });
 
 Deno.test("workbench screen dimension helpers clamp invalid rectangles", () => {

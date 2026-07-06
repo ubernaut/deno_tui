@@ -225,6 +225,10 @@ The library core is real and valuable, but it needs clearer boundaries:
     preserve unused slot-rectangle helpers.
   - Visualization field renderers are folded into `app/visualizations.ts`, keeping app-only fallback/field drawing
     helpers with the visualization dispatch facade that owns their only runtime path.
+  - TUI terminal resize snapback assertions are folded into `tests/workbench_layout.test.ts`, keeping resize policy
+    coverage with the existing layout/repaint suite instead of preserving a one-purpose test shard.
+  - GPU probe lock CLI behavior is folded into `scripts/gpu_probe_lock.ts`, removing the wrapper script while keeping
+    serialized WebGPU probe tasks on the same lock implementation.
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

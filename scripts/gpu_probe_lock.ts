@@ -16,6 +16,12 @@ const DEFAULT_LOCK_PATH = ".cache/deno-tui-gpu-probe.lock";
 const DEFAULT_STALE_MS = 120_000;
 const DEFAULT_POLL_MS = 100;
 const DEFAULT_TIMEOUT_MS = 180_000;
+const CLI_USAGE = "usage: deno run -A scripts/gpu_probe_lock.ts -- <command> [args...]";
+
+if (import.meta.main) {
+  const code = await runGpuProbeLockCli(Deno.args);
+  Deno.exit(code);
+}
 
 /** Serializes local WebGPU probe/smoke commands so concurrent runs do not spuriously lose the device. */
 export async function withGpuProbeLock<T>(
@@ -66,6 +72,31 @@ export async function acquireGpuProbeLock(options: GpuProbeLockOptions = {}): Pr
     }
     await sleep(pollMs);
   }
+}
+
+export async function runGpuProbeLockCli(args: readonly string[]): Promise<number> {
+  if (args.length === 0) {
+    console.error(CLI_USAGE);
+    return 2;
+  }
+
+  const cliArgs = args[0] === "--" ? args.slice(1) : args;
+  if (cliArgs.length === 0) {
+    console.error(CLI_USAGE);
+    return 2;
+  }
+
+  const [command, ...commandArgs] = cliArgs;
+  return await withGpuProbeLock(async () => {
+    const child = new Deno.Command(command!, {
+      args: commandArgs,
+      stdin: "inherit",
+      stdout: "inherit",
+      stderr: "inherit",
+    });
+    const status = await child.output();
+    return status.code;
+  });
 }
 
 async function removeStaleGpuProbeLock(path: string, staleMs: number, now: () => number): Promise<void> {
