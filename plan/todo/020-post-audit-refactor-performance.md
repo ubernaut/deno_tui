@@ -258,6 +258,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   scoping collapsed-cadence samples even when non-Three rows changed in the same flush.
 - Previously tightened workbench Three pressure scoping to avoid non-Three redraw false positives; later slow-terminal
   testing showed collapsed visible Three cadence still needs to downshift even when other rows changed too.
+- Extracted API Workbench terminal shell session-tab painting into a focused app-level view adapter with direct tests,
+  trimming the oversized terminal workbench renderer while preserving shared renderer-neutral tab projection helpers.
 - Optimized workbench frame-row background-space detection with direct suffix checks, keeping Three block-mode span
   flushes benchmarked without adding per-cell cache overhead.
 - Folded the small workbench Three surface renderer back into the Three grid projection module and merged its tests into

@@ -52,6 +52,8 @@ import {
   workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
 } from "../src/app/workbench_terminal.ts";
+import { renderApiWorkbenchTerminalSessionTabs } from "../app/api_workbench_terminal_shell_view.ts";
+import type { TerminalShellWorkspaceInspection } from "../src/runtime/terminal_shell_workspace.ts";
 
 Deno.test("WorkbenchController coordinates menus and window state", () => {
   const events: unknown[] = [];
@@ -874,6 +876,65 @@ Deno.test("workbench buffer caches keep terminal session tab storage together", 
 
   cache.clear();
   assertEquals(cache.inspect(), { sources: 0, placements: 0, commands: 0 });
+});
+
+Deno.test("renderApiWorkbenchTerminalSessionTabs paints tabs and registers tab hits", () => {
+  const cache = new WorkbenchTerminalSessionTabBufferCache();
+  const frame: string[][] = [[]];
+  const hits: Array<{ rect: unknown; id: string }> = [];
+  const inspection = {
+    activeId: "shell-2",
+    sessions: [
+      { id: "shell-1", title: "Shell 1", shell: { running: true, status: "running" } },
+      { id: "shell-2", title: "Shell 2", shell: { running: false, status: "idle" } },
+    ],
+  } as TerminalShellWorkspaceInspection;
+
+  const nextRow = renderApiWorkbenchTerminalSessionTabs({
+    frame,
+    rect: { column: 2, row: 0, width: 30, height: 2 },
+    startRow: 0,
+    inspection,
+    buffers: cache,
+    theme: {
+      id: "test",
+      label: "Test",
+      background: "#000",
+      backgroundSoft: "#111",
+      panel: "#111",
+      panelSoft: "#222",
+      surface: "#111",
+      border: "#333",
+      borderStrong: "#444",
+      accent: "#0f0",
+      accentDeep: "#080",
+      text: "#fff",
+      muted: "#aaa",
+      soft: "#ccc",
+      good: "#0f0",
+      warn: "#ff0",
+      danger: "#f00",
+      buttonBg: "#222",
+      buttonText: "#fff",
+      buttonActiveBg: "#0f0",
+      buttonActiveText: "#000",
+      buttonMutedBg: "#111",
+      buttonMutedText: "#777",
+    },
+    contrastText: () => "#000",
+    paint: (text, style) => `${style.bg}:${style.fg}:${text}`,
+    write: (target, row, column, value) => {
+      target[row] ??= [];
+      target[row]![column] = value;
+    },
+    addHit: (rect, action) => hits.push({ rect, id: action.id }),
+  });
+
+  assertEquals(nextRow, 1);
+  assertEquals(cache.inspect(), { sources: 2, placements: 2, commands: 4 });
+  assertEquals(hits.map((hit) => hit.id), ["shell-1", "shell-2"]);
+  assertEquals(frame[0]?.some((cell) => cell?.includes("Shell 2")), true);
+  assertEquals(frame[0]?.some((cell) => cell?.startsWith("#0f0:#000:")), true);
 });
 
 Deno.test("workbench buffer caches reuse per-window titlebar buffers", () => {

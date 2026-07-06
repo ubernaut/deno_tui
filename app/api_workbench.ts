@@ -191,9 +191,6 @@ import {
   type WorkbenchTerminalPaneTitleRenderCommand,
   workbenchTerminalPaneTitleRenderCommandsInto,
   workbenchTerminalSearchModalBody,
-  workbenchTerminalSessionTabRenderCommandsInto,
-  workbenchTerminalSessionTabsInto,
-  workbenchTerminalSessionTabSourcesInto,
   type WorkbenchTerminalShellHeaderRow,
   workbenchTerminalShellHeaderRowsInto,
   type WorkbenchTerminalToolbarAction,
@@ -405,6 +402,7 @@ import {
   syntheticWorkbenchSystem,
 } from "./workbench_synthetic.ts";
 import type { ComputedLayoutBox } from "../src/layout/mod.ts";
+import { renderApiWorkbenchTerminalSessionTabs } from "./api_workbench_terminal_shell_view.ts";
 
 type BuiltInWindowId = ApiWorkbenchBuiltInWindowId;
 type VisualizationWindowId = `viz:${string}`;
@@ -2438,38 +2436,18 @@ function renderTerminalShellSessionTabs(
   startRow: number,
   inspection = terminalShell.inspect(),
 ): number {
-  const t = theme();
-  if (startRow >= rect.row + rect.height) return startRow;
-  workbenchTerminalSessionTabSourcesInto(terminalShellSessionTabBuffers.sources, inspection.sessions);
-  workbenchTerminalSessionTabsInto(
-    terminalShellSessionTabBuffers.placements,
-    terminalShellSessionTabBuffers.sources,
-    inspection.activeId,
-    { column: rect.column, row: startRow, width: rect.width, height: 1 },
-  );
-  workbenchTerminalSessionTabRenderCommandsInto(
-    terminalShellSessionTabBuffers.commands,
-    terminalShellSessionTabBuffers.placements,
-    {
-      column: rect.column,
-      row: startRow,
-      width: rect.width,
-      height: 1,
-    },
-  );
-  for (const command of terminalShellSessionTabBuffers.commands) {
-    const style = command.active
-      ? { fg: contrastText(t.accent, t.background, t.text), bg: t.accent, bold: true }
-      : { fg: t.text, bg: t.panelSoft, bold: false };
-    write(frame, command.rect.row, command.rect.column, paint(command.text, style));
-    if (command.kind === "tab" && command.id) {
-      addHit(command.rect, {
-        type: "terminalShellSession",
-        id: command.id,
-      });
-    }
-  }
-  return startRow + 1;
+  return renderApiWorkbenchTerminalSessionTabs({
+    frame,
+    rect,
+    startRow,
+    inspection,
+    buffers: terminalShellSessionTabBuffers,
+    theme: theme(),
+    contrastText,
+    paint,
+    write,
+    addHit,
+  });
 }
 
 function renderHtmlCssLayout(frame: Frame, rect: Rectangle): void {
