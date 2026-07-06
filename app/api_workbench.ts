@@ -848,8 +848,8 @@ const visualizationThreePanels = new WorkbenchThreePanelRegistry<
 >(createVisualizationThreePanel);
 const visualizationThreeSupport = new Map<string, boolean>();
 const threeViewportInteraction = new WorkbenchThreeViewportInteractionController<WindowId>({
-  findHit: (x, y) => findHit(x, y),
-  panelForWindow: (id) => threePanelForWindow(id),
+  findHit,
+  panelForWindow: threePanelForWindow,
   focusWindow: focusWindowSilently,
 });
 
@@ -881,7 +881,7 @@ tui.on("keyPress", (event) => {
     draw();
     return;
   }
-  if (screenDropdownOpen()) {
+  if (topMenus.inspect().openId !== null) {
     handleScreenDropdownKey(event);
     draw();
     return;
@@ -1110,7 +1110,7 @@ function updateThreeTerminalPressure(
   stats: WorkbenchAnsiScreenFlushStats,
   options: { ignoreSample?: boolean } = {},
 ): void {
-  const overlayOpen = modal.openState.peek() || screenDropdownOpen() || threeConfigOpen.peek();
+  const overlayOpen = modal.openState.peek() || topMenus.inspect().openId !== null || threeConfigOpen.peek();
   const pressureGate = workbenchThreeOverlayPressureGate.resolve(overlayOpen);
   if (pressureGate.resetCadence) {
     threeCadence.reset();
@@ -2337,10 +2337,6 @@ function setThreeGraphicsRect(rect: Rectangle): void {
 function hideBuiltinThreeRects(): void {
   hideWorkbenchThreeRect(threeBodyRect);
   hideWorkbenchThreeRect(threeGraphicsRect);
-}
-
-function screenDropdownOpen(): boolean {
-  return topMenus.inspect().openId !== null;
 }
 
 function asciiForWindow(id: WindowId): Signal<AsciiOptions> {
@@ -3743,7 +3739,7 @@ function handleControlsKey(event: { key: string; ctrl?: boolean; meta?: boolean;
       modeRadio.move(resolved.delta);
       return;
     case "focus":
-      activeControl.value = controlAt(resolved.delta);
+      activeControl.value = apiWorkbenchControlAt(activeControl.peek(), resolved.delta);
       return;
     case "control":
       applyControlHit(id, resolved.action);
@@ -3757,14 +3753,14 @@ function blurTextControl(): void {
   const previous = activeControl.peek();
   windowManager.focus("controls");
   syncWindowSignalsFromManager();
-  activeControl.value = controlAt(1);
+  activeControl.value = apiWorkbenchControlAt(activeControl.peek(), 1);
   pushLog(`control ${previous} blur`);
 }
 
 function focusNextControl(delta = 1): void {
   windowManager.focus("controls");
   syncWindowSignalsFromManager();
-  const next = controlAtEdge(delta);
+  const next = apiWorkbenchControlAtEdge(activeControl.peek(), delta);
   if (next) {
     activeControl.value = next;
     pushLog(`control ${activeControl.peek()} focus`);
@@ -3775,14 +3771,6 @@ function focusNextControl(delta = 1): void {
 
 function isTextControlActive(): boolean {
   return isApiWorkbenchTextControlActive(activeWindow.peek(), "controls", activeControl.peek());
-}
-
-function controlAt(delta: number): ControlId {
-  return apiWorkbenchControlAt(activeControl.peek(), delta);
-}
-
-function controlAtEdge(delta: number): ControlId | undefined {
-  return apiWorkbenchControlAtEdge(activeControl.peek(), delta);
 }
 
 function pushLog(message: string): void {
@@ -3838,14 +3826,10 @@ function findHit(x: number, y: number): { rect: Rectangle; action: HitAction } |
     x,
     y,
     bounds: { column: 0, row: 0, width: currentWidth(), height: currentHeight() },
-    touchOptimized: isTouchOptimizedLayout(),
-  });
-}
-
-function isTouchOptimizedLayout(): boolean {
-  return isApiWorkbenchTouchOptimizedLayout({
-    columns: currentWidth(),
-    rows: currentHeight(),
+    touchOptimized: isApiWorkbenchTouchOptimizedLayout({
+      columns: currentWidth(),
+      rows: currentHeight(),
+    }),
   });
 }
 
