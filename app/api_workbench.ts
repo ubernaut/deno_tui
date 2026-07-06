@@ -316,9 +316,8 @@ import { renderApiWorkbenchModalOverlay, renderApiWorkbenchThreeConfigModal } fr
 import { renderApiWorkbenchShelf, renderApiWorkbenchWindowTabs } from "./api_workbench_shelf_view.ts";
 import {
   renderApiWorkbenchThreeFallback,
-  renderApiWorkbenchThreeGrid,
-  renderApiWorkbenchThreeGridOrResizePlaceholder,
   renderApiWorkbenchThreeHeader,
+  renderApiWorkbenchThreeSurface,
 } from "./api_workbench_three_view.ts";
 import {
   addApiWorkbenchCpuHexTileHits,
@@ -1396,7 +1395,7 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
     renderedVisualizationThreePanels.add(id);
     const grid = entry.panel.grid.peek();
     if (resized) {
-      renderApiWorkbenchThreeGridOrResizePlaceholder({
+      renderApiWorkbenchThreeSurface({
         frame,
         rect: sceneRect,
         grid,
@@ -1408,13 +1407,13 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
         writeRows,
         scale: true,
         countForPressure: false,
-        rendererAvailable: threeAsciiAvailable.peek(),
+        statusMessage: "renderer resizing",
         onPressureRows: (rows) => workbenchThreeRuntime.recordRenderedGridForPressure(rows),
       });
       scheduleDraw();
       return;
     }
-    renderApiWorkbenchThreeGrid({
+    renderApiWorkbenchThreeSurface({
       frame,
       rect: sceneRect,
       grid,
@@ -1426,7 +1425,7 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
       writeRows,
       scale: true,
       countForPressure: shouldCountWorkbenchThreeGridPressure(grid, entry.panel.inspectPerformance()),
-      rendererAvailable: threeAsciiAvailable.peek(),
+      statusMessage: threeAsciiAvailable.peek() ? "renderer warming up" : "renderer unavailable",
       onPressureRows: (rows) => workbenchThreeRuntime.recordRenderedGridForPressure(rows),
     });
     return;
@@ -1483,7 +1482,7 @@ function renderThree(frame: Frame, rect: Rectangle): void {
     setWorkbenchThreeRect(threeGraphicsRect, contentRectToGraphicsRect(sceneRect));
     const grid = threePanel.grid.peek();
     if (resized) {
-      renderApiWorkbenchThreeGridOrResizePlaceholder({
+      renderApiWorkbenchThreeSurface({
         frame,
         rect: sceneRect,
         grid,
@@ -1495,12 +1494,12 @@ function renderThree(frame: Frame, rect: Rectangle): void {
         writeRows,
         scale: true,
         countForPressure: false,
-        rendererAvailable: threeAsciiAvailable.peek(),
+        statusMessage: "renderer resizing",
         onPressureRows: (rows) => workbenchThreeRuntime.recordRenderedGridForPressure(rows),
       });
       return;
     }
-    renderApiWorkbenchThreeGrid({
+    renderApiWorkbenchThreeSurface({
       frame,
       rect: sceneRect,
       grid,
@@ -1512,7 +1511,7 @@ function renderThree(frame: Frame, rect: Rectangle): void {
       writeRows,
       scale: true,
       countForPressure: shouldCountWorkbenchThreeGridPressure(grid, performance),
-      rendererAvailable: threeAsciiAvailable.peek(),
+      statusMessage: threeAsciiAvailable.peek() ? "renderer warming up" : "renderer unavailable",
       onPressureRows: (rows) => workbenchThreeRuntime.recordRenderedGridForPressure(rows),
     });
     return;

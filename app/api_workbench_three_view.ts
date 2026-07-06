@@ -64,10 +64,6 @@ export interface ApiWorkbenchThreeSurfaceRenderOptions {
   onPressureRows?: (rows: number) => void;
 }
 
-export type ApiWorkbenchThreeGridRenderOptions = Omit<ApiWorkbenchThreeSurfaceRenderOptions, "statusMessage"> & {
-  rendererAvailable: boolean;
-};
-
 /** Renders the built-in Three window header and runtime telemetry into caller-owned row storage. */
 export function renderApiWorkbenchThreeHeader(options: ApiWorkbenchThreeHeaderRenderOptions): void {
   const {
@@ -144,27 +140,5 @@ export function renderApiWorkbenchThreeSurface(
     scale: options.scale,
     countForPressure: options.countForPressure,
     onPressureRows: options.onPressureRows,
-  });
-}
-
-/** Renders the transient resize placeholder, preserving the old scale-up behavior for non-empty grids. */
-export function renderApiWorkbenchThreeGridOrResizePlaceholder(
-  options: ApiWorkbenchThreeGridRenderOptions,
-): WorkbenchThreeSurfaceRenderResult {
-  const resizeScale = options.grid.length > 0 && (options.grid[0]?.length ?? 0) > 0 ? true : options.scale;
-  return renderApiWorkbenchThreeSurface({
-    ...options,
-    scale: resizeScale,
-    statusMessage: "renderer resizing",
-  });
-}
-
-/** Renders an active Three grid, or a warming/unavailable status body while no grid is present. */
-export function renderApiWorkbenchThreeGrid(
-  options: ApiWorkbenchThreeGridRenderOptions,
-): WorkbenchThreeSurfaceRenderResult {
-  return renderApiWorkbenchThreeSurface({
-    ...options,
-    statusMessage: options.rendererAvailable ? "renderer warming up" : "renderer unavailable",
   });
 }

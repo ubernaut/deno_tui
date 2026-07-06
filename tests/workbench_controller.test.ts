@@ -86,9 +86,8 @@ import { renderApiWorkbenchModalOverlay, renderApiWorkbenchThreeConfigModal } fr
 import { renderApiWorkbenchShelf, renderApiWorkbenchWindowTabs } from "../app/api_workbench_shelf_view.ts";
 import {
   renderApiWorkbenchThreeFallback,
-  renderApiWorkbenchThreeGrid,
-  renderApiWorkbenchThreeGridOrResizePlaceholder,
   renderApiWorkbenchThreeHeader,
+  renderApiWorkbenchThreeSurface,
 } from "../app/api_workbench_three_view.ts";
 import {
   addApiWorkbenchCpuHexTileHits,
@@ -1270,11 +1269,11 @@ Deno.test("renderApiWorkbenchThreeFallback paints renderer fallback rows", () =>
   assertEquals(writes[0]?.[1]?.includes("backend unavailable"), true);
 });
 
-Deno.test("renderApiWorkbenchThreeGrid paints grids and preserves pressure accounting", () => {
+Deno.test("renderApiWorkbenchThreeSurface paints grids and preserves pressure accounting", () => {
   const frame: string[][] = [];
   let pressureRows = 0;
 
-  const result = renderApiWorkbenchThreeGrid({
+  const result = renderApiWorkbenchThreeSurface({
     frame,
     rect: { column: 0, row: 0, width: 4, height: 2 },
     grid: [["A", "B"], ["C", "D"]],
@@ -1288,7 +1287,7 @@ Deno.test("renderApiWorkbenchThreeGrid paints grids and preserves pressure accou
     },
     scale: true,
     countForPressure: true,
-    rendererAvailable: true,
+    statusMessage: "renderer warming up",
     onPressureRows: (rows) => pressureRows = rows,
   });
 
@@ -1300,10 +1299,10 @@ Deno.test("renderApiWorkbenchThreeGrid paints grids and preserves pressure accou
   assertEquals(pressureRows, 2);
 });
 
-Deno.test("renderApiWorkbenchThreeGridOrResizePlaceholder paints resize status for empty grids", () => {
+Deno.test("renderApiWorkbenchThreeSurface paints resize status for empty grids", () => {
   const writes: string[][] = [];
 
-  const result = renderApiWorkbenchThreeGridOrResizePlaceholder({
+  const result = renderApiWorkbenchThreeSurface({
     frame: [],
     rect: { column: 0, row: 0, width: 32, height: 3 },
     grid: [],
@@ -1313,7 +1312,7 @@ Deno.test("renderApiWorkbenchThreeGridOrResizePlaceholder paints resize status f
     paint: (text, style) => `${style.bg ?? ""}:${text}`,
     center: (text) => text,
     writeRows: (_target, _rect, rows) => writes.push(rows.map((row) => row.text)),
-    rendererAvailable: true,
+    statusMessage: "renderer resizing",
   });
 
   assertEquals(result.kind, "status");
