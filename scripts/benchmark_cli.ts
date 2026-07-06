@@ -29,7 +29,7 @@ export function parseBenchmarkCliOptions(args: readonly string[]): BenchmarkCliO
       }
     } else if (arg.startsWith("--repeat=")) {
       repeat = parseRepeatCount(arg.slice("--repeat=".length));
-    } else if (arg === "--name") {
+    } else if (arg === "--name" || arg === "--exact") {
       const value = args[index + 1];
       if (value !== undefined) {
         appendBenchmarkName(query, value);
@@ -37,6 +37,8 @@ export function parseBenchmarkCliOptions(args: readonly string[]): BenchmarkCliO
       }
     } else if (arg.startsWith("--name=")) {
       appendBenchmarkName(query, arg.slice("--name=".length));
+    } else if (arg.startsWith("--exact=")) {
+      appendBenchmarkName(query, arg.slice("--exact=".length));
     } else if (arg === "--filter" || arg === "--search" || arg === "--query") {
       const value = args[index + 1];
       if (value !== undefined) {

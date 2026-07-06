@@ -323,6 +323,31 @@ Deno.test("benchmark CLI accepts exact repeated name selectors", () => {
   ]);
 });
 
+Deno.test("benchmark CLI accepts exact as a name selector alias", () => {
+  const separated = parseBenchmarkCliOptions([
+    "--exact",
+    "render/three-ascii-ansi-grid-fill-only-96x40",
+    "--exact",
+    "render/three-ascii-ansi-grid-glyph-cache-96x40",
+  ]);
+  const assigned = parseBenchmarkCliOptions(["--exact=render/three-ascii-ansi-grid-warm-cache-96x40"]);
+
+  assertEquals(separated.query, {
+    name: [
+      "render/three-ascii-ansi-grid-fill-only-96x40",
+      "render/three-ascii-ansi-grid-glyph-cache-96x40",
+    ],
+  });
+  assertEquals(selectBenchmarkCases(benchmarkCases, separated.query).map((entry) => entry.name), [
+    "render/three-ascii-ansi-grid-fill-only-96x40",
+    "render/three-ascii-ansi-grid-glyph-cache-96x40",
+  ]);
+  assertEquals(assigned.query, { name: "render/three-ascii-ansi-grid-warm-cache-96x40" });
+  assertEquals(selectBenchmarkCases(benchmarkCases, assigned.query).map((entry) => entry.name), [
+    "render/three-ascii-ansi-grid-warm-cache-96x40",
+  ]);
+});
+
 Deno.test("benchmark CLI reports unmatched exact name selectors", () => {
   const options = parseBenchmarkCliOptions([
     "--name",
