@@ -161,6 +161,28 @@ Deno.test("workbench visual smoke inspector measures Three pane truecolor covera
   assertStringIncludes(formatWorkbenchVisualSmokeResult(result), "Three pane truecolor: 2 rows, 49/49 columns");
 });
 
+Deno.test("workbench visual smoke rejects focused Three panes scrolled below the first viewport band", () => {
+  const output = [
+    "\x1b[2J",
+    "\x1b[1;1HAPI WORKBENCH",
+    "\x1b[4;1H│  stale upper window fragment               │",
+    "\x1b[10;1H┌─ DATA TABLE ─────────────────────────────────┐",
+    "\x1b[11;1H│Surface            API        State      ms↑    │",
+    "\x1b[18;1H└───────────────────────────────────────────────┘",
+    "\x1b[21;1H┌─ THREE ASCII ───────────────────────────────────────────────[ config ]─[-]─[M]─[R]─[x]┐",
+    "\x1b[22;1H│ THREE ASCII · BLOCKS                                                                        │",
+    "\x1b[23;1H│9ms 235c live 20fps                                                                         │",
+    "\x1b[24;2H\x1b[48;2;1;2;3m\x1b[38;2;1;2;3m████████████████████████████████████████████████████████████████████████████████████████\x1b[0m",
+    "\x1b[25;2H\x1b[48;2;4;5;6m\x1b[38;2;4;5;6m████████████████████████████████████████████████████████████████████████████████████████\x1b[0m",
+    "\x1b[26;1H└─────────────────────────────────────────────────────────────────────────────────────────┘",
+    "\x1b[32;1Hfocus Three ASCII | Unit-01  F10 menu",
+  ].join("");
+  const result = inspectWorkbenchVisualSmokeOutput(output, { columns: 100, rows: 32 });
+
+  assertEquals(result.passed, false);
+  assertEquals(result.missing.includes("focused three pane starts by row 5"), true);
+});
+
 Deno.test("workbench visual smoke inspector accepts sparse geometry when pane coverage is full", () => {
   const output = [
     "\x1b[2J",

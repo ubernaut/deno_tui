@@ -505,9 +505,15 @@ export function inspectWorkbenchVisualSmokeOutput(
     const focusedThreeTallRows = statusLine.includes("focus Three ASCII") && options.rows >= 40
       ? Math.floor(options.rows * 0.38)
       : 0;
+    const focusedThreeTopRow = statusLine.includes("focus Three ASCII") && options.columns >= 96 && options.rows >= 28
+      ? 5
+      : 0;
     if (threePane.truecolorRows < minPaneRows) missing.push(`three pane truecolor rows >= ${minPaneRows}`);
     if (threePane.truecolorMaxColumns < minPaneColumns) {
       missing.push(`three pane truecolor columns >= ${minPaneColumns}`);
+    }
+    if (focusedThreeTopRow > 0 && threePane.top + 1 > focusedThreeTopRow) {
+      missing.push(`focused three pane starts by row ${focusedThreeTopRow}`);
     }
     if (focusedThreeWideColumns > 0 && threePane.bodyColumns < focusedThreeWideColumns) {
       missing.push(`focused three pane columns >= ${focusedThreeWideColumns}`);
