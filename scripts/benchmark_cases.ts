@@ -96,7 +96,7 @@ import type {
   SystemMetricsDirEntry,
   SystemMetricsNetworkInterface,
   SystemMetricsProvider,
-} from "../app/system_metrics_sources.ts";
+} from "../app/system_metrics.ts";
 import { syntheticWorkbenchSystem } from "../app/visualization_primitives.ts";
 import { cpuHexTileLayoutInto } from "../app/visualization_system.ts";
 import {

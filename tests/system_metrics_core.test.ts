@@ -6,14 +6,14 @@ import {
   sampleCpuStatRows,
   sampleNetworkStats,
   sampleTemperatures,
-} from "../app/system_metrics_sources.ts";
+} from "../app/system_metrics.ts";
 import type {
   SystemMetricsCommandOptions,
   SystemMetricsCommandOutput,
   SystemMetricsDirEntry,
   SystemMetricsNetworkInterface,
   SystemMetricsProvider,
-} from "../app/system_metrics_sources.ts";
+} from "../app/system_metrics.ts";
 
 Deno.test("NvidiaSmiGpuMetricsProvider parses utilization memory and nullable telemetry", async () => {
   const provider = new FixtureThermalProvider();

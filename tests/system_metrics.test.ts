@@ -9,7 +9,7 @@ import type {
   SystemMetricsDirEntry,
   SystemMetricsNetworkInterface,
   SystemMetricsProvider,
-} from "../app/system_metrics_sources.ts";
+} from "../app/system_metrics.ts";
 import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 
 const encoder = new TextEncoder();
