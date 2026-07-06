@@ -17258,6 +17258,20 @@ function apiWorkbenchControlAtEdge(current, delta) {
 function isApiWorkbenchTextControlActive(activeWindowId, controlsWindowId, activeControl2) {
   return activeWindowId === controlsWindowId && (activeControl2 === "input" || activeControl2 === "textbox");
 }
+function resolveApiWorkbenchTitlebarHitAction(id2, kind) {
+  switch (kind) {
+    case "config":
+      return { type: "threeConfig", id: id2 };
+    case "minimize":
+      return { type: "minimize", id: id2 };
+    case "maximize":
+      return { type: "maximize", id: id2 };
+    case "close":
+      return { type: "close", id: id2 };
+    case "restore":
+      return { type: "restore", id: id2 };
+  }
+}
 function isApiWorkbenchTouchOptimizedLayout(input2) {
   return Boolean(input2.coarsePointer) || input2.columns < 92 || input2.rows < 30;
 }
@@ -18879,6 +18893,92 @@ function renderApiWorkbenchWindowTabs(options) {
   }
 }
 
+// src/app/workbench_frame_render.ts
+function workbenchFrameRenderCommandsInto(target, lineBuffer, options) {
+  if (options.rect.width <= 0 || options.rect.height <= 0) {
+    target.length = 0;
+    return target;
+  }
+  const t = options.theme;
+  const background = options.active ? t.panelSoft : t.panel;
+  const borderStyle = {
+    fg: options.active ? t.accent : t.borderStrong,
+    bg: background,
+    bold: options.active
+  };
+  const titleStyle = {
+    fg: t.background,
+    bg: options.active ? t.accent : t.border,
+    bold: true
+  };
+  target[0] = writeFillCommand2(target[0], options.rect, background);
+  const lines = workbenchFrameBoxLinesInto(lineBuffer, options.rect, options.title);
+  let written = 1;
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    target[written] = writeTextCommand2(
+      target[written],
+      line,
+      line.kind === "title" ? titleStyle : borderStyle
+    );
+    written += 1;
+  }
+  target.length = written;
+  return target;
+}
+function writeFillCommand2(target, source, bg) {
+  if (!target || target.kind !== "fill") {
+    return {
+      kind: "fill",
+      rect: { column: source.column, row: source.row, width: source.width, height: source.height },
+      bg
+    };
+  }
+  target.rect.column = source.column;
+  target.rect.row = source.row;
+  target.rect.width = source.width;
+  target.rect.height = source.height;
+  target.bg = bg;
+  return target;
+}
+function writeTextCommand2(target, line, style2) {
+  if (!target || target.kind !== "text") {
+    return {
+      kind: "text",
+      row: line.row,
+      column: line.column,
+      text: line.text,
+      style: { ...style2 },
+      lineKind: line.kind
+    };
+  }
+  target.row = line.row;
+  target.column = line.column;
+  target.text = line.text;
+  target.style.fg = style2.fg;
+  target.style.bg = style2.bg;
+  target.style.bold = style2.bold;
+  target.lineKind = line.kind;
+  return target;
+}
+
+// app/api_workbench_window_view.ts
+function renderApiWorkbenchWindowTitlebar(options) {
+  const titlebar = layoutWorkbenchTitlebarInto(options.buffers.layout(options.id), {
+    rect: options.rect,
+    title: options.title,
+    showConfig: options.showConfig
+  });
+  const commands = workbenchTitlebarButtonRenderCommandsInto(options.buffers.renderCommands(options.id), titlebar);
+  for (const command of commands) {
+    options.writeButton(options.frame, command.rect.row, command.rect.column, command.label, {
+      compact: command.compact,
+      tone: command.tone
+    });
+    options.addHit(command.hitRect, options.titlebarAction(options.id, command.kind));
+  }
+}
+
 // app/api_workbench_terminal_shell_view.ts
 function renderApiWorkbenchTerminalShellToolbar(options) {
   const { frame, rect, startRow, state, buffers, theme: theme2, contrastText: contrastText2, paint: paint2, write: write2, addHit } = options;
@@ -19564,75 +19664,6 @@ function renderApiWorkbenchThreeConfigModal(options) {
       }
     )
   );
-}
-
-// src/app/workbench_frame_render.ts
-function workbenchFrameRenderCommandsInto(target, lineBuffer, options) {
-  if (options.rect.width <= 0 || options.rect.height <= 0) {
-    target.length = 0;
-    return target;
-  }
-  const t = options.theme;
-  const background = options.active ? t.panelSoft : t.panel;
-  const borderStyle = {
-    fg: options.active ? t.accent : t.borderStrong,
-    bg: background,
-    bold: options.active
-  };
-  const titleStyle = {
-    fg: t.background,
-    bg: options.active ? t.accent : t.border,
-    bold: true
-  };
-  target[0] = writeFillCommand2(target[0], options.rect, background);
-  const lines = workbenchFrameBoxLinesInto(lineBuffer, options.rect, options.title);
-  let written = 1;
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index];
-    target[written] = writeTextCommand2(
-      target[written],
-      line,
-      line.kind === "title" ? titleStyle : borderStyle
-    );
-    written += 1;
-  }
-  target.length = written;
-  return target;
-}
-function writeFillCommand2(target, source, bg) {
-  if (!target || target.kind !== "fill") {
-    return {
-      kind: "fill",
-      rect: { column: source.column, row: source.row, width: source.width, height: source.height },
-      bg
-    };
-  }
-  target.rect.column = source.column;
-  target.rect.row = source.row;
-  target.rect.width = source.width;
-  target.rect.height = source.height;
-  target.bg = bg;
-  return target;
-}
-function writeTextCommand2(target, line, style2) {
-  if (!target || target.kind !== "text") {
-    return {
-      kind: "text",
-      row: line.row,
-      column: line.column,
-      text: line.text,
-      style: { ...style2 },
-      lineKind: line.kind
-    };
-  }
-  target.row = line.row;
-  target.column = line.column;
-  target.text = line.text;
-  target.style.fg = style2.fg;
-  target.style.bg = style2.bg;
-  target.style.bold = style2.bold;
-  target.lineKind = line.kind;
-  return target;
 }
 
 // src/app/workbench_row_render.ts
@@ -20575,19 +20606,17 @@ function renderPanel(frame, id2, rect) {
   hitTargets.add(rect, { type: "focus", id: id2 });
   const selected = active.peek() === id2;
   drawFrame(frame, rect, panelTitle(id2), selected);
-  const titlebar = layoutWorkbenchTitlebarInto(titlebarBuffers.layout(id2), {
+  renderApiWorkbenchWindowTitlebar({
+    frame,
+    id: id2,
     rect,
     title: panelTitle(id2),
-    showConfig: id2 === "three"
+    showConfig: id2 === "three",
+    buffers: titlebarBuffers,
+    writeButton,
+    addHit: (hitRect, action) => hitTargets.add(hitRect, action),
+    titlebarAction: (targetId, kind) => resolveApiWorkbenchTitlebarHitAction(targetId, kind)
   });
-  const titlebarCommands = workbenchTitlebarButtonRenderCommandsInto(titlebarBuffers.renderCommands(id2), titlebar);
-  for (const command of titlebarCommands) {
-    writeButton(frame, command.rect.row, command.rect.column, command.label, {
-      compact: command.compact,
-      tone: command.tone
-    });
-    hitTargets.add(command.hitRect, panelTitlebarHit(id2, command.kind));
-  }
   const inner = {
     column: rect.column + 2,
     row: rect.row + 1,
@@ -20603,13 +20632,6 @@ function renderPanel(frame, id2, rect) {
   else if (id2 === "three") renderThreePreview(frame, inner);
   else if (id2 === "htmlLayout") renderHtmlCssLayout(frame, inner);
   else if (id2 === "terminal") renderTerminalProtocol(frame, inner);
-}
-function panelTitlebarHit(id2, kind) {
-  if (kind === "config") return { type: "threeConfig", id: id2 };
-  if (kind === "minimize") return { type: "min", id: id2 };
-  if (kind === "maximize") return { type: "max", id: id2 };
-  if (kind === "close") return { type: "close", id: id2 };
-  return { type: "restore", id: id2 };
 }
 function panelTitle(id2) {
   return apiWorkbenchPanelTitle(id2, id2[0].toUpperCase() + id2.slice(1));
@@ -21095,8 +21117,8 @@ function applyHit(target, x, y) {
     applyMobileAction(hit.action);
   } else if (hit.type === "quit") openQuitModal();
   else if (hit.type === "focus") focus(hit.id);
-  else if (hit.type === "min") minimize(hit.id);
-  else if (hit.type === "max") toggleMax(hit.id);
+  else if (hit.type === "minimize") minimize(hit.id);
+  else if (hit.type === "maximize") toggleMax(hit.id);
   else if (hit.type === "close") closePanel(hit.id);
   else if (hit.type === "threeConfig") openThreeConfigModal(hit.id);
   else if (hit.type === "asciiConfig") applyThreeConfigHit(hit.index, hit.action ?? "activate");

@@ -25,7 +25,6 @@ import {
   hydrateWorkbenchPanelWorkspaceStore,
   initialWorkbenchDiagnosticLogRows,
   InputController,
-  layoutWorkbenchTitlebarInto,
   loadWorkbenchPanelWorkspaceCache,
   maxTextWidth,
   MenuBarController,
@@ -71,8 +70,6 @@ import {
   workbenchTerminalProtocolHeaderRowsInto,
   type WorkbenchTerminalToolbarAction,
   workbenchTerminalToolbarStateFromSnapshot,
-  type WorkbenchTitlebarButtonKind,
-  workbenchTitlebarButtonRenderCommandsInto,
   type WorkbenchTopMenuVisibleSlice,
   workbenchVisibleWindowRectsInto,
   workbenchWorkspaceScrollbarRenderCommandsInto,
@@ -108,6 +105,7 @@ import {
   isApiWorkbenchTouchOptimizedLayout,
   nextSortableDataColumn,
   resolveApiWorkbenchControlKey,
+  resolveApiWorkbenchTitlebarHitAction,
 } from "../../app/api_workbench_controls.ts";
 import {
   ApiWorkbenchControlsViewBufferCache,
@@ -121,6 +119,7 @@ import {
 import { renderApiWorkbenchButtonRow } from "../../app/api_workbench_button_row_view.ts";
 import { renderApiWorkbenchHtmlCssLayout } from "../../app/api_workbench_html_css_view.ts";
 import { renderApiWorkbenchShelf, renderApiWorkbenchWindowTabs } from "../../app/api_workbench_shelf_view.ts";
+import { renderApiWorkbenchWindowTitlebar } from "../../app/api_workbench_window_view.ts";
 import {
   renderApiWorkbenchTerminalSessionTabs,
   renderApiWorkbenchTerminalShellToolbar,
@@ -197,8 +196,8 @@ type Hit =
   | { type: "mobileAction"; action: MobileAction }
   | { type: "quit" }
   | { type: "focus"; id: PanelId }
-  | { type: "min"; id: PanelId }
-  | { type: "max"; id: PanelId }
+  | { type: "minimize"; id: PanelId }
+  | { type: "maximize"; id: PanelId }
   | { type: "restore"; id?: PanelId }
   | { type: "close"; id: PanelId }
   | { type: "threeConfig"; id: PanelId }
@@ -821,19 +820,17 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
   hitTargets.add(rect, { type: "focus", id });
   const selected = active.peek() === id;
   drawFrame(frame, rect, panelTitle(id), selected);
-  const titlebar = layoutWorkbenchTitlebarInto(titlebarBuffers.layout(id), {
+  renderApiWorkbenchWindowTitlebar<PanelId, Hit, string[]>({
+    frame,
+    id,
     rect,
     title: panelTitle(id),
     showConfig: id === "three",
+    buffers: titlebarBuffers,
+    writeButton,
+    addHit: (hitRect, action) => hitTargets.add(hitRect, action),
+    titlebarAction: (targetId, kind) => resolveApiWorkbenchTitlebarHitAction(targetId, kind),
   });
-  const titlebarCommands = workbenchTitlebarButtonRenderCommandsInto(titlebarBuffers.renderCommands(id), titlebar);
-  for (const command of titlebarCommands) {
-    writeButton(frame, command.rect.row, command.rect.column, command.label, {
-      compact: command.compact,
-      tone: command.tone,
-    });
-    hitTargets.add(command.hitRect, panelTitlebarHit(id, command.kind));
-  }
   const inner = {
     column: rect.column + 2,
     row: rect.row + 1,
@@ -849,14 +846,6 @@ function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
   else if (id === "three") renderThreePreview(frame, inner);
   else if (id === "htmlLayout") renderHtmlCssLayout(frame, inner);
   else if (id === "terminal") renderTerminalProtocol(frame, inner);
-}
-
-function panelTitlebarHit(id: PanelId, kind: WorkbenchTitlebarButtonKind): Hit {
-  if (kind === "config") return { type: "threeConfig", id };
-  if (kind === "minimize") return { type: "min", id };
-  if (kind === "maximize") return { type: "max", id };
-  if (kind === "close") return { type: "close", id };
-  return { type: "restore", id };
 }
 
 function panelTitle(id: PanelId): string {
@@ -1386,8 +1375,8 @@ function applyHit(target: HitTarget<Hit>, x: number, y: number): void {
     applyMobileAction(hit.action);
   } else if (hit.type === "quit") openQuitModal();
   else if (hit.type === "focus") focus(hit.id);
-  else if (hit.type === "min") minimize(hit.id);
-  else if (hit.type === "max") toggleMax(hit.id);
+  else if (hit.type === "minimize") minimize(hit.id);
+  else if (hit.type === "maximize") toggleMax(hit.id);
   else if (hit.type === "close") closePanel(hit.id);
   else if (hit.type === "threeConfig") openThreeConfigModal(hit.id);
   else if (hit.type === "asciiConfig") applyThreeConfigHit(hit.index, hit.action ?? "activate");

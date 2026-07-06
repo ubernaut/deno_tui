@@ -123,7 +123,7 @@ export function renderApiWorkbenchWindowShell<TId extends string, TAction>(
     rect,
     title,
     showConfig,
-    buffers,
+    buffers: buffers.titlebars,
     writeButton,
     addHit,
     titlebarAction: options.titlebarAction,
@@ -168,6 +168,40 @@ export function renderApiWorkbenchWindowShell<TId extends string, TAction>(
   return true;
 }
 
+export function renderApiWorkbenchWindowTitlebar<TId extends string, TAction, Frame = WorkbenchFrame>(
+  options: {
+    frame: Frame;
+    id: TId;
+    rect: Rectangle;
+    title: string;
+    showConfig: boolean;
+    buffers: WorkbenchTitlebarBufferCache<TId>;
+    writeButton: (
+      frame: Frame,
+      row: number,
+      column: number,
+      label: string,
+      options?: { compact?: boolean; tone?: WorkbenchButtonTone },
+    ) => number;
+    addHit: (rect: Rectangle, action: TAction) => void;
+    titlebarAction: (id: TId, kind: WorkbenchTitlebarButtonKind) => TAction;
+  },
+): void {
+  const titlebar = layoutWorkbenchTitlebarInto(options.buffers.layout(options.id), {
+    rect: options.rect,
+    title: options.title,
+    showConfig: options.showConfig,
+  });
+  const commands = workbenchTitlebarButtonRenderCommandsInto(options.buffers.renderCommands(options.id), titlebar);
+  for (const command of commands) {
+    options.writeButton(options.frame, command.rect.row, command.rect.column, command.label, {
+      compact: command.compact,
+      tone: command.tone,
+    });
+    options.addHit(command.hitRect, options.titlebarAction(options.id, command.kind));
+  }
+}
+
 export function renderApiWorkbenchWindowFrame<TId extends string = string>(
   options: ApiWorkbenchWindowFrameRenderOptions<TId>,
 ): void {
@@ -183,30 +217,6 @@ export function renderApiWorkbenchWindowFrame<TId extends string = string>(
     } else {
       options.write(options.frame, command.row, command.column, options.paint(command.text, command.style));
     }
-  }
-}
-
-function renderApiWorkbenchWindowTitlebar<TId extends string, TAction>(
-  options: Pick<
-    ApiWorkbenchWindowShellRenderOptions<TId, TAction>,
-    "frame" | "id" | "rect" | "title" | "showConfig" | "buffers" | "writeButton" | "addHit" | "titlebarAction"
-  >,
-): void {
-  const titlebar = layoutWorkbenchTitlebarInto(options.buffers.titlebars.layout(options.id), {
-    rect: options.rect,
-    title: options.title,
-    showConfig: options.showConfig,
-  });
-  const commands = workbenchTitlebarButtonRenderCommandsInto(
-    options.buffers.titlebars.renderCommands(options.id),
-    titlebar,
-  );
-  for (const command of commands) {
-    options.writeButton(options.frame, command.rect.row, command.rect.column, command.label, {
-      compact: command.compact,
-      tone: command.tone,
-    });
-    options.addHit(command.hitRect, options.titlebarAction(options.id, command.kind));
   }
 }
 

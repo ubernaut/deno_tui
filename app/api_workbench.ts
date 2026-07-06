@@ -1366,7 +1366,7 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
         paint,
         center: centerText,
         writeRows,
-        scale: threeGridScaleModeForWindow(id),
+        scale: true,
         countForPressure: false,
         rendererAvailable: threeAsciiAvailable.peek(),
         onPressureRows: (rows) => workbenchThreeRuntime.recordRenderedGridForPressure(rows),
@@ -1384,7 +1384,7 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
       paint,
       center: centerText,
       writeRows,
-      scale: threeGridScaleModeForWindow(id),
+      scale: true,
       countForPressure: shouldCountWorkbenchThreeGridPressure(grid, entry.panel.inspectPerformance()),
       rendererAvailable: threeAsciiAvailable.peek(),
       onPressureRows: (rows) => workbenchThreeRuntime.recordRenderedGridForPressure(rows),
@@ -1453,7 +1453,7 @@ function renderThree(frame: Frame, rect: Rectangle): void {
         paint,
         center: centerText,
         writeRows,
-        scale: threeGridScaleModeForWindow("three"),
+        scale: true,
         countForPressure: false,
         rendererAvailable: threeAsciiAvailable.peek(),
         onPressureRows: (rows) => workbenchThreeRuntime.recordRenderedGridForPressure(rows),
@@ -1470,7 +1470,7 @@ function renderThree(frame: Frame, rect: Rectangle): void {
       paint,
       center: centerText,
       writeRows,
-      scale: threeGridScaleModeForWindow("three"),
+      scale: true,
       countForPressure: shouldCountWorkbenchThreeGridPressure(grid, performance),
       rendererAvailable: threeAsciiAvailable.peek(),
       onPressureRows: (rows) => workbenchThreeRuntime.recordRenderedGridForPressure(rows),
@@ -1489,10 +1489,6 @@ function renderThree(frame: Frame, rect: Rectangle): void {
     center: centerText,
     writeRows,
   });
-}
-
-function threeGridScaleModeForWindow(_id: WindowId): boolean | "down" {
-  return true;
 }
 
 function renderExplorer(frame: Frame, rect: Rectangle): void {
