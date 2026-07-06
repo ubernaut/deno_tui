@@ -24,7 +24,7 @@ export interface HtmlCssLayoutTheme {
 }
 
 /** Paint style for one computed HTML/CSS layout demo box. */
-export interface HtmlCssLayoutBoxStyle {
+interface HtmlCssLayoutBoxStyle {
   fg: string;
   bg: string;
   border: string;
@@ -32,7 +32,7 @@ export interface HtmlCssLayoutBoxStyle {
 }
 
 /** Minimal contrast picker used by extracted layout-demo styling. */
-export type HtmlCssLayoutContrast = (color: string, dark: string, light: string) => string;
+type HtmlCssLayoutContrast = (color: string, dark: string, light: string) => string;
 
 /** Renderer-neutral paint command for the HTML/CSS layout demo. */
 export type HtmlCssLayoutRenderCommand =
@@ -40,14 +40,14 @@ export type HtmlCssLayoutRenderCommand =
   | HtmlCssLayoutTextRenderCommand;
 
 /** Renderer-neutral fill command for one HTML/CSS layout box. */
-export interface HtmlCssLayoutFillRenderCommand {
+interface HtmlCssLayoutFillRenderCommand {
   kind: "fill";
   rect: Rectangle;
   bg: string;
 }
 
 /** Renderer-neutral text command for one HTML/CSS layout row. */
-export interface HtmlCssLayoutTextRenderCommand {
+interface HtmlCssLayoutTextRenderCommand {
   kind: "text";
   row: number;
   column: number;
@@ -59,7 +59,7 @@ export interface HtmlCssLayoutTextRenderCommand {
 }
 
 /** Options for projecting an HTML/CSS layout demo into renderer-neutral commands. */
-export interface HtmlCssLayoutRenderCommandOptions {
+interface HtmlCssLayoutRenderCommandOptions {
   bounds: Rectangle;
   boxes: readonly ComputedLayoutBox[];
   theme: HtmlCssLayoutTheme;
@@ -68,7 +68,7 @@ export interface HtmlCssLayoutRenderCommandOptions {
 }
 
 /** Host profile for the HTML/CSS layout demo explanatory summary. */
-export type HtmlCssLayoutSummaryProfile = "terminal" | "web";
+type HtmlCssLayoutSummaryProfile = "terminal" | "web";
 
 /** Returns the compact summary rows shown below the HTML/CSS layout demo. */
 export function htmlCssLayoutSummaryRows(profile: HtmlCssLayoutSummaryProfile = "terminal"): readonly string[] {
@@ -170,7 +170,7 @@ export function htmlCssVisibleLayoutBoxesInto<T extends Pick<ComputedLayoutBox, 
 }
 
 /** Compares computed layout boxes by z-index and stable demo paint layer. */
-export function compareHtmlCssLayoutPaintOrder(
+function compareHtmlCssLayoutPaintOrder(
   left: Pick<ComputedLayoutBox, "id" | "zIndex">,
   right: Pick<ComputedLayoutBox, "id" | "zIndex">,
 ): number {
