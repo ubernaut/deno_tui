@@ -233,6 +233,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     app-internal scene signal policy with the existing Three workbench runtime policy module.
   - Workbench Three rectangle and graphics-surface geometry helpers are folded into `src/app/workbench_three_policy.ts`,
     keeping hidden-rect, body-rect, and clipped graphics rect policy with the rest of the workbench Three surface.
+  - Workbench Three header performance formatting is folded into `src/app/workbench_rows.ts`, keeping header row layout
+    and telemetry text projection in one row-rendering module.
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer

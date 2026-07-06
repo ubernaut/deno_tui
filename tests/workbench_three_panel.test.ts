@@ -17,7 +17,7 @@ import {
   threeHeaderPerformanceText,
   writeThreeHeaderPerformance,
   writeThreeHeaderRuntimePerformance,
-} from "../src/app/workbench_three_header.ts";
+} from "../src/app/workbench_rows.ts";
 import { applyWorkbenchThreePanelFrameDefaults } from "../src/app/workbench_three_policy.ts";
 import {
   hideWorkbenchThreeRect,

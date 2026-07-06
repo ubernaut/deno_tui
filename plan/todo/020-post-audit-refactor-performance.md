@@ -1059,9 +1059,9 @@ performance, shared terminal/web workbench projections, and oversized module red
   visible update rate. Focused row/cadence tests and the `workbench-three-header-telemetry` benchmark passed.
 - Tightened the cadence meter so stale observed FPS ages out while panes are paused or hidden, and routed the workbench
   header through a primitive `measuredFps()` read instead of allocating an inspection object during render.
-- Extracted Three header performance-text projection into `workbench_three_header.ts` with direct tests for detailed,
-  compact, and narrow telemetry modes, leaving `workbench_rows.ts` focused on row composition while preserving the
-  benchmarked `workbench-three-header-telemetry` path.
+- Extracted Three header performance-text projection with direct tests for detailed, compact, and narrow telemetry
+  modes; later folded that formatter into `workbench_rows.ts` so header row composition and telemetry text live together
+  while preserving the benchmarked `workbench-three-header-telemetry` path.
 - Specialized the extracted Three telemetry formatter for its ASCII-only output so width checks use direct string length
   instead of the general Unicode text-width helper; focused formatter tests and the header telemetry benchmark passed.
 - Added a caller-owned workbench Three pressure inspection path and routed the API workbench Three header through it,
