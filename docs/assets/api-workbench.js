@@ -18619,6 +18619,26 @@ function writeTextCommand2(target, line, style2) {
   return target;
 }
 
+// src/app/workbench_rows.ts
+var THREE_HEADER_GEOMETRY = "torus knot \xB7 sphere \xB7 block \xB7 floor plane";
+var THREE_HEADER_GEOMETRY_WIDTH = textWidth(THREE_HEADER_GEOMETRY);
+function dataFooterRows(options) {
+  const selected = options.selectedKey ?? "-";
+  const full = compactSpaces(
+    `page ${options.page}/${options.pageCount}  selected ${selected}  arrows/page keys  S sort`
+  );
+  const texts = textWidth(full) <= options.width ? [full] : wrapPlainText(
+    `page ${options.page}/${options.pageCount} selected ${selected} arrows/page keys S sort`,
+    options.width,
+    options.fit
+  );
+  const rows2 = new Array(texts.length);
+  for (let index = 0; index < texts.length; index++) {
+    rows2[index] = { text: texts[index], fg: options.theme.muted, bg: options.theme.panelSoft };
+  }
+  return rows2;
+}
+
 // app/api_workbench_window_view.ts
 function renderApiWorkbenchButtonRow(options) {
   const { frame, rect, startRow, items, placements, commands, theme: theme2, contrastText: contrastText2, paint: paint2, write: write2, addHit, hitAction } = options;
@@ -19052,26 +19072,6 @@ function renderApiWorkbenchWindowTitlebar(options) {
     });
     options.addHit(command.hitRect, options.titlebarAction(options.id, command.kind));
   }
-}
-
-// src/app/workbench_rows.ts
-var THREE_HEADER_GEOMETRY = "torus knot \xB7 sphere \xB7 block \xB7 floor plane";
-var THREE_HEADER_GEOMETRY_WIDTH = textWidth(THREE_HEADER_GEOMETRY);
-function dataFooterRows(options) {
-  const selected = options.selectedKey ?? "-";
-  const full = compactSpaces(
-    `page ${options.page}/${options.pageCount}  selected ${selected}  arrows/page keys  S sort`
-  );
-  const texts = textWidth(full) <= options.width ? [full] : wrapPlainText(
-    `page ${options.page}/${options.pageCount} selected ${selected} arrows/page keys S sort`,
-    options.width,
-    options.fit
-  );
-  const rows2 = new Array(texts.length);
-  for (let index = 0; index < texts.length; index++) {
-    rows2[index] = { text: texts[index], fg: options.theme.muted, bg: options.theme.panelSoft };
-  }
-  return rows2;
 }
 
 // app/styles.ts
