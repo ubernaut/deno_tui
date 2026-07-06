@@ -264,13 +264,8 @@ import {
   resolveApiWorkbenchWindowVScrollbarOffset,
   resolveApiWorkbenchWorkspaceScrollbarOffset,
 } from "./api_workbench_controls.ts";
-import { createHtmlCssLayoutDemo, HTML_CSS_LAYOUT_WINDOW_ID } from "../src/markup/demo_fixtures.ts";
-import {
-  type HtmlCssLayoutRenderCommand,
-  htmlCssLayoutRenderCommandsInto,
-  htmlCssLayoutSummaryRows,
-  htmlCssVisibleLayoutBoxesInto,
-} from "./html_css_layout_view.ts";
+import { HTML_CSS_LAYOUT_WINDOW_ID } from "../src/markup/demo_fixtures.ts";
+import { type HtmlCssLayoutRenderCommand } from "./html_css_layout_view.ts";
 import { ASCII_DEMO_PRESETS, asciiDemoPresetIds } from "../src/three_ascii/demo_presets.ts";
 import { cloneAsciiOptions, normalizeAsciiOptions } from "../src/three_ascii/options.ts";
 import { resolveSourceFramesInto } from "./sources.ts";
@@ -405,6 +400,7 @@ import {
   renderApiWorkbenchTerminalShellToolbar,
 } from "./api_workbench_terminal_shell_view.ts";
 import { renderApiWorkbenchTerminalOutputToolbar } from "./api_workbench_terminal_output_view.ts";
+import { renderApiWorkbenchHtmlCssLayout } from "./api_workbench_html_css_view.ts";
 
 type BuiltInWindowId = ApiWorkbenchBuiltInWindowId;
 type VisualizationWindowId = `viz:${string}`;
@@ -2431,32 +2427,18 @@ function renderTerminalShellSessionTabs(
 }
 
 function renderHtmlCssLayout(frame: Frame, rect: Rectangle): void {
-  const t = theme();
-  const result = createHtmlCssLayoutDemo(rect);
-  const boxes = htmlCssVisibleLayoutBoxesInto(htmlCssLayoutBoxes, result.layout.boxes);
-  const commands = htmlCssLayoutRenderCommandsInto(htmlCssLayoutRenderCommands, {
-    bounds: rect,
-    boxes,
-    theme: t,
-    contrast: contrastText,
-    summaryRows: htmlCssLayoutSummaryRows("terminal"),
+  renderApiWorkbenchHtmlCssLayout({
+    frame,
+    rect,
+    boxes: htmlCssLayoutBoxes,
+    commands: htmlCssLayoutRenderCommands,
+    theme: theme(),
+    contrastText,
+    fit,
+    paint,
+    write,
+    fillRect,
   });
-  for (const command of commands) {
-    if (command.kind === "fill") {
-      fillRect(frame, command.rect, command.bg);
-    } else {
-      write(
-        frame,
-        command.row,
-        command.column,
-        paint(fit(command.text, command.maxWidth), {
-          fg: command.fg,
-          bg: command.bg,
-          bold: command.bold,
-        }),
-      );
-    }
-  }
 }
 
 function writeWrappedOptions(

@@ -264,6 +264,8 @@ performance, shared terminal/web workbench projections, and oversized module red
   keeping button-row projection shared while moving another visible terminal rendering loop out of `api_workbench.ts`.
 - Extracted API Workbench shell toolbar painting into the terminal shell view adapter with direct tests, leaving
   `api_workbench.ts` to assemble shell runtime state while shared button-row projection handles layout and commands.
+- Extracted API Workbench HTML/CSS layout demo terminal painting into a focused adapter with direct tests, leaving the
+  main workbench renderer to pass retained buffers and theme/write callbacks into the shared layout command pipeline.
 - Optimized workbench frame-row background-space detection with direct suffix checks, keeping Three block-mode span
   flushes benchmarked without adding per-cell cache overhead.
 - Folded the small workbench Three surface renderer back into the Three grid projection module and merged its tests into

@@ -8,6 +8,7 @@ import {
   type HtmlCssLayoutTheme,
   htmlCssVisibleLayoutBoxesInto,
 } from "../app/html_css_layout_view.ts";
+import { renderApiWorkbenchHtmlCssLayout } from "../app/api_workbench_html_css_view.ts";
 import {
   applyCssCascade,
   ButtonController,
@@ -53,6 +54,7 @@ import {
 import { cellLength, frLength, percentLength } from "../src/layout/style.ts";
 import { yogaLayoutSolver } from "../src/layout/solvers/yoga.ts";
 import type {
+  ComputedLayoutBox,
   LayoutNode,
   LayoutSolver,
   MarkupLayoutWorkerPayload,
@@ -229,6 +231,34 @@ Deno.test("htmlCssLayoutRenderCommandsInto projects boxes outlines labels and su
     bg: htmlCssViewTheme.panelSoft,
     bold: false,
   });
+});
+
+Deno.test("renderApiWorkbenchHtmlCssLayout paints terminal frame commands", () => {
+  const frame: string[][] = [];
+  const boxes: ComputedLayoutBox[] = [];
+  const commands: HtmlCssLayoutRenderCommand[] = [];
+  const fills: Rectangle[] = [];
+
+  renderApiWorkbenchHtmlCssLayout({
+    frame,
+    rect: { column: 0, row: 0, width: 44, height: 18 },
+    boxes,
+    commands,
+    theme: htmlCssViewTheme,
+    contrastText: htmlCssViewContrast,
+    fit: (text, width) => text.slice(0, width),
+    paint: (text, style) => `${style.bg}:${style.fg}:${text}`,
+    write: (target, row, column, value) => {
+      target[row] ??= [];
+      target[row]![column] = value;
+    },
+    fillRect: (_target, rect) => fills.push(rect),
+  });
+
+  assertEquals(fills.length > 0, true);
+  assertEquals(commands.length > 0, true);
+  assertEquals(boxes.length > 0, true);
+  assertEquals(frame.some((row) => row.some((cell) => cell?.includes("parseTuiMarkup"))), true);
 });
 
 Deno.test("parseTuiMarkup builds a layout tree with stable ids classes and text", () => {
