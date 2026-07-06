@@ -16326,6 +16326,10 @@ var TERMINAL_CAPABILITY_IDS = Object.keys(TERMINAL_CAPABILITY_METADATA);
 // src/runtime/terminal_session.ts
 var ENCODER = new TextEncoder();
 
+// src/testing/snapshot.ts
+var ESCAPE = String.fromCharCode(27);
+var ANSI_PATTERN = new RegExp(`${ESCAPE}\\[[0-?]*[ -/]*[@-~]`, "g");
+
 // src/platform/types.ts
 var NoopLifecycleController = class {
   constructor(kind = "noop") {
@@ -16345,6 +16349,8 @@ var NoopLifecycleController = class {
 
 // src/web/cell_canvas_sink.ts
 var textDecoder5 = new TextDecoder();
+var ESCAPE2 = String.fromCharCode(27);
+var SGR_PATTERN = new RegExp(`${ESCAPE2}\\[([0-9;]*)m`, "g");
 var BrowserCellCanvasSink = class {
   requiresCellUpdates = false;
   #canvas;
@@ -16430,7 +16436,7 @@ var BrowserCellCanvasSink = class {
 function parseAnsiCell(value) {
   const style2 = { text: stripStyles(value), bold: false, dim: false };
   const textIndex = firstPrintableIndex(value);
-  const matches = value.matchAll(/\x1b\[([0-9;]*)m/g);
+  const matches = value.matchAll(SGR_PATTERN);
   for (const match of matches) {
     if (match.index !== void 0 && match.index > textIndex) break;
     const params = parseSgrParams(match[1] ?? "");

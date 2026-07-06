@@ -6,6 +6,8 @@ import type { CanvasRenderStats } from "../canvas/canvas.ts";
 import { stripStyles } from "../utils/strings.ts";
 
 const textDecoder = new TextDecoder();
+const ESCAPE = String.fromCharCode(27);
+const SGR_PATTERN = new RegExp(`${ESCAPE}\\[([0-9;]*)m`, "g");
 
 /** Options for drawing terminal cells into a browser Canvas2D surface. */
 export interface BrowserCellCanvasSinkOptions {
@@ -150,7 +152,7 @@ export class BrowserCellCanvasSink implements CanvasCellSink {
 export function parseAnsiCell(value: string): ParsedAnsiCell {
   const style: ParsedAnsiCell = { text: stripStyles(value), bold: false, dim: false };
   const textIndex = firstPrintableIndex(value);
-  const matches = value.matchAll(/\x1b\[([0-9;]*)m/g);
+  const matches = value.matchAll(SGR_PATTERN);
   for (const match of matches) {
     if (match.index !== undefined && match.index > textIndex) break;
     const params = parseSgrParams(match[1] ?? "");

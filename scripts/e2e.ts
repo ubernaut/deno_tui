@@ -40,7 +40,8 @@ export interface E2EReport {
   artifacts: E2EArtifactResult[];
 }
 
-const ansiPattern = /\x1b\[[0-?]*[ -/]*[@-~]/g;
+const ESCAPE = String.fromCharCode(27);
+const ansiPattern = new RegExp(`${ESCAPE}\\[[0-?]*[ -/]*[@-~]`, "g");
 
 export const e2eCommandTargets: readonly E2ECommandTarget[] = [
   {

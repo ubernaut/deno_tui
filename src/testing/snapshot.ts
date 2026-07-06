@@ -2,7 +2,8 @@
 import { Canvas } from "../canvas/canvas.ts";
 import type { ConsoleSize, Stdout } from "../types.ts";
 
-const ANSI_PATTERN = /\x1b\[[0-?]*[ -/]*[@-~]/g;
+const ESCAPE = String.fromCharCode(27);
+const ANSI_PATTERN = new RegExp(`${ESCAPE}\\[[0-?]*[ -/]*[@-~]`, "g");
 
 /** Public interface describing a test Stdout. */
 export interface TestStdout {

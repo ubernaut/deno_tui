@@ -7,6 +7,11 @@ import type { VisualizationLaunchCategory, VisualizationLaunchTarget } from "./v
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
+const CONTROL_CHARACTER_PATTERN = new RegExp(
+  `[${String.fromCharCode(0)}-${String.fromCharCode(31)}${String.fromCharCode(127)}]`,
+);
+const ESCAPE = String.fromCharCode(27);
+const ANSI_PATTERN = new RegExp(`${ESCAPE}\\[[0-9;?]*[A-Za-z]`, "g");
 
 export interface DemoLauncherSelection {
   index: number;
@@ -33,7 +38,7 @@ export function moveDemoSelection(
 }
 
 export function appendDemoLauncherInput(selection: DemoLauncherSelection, input: string): DemoLauncherSelection {
-  if (/[\x00-\x1f\x7f]/.test(input)) return selection;
+  if (CONTROL_CHARACTER_PATTERN.test(input)) return selection;
   const printable = input.replace(/[^\w -]/g, "");
   return printable ? { index: 0, query: selection.query + printable } : selection;
 }
@@ -213,7 +218,7 @@ function rgb(hex: string): [number, number, number] {
 }
 
 function stripAnsi(value: string): string {
-  return value.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, "");
+  return value.replace(ANSI_PATTERN, "");
 }
 
 function wrap(value: number, length: number): number {

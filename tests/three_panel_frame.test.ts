@@ -1788,8 +1788,11 @@ function gridText(object: ThreeAsciiObject): string {
   return gridCellsText(object.grid);
 }
 
+const ESCAPE = String.fromCharCode(27);
+const ANSI_SGR_PATTERN = new RegExp(`${ESCAPE}\\[[0-9;]*m`, "g");
+
 function gridCellsText(grid: readonly (readonly string[])[]): string {
-  return grid.flat().join("").replace(/\x1b\[[0-9;]*m/g, "");
+  return grid.flat().join("").replace(ANSI_SGR_PATTERN, "");
 }
 
 function clearQueuedCells(object: ThreeAsciiObject): void {

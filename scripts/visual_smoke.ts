@@ -59,7 +59,8 @@ export const visualSmokeTargets: readonly VisualSmokeTarget[] = [
   },
 ];
 
-const ANSI_PATTERN = /\x1b\[[0-?]*[ -/]*[@-~]/g;
+const ESCAPE = String.fromCharCode(27);
+const ANSI_PATTERN = new RegExp(`${ESCAPE}\\[[0-?]*[ -/]*[@-~]`, "g");
 
 export async function runVisualSmoke(
   targets: readonly VisualSmokeTarget[] = visualSmokeTargets,

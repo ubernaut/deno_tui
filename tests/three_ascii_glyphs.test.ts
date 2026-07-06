@@ -583,8 +583,11 @@ function fallbackTextRows(grid: readonly (readonly string[])[]): string[] {
   return grid.map((row) => stripAnsi(row.join("")).trim()).filter(Boolean);
 }
 
+const ESCAPE = String.fromCharCode(27);
+const ANSI_SGR_PATTERN = new RegExp(`${ESCAPE}\\[[0-9;]*m`, "g");
+
 function stripAnsi(value: string): string {
-  return value.replace(/\x1b\[[0-9;]*m/g, "");
+  return value.replace(ANSI_SGR_PATTERN, "");
 }
 
 Deno.test("three ascii demo window reserves side panel only when useful", () => {
