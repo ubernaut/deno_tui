@@ -210,6 +210,8 @@ The library core is real and valuable, but it needs clearer boundaries:
     output pressure guard in the catalog while removing another single-use benchmark helper shard.
   - API workbench control key, style, dropdown, stepper-hit, and table-navigation helpers are folded into
     `app/api_workbench_controls.ts`, preserving the facade while removing five app-only helper shards.
+  - API workbench control ids, line projection, and slider helpers are folded into `app/api_workbench_controls.ts`,
+    making the controls facade the single app-local implementation surface for the workbench controls panel.
 - Next app-layer candidates:
   - tiny control/window constants that are only consumed by workbench demos
   - app-only visualization fallback helpers with a single consumer
