@@ -18266,6 +18266,360 @@ function addInlineStepperHits(options) {
   addControlHits(placements, options.addHit);
 }
 
+// src/app/workbench_ascii.ts
+var defaultWorkbenchAsciiConfigRows = [
+  { kind: "preset", label: "Preset" },
+  { kind: "glyphStyle", label: "Glyph style" },
+  { kind: "kitty", key: "kittyGraphics", label: "Kitty graphics" },
+  { kind: "kitty", key: "kittyDisableAscii", label: "Disable ASCII under Kitty" },
+  { kind: "numeric", key: "terminalEdgeBias", label: "Edge glyph bias" },
+  { kind: "numeric", key: "wireframeThickness", label: "Wire thickness" },
+  { kind: "numeric", key: "renderMaxCells", label: "Render cells" },
+  { kind: "numeric", key: "deferredReadbackSlots", label: "Readback slots" },
+  { kind: "toggle", key: "edges", label: "Edge pass" },
+  { kind: "toggle", key: "fill", label: "Fill pass" },
+  { kind: "toggle", key: "invertLuminance", label: "Invert luminance" },
+  { kind: "numeric", key: "edgeThreshold", label: "Edge threshold" },
+  { kind: "numeric", key: "normalThreshold", label: "Normal edge" },
+  { kind: "numeric", key: "depthThreshold", label: "Depth edge" },
+  { kind: "numeric", key: "exposure", label: "Exposure" },
+  { kind: "numeric", key: "attenuation", label: "Attenuation" },
+  { kind: "numeric", key: "blendWithBase", label: "Base blend" },
+  { kind: "numeric", key: "depthFalloff", label: "Fog falloff" },
+  { kind: "numeric", key: "depthOffset", label: "Fog offset" }
+];
+function createDefaultWorkbenchAsciiOptions() {
+  return {
+    ...createDefaultAsciiOptions("sharp"),
+    preset: "custom",
+    renderMaxCells: 960,
+    deferredReadbackSlots: 2
+  };
+}
+function asciiNumericOptionRatio(values, value) {
+  const min2 = values[0] ?? 0;
+  const max2 = values.at(-1) ?? min2;
+  return max2 === min2 ? 1 : Math.max(0, Math.min(1, (value - min2) / (max2 - min2)));
+}
+function closestAsciiControlValueIndex(values, value) {
+  let best = 0;
+  let distance = Number.POSITIVE_INFINITY;
+  for (let index = 0; index < values.length; index += 1) {
+    const candidate = values[index];
+    const nextDistance = Math.abs(candidate - value);
+    if (nextDistance < distance) {
+      best = index;
+      distance = nextDistance;
+    }
+  }
+  return best;
+}
+function formatWorkbenchAsciiConfigRowText(row, options, formatOptions = {}) {
+  const labelWidth = formatOptions.labelWidth ?? 18;
+  if (row.kind === "preset") {
+    return `${row.label.padEnd(labelWidth)} [<] ${asciiPresetLabel(options.preset)} [>]`;
+  }
+  if (row.kind === "glyphStyle") {
+    let labels = "";
+    for (let index = 0; index < TERMINAL_GLYPH_STYLES.length; index += 1) {
+      const style2 = TERMINAL_GLYPH_STYLES[index];
+      if (index > 0) labels += " ";
+      labels += style2 === options.terminalGlyphStyle ? `[${terminalGlyphStyleLabel(style2)}]` : ` ${terminalGlyphStyleLabel(style2)} `;
+    }
+    return `${row.label.padEnd(labelWidth)} ${labels}`;
+  }
+  if (row.kind === "toggle") {
+    return `${row.label.padEnd(labelWidth)} ${options[row.key] ? "[x]" : "[ ]"}`;
+  }
+  if (row.kind === "kitty") {
+    const status = row.key === "kittyGraphics" ? formatOptions.kittyStatus ?? "" : "applies only when Kitty is active";
+    return `${row.label.padEnd(formatOptions.kittyLabelWidth ?? 26)} ${options[row.key] ? "[x]" : "[ ]"} ${status}`;
+  }
+  const value = Number(options[row.key]);
+  const values = asciiControlValues(row.key);
+  const ratio = asciiNumericOptionRatio(values, value);
+  const trackWidth = formatOptions.trackWidth ?? 14;
+  const filled = Math.round(ratio * trackWidth);
+  const track = `${"\u2588".repeat(filled)}${"\u2591".repeat(Math.max(0, trackWidth - filled))}`;
+  return `${row.label.padEnd(labelWidth)} [<] ${track} ${formatAsciiControlValue(row.key, value).padStart(5)} [>]`;
+}
+function moveWorkbenchAsciiConfigSelection(current, rowCount, delta) {
+  const count = Math.max(0, Math.floor(rowCount));
+  if (count === 0) return 0;
+  return (Math.floor(current) + Math.floor(delta) + count) % count;
+}
+function workbenchAsciiConfigVisibleRowStart(selected, rowCount, visibleRows2) {
+  const count = Math.max(0, Math.floor(rowCount));
+  const visible = Math.max(0, Math.floor(visibleRows2));
+  if (count === 0 || visible === 0) return 0;
+  const clampedSelected = Math.max(0, Math.min(count - 1, Math.floor(selected)));
+  return Math.max(0, Math.min(clampedSelected, count - visible));
+}
+function stepWorkbenchAsciiPreset(options, presetIds, delta) {
+  const ids = presetIds.length ? presetIds : [options.preset];
+  const currentIndex = Math.max(0, ids.indexOf(options.preset));
+  const presetId = ids[(currentIndex + delta + ids.length) % ids.length];
+  const next = cloneAsciiOptions(options);
+  applyAsciiPreset(next, presetId);
+  return { options: next, presetId, label: asciiPresetLabel(presetId) };
+}
+function stepWorkbenchAsciiGlyphStyle(options, delta) {
+  const index = TERMINAL_GLYPH_STYLES.indexOf(options.terminalGlyphStyle);
+  const next = TERMINAL_GLYPH_STYLES[(index + delta + TERMINAL_GLYPH_STYLES.length) % TERMINAL_GLYPH_STYLES.length];
+  return { ...options, terminalGlyphStyle: next, preset: "custom" };
+}
+function toggleWorkbenchAsciiOption(options, key) {
+  return { ...options, [key]: !options[key], preset: "custom" };
+}
+function stepWorkbenchAsciiNumericOption(options, key, delta) {
+  const values = asciiControlValues(key);
+  const currentValue = Number(options[key]);
+  const closest = closestAsciiControlValueIndex(values, currentValue);
+  const nextValue = values[Math.max(0, Math.min(values.length - 1, closest + delta))];
+  return { ...options, [key]: nextValue, preset: "custom" };
+}
+function applyWorkbenchAsciiConfigRowAction(options, row, action, presetIds) {
+  if (row.kind === "preset") {
+    const next2 = stepWorkbenchAsciiPreset(options, presetIds, action === "previous" ? -1 : 1);
+    return { options: next2.options, message: `preset ${next2.label}` };
+  }
+  if (row.kind === "glyphStyle") {
+    const next2 = stepWorkbenchAsciiGlyphStyle(options, action === "previous" ? -1 : 1);
+    return { options: next2, message: `glyph style ${terminalGlyphStyleLabel(next2.terminalGlyphStyle)}` };
+  }
+  if (row.kind === "toggle" || row.kind === "kitty") {
+    const next2 = toggleWorkbenchAsciiOption(options, row.key);
+    return { options: next2, message: `${row.key} ${next2[row.key] ? "on" : "off"}` };
+  }
+  const next = stepWorkbenchAsciiNumericOption(options, row.key, action === "previous" ? -1 : 1);
+  return {
+    options: next,
+    message: `${row.key} ${formatAsciiControlValue(row.key, Number(next[row.key]))}`
+  };
+}
+var WorkbenchAsciiConfigController = class {
+  constructor(rootWindowId, initial = createDefaultWorkbenchAsciiOptions()) {
+    this.rootWindowId = rootWindowId;
+    this.root = new Signal(cloneAsciiOptions(initial));
+    this.signals.set(rootWindowId, this.root);
+  }
+  root;
+  signals = /* @__PURE__ */ new Map();
+  signalForWindow(id2) {
+    const existing = this.signals.get(id2);
+    if (existing) return existing;
+    const created = new Signal(cloneAsciiOptions(this.root.peek()));
+    this.signals.set(id2, created);
+    return created;
+  }
+  setForWindow(id2, options) {
+    this.signalForWindow(id2).value = cloneAsciiOptions(options);
+  }
+  disposeWindow(id2) {
+    if (id2 === this.rootWindowId) return;
+    const signal = this.signals.get(id2);
+    signal?.dispose();
+    this.signals.delete(id2);
+  }
+  configuredWindow(candidate, isSupported) {
+    return isSupported(candidate) ? candidate : this.rootWindowId;
+  }
+  configuredSignal(candidate, isSupported) {
+    return this.signalForWindow(this.configuredWindow(candidate, isSupported));
+  }
+  dispose() {
+    for (const [id2, signal] of this.signals) {
+      if (id2 !== this.rootWindowId) signal.dispose();
+    }
+    this.signals.clear();
+    this.root.dispose();
+  }
+};
+
+// src/app/workbench_ascii_modal.ts
+var WorkbenchAsciiConfigModalBufferCache = class {
+  /** Reusable visible row placement buffer. */
+  rowPlacements = [];
+  /** Reusable row render-command buffer. */
+  rowRenderCommands = [];
+  /** Reusable action button descriptors. */
+  actionItems = [];
+  /** Reusable action button placements. */
+  actionPlacements = [];
+  /** Reusable action button render commands. */
+  actionCommands = [];
+  /** Clears retained buffers without replacing their array identities. */
+  clear() {
+    this.rowPlacements.length = 0;
+    this.rowRenderCommands.length = 0;
+    this.actionItems.length = 0;
+    this.actionPlacements.length = 0;
+    this.actionCommands.length = 0;
+  }
+  /** Reports retained buffer sizes for diagnostics and tests. */
+  inspect() {
+    return {
+      rowPlacements: this.rowPlacements.length,
+      rowRenderCommands: this.rowRenderCommands.length,
+      actionItems: this.actionItems.length,
+      actionPlacements: this.actionPlacements.length,
+      actionCommands: this.actionCommands.length
+    };
+  }
+};
+function layoutWorkbenchAsciiConfigModal(options) {
+  const bounds = normalizeRect4(options.bounds);
+  const minWidth = Math.max(1, Math.floor(options.minWidth ?? 54));
+  const maxWidth = Math.max(minWidth, Math.floor(options.maxWidth ?? 82));
+  const horizontalMargin = Math.max(0, Math.floor(options.horizontalMargin ?? 8));
+  const minHeight = Math.max(1, Math.floor(options.minHeight ?? 16));
+  const verticalMargin = Math.max(0, Math.floor(options.verticalMargin ?? 4));
+  const topMargin = Math.max(0, Math.floor(options.topMargin ?? 1));
+  const rowCount = Math.max(0, Math.floor(options.rowCount));
+  const width = Math.min(Math.max(minWidth, bounds.width - horizontalMargin), maxWidth, bounds.width);
+  const height = Math.min(Math.max(minHeight, rowCount + 7), Math.max(10, bounds.height - verticalMargin));
+  const rect = clipRect({
+    column: bounds.column + Math.max(0, Math.floor((bounds.width - width) / 2)),
+    row: bounds.row + Math.max(topMargin, Math.floor((bounds.height - height) / 2)),
+    width,
+    height
+  }, bounds);
+  const inner = inset(rect, 1);
+  const rowsTop = inner.row + 2;
+  const actionRow = inner.row + inner.height - 2;
+  const footerRow = inner.row + inner.height - 1;
+  return {
+    rect,
+    inner,
+    shadow: clipRect({
+      column: rect.column + 2,
+      row: rect.row + 1,
+      width: rect.width,
+      height: rect.height
+    }, bounds),
+    rowsTop,
+    actionRow,
+    footerRow,
+    visibleRows: Math.max(0, actionRow - rowsTop)
+  };
+}
+function workbenchAsciiConfigRowPlacementsInto(target, rows2, options) {
+  target.length = 0;
+  const visibleRows2 = Math.max(0, Math.floor(options.visibleRows));
+  const firstRow = workbenchAsciiConfigVisibleRowStart(options.selectedIndex, rows2.length, visibleRows2);
+  const count = Math.min(visibleRows2, rows2.length);
+  const splitMinWidth = Math.max(1, Math.floor(options.splitMinWidth ?? 6));
+  for (let visibleIndex = 0; visibleIndex < count; visibleIndex += 1) {
+    const rowIndex = firstRow + visibleIndex;
+    const row = rows2[rowIndex];
+    if (row === void 0) continue;
+    const rect = {
+      column: options.inner.column,
+      row: options.rowsTop + visibleIndex,
+      width: options.inner.width,
+      height: 1
+    };
+    const leftWidth = Math.max(splitMinWidth, Math.floor(rect.width / 2));
+    const previousRect = { ...rect, width: Math.min(rect.width, leftWidth) };
+    const nextRect = {
+      column: rect.column + previousRect.width,
+      row: rect.row,
+      width: Math.max(0, rect.width - previousRect.width),
+      height: 1
+    };
+    target.push({
+      row,
+      rowIndex,
+      selected: rowIndex === options.selectedIndex,
+      rect,
+      previousRect,
+      nextRect
+    });
+  }
+  return target;
+}
+function workbenchAsciiConfigModalActionItemsInto(target) {
+  target.length = 0;
+  target.push(
+    { label: "Cancel", action: "cancel", tone: "muted" },
+    { label: "Apply", action: "apply" },
+    { label: "OK", action: "ok", active: true, tone: "success" }
+  );
+  return target;
+}
+function workbenchAsciiConfigModalActionRenderCommandsInto(target, items, placements, options) {
+  workbenchAsciiConfigModalActionItemsInto(items);
+  layoutWorkbenchButtonRowInto(
+    placements,
+    items,
+    { column: options.inner.column, row: options.actionRow, width: options.inner.width, height: 1 },
+    options.actionRow
+  );
+  return workbenchButtonRowRenderCommandsInto(target, placements);
+}
+function normalizeRect4(rect) {
+  return {
+    column: Math.floor(rect.column),
+    row: Math.floor(rect.row),
+    width: Math.max(0, Math.floor(rect.width)),
+    height: Math.max(0, Math.floor(rect.height))
+  };
+}
+
+// app/api_workbench_modal_view.ts
+function renderApiWorkbenchModalOverlay(options) {
+  const { frame, bounds, inspection, buffers, theme: theme2, contrastText: contrastText2, fit: fit2, paint: paint2, write: write2, fillRect: fillRect2, drawFrame: drawFrame2, addHit } = options;
+  addHit(bounds, { type: "modalAction", index: -1 });
+  const maxWidth = Math.max(38, Math.floor(options.maxWidth ?? 72));
+  const probeWidth = Math.min(Math.max(38, bounds.width - 8), maxWidth);
+  const { rect, inner, shadow } = layoutWorkbenchModal({
+    bounds,
+    contentHeight: modalContentHeight(inspection, probeWidth),
+    maxWidth
+  });
+  if (shadow.width > 0 && shadow.height > 0) fillRect2(frame, shadow, theme2.background);
+  fillRect2(frame, rect, theme2.panelSoft);
+  drawFrame2(frame, rect, inspection.title, true);
+  const rowCommands = workbenchModalRowRenderCommandsInto(buffers.rowCommands, {
+    inspection,
+    inner,
+    contentWidth: rect.width
+  });
+  let actionRow;
+  for (const command of rowCommands) {
+    if (command.kind === "actions") actionRow = command.rect.row;
+    write2(
+      frame,
+      command.rect.row,
+      command.rect.column,
+      paint2(fit2(command.text, command.rect.width), {
+        fg: command.kind === "title" ? theme2.accent : theme2.text,
+        bg: command.kind === "actions" ? theme2.panel : theme2.panelSoft,
+        bold: command.kind === "actions" || command.kind === "title"
+      })
+    );
+  }
+  if (inspection.actions.length === 0 || actionRow === void 0) return;
+  workbenchModalActionButtonsInto(buffers.actionItems, inspection);
+  layoutWorkbenchButtonRowInto(
+    buffers.actionPlacements,
+    buffers.actionItems,
+    { column: inner.column, row: actionRow, width: inner.width, height: 1 },
+    actionRow
+  );
+  workbenchButtonRowRenderCommandsInto(buffers.actionCommands, buffers.actionPlacements);
+  for (const command of buffers.actionCommands) {
+    const button = projectWorkbenchButtonCommand(command, theme2, contrastText2);
+    write2(
+      frame,
+      command.rect.row,
+      command.rect.column,
+      paint2(button.text, button.style)
+    );
+    addHit(command.hitRect, { type: "modalAction", index: command.item.action });
+  }
+}
+
 // app/html_css_layout_view.ts
 function htmlCssLayoutSummaryRows(profile = "terminal") {
   if (profile === "web") {
@@ -18857,176 +19211,6 @@ var WorkbenchFramePainter = class {
   }
 };
 
-// src/app/workbench_ascii.ts
-var defaultWorkbenchAsciiConfigRows = [
-  { kind: "preset", label: "Preset" },
-  { kind: "glyphStyle", label: "Glyph style" },
-  { kind: "kitty", key: "kittyGraphics", label: "Kitty graphics" },
-  { kind: "kitty", key: "kittyDisableAscii", label: "Disable ASCII under Kitty" },
-  { kind: "numeric", key: "terminalEdgeBias", label: "Edge glyph bias" },
-  { kind: "numeric", key: "wireframeThickness", label: "Wire thickness" },
-  { kind: "numeric", key: "renderMaxCells", label: "Render cells" },
-  { kind: "numeric", key: "deferredReadbackSlots", label: "Readback slots" },
-  { kind: "toggle", key: "edges", label: "Edge pass" },
-  { kind: "toggle", key: "fill", label: "Fill pass" },
-  { kind: "toggle", key: "invertLuminance", label: "Invert luminance" },
-  { kind: "numeric", key: "edgeThreshold", label: "Edge threshold" },
-  { kind: "numeric", key: "normalThreshold", label: "Normal edge" },
-  { kind: "numeric", key: "depthThreshold", label: "Depth edge" },
-  { kind: "numeric", key: "exposure", label: "Exposure" },
-  { kind: "numeric", key: "attenuation", label: "Attenuation" },
-  { kind: "numeric", key: "blendWithBase", label: "Base blend" },
-  { kind: "numeric", key: "depthFalloff", label: "Fog falloff" },
-  { kind: "numeric", key: "depthOffset", label: "Fog offset" }
-];
-function createDefaultWorkbenchAsciiOptions() {
-  return {
-    ...createDefaultAsciiOptions("sharp"),
-    preset: "custom",
-    renderMaxCells: 960,
-    deferredReadbackSlots: 2
-  };
-}
-function asciiNumericOptionRatio(values, value) {
-  const min2 = values[0] ?? 0;
-  const max2 = values.at(-1) ?? min2;
-  return max2 === min2 ? 1 : Math.max(0, Math.min(1, (value - min2) / (max2 - min2)));
-}
-function closestAsciiControlValueIndex(values, value) {
-  let best = 0;
-  let distance = Number.POSITIVE_INFINITY;
-  for (let index = 0; index < values.length; index += 1) {
-    const candidate = values[index];
-    const nextDistance = Math.abs(candidate - value);
-    if (nextDistance < distance) {
-      best = index;
-      distance = nextDistance;
-    }
-  }
-  return best;
-}
-function formatWorkbenchAsciiConfigRowText(row, options, formatOptions = {}) {
-  const labelWidth = formatOptions.labelWidth ?? 18;
-  if (row.kind === "preset") {
-    return `${row.label.padEnd(labelWidth)} [<] ${asciiPresetLabel(options.preset)} [>]`;
-  }
-  if (row.kind === "glyphStyle") {
-    let labels = "";
-    for (let index = 0; index < TERMINAL_GLYPH_STYLES.length; index += 1) {
-      const style2 = TERMINAL_GLYPH_STYLES[index];
-      if (index > 0) labels += " ";
-      labels += style2 === options.terminalGlyphStyle ? `[${terminalGlyphStyleLabel(style2)}]` : ` ${terminalGlyphStyleLabel(style2)} `;
-    }
-    return `${row.label.padEnd(labelWidth)} ${labels}`;
-  }
-  if (row.kind === "toggle") {
-    return `${row.label.padEnd(labelWidth)} ${options[row.key] ? "[x]" : "[ ]"}`;
-  }
-  if (row.kind === "kitty") {
-    const status = row.key === "kittyGraphics" ? formatOptions.kittyStatus ?? "" : "applies only when Kitty is active";
-    return `${row.label.padEnd(formatOptions.kittyLabelWidth ?? 26)} ${options[row.key] ? "[x]" : "[ ]"} ${status}`;
-  }
-  const value = Number(options[row.key]);
-  const values = asciiControlValues(row.key);
-  const ratio = asciiNumericOptionRatio(values, value);
-  const trackWidth = formatOptions.trackWidth ?? 14;
-  const filled = Math.round(ratio * trackWidth);
-  const track = `${"\u2588".repeat(filled)}${"\u2591".repeat(Math.max(0, trackWidth - filled))}`;
-  return `${row.label.padEnd(labelWidth)} [<] ${track} ${formatAsciiControlValue(row.key, value).padStart(5)} [>]`;
-}
-function moveWorkbenchAsciiConfigSelection(current, rowCount, delta) {
-  const count = Math.max(0, Math.floor(rowCount));
-  if (count === 0) return 0;
-  return (Math.floor(current) + Math.floor(delta) + count) % count;
-}
-function workbenchAsciiConfigVisibleRowStart(selected, rowCount, visibleRows2) {
-  const count = Math.max(0, Math.floor(rowCount));
-  const visible = Math.max(0, Math.floor(visibleRows2));
-  if (count === 0 || visible === 0) return 0;
-  const clampedSelected = Math.max(0, Math.min(count - 1, Math.floor(selected)));
-  return Math.max(0, Math.min(clampedSelected, count - visible));
-}
-function stepWorkbenchAsciiPreset(options, presetIds, delta) {
-  const ids = presetIds.length ? presetIds : [options.preset];
-  const currentIndex = Math.max(0, ids.indexOf(options.preset));
-  const presetId = ids[(currentIndex + delta + ids.length) % ids.length];
-  const next = cloneAsciiOptions(options);
-  applyAsciiPreset(next, presetId);
-  return { options: next, presetId, label: asciiPresetLabel(presetId) };
-}
-function stepWorkbenchAsciiGlyphStyle(options, delta) {
-  const index = TERMINAL_GLYPH_STYLES.indexOf(options.terminalGlyphStyle);
-  const next = TERMINAL_GLYPH_STYLES[(index + delta + TERMINAL_GLYPH_STYLES.length) % TERMINAL_GLYPH_STYLES.length];
-  return { ...options, terminalGlyphStyle: next, preset: "custom" };
-}
-function toggleWorkbenchAsciiOption(options, key) {
-  return { ...options, [key]: !options[key], preset: "custom" };
-}
-function stepWorkbenchAsciiNumericOption(options, key, delta) {
-  const values = asciiControlValues(key);
-  const currentValue = Number(options[key]);
-  const closest = closestAsciiControlValueIndex(values, currentValue);
-  const nextValue = values[Math.max(0, Math.min(values.length - 1, closest + delta))];
-  return { ...options, [key]: nextValue, preset: "custom" };
-}
-function applyWorkbenchAsciiConfigRowAction(options, row, action, presetIds) {
-  if (row.kind === "preset") {
-    const next2 = stepWorkbenchAsciiPreset(options, presetIds, action === "previous" ? -1 : 1);
-    return { options: next2.options, message: `preset ${next2.label}` };
-  }
-  if (row.kind === "glyphStyle") {
-    const next2 = stepWorkbenchAsciiGlyphStyle(options, action === "previous" ? -1 : 1);
-    return { options: next2, message: `glyph style ${terminalGlyphStyleLabel(next2.terminalGlyphStyle)}` };
-  }
-  if (row.kind === "toggle" || row.kind === "kitty") {
-    const next2 = toggleWorkbenchAsciiOption(options, row.key);
-    return { options: next2, message: `${row.key} ${next2[row.key] ? "on" : "off"}` };
-  }
-  const next = stepWorkbenchAsciiNumericOption(options, row.key, action === "previous" ? -1 : 1);
-  return {
-    options: next,
-    message: `${row.key} ${formatAsciiControlValue(row.key, Number(next[row.key]))}`
-  };
-}
-var WorkbenchAsciiConfigController = class {
-  constructor(rootWindowId, initial = createDefaultWorkbenchAsciiOptions()) {
-    this.rootWindowId = rootWindowId;
-    this.root = new Signal(cloneAsciiOptions(initial));
-    this.signals.set(rootWindowId, this.root);
-  }
-  root;
-  signals = /* @__PURE__ */ new Map();
-  signalForWindow(id2) {
-    const existing = this.signals.get(id2);
-    if (existing) return existing;
-    const created = new Signal(cloneAsciiOptions(this.root.peek()));
-    this.signals.set(id2, created);
-    return created;
-  }
-  setForWindow(id2, options) {
-    this.signalForWindow(id2).value = cloneAsciiOptions(options);
-  }
-  disposeWindow(id2) {
-    if (id2 === this.rootWindowId) return;
-    const signal = this.signals.get(id2);
-    signal?.dispose();
-    this.signals.delete(id2);
-  }
-  configuredWindow(candidate, isSupported) {
-    return isSupported(candidate) ? candidate : this.rootWindowId;
-  }
-  configuredSignal(candidate, isSupported) {
-    return this.signalForWindow(this.configuredWindow(candidate, isSupported));
-  }
-  dispose() {
-    for (const [id2, signal] of this.signals) {
-      if (id2 !== this.rootWindowId) signal.dispose();
-    }
-    this.signals.clear();
-    this.root.dispose();
-  }
-};
-
 // app/workbench_visualization_window.ts
 function workbenchThreePreviewRowsInto(target, options) {
   const mode = options.asciiOptions ? terminalGlyphStyleLabel(options.asciiOptions.terminalGlyphStyle).toUpperCase() : workbenchThreePreviewMode(options.tileDensity);
@@ -19141,136 +19325,6 @@ function normalizeWebTerminalWorkspaceSnapshot(value, options = {}) {
     options.onError?.(error);
     return void 0;
   }
-}
-
-// src/app/workbench_ascii_modal.ts
-var WorkbenchAsciiConfigModalBufferCache = class {
-  /** Reusable visible row placement buffer. */
-  rowPlacements = [];
-  /** Reusable row render-command buffer. */
-  rowRenderCommands = [];
-  /** Reusable action button descriptors. */
-  actionItems = [];
-  /** Reusable action button placements. */
-  actionPlacements = [];
-  /** Reusable action button render commands. */
-  actionCommands = [];
-  /** Clears retained buffers without replacing their array identities. */
-  clear() {
-    this.rowPlacements.length = 0;
-    this.rowRenderCommands.length = 0;
-    this.actionItems.length = 0;
-    this.actionPlacements.length = 0;
-    this.actionCommands.length = 0;
-  }
-  /** Reports retained buffer sizes for diagnostics and tests. */
-  inspect() {
-    return {
-      rowPlacements: this.rowPlacements.length,
-      rowRenderCommands: this.rowRenderCommands.length,
-      actionItems: this.actionItems.length,
-      actionPlacements: this.actionPlacements.length,
-      actionCommands: this.actionCommands.length
-    };
-  }
-};
-function layoutWorkbenchAsciiConfigModal(options) {
-  const bounds = normalizeRect4(options.bounds);
-  const minWidth = Math.max(1, Math.floor(options.minWidth ?? 54));
-  const maxWidth = Math.max(minWidth, Math.floor(options.maxWidth ?? 82));
-  const horizontalMargin = Math.max(0, Math.floor(options.horizontalMargin ?? 8));
-  const minHeight = Math.max(1, Math.floor(options.minHeight ?? 16));
-  const verticalMargin = Math.max(0, Math.floor(options.verticalMargin ?? 4));
-  const topMargin = Math.max(0, Math.floor(options.topMargin ?? 1));
-  const rowCount = Math.max(0, Math.floor(options.rowCount));
-  const width = Math.min(Math.max(minWidth, bounds.width - horizontalMargin), maxWidth, bounds.width);
-  const height = Math.min(Math.max(minHeight, rowCount + 7), Math.max(10, bounds.height - verticalMargin));
-  const rect = clipRect({
-    column: bounds.column + Math.max(0, Math.floor((bounds.width - width) / 2)),
-    row: bounds.row + Math.max(topMargin, Math.floor((bounds.height - height) / 2)),
-    width,
-    height
-  }, bounds);
-  const inner = inset(rect, 1);
-  const rowsTop = inner.row + 2;
-  const actionRow = inner.row + inner.height - 2;
-  const footerRow = inner.row + inner.height - 1;
-  return {
-    rect,
-    inner,
-    shadow: clipRect({
-      column: rect.column + 2,
-      row: rect.row + 1,
-      width: rect.width,
-      height: rect.height
-    }, bounds),
-    rowsTop,
-    actionRow,
-    footerRow,
-    visibleRows: Math.max(0, actionRow - rowsTop)
-  };
-}
-function workbenchAsciiConfigRowPlacementsInto(target, rows2, options) {
-  target.length = 0;
-  const visibleRows2 = Math.max(0, Math.floor(options.visibleRows));
-  const firstRow = workbenchAsciiConfigVisibleRowStart(options.selectedIndex, rows2.length, visibleRows2);
-  const count = Math.min(visibleRows2, rows2.length);
-  const splitMinWidth = Math.max(1, Math.floor(options.splitMinWidth ?? 6));
-  for (let visibleIndex = 0; visibleIndex < count; visibleIndex += 1) {
-    const rowIndex = firstRow + visibleIndex;
-    const row = rows2[rowIndex];
-    if (row === void 0) continue;
-    const rect = {
-      column: options.inner.column,
-      row: options.rowsTop + visibleIndex,
-      width: options.inner.width,
-      height: 1
-    };
-    const leftWidth = Math.max(splitMinWidth, Math.floor(rect.width / 2));
-    const previousRect = { ...rect, width: Math.min(rect.width, leftWidth) };
-    const nextRect = {
-      column: rect.column + previousRect.width,
-      row: rect.row,
-      width: Math.max(0, rect.width - previousRect.width),
-      height: 1
-    };
-    target.push({
-      row,
-      rowIndex,
-      selected: rowIndex === options.selectedIndex,
-      rect,
-      previousRect,
-      nextRect
-    });
-  }
-  return target;
-}
-function workbenchAsciiConfigModalActionItemsInto(target) {
-  target.length = 0;
-  target.push(
-    { label: "Cancel", action: "cancel", tone: "muted" },
-    { label: "Apply", action: "apply" },
-    { label: "OK", action: "ok", active: true, tone: "success" }
-  );
-  return target;
-}
-function workbenchAsciiConfigModalActionRenderCommandsInto(target, items, placements, options) {
-  workbenchAsciiConfigModalActionItemsInto(items);
-  layoutWorkbenchButtonRowInto(
-    placements,
-    items,
-    { column: options.inner.column, row: options.actionRow, width: options.inner.width, height: 1 },
-    options.actionRow
-  );
-  return workbenchButtonRowRenderCommandsInto(target, placements);
-}
-function normalizeRect4(rect) {
-  return {
-    column: Math.floor(rect.column),
-    row: Math.floor(rect.row),
-    width: Math.max(0, Math.floor(rect.width)),
-    height: Math.max(0, Math.floor(rect.height))
-  };
 }
 
 // src/app/workbench/controller.ts
@@ -21011,56 +21065,21 @@ function renderThreeConfigModal(frame) {
 }
 function renderModalOverlay(frame) {
   if (!modal.openState.peek()) return;
-  hitTargets.add({ column: 0, row: 0, width: cols(), height: rowsCount() }, { type: "modalAction", index: -1 });
-  const inspection = modal.inspect();
-  const probeWidth = Math.min(Math.max(38, cols() - 8), 74);
-  const { rect, inner, shadow } = layoutWorkbenchModal({
+  renderApiWorkbenchModalOverlay({
+    frame,
     bounds: { column: 0, row: 0, width: cols(), height: rowsCount() },
-    contentHeight: modalContentHeight(inspection, probeWidth),
-    maxWidth: 74
+    inspection: modal.inspect(),
+    buffers: modalBuffers,
+    theme: theme(),
+    contrastText,
+    fit,
+    paint: (value, style2) => paint(value, style2.fg, style2.bg, style2.bold),
+    write,
+    fillRect,
+    drawFrame,
+    maxWidth: 74,
+    addHit: (rect, action) => hitTargets.add(rect, action)
   });
-  if (shadow.width > 0 && shadow.height > 0) fillRect(frame, shadow, theme().background);
-  fillRect(frame, rect, theme().panelSoft);
-  drawFrame(frame, rect, inspection.title, true);
-  const rowCommands = workbenchModalRowRenderCommandsInto(modalBuffers.rowCommands, {
-    inspection,
-    inner,
-    contentWidth: rect.width
-  });
-  let actionRow;
-  for (const command of rowCommands) {
-    if (command.kind === "actions") actionRow = command.rect.row;
-    write(
-      frame,
-      command.rect.row,
-      command.rect.column,
-      paint(
-        fit(command.text, command.rect.width),
-        command.kind === "title" ? theme().accent : theme().text,
-        command.kind === "actions" ? theme().panel : theme().panelSoft,
-        command.kind === "actions" || command.kind === "title"
-      )
-    );
-  }
-  if (inspection.actions.length === 0 || actionRow === void 0) return;
-  workbenchModalActionButtonsInto(modalBuffers.actionItems, inspection);
-  layoutWorkbenchButtonRowInto(
-    modalBuffers.actionPlacements,
-    modalBuffers.actionItems,
-    { column: inner.column, row: actionRow, width: inner.width, height: 1 },
-    actionRow
-  );
-  workbenchButtonRowRenderCommandsInto(modalBuffers.actionCommands, modalBuffers.actionPlacements);
-  for (const command of modalBuffers.actionCommands) {
-    const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
-    write(
-      frame,
-      command.rect.row,
-      command.rect.column,
-      paint(button.text, button.style.fg, button.style.bg, button.style.bold)
-    );
-    hitTargets.add(command.hitRect, { type: "modalAction", index: command.item.action });
-  }
 }
 function push(message) {
   log.value = appendBoundedWorkbenchLogRow(log.peek(), `${(/* @__PURE__ */ new Date()).toLocaleTimeString()} ${message}`, 40);

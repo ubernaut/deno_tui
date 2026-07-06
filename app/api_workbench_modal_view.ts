@@ -29,8 +29,8 @@ interface ApiWorkbenchPaintStyle {
   bold?: boolean;
 }
 
-export interface ApiWorkbenchModalRenderOptions {
-  frame: WorkbenchFrame;
+export interface ApiWorkbenchModalRenderOptions<Frame = WorkbenchFrame> {
+  frame: Frame;
   bounds: Rectangle;
   inspection: ModalInspection;
   buffers: WorkbenchModalBufferCache<number>;
@@ -38,14 +38,15 @@ export interface ApiWorkbenchModalRenderOptions {
   contrastText: (background: string, dark: string, light: string) => string;
   fit: (text: string, width: number) => string;
   paint: (text: string, style: ApiWorkbenchPaintStyle) => string;
-  write: (frame: WorkbenchFrame, row: number, column: number, value: string) => void;
-  fillRect: (frame: WorkbenchFrame, rect: Rectangle, background: string) => void;
-  drawFrame: (frame: WorkbenchFrame, rect: Rectangle, title: string, active: boolean) => void;
+  write: (frame: Frame, row: number, column: number, value: string) => void;
+  fillRect: (frame: Frame, rect: Rectangle, background: string) => void;
+  drawFrame: (frame: Frame, rect: Rectangle, title: string, active: boolean) => void;
+  maxWidth?: number;
   addHit: (rect: Rectangle, action: { type: "modalAction"; index: number }) => void;
 }
 
-export interface ApiWorkbenchThreeConfigModalRenderOptions {
-  frame: WorkbenchFrame;
+export interface ApiWorkbenchThreeConfigModalRenderOptions<Frame = WorkbenchFrame> {
+  frame: Frame;
   bounds: Rectangle;
   rows: readonly WorkbenchAsciiConfigRow[];
   selectedIndex: number;
@@ -55,9 +56,9 @@ export interface ApiWorkbenchThreeConfigModalRenderOptions {
   contrastText: (background: string, dark: string, light: string) => string;
   fit: (text: string, width: number) => string;
   paint: (text: string, style: ApiWorkbenchPaintStyle) => string;
-  write: (frame: WorkbenchFrame, row: number, column: number, value: string) => void;
-  fillRect: (frame: WorkbenchFrame, rect: Rectangle, background: string) => void;
-  drawFrame: (frame: WorkbenchFrame, rect: Rectangle, title: string, active: boolean) => void;
+  write: (frame: Frame, row: number, column: number, value: string) => void;
+  fillRect: (frame: Frame, rect: Rectangle, background: string) => void;
+  drawFrame: (frame: Frame, rect: Rectangle, title: string, active: boolean) => void;
   rowText: (row: WorkbenchAsciiConfigRow) => string;
   addHit: (
     rect: Rectangle,
@@ -69,16 +70,19 @@ export interface ApiWorkbenchThreeConfigModalRenderOptions {
 }
 
 /** Renders a generic API Workbench modal overlay from renderer-neutral modal inspection data. */
-export function renderApiWorkbenchModalOverlay(options: ApiWorkbenchModalRenderOptions): void {
+export function renderApiWorkbenchModalOverlay<Frame = WorkbenchFrame>(
+  options: ApiWorkbenchModalRenderOptions<Frame>,
+): void {
   const { frame, bounds, inspection, buffers, theme, contrastText, fit, paint, write, fillRect, drawFrame, addHit } =
     options;
   addHit(bounds, { type: "modalAction", index: -1 });
 
-  const probeWidth = Math.min(Math.max(38, bounds.width - 8), 72);
+  const maxWidth = Math.max(38, Math.floor(options.maxWidth ?? 72));
+  const probeWidth = Math.min(Math.max(38, bounds.width - 8), maxWidth);
   const { rect, inner, shadow } = layoutWorkbenchModal({
     bounds,
     contentHeight: modalContentHeight(inspection, probeWidth),
-    maxWidth: 72,
+    maxWidth,
   });
   if (shadow.width > 0 && shadow.height > 0) fillRect(frame, shadow, theme.background);
 
@@ -127,7 +131,9 @@ export function renderApiWorkbenchModalOverlay(options: ApiWorkbenchModalRenderO
 }
 
 /** Renders the Three ASCII configuration modal while keeping state mutation in the host workbench. */
-export function renderApiWorkbenchThreeConfigModal(options: ApiWorkbenchThreeConfigModalRenderOptions): void {
+export function renderApiWorkbenchThreeConfigModal<Frame = WorkbenchFrame>(
+  options: ApiWorkbenchThreeConfigModalRenderOptions<Frame>,
+): void {
   const {
     frame,
     bounds,

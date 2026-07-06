@@ -29,14 +29,12 @@ import {
   layoutWorkbenchButtonRowInto,
   layoutWorkbenchHeaderInto,
   layoutWorkbenchMenuBarHitsInto,
-  layoutWorkbenchModal,
   layoutWorkbenchShelfInto,
   layoutWorkbenchTabsInto,
   layoutWorkbenchTitlebarInto,
   loadWorkbenchPanelWorkspaceCache,
   maxTextWidth,
   MenuBarController,
-  modalContentHeight,
   ModalController,
   normalizeTerminalWorkspaceSnapshot,
   normalizeWorkbenchPanelWorkspaceState,
@@ -74,8 +72,6 @@ import {
   type WorkbenchFrameBoxLine,
   type WorkbenchHeaderLayout,
   type WorkbenchMenuBarHitLayout,
-  workbenchModalActionButtonsInto,
-  workbenchModalRowRenderCommandsInto,
   type WorkbenchPanelWorkspaceState,
   type WorkbenchScrollbarRenderCommand,
   workbenchShelfEntriesInto,
@@ -137,6 +133,7 @@ import {
   ApiWorkbenchControlsViewBufferCache,
   renderApiWorkbenchControls,
 } from "../../app/api_workbench_controls_view.ts";
+import { renderApiWorkbenchModalOverlay } from "../../app/api_workbench_modal_view.ts";
 import {
   type HtmlCssLayoutRenderCommand,
   htmlCssLayoutRenderCommandsInto,
@@ -1943,56 +1940,21 @@ function renderThreeConfigModal(frame: string[]): void {
 
 function renderModalOverlay(frame: string[]): void {
   if (!modal.openState.peek()) return;
-  hitTargets.add({ column: 0, row: 0, width: cols(), height: rowsCount() }, { type: "modalAction", index: -1 });
-  const inspection = modal.inspect();
-  const probeWidth = Math.min(Math.max(38, cols() - 8), 74);
-  const { rect, inner, shadow } = layoutWorkbenchModal({
+  renderApiWorkbenchModalOverlay({
+    frame,
     bounds: { column: 0, row: 0, width: cols(), height: rowsCount() },
-    contentHeight: modalContentHeight(inspection, probeWidth),
+    inspection: modal.inspect(),
+    buffers: modalBuffers,
+    theme: theme(),
+    contrastText,
+    fit,
+    paint: (value, style) => paint(value, style.fg, style.bg, style.bold),
+    write,
+    fillRect,
+    drawFrame,
     maxWidth: 74,
+    addHit: (rect, action) => hitTargets.add(rect, action),
   });
-  if (shadow.width > 0 && shadow.height > 0) fillRect(frame, shadow, theme().background);
-  fillRect(frame, rect, theme().panelSoft);
-  drawFrame(frame, rect, inspection.title, true);
-  const rowCommands = workbenchModalRowRenderCommandsInto(modalBuffers.rowCommands, {
-    inspection,
-    inner,
-    contentWidth: rect.width,
-  });
-  let actionRow: number | undefined;
-  for (const command of rowCommands) {
-    if (command.kind === "actions") actionRow = command.rect.row;
-    write(
-      frame,
-      command.rect.row,
-      command.rect.column,
-      paint(
-        fit(command.text, command.rect.width),
-        command.kind === "title" ? theme().accent : theme().text,
-        command.kind === "actions" ? theme().panel : theme().panelSoft,
-        command.kind === "actions" || command.kind === "title",
-      ),
-    );
-  }
-  if (inspection.actions.length === 0 || actionRow === undefined) return;
-  workbenchModalActionButtonsInto(modalBuffers.actionItems, inspection);
-  layoutWorkbenchButtonRowInto(
-    modalBuffers.actionPlacements,
-    modalBuffers.actionItems,
-    { column: inner.column, row: actionRow, width: inner.width, height: 1 },
-    actionRow,
-  );
-  workbenchButtonRowRenderCommandsInto(modalBuffers.actionCommands, modalBuffers.actionPlacements);
-  for (const command of modalBuffers.actionCommands) {
-    const button = projectWorkbenchButtonCommand(command, theme(), contrastText);
-    write(
-      frame,
-      command.rect.row,
-      command.rect.column,
-      paint(button.text, button.style.fg, button.style.bg, button.style.bold),
-    );
-    hitTargets.add(command.hitRect, { type: "modalAction", index: command.item.action });
-  }
 }
 
 function push(message: string): void {
