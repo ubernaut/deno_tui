@@ -145,7 +145,7 @@ export function htmlCssLayoutBoxStyle(
 }
 
 /** Returns a stable back-to-front paint order for overlapping layout demo boxes. */
-export function htmlCssLayoutBoxPaintOrder(box: Pick<ComputedLayoutBox, "id">): number {
+function htmlCssLayoutBoxPaintOrder(box: Pick<ComputedLayoutBox, "id">): number {
   if (box.id === "layout-demo") return 0;
   if (box.id === "layout-stage") return 1;
   if (box.id === "layout-grid") return 2;

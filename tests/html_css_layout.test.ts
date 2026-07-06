@@ -1,6 +1,5 @@
 import { assert, assertEquals } from "./deps.ts";
 import {
-  htmlCssLayoutBoxPaintOrder,
   htmlCssLayoutBoxStyle,
   type HtmlCssLayoutRenderCommand,
   htmlCssLayoutRenderCommandsInto,
@@ -135,22 +134,13 @@ Deno.test("htmlCssLayoutBoxStyle groups grid and metric child boxes", () => {
   });
 });
 
-Deno.test("htmlCssLayoutBoxPaintOrder keeps overlays above base panels", () => {
-  assertEquals(htmlCssLayoutBoxPaintOrder({ id: "layout-demo" }), 0);
-  assertEquals(htmlCssLayoutBoxPaintOrder({ id: "layout-stage" }), 1);
-  assertEquals(htmlCssLayoutBoxPaintOrder({ id: "layout-grid" }), 2);
-  assertEquals(htmlCssLayoutBoxPaintOrder({ id: "metric-cpu" }), 2);
-  assertEquals(htmlCssLayoutBoxPaintOrder({ id: "grid-worker" }), 3);
-  assertEquals(htmlCssLayoutBoxPaintOrder({ id: "layout-badge" }), 4);
-  assertEquals(htmlCssLayoutBoxPaintOrder({ id: "unknown" }), 2);
-});
-
 Deno.test("htmlCssVisibleLayoutBoxesInto filters hidden boxes and reuses caller storage", () => {
   const target = [{ id: "stale", visible: true, zIndex: 99 }];
   const result = htmlCssVisibleLayoutBoxesInto(target, [
     { id: "layout-badge", visible: true, zIndex: 1 },
     { id: "hidden", visible: false, zIndex: -1 },
     { id: "layout-demo", visible: true, zIndex: 0 },
+    { id: "layout-stage", visible: true, zIndex: 1 },
     { id: "grid-worker", visible: true, zIndex: 1 },
     { id: "metric-cpu", visible: true, zIndex: 1 },
   ]);
@@ -158,7 +148,7 @@ Deno.test("htmlCssVisibleLayoutBoxesInto filters hidden boxes and reuses caller 
   assertEquals(result, target);
   assertEquals(
     result.map((box) => box.id),
-    ["layout-demo", "metric-cpu", "grid-worker", "layout-badge"],
+    ["layout-demo", "layout-stage", "metric-cpu", "grid-worker", "layout-badge"],
   );
 });
 
