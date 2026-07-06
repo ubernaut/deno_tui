@@ -193,7 +193,6 @@ import {
   type WorkbenchTerminalShellHeaderRow,
   workbenchTerminalShellHeaderRowsInto,
   type WorkbenchTerminalToolbarAction,
-  workbenchTerminalToolbarItemsInto,
   workbenchTerminalToolbarStateFromSnapshot,
 } from "../src/app/workbench_terminal.ts";
 import { AudioRegistry } from "./audio.ts";
@@ -401,7 +400,10 @@ import {
   syntheticWorkbenchSystem,
 } from "./workbench_synthetic.ts";
 import type { ComputedLayoutBox } from "../src/layout/mod.ts";
-import { renderApiWorkbenchTerminalSessionTabs } from "./api_workbench_terminal_shell_view.ts";
+import {
+  renderApiWorkbenchTerminalSessionTabs,
+  renderApiWorkbenchTerminalShellToolbar,
+} from "./api_workbench_terminal_shell_view.ts";
 import { renderApiWorkbenchTerminalOutputToolbar } from "./api_workbench_terminal_output_view.ts";
 
 type BuiltInWindowId = ApiWorkbenchBuiltInWindowId;
@@ -2272,9 +2274,11 @@ function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: num
   const workspaceInspection = terminalShell.inspect();
   const shell = activeTerminalShell();
   const shellInspection = shell?.inspect();
-  workbenchTerminalToolbarItemsInto(
-    terminalShellButtonBuffers.items,
-    workbenchTerminalToolbarStateFromSnapshot({
+  const nextRow = renderApiWorkbenchTerminalShellToolbar({
+    frame,
+    rect,
+    startRow,
+    state: workbenchTerminalToolbarStateFromSnapshot({
       activeId: workspaceInspection.activeId,
       sessionCount: workspaceInspection.sessions.length,
       paneCount: workspaceInspection.workspace.layout.count,
@@ -2285,27 +2289,13 @@ function renderTerminalShellToolbar(frame: Frame, rect: Rectangle, startRow: num
       copyMode: shell?.scrollback.mode === "copy",
       scrollback: shellInspection?.scrollback,
     }),
-  );
-  const nextRow = layoutWorkbenchButtonRowInto(
-    terminalShellButtonBuffers.placements,
-    terminalShellButtonBuffers.items,
-    rect,
-    startRow,
-  );
-
-  workbenchButtonRowRenderCommandsInto(terminalShellButtonBuffers.commands, terminalShellButtonBuffers.placements);
-  for (const button of terminalShellButtonBuffers.commands) {
-    const projection = projectWorkbenchButtonCommand(button, theme(), contrastText);
-    write(
-      frame,
-      button.rect.row,
-      button.rect.column,
-      paint(projection.text, projection.style),
-    );
-    if (!button.item.disabled) {
-      addHit(button.hitRect, { type: "terminalShell", action: button.item.action });
-    }
-  }
+    buffers: terminalShellButtonBuffers,
+    theme: theme(),
+    contrastText,
+    paint,
+    write,
+    addHit,
+  });
   return renderTerminalShellSessionTabs(frame, rect, nextRow, workspaceInspection);
 }
 

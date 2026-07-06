@@ -51,9 +51,13 @@ import {
   workbenchTerminalPaneTitleRenderCommandsInto,
   workbenchTerminalSessionTabRenderCommandsInto,
   workbenchTerminalSessionTabsInto,
+  type WorkbenchTerminalToolbarAction,
 } from "../src/app/workbench_terminal.ts";
 import { renderApiWorkbenchTerminalOutputToolbar } from "../app/api_workbench_terminal_output_view.ts";
-import { renderApiWorkbenchTerminalSessionTabs } from "../app/api_workbench_terminal_shell_view.ts";
+import {
+  renderApiWorkbenchTerminalSessionTabs,
+  renderApiWorkbenchTerminalShellToolbar,
+} from "../app/api_workbench_terminal_shell_view.ts";
 import type { TerminalShellWorkspaceInspection } from "../src/runtime/terminal_shell_workspace.ts";
 
 Deno.test("WorkbenchController coordinates menus and window state", () => {
@@ -910,6 +914,44 @@ Deno.test("renderApiWorkbenchTerminalOutputToolbar paints actions and registers 
   assertEquals(hits.some((hit) => hit.action === "stop"), true);
   assertEquals(hits.some((hit) => hit.action === "run"), false);
   assertEquals(frame[0]?.some((cell) => cell?.includes("[ Stop ]")), true);
+});
+
+Deno.test("renderApiWorkbenchTerminalShellToolbar paints shell actions and registers hits", () => {
+  const cache = new WorkbenchButtonRowBufferCache<WorkbenchTerminalToolbarAction>();
+  const frame: string[][] = [[]];
+  const hits: Array<{ action: string; width: number }> = [];
+
+  const nextRow = renderApiWorkbenchTerminalShellToolbar({
+    frame,
+    rect: { column: 1, row: 0, width: 56, height: 2 },
+    startRow: 0,
+    state: {
+      activeId: "shell-1",
+      sessionCount: 2,
+      paneCount: 1,
+      shellRunning: true,
+      shellStarting: false,
+      inputMode: "workbench",
+      copyMode: false,
+      scrollbackTotalRows: 10,
+      scrollbackViewportRows: 4,
+    },
+    buffers: cache,
+    theme: testWorkbenchTheme(),
+    contrastText: () => "#000",
+    paint: (text, style) => `${style.bg}:${style.fg}:${text}`,
+    write: (target, row, column, value) => {
+      target[row] ??= [];
+      target[row]![column] = value;
+    },
+    addHit: (rect, action) => hits.push({ action: action.action, width: rect.width }),
+  });
+
+  assertEquals(nextRow > 0, true);
+  assertEquals(cache.commands.length > 0, true);
+  assertEquals(hits.some((hit) => hit.action === "stop"), true);
+  assertEquals(hits.some((hit) => hit.action === "start"), false);
+  assertEquals(frame.some((row) => row.some((cell) => cell?.includes("[ Stop ]"))), true);
 });
 
 Deno.test("renderApiWorkbenchTerminalSessionTabs paints tabs and registers tab hits", () => {
