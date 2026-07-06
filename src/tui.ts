@@ -23,6 +23,12 @@ import { RenderLoop } from "./runtime/render_loop.ts";
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 let canRunSttyCached: boolean | undefined;
+const verifiedTerminalSizeHoldMs = 1_250;
+
+interface RecentlyVerifiedTerminalSize {
+  size: { columns: number; rows: number };
+  readAt: number;
+}
 
 /** Options for configuring tui. */
 export interface TuiOptions {
@@ -74,6 +80,7 @@ export class Tui extends EventEmitter<
   private readonly updateCanvasSize: (options?: { verifyWithStty?: boolean }) => void;
   private readonly sigwinchResizeHandler?: () => void;
   private readonly resizePollTimer?: ReturnType<typeof setInterval>;
+  private verifiedTerminalSize?: RecentlyVerifiedTerminalSize;
   private destroyed = false;
 
   constructor(options: TuiOptions) {
@@ -84,12 +91,16 @@ export class Tui extends EventEmitter<
     this.enableMouse = options.enableMouse ?? false;
     this.canvas = options.canvas ?? new Canvas({
       stdout: this.stdout,
-      size: terminalSize(),
+      size: terminalSize({ verified: () => this.verifiedTerminalSize }),
     });
     this.updateCanvasSize = (updateOptions = {}) => {
       if (this.destroyed) return;
       const { canvas } = this;
-      const { columns, rows } = terminalSize(updateOptions);
+      const { columns, rows } = terminalSize({
+        ...updateOptions,
+        onVerified: (size) => this.verifiedTerminalSize = { size, readAt: performance.now() },
+        verified: () => this.verifiedTerminalSize,
+      });
 
       const size = canvas.size.peek();
 
@@ -226,18 +237,48 @@ export class Tui extends EventEmitter<
   }
 }
 
-function terminalSize(options: { verifyWithStty?: boolean } = {}): { columns: number; rows: number } {
+function terminalSize(options: {
+  verifyWithStty?: boolean;
+  onVerified?: (size: { columns: number; rows: number }) => void;
+  verified?: () => RecentlyVerifiedTerminalSize | undefined;
+} = {}): { columns: number; rows: number } {
   try {
     const denoSize = Deno.consoleSize();
-    return options.verifyWithStty ? sttyTerminalSize() ?? denoSize : denoSize;
+    if (options.verifyWithStty) {
+      const sttySize = sttyTerminalSize();
+      if (sttySize) {
+        options.onVerified?.(sttySize);
+        return sttySize;
+      }
+      return denoSize;
+    }
+    const verified = options.verified?.();
+    if (shouldUseRecentlyVerifiedTerminalSize(denoSize, verified, performance.now())) {
+      return verified!.size;
+    }
+    return denoSize;
   } catch (error) {
     const sttySize = options.verifyWithStty ? sttyTerminalSize() : undefined;
-    if (sttySize) return sttySize;
+    if (sttySize) {
+      options.onVerified?.(sttySize);
+      return sttySize;
+    }
     const detail = error instanceof Error ? error.message : String(error);
     throw new Error(
       `Tui requires an interactive terminal. Run this command from a TTY or use a report/web task instead. (${detail})`,
     );
   }
+}
+
+export function shouldUseRecentlyVerifiedTerminalSize(
+  denoSize: { columns: number; rows: number },
+  verified: RecentlyVerifiedTerminalSize | undefined,
+  now: number,
+  holdMs = verifiedTerminalSizeHoldMs,
+): boolean {
+  if (!verified) return false;
+  if (now - verified.readAt > holdMs) return false;
+  return denoSize.columns !== verified.size.columns || denoSize.rows !== verified.size.rows;
 }
 
 function sttyTerminalSize(): { columns: number; rows: number } | undefined {
