@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { ScrollAreaController, ScrollAreaInspection } from "../components/scroll_area.ts";
 import type { Action } from "./actions.ts";
+import { actionCommandGroup } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for scroll Area Command variants. */
@@ -54,82 +55,60 @@ export function scrollAreaCommands<TAction extends Action = ScrollAreaCommandAct
   const commands: Command<TAction>[] = [];
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(
-      scrollCommand(
-        `${idPrefix}.up`,
-        label("up", "Scroll Up"),
-        group,
-        ["scroll", "up"],
-        () => controller.scrollBy(0, -step),
-        payload,
-      ),
-      scrollCommand(
-        `${idPrefix}.down`,
-        label("down", "Scroll Down"),
-        group,
-        ["scroll", "down"],
-        () => controller.scrollBy(0, step),
-        payload,
-      ),
-      scrollCommand(
-        `${idPrefix}.left`,
-        label("left", "Scroll Left"),
-        group,
-        ["scroll", "left"],
-        () => controller.scrollBy(-step, 0),
-        payload,
-      ),
-      scrollCommand(
-        `${idPrefix}.right`,
-        label("right", "Scroll Right"),
-        group,
-        ["scroll", "right"],
-        () => controller.scrollBy(step, 0),
-        payload,
-      ),
-    );
+    commands.push(...actionCommandGroup<TAction, ScrollAreaCommandPayload, ScrollAreaCommandKind, void>({
+      idPrefix,
+      group,
+      type: "scrollArea.scrolled",
+      keywords: ["scroll"],
+      label,
+      payload,
+      entries: [
+        ["up", "Scroll Up", () => controller.scrollBy(0, -step), ["scroll", "up"]],
+        ["down", "Scroll Down", () => controller.scrollBy(0, step), ["scroll", "down"]],
+        ["left", "Scroll Left", () => controller.scrollBy(-step, 0), ["scroll", "left"]],
+        ["right", "Scroll Right", () => controller.scrollBy(step, 0), ["scroll", "right"]],
+      ],
+    }));
   }
 
   if (options.includePageCommands ?? true) {
-    commands.push(
-      scrollCommand(
-        `${idPrefix}.pageUp`,
-        label("pageUp", "Page Up"),
-        group,
-        ["scroll", "page", "up"],
-        () => controller.scrollBy(0, -Math.max(1, controller.viewportHeight.peek() - 1)),
-        payload,
-      ),
-      scrollCommand(
-        `${idPrefix}.pageDown`,
-        label("pageDown", "Page Down"),
-        group,
-        ["scroll", "page", "down"],
-        () => controller.scrollBy(0, Math.max(1, controller.viewportHeight.peek() - 1)),
-        payload,
-      ),
-    );
+    commands.push(...actionCommandGroup<TAction, ScrollAreaCommandPayload, ScrollAreaCommandKind, void>({
+      idPrefix,
+      group,
+      type: "scrollArea.scrolled",
+      keywords: ["scroll"],
+      label,
+      payload,
+      entries: [
+        [
+          "pageUp",
+          "Page Up",
+          () => controller.scrollBy(0, -Math.max(1, controller.viewportHeight.peek() - 1)),
+          ["scroll", "page", "up"],
+        ],
+        [
+          "pageDown",
+          "Page Down",
+          () => controller.scrollBy(0, Math.max(1, controller.viewportHeight.peek() - 1)),
+          ["scroll", "page", "down"],
+        ],
+      ],
+    }));
   }
 
   if (options.includeEdgeCommands ?? true) {
-    commands.push(
-      scrollCommand(
-        `${idPrefix}.home`,
-        label("home", "Scroll Home"),
-        group,
-        ["scroll", "home"],
-        () => controller.scrollTo(0, 0),
-        payload,
-      ),
-      scrollCommand(
-        `${idPrefix}.end`,
-        label("end", "Scroll End"),
-        group,
-        ["scroll", "end"],
-        () => controller.scrollTo(0, controller.maxOffset().rows),
-        payload,
-      ),
-    );
+    commands.push(...actionCommandGroup<TAction, ScrollAreaCommandPayload, ScrollAreaCommandKind, void>({
+      idPrefix,
+      group,
+      type: "scrollArea.scrolled",
+      keywords: ["scroll"],
+      label,
+      payload,
+      entries: [
+        ["home", "Scroll Home", () => controller.scrollTo(0, 0), ["scroll", "home"]],
+        ["end", "Scroll End", () => controller.scrollTo(0, controller.maxOffset().rows), ["scroll", "end"]],
+      ],
+    }));
   }
 
   if (options.includeScrollbarCommands ?? false) {
@@ -163,26 +142,6 @@ export function bindScrollAreaCommands<TAction extends Action = ScrollAreaComman
   options: ScrollAreaCommandOptions = {},
 ): () => void {
   return registry.registerAll(scrollAreaCommands<TAction>(controller, options));
-}
-
-function scrollCommand<TAction extends Action>(
-  id: string,
-  label: string,
-  group: string,
-  keywords: string[],
-  scroll: () => void,
-  payload: () => ScrollAreaCommandPayload,
-): Command<TAction> {
-  return {
-    id,
-    label,
-    group,
-    keywords,
-    action: () => {
-      scroll();
-      return { type: "scrollArea.scrolled", payload: payload() } as TAction;
-    },
-  };
 }
 
 function scrollbarCommand<TAction extends Action>(

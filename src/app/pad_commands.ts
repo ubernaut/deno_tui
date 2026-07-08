@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { PadController, PadInspection } from "../components/pad.ts";
 import type { Action } from "./actions.ts";
+import { actionCommandGroup } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for pad command variants. */
@@ -53,82 +54,65 @@ export function padCommands<TAction extends Action = PadCommandAction>(
   const commands: Command<TAction>[] = [];
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(
-      padScrollCommand(
-        `${idPrefix}.up`,
-        label("up", "Pad Up"),
-        group,
-        ["pad", "up"],
-        () => controller.scrollBy(0, -step),
-        payload,
-      ),
-      padScrollCommand(
-        `${idPrefix}.down`,
-        label("down", "Pad Down"),
-        group,
-        ["pad", "down"],
-        () => controller.scrollBy(0, step),
-        payload,
-      ),
-      padScrollCommand(
-        `${idPrefix}.left`,
-        label("left", "Pad Left"),
-        group,
-        ["pad", "left"],
-        () => controller.scrollBy(-step, 0),
-        payload,
-      ),
-      padScrollCommand(
-        `${idPrefix}.right`,
-        label("right", "Pad Right"),
-        group,
-        ["pad", "right"],
-        () => controller.scrollBy(step, 0),
-        payload,
-      ),
-    );
+    commands.push(...actionCommandGroup<TAction, PadCommandPayload, PadCommandKind, void>({
+      idPrefix,
+      group,
+      type: "pad.scrolled",
+      keywords: ["pad"],
+      label,
+      payload,
+      entries: [
+        ["up", "Pad Up", () => controller.scrollBy(0, -step), ["pad", "up"]],
+        ["down", "Pad Down", () => controller.scrollBy(0, step), ["pad", "down"]],
+        ["left", "Pad Left", () => controller.scrollBy(-step, 0), ["pad", "left"]],
+        ["right", "Pad Right", () => controller.scrollBy(step, 0), ["pad", "right"]],
+      ],
+    }));
   }
 
   if (options.includePageCommands ?? true) {
-    commands.push(
-      padScrollCommand(
-        `${idPrefix}.pageUp`,
-        label("pageUp", "Pad Page Up"),
-        group,
-        ["pad", "page", "up"],
-        () => controller.scrollBy(0, -Math.max(1, controller.scroll.viewportHeight.peek() - 1)),
-        payload,
-      ),
-      padScrollCommand(
-        `${idPrefix}.pageDown`,
-        label("pageDown", "Pad Page Down"),
-        group,
-        ["pad", "page", "down"],
-        () => controller.scrollBy(0, Math.max(1, controller.scroll.viewportHeight.peek() - 1)),
-        payload,
-      ),
-    );
+    commands.push(...actionCommandGroup<TAction, PadCommandPayload, PadCommandKind, void>({
+      idPrefix,
+      group,
+      type: "pad.scrolled",
+      keywords: ["pad"],
+      label,
+      payload,
+      entries: [
+        [
+          "pageUp",
+          "Pad Page Up",
+          () => controller.scrollBy(0, -Math.max(1, controller.scroll.viewportHeight.peek() - 1)),
+          ["pad", "page", "up"],
+        ],
+        [
+          "pageDown",
+          "Pad Page Down",
+          () => controller.scrollBy(0, Math.max(1, controller.scroll.viewportHeight.peek() - 1)),
+          ["pad", "page", "down"],
+        ],
+      ],
+    }));
   }
 
   if (options.includeEdgeCommands ?? true) {
-    commands.push(
-      padScrollCommand(
-        `${idPrefix}.home`,
-        label("home", "Pad Home"),
-        group,
-        ["pad", "home"],
-        () => controller.scrollTo(0, 0),
-        payload,
-      ),
-      padScrollCommand(
-        `${idPrefix}.end`,
-        label("end", "Pad End"),
-        group,
-        ["pad", "end"],
-        () => controller.scrollTo(controller.scroll.maxOffset().columns, controller.scroll.maxOffset().rows),
-        payload,
-      ),
-    );
+    commands.push(...actionCommandGroup<TAction, PadCommandPayload, PadCommandKind, void>({
+      idPrefix,
+      group,
+      type: "pad.scrolled",
+      keywords: ["pad"],
+      label,
+      payload,
+      entries: [
+        ["home", "Pad Home", () => controller.scrollTo(0, 0), ["pad", "home"]],
+        [
+          "end",
+          "Pad End",
+          () => controller.scrollTo(controller.scroll.maxOffset().columns, controller.scroll.maxOffset().rows),
+          ["pad", "end"],
+        ],
+      ],
+    }));
   }
 
   if (options.includeCursorCommands ?? true) {
@@ -156,24 +140,4 @@ export function bindPadCommands<TAction extends Action = PadCommandAction>(
   options: PadCommandOptions = {},
 ): () => void {
   return registry.registerAll(padCommands<TAction>(controller, options));
-}
-
-function padScrollCommand<TAction extends Action>(
-  id: string,
-  label: string,
-  group: string,
-  keywords: string[],
-  scroll: () => void,
-  payload: () => PadCommandPayload,
-): Command<TAction> {
-  return {
-    id,
-    label,
-    group,
-    keywords,
-    action: () => {
-      scroll();
-      return { type: "pad.scrolled", payload: payload() } as TAction;
-    },
-  };
 }
