@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TabItem, TabsController, TabsInspection } from "../components/tabs.ts";
 import type { Action } from "./actions.ts";
+import { actionCommandGroup } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for tabs Command variants. */
@@ -42,12 +43,20 @@ export function tabsCommands<TAction extends Action = TabsCommandAction>(
   const commands: Command<TAction>[] = [];
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(
-      moveCommand(`${idPrefix}.first`, label("first", "First Tab"), group, () => controller.first(), payload),
-      moveCommand(`${idPrefix}.previous`, label("previous", "Previous Tab"), group, () => controller.move(-1), payload),
-      moveCommand(`${idPrefix}.next`, label("next", "Next Tab"), group, () => controller.move(1), payload),
-      moveCommand(`${idPrefix}.last`, label("last", "Last Tab"), group, () => controller.last(), payload),
-    );
+    commands.push(...actionCommandGroup<TAction, TabsCommandPayload, TabsCommandKind, TabItem | undefined>({
+      idPrefix,
+      group,
+      type: "tabs.changed",
+      keywords: ["tab", "tabs"],
+      label,
+      payload,
+      entries: [
+        ["first", "First Tab", () => controller.first()],
+        ["previous", "Previous Tab", () => controller.move(-1)],
+        ["next", "Next Tab", () => controller.move(1)],
+        ["last", "Last Tab", () => controller.last()],
+      ],
+    }));
   }
 
   if (options.includeTabCommands ?? false) {
@@ -82,23 +91,4 @@ export function bindTabsCommands<TAction extends Action = TabsCommandAction>(
   options: TabsCommandOptions = {},
 ): () => void {
   return registry.registerAll(tabsCommands<TAction>(controller, options));
-}
-
-function moveCommand<TAction extends Action>(
-  id: string,
-  label: string,
-  group: string,
-  move: () => TabItem | undefined,
-  payload: () => TabsCommandPayload,
-): Command<TAction> {
-  return {
-    id,
-    label,
-    group,
-    keywords: ["tab", "tabs", label],
-    action: () => {
-      move();
-      return { type: "tabs.changed", payload: payload() } as TAction;
-    },
-  };
 }

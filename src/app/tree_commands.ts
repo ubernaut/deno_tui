@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TreeController, TreeInspection, TreeRowInspection } from "../components/tree.ts";
 import type { Action } from "./actions.ts";
+import { actionCommandGroup } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for tree Command variants. */
@@ -54,18 +55,21 @@ export function treeCommands<TAction extends Action = TreeCommandAction>(
   const commands: Command<TAction>[] = [];
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(
-      moveCommand(`${idPrefix}.first`, label("first", "First Tree Node"), group, () => controller.first(), payload),
-      moveCommand(
-        `${idPrefix}.previous`,
-        label("previous", "Previous Tree Node"),
-        group,
-        () => controller.move(-1),
-        payload,
-      ),
-      moveCommand(`${idPrefix}.next`, label("next", "Next Tree Node"), group, () => controller.move(1), payload),
-      moveCommand(`${idPrefix}.last`, label("last", "Last Tree Node"), group, () => controller.last(), payload),
-    );
+    commands.push(...actionCommandGroup<TAction, TreeCommandPayload, TreeCommandKind, unknown>({
+      idPrefix,
+      group,
+      type: "tree.changed",
+      keywords: ["tree", "node"],
+      label,
+      payload,
+      disabled: () => payload().inspection.empty,
+      entries: [
+        ["first", "First Tree Node", () => controller.first()],
+        ["previous", "Previous Tree Node", () => controller.move(-1)],
+        ["next", "Next Tree Node", () => controller.move(1)],
+        ["last", "Last Tree Node", () => controller.last()],
+      ],
+    }));
   }
 
   if (options.includeToggleCommands ?? true) {
@@ -150,26 +154,6 @@ export function bindTreeCommands<TAction extends Action = TreeCommandAction>(
   options: TreeCommandOptions = {},
 ): () => void {
   return registry.registerAll(treeCommands<TAction>(controller, options));
-}
-
-function moveCommand<TAction extends Action>(
-  id: string,
-  label: string,
-  group: string,
-  move: () => unknown,
-  payload: () => TreeCommandPayload,
-): Command<TAction> {
-  return {
-    id,
-    label,
-    group,
-    keywords: ["tree", "node", label],
-    disabled: () => payload().inspection.empty,
-    action: () => {
-      move();
-      return { type: "tree.changed", payload: payload() } as TAction;
-    },
-  };
 }
 
 function toggleCommand<TAction extends Action>(

@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TableController, TableInspection } from "../components/table.ts";
 import type { Action } from "./actions.ts";
+import { actionCommandGroup } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for table Command variants. */
@@ -49,67 +50,37 @@ export function tableCommands<TAction extends Action = TableCommandAction>(
   const commands: Command<TAction>[] = [];
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(
-      moveCommand(
-        `${idPrefix}.first`,
-        label("first", "First Table Row"),
-        group,
-        ["table", "first"],
-        () => controller.first(),
-        payload,
-        empty,
-      ),
-      moveCommand(
-        `${idPrefix}.previous`,
-        label("previous", "Previous Table Row"),
-        group,
-        ["table", "previous"],
-        () => controller.move(-1),
-        payload,
-        empty,
-      ),
-      moveCommand(
-        `${idPrefix}.next`,
-        label("next", "Next Table Row"),
-        group,
-        ["table", "next"],
-        () => controller.move(1),
-        payload,
-        empty,
-      ),
-      moveCommand(
-        `${idPrefix}.last`,
-        label("last", "Last Table Row"),
-        group,
-        ["table", "last"],
-        () => controller.last(),
-        payload,
-        empty,
-      ),
-    );
+    commands.push(...actionCommandGroup<TAction, TableCommandPayload, TableCommandKind, number>({
+      idPrefix,
+      group,
+      type: "table.changed",
+      keywords: ["table"],
+      label,
+      payload,
+      disabled: empty,
+      entries: [
+        ["first", "First Table Row", () => controller.first(), ["table", "first"]],
+        ["previous", "Previous Table Row", () => controller.move(-1), ["table", "previous"]],
+        ["next", "Next Table Row", () => controller.move(1), ["table", "next"]],
+        ["last", "Last Table Row", () => controller.last(), ["table", "last"]],
+      ],
+    }));
   }
 
   if (options.includePageCommands ?? true) {
-    commands.push(
-      moveCommand(
-        `${idPrefix}.pagePrevious`,
-        label("pagePrevious", "Previous Table Page"),
-        group,
-        ["table", "page", "previous"],
-        () => controller.pageUp(),
-        payload,
-        empty,
-      ),
-      moveCommand(
-        `${idPrefix}.pageNext`,
-        label("pageNext", "Next Table Page"),
-        group,
-        ["table", "page", "next"],
-        () => controller.pageDown(),
-        payload,
-        empty,
-      ),
-    );
+    commands.push(...actionCommandGroup<TAction, TableCommandPayload, TableCommandKind, number>({
+      idPrefix,
+      group,
+      type: "table.changed",
+      keywords: ["table"],
+      label,
+      payload,
+      disabled: empty,
+      entries: [
+        ["pagePrevious", "Previous Table Page", () => controller.pageUp(), ["table", "page", "previous"]],
+        ["pageNext", "Next Table Page", () => controller.pageDown(), ["table", "page", "next"]],
+      ],
+    }));
   }
 
   if (options.includeSelectCommand ?? true) {
@@ -139,26 +110,4 @@ export function bindTableCommands<TAction extends Action = TableCommandAction>(
   options: TableCommandOptions = {},
 ): () => void {
   return registry.registerAll(tableCommands<TAction>(controller, options));
-}
-
-function moveCommand<TAction extends Action>(
-  id: string,
-  label: string,
-  group: string,
-  keywords: string[],
-  move: () => number,
-  payload: () => TableCommandPayload,
-  disabled: () => boolean,
-): Command<TAction> {
-  return {
-    id,
-    label,
-    group,
-    keywords,
-    disabled,
-    action: () => {
-      move();
-      return { type: "table.changed", payload: payload() } as TAction;
-    },
-  };
 }

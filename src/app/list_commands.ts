@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { ListController, ListInspection } from "../components/list.ts";
 import type { Action } from "./actions.ts";
+import { actionCommandGroup } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for list Command variants. */
@@ -43,18 +44,21 @@ export function listCommands<TAction extends Action = ListCommandAction>(
   const commands: Command<TAction>[] = [];
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(
-      moveCommand(`${idPrefix}.first`, label("first", "First List Item"), group, () => controller.first(), payload),
-      moveCommand(
-        `${idPrefix}.previous`,
-        label("previous", "Previous List Item"),
-        group,
-        () => controller.move(-1),
-        payload,
-      ),
-      moveCommand(`${idPrefix}.next`, label("next", "Next List Item"), group, () => controller.move(1), payload),
-      moveCommand(`${idPrefix}.last`, label("last", "Last List Item"), group, () => controller.last(), payload),
-    );
+    commands.push(...actionCommandGroup<TAction, ListCommandPayload, ListCommandKind, string | undefined>({
+      idPrefix,
+      group,
+      type: "list.changed",
+      keywords: ["list"],
+      label,
+      payload,
+      disabled: () => payload().inspection.empty,
+      entries: [
+        ["first", "First List Item", () => controller.first()],
+        ["previous", "Previous List Item", () => controller.move(-1)],
+        ["next", "Next List Item", () => controller.move(1)],
+        ["last", "Last List Item", () => controller.last()],
+      ],
+    }));
   }
 
   if (options.includeSelectCommand ?? true) {
@@ -106,28 +110,4 @@ export function bindListCommands<TAction extends Action = ListCommandAction>(
   options: ListCommandOptions = {},
 ): () => void {
   return registry.registerAll(listCommands<TAction>(controller, options));
-}
-
-function moveCommand<TAction extends Action>(
-  id: string,
-  label: string,
-  group: string,
-  move: () => string | undefined,
-  payload: () => ListCommandPayload,
-): Command<TAction> {
-  return {
-    id,
-    label,
-    group,
-    keywords: ["list", label],
-    disabled: () => moveDisabled(payload),
-    action: () => {
-      move();
-      return { type: "list.changed", payload: payload() } as TAction;
-    },
-  };
-}
-
-function moveDisabled(payload: () => ListCommandPayload): boolean {
-  return payload().inspection.empty;
 }

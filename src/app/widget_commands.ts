@@ -8,27 +8,8 @@ import type { SliderController, SliderInspection } from "../components/slider.ts
 import type { StepperController, StepperInspection, StepperStep } from "../components/stepper.ts";
 import type { TextBoxController, TextBoxInspection } from "../components/textbox.ts";
 import type { Action } from "./actions.ts";
+import { actionCommand } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
-
-function widgetUpdateCommand<TAction extends Action, TResult, TPayload>(
-  id: string,
-  label: string,
-  group: string,
-  keywords: string[],
-  type: TAction["type"] & string,
-  update: () => TResult,
-  payload: (result: TResult) => TPayload,
-  disabled?: () => boolean,
-): Command<TAction> {
-  return {
-    id,
-    label,
-    group,
-    keywords,
-    disabled,
-    action: () => ({ type, payload: payload(update()) } as TAction),
-  };
-}
 
 /** Identifier union for button Command variants. */
 export type ButtonCommandKind = "press" | "enable" | "disable";
@@ -82,7 +63,7 @@ export function buttonCommands<TAction extends Action = ButtonCommandAction>(
 
   if (options.includeStateCommands ?? true) {
     commands.push(
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.enable`,
         label("enable", "Enable Button"),
         group,
@@ -92,7 +73,7 @@ export function buttonCommands<TAction extends Action = ButtonCommandAction>(
         payload,
         () => controller.disabled.peek() === false,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.disable`,
         label("disable", "Disable Button"),
         group,
@@ -157,7 +138,7 @@ export function checkBoxCommands<TAction extends Action = CheckBoxCommandAction>
   const commands: Command<TAction>[] = [];
 
   if (options.includeToggleCommand ?? true) {
-    commands.push(widgetUpdateCommand(
+    commands.push(actionCommand(
       `${idPrefix}.toggle`,
       label("toggle", "Toggle Checkbox"),
       group,
@@ -170,7 +151,7 @@ export function checkBoxCommands<TAction extends Action = CheckBoxCommandAction>
 
   if (options.includeSetCommands ?? true) {
     commands.push(
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.check`,
         label("check", "Check Checkbox"),
         group,
@@ -180,7 +161,7 @@ export function checkBoxCommands<TAction extends Action = CheckBoxCommandAction>
         payload,
         () => controller.checked.peek() === true,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.uncheck`,
         label("uncheck", "Uncheck Checkbox"),
         group,
@@ -257,7 +238,7 @@ export function comboBoxCommands<TAction extends Action = ComboBoxCommandAction,
 
   if (options.includeExpandCommands ?? true) {
     commands.push(
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.open`,
         label("open", "Open Combo Box"),
         group,
@@ -267,7 +248,7 @@ export function comboBoxCommands<TAction extends Action = ComboBoxCommandAction,
         (expanded) => ({ ...payload(), expanded }),
         () => payload().inspection.empty,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.close`,
         label("close", "Close Combo Box"),
         group,
@@ -277,7 +258,7 @@ export function comboBoxCommands<TAction extends Action = ComboBoxCommandAction,
         (expanded) => ({ ...payload(), expanded }),
         () => payload().inspection.empty,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.toggle`,
         label("toggle", "Toggle Combo Box"),
         group,
@@ -292,7 +273,7 @@ export function comboBoxCommands<TAction extends Action = ComboBoxCommandAction,
 
   if (options.includeMoveCommands ?? true) {
     commands.push(
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.first`,
         label("first", "First Combo Box Item"),
         group,
@@ -302,7 +283,7 @@ export function comboBoxCommands<TAction extends Action = ComboBoxCommandAction,
         payload,
         () => payload().inspection.empty,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.previous`,
         label("previous", "Previous Combo Box Item"),
         group,
@@ -312,7 +293,7 @@ export function comboBoxCommands<TAction extends Action = ComboBoxCommandAction,
         payload,
         () => payload().inspection.empty,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.next`,
         label("next", "Next Combo Box Item"),
         group,
@@ -322,7 +303,7 @@ export function comboBoxCommands<TAction extends Action = ComboBoxCommandAction,
         payload,
         () => payload().inspection.empty,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.last`,
         label("last", "Last Combo Box Item"),
         group,
@@ -432,7 +413,7 @@ export function progressBarCommands<TAction extends Action = ProgressBarCommandA
 
   if (options.includeMoveCommands ?? true) {
     commands.push(
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.decrement`,
         label("decrement", "Decrease Progress"),
         group,
@@ -441,7 +422,7 @@ export function progressBarCommands<TAction extends Action = ProgressBarCommandA
         () => controller.decrement(step),
         payload,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.increment`,
         label("increment", "Increase Progress"),
         group,
@@ -455,7 +436,7 @@ export function progressBarCommands<TAction extends Action = ProgressBarCommandA
 
   if (options.includeEdgeCommands ?? true) {
     commands.push(
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.min`,
         label("min", "Minimum Progress"),
         group,
@@ -464,7 +445,7 @@ export function progressBarCommands<TAction extends Action = ProgressBarCommandA
         () => controller.setMin(),
         payload,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.max`,
         label("max", "Maximum Progress"),
         group,
@@ -478,7 +459,7 @@ export function progressBarCommands<TAction extends Action = ProgressBarCommandA
 
   if (options.includeValueCommands ?? false) {
     for (const value of options.values ?? []) {
-      commands.push(widgetUpdateCommand(
+      commands.push(actionCommand(
         `${idPrefix}.value.${value}`,
         `${label("value", "Set Progress")}: ${valueLabel(value)}`,
         group,
@@ -544,7 +525,7 @@ export function radioGroupCommands<TAction extends Action = RadioGroupCommandAct
 
   if (options.includeMoveCommands ?? true) {
     commands.push(
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.first`,
         label("first", "First Radio Option"),
         group,
@@ -553,7 +534,7 @@ export function radioGroupCommands<TAction extends Action = RadioGroupCommandAct
         () => controller.first(),
         payload,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.previous`,
         label("previous", "Previous Radio Option"),
         group,
@@ -562,7 +543,7 @@ export function radioGroupCommands<TAction extends Action = RadioGroupCommandAct
         () => controller.move(-1),
         payload,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.next`,
         label("next", "Next Radio Option"),
         group,
@@ -571,7 +552,7 @@ export function radioGroupCommands<TAction extends Action = RadioGroupCommandAct
         () => controller.move(1),
         payload,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.last`,
         label("last", "Last Radio Option"),
         group,
@@ -684,7 +665,7 @@ export function sliderCommands<TAction extends Action = SliderCommandAction>(
 
   if (options.includeMoveCommands ?? true) {
     commands.push(
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.decrement`,
         label("decrement", "Decrease Slider"),
         group,
@@ -693,7 +674,7 @@ export function sliderCommands<TAction extends Action = SliderCommandAction>(
         () => controller.decrement(stepMultiplier),
         payload,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.increment`,
         label("increment", "Increase Slider"),
         group,
@@ -707,7 +688,7 @@ export function sliderCommands<TAction extends Action = SliderCommandAction>(
 
   if (options.includeEdgeCommands ?? true) {
     commands.push(
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.min`,
         label("min", "Minimum Slider Value"),
         group,
@@ -716,7 +697,7 @@ export function sliderCommands<TAction extends Action = SliderCommandAction>(
         () => controller.setMin(),
         payload,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.max`,
         label("max", "Maximum Slider Value"),
         group,
@@ -730,7 +711,7 @@ export function sliderCommands<TAction extends Action = SliderCommandAction>(
 
   if (options.includeValueCommands ?? false) {
     for (const value of options.values ?? []) {
-      commands.push(widgetUpdateCommand(
+      commands.push(actionCommand(
         `${idPrefix}.value.${value}`,
         `${label("value", "Set Slider Value")}: ${valueLabel(value)}`,
         group,
@@ -795,7 +776,7 @@ export function stepperCommands<TAction extends Action = StepperCommandAction>(
 
   if (options.includeMoveCommands ?? true) {
     commands.push(
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.first`,
         label("first", "First Step"),
         group,
@@ -804,7 +785,7 @@ export function stepperCommands<TAction extends Action = StepperCommandAction>(
         () => controller.first(),
         payload,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.previous`,
         label("previous", "Previous Step"),
         group,
@@ -813,7 +794,7 @@ export function stepperCommands<TAction extends Action = StepperCommandAction>(
         () => controller.move(-1),
         payload,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.next`,
         label("next", "Next Step"),
         group,
@@ -822,7 +803,7 @@ export function stepperCommands<TAction extends Action = StepperCommandAction>(
         () => controller.move(1),
         payload,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.last`,
         label("last", "Last Step"),
         group,
@@ -931,7 +912,7 @@ export function textBoxCommands<TAction extends Action = TextBoxCommandAction>(
 
   if (options.includeCursorCommands ?? true) {
     commands.push(
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.home`,
         label("home", "Text Box Line Home"),
         group,
@@ -941,7 +922,7 @@ export function textBoxCommands<TAction extends Action = TextBoxCommandAction>(
         payload,
         () => payload().inspection.lineCount <= 0,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.left`,
         label("left", "Text Box Cursor Left"),
         group,
@@ -951,7 +932,7 @@ export function textBoxCommands<TAction extends Action = TextBoxCommandAction>(
         payload,
         () => payload().inspection.lineCount <= 0,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.right`,
         label("right", "Text Box Cursor Right"),
         group,
@@ -965,7 +946,7 @@ export function textBoxCommands<TAction extends Action = TextBoxCommandAction>(
         payload,
         () => payload().inspection.lineCount <= 0,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.up`,
         label("up", "Text Box Cursor Up"),
         group,
@@ -975,7 +956,7 @@ export function textBoxCommands<TAction extends Action = TextBoxCommandAction>(
         payload,
         () => payload().inspection.lineCount <= 0,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.down`,
         label("down", "Text Box Cursor Down"),
         group,
@@ -985,7 +966,7 @@ export function textBoxCommands<TAction extends Action = TextBoxCommandAction>(
         payload,
         () => payload().inspection.lineCount <= 0,
       ),
-      widgetUpdateCommand(
+      actionCommand(
         `${idPrefix}.end`,
         label("end", "Text Box Line End"),
         group,

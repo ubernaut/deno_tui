@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { MenuBarController, MenuBarInspection, MenuBarItem } from "../components/menu_bar.ts";
 import type { Action } from "./actions.ts";
+import { actionCommandGroup } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for menu Bar Command variants. */
@@ -43,18 +44,20 @@ export function menuBarCommands<TAction extends Action = MenuBarCommandAction>(
   const commands: Command<TAction>[] = [];
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(
-      moveCommand(`${idPrefix}.first`, label("first", "First Menu Item"), group, () => controller.first(), payload),
-      moveCommand(
-        `${idPrefix}.previous`,
-        label("previous", "Previous Menu Item"),
-        group,
-        () => controller.move(-1),
-        payload,
-      ),
-      moveCommand(`${idPrefix}.next`, label("next", "Next Menu Item"), group, () => controller.move(1), payload),
-      moveCommand(`${idPrefix}.last`, label("last", "Last Menu Item"), group, () => controller.last(), payload),
-    );
+    commands.push(...actionCommandGroup<TAction, MenuBarCommandPayload, MenuBarCommandKind, MenuBarItem | undefined>({
+      idPrefix,
+      group,
+      type: "menuBar.changed",
+      keywords: ["menu", "menu-bar"],
+      label,
+      payload,
+      entries: [
+        ["first", "First Menu Item", () => controller.first()],
+        ["previous", "Previous Menu Item", () => controller.move(-1)],
+        ["next", "Next Menu Item", () => controller.move(1)],
+        ["last", "Last Menu Item", () => controller.last()],
+      ],
+    }));
   }
 
   if (options.includeSelectCommand ?? true) {
@@ -108,23 +111,4 @@ export function bindMenuBarCommands<TAction extends Action = MenuBarCommandActio
   options: MenuBarCommandOptions = {},
 ): () => void {
   return registry.registerAll(menuBarCommands<TAction>(controller, options));
-}
-
-function moveCommand<TAction extends Action>(
-  id: string,
-  label: string,
-  group: string,
-  move: () => MenuBarItem | undefined,
-  payload: () => MenuBarCommandPayload,
-): Command<TAction> {
-  return {
-    id,
-    label,
-    group,
-    keywords: ["menu", "menu-bar", label],
-    action: () => {
-      move();
-      return { type: "menuBar.changed", payload: payload() } as TAction;
-    },
-  };
 }
