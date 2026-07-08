@@ -9,6 +9,7 @@ import {
   resolveWorkbenchThreeFullscreenAsciiOptions,
   resolveWorkbenchThreeLiveAsciiOptions,
   resolveWorkbenchThreeRuntimeBudgetSnapshot,
+  resolveWorkbenchThreeRuntimeBudgetSourceId,
   resolveWorkbenchThreeTiledAsciiOptions,
   resolveWorkbenchThreeWindowState,
   resolveWorkbenchThreeWindowStateInto,
@@ -299,6 +300,27 @@ Deno.test("API workbench Three policy tracks large tiled panes at console cell r
   assertEquals(snapshot.effectiveMaxCells, 5_000);
   assertEquals(snapshot.runtimeAscii.renderMaxCells, 5_000);
   assertEquals(ascii.renderMaxCells, 960);
+});
+
+Deno.test("API workbench Three policy chooses fullscreen pane as runtime budget source", () => {
+  const source = resolveWorkbenchThreeRuntimeBudgetSourceId({
+    fallbackId: "three",
+    fullscreenId: "viz:three-lattice",
+    interactiveIds: ["three"],
+    isThreeWindow: (id) => id === "three" || id.startsWith("viz:three"),
+  });
+
+  assertEquals(source, "viz:three-lattice");
+});
+
+Deno.test("API workbench Three policy chooses active dynamic pane before fallback", () => {
+  const source = resolveWorkbenchThreeRuntimeBudgetSourceId({
+    fallbackId: "three",
+    interactiveIds: ["viz:three-solenoid"],
+    isThreeWindow: (id) => id === "three" || id.startsWith("viz:three"),
+  });
+
+  assertEquals(source, "viz:three-solenoid");
 });
 
 Deno.test("API workbench Three policy raises live ASCII options to the final effective runtime cap", () => {

@@ -186,6 +186,11 @@ export type DeleteWorkspaceStateResult<TAscii = unknown> =
   }
   | { status: "missing"; targetName: string | null | undefined };
 
+/** Options used when a host mutates visualization windows while a workspace is active. */
+export interface WorkspaceWindowMutationOptions {
+  preserveWorkspace?: boolean;
+}
+
 /** Builds the save-workspace prompt content for the workbench modal controller. */
 export function saveWorkspaceModalContent(body: string[]): ModalContent {
   return {
@@ -445,6 +450,14 @@ export function workbenchWindowClosePlan<TWindowId extends string, TSelection = 
     selectedVisualizationTiles,
     selectedVisualizationTilesChanged,
   };
+}
+
+/** Clears active workspace identity after manual visualization-window mutations. */
+export function activeWorkspaceNameAfterWindowMutation(
+  activeWorkspaceName: string | null,
+  options: WorkspaceWindowMutationOptions = {},
+): string | null {
+  return options.preserveWorkspace ? activeWorkspaceName : null;
 }
 
 /** Applies the save-workspace state transition without renderer side effects. */

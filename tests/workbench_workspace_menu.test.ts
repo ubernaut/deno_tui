@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { assertEquals, assertStrictEquals } from "./deps.ts";
 import {
+  activeWorkspaceNameAfterWindowMutation,
   API_WORKBENCH_WORKSPACE_STORE_KEY,
   API_WORKBENCH_WORKSPACE_STORE_OPTIONS,
   apiWorkbenchWorkspaceStorageLabel,
@@ -334,6 +335,15 @@ Deno.test("workbenchWindowClosePlan identifies terminal shell and preserves non-
       selectedVisualizationTiles: { "viz:cpu": "cpu 42" },
       selectedVisualizationTilesChanged: false,
     },
+  );
+});
+
+Deno.test("active workspace identity clears after manual visualization window mutations", () => {
+  assertEquals(activeWorkspaceNameAfterWindowMutation("Ops Desk"), null);
+  assertEquals(activeWorkspaceNameAfterWindowMutation(null), null);
+  assertEquals(
+    activeWorkspaceNameAfterWindowMutation("Ops Desk", { preserveWorkspace: true }),
+    "Ops Desk",
   );
 });
 

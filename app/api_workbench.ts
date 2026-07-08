@@ -69,6 +69,7 @@ import {
   writeFrame,
 } from "../src/app/workbench/mod.ts";
 import {
+  activeWorkspaceNameAfterWindowMutation,
   API_WORKBENCH_WORKSPACE_STORE_KEY,
   apiWorkbenchWorkspaceStorageLabel,
   apiWorkbenchWorkspaceStorageOptions,
@@ -112,6 +113,7 @@ import {
   resolveWorkbenchThreeFullscreenAsciiOptions,
   resolveWorkbenchThreeLiveAsciiOptions,
   resolveWorkbenchThreeRuntimeBudgetSnapshot,
+  resolveWorkbenchThreeRuntimeBudgetSourceId,
   resolveWorkbenchThreeTiledAsciiOptions,
   resolveWorkbenchThreeWindowStateInto,
   sameWorkbenchThreeAsciiOptions,
@@ -119,6 +121,7 @@ import {
   setWorkbenchThreeSceneSignal,
   WORKBENCH_THREE_DRAW_INTERVAL_MS,
   WORKBENCH_THREE_FULLSCREEN_MIN_CELLS,
+  WORKBENCH_THREE_HIDDEN_RECT,
   WORKBENCH_THREE_INITIAL_CELLS,
   workbenchStudioScene,
   workbenchThreeBodyRect,
@@ -625,6 +628,11 @@ const framePainter = new WorkbenchFramePainter<Frame, ThemeSpec>({
 });
 type DropdownOverlay = ApiWorkbenchDropdownOverlay;
 type DynamicThreePanel = WorkbenchThreePanelEntry<ThreePanelFrameView, WorkbenchThreeScene>;
+interface WorkbenchThreeRuntimeBudgetSource {
+  id: WindowId;
+  ascii: AsciiOptions;
+  liveViewport: Pick<Rectangle, "width" | "height">;
+}
 interface WindowRenderContext {
   viewport: Rectangle;
   offset: { columns: number; rows: number };
@@ -1041,7 +1049,7 @@ function draw(): void {
   const frame = prepareWorkbenchFrame(screenFrame, height);
   renderHeader(frame);
   renderWorkspace(frame);
-  syncWorkbenchThreeRuntimeBudgetForViewport(width, height, threeBodyRect.peek());
+  syncWorkbenchThreeRuntimeBudgetForViewport(width, height, activeWorkbenchThreeRuntimeBudgetSource());
   workbenchThreeRuntime.syncFrameInterval();
   renderStatus(frame);
   renderActiveDropdownOverlay(frame);
@@ -1054,14 +1062,14 @@ function draw(): void {
 function syncWorkbenchThreeRuntimeBudgetForViewport(
   width: number,
   height: number,
-  liveViewport: Pick<Rectangle, "width" | "height">,
+  source: WorkbenchThreeRuntimeBudgetSource,
 ): void {
   const snapshot = resolveWorkbenchThreeRuntimeBudgetSnapshot({
-    id: "three",
+    id: source.id,
     fullscreenId: maximized.peek(),
-    ascii: ascii.peek(),
+    ascii: source.ascii,
     liveMaxCells: workbenchThreeLiveMaxCells.peek(),
-    liveViewport,
+    liveViewport: source.liveViewport,
     fullscreenMaxCells: workbenchThreeFullscreenMaxCells.peek(),
     viewport: { width, height },
     fullscreenViewportPadding: { columns: 6, rows: 10 },
@@ -1073,9 +1081,12 @@ function syncWorkbenchThreeRuntimeBudgetForViewport(
     fullscreenThree,
     snapshot.fullscreenViewportCells,
   );
-  const liveViewportCells = Math.max(1, Math.floor(liveViewport.width) * Math.floor(liveViewport.height));
+  const liveViewportCells = Math.max(
+    1,
+    Math.floor(source.liveViewport.width) * Math.floor(source.liveViewport.height),
+  );
   const syncedLiveMaxCells = workbenchThreeRuntime.syncLiveTargetCells(
-    workbenchThreeLiveRenderCells(liveViewport),
+    workbenchThreeLiveRenderCells(source.liveViewport),
     workbenchThreeWindowState.live && !fullscreenThree,
     liveViewportCells,
   );
@@ -1090,8 +1101,8 @@ function syncWorkbenchThreeRuntimeBudgetForViewport(
   }
   const runtimeAscii = fullscreenThree
     ? snapshot.runtimeAscii
-    : resolveWorkbenchThreeLiveAsciiOptions(ascii.peek(), effectiveMaxCells);
-  if (!sameWorkbenchThreeAsciiOptions(threeRuntimeAscii.peek(), runtimeAscii)) {
+    : resolveWorkbenchThreeLiveAsciiOptions(source.ascii, effectiveMaxCells);
+  if (source.id === "three" && !sameWorkbenchThreeAsciiOptions(threeRuntimeAscii.peek(), runtimeAscii)) {
     threeRuntimeAscii.value = runtimeAscii;
   }
 }
@@ -1384,7 +1395,7 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
         statusMessage: "renderer resizing",
         onPressureRows: (rows) => workbenchThreeRuntime.recordRenderedGridForPressure(rows),
       });
-      scheduleDraw();
+      handleWorkbenchThreeViewportResize();
       return;
     }
     renderApiWorkbenchThreeSurface({
@@ -2303,6 +2314,28 @@ function syncWorkbenchThreeWindowState(): WorkbenchThreeWindowState<WindowId> {
   });
 }
 
+function activeWorkbenchThreeRuntimeBudgetSource(): WorkbenchThreeRuntimeBudgetSource {
+  const id = resolveWorkbenchThreeRuntimeBudgetSourceId({
+    fallbackId: "three" as WindowId,
+    fullscreenId: workbenchThreeWindowState.fullscreenId,
+    interactiveIds: workbenchThreeWindowState.interactiveIds,
+    isThreeWindow: isThreeRenderedWindow,
+  });
+  return {
+    id,
+    ascii: asciiForWindow(id).peek(),
+    liveViewport: workbenchThreeRuntimeViewportForWindow(id),
+  };
+}
+
+function workbenchThreeRuntimeViewportForWindow(id: WindowId): Pick<Rectangle, "width" | "height"> {
+  if (id === "three") return threeBodyRect.peek();
+  if (isVisualizationWindow(id)) {
+    return visualizationThreePanels.get(id)?.rectangle.peek() ?? WORKBENCH_THREE_HIDDEN_RECT;
+  }
+  return WORKBENCH_THREE_HIDDEN_RECT;
+}
+
 function hideVisualizationThreePanelsExcept(visibleIds: ReadonlySet<VisualizationWindowId>): void {
   visualizationThreePanels.hideExcept(visibleIds);
 }
@@ -2319,11 +2352,14 @@ function setThreeBodyRect(rect: Rectangle): boolean {
     height: rect.height,
   });
   if (!changed) return false;
+  handleWorkbenchThreeViewportResize();
+  return true;
+}
+
+function handleWorkbenchThreeViewportResize(): void {
   threeCadence.reset();
   workbenchThreeRuntime.resetPressureCounters();
-  syncWorkbenchThreeRuntimeBudgetForViewport(currentWidth(), currentHeight(), rect);
   scheduleDraw();
-  return true;
 }
 
 function hideBuiltinThreeRects(): void {
@@ -2631,6 +2667,12 @@ function clearWorkspaceModalState(): void {
   workspaceTargetName.value = null;
 }
 
+function updateActiveWorkspaceAfterWindowMutation(options: { preserveWorkspace?: boolean } = {}): void {
+  const current = activeWorkspaceName.peek();
+  const next = activeWorkspaceNameAfterWindowMutation(current, options);
+  if (next !== current) activeWorkspaceName.value = next;
+}
+
 function applyWorkspaceMenuItem(index: number): void {
   const command = resolveWorkspaceMenuCommand(workspaceMenuEntries()[index], workspaceByName);
   switch (command.action) {
@@ -2651,7 +2693,7 @@ function loadWorkspace(workspace: SavedWorkspace): void {
   closeTopMenus();
   closeAllWindowsForWorkspaceLoad();
   for (const entry of workspaceWindowEntries(workspace)) {
-    addVisualizationWindow(visualizationOption(entry.visualizationId), { ascii: entry.ascii });
+    addVisualizationWindow(visualizationOption(entry.visualizationId), { ascii: entry.ascii, preserveWorkspace: true });
   }
   activeWorkspaceName.value = workspace.name;
   workspaceScroll.scrollTo(0, 0);
@@ -3462,7 +3504,7 @@ function handleThreeConfigKey(event: { key: string; shift?: boolean }): void {
   }
 }
 
-function closeWindow(id: WindowId): void {
+function closeWindow(id: WindowId, options: { preserveWorkspace?: boolean } = {}): void {
   const plan = workbenchWindowClosePlan({
     windowId: id,
     isVisualizationWindow,
@@ -3470,6 +3512,7 @@ function closeWindow(id: WindowId): void {
     selectedVisualizationTiles: selectedCpuHexTiles.peek(),
   });
   if (plan.visualizationWindowId) {
+    updateActiveWorkspaceAfterWindowMutation(options);
     disposeVisualizationThreePanel(plan.visualizationWindowId);
     disposeAsciiForWindow(plan.visualizationWindowId);
     if (plan.selectedVisualizationTilesChanged) {
@@ -3488,7 +3531,7 @@ function closeWindow(id: WindowId): void {
 
 function toggleNewWindowOption(
   option: NewWindowOption | undefined,
-  options: { keepMenuOpen?: boolean; ascii?: AsciiOptions } = {},
+  options: { keepMenuOpen?: boolean; ascii?: AsciiOptions; preserveWorkspace?: boolean } = {},
 ): void {
   const plan = workbenchWindowOptionTogglePlan<BuiltInWindowId>(option);
   if (plan.action === "builtIn") return toggleBuiltInWindow(plan.id, options);
@@ -3528,7 +3571,7 @@ function toggleBuiltInWindow(
 
 function toggleVisualizationWindow(
   option: NewWindowOption | undefined,
-  options: { keepMenuOpen?: boolean; ascii?: AsciiOptions } = {},
+  options: { keepMenuOpen?: boolean; ascii?: AsciiOptions; preserveWorkspace?: boolean } = {},
 ): void {
   const plan = workbenchVisualizationWindowTogglePlan({
     option,
@@ -3545,10 +3588,11 @@ function toggleVisualizationWindow(
 
 function addVisualizationWindow(
   option: NewWindowOption | undefined,
-  options: { keepMenuOpen?: boolean; ascii?: AsciiOptions } = {},
+  options: { keepMenuOpen?: boolean; ascii?: AsciiOptions; preserveWorkspace?: boolean } = {},
 ): void {
   if (!option) return;
   const id = workbenchVisualizationWindowId(option.id) as VisualizationWindowId;
+  updateActiveWorkspaceAfterWindowMutation(options);
   if (!options.keepMenuOpen) closeTopMenus();
   if (options.ascii) setAsciiForWindow(id, options.ascii);
   else asciiForWindow(id);

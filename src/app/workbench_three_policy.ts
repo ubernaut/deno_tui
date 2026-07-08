@@ -187,6 +187,13 @@ export interface WorkbenchThreeRuntimeBudgetSnapshot {
   runtimeAscii: ThreeAsciiConfigOptions;
 }
 
+export interface WorkbenchThreeRuntimeBudgetSourceIdInput<TId extends string = string> {
+  fallbackId: TId;
+  fullscreenId?: TId | null;
+  interactiveIds?: Iterable<TId>;
+  isThreeWindow: (id: TId) => boolean;
+}
+
 export interface WorkbenchThreeTiledAsciiOptionsInput {
   ascii: ThreeAsciiConfigOptions;
   liveViewport: { width: number; height: number };
@@ -469,6 +476,18 @@ export function resolveWorkbenchThreeRuntimeBudgetSnapshot<TId extends string>(
     effectiveMaxCells,
     runtimeAscii,
   };
+}
+
+/** Chooses the Three window whose measured viewport should drive the shared runtime cap. */
+export function resolveWorkbenchThreeRuntimeBudgetSourceId<TId extends string>(
+  input: WorkbenchThreeRuntimeBudgetSourceIdInput<TId>,
+): TId {
+  const fullscreenId = input.fullscreenId ?? null;
+  if (fullscreenId && input.isThreeWindow(fullscreenId)) return fullscreenId;
+  for (const id of input.interactiveIds ?? []) {
+    if (input.isThreeWindow(id)) return id;
+  }
+  return input.fallbackId;
 }
 
 export function resolveWorkbenchThreeLiveAsciiOptions(
