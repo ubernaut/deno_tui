@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { InputController, InputInspection } from "../components/input.ts";
 import type { Action } from "./actions.ts";
+import { actionCommandGroup } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for input Command variants. */
@@ -79,40 +80,21 @@ export function inputCommands<TAction extends Action = InputCommandAction>(
   }
 
   if (options.includeCursorCommands ?? true) {
-    commands.push(
-      cursorCommand(
-        `${idPrefix}.home`,
-        label("home", "Input Cursor Home"),
-        group,
-        ["input", "cursor", "home"],
-        () => controller.home(),
-        payload,
-      ),
-      cursorCommand(
-        `${idPrefix}.left`,
-        label("left", "Input Cursor Left"),
-        group,
-        ["input", "cursor", "left"],
-        () => controller.moveCursor(-1),
-        payload,
-      ),
-      cursorCommand(
-        `${idPrefix}.right`,
-        label("right", "Input Cursor Right"),
-        group,
-        ["input", "cursor", "right"],
-        () => controller.moveCursor(1),
-        payload,
-      ),
-      cursorCommand(
-        `${idPrefix}.end`,
-        label("end", "Input Cursor End"),
-        group,
-        ["input", "cursor", "end"],
-        () => controller.end(),
-        payload,
-      ),
-    );
+    commands.push(...actionCommandGroup<TAction, InputCommandPayload, InputCommandKind, number>({
+      idPrefix,
+      group,
+      type: "input.cursorMoved",
+      keywords: ["input", "cursor"],
+      label,
+      payload,
+      disabled: () => payload().inspection.length === 0,
+      entries: [
+        ["home", "Input Cursor Home", () => controller.home(), ["input", "cursor", "home"]],
+        ["left", "Input Cursor Left", () => controller.moveCursor(-1), ["input", "cursor", "left"]],
+        ["right", "Input Cursor Right", () => controller.moveCursor(1), ["input", "cursor", "right"]],
+        ["end", "Input Cursor End", () => controller.end(), ["input", "cursor", "end"]],
+      ],
+    }));
   }
 
   if (options.includeValueCommands ?? false) {
@@ -142,25 +124,4 @@ export function bindInputCommands<TAction extends Action = InputCommandAction>(
   options: InputCommandOptions = {},
 ): () => void {
   return registry.registerAll(inputCommands<TAction>(controller, options));
-}
-
-function cursorCommand<TAction extends Action>(
-  id: string,
-  label: string,
-  group: string,
-  keywords: string[],
-  move: () => number,
-  payload: () => InputCommandPayload,
-): Command<TAction> {
-  return {
-    id,
-    label,
-    group,
-    keywords,
-    disabled: () => payload().inspection.length === 0,
-    action: () => {
-      move();
-      return { type: "input.cursorMoved", payload: payload() } as TAction;
-    },
-  };
 }
