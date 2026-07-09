@@ -2,7 +2,7 @@
 import { Component, type ComponentOptions } from "../component.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
-import { drawTextRows } from "./text_rows.ts";
+import { drawTextRows } from "./text_children.ts";
 
 /** Public type alias for a toast Level. */
 export type ToastLevel = "info" | "success" | "warning" | "error";

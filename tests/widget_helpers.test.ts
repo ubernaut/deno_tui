@@ -34,6 +34,7 @@ import { CheckBoxController, Mark, renderCheckBoxMark } from "../src/components/
 import { ComboBoxController, comboBoxLabel } from "../src/components/combobox.ts";
 import { renderEmptyState } from "../src/components/empty_state.ts";
 import { createFileExplorerTree, FileExplorerController } from "../src/components/file_explorer.ts";
+import { Gauge } from "../src/components/gauge.ts";
 import { InputController } from "../src/components/input.ts";
 import { hitTestWidgetRegions, stackedRowHitRegions, stackedRowIndexAt } from "../src/components/interaction.ts";
 import { labelLineLayout } from "../src/components/label.ts";
@@ -46,7 +47,7 @@ import {
   renderMenuBar,
   shiftMenuIndex,
 } from "../src/components/menu_bar.ts";
-import { ModalController, renderModalRows } from "../src/components/modal.ts";
+import { Modal, ModalController, renderModalRows } from "../src/components/modal.ts";
 import { clampPadCursor, measurePadContent, PadController, renderPadRows } from "../src/components/pad.ts";
 import {
   clampProgressValue,
@@ -74,6 +75,7 @@ import {
   scrollOffsetBy,
 } from "../src/components/scroll_area.ts";
 import { renderStatusBar } from "../src/components/statusbar.ts";
+import type { Text } from "../src/components/text.ts";
 import {
   clampSliderValue,
   SliderController,
@@ -1264,6 +1266,41 @@ Deno.test("ModalController opens updates actions and closes on escape", () => {
   );
 
   controller.dispose();
+});
+
+Deno.test("text-backed components preserve shared child wiring and custom modal options", () => {
+  const tui = createFakeTui();
+  const gauge = new Gauge({
+    parent: tui,
+    theme: {},
+    zIndex: 1,
+    rectangle: { column: 2, row: 3, width: 12, height: 1 },
+    value: 0.5,
+  });
+  gauge.draw();
+  const gaugeText = gauge.subComponents.text as Text;
+  const gaugeTextRect = gaugeText.rectangle.peek();
+  assertEquals(gaugeText.subComponentOf === gauge, true);
+  assertEquals(
+    { column: gaugeTextRect.column, row: gaugeTextRect.row, width: gaugeTextRect.width },
+    { column: 2, row: 3, width: 12 },
+  );
+  assertEquals(gaugeText.overwriteRectangle.peek(), true);
+
+  const modal = new Modal({
+    parent: tui,
+    theme: {},
+    zIndex: 2,
+    rectangle: { column: 4, row: 5, width: 20, height: 8 },
+    title: "Confirm",
+    body: "Proceed?",
+  });
+  modal.draw();
+  const title = modal.subComponents.title as Text;
+  const body = modal.subComponents.body as Text;
+  assertEquals(title.overwriteRectangle.peek(), false);
+  assertEquals(body.overwriteRectangle.peek(), true);
+  assertEquals(title.zIndex.peek(), 3);
 });
 
 Deno.test("renderModalRows formats wrapped body and focused actions", () => {

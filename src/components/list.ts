@@ -3,7 +3,7 @@ import { Component, type ComponentOptions } from "../component.ts";
 import { clampSelectionIndex, selectionWindow } from "../selection.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
-import { drawTextRows } from "./text_rows.ts";
+import { drawTextRows } from "./text_children.ts";
 
 /** Options for configuring list. */
 export interface ListOptions extends ComponentOptions {

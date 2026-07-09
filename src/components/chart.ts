@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Component, type ComponentOptions } from "../component.ts";
 import { Computed, type Signal } from "../signals/mod.ts";
-import { drawTextRows } from "./text_rows.ts";
+import { drawTextRows } from "./text_children.ts";
 
 /** Options for configuring chart. */
 export interface ChartOptions extends ComponentOptions {

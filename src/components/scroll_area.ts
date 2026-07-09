@@ -18,7 +18,7 @@ import {
   viewportThumb,
   viewportThumbGlyph,
 } from "../viewport.ts";
-import { Text } from "./text.ts";
+import { drawTextChild } from "./text_children.ts";
 
 /** Options for configuring scroll Area. */
 export interface ScrollAreaOptions extends ComponentOptions {
@@ -304,29 +304,27 @@ export class ScrollArea extends Component {
     super.draw();
     const rowCount = this.rectangle.peek().height;
     for (let index = 0; index < rowCount; index += 1) {
-      const text = new Text({
-        parent: this,
-        theme: this.theme,
-        zIndex: this.zIndex,
-        text: new Computed(() => {
+      drawTextChild(
+        this,
+        new Computed(() => {
           if (!this.showScrollbar.value) return "";
           const rect = this.rectangle.value;
           const thumb = scrollbarThumb(this.contentHeight.value, rect.height, this.offset.value.rows);
           return scrollbarGlyph(index, thumb);
         }),
-        overwriteWidth: true,
-        rectangle: new Computed<TextRectangle>(() => {
-          const rect = this.rectangle.value;
-          return {
-            column: rect.column + Math.max(0, rect.width - 1),
-            row: rect.row + index,
-            width: 1,
-          };
-        }),
-        visible: new Computed(() => this.visible.value && this.showScrollbar.value),
-      });
-      text.subComponentOf = this;
-      this.subComponents[`scrollbar-${index}`] = text;
+        {
+          key: `scrollbar-${index}`,
+          rectangle: new Computed<TextRectangle>(() => {
+            const rect = this.rectangle.value;
+            return {
+              column: rect.column + Math.max(0, rect.width - 1),
+              row: rect.row + index,
+              width: 1,
+            };
+          }),
+          visible: new Computed(() => this.visible.value && this.showScrollbar.value),
+        },
+      );
     }
   }
 

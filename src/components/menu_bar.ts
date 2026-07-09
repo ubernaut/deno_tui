@@ -1,9 +1,8 @@
 // Copyright 2023 Im-Beast. MIT license.
-import type { TextRectangle } from "../canvas/text.ts";
 import { Component, type ComponentOptions } from "../component.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
-import { Text } from "./text.ts";
+import { drawTextChild } from "./text_children.ts";
 
 /** Public interface describing a menu Bar Item. */
 export interface MenuBarItem {
@@ -213,20 +212,6 @@ export class MenuBar extends Component {
 
   override draw(): void {
     super.draw();
-    const text = new Text({
-      parent: this,
-      theme: this.theme,
-      zIndex: this.zIndex,
-      text: new Computed(() => renderMenuBar(this.items.value, this.activeIndex.value)),
-      overwriteWidth: true,
-      rectangle: new Computed<TextRectangle>(() => ({
-        column: this.rectangle.value.column,
-        row: this.rectangle.value.row,
-        width: this.rectangle.value.width,
-      })),
-      visible: this.visible,
-    });
-    text.subComponentOf = this;
-    this.subComponents.text = text;
+    drawTextChild(this, new Computed(() => renderMenuBar(this.items.value, this.activeIndex.value)));
   }
 }

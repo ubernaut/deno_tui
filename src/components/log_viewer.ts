@@ -2,7 +2,7 @@
 import { Component, type ComponentOptions } from "../component.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
-import { drawTextRows } from "./text_rows.ts";
+import { drawTextRows } from "./text_children.ts";
 
 const DEFAULT_LOG_LINE_LIMIT = 500;
 

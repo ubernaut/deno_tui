@@ -1,9 +1,8 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Component, type ComponentOptions } from "../component.ts";
-import type { TextRectangle } from "../canvas/text.ts";
 import { Computed } from "../signals/mod.ts";
 import { formatKeyBinding, type KeyBinding, type KeymapRegistry } from "../keymap.ts";
-import { Text } from "./text.ts";
+import { drawTextChild } from "./text_children.ts";
 
 /** Options for configuring key Help. */
 export interface KeyHelpOptions extends ComponentOptions {
@@ -36,25 +35,14 @@ export class KeyHelp extends Component {
   override draw(): void {
     super.draw();
 
-    const text = new Text({
-      parent: this,
-      theme: this.theme,
-      zIndex: this.zIndex,
-      text: new Computed(() => {
+    drawTextChild(
+      this,
+      new Computed(() => {
         const bindings = "list" in this.options.bindings
           ? this.options.bindings.list(this.options.group)
           : this.options.bindings;
         return renderKeyHelp(bindings, this.rectangle.value.width);
       }),
-      overwriteWidth: true,
-      rectangle: new Computed<TextRectangle>(() => ({
-        column: this.rectangle.value.column,
-        row: this.rectangle.value.row,
-        width: this.rectangle.value.width,
-      })),
-      visible: this.visible,
-    });
-    text.subComponentOf = this;
-    this.subComponents.text = text;
+    );
   }
 }

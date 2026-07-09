@@ -1,10 +1,9 @@
 // Copyright 2023 Im-Beast. MIT license.
-import type { TextRectangle } from "../canvas/text.ts";
 import { Component, type ComponentOptions } from "../component.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { List, visibleListRows } from "./list.ts";
-import { Text } from "./text.ts";
+import { drawTextChild } from "./text_children.ts";
 import type { KeyPressEvent } from "../input_reader/types.ts";
 import { normalizeSearchText, scoreWeightedSearchFields, searchTerms } from "../utils/search.ts";
 import type { WeightedSearchField } from "../utils/search.ts";
@@ -252,19 +251,7 @@ export class CommandPalette extends Component {
   override draw(): void {
     super.draw();
 
-    const input = new Text({
-      parent: this,
-      theme: this.theme,
-      zIndex: this.zIndex,
-      text: new Computed(() => `> ${this.query.value}`),
-      overwriteWidth: true,
-      rectangle: new Computed<TextRectangle>(() => ({
-        column: this.rectangle.value.column,
-        row: this.rectangle.value.row,
-        width: this.rectangle.value.width,
-      })),
-      visible: this.visible,
-    });
+    drawTextChild(this, new Computed(() => `> ${this.query.value}`), { key: "input" });
     const list = new List({
       parent: this,
       theme: this.theme,
@@ -279,8 +266,7 @@ export class CommandPalette extends Component {
       })),
       visible: this.visible,
     });
-    input.subComponentOf = list.subComponentOf = this;
-    this.subComponents.input = input;
+    list.subComponentOf = this;
     this.subComponents.list = list;
   }
 

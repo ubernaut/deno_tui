@@ -1,8 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
-import type { TextRectangle } from "../canvas/text.ts";
 import { Component, type ComponentOptions } from "../component.ts";
 import { Computed, type Signal } from "../signals/mod.ts";
-import { Text } from "./text.ts";
+import { drawTextChild } from "./text_children.ts";
 
 /** Options for configuring gauge. */
 export interface GaugeOptions extends ComponentOptions {
@@ -31,23 +30,12 @@ export class Gauge extends Component {
 
   override draw(): void {
     super.draw();
-    const text = new Text({
-      parent: this,
-      theme: this.theme,
-      zIndex: this.zIndex,
-      text: new Computed(() => {
+    drawTextChild(
+      this,
+      new Computed(() => {
         const value = typeof this.options.value === "number" ? this.options.value : this.options.value.value;
         return renderGauge(value, this.rectangle.value.width, this.options.min, this.options.max, this.options.label);
       }),
-      overwriteWidth: true,
-      rectangle: new Computed<TextRectangle>(() => ({
-        column: this.rectangle.value.column,
-        row: this.rectangle.value.row,
-        width: this.rectangle.value.width,
-      })),
-      visible: this.visible,
-    });
-    text.subComponentOf = this;
-    this.subComponents.text = text;
+    );
   }
 }

@@ -1,11 +1,11 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Component, type ComponentOptions } from "../component.ts";
 import type { TextRectangle } from "../canvas/text.ts";
+import { Component, type ComponentOptions } from "../component.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { cropToWidth, textWidth } from "../utils/strings.ts";
 import { Box } from "./box.ts";
 import { Frame } from "./frame.ts";
-import { Text } from "./text.ts";
+import { drawTextChild } from "./text_children.ts";
 
 /** Public type alias for a modal Tone. */
 export type ModalTone = "info" | "confirm" | "success" | "warning" | "error";
@@ -324,38 +324,26 @@ export class Modal extends Component {
       charMap: "rounded",
       visible: this.visible,
     });
-    const title = new Text({
-      parent: this,
-      theme: this.theme,
+    drawTextChild(this, this.options.title ?? "", {
+      key: "title",
+      overwriteWidth: false,
       zIndex: new Computed(() => this.zIndex.value + 1),
-      text: this.options.title ?? "",
       rectangle: new Computed<TextRectangle>(() => ({
         column: this.rectangle.value.column + 1,
         row: this.rectangle.value.row - 1,
       })),
-      visible: this.visible,
     });
-    const body = new Text({
-      parent: this,
-      theme: this.theme,
+    drawTextChild(this, this.options.body ?? "", {
+      key: "body",
       zIndex: new Computed(() => this.zIndex.value + 1),
-      text: this.options.body ?? "",
-      overwriteWidth: true,
       rectangle: new Computed<TextRectangle>(() => ({
         column: this.rectangle.value.column + 1,
         row: this.rectangle.value.row + 1,
         width: Math.max(0, this.rectangle.value.width - 2),
       })),
-      visible: this.visible,
     });
-    box.subComponentOf =
-      frame.subComponentOf =
-      title.subComponentOf =
-      body.subComponentOf =
-        this;
+    box.subComponentOf = frame.subComponentOf = this;
     this.subComponents.box = box;
     this.subComponents.frame = frame;
-    this.subComponents.title = title;
-    this.subComponents.body = body;
   }
 }

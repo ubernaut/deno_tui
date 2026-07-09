@@ -3,7 +3,7 @@ import { Component, type ComponentOptions } from "../component.ts";
 import type { KeyPressEvent } from "../input_reader/types.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
-import { drawTextRows } from "./text_rows.ts";
+import { drawTextRows } from "./text_children.ts";
 
 /** Public interface describing a context Menu Item. */
 export interface ContextMenuItem {

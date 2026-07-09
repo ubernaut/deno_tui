@@ -1,10 +1,9 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Component, type ComponentOptions } from "../component.ts";
-import type { TextRectangle } from "../canvas/text.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { clamp } from "../utils/numbers.ts";
-import { Text } from "./text.ts";
+import { drawTextChild } from "./text_children.ts";
 
 /** Public interface describing a tab Item. */
 export interface TabItem {
@@ -195,20 +194,8 @@ export class Tabs extends Component {
   override draw(): void {
     super.draw();
 
-    const text = new Text({
-      parent: this,
-      theme: this.theme,
-      zIndex: this.zIndex,
-      text: new Computed(() => renderTabs(this.tabs.value, this.activeIndex.value)),
-      overwriteWidth: true,
-      rectangle: new Computed<TextRectangle>(() => ({
-        column: this.rectangle.value.column,
-        row: this.rectangle.value.row,
-        width: this.rectangle.value.width,
-      })),
-      visible: this.visible,
+    drawTextChild(this, new Computed(() => renderTabs(this.tabs.value, this.activeIndex.value)), {
+      key: "tabs",
     });
-    text.subComponentOf = this;
-    this.subComponents.tabs = text;
   }
 }

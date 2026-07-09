@@ -12,7 +12,7 @@ import {
 } from "../selection.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
-import { drawTextRows } from "./text_rows.ts";
+import { drawTextRows } from "./text_children.ts";
 
 /** Public interface describing a virtual List Row. */
 export interface VirtualListRow<T> {

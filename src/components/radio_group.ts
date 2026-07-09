@@ -3,7 +3,7 @@ import { Component, type ComponentOptions } from "../component.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { stackedRowIndexAt } from "./interaction.ts";
-import { drawTextRows } from "./text_rows.ts";
+import { drawTextRows } from "./text_children.ts";
 
 /** Public interface describing a radio Option. */
 export interface RadioOption {
