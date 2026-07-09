@@ -145,16 +145,7 @@ export function searchCommandSearchIndex(
       }
     }
   }
-  if (limit === undefined) {
-    ranked.sort(compareCommandSearchMatches);
-  }
-  const count = limit === undefined ? ranked.length : Math.min(limit, ranked.length);
-  const matches = new Array<CommandSearchMatch>(count);
-  for (let index = 0; index < count; index += 1) {
-    const match = ranked[index]!;
-    matches[index] = { item: match.item, score: match.score, matched: match.matched };
-  }
-  return matches;
+  return finishCommandSearchMatches(ranked, limit);
 }
 
 function rankEmptyCommandSearchIndex(
@@ -172,16 +163,7 @@ function rankEmptyCommandSearchIndex(
       insertBoundedRanked(ranked, candidate, limit, compareCommandSearchMatches);
     }
   }
-  if (limit === undefined) {
-    ranked.sort(compareCommandSearchMatches);
-  }
-  const count = limit === undefined ? ranked.length : Math.min(limit, ranked.length);
-  const matches = new Array<CommandSearchMatch>(count);
-  for (let index = 0; index < count; index += 1) {
-    const match = ranked[index]!;
-    matches[index] = { item: match.item, score: match.score, matched: match.matched };
-  }
-  return matches;
+  return finishCommandSearchMatches(ranked, limit);
 }
 
 /** Creates an indexed Command Surface. */
@@ -348,6 +330,19 @@ function scoreCommandSearchIndexEntry(
   terms: readonly string[],
 ): { score: number; matched: string[] } | undefined {
   return scoreWeightedSearchFields(entry.fields, terms, entry.item.disabled);
+}
+
+function finishCommandSearchMatches(
+  ranked: Array<CommandSearchMatch & { index: number }>,
+  limit: number | undefined,
+): CommandSearchMatch[] {
+  if (limit === undefined) ranked.sort(compareCommandSearchMatches);
+  const matches = new Array<CommandSearchMatch>(ranked.length);
+  for (let index = 0; index < ranked.length; index += 1) {
+    const match = ranked[index]!;
+    matches[index] = { item: match.item, score: match.score, matched: match.matched };
+  }
+  return matches;
 }
 
 function compareCommandSearchMatches(

@@ -1232,6 +1232,11 @@ Deno.test("command surface search ranks labels ids keywords and key bindings", (
     "route.home",
     "route.system-monitor",
   ]);
+  const tiedItems = [{ id: "source.z", label: "Same Label" }, { id: "source.a", label: "Same Label" }];
+  const tiedMatches = rankCommandSurfaceItems(tiedItems, "same label");
+  assertEquals(tiedMatches.map((match) => match.item.id), ["source.z", "source.a"]);
+  assertEquals(rankCommandSurfaceItems(tiedItems, "same label", { limit: 1 })[0]?.item.id, "source.z");
+  assertEquals(tiedMatches.some((match) => "index" in match), false);
 });
 
 Deno.test("command surface search refreshes cached fields when commands mutate", () => {

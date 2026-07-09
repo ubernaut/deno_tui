@@ -265,12 +265,12 @@ export function rankCommandSurfaceItems(
   const limit = options.limit === undefined ? undefined : Math.max(0, Math.floor(options.limit));
   if (limit === 0) return [];
   if (terms.length === 0) return rankEmptyCommandSurfaceItems(items, limit);
-  const ranked: Array<CommandSearchMatch & { index: number }> = [];
+  const ranked: CommandSearchMatch[] = [];
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index]!;
     const match = scoreCommandSurfaceItem(item, terms);
     if (match) {
-      const candidate = { item, score: match.score, matched: match.matched, index };
+      const candidate = { item, score: match.score, matched: match.matched };
       if (limit === undefined) {
         ranked.push(candidate);
       } else {
@@ -278,42 +278,26 @@ export function rankCommandSurfaceItems(
       }
     }
   }
-  if (limit === undefined) {
-    ranked.sort(compareCommandSearchMatches);
-  }
-  const count = limit === undefined ? ranked.length : Math.min(limit, ranked.length);
-  const matches = new Array<CommandSearchMatch>(count);
-  for (let index = 0; index < count; index += 1) {
-    const match = ranked[index]!;
-    matches[index] = { item: match.item, score: match.score, matched: match.matched };
-  }
-  return matches;
+  if (limit === undefined) ranked.sort(compareCommandSearchMatches);
+  return ranked;
 }
 
 function rankEmptyCommandSurfaceItems(
   items: readonly CommandSurfaceItem[],
   limit: number | undefined,
 ): CommandSearchMatch[] {
-  const ranked: Array<CommandSearchMatch & { index: number }> = [];
+  const ranked: CommandSearchMatch[] = [];
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index]!;
-    const candidate = { item, score: item.disabled ? -1 : 0, matched: [], index };
+    const candidate = { item, score: item.disabled ? -1 : 0, matched: [] };
     if (limit === undefined) {
       ranked.push(candidate);
     } else {
       insertBoundedRanked(ranked, candidate, limit, compareCommandSearchMatches);
     }
   }
-  if (limit === undefined) {
-    ranked.sort(compareCommandSearchMatches);
-  }
-  const count = limit === undefined ? ranked.length : Math.min(limit, ranked.length);
-  const matches = new Array<CommandSearchMatch>(count);
-  for (let index = 0; index < count; index += 1) {
-    const match = ranked[index]!;
-    matches[index] = { item: match.item, score: match.score, matched: match.matched };
-  }
-  return matches;
+  if (limit === undefined) ranked.sort(compareCommandSearchMatches);
+  return ranked;
 }
 
 /** Public helper for execute Command Surface Item. */
@@ -598,16 +582,6 @@ function commandSurfaceSearchField(value: string, weight: number): WeightedSearc
   return { value, weight, normalized: normalizeSearchText(value) };
 }
 
-function compareCommandSearchMatches(
-  left: CommandSearchMatch & { index: number },
-  right: CommandSearchMatch & { index: number },
-): number {
-  return right.score - left.score ||
-    Number(left.item.disabled) - Number(right.item.disabled) ||
-    left.item.label.localeCompare(right.item.label) ||
-    left.index - right.index;
-}
-
 function compareCommandSearchCandidates<TAction extends Action = Action>(
   left: CommandSearchCandidate<TAction>,
   right: CommandSearchCandidate<TAction>,
@@ -616,6 +590,13 @@ function compareCommandSearchCandidates<TAction extends Action = Action>(
     Number(left.disabled) - Number(right.disabled) ||
     left.command.label.localeCompare(right.command.label) ||
     left.index - right.index;
+}
+
+function compareCommandSearchMatches(left: CommandSearchMatch, right: CommandSearchMatch): number {
+  // Stable sort and bounded insertion preserve source order when these fields tie.
+  return right.score - left.score ||
+    Number(left.item.disabled) - Number(right.item.disabled) ||
+    left.item.label.localeCompare(right.item.label);
 }
 
 function inspectCommandKeyBindingConflicts(
