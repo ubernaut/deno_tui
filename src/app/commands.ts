@@ -87,17 +87,9 @@ export class CommandRegistry<TAction extends Action = Action> {
   }
 
   registerAll(commands: Iterable<Command<TAction>>): () => void {
-    const stack = new DisposableStack();
-    try {
-      for (const command of commands) {
-        stack.defer(this.register(command));
-      }
-    } catch (error) {
-      stack.dispose();
-      throw error;
-    }
-
-    return stack.dispose;
+    return DisposableStack.collect((stack) => {
+      for (const command of commands) stack.defer(this.register(command));
+    });
   }
 
   unregister(id: string): void {

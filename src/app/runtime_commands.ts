@@ -167,10 +167,8 @@ export function createRuntimeProfilePlugin<
     label,
     controller,
     install(app) {
-      const stack = new DisposableStack();
-      let profileSetting: SettingBinding<string, unknown> | undefined;
-
-      try {
+      return DisposableStack.collect((stack) => {
+        let profileSetting: SettingBinding<string, unknown> | undefined;
         const persistProfile = options.persistProfile ?? true;
         if (options.settings && persistProfile) {
           const binding = bindRuntimeProfileSetting<unknown>(
@@ -203,12 +201,7 @@ export function createRuntimeProfilePlugin<
             profileSetting,
           }),
         );
-      } catch (error) {
-        stack.dispose();
-        throw error;
-      }
-
-      return stack.dispose;
+      });
     },
     inspect() {
       return {
@@ -404,10 +397,8 @@ export function createRuntimeRendererBackendPlugin<
     label,
     controller,
     install(app) {
-      const stack = new DisposableStack();
-      let backendSetting: SettingBinding<string, unknown> | undefined;
-
-      try {
+      return DisposableStack.collect((stack) => {
+        let backendSetting: SettingBinding<string, unknown> | undefined;
         const persistBackend = options.persistBackend ?? true;
         if (options.settings && persistBackend) {
           const binding = bindRuntimeRendererBackendSetting<unknown>(
@@ -440,12 +431,7 @@ export function createRuntimeRendererBackendPlugin<
             backendSetting,
           }),
         );
-      } catch (error) {
-        stack.dispose();
-        throw error;
-      }
-
-      return stack.dispose;
+      });
     },
     inspect() {
       return {

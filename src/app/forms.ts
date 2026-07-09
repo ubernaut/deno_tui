@@ -154,17 +154,9 @@ export class FormController<TValues extends FormValues = FormValues> {
   }
 
   registerAll(fields: Iterable<FormField<unknown, TValues>>): () => void {
-    const stack = new DisposableStack();
-    try {
-      for (const field of fields) {
-        stack.defer(this.register(field));
-      }
-    } catch (error) {
-      stack.dispose();
-      throw error;
-    }
-
-    return stack.dispose;
+    return DisposableStack.collect((stack) => {
+      for (const field of fields) stack.defer(this.register(field));
+    });
   }
 
   unregister(name: FieldName<TValues>): void {

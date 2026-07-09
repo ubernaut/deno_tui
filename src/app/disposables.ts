@@ -29,6 +29,18 @@ export class DisposableStack {
     return this.#disposers.length;
   }
 
+  /** Collects setup disposers and rolls them back when setup throws. */
+  static collect(setup: (stack: DisposableStack) => void): Disposer {
+    const stack = new DisposableStack();
+    try {
+      setup(stack);
+    } catch (error) {
+      stack.dispose();
+      throw error;
+    }
+    return stack.dispose;
+  }
+
   defer(disposer: MaybeDisposer): Disposer {
     if (!disposer) return noop;
 

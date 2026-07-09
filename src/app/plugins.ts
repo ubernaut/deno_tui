@@ -110,8 +110,7 @@ export function createAppPlugin<TAction extends Action = Action, TRoute extends 
     id: definition.id,
     label: definition.label,
     install(app) {
-      const stack = new DisposableStack();
-      try {
+      return DisposableStack.collect((stack) => {
         for (const entry of definition.routes ?? []) {
           const routeEntry = normalizePluginRoute(entry);
           app.routes.register(routeEntry.route, routeEntry.options);
@@ -143,12 +142,7 @@ export function createAppPlugin<TAction extends Action = Action, TRoute extends 
         }
 
         stack.defer(definition.install?.(app));
-      } catch (error) {
-        stack.dispose();
-        throw error;
-      }
-
-      return stack.dispose;
+      });
     },
   };
 }
@@ -291,16 +285,11 @@ export class AppPluginDefinitionRegistry<TAction extends Action = Action, TRoute
   }
 
   registerAll(definitions: Iterable<AppPluginDefinition<TAction, TRoute>>): () => void {
-    const stack = new DisposableStack();
-    try {
+    return DisposableStack.collect((stack) => {
       for (const definition of definitions) {
         stack.defer(this.register(definition));
       }
-    } catch (error) {
-      stack.dispose();
-      throw error;
-    }
-    return stack.dispose;
+    });
   }
 
   unregister(id: string): boolean {

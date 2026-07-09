@@ -152,12 +152,11 @@ export function createThemePlugin<
     provider,
     pipelines,
     install(app) {
-      const stack = new DisposableStack();
-      let themeSetting: SettingBinding<string, unknown> | undefined;
-      let layerSetting: SettingBinding<readonly string[], unknown> | undefined;
-      const pipelineSettings: Record<string, SettingBinding<readonly string[], unknown>> = {};
+      return DisposableStack.collect((stack) => {
+        let themeSetting: SettingBinding<string, unknown> | undefined;
+        let layerSetting: SettingBinding<readonly string[], unknown> | undefined;
+        const pipelineSettings: Record<string, SettingBinding<readonly string[], unknown>> = {};
 
-      try {
         if (options.settings) {
           const persistTheme = options.persistTheme ?? true;
           const persistLayers = options.persistLayers ?? provider.layers.ids().length > 0;
@@ -221,12 +220,7 @@ export function createThemePlugin<
             pipelineSettings,
           }),
         );
-      } catch (error) {
-        stack.dispose();
-        throw error;
-      }
-
-      return stack.dispose;
+      });
     },
     inspect() {
       return {
@@ -287,8 +281,7 @@ export function createThemeWorkspacePlugin<
     label,
     workspace,
     install(app) {
-      const stack = new DisposableStack();
-      try {
+      return DisposableStack.collect((stack) => {
         stack.defer(theme.install(app));
         if (options.engineCommands ?? true) {
           stack.defer(
@@ -299,11 +292,7 @@ export function createThemeWorkspacePlugin<
             ) as () => void,
           );
         }
-      } catch (error) {
-        stack.dispose();
-        throw error;
-      }
-      return stack.dispose;
+      });
     },
     inspect() {
       return {

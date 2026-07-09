@@ -180,16 +180,11 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
     plugins: Iterable<AppPluginInstaller<TAction, TRoute>>,
     options: AppPluginUseOptions = {},
   ): () => void {
-    const stack = new DisposableStack();
-    try {
+    return this.onDispose(DisposableStack.collect((stack) => {
       for (const plugin of plugins) {
         stack.defer(this.installPlugin(plugin, options));
       }
-    } catch (error) {
-      stack.dispose();
-      throw error;
-    }
-    return this.onDispose(stack.dispose);
+    }));
   }
 
   /** Returns whether an identified plugin is currently installed. */

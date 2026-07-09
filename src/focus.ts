@@ -30,12 +30,9 @@ export class FocusManager {
   }
 
   registerAll(components: Iterable<Focusable>): () => void {
-    const stack = new DisposableStack();
-    for (const component of components) {
-      stack.defer(this.register(component));
-    }
-
-    return stack.dispose;
+    return DisposableStack.collect((stack) => {
+      for (const component of components) stack.defer(this.register(component));
+    });
   }
 
   unregister(component: Focusable): void {

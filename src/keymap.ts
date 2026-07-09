@@ -37,17 +37,9 @@ export class KeymapRegistry {
   }
 
   registerAll(bindings: Iterable<KeyBinding>): () => void {
-    const stack = new DisposableStack();
-    try {
-      for (const binding of bindings) {
-        stack.defer(this.register(binding));
-      }
-    } catch (error) {
-      stack.dispose();
-      throw error;
-    }
-
-    return stack.dispose;
+    return DisposableStack.collect((stack) => {
+      for (const binding of bindings) stack.defer(this.register(binding));
+    });
   }
 
   unregister(binding: Pick<KeyBinding, "key" | "ctrl" | "meta" | "shift">): void {

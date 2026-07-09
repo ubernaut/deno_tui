@@ -578,12 +578,13 @@ export function createDataQueryPlugin<
     label,
     controller,
     install(app) {
-      const stack = new DisposableStack();
-      let paramsBinding: DataQueryParamsBindingHandle<TParams> | undefined;
-      let tableBinding: DataQueryTableBindingHandle | undefined;
-      let paramsSetting: SettingBinding<ReturnType<DataQueryController<TRow>["params"]["peek"]>, unknown> | undefined;
+      return DisposableStack.collect((stack) => {
+        let paramsBinding: DataQueryParamsBindingHandle<TParams> | undefined;
+        let tableBinding: DataQueryTableBindingHandle | undefined;
+        let paramsSetting:
+          | SettingBinding<ReturnType<DataQueryController<TRow>["params"]["peek"]>, unknown>
+          | undefined;
 
-      try {
         if (options.params && (options.bindParams ?? true)) {
           paramsBinding = bindDataQueryParams(
             controller,
@@ -636,12 +637,7 @@ export function createDataQueryPlugin<
             paramsSetting,
           }),
         );
-      } catch (error) {
-        stack.dispose();
-        throw error;
-      }
-
-      return stack.dispose;
+      });
     },
     inspect() {
       return {

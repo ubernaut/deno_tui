@@ -1,4 +1,4 @@
-import { assertEquals } from "./deps.ts";
+import { assertEquals, assertThrows } from "./deps.ts";
 import { commandDisabled } from "./test_commands.ts";
 import { createApp } from "../src/app/app.ts";
 import { ActionBus } from "../src/app/actions.ts";
@@ -524,6 +524,21 @@ Deno.test("DisposableStack immediately runs deferred cleanup after disposal", ()
   ]);
 
   assertEquals(events, ["first", "late", "b", "a"]);
+});
+
+Deno.test("DisposableStack.collect rolls back partial setup in reverse order", () => {
+  const events: string[] = [];
+  assertThrows(
+    () =>
+      DisposableStack.collect((stack) => {
+        stack.defer(() => events.push("first"));
+        stack.defer(() => events.push("second"));
+        throw new Error("setup failed");
+      }),
+    Error,
+    "setup failed",
+  );
+  assertEquals(events, ["second", "first"]);
 });
 
 Deno.test("ActionBus middleware can transform and stop actions", async () => {
