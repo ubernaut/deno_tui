@@ -8,7 +8,7 @@ import type { SliderController, SliderInspection } from "../components/slider.ts
 import type { StepperController, StepperInspection, StepperStep } from "../components/stepper.ts";
 import type { TextBoxController, TextBoxInspection } from "../components/textbox.ts";
 import type { Action } from "./actions.ts";
-import { actionCommand, actionCommandGroup } from "./command_helpers.ts";
+import { actionCommand, actionCommandGroup, type ActionCommandGroupEntry } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for button Command variants. */
@@ -356,62 +356,70 @@ export interface ProgressBarCommandOptions {
   valueLabel?: (value: number) => string;
 }
 
-/** Builds command definitions for progress Bar. */
-export function progressBarCommands<TAction extends Action = ProgressBarCommandAction>(
-  controller: ProgressBarController,
-  options: ProgressBarCommandOptions = {},
+type NumericWidgetCommandOptions = Omit<ProgressBarCommandOptions, "step">;
+
+interface NumericWidgetCommandProfile<TAction extends Action> {
+  id: string;
+  group: string;
+  type: TAction["type"] & string;
+  label: string;
+  valueLabel?: string;
+}
+
+function numericWidgetCommands<TAction extends Action>(
+  controller: ProgressBarController | SliderController,
+  options: NumericWidgetCommandOptions,
+  step: number,
+  profile: NumericWidgetCommandProfile<TAction>,
 ): Command<TAction>[] {
-  const id = options.id ?? "progress";
-  const idPrefix = options.idPrefix ?? "progress";
-  const group = options.group ?? "feedback";
-  const step = options.step ?? 1;
+  const id = options.id ?? profile.id;
+  const idPrefix = options.idPrefix ?? profile.id;
+  const group = options.group ?? profile.group;
+  const valueName = profile.valueLabel ?? profile.label;
   const label = (kind: ProgressBarCommandKind, fallback: string) => options.labels?.[kind] ?? fallback;
-  const valueLabel = options.valueLabel ?? ((value: number) => `${value}`);
-  const payload = (): ProgressBarCommandPayload => ({
-    id,
-    value: controller.value.peek(),
-    inspection: controller.inspect(),
-  });
-  const commands: Command<TAction>[] = [];
+  const payload = () => ({ id, value: controller.value.peek(), inspection: controller.inspect() });
+  const entries: ActionCommandGroupEntry<ProgressBarCommandKind, number>[] = [];
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(...actionCommandGroup<TAction, ProgressBarCommandPayload, ProgressBarCommandKind, number>({
-      idPrefix,
-      group,
-      type: "progressBar.changed",
-      keywords: ["progress"],
-      label,
-      payload,
-      entries: [
-        ["decrement", "Decrease Progress", () => controller.decrement(step), ["progress", "decrease", "decrement"]],
-        ["increment", "Increase Progress", () => controller.increment(step), ["progress", "increase", "increment"]],
-      ],
-    }));
+    entries.push(
+      ["decrement", `Decrease ${profile.label}`, () => controller.decrement(step), [
+        profile.id,
+        "decrease",
+        "decrement",
+      ]],
+      ["increment", `Increase ${profile.label}`, () => controller.increment(step), [
+        profile.id,
+        "increase",
+        "increment",
+      ]],
+    );
+  }
+  if (options.includeEdgeCommands ?? true) {
+    entries.push(
+      ["min", `Minimum ${valueName}`, () => controller.setMin(), [profile.id, "minimum", "min"]],
+      ["max", `Maximum ${valueName}`, () => controller.setMax(), [profile.id, "maximum", "max"]],
+    );
   }
 
-  if (options.includeEdgeCommands ?? true) {
-    commands.push(...actionCommandGroup<TAction, ProgressBarCommandPayload, ProgressBarCommandKind, number>({
-      idPrefix,
-      group,
-      type: "progressBar.changed",
-      keywords: ["progress"],
-      label,
-      payload,
-      entries: [
-        ["min", "Minimum Progress", () => controller.setMin(), ["progress", "minimum", "min"]],
-        ["max", "Maximum Progress", () => controller.setMax(), ["progress", "maximum", "max"]],
-      ],
-    }));
-  }
+  const commands = actionCommandGroup<TAction, ReturnType<typeof payload>, ProgressBarCommandKind, number>({
+    idPrefix,
+    group,
+    type: profile.type,
+    keywords: [profile.id],
+    label,
+    payload,
+    entries,
+  });
 
   if (options.includeValueCommands ?? false) {
+    const formatValue = options.valueLabel ?? ((value: number) => `${value}`);
     for (const value of options.values ?? []) {
       commands.push(actionCommand(
         `${idPrefix}.value.${value}`,
-        `${label("value", "Set Progress")}: ${valueLabel(value)}`,
+        `${label("value", `Set ${valueName}`)}: ${formatValue(value)}`,
         group,
-        ["progress", "value", `${value}`],
-        "progressBar.changed",
+        [profile.id, "value", `${value}`],
+        profile.type,
         () => controller.setValue(value),
         payload,
         () => controller.value.peek() === value,
@@ -420,6 +428,19 @@ export function progressBarCommands<TAction extends Action = ProgressBarCommandA
   }
 
   return commands;
+}
+
+/** Builds command definitions for progress Bar. */
+export function progressBarCommands<TAction extends Action = ProgressBarCommandAction>(
+  controller: ProgressBarController,
+  options: ProgressBarCommandOptions = {},
+): Command<TAction>[] {
+  return numericWidgetCommands<TAction>(controller, options, options.step ?? 1, {
+    id: "progress",
+    group: "feedback",
+    type: "progressBar.changed",
+    label: "Progress",
+  });
 }
 
 /** Binds progress Bar Commands behavior and returns a disposer when applicable. */
@@ -578,73 +599,13 @@ export function sliderCommands<TAction extends Action = SliderCommandAction>(
   controller: SliderController,
   options: SliderCommandOptions = {},
 ): Command<TAction>[] {
-  const id = options.id ?? "slider";
-  const idPrefix = options.idPrefix ?? "slider";
-  const group = options.group ?? "input";
-  const stepMultiplier = options.stepMultiplier ?? 1;
-  const label = (kind: SliderCommandKind, fallback: string) => options.labels?.[kind] ?? fallback;
-  const valueLabel = options.valueLabel ?? ((value: number) => `${value}`);
-  const payload = (): SliderCommandPayload => ({
-    id,
-    value: controller.value.peek(),
-    inspection: controller.inspect(),
+  return numericWidgetCommands<TAction>(controller, options, options.stepMultiplier ?? 1, {
+    id: "slider",
+    group: "input",
+    type: "slider.changed",
+    label: "Slider",
+    valueLabel: "Slider Value",
   });
-  const commands: Command<TAction>[] = [];
-
-  if (options.includeMoveCommands ?? true) {
-    commands.push(...actionCommandGroup<TAction, SliderCommandPayload, SliderCommandKind, number>({
-      idPrefix,
-      group,
-      type: "slider.changed",
-      keywords: ["slider"],
-      label,
-      payload,
-      entries: [
-        ["decrement", "Decrease Slider", () => controller.decrement(stepMultiplier), [
-          "slider",
-          "decrease",
-          "decrement",
-        ]],
-        ["increment", "Increase Slider", () => controller.increment(stepMultiplier), [
-          "slider",
-          "increase",
-          "increment",
-        ]],
-      ],
-    }));
-  }
-
-  if (options.includeEdgeCommands ?? true) {
-    commands.push(...actionCommandGroup<TAction, SliderCommandPayload, SliderCommandKind, number>({
-      idPrefix,
-      group,
-      type: "slider.changed",
-      keywords: ["slider"],
-      label,
-      payload,
-      entries: [
-        ["min", "Minimum Slider Value", () => controller.setMin(), ["slider", "minimum", "min"]],
-        ["max", "Maximum Slider Value", () => controller.setMax(), ["slider", "maximum", "max"]],
-      ],
-    }));
-  }
-
-  if (options.includeValueCommands ?? false) {
-    for (const value of options.values ?? []) {
-      commands.push(actionCommand(
-        `${idPrefix}.value.${value}`,
-        `${label("value", "Set Slider Value")}: ${valueLabel(value)}`,
-        group,
-        ["slider", "value", `${value}`],
-        "slider.changed",
-        () => controller.setValue(value),
-        payload,
-        () => controller.value.peek() === value,
-      ));
-    }
-  }
-
-  return commands;
 }
 
 /** Binds slider Commands behavior and returns a disposer when applicable. */
