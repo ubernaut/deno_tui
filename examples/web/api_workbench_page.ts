@@ -16,7 +16,6 @@ import {
   createTerminalWorkspaceController,
   createWebTui,
   DataTableController,
-  defaultWorkbenchMinimizedState,
   FileExplorerController,
   fitCellText,
   formatWorkbenchDiagnosticStatus,
@@ -257,6 +256,11 @@ const panelIds: readonly PanelId[] = [
   "htmlLayout",
   "terminal",
 ];
+
+function createWebPanelWindow(id: PanelId, order: number) {
+  return { id, title: apiWorkbenchPanelTitle(id), order, minWidth: 26, minHeight: 10 };
+}
+
 const explorerKeys = new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
 
 const webWorkspaceStore = createRuntimeStore<WebWorkspaceState>({
@@ -268,24 +272,22 @@ const webDiagnostics = new DiagnosticsCollector(80);
 const storageDiagnostics = new StorageFallbackDiagnostics(webDiagnostics);
 const initialWorkspace = loadCachedWebWorkspaceState();
 const themeIndex = new Signal(initialThemeIndex());
-const active = new Signal<PanelId>(initialWorkspace.active ?? "inspector");
-const maximized = new Signal<PanelId | null>(initialWorkspace.maximized ?? null);
-const minimized = new Signal<Record<PanelId, boolean>>(
-  { ...defaultMinimizedState(), ...initialWorkspace.minimized },
-  { deepObserve: true },
-);
 const themeMenuOpen = new Signal(false);
 const workbenchController = new WorkbenchController<"theme">({
+  activeId: initialWorkspace.active ?? "inspector",
+  fullscreenId: initialWorkspace.maximized,
   menu: {
     onChange: (state) => {
       themeMenuOpen.value = state.openId === "theme";
     },
   },
-  windows: panelIds.map((id, order) => ({ id, title: apiWorkbenchPanelTitle(id), order, minWidth: 26, minHeight: 10 })),
+  windows: panelIds.map((id, order) => ({
+    ...createWebPanelWindow(id, order),
+    state: initialWorkspace.minimized?.[id] ? "minimized" : "normal",
+  })),
 });
 const topMenus = workbenchController.menus;
 const webWindows = workbenchController.windows;
-let webWindowManagerStateKey = "";
 const tileDensity = new Signal(Math.max(-3, Math.min(3, Math.floor(initialWorkspace.tileDensity ?? 0))));
 const asciiConfigs = new WorkbenchAsciiConfigController<PanelId>(
   "three",
@@ -377,9 +379,9 @@ let pointerDrag: {
 } | null = null;
 
 themeIndex.subscribe((index) => persistThemeIndex(index));
-active.subscribe(persistWebWorkspaceState);
-maximized.subscribe(persistWebWorkspaceState);
-minimized.subscribe(persistWebWorkspaceState);
+webWindows.activeId.subscribe(persistWebWorkspaceState);
+webWindows.fullscreenId.subscribe(persistWebWorkspaceState);
+webWindows.windows.subscribe(persistWebWorkspaceState);
 tileDensity.subscribe(persistWebWorkspaceState);
 ascii.subscribe(persistWebWorkspaceState);
 void hydrateWebWorkspaceState();
@@ -537,23 +539,23 @@ host.on("keyPress", (event) => {
     draw();
     return;
   }
-  if (key === "tab" && active.peek() === "controls") focusNextControl(event.shift ? -1 : 1);
+  if (key === "tab" && activePanel() === "controls") focusNextControl(event.shift ? -1 : 1);
   else if (key === "tab") focusNext();
   else if (focusPanelByNumber(key)) return draw();
   else if (key === "h" || key === "?") openHelpModal();
   else if (key === "q") openQuitModal();
-  else if (key === "m") minimize(active.peek());
-  else if (key === "f" || key === "return") toggleMax(active.peek());
+  else if (key === "m") minimize(activePanel());
+  else if (key === "f" || key === "return") toggleMax(activePanel());
   else if (key === "r" || key === "escape") restore();
   else if (key === "t") toggleThemeMenu();
   else if (key === "[") adjustTileDensity(-1);
   else if (key === "]") adjustTileDensity(1);
-  else if (active.peek() === "controls") handleControlsKey(event);
-  else if (active.peek() === "explorer" && explorerKeys.has(key)) {
+  else if (activePanel() === "controls") handleControlsKey(event);
+  else if (activePanel() === "explorer" && explorerKeys.has(key)) {
     explorer.handleKeyPress(event, Math.max(1, rowsCount() - 8));
-  } else if (active.peek() === "data" && key.toLowerCase() === "s") {
+  } else if (activePanel() === "data" && key.toLowerCase() === "s") {
     cycleDataSortColumn(event.shift ? -1 : 1);
-  } else if (active.peek() === "data") table.handleKeyPress(event as never);
+  } else if (activePanel() === "data") table.handleKeyPress(event as never);
   else if (key === "+" || key === "=") slider.increment();
   else if (key === "-") slider.decrement();
   else if (key === "space") live.toggle();
@@ -593,7 +595,7 @@ host.on("mouseScroll", (event) => {
     draw();
     return;
   }
-  if (active.peek() === "logs") logScroll.scrollBy(0, event.scroll);
+  if (activePanel() === "logs") logScroll.scrollBy(0, event.scroll);
   else workspaceScroll.scrollBy(0, event.scroll);
   draw();
 });
@@ -683,7 +685,7 @@ function draw(): void {
     width: Math.max(1, body.width - 1),
     height: body.height,
   });
-  const offset = workspaceViewport.update({ layout, viewportHeight: body.height, activeId: active.peek() });
+  const offset = workspaceViewport.update({ layout, viewportHeight: body.height, activeId: activePanel() });
   const virtual = prepareWorkbenchRows(
     workspaceVirtualRows,
     Math.max(body.height, layout.contentHeight),
@@ -692,8 +694,9 @@ function draw(): void {
   );
   fillRect(virtual, layout.bounds, theme().backgroundSoft);
   const hitStart = hitTargets.length;
-  if (maximized.peek()) {
-    renderPanel(virtual, maximized.peek()!, layout.bounds);
+  const fullscreen = fullscreenPanel();
+  if (fullscreen) {
+    renderPanel(virtual, fullscreen, layout.bounds);
   } else {
     if (layout.rects.size === 0) {
       write(
@@ -725,7 +728,7 @@ function draw(): void {
   });
   blitWorkspace(frame, virtual, body, offset, layout.bounds.width);
   renderWorkspaceScrollbar(frame, body);
-  maximized.peek() ? renderWindowTabs(frame) : renderShelf(frame);
+  fullscreen ? renderWindowTabs(frame) : renderShelf(frame);
   renderDropdownOverlay(frame, body, offset);
   renderThreeConfigModal(frame);
   renderModalOverlay(frame);
@@ -733,7 +736,7 @@ function draw(): void {
     frame,
     row: height - 1,
     width,
-    focus: active.peek(),
+    focus: activePanel(),
     themeLabel: currentTheme.label,
     tileDensity: tileDensity.peek(),
     diagnostics: formatWorkbenchDiagnosticStatus(webDiagnostics),
@@ -747,7 +750,6 @@ function draw(): void {
 
 function renderShelf(frame: string[]): void {
   const row = rowsCount() - 2;
-  syncWebWindowManagerState();
   renderApiWorkbenchShelf<PanelId, string[]>({
     frame,
     row,
@@ -767,8 +769,8 @@ function renderShelf(frame: string[]): void {
 function renderMobileCommandStrip(frame: string[]): void {
   if (!isTouchOptimizedLayout() || rowsCount() < 8) return;
   workbenchMobileCommandStripItemsInto(mobileCommandButtonBuffers.items, {
-    activeTitle: shortPanelTitle(active.peek()),
-    controlsActive: active.peek() === "controls",
+    activeTitle: shortPanelTitle(activePanel()),
+    controlsActive: activePanel() === "controls",
     themeActive: themeMenuOpen.peek(),
   });
   renderApiWorkbenchButtonRow<string[], MobileAction, Hit>({
@@ -789,7 +791,6 @@ function renderMobileCommandStrip(frame: string[]): void {
 
 function renderWindowTabs(frame: string[]): void {
   const row = rowsCount() - 2;
-  syncWebWindowManagerState();
   renderApiWorkbenchWindowTabs<PanelId, string[], Hit>({
     frame,
     row,
@@ -810,7 +811,7 @@ function renderWindowTabs(frame: string[]): void {
 function renderPanel(frame: string[], id: PanelId, rect: Rectangle): void {
   if (rect.width < 10 || rect.height < 4) return;
   hitTargets.add(rect, { type: "focus", id });
-  const selected = active.peek() === id;
+  const selected = activePanel() === id;
   drawFrame(frame, rect, panelTitle(id), selected);
   renderApiWorkbenchWindowTitlebar<PanelId, Hit, string[]>({
     frame,
@@ -1247,7 +1248,7 @@ function handleWebTerminalScroll(
   const inspection = scrollback.inspect();
   if (inspection.totalRows <= inspection.viewportRows) return false;
   scrollback.scrollLines(delta);
-  active.value = "terminal";
+  activatePanel("terminal");
   if (inspection.mode === "live") push("terminal copy mode on");
   return true;
 }
@@ -1403,7 +1404,7 @@ function applyWebTerminalAction(action: WebTerminalAction): void {
     push(row === undefined ? "terminal search no matches" : `terminal search row ${row + 1}`);
   }
   webTerminalScreenKeys.clear();
-  active.value = "terminal";
+  activatePanel("terminal");
 }
 
 function ensureLines(): void {
@@ -1449,16 +1450,16 @@ function applyHit(target: HitTarget<Hit>, x: number, y: number): void {
   else if (hit.type === "logScrollbar") {
     const lines = docs.length + log.peek().length;
     logScroll.scrollTo(0, scrollbarOffsetForPointer(lines, target.rect.height, y - target.rect.row));
-    active.value = "logs";
+    activatePanel("logs");
   } else if (hit.type === "terminalSession") {
     webTerminalWorkspace.activate(hit.id);
     webTerminalScreenKeys.clear();
-    active.value = "terminal";
+    activatePanel("terminal");
     push(`terminal session ${hit.id}`);
   } else if (hit.type === "terminalPane") {
     if (webTerminalWorkspace.activatePane(hit.id)) {
       webTerminalScreenKeys.clear();
-      active.value = "terminal";
+      activatePanel("terminal");
       push("terminal pane active");
     }
   } else if (hit.type === "terminalContent") {
@@ -1470,7 +1471,7 @@ function applyHit(target: HitTarget<Hit>, x: number, y: number): void {
       scrollback.selectVisibleRow(y - target.rect.row);
       push("terminal row selected");
     }
-    active.value = "terminal";
+    activatePanel("terminal");
   } else if (hit.type === "terminalAction") {
     applyWebTerminalAction(hit.action);
   } else if (hit.type === "workspaceScrollbar") {
@@ -1520,10 +1521,10 @@ function handlePointerDrag(
 
   const origin = pointerDrag.target?.action;
   const logOrigin = origin?.type === "logScrollbar" || origin?.type === "focus" && origin.id === "logs" ||
-    active.peek() === "logs" && origin?.type !== "workspaceScrollbar";
+    activePanel() === "logs" && origin?.type !== "workspaceScrollbar";
   if (logOrigin) {
     logScroll.scrollTo(0, pointerDrag.logRows + deltaRows);
-    active.value = "logs";
+    activatePanel("logs");
   } else {
     workspaceScroll.scrollTo(0, pointerDrag.workspaceRows + deltaRows);
   }
@@ -1531,36 +1532,48 @@ function handlePointerDrag(
   return true;
 }
 
+function activePanel(): PanelId {
+  return (webWindows.activeId.peek() as PanelId | undefined) ?? "inspector";
+}
+
+function fullscreenPanel(): PanelId | null {
+  return (webWindows.fullscreenId.peek() as PanelId | undefined) ?? null;
+}
+
+function activatePanel(id: PanelId): void {
+  workbenchController.focusWindow(id);
+}
+
 function focus(id: PanelId): void {
-  syncWebWindowMutation(() => workbenchController.focusWindow(id));
+  activatePanel(id);
   push(`focus ${id}`);
 }
 function focusNext(): void {
-  const focused = syncWebWindowMutation(() => workbenchController.focusNextWindow());
+  const focused = workbenchController.focusNextWindow();
   if (focused) push(`focus ${focused}`);
 }
 function focusPrevious(): void {
-  const focused = syncWebWindowMutation(() => workbenchController.focusNextWindow(-1));
+  const focused = workbenchController.focusNextWindow(-1);
   if (focused) push(`focus ${focused}`);
 }
 function minimize(id: PanelId): void {
-  syncWebWindowMutation(() => workbenchController.minimizeWindow(id));
+  workbenchController.minimizeWindow(id);
   push(`minimize ${id}`);
 }
 function closePanel(id: PanelId): void {
-  syncWebWindowMutation(() => workbenchController.closeWindow(id));
+  workbenchController.closeWindow(id);
   push(`close ${id}`);
 }
 function toggleMax(id: PanelId): void {
-  syncWebWindowMutation(() => workbenchController.toggleFullscreenWindow(id));
-  push(`${maximized.peek() ? "maximize" : "restore"} ${id}`);
+  workbenchController.toggleFullscreenWindow(id);
+  push(`${fullscreenPanel() ? "maximize" : "restore"} ${id}`);
 }
 function restorePanel(id: PanelId): void {
-  syncWebWindowMutation(() => workbenchController.restoreWindows(id));
+  workbenchController.restoreWindows(id);
   push(`restore ${id}`);
 }
 function restore(): void {
-  syncWebWindowMutation(() => workbenchController.restoreWindows());
+  workbenchController.restoreWindows();
   push("restore all");
 }
 function setTheme(index: number): void {
@@ -1630,7 +1643,7 @@ function cycleDataSortColumn(delta: number): void {
 }
 
 function selectExplorerRow(index: number): void {
-  active.value = "explorer";
+  activatePanel("explorer");
   explorer.tree.setSelectedIndex(index);
   const entry = explorer.selected();
   if (entry?.kind === "file") explorer.openActive();
@@ -1647,52 +1660,7 @@ function workspaceLayout(bounds: Rectangle): {
   contentHeight: number;
   rects: Map<PanelId, Rectangle>;
 } {
-  syncWebWindowManagerState();
   return workbenchAdaptiveWindowLayout<PanelId>(webWindows, { bounds, tileDensity: tileDensity.peek() });
-}
-
-function syncWebWindowMutation<T>(mutate: () => T): T {
-  syncWebWindowManagerState();
-  const result = mutate();
-  syncWebSignalsFromWindowManager();
-  return result;
-}
-
-function syncWebWindowManagerState(): void {
-  const fullscreenId = maximized.peek() ?? undefined;
-  const minimizedState = minimized.peek();
-  let minimizedKey = "";
-  for (let index = 0; index < panelIds.length; index += 1) {
-    minimizedKey += minimizedState[panelIds[index]!] ? "1" : "0";
-  }
-  const key = `${active.peek()}|${fullscreenId ?? ""}|${minimizedKey}`;
-  if (key === webWindowManagerStateKey) return;
-  webWindowManagerStateKey = key;
-  applyWorkbenchWindowSignalState<PanelId>(
-    webWindows,
-    { activeId: active.peek(), fullscreenId, minimized: minimizedState },
-    {
-      windowIds: panelIds,
-      createWindow: (id, order) => ({
-        id,
-        title: apiWorkbenchPanelTitle(id),
-        order,
-        minWidth: 26,
-        minHeight: 10,
-      }),
-    },
-  );
-}
-
-function syncWebSignalsFromWindowManager(): void {
-  const state = inspectWorkbenchWindowSignalState<PanelId>(webWindows, {
-    windowIds: panelIds,
-    defaultActiveId: "inspector",
-  });
-  if (state.activeId) active.value = state.activeId;
-  maximized.value = state.fullscreenId ?? null;
-  minimized.value = state.minimized;
-  webWindowManagerStateKey = "";
 }
 
 function blitWorkspace(frame: string[], virtual: string[], bounds: Rectangle, offset: number, width: number): void {
@@ -1822,7 +1790,7 @@ function openQuitModal(): void {
 function openThreeConfigModal(id: PanelId): void {
   closeThemeMenu();
   modal.close();
-  active.value = id;
+  activatePanel(id);
   threeConfigWindow.value = "three";
   threeConfigBaseline.value = cloneAsciiOptions(currentThreeConfigSignal().peek());
   threeConfigSelected.value = 0;
@@ -2042,7 +2010,7 @@ function applyControlHit(
   x?: number,
   index?: number,
 ): void {
-  active.value = "controls";
+  activatePanel("controls");
   activeControl.value = id;
   if (action === "focus") {
     push(`control ${id} focus`);
@@ -2086,7 +2054,7 @@ function applyControlHit(
 }
 
 function selectDataRow(index: number): void {
-  active.value = "data";
+  activatePanel("data");
   table.select(index);
   push(`data row ${table.selectedKey() ?? index}`);
 }
@@ -2121,13 +2089,13 @@ function handleControlsKey(event: { key: string; ctrl?: boolean; meta?: boolean;
 
 function blurTextControl(): void {
   const previous = activeControl.peek();
-  active.value = "controls";
+  activatePanel("controls");
   activeControl.value = controlAt(1);
   push(`control ${previous} blur`);
 }
 
 function focusNextControl(delta = 1): void {
-  active.value = "controls";
+  activatePanel("controls");
   const next = controlAtEdge(delta);
   if (next) {
     activeControl.value = next;
@@ -2145,7 +2113,7 @@ function controlAtEdge(delta: number): ControlId | undefined {
   return apiWorkbenchControlAtEdge(activeControl.peek(), delta);
 }
 function isTextControlActive(): boolean {
-  return isApiWorkbenchTextControlActive(active.peek(), "controls", activeControl.peek());
+  return isApiWorkbenchTextControlActive(activePanel(), "controls", activeControl.peek());
 }
 function write(frame: string[], row: number, column: number, value: string): void {
   framePainter.write(frame, row, column, value);
@@ -2235,10 +2203,6 @@ type WebWorkspaceState = WorkbenchPanelWorkspaceState<PanelId> & {
   ascii?: ThreeAsciiConfigOptions;
 };
 
-function defaultMinimizedState(): Record<PanelId, boolean> {
-  return defaultWorkbenchMinimizedState(panelIds);
-}
-
 function loadCachedWebWorkspaceState(): WebWorkspaceState {
   return loadWorkbenchPanelWorkspaceCache({
     key: WORKSPACE_STORAGE_KEY,
@@ -2261,9 +2225,18 @@ async function hydrateWebWorkspaceState(): Promise<void> {
 }
 
 function applyWebWorkspaceState(state: WebWorkspaceState): void {
-  if (state.active) active.value = state.active;
-  if (state.maximized !== undefined) maximized.value = state.maximized;
-  if (state.minimized) minimized.value = { ...defaultMinimizedState(), ...state.minimized };
+  const current = inspectWorkbenchWindowSignalState<PanelId>(webWindows, {
+    windowIds: panelIds,
+    defaultActiveId: "inspector",
+  });
+  applyWorkbenchWindowSignalState<PanelId>(webWindows, {
+    activeId: state.active ?? current.activeId,
+    fullscreenId: state.maximized === undefined ? current.fullscreenId : state.maximized,
+    minimized: state.minimized ? { ...current.minimized, ...state.minimized } : current.minimized,
+  }, {
+    windowIds: panelIds,
+    createWindow: createWebPanelWindow,
+  });
   if (state.tileDensity !== undefined) tileDensity.value = Math.max(-3, Math.min(3, Math.floor(state.tileDensity)));
   if (state.ascii) asciiConfigs.setForWindow("three", state.ascii);
   if (state.terminal) applyWebTerminalWorkspaceSnapshot(state.terminal);
@@ -2285,10 +2258,14 @@ function normalizeWebWorkspaceState(value: unknown): WebWorkspaceState {
 }
 
 function persistWebWorkspaceState(): void {
+  const windows = inspectWorkbenchWindowSignalState<PanelId>(webWindows, {
+    windowIds: panelIds,
+    defaultActiveId: "inspector",
+  });
   persistWorkbenchPanelWorkspaceState({
-    active: active.peek(),
-    maximized: maximized.peek(),
-    minimized: minimized.peek(),
+    active: windows.activeId,
+    maximized: windows.fullscreenId,
+    minimized: windows.minimized,
     tileDensity: tileDensity.peek(),
     ascii: cloneAsciiOptions(ascii.peek()),
     terminal: snapshotTerminalWorkspace(webTerminalWorkspace),

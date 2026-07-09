@@ -17,6 +17,8 @@ What improved:
 - Three ASCII changes are guarded by live renderer, pressure, resize, fullscreen, and PTY visual probes.
 - Recent command-builder work removed repeated implementations instead of merely relocating them.
 - Workspace selection and dynamic Neon Three runtime-budget routing have focused regression coverage.
+- The browser API Workbench now uses `WorkbenchController.windows` as its single window-state owner instead of syncing a
+  second active/fullscreen/minimized signal model before and after every action.
 - The screenshot catalog is now limited to six distinct surfaces: tracked screenshot weight fell from `26.1MB` to
   `6.4MB`, and the tracked working tree fell from about `34.0MB` to `14.1MB`.
 
@@ -47,7 +49,7 @@ What needs correction:
 - Largest handwritten implementation surfaces:
   - `app/api_workbench.ts`: `3,891` lines
   - `src/theme.ts`: `2,508` lines
-  - `examples/web/api_workbench_page.ts`: `2,343` lines
+  - `examples/web/api_workbench_page.ts`: `2,320` lines
   - `app/main.ts`: `1,827` lines
   - `app/visualizations.ts`: `1,736` lines
   - `app/api_workbench_window_view.ts`: `1,583` lines

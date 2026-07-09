@@ -681,8 +681,8 @@ function viewportOffsetBy(offset, maxOffset, columns2, rows2) {
 function viewportWindow(length, activeIndex, capacity) {
   const safeCapacity = Math.max(0, Math.floor(capacity));
   if (length <= 0 || safeCapacity <= 0) return { start: 0, end: 0 };
-  const active2 = clamp(Math.floor(activeIndex), 0, length - 1);
-  const start = Math.max(0, Math.min(active2 - Math.floor(safeCapacity / 2), Math.max(0, length - safeCapacity)));
+  const active = clamp(Math.floor(activeIndex), 0, length - 1);
+  const start = Math.max(0, Math.min(active - Math.floor(safeCapacity / 2), Math.max(0, length - safeCapacity)));
   return { start, end: Math.min(length, start + safeCapacity) };
 }
 function viewportThumb(contentLength, viewportLength, offset) {
@@ -2291,10 +2291,10 @@ function mergeDirtyRowSegmentsInPlace(ranges) {
   ranges.sort((left, right) => left.startColumn - right.startColumn || left.endColumn - right.endColumn);
   let writeIndex = 0;
   for (let readIndex = 1; readIndex < ranges.length; readIndex += 1) {
-    const active2 = ranges[writeIndex];
+    const active = ranges[writeIndex];
     const next = ranges[readIndex];
-    if (next.startColumn <= active2.endColumn) {
-      active2.endColumn = Math.max(active2.endColumn, next.endColumn);
+    if (next.startColumn <= active.endColumn) {
+      active.endColumn = Math.max(active.endColumn, next.endColumn);
       continue;
     }
     writeIndex += 1;
@@ -3257,10 +3257,10 @@ function ansiPrefixState(prefix) {
   ansiPrefixStateCache.set(prefix, state);
   return state;
 }
-function ansiPrefixCanOverrideActive(active2, next) {
-  if (active2.other) return false;
-  if (active2.foreground && !next.foreground) return false;
-  if (active2.background && !next.background) return false;
+function ansiPrefixCanOverrideActive(active, next) {
+  if (active.other) return false;
+  if (active.foreground && !next.foreground) return false;
+  if (active.background && !next.background) return false;
   return true;
 }
 function splitAnsiCellValue(value) {
@@ -3327,37 +3327,37 @@ function readCsiSequenceAt3(value, start) {
   return value.slice(start, index + 1);
 }
 function coalesceCanvasRowRanges(updates, target = []) {
-  let active2;
+  let active;
   let written = 0;
   for (const update of updates) {
-    if (!active2 || update.row !== active2.row || update.column !== active2.nextColumn) {
-      if (active2) {
+    if (!active || update.row !== active.row || update.column !== active.nextColumn) {
+      if (active) {
         target[written] = writeCanvasRowRangeUpdate(
           target[written],
-          active2.row,
-          active2.startColumn,
-          active2.values
+          active.row,
+          active.startColumn,
+          active.values
         );
         written += 1;
       }
       const values = retainedCanvasRowRangeValues(target[written]);
       values.length = 0;
-      active2 = {
+      active = {
         row: update.row,
         startColumn: update.column,
         nextColumn: update.column,
         values
       };
     }
-    active2.values.push(update.value);
-    active2.nextColumn = update.column + 1;
+    active.values.push(update.value);
+    active.nextColumn = update.column + 1;
   }
-  if (active2) {
+  if (active) {
     target[written] = writeCanvasRowRangeUpdate(
       target[written],
-      active2.row,
-      active2.startColumn,
-      active2.values
+      active.row,
+      active.startColumn,
+      active.values
     );
     written += 1;
   }
@@ -5755,14 +5755,14 @@ function windowState(window) {
 function inspectWindow(window, activeId, fullscreenId, rect) {
   const state = windowState(window);
   const fullscreen = window.id === fullscreenId;
-  const active2 = window.id === activeId;
+  const active = window.id === activeId;
   const layer = windowLayer(state, fullscreen);
   return {
     ...window,
     state,
     layer,
-    zIndex: windowZIndex(window, layer, active2),
-    active: active2,
+    zIndex: windowZIndex(window, layer, active),
+    active,
     fullscreen,
     minimized: state === "minimized",
     closed: state === "closed",
@@ -5774,8 +5774,8 @@ function windowLayer(state, fullscreen) {
   if (state === "minimized") return "minimized";
   return fullscreen ? "fullscreen" : "window";
 }
-function windowZIndex(window, layer, active2) {
-  return WINDOW_MANAGER_LAYER_Z_INDEX[layer] + (window.order ?? 0) + (active2 ? 500 : 0);
+function windowZIndex(window, layer, active) {
+  return WINDOW_MANAGER_LAYER_Z_INDEX[layer] + (window.order ?? 0) + (active ? 500 : 0);
 }
 
 // src/layout/style.ts
@@ -8388,8 +8388,8 @@ var InputController = class {
 function visibleRadioOptions(options, activeIndex, height) {
   const safeHeight = Math.max(0, height);
   if (safeHeight === 0) return [];
-  const active2 = clampRadioIndex(options, activeIndex);
-  const offset = Math.max(0, Math.min(active2 - Math.floor(safeHeight / 2), Math.max(0, options.length - safeHeight)));
+  const active = clampRadioIndex(options, activeIndex);
+  const offset = Math.max(0, Math.min(active - Math.floor(safeHeight / 2), Math.max(0, options.length - safeHeight)));
   const count = Math.max(0, Math.min(options.length, offset + safeHeight) - offset);
   const rows2 = new Array(count);
   for (let index = 0; index < count; index += 1) {
@@ -8398,7 +8398,7 @@ function visibleRadioOptions(options, activeIndex, height) {
     rows2[index] = {
       option,
       index: optionIndex,
-      active: optionIndex === active2 && !option.disabled
+      active: optionIndex === active && !option.disabled
     };
   }
   return rows2;
@@ -8516,13 +8516,13 @@ var RadioGroupController = class {
   inspect() {
     const options = cloneRadioOptions(this.options.peek());
     const activeIndex = clampRadioIndex(options, this.activeIndex.peek());
-    const active2 = options[activeIndex];
+    const active = options[activeIndex];
     const selected = optionForValue(options, this.selectedValue.peek());
     return {
       options,
       optionCount: options.length,
       activeIndex,
-      active: active2 && !active2.disabled ? { ...active2 } : void 0,
+      active: active && !active.disabled ? { ...active } : void 0,
       selectedValue: this.selectedValue.peek(),
       selected: selected ? { ...selected } : void 0,
       empty: options.length === 0
@@ -8908,12 +8908,12 @@ var TabsController = class {
   inspect() {
     const tabs = cloneTabs(this.tabs.peek());
     const activeIndex = clampTabIndex(tabs, this.activeIndex.peek());
-    const active2 = tabForIndex(tabs, activeIndex);
+    const active = tabForIndex(tabs, activeIndex);
     return {
       tabs,
       tabCount: tabs.length,
       activeIndex,
-      active: active2 ? { ...active2 } : void 0,
+      active: active ? { ...active } : void 0,
       empty: tabs.length === 0
     };
   }
@@ -10786,12 +10786,12 @@ var MenuBarController = class {
   inspect() {
     const items = cloneMenuBarItems(this.items.peek());
     const activeIndex = clampMenuIndex(items, this.activeIndex.peek());
-    const active2 = menuItemForIndex(items, activeIndex);
+    const active = menuItemForIndex(items, activeIndex);
     return {
       items,
       itemCount: items.length,
       activeIndex,
-      active: active2 ? { ...active2 } : void 0,
+      active: active ? { ...active } : void 0,
       empty: items.length === 0
     };
   }
@@ -11218,11 +11218,11 @@ function renderRightPriorityStatusBar(left, right, width) {
 
 // src/components/stepper.ts
 function renderStepper(steps, activeIndex, orientation = "horizontal", width = Number.POSITIVE_INFINITY, separator = "\u2192") {
-  const active2 = clampStepperIndex(steps, activeIndex);
+  const active = clampStepperIndex(steps, activeIndex);
   if (orientation === "vertical") {
     const rows2 = new Array(steps.length);
     for (let index = 0; index < steps.length; index += 1) {
-      rows2[index] = renderVerticalStep(steps[index], index === active2);
+      rows2[index] = renderVerticalStep(steps[index], index === active);
     }
     return rows2;
   }
@@ -11230,7 +11230,7 @@ function renderStepper(steps, activeIndex, orientation = "horizontal", width = N
   let text = "";
   for (let index = 0; index < steps.length; index += 1) {
     if (text) text += separatorText;
-    text += renderHorizontalStep(steps[index], index === active2);
+    text += renderHorizontalStep(steps[index], index === active);
   }
   return [text.length <= width ? text : truncateStepperText(text, width)];
 }
@@ -11313,12 +11313,12 @@ var StepperController = class {
   inspect() {
     const steps = cloneStepperSteps(this.steps.peek());
     const activeIndex = clampStepperIndex(steps, this.activeIndex.peek());
-    const active2 = stepForIndex(steps, activeIndex);
+    const active = stepForIndex(steps, activeIndex);
     return {
       steps,
       stepCount: steps.length,
       activeIndex,
-      active: active2 ? { ...active2 } : void 0,
+      active: active ? { ...active } : void 0,
       orientation: this.orientation.peek(),
       empty: steps.length === 0
     };
@@ -11336,14 +11336,14 @@ function cloneStepperSteps(steps) {
   }
   return clone;
 }
-function renderHorizontalStep(step, active2) {
+function renderHorizontalStep(step, active) {
   const label = step.disabled ? `(${step.label})` : step.label;
-  if (active2) return `[${label}]`;
+  if (active) return `[${label}]`;
   if (step.completed) return `\u2713 ${label}`;
   return label;
 }
-function renderVerticalStep(step, active2) {
-  const cursor = active2 && !step.disabled ? ">" : " ";
+function renderVerticalStep(step, active) {
+  const cursor = active && !step.disabled ? ">" : " ";
   const mark = step.disabled ? "-" : step.completed ? "\u2713" : "\u25CB";
   const label = step.disabled ? `(${step.label})` : step.label;
   return `${cursor} ${mark} ${label}`;
@@ -15116,10 +15116,10 @@ var TerminalWorkspaceController = class {
       sessions[index] = cloneTerminalSessionDescriptor(source[index]);
     }
     const activeId = this.activeId.peek();
-    const active2 = findTerminalSession(sessions, activeId);
+    const active = findTerminalSession(sessions, activeId);
     return {
       activeId,
-      active: active2,
+      active,
       sessions,
       count: sessions.length,
       layout: inspectTerminalWorkspaceLayout(this.layout.peek(), sessions)
@@ -15757,7 +15757,7 @@ function workbenchTerminalSessionTabsInto(target, sessions, activeId, rect, opti
   const endColumn = rect.column + rect.width;
   for (let index = 0; index < sessions.length && column < endColumn; index += 1) {
     const session = sessions[index];
-    const active2 = session.id === activeId;
+    const active = session.id === activeId;
     const status = session.running ? "*" : session.status?.[0]?.toUpperCase() ?? "?";
     const available = endColumn - column;
     const width = Math.max(
@@ -15771,7 +15771,7 @@ function workbenchTerminalSessionTabsInto(target, sessions, activeId, rect, opti
       column,
       row: rect.row,
       width: textWidth(label),
-      active: active2
+      active
     });
     column += width + 1;
   }
@@ -16001,7 +16001,7 @@ function workbenchTerminalToolbarItemForAction(target, action) {
   }
   return item;
 }
-function writeTerminalPaneProjection(target, index, pane, rect, active2, sessionId, title) {
+function writeTerminalPaneProjection(target, index, pane, rect, active, sessionId, title) {
   const projection = target[index] ?? {
     rect: { column: 0, row: 0, width: 0, height: 0 },
     contentRect: { column: 0, row: 0, width: 0, height: 0 },
@@ -16013,10 +16013,10 @@ function writeTerminalPaneProjection(target, index, pane, rect, active2, session
   projection.pane = pane;
   projection.paneId = pane?.pane.id;
   projection.sessionId = sessionId;
-  projection.active = active2;
+  projection.active = active;
   projection.zoomed = pane?.zoomed ?? false;
   projection.titleVisible = pane !== void 0 && rect.height > 2;
-  projection.title = projection.titleVisible ? `${active2 ? ">" : " "} ${title ?? sessionId ?? ""}` : "";
+  projection.title = projection.titleVisible ? `${active ? ">" : " "} ${title ?? sessionId ?? ""}` : "";
   setRect3(projection.rect, rect);
   if (projection.titleVisible) {
     setRect3(projection.contentRect, {
@@ -16036,7 +16036,7 @@ function setRect3(target, source) {
   target.width = source.width;
   target.height = source.height;
 }
-function writeSessionTabRenderCommand(target, index, kind, id2, active2, column, row, width, text = " ".repeat(width)) {
+function writeSessionTabRenderCommand(target, index, kind, id2, active, column, row, width, text = " ".repeat(width)) {
   const command = target[index] ?? {
     kind,
     text: "",
@@ -16045,7 +16045,7 @@ function writeSessionTabRenderCommand(target, index, kind, id2, active2, column,
   };
   command.kind = kind;
   command.id = id2;
-  command.active = active2;
+  command.active = active;
   command.text = text;
   command.rect.column = column;
   command.rect.row = row;
@@ -16182,25 +16182,25 @@ function setRect4(target, column, row, width, height) {
 }
 
 // src/app/workbench_workspace.ts
-function defaultWorkbenchMinimizedState(panelIds2, minimized2 = {}) {
+function defaultWorkbenchMinimizedState(panelIds2, minimized = {}) {
   const state = {};
   for (const id2 of panelIds2) {
-    state[id2] = Boolean(minimized2[id2]);
+    state[id2] = Boolean(minimized[id2]);
   }
   return state;
 }
 function normalizeWorkbenchPanelWorkspaceState(value, options) {
   const panelSet = new Set(options.panelIds);
   const isPanelId = (candidate) => typeof candidate === "string" && panelSet.has(candidate);
-  const active2 = isPanelId(value?.active) ? value.active : options.defaultActive;
-  const maximized2 = value?.maximized === null || isPanelId(value?.maximized) ? value.maximized ?? null : void 0;
-  const minimized2 = defaultWorkbenchMinimizedState(options.panelIds, value?.minimized ?? {});
-  if (active2) minimized2[active2] = false;
-  if (maximized2) minimized2[maximized2] = false;
+  const active = isPanelId(value?.active) ? value.active : options.defaultActive;
+  const maximized = value?.maximized === null || isPanelId(value?.maximized) ? value.maximized ?? null : void 0;
+  const minimized = defaultWorkbenchMinimizedState(options.panelIds, value?.minimized ?? {});
+  if (active) minimized[active] = false;
+  if (maximized) minimized[maximized] = false;
   const minDensity = options.minTileDensity ?? -3;
   const maxDensity = options.maxTileDensity ?? 3;
   const tileDensity2 = Number.isFinite(value?.tileDensity) ? Math.max(minDensity, Math.min(maxDensity, Math.floor(value.tileDensity))) : void 0;
-  return { active: active2, maximized: maximized2, minimized: minimized2, tileDensity: tileDensity2 };
+  return { active, maximized, minimized, tileDensity: tileDensity2 };
 }
 
 // src/runtime/storage_diagnostics.ts
@@ -17288,8 +17288,8 @@ function apiWorkbenchControlLineInto(segments, hits, id2, value, rect, row, acti
     hits.length = 0;
     return row;
   }
-  const active2 = activeId === id2;
-  const prefix = `${active2 && !options.indent ? ">" : " "} ${options.indent ? "  " : ""}`;
+  const active = activeId === id2;
+  const prefix = `${active && !options.indent ? ">" : " "} ${options.indent ? "  " : ""}`;
   if (options.button) {
     const buttonSegments = layoutWorkbenchControlButtonLine(prefix, value, rect.width);
     for (let index = 0; index < buttonSegments.length; index += 1) {
@@ -17302,13 +17302,13 @@ function apiWorkbenchControlLineInto(segments, hits, id2, value, rect, row, acti
         rect.column + segment.columnOffset,
         row,
         segment.width,
-        active2
+        active
       );
       segmentCount += 1;
     }
   } else {
     const line = fitCellText(`${prefix}${value}`, rect.width);
-    writeControlLineSegment(segments, 0, "line", line, rect.column, row, textWidth(line), active2);
+    writeControlLineSegment(segments, 0, "line", line, rect.column, row, textWidth(line), active);
     segmentCount = 1;
   }
   writeControlHit(hits, hitCount, {
@@ -17402,30 +17402,30 @@ function apiWorkbenchSliderSetHitInto(target, rect, row, track, options = {}) {
   target.index = void 0;
   return target;
 }
-function apiWorkbenchControlBaseStyle(theme2, active2) {
+function apiWorkbenchControlBaseStyle(theme2, active) {
   return {
-    fg: active2 ? theme2.background : theme2.text,
-    bg: active2 ? theme2.warn : theme2.surface,
-    bold: active2
+    fg: active ? theme2.background : theme2.text,
+    bg: active ? theme2.warn : theme2.surface,
+    bold: active
   };
 }
-function apiWorkbenchControlButtonDetailStyle(theme2, active2) {
+function apiWorkbenchControlButtonDetailStyle(theme2, active) {
   return {
-    fg: active2 ? theme2.warn : theme2.text,
+    fg: active ? theme2.warn : theme2.text,
     bg: theme2.surface,
-    bold: active2
+    bold: active
   };
 }
-function apiWorkbenchTextboxCommandStyle(theme2, command, active2) {
-  const highlighted = active2 && (command.role === "body" || command.header);
+function apiWorkbenchTextboxCommandStyle(theme2, command, active) {
+  const highlighted = active && (command.role === "body" || command.header);
   return {
     fg: highlighted ? theme2.background : theme2.text,
     bg: highlighted ? theme2.warn : theme2.surface,
     bold: highlighted
   };
 }
-function apiWorkbenchWrappedOptionStyle(theme2, active2) {
-  return apiWorkbenchControlBaseStyle(theme2, active2);
+function apiWorkbenchWrappedOptionStyle(theme2, active) {
+  return apiWorkbenchControlBaseStyle(theme2, active);
 }
 function apiWorkbenchDropdownPopoverRect(options) {
   const rect = options.rect;
@@ -17751,7 +17751,7 @@ function apiWorkbenchWrappedOptionsRenderCommandsInto(target, hits, options) {
   const rows2 = layoutWrappedControlOptions(options.items, options.selectedIndex, width);
   const bottom = options.rect.row + Math.max(0, Math.floor(options.rect.height));
   const column = options.rect.column + inset2;
-  const active2 = options.activeId === options.id;
+  const active = options.activeId === options.id;
   let written = 0;
   let hitCount = 0;
   for (let offset = 0; offset < rows2.length; offset += 1) {
@@ -17763,7 +17763,7 @@ function apiWorkbenchWrappedOptionsRenderCommandsInto(target, hits, options) {
       column,
       row,
       width,
-      active: active2
+      active
     });
     for (let index = 0; index < line.tokens.length; index += 1) {
       const token = line.tokens[index];
@@ -17895,7 +17895,7 @@ function writeProjectedControlRow(target, id2, value, options) {
   row.options = options;
   return row;
 }
-function writeControlLineSegment(target, index, kind, text, column, row, width, active2) {
+function writeControlLineSegment(target, index, kind, text, column, row, width, active) {
   const segment = target[index] ?? {
     kind,
     text: "",
@@ -17909,7 +17909,7 @@ function writeControlLineSegment(target, index, kind, text, column, row, width, 
   segment.column = column;
   segment.row = row;
   segment.width = width;
-  segment.active = active2;
+  segment.active = active;
   target[index] = segment;
 }
 function writeControlLineRenderCommand(target, index, options) {
@@ -19415,8 +19415,8 @@ function renderApiWorkbenchControls(options) {
       controlOptions
     );
     if (nextRow === row) return;
-    const active2 = state.activeControl === id2;
-    const baseStyle = apiWorkbenchControlBaseStyle(theme2, active2);
+    const active = state.activeControl === id2;
+    const baseStyle = apiWorkbenchControlBaseStyle(theme2, active);
     const renderCommands = apiWorkbenchControlLineRenderCommandsInto(
       buffers.lineRenderCommands,
       buffers.lineSegments,
@@ -19437,7 +19437,7 @@ function renderApiWorkbenchControls(options) {
         continue;
       }
       if (controlOptions.button) {
-        const style2 = command.role === "button" ? workbenchButtonPaintOptions(theme2, contrastText2, active2 ? "active" : "base") : command.role === "detail" ? apiWorkbenchControlButtonDetailStyle(theme2, active2) : baseStyle;
+        const style2 = command.role === "button" ? workbenchButtonPaintOptions(theme2, contrastText2, active ? "active" : "base") : command.role === "detail" ? apiWorkbenchControlButtonDetailStyle(theme2, active) : baseStyle;
         write2(frame, command.row, command.column, paint2(command.text, style2));
       } else {
         write2(frame, command.row, command.column, paint2(command.text, baseStyle));
@@ -19598,14 +19598,14 @@ function renderApiWorkbenchControls(options) {
   return result;
 }
 function renderApiWorkbenchTextboxControl(options) {
-  const { frame, rect, row, active: active2, lines, cursor, renderOptions, buffers, theme: theme2, paint: paint2, write: write2, addHit } = options;
+  const { frame, rect, row, active, lines, cursor, renderOptions, buffers, theme: theme2, paint: paint2, write: write2, addHit } = options;
   const projection = apiWorkbenchTextboxProjectionInto(buffers.textboxProjectionRows, {
     rect,
     row,
     lines,
     visualLines: buffers.textboxVisualLines,
     cursor,
-    active: active2
+    active
   });
   if (projection.height <= 0) return projection.nextRow;
   const commands = apiWorkbenchTextboxRenderCommandsInto(buffers.textboxRenderCommands, projection.rows, renderOptions);
@@ -19614,7 +19614,7 @@ function renderApiWorkbenchTextboxControl(options) {
       frame,
       command.row,
       command.column,
-      paint2(command.text, apiWorkbenchTextboxCommandStyle(theme2, command, active2))
+      paint2(command.text, apiWorkbenchTextboxCommandStyle(theme2, command, active))
     );
   }
   addHit(projection.hit, {
@@ -19911,29 +19911,29 @@ var WorkbenchController = class {
 function inspectWorkbenchWindowSignalState(controller, options) {
   const validIds = new Set(options.windowIds);
   const inspection = controller.inspect();
-  const minimized2 = {};
+  const minimized = {};
   for (let index = 0; index < options.windowIds.length; index += 1) {
-    minimized2[options.windowIds[index]] = false;
+    minimized[options.windowIds[index]] = false;
   }
   for (let index = 0; index < inspection.windows.length; index += 1) {
     const entry = inspection.windows[index];
-    if (validIds.has(entry.id)) minimized2[entry.id] = entry.minimized;
+    if (validIds.has(entry.id)) minimized[entry.id] = entry.minimized;
   }
   const activeId = validIds.has(inspection.activeId ?? "") ? inspection.activeId : options.defaultActiveId;
   const fullscreenId = validIds.has(inspection.fullscreenId ?? "") ? inspection.fullscreenId : null;
-  return { activeId, fullscreenId, minimized: minimized2 };
+  return { activeId, fullscreenId, minimized };
 }
 function applyWorkbenchWindowSignalState(controller, state, options) {
   const validIds = new Set(options.windowIds);
   const fullscreenId = validIds.has(state.fullscreenId ?? "") ? state.fullscreenId ?? void 0 : void 0;
   const activeId = validIds.has(state.activeId ?? "") ? state.activeId : void 0;
-  const minimized2 = state.minimized ?? {};
+  const minimized = state.minimized ?? {};
   controller.activeId.value = activeId;
   controller.fullscreenId.value = fullscreenId;
   controller.windows.value = options.windowIds.map((id2, order) => ({
     ...options.createWindow(id2, order),
     order,
-    state: minimized2[id2] && id2 !== fullscreenId ? "minimized" : "normal"
+    state: minimized[id2] && id2 !== fullscreenId ? "minimized" : "normal"
   }));
 }
 function clampMenuIndex2(index, itemCount) {
@@ -19978,6 +19978,9 @@ var panelIds = [
   "htmlLayout",
   "terminal"
 ];
+function createWebPanelWindow(id2, order) {
+  return { id: id2, title: apiWorkbenchPanelTitle(id2), order, minWidth: 26, minHeight: 10 };
+}
 var explorerKeys = /* @__PURE__ */ new Set(["up", "down", "left", "right", "pageup", "pagedown", "home", "end", "space", "return"]);
 var webWorkspaceStore = createRuntimeStore({
   databaseName: "deno-tui-web-workbench",
@@ -19988,24 +19991,22 @@ var webDiagnostics = new DiagnosticsCollector(80);
 var storageDiagnostics = new StorageFallbackDiagnostics(webDiagnostics);
 var initialWorkspace = loadCachedWebWorkspaceState();
 var themeIndex = new Signal(initialThemeIndex());
-var active = new Signal(initialWorkspace.active ?? "inspector");
-var maximized = new Signal(initialWorkspace.maximized ?? null);
-var minimized = new Signal(
-  { ...defaultMinimizedState(), ...initialWorkspace.minimized },
-  { deepObserve: true }
-);
 var themeMenuOpen = new Signal(false);
 var workbenchController = new WorkbenchController({
+  activeId: initialWorkspace.active ?? "inspector",
+  fullscreenId: initialWorkspace.maximized,
   menu: {
     onChange: (state) => {
       themeMenuOpen.value = state.openId === "theme";
     }
   },
-  windows: panelIds.map((id2, order) => ({ id: id2, title: apiWorkbenchPanelTitle(id2), order, minWidth: 26, minHeight: 10 }))
+  windows: panelIds.map((id2, order) => ({
+    ...createWebPanelWindow(id2, order),
+    state: initialWorkspace.minimized?.[id2] ? "minimized" : "normal"
+  }))
 });
 var topMenus = workbenchController.menus;
 var webWindows = workbenchController.windows;
-var webWindowManagerStateKey = "";
 var tileDensity = new Signal(Math.max(-3, Math.min(3, Math.floor(initialWorkspace.tileDensity ?? 0))));
 var asciiConfigs = new WorkbenchAsciiConfigController(
   "three",
@@ -20089,9 +20090,9 @@ var themeMenuSlice = { items: [], indexes: [] };
 var dropdownOverlay = null;
 var pointerDrag = null;
 themeIndex.subscribe((index) => persistThemeIndex(index));
-active.subscribe(persistWebWorkspaceState);
-maximized.subscribe(persistWebWorkspaceState);
-minimized.subscribe(persistWebWorkspaceState);
+webWindows.activeId.subscribe(persistWebWorkspaceState);
+webWindows.fullscreenId.subscribe(persistWebWorkspaceState);
+webWindows.windows.subscribe(persistWebWorkspaceState);
 tileDensity.subscribe(persistWebWorkspaceState);
 ascii.subscribe(persistWebWorkspaceState);
 void hydrateWebWorkspaceState();
@@ -20245,23 +20246,23 @@ host.on("keyPress", (event) => {
     draw();
     return;
   }
-  if (key === "tab" && active.peek() === "controls") focusNextControl(event.shift ? -1 : 1);
+  if (key === "tab" && activePanel() === "controls") focusNextControl(event.shift ? -1 : 1);
   else if (key === "tab") focusNext();
   else if (focusPanelByNumber(key)) return draw();
   else if (key === "h" || key === "?") openHelpModal();
   else if (key === "q") openQuitModal();
-  else if (key === "m") minimize(active.peek());
-  else if (key === "f" || key === "return") toggleMax(active.peek());
+  else if (key === "m") minimize(activePanel());
+  else if (key === "f" || key === "return") toggleMax(activePanel());
   else if (key === "r" || key === "escape") restore();
   else if (key === "t") toggleThemeMenu();
   else if (key === "[") adjustTileDensity(-1);
   else if (key === "]") adjustTileDensity(1);
-  else if (active.peek() === "controls") handleControlsKey(event);
-  else if (active.peek() === "explorer" && explorerKeys.has(key)) {
+  else if (activePanel() === "controls") handleControlsKey(event);
+  else if (activePanel() === "explorer" && explorerKeys.has(key)) {
     explorer.handleKeyPress(event, Math.max(1, rowsCount() - 8));
-  } else if (active.peek() === "data" && key.toLowerCase() === "s") {
+  } else if (activePanel() === "data" && key.toLowerCase() === "s") {
     cycleDataSortColumn(event.shift ? -1 : 1);
-  } else if (active.peek() === "data") table.handleKeyPress(event);
+  } else if (activePanel() === "data") table.handleKeyPress(event);
   else if (key === "+" || key === "=") slider.increment();
   else if (key === "-") slider.decrement();
   else if (key === "space") live.toggle();
@@ -20299,7 +20300,7 @@ host.on("mouseScroll", (event) => {
     draw();
     return;
   }
-  if (active.peek() === "logs") logScroll.scrollBy(0, event.scroll);
+  if (activePanel() === "logs") logScroll.scrollBy(0, event.scroll);
   else workspaceScroll.scrollBy(0, event.scroll);
   draw();
 });
@@ -20385,7 +20386,7 @@ function draw() {
     width: Math.max(1, body.width - 1),
     height: body.height
   });
-  const offset = workspaceViewport.update({ layout, viewportHeight: body.height, activeId: active.peek() });
+  const offset = workspaceViewport.update({ layout, viewportHeight: body.height, activeId: activePanel() });
   const virtual = prepareWorkbenchRows(
     workspaceVirtualRows,
     Math.max(body.height, layout.contentHeight),
@@ -20394,8 +20395,9 @@ function draw() {
   );
   fillRect(virtual, layout.bounds, theme().backgroundSoft);
   const hitStart = hitTargets.length;
-  if (maximized.peek()) {
-    renderPanel(virtual, maximized.peek(), layout.bounds);
+  const fullscreen = fullscreenPanel();
+  if (fullscreen) {
+    renderPanel(virtual, fullscreen, layout.bounds);
   } else {
     if (layout.rects.size === 0) {
       write(
@@ -20427,7 +20429,7 @@ function draw() {
   });
   blitWorkspace(frame, virtual, body, offset, layout.bounds.width);
   renderWorkspaceScrollbar(frame, body);
-  maximized.peek() ? renderWindowTabs(frame) : renderShelf(frame);
+  fullscreen ? renderWindowTabs(frame) : renderShelf(frame);
   renderDropdownOverlay(frame, body, offset);
   renderThreeConfigModal(frame);
   renderModalOverlay(frame);
@@ -20435,7 +20437,7 @@ function draw() {
     frame,
     row: height - 1,
     width,
-    focus: active.peek(),
+    focus: activePanel(),
     themeLabel: currentTheme.label,
     tileDensity: tileDensity.peek(),
     diagnostics: formatWorkbenchDiagnosticStatus(webDiagnostics),
@@ -20448,7 +20450,6 @@ function draw() {
 }
 function renderShelf(frame) {
   const row = rowsCount() - 2;
-  syncWebWindowManagerState();
   renderApiWorkbenchShelf({
     frame,
     row,
@@ -20467,8 +20468,8 @@ function renderShelf(frame) {
 function renderMobileCommandStrip(frame) {
   if (!isTouchOptimizedLayout() || rowsCount() < 8) return;
   workbenchMobileCommandStripItemsInto(mobileCommandButtonBuffers.items, {
-    activeTitle: shortPanelTitle(active.peek()),
-    controlsActive: active.peek() === "controls",
+    activeTitle: shortPanelTitle(activePanel()),
+    controlsActive: activePanel() === "controls",
     themeActive: themeMenuOpen.peek()
   });
   renderApiWorkbenchButtonRow({
@@ -20488,7 +20489,6 @@ function renderMobileCommandStrip(frame) {
 }
 function renderWindowTabs(frame) {
   const row = rowsCount() - 2;
-  syncWebWindowManagerState();
   renderApiWorkbenchWindowTabs({
     frame,
     row,
@@ -20508,7 +20508,7 @@ function renderWindowTabs(frame) {
 function renderPanel(frame, id2, rect) {
   if (rect.width < 10 || rect.height < 4) return;
   hitTargets.add(rect, { type: "focus", id: id2 });
-  const selected = active.peek() === id2;
+  const selected = activePanel() === id2;
   drawFrame(frame, rect, panelTitle(id2), selected);
   renderApiWorkbenchWindowTitlebar({
     frame,
@@ -20894,7 +20894,7 @@ function handleWebTerminalScroll(target, delta) {
   const inspection = scrollback.inspect();
   if (inspection.totalRows <= inspection.viewportRows) return false;
   scrollback.scrollLines(delta);
-  active.value = "terminal";
+  activatePanel("terminal");
   if (inspection.mode === "live") push("terminal copy mode on");
   return true;
 }
@@ -21039,7 +21039,7 @@ function applyWebTerminalAction(action) {
     push(row === void 0 ? "terminal search no matches" : `terminal search row ${row + 1}`);
   }
   webTerminalScreenKeys.clear();
-  active.value = "terminal";
+  activatePanel("terminal");
 }
 function ensureLines() {
   for (let row = lineSignals.length; row < rowsCount(); row++) {
@@ -21083,16 +21083,16 @@ function applyHit(target, x, y) {
   else if (hit.type === "logScrollbar") {
     const lines = docs.length + log.peek().length;
     logScroll.scrollTo(0, scrollbarOffsetForPointer(lines, target.rect.height, y - target.rect.row));
-    active.value = "logs";
+    activatePanel("logs");
   } else if (hit.type === "terminalSession") {
     webTerminalWorkspace.activate(hit.id);
     webTerminalScreenKeys.clear();
-    active.value = "terminal";
+    activatePanel("terminal");
     push(`terminal session ${hit.id}`);
   } else if (hit.type === "terminalPane") {
     if (webTerminalWorkspace.activatePane(hit.id)) {
       webTerminalScreenKeys.clear();
-      active.value = "terminal";
+      activatePanel("terminal");
       push("terminal pane active");
     }
   } else if (hit.type === "terminalContent") {
@@ -21104,7 +21104,7 @@ function applyHit(target, x, y) {
       scrollback.selectVisibleRow(y - target.rect.row);
       push("terminal row selected");
     }
-    active.value = "terminal";
+    activatePanel("terminal");
   } else if (hit.type === "terminalAction") {
     applyWebTerminalAction(hit.action);
   } else if (hit.type === "workspaceScrollbar") {
@@ -21145,46 +21145,55 @@ function handlePointerDrag(event, target) {
     return true;
   }
   const origin = pointerDrag.target?.action;
-  const logOrigin = origin?.type === "logScrollbar" || origin?.type === "focus" && origin.id === "logs" || active.peek() === "logs" && origin?.type !== "workspaceScrollbar";
+  const logOrigin = origin?.type === "logScrollbar" || origin?.type === "focus" && origin.id === "logs" || activePanel() === "logs" && origin?.type !== "workspaceScrollbar";
   if (logOrigin) {
     logScroll.scrollTo(0, pointerDrag.logRows + deltaRows);
-    active.value = "logs";
+    activatePanel("logs");
   } else {
     workspaceScroll.scrollTo(0, pointerDrag.workspaceRows + deltaRows);
   }
   pointerDrag.moved = true;
   return true;
 }
+function activePanel() {
+  return webWindows.activeId.peek() ?? "inspector";
+}
+function fullscreenPanel() {
+  return webWindows.fullscreenId.peek() ?? null;
+}
+function activatePanel(id2) {
+  workbenchController.focusWindow(id2);
+}
 function focus(id2) {
-  syncWebWindowMutation(() => workbenchController.focusWindow(id2));
+  activatePanel(id2);
   push(`focus ${id2}`);
 }
 function focusNext() {
-  const focused = syncWebWindowMutation(() => workbenchController.focusNextWindow());
+  const focused = workbenchController.focusNextWindow();
   if (focused) push(`focus ${focused}`);
 }
 function focusPrevious() {
-  const focused = syncWebWindowMutation(() => workbenchController.focusNextWindow(-1));
+  const focused = workbenchController.focusNextWindow(-1);
   if (focused) push(`focus ${focused}`);
 }
 function minimize(id2) {
-  syncWebWindowMutation(() => workbenchController.minimizeWindow(id2));
+  workbenchController.minimizeWindow(id2);
   push(`minimize ${id2}`);
 }
 function closePanel(id2) {
-  syncWebWindowMutation(() => workbenchController.closeWindow(id2));
+  workbenchController.closeWindow(id2);
   push(`close ${id2}`);
 }
 function toggleMax(id2) {
-  syncWebWindowMutation(() => workbenchController.toggleFullscreenWindow(id2));
-  push(`${maximized.peek() ? "maximize" : "restore"} ${id2}`);
+  workbenchController.toggleFullscreenWindow(id2);
+  push(`${fullscreenPanel() ? "maximize" : "restore"} ${id2}`);
 }
 function restorePanel(id2) {
-  syncWebWindowMutation(() => workbenchController.restoreWindows(id2));
+  workbenchController.restoreWindows(id2);
   push(`restore ${id2}`);
 }
 function restore() {
-  syncWebWindowMutation(() => workbenchController.restoreWindows());
+  workbenchController.restoreWindows();
   push("restore all");
 }
 function setTheme(index) {
@@ -21248,7 +21257,7 @@ function cycleDataSortColumn(delta) {
   push(`sort data by ${next.label}`);
 }
 function selectExplorerRow(index) {
-  active.value = "explorer";
+  activatePanel("explorer");
   explorer.tree.setSelectedIndex(index);
   const entry = explorer.selected();
   if (entry?.kind === "file") explorer.openActive();
@@ -21260,49 +21269,7 @@ function adjustTileDensity(delta) {
   push(`tile density ${tileDensity.peek()}`);
 }
 function workspaceLayout(bounds) {
-  syncWebWindowManagerState();
   return workbenchAdaptiveWindowLayout(webWindows, { bounds, tileDensity: tileDensity.peek() });
-}
-function syncWebWindowMutation(mutate) {
-  syncWebWindowManagerState();
-  const result = mutate();
-  syncWebSignalsFromWindowManager();
-  return result;
-}
-function syncWebWindowManagerState() {
-  const fullscreenId = maximized.peek() ?? void 0;
-  const minimizedState = minimized.peek();
-  let minimizedKey = "";
-  for (let index = 0; index < panelIds.length; index += 1) {
-    minimizedKey += minimizedState[panelIds[index]] ? "1" : "0";
-  }
-  const key = `${active.peek()}|${fullscreenId ?? ""}|${minimizedKey}`;
-  if (key === webWindowManagerStateKey) return;
-  webWindowManagerStateKey = key;
-  applyWorkbenchWindowSignalState(
-    webWindows,
-    { activeId: active.peek(), fullscreenId, minimized: minimizedState },
-    {
-      windowIds: panelIds,
-      createWindow: (id2, order) => ({
-        id: id2,
-        title: apiWorkbenchPanelTitle(id2),
-        order,
-        minWidth: 26,
-        minHeight: 10
-      })
-    }
-  );
-}
-function syncWebSignalsFromWindowManager() {
-  const state = inspectWorkbenchWindowSignalState(webWindows, {
-    windowIds: panelIds,
-    defaultActiveId: "inspector"
-  });
-  if (state.activeId) active.value = state.activeId;
-  maximized.value = state.fullscreenId ?? null;
-  minimized.value = state.minimized;
-  webWindowManagerStateKey = "";
 }
 function blitWorkspace(frame, virtual, bounds, offset, width) {
   for (let row = 0; row < bounds.height; row += 1) {
@@ -21416,7 +21383,7 @@ function openQuitModal() {
 function openThreeConfigModal(id2) {
   closeThemeMenu();
   modal.close();
-  active.value = id2;
+  activatePanel(id2);
   threeConfigWindow.value = "three";
   threeConfigBaseline.value = cloneAsciiOptions(currentThreeConfigSignal().peek());
   threeConfigSelected.value = 0;
@@ -21619,7 +21586,7 @@ function renderControls(frame, rect) {
   if (result.dropdownOverlay) dropdownOverlay = result.dropdownOverlay;
 }
 function applyControlHit(id2, action, rect, x, index) {
-  active.value = "controls";
+  activatePanel("controls");
   activeControl.value = id2;
   if (action === "focus") {
     push(`control ${id2} focus`);
@@ -21663,7 +21630,7 @@ clicked`);
   push(`control ${id2} ${action}`);
 }
 function selectDataRow(index) {
-  active.value = "data";
+  activatePanel("data");
   table.select(index);
   push(`data row ${table.selectedKey() ?? index}`);
 }
@@ -21696,12 +21663,12 @@ function handleControlsKey(event) {
 }
 function blurTextControl() {
   const previous = activeControl.peek();
-  active.value = "controls";
+  activatePanel("controls");
   activeControl.value = controlAt(1);
   push(`control ${previous} blur`);
 }
 function focusNextControl(delta = 1) {
-  active.value = "controls";
+  activatePanel("controls");
   const next = controlAtEdge(delta);
   if (next) {
     activeControl.value = next;
@@ -21717,7 +21684,7 @@ function controlAtEdge(delta) {
   return apiWorkbenchControlAtEdge(activeControl.peek(), delta);
 }
 function isTextControlActive() {
-  return isApiWorkbenchTextControlActive(active.peek(), "controls", activeControl.peek());
+  return isApiWorkbenchTextControlActive(activePanel(), "controls", activeControl.peek());
 }
 function write(frame, row, column, value) {
   framePainter.write(frame, row, column, value);
@@ -21784,9 +21751,6 @@ function initialThemeIndex() {
     return 0;
   }
 }
-function defaultMinimizedState() {
-  return defaultWorkbenchMinimizedState(panelIds);
-}
 function loadCachedWebWorkspaceState() {
   return loadWorkbenchPanelWorkspaceCache({
     key: WORKSPACE_STORAGE_KEY,
@@ -21807,9 +21771,18 @@ async function hydrateWebWorkspaceState() {
   });
 }
 function applyWebWorkspaceState(state) {
-  if (state.active) active.value = state.active;
-  if (state.maximized !== void 0) maximized.value = state.maximized;
-  if (state.minimized) minimized.value = { ...defaultMinimizedState(), ...state.minimized };
+  const current = inspectWorkbenchWindowSignalState(webWindows, {
+    windowIds: panelIds,
+    defaultActiveId: "inspector"
+  });
+  applyWorkbenchWindowSignalState(webWindows, {
+    activeId: state.active ?? current.activeId,
+    fullscreenId: state.maximized === void 0 ? current.fullscreenId : state.maximized,
+    minimized: state.minimized ? { ...current.minimized, ...state.minimized } : current.minimized
+  }, {
+    windowIds: panelIds,
+    createWindow: createWebPanelWindow
+  });
   if (state.tileDensity !== void 0) tileDensity.value = Math.max(-3, Math.min(3, Math.floor(state.tileDensity)));
   if (state.ascii) asciiConfigs.setForWindow("three", state.ascii);
   if (state.terminal) applyWebTerminalWorkspaceSnapshot(state.terminal);
@@ -21827,10 +21800,14 @@ function normalizeWebWorkspaceState(value) {
   return { ...state, ...terminal ? { terminal } : {}, ...asciiOptions ? { ascii: asciiOptions } : {} };
 }
 function persistWebWorkspaceState() {
+  const windows = inspectWorkbenchWindowSignalState(webWindows, {
+    windowIds: panelIds,
+    defaultActiveId: "inspector"
+  });
   persistWorkbenchPanelWorkspaceState({
-    active: active.peek(),
-    maximized: maximized.peek(),
-    minimized: minimized.peek(),
+    active: windows.activeId,
+    maximized: windows.fullscreenId,
+    minimized: windows.minimized,
     tileDensity: tileDensity.peek(),
     ascii: cloneAsciiOptions(ascii.peek()),
     terminal: snapshotTerminalWorkspace(webTerminalWorkspace)
