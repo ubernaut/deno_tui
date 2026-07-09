@@ -27,6 +27,7 @@ export type ActionCommandGroupEntry<TKind extends string, TResult> = readonly [
   fallback: string,
   update: () => TResult,
   keywords?: readonly string[],
+  disabled?: () => boolean,
 ];
 
 export interface ActionCommandGroupOptions<TAction extends Action, TPayload, TKind extends string, TResult> {
@@ -35,7 +36,7 @@ export interface ActionCommandGroupOptions<TAction extends Action, TPayload, TKi
   type: TAction["type"] & string;
   keywords: readonly string[];
   label: (kind: TKind, fallback: string) => string;
-  payload: () => TPayload;
+  payload: (result: TResult, kind: TKind) => TPayload;
   entries: readonly ActionCommandGroupEntry<TKind, TResult>[];
   disabled?: () => boolean;
 }
@@ -44,7 +45,7 @@ export function actionCommandGroup<TAction extends Action, TPayload, TKind exten
   options: ActionCommandGroupOptions<TAction, TPayload, TKind, TResult>,
 ): Command<TAction>[] {
   const commands: Command<TAction>[] = [];
-  for (const [kind, fallback, update, keywords] of options.entries) {
+  for (const [kind, fallback, update, keywords, disabled] of options.entries) {
     const commandLabel = options.label(kind, fallback);
     commands.push(actionCommand(
       `${options.idPrefix}.${kind}`,
@@ -53,8 +54,8 @@ export function actionCommandGroup<TAction extends Action, TPayload, TKind exten
       keywords ?? [...options.keywords, commandLabel],
       options.type,
       update,
-      options.payload,
-      options.disabled,
+      (result) => options.payload(result, kind),
+      disabled ?? options.disabled,
     ));
   }
   return commands;

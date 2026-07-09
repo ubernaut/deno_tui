@@ -8,7 +8,7 @@ import type { SliderController, SliderInspection } from "../components/slider.ts
 import type { StepperController, StepperInspection, StepperStep } from "../components/stepper.ts";
 import type { TextBoxController, TextBoxInspection } from "../components/textbox.ts";
 import type { Action } from "./actions.ts";
-import { actionCommand } from "./command_helpers.ts";
+import { actionCommand, actionCommandGroup } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for button Command variants. */
@@ -62,28 +62,24 @@ export function buttonCommands<TAction extends Action = ButtonCommandAction>(
   }
 
   if (options.includeStateCommands ?? true) {
-    commands.push(
-      actionCommand(
-        `${idPrefix}.enable`,
-        label("enable", "Enable Button"),
-        group,
-        ["button", "enable"],
-        "button.changed",
-        () => controller.enable(),
-        payload,
-        () => controller.disabled.peek() === false,
-      ),
-      actionCommand(
-        `${idPrefix}.disable`,
-        label("disable", "Disable Button"),
-        group,
-        ["button", "disable"],
-        "button.changed",
-        () => controller.disable(),
-        payload,
-        () => controller.disabled.peek() === true,
-      ),
-    );
+    commands.push(...actionCommandGroup<TAction, ButtonCommandPayload, ButtonCommandKind, boolean>({
+      idPrefix,
+      group,
+      type: "button.changed",
+      keywords: ["button"],
+      label,
+      payload,
+      entries: [
+        ["enable", "Enable Button", () => controller.enable(), ["button", "enable"], () => !controller.disabled.peek()],
+        [
+          "disable",
+          "Disable Button",
+          () => controller.disable(),
+          ["button", "disable"],
+          () => controller.disabled.peek(),
+        ],
+      ],
+    }));
   }
 
   return commands;
@@ -150,28 +146,30 @@ export function checkBoxCommands<TAction extends Action = CheckBoxCommandAction>
   }
 
   if (options.includeSetCommands ?? true) {
-    commands.push(
-      actionCommand(
-        `${idPrefix}.check`,
-        label("check", "Check Checkbox"),
-        group,
-        ["checkbox", "check", "enable"],
-        "checkbox.changed",
-        () => controller.check(),
-        payload,
-        () => controller.checked.peek() === true,
-      ),
-      actionCommand(
-        `${idPrefix}.uncheck`,
-        label("uncheck", "Uncheck Checkbox"),
-        group,
-        ["checkbox", "uncheck", "disable"],
-        "checkbox.changed",
-        () => controller.uncheck(),
-        payload,
-        () => controller.checked.peek() === false,
-      ),
-    );
+    commands.push(...actionCommandGroup<TAction, CheckBoxCommandPayload, CheckBoxCommandKind, boolean>({
+      idPrefix,
+      group,
+      type: "checkbox.changed",
+      keywords: ["checkbox"],
+      label,
+      payload,
+      entries: [
+        [
+          "check",
+          "Check Checkbox",
+          () => controller.check(),
+          ["checkbox", "check", "enable"],
+          () => controller.checked.peek(),
+        ],
+        [
+          "uncheck",
+          "Uncheck Checkbox",
+          () => controller.uncheck(),
+          ["checkbox", "uncheck", "disable"],
+          () => !controller.checked.peek(),
+        ],
+      ],
+    }));
   }
 
   return commands;
@@ -237,83 +235,48 @@ export function comboBoxCommands<TAction extends Action = ComboBoxCommandAction,
   const commands: Command<TAction>[] = [];
 
   if (options.includeExpandCommands ?? true) {
-    commands.push(
-      actionCommand(
-        `${idPrefix}.open`,
-        label("open", "Open Combo Box"),
-        group,
-        ["combobox", "combo-box", "expand", label("open", "Open Combo Box")],
-        "comboBox.expandedChanged",
-        () => controller.open(),
-        (expanded) => ({ ...payload(), expanded }),
-        () => payload().inspection.empty,
-      ),
-      actionCommand(
-        `${idPrefix}.close`,
-        label("close", "Close Combo Box"),
-        group,
-        ["combobox", "combo-box", "expand", label("close", "Close Combo Box")],
-        "comboBox.expandedChanged",
-        () => controller.close(),
-        (expanded) => ({ ...payload(), expanded }),
-        () => payload().inspection.empty,
-      ),
-      actionCommand(
-        `${idPrefix}.toggle`,
-        label("toggle", "Toggle Combo Box"),
-        group,
-        ["combobox", "combo-box", "expand", label("toggle", "Toggle Combo Box")],
-        "comboBox.expandedChanged",
-        () => controller.toggle(),
-        (expanded) => ({ ...payload(), expanded }),
-        () => payload().inspection.empty,
-      ),
-    );
+    commands.push(...actionCommandGroup<
+      TAction,
+      ComboBoxCommandPayload & { expanded: boolean },
+      ComboBoxCommandKind,
+      boolean
+    >({
+      idPrefix,
+      group,
+      type: "comboBox.expandedChanged",
+      keywords: ["combobox", "combo-box", "expand"],
+      label,
+      payload: (expanded) => ({ ...payload(), expanded }),
+      disabled: () => payload().inspection.empty,
+      entries: [
+        ["open", "Open Combo Box", () => controller.open()],
+        ["close", "Close Combo Box", () => controller.close()],
+        ["toggle", "Toggle Combo Box", () => controller.toggle()],
+      ],
+    }));
   }
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(
-      actionCommand(
-        `${idPrefix}.first`,
-        label("first", "First Combo Box Item"),
-        group,
-        ["combobox", "combo-box", label("first", "First Combo Box Item")],
-        "comboBox.changed",
-        () => controller.first(),
-        payload,
-        () => payload().inspection.empty,
-      ),
-      actionCommand(
-        `${idPrefix}.previous`,
-        label("previous", "Previous Combo Box Item"),
-        group,
-        ["combobox", "combo-box", label("previous", "Previous Combo Box Item")],
-        "comboBox.changed",
-        () => controller.move(-1),
-        payload,
-        () => payload().inspection.empty,
-      ),
-      actionCommand(
-        `${idPrefix}.next`,
-        label("next", "Next Combo Box Item"),
-        group,
-        ["combobox", "combo-box", label("next", "Next Combo Box Item")],
-        "comboBox.changed",
-        () => controller.move(1),
-        payload,
-        () => payload().inspection.empty,
-      ),
-      actionCommand(
-        `${idPrefix}.last`,
-        label("last", "Last Combo Box Item"),
-        group,
-        ["combobox", "combo-box", label("last", "Last Combo Box Item")],
-        "comboBox.changed",
-        () => controller.last(),
-        payload,
-        () => payload().inspection.empty,
-      ),
-    );
+    commands.push(...actionCommandGroup<
+      TAction,
+      ComboBoxCommandPayload,
+      ComboBoxCommandKind,
+      string | undefined
+    >({
+      idPrefix,
+      group,
+      type: "comboBox.changed",
+      keywords: ["combobox", "combo-box"],
+      label,
+      payload,
+      disabled: () => payload().inspection.empty,
+      entries: [
+        ["first", "First Combo Box Item", () => controller.first()],
+        ["previous", "Previous Combo Box Item", () => controller.move(-1)],
+        ["next", "Next Combo Box Item", () => controller.move(1)],
+        ["last", "Last Combo Box Item", () => controller.last()],
+      ],
+    }));
   }
 
   if (options.includeSelectCommand ?? true) {
@@ -412,49 +375,33 @@ export function progressBarCommands<TAction extends Action = ProgressBarCommandA
   const commands: Command<TAction>[] = [];
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(
-      actionCommand(
-        `${idPrefix}.decrement`,
-        label("decrement", "Decrease Progress"),
-        group,
-        ["progress", "decrease", "decrement"],
-        "progressBar.changed",
-        () => controller.decrement(step),
-        payload,
-      ),
-      actionCommand(
-        `${idPrefix}.increment`,
-        label("increment", "Increase Progress"),
-        group,
-        ["progress", "increase", "increment"],
-        "progressBar.changed",
-        () => controller.increment(step),
-        payload,
-      ),
-    );
+    commands.push(...actionCommandGroup<TAction, ProgressBarCommandPayload, ProgressBarCommandKind, number>({
+      idPrefix,
+      group,
+      type: "progressBar.changed",
+      keywords: ["progress"],
+      label,
+      payload,
+      entries: [
+        ["decrement", "Decrease Progress", () => controller.decrement(step), ["progress", "decrease", "decrement"]],
+        ["increment", "Increase Progress", () => controller.increment(step), ["progress", "increase", "increment"]],
+      ],
+    }));
   }
 
   if (options.includeEdgeCommands ?? true) {
-    commands.push(
-      actionCommand(
-        `${idPrefix}.min`,
-        label("min", "Minimum Progress"),
-        group,
-        ["progress", "minimum", "min"],
-        "progressBar.changed",
-        () => controller.setMin(),
-        payload,
-      ),
-      actionCommand(
-        `${idPrefix}.max`,
-        label("max", "Maximum Progress"),
-        group,
-        ["progress", "maximum", "max"],
-        "progressBar.changed",
-        () => controller.setMax(),
-        payload,
-      ),
-    );
+    commands.push(...actionCommandGroup<TAction, ProgressBarCommandPayload, ProgressBarCommandKind, number>({
+      idPrefix,
+      group,
+      type: "progressBar.changed",
+      keywords: ["progress"],
+      label,
+      payload,
+      entries: [
+        ["min", "Minimum Progress", () => controller.setMin(), ["progress", "minimum", "min"]],
+        ["max", "Maximum Progress", () => controller.setMax(), ["progress", "maximum", "max"]],
+      ],
+    }));
   }
 
   if (options.includeValueCommands ?? false) {
@@ -524,44 +471,25 @@ export function radioGroupCommands<TAction extends Action = RadioGroupCommandAct
   const commands: Command<TAction>[] = [];
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(
-      actionCommand(
-        `${idPrefix}.first`,
-        label("first", "First Radio Option"),
-        group,
-        ["radio", "radio-group", label("first", "First Radio Option")],
-        "radioGroup.changed",
-        () => controller.first(),
-        payload,
-      ),
-      actionCommand(
-        `${idPrefix}.previous`,
-        label("previous", "Previous Radio Option"),
-        group,
-        ["radio", "radio-group", label("previous", "Previous Radio Option")],
-        "radioGroup.changed",
-        () => controller.move(-1),
-        payload,
-      ),
-      actionCommand(
-        `${idPrefix}.next`,
-        label("next", "Next Radio Option"),
-        group,
-        ["radio", "radio-group", label("next", "Next Radio Option")],
-        "radioGroup.changed",
-        () => controller.move(1),
-        payload,
-      ),
-      actionCommand(
-        `${idPrefix}.last`,
-        label("last", "Last Radio Option"),
-        group,
-        ["radio", "radio-group", label("last", "Last Radio Option")],
-        "radioGroup.changed",
-        () => controller.last(),
-        payload,
-      ),
-    );
+    commands.push(...actionCommandGroup<
+      TAction,
+      RadioGroupCommandPayload,
+      RadioGroupCommandKind,
+      RadioOption | undefined
+    >({
+      idPrefix,
+      group,
+      type: "radioGroup.changed",
+      keywords: ["radio", "radio-group"],
+      label,
+      payload,
+      entries: [
+        ["first", "First Radio Option", () => controller.first()],
+        ["previous", "Previous Radio Option", () => controller.move(-1)],
+        ["next", "Next Radio Option", () => controller.move(1)],
+        ["last", "Last Radio Option", () => controller.last()],
+      ],
+    }));
   }
 
   if (options.includeSelectCommand ?? true) {
@@ -664,49 +592,41 @@ export function sliderCommands<TAction extends Action = SliderCommandAction>(
   const commands: Command<TAction>[] = [];
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(
-      actionCommand(
-        `${idPrefix}.decrement`,
-        label("decrement", "Decrease Slider"),
-        group,
-        ["slider", "decrease", "decrement"],
-        "slider.changed",
-        () => controller.decrement(stepMultiplier),
-        payload,
-      ),
-      actionCommand(
-        `${idPrefix}.increment`,
-        label("increment", "Increase Slider"),
-        group,
-        ["slider", "increase", "increment"],
-        "slider.changed",
-        () => controller.increment(stepMultiplier),
-        payload,
-      ),
-    );
+    commands.push(...actionCommandGroup<TAction, SliderCommandPayload, SliderCommandKind, number>({
+      idPrefix,
+      group,
+      type: "slider.changed",
+      keywords: ["slider"],
+      label,
+      payload,
+      entries: [
+        ["decrement", "Decrease Slider", () => controller.decrement(stepMultiplier), [
+          "slider",
+          "decrease",
+          "decrement",
+        ]],
+        ["increment", "Increase Slider", () => controller.increment(stepMultiplier), [
+          "slider",
+          "increase",
+          "increment",
+        ]],
+      ],
+    }));
   }
 
   if (options.includeEdgeCommands ?? true) {
-    commands.push(
-      actionCommand(
-        `${idPrefix}.min`,
-        label("min", "Minimum Slider Value"),
-        group,
-        ["slider", "minimum", "min"],
-        "slider.changed",
-        () => controller.setMin(),
-        payload,
-      ),
-      actionCommand(
-        `${idPrefix}.max`,
-        label("max", "Maximum Slider Value"),
-        group,
-        ["slider", "maximum", "max"],
-        "slider.changed",
-        () => controller.setMax(),
-        payload,
-      ),
-    );
+    commands.push(...actionCommandGroup<TAction, SliderCommandPayload, SliderCommandKind, number>({
+      idPrefix,
+      group,
+      type: "slider.changed",
+      keywords: ["slider"],
+      label,
+      payload,
+      entries: [
+        ["min", "Minimum Slider Value", () => controller.setMin(), ["slider", "minimum", "min"]],
+        ["max", "Maximum Slider Value", () => controller.setMax(), ["slider", "maximum", "max"]],
+      ],
+    }));
   }
 
   if (options.includeValueCommands ?? false) {
@@ -775,44 +695,20 @@ export function stepperCommands<TAction extends Action = StepperCommandAction>(
   const commands: Command<TAction>[] = [];
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(
-      actionCommand(
-        `${idPrefix}.first`,
-        label("first", "First Step"),
-        group,
-        ["step", "stepper", label("first", "First Step")],
-        "stepper.changed",
-        () => controller.first(),
-        payload,
-      ),
-      actionCommand(
-        `${idPrefix}.previous`,
-        label("previous", "Previous Step"),
-        group,
-        ["step", "stepper", label("previous", "Previous Step")],
-        "stepper.changed",
-        () => controller.move(-1),
-        payload,
-      ),
-      actionCommand(
-        `${idPrefix}.next`,
-        label("next", "Next Step"),
-        group,
-        ["step", "stepper", label("next", "Next Step")],
-        "stepper.changed",
-        () => controller.move(1),
-        payload,
-      ),
-      actionCommand(
-        `${idPrefix}.last`,
-        label("last", "Last Step"),
-        group,
-        ["step", "stepper", label("last", "Last Step")],
-        "stepper.changed",
-        () => controller.last(),
-        payload,
-      ),
-    );
+    commands.push(...actionCommandGroup<TAction, StepperCommandPayload, StepperCommandKind, StepperStep | undefined>({
+      idPrefix,
+      group,
+      type: "stepper.changed",
+      keywords: ["step", "stepper"],
+      label,
+      payload,
+      entries: [
+        ["first", "First Step", () => controller.first()],
+        ["previous", "Previous Step", () => controller.move(-1)],
+        ["next", "Next Step", () => controller.move(1)],
+        ["last", "Last Step", () => controller.last()],
+      ],
+    }));
   }
 
   if (options.includeStepCommands ?? false) {
@@ -911,72 +807,23 @@ export function textBoxCommands<TAction extends Action = TextBoxCommandAction>(
   }
 
   if (options.includeCursorCommands ?? true) {
-    commands.push(
-      actionCommand(
-        `${idPrefix}.home`,
-        label("home", "Text Box Line Home"),
-        group,
-        ["textbox", "cursor", "home"],
-        "textbox.cursorMoved",
-        () => controller.home(),
-        payload,
-        () => payload().inspection.lineCount <= 0,
-      ),
-      actionCommand(
-        `${idPrefix}.left`,
-        label("left", "Text Box Cursor Left"),
-        group,
-        ["textbox", "cursor", "left"],
-        "textbox.cursorMoved",
-        () => controller.moveCursor({ x: -1 }),
-        payload,
-        () => payload().inspection.lineCount <= 0,
-      ),
-      actionCommand(
-        `${idPrefix}.right`,
-        label("right", "Text Box Cursor Right"),
-        group,
-        [
-          "textbox",
-          "cursor",
-          "right",
-        ],
-        "textbox.cursorMoved",
-        () => controller.moveCursor({ x: 1 }),
-        payload,
-        () => payload().inspection.lineCount <= 0,
-      ),
-      actionCommand(
-        `${idPrefix}.up`,
-        label("up", "Text Box Cursor Up"),
-        group,
-        ["textbox", "cursor", "up"],
-        "textbox.cursorMoved",
-        () => controller.moveCursor({ y: -1 }),
-        payload,
-        () => payload().inspection.lineCount <= 0,
-      ),
-      actionCommand(
-        `${idPrefix}.down`,
-        label("down", "Text Box Cursor Down"),
-        group,
-        ["textbox", "cursor", "down"],
-        "textbox.cursorMoved",
-        () => controller.moveCursor({ y: 1 }),
-        payload,
-        () => payload().inspection.lineCount <= 0,
-      ),
-      actionCommand(
-        `${idPrefix}.end`,
-        label("end", "Text Box Line End"),
-        group,
-        ["textbox", "cursor", "end"],
-        "textbox.cursorMoved",
-        () => controller.end(),
-        payload,
-        () => payload().inspection.lineCount <= 0,
-      ),
-    );
+    commands.push(...actionCommandGroup<TAction, TextBoxCommandPayload, TextBoxCommandKind, unknown>({
+      idPrefix,
+      group,
+      type: "textbox.cursorMoved",
+      keywords: ["textbox", "cursor"],
+      label,
+      payload,
+      disabled: () => payload().inspection.lineCount <= 0,
+      entries: [
+        ["home", "Text Box Line Home", () => controller.home(), ["textbox", "cursor", "home"]],
+        ["left", "Text Box Cursor Left", () => controller.moveCursor({ x: -1 }), ["textbox", "cursor", "left"]],
+        ["right", "Text Box Cursor Right", () => controller.moveCursor({ x: 1 }), ["textbox", "cursor", "right"]],
+        ["up", "Text Box Cursor Up", () => controller.moveCursor({ y: -1 }), ["textbox", "cursor", "up"]],
+        ["down", "Text Box Cursor Down", () => controller.moveCursor({ y: 1 }), ["textbox", "cursor", "down"]],
+        ["end", "Text Box Line End", () => controller.end(), ["textbox", "cursor", "end"]],
+      ],
+    }));
   }
 
   if (options.includeValueCommands ?? false) {
