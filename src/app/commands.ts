@@ -168,7 +168,7 @@ export class CommandRegistry<TAction extends Action = Action> {
       }
       this.orderedGroups = uniqueSorted(groups);
     }
-    return cloneStringArray(this.orderedGroups);
+    return this.orderedGroups.slice();
   }
 
   clear(group?: string): void {
@@ -279,11 +279,5 @@ function uniqueSorted(values: Array<string | undefined>): string[] {
 function cloneCommandArray<TAction extends Action>(commands: readonly Command<TAction>[]): Command<TAction>[] {
   const output = new Array<Command<TAction>>(commands.length);
   for (let index = 0; index < commands.length; index += 1) output[index] = commands[index]!;
-  return output;
-}
-
-function cloneStringArray(values: readonly string[]): string[] {
-  const output = new Array<string>(values.length);
-  for (let index = 0; index < values.length; index += 1) output[index] = values[index]!;
   return output;
 }

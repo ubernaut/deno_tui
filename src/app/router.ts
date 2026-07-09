@@ -103,7 +103,7 @@ export class RouteManager<TRoute extends Route = Route> {
       }
       this.#ids = ids;
     }
-    return cloneStringArray(this.#ids);
+    return this.#ids.slice();
   }
 
   activeIndex(): number {
@@ -415,12 +415,6 @@ function cloneRoutes<TRoute extends Route>(routes: readonly TRoute[]): TRoute[] 
   for (let index = 0; index < routes.length; index += 1) {
     output[index] = routes[index]!;
   }
-  return output;
-}
-
-function cloneStringArray(values: readonly string[]): string[] {
-  const output = new Array<string>(values.length);
-  for (let index = 0; index < values.length; index += 1) output[index] = values[index]!;
   return output;
 }
 

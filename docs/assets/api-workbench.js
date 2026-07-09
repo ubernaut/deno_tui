@@ -6407,7 +6407,7 @@ function createLayoutNode(options) {
   return {
     id: id2,
     tag: options.tag,
-    classes: cloneStringArray(classNames),
+    classes: classNames.slice(),
     attributes,
     text: options.text,
     style: options.style ? cloneComputedLayoutStyle(options.style) : defaultComputedLayoutStyle(),
@@ -6423,7 +6423,7 @@ function cloneLayoutNode(node) {
   return {
     id: node.id,
     tag: node.tag,
-    classes: cloneStringArray(node.classes),
+    classes: node.classes.slice(),
     attributes: { ...node.attributes },
     text: node.text,
     style: cloneComputedLayoutStyle(node.style),
@@ -6471,11 +6471,6 @@ function splitClassList(value) {
     }
   }
   return classes;
-}
-function cloneStringArray(values) {
-  const cloned = new Array(values.length);
-  for (let index = 0; index < values.length; index += 1) cloned[index] = values[index];
-  return cloned;
 }
 function isClassWhitespace(char) {
   return char === " " || char === "\n" || char === "	" || char === "\r" || char === "\f";

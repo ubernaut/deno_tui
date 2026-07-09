@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { AsyncSchedulerInspection } from "./scheduler.ts";
 import type { WorkerPoolInspection } from "./worker_pool.ts";
+import { uniqueSortedStrings as uniqueSorted } from "../utils/collections.ts";
 
 /** Runtime work primitive supported by the shared telemetry helpers. */
 export type RuntimeWorkloadKind = "scheduler" | "worker-pool";
@@ -287,17 +288,6 @@ function inferRuntimeWorkloadKind(raw: AsyncSchedulerInspection | WorkerPoolInsp
 
 function escapeMarkdownCell(value: string): string {
   return value.replaceAll("|", "\\|").replaceAll("\n", " ");
-}
-
-function uniqueSorted<T extends string>(values: Iterable<T>): T[] {
-  const output: T[] = [];
-  for (const value of values) {
-    let index = 0;
-    while (index < output.length && output[index]! < value) index += 1;
-    if (output[index] === value) continue;
-    output.splice(index, 0, value);
-  }
-  return output;
 }
 
 function cloneRuntimeWorkloadSources(values: readonly RuntimeWorkloadSource[]): RuntimeWorkloadSource[] {

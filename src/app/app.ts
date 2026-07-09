@@ -199,7 +199,7 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
 
   /** Returns installed plugin ids in registration order. */
   pluginIds(): string[] {
-    return cloneStringArray(this.#cachedPluginIds());
+    return this.#cachedPluginIds().slice();
   }
 
   /** Returns installed plugin metadata without exposing internal disposers. */
@@ -240,11 +240,11 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
         count: commands.length,
         enabled: enabledCommands,
         disabled: commands.length - enabledCommands,
-        groups: cloneStringArray(commandGroups),
+        groups: commandGroups.slice(),
       },
       keymap: {
         count: keyBindings.length,
-        groups: cloneStringArray(keymapGroups),
+        groups: keymapGroups.slice(),
       },
       focus: this.focus.inspect(),
       mouse: this.mouse.inspect(),
@@ -332,12 +332,6 @@ export class TuiApp<TAction extends Action = Action, TRoute extends Route = Rout
     this.#pluginIds = undefined;
     this.#pluginInspections = undefined;
   }
-}
-
-function cloneStringArray(values: readonly string[]): string[] {
-  const output = new Array<string>(values.length);
-  for (let index = 0; index < values.length; index += 1) output[index] = values[index]!;
-  return output;
 }
 
 function clonePluginInspections(values: readonly AppPluginInspection[]): AppPluginInspection[] {

@@ -382,7 +382,7 @@ export class FormController<TValues extends FormValues = FormValues> {
       else submittable = true;
       if (readOnly) readOnlyFields.push(name);
       if (errors.length > 0) {
-        const item: FormErrorSummaryItem<TValues> = { name: inspection.name, errors: cloneStringArray(errors) };
+        const item: FormErrorSummaryItem<TValues> = { name: inspection.name, errors: errors.slice() };
         if (field?.label !== undefined) item.label = field.label;
         if (field?.group !== undefined) item.group = field.group;
         errorSummary.push(item);
@@ -512,7 +512,7 @@ export function minLength(length: number, message = `Must be at least ${length} 
 
 function cloneRecord(record: Record<string, string[]>): Record<string, string[]> {
   const cloned: Record<string, string[]> = {};
-  for (const key in record) cloned[key] = cloneStringArray(record[key] ?? []);
+  for (const key in record) cloned[key] = (record[key] ?? []).slice();
   return cloned;
 }
 
@@ -531,7 +531,7 @@ function schemaFields<TValues extends FormValues>(
 
 function normalizeSchemaMessages(messages: readonly string[] | string | undefined): string[] {
   if (messages === undefined) return [];
-  return typeof messages === "string" ? [messages] : cloneStringArray(messages);
+  return typeof messages === "string" ? [messages] : messages.slice();
 }
 
 function resolveFieldState(state: FormFieldState | undefined): boolean {
@@ -577,12 +577,6 @@ function inspectFormGroups<TValues extends FormValues>(
     });
   }
   return inspected;
-}
-
-function cloneStringArray(values: readonly string[]): string[] {
-  const cloned = new Array<string>(values.length);
-  for (let index = 0; index < values.length; index += 1) cloned[index] = values[index]!;
-  return cloned;
 }
 
 function appendMessages(existing: readonly string[], extra: readonly string[]): string[] {

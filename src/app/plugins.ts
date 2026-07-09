@@ -2,6 +2,7 @@
 import type { Focusable } from "../focus.ts";
 import { bindingId, type KeyBinding } from "../keymap.ts";
 import type { RuntimeWorkloadSource } from "../runtime/telemetry.ts";
+import { uniqueSortedStrings as uniqueSorted } from "../utils/collections.ts";
 import type { Action, ActionMiddleware } from "./actions.ts";
 import type { AppPlugin, AppPluginDisposer, TuiApp } from "./app.ts";
 import type { Command } from "./commands.ts";
@@ -358,7 +359,7 @@ export class AppPluginDefinitionRegistry<TAction extends Action = Action, TRoute
 
   #definitionIds(): string[] {
     if (!this.#ids) this.#ids = pluginDefinitionIds(this.#definitions);
-    return cloneStringArray(this.#ids);
+    return this.#ids.slice();
   }
 
   #anonymousCount(): number {
@@ -469,25 +470,6 @@ function workloadSourceIds(sources: readonly RuntimeWorkloadSource[]): string[] 
     ids[index] = sources[index]!.id;
   }
   return ids;
-}
-
-function uniqueSorted<T extends string>(values: Iterable<T>): T[] {
-  const output: T[] = [];
-  for (const value of values) {
-    let index = 0;
-    while (index < output.length && output[index]! < value) index += 1;
-    if (output[index] === value) continue;
-    output.splice(index, 0, value);
-  }
-  return output;
-}
-
-function cloneStringArray<T extends string>(values: readonly T[]): T[] {
-  const output = new Array<T>(values.length);
-  for (let index = 0; index < values.length; index += 1) {
-    output[index] = values[index]!;
-  }
-  return output;
 }
 
 function comparePluginInspections(left: AppPluginDefinitionInspection, right: AppPluginDefinitionInspection): number {

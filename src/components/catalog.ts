@@ -328,12 +328,12 @@ export function queryComponents(query: ComponentCatalogQuery = {}): ComponentCat
 
 /** Returns the known component categories in sorted order. */
 export function componentCategories(): ComponentCategory[] {
-  return cloneStringArray(COMPONENT_CATEGORIES);
+  return COMPONENT_CATEGORIES.slice();
 }
 
 /** Returns the known component capability tags in sorted order. */
 export function componentCapabilities(): ComponentCapability[] {
-  return cloneStringArray(COMPONENT_CAPABILITIES);
+  return COMPONENT_CAPABILITIES.slice();
 }
 
 function createComponentCategoryCounts(): Record<ComponentCategory, number> {
@@ -502,12 +502,6 @@ function sortedSetValues<T extends string>(values: Set<T>): T[] {
   for (const value of values) sorted.push(value);
   sorted.sort();
   return sorted;
-}
-
-function cloneStringArray<T extends string>(values: readonly T[]): T[] {
-  const cloned = new Array<T>(values.length);
-  for (let index = 0; index < values.length; index += 1) cloned[index] = values[index]!;
-  return cloned;
 }
 
 function formatNonZeroEntries<T extends string>(record: Record<T, number>): string {

@@ -1,3 +1,5 @@
+import { uniqueSortedStrings as uniqueSorted } from "../src/utils/collections.ts";
+
 export interface VisualizationLaunchTarget {
   task: string;
   aliases: readonly string[];
@@ -399,10 +401,6 @@ function launchSortKey(target: VisualizationLaunchTarget): string {
 
 function normalizeLaunchLookup(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
-}
-
-function uniqueSorted<T extends string>(values: Iterable<T>): T[] {
-  return [...new Set(values)].sort();
 }
 
 function isLaunchCategory(value: string | undefined): value is VisualizationLaunchCategory {

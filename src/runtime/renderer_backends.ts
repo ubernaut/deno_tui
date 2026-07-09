@@ -6,6 +6,7 @@ import {
   type RuntimeRendererStrategy,
 } from "./capabilities.ts";
 import { Signal } from "../signals/mod.ts";
+import { uniqueSortedStrings as uniqueSorted } from "../utils/collections.ts";
 
 /** Public interface describing a runtime Renderer Backend Definition. */
 export interface RuntimeRendererBackendDefinition {
@@ -161,8 +162,8 @@ export class RuntimeRendererBackend {
       label: this.label,
       description: this.description,
       strategy: this.strategy,
-      capabilities: cloneStringArray(this.capabilities),
-      tags: cloneStringArray(this.tags),
+      capabilities: this.capabilities.slice(),
+      tags: this.tags.slice(),
       priority: this.priority,
       available: missingCapabilities.length === 0,
       missingCapabilities,
@@ -219,7 +220,7 @@ export class RuntimeRendererBackendRegistry {
       }
       this.#orderedIds = ids;
     }
-    return cloneStringArray(this.#orderedIds);
+    return this.#orderedIds.slice();
   }
 
   backends(): RuntimeRendererBackend[] {
@@ -548,25 +549,6 @@ function compareRendererBackendInspections(
   right: RuntimeRendererBackendInspection,
 ): number {
   return right.priority - left.priority || left.id.localeCompare(right.id);
-}
-
-function uniqueSorted<T extends string>(values: Iterable<T>): T[] {
-  const output: T[] = [];
-  for (const value of values) {
-    let index = 0;
-    while (index < output.length && output[index]! < value) index += 1;
-    if (output[index] === value) continue;
-    output.splice(index, 0, value);
-  }
-  return output;
-}
-
-function cloneStringArray<T extends string>(values: readonly T[]): T[] {
-  const output = new Array<T>(values.length);
-  for (let index = 0; index < values.length; index += 1) {
-    output[index] = values[index]!;
-  }
-  return output;
 }
 
 function cloneRendererBackendArray(values: readonly RuntimeRendererBackend[]): RuntimeRendererBackend[] {

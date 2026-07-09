@@ -101,7 +101,7 @@ export class SettingsController {
       keys.sort();
       this.#keys = keys;
     }
-    return cloneStringArray(this.#keys);
+    return this.#keys.slice();
   }
 
   localKeys(): string[] {
@@ -113,7 +113,7 @@ export class SettingsController {
       }
       this.#localKeys = localKeys;
     }
-    return cloneStringArray(this.#localKeys);
+    return this.#localKeys.slice();
   }
 
   async ready(): Promise<void> {
@@ -236,10 +236,4 @@ export function bindSettingsCommands<TAction extends Action = SettingsCommandAct
   options: SettingsCommandOptions = {},
 ): () => void {
   return registry.registerAll(settingsCommands<TAction>(settings, options));
-}
-
-function cloneStringArray(values: readonly string[]): string[] {
-  const cloned = new Array<string>(values.length);
-  for (let index = 0; index < values.length; index += 1) cloned[index] = values[index]!;
-  return cloned;
 }

@@ -98,7 +98,7 @@ export class TerminalBackendRegistry {
       for (const id of this.#providers.keys()) ids.push(id);
       this.#ids = ids;
     }
-    return cloneStringArray(this.#ids);
+    return this.#ids.slice();
   }
 
   providers(): TerminalBackendProvider[] {
@@ -254,11 +254,5 @@ function cloneTerminalBackendProviders(providers: readonly TerminalBackendProvid
       providers[index]!,
     );
   }
-  return output;
-}
-
-function cloneStringArray(values: readonly string[]): string[] {
-  const output = new Array<string>(values.length);
-  for (let index = 0; index < values.length; index += 1) output[index] = values[index]!;
   return output;
 }

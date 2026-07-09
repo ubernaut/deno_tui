@@ -142,7 +142,7 @@ export class ThemeEnginePipeline {
       for (const id of this.#steps.keys()) ids.push(id);
       this.#ids = ids;
     }
-    return cloneStringArray(this.#ids);
+    return this.#ids.slice();
   }
 
   activeIds(): string[] {
@@ -153,7 +153,7 @@ export class ThemeEnginePipeline {
       }
       this.#activeIds = ids;
     }
-    return cloneStringArray(this.#activeIds);
+    return this.#activeIds.slice();
   }
 
   setEnabled(id: string, enabled: boolean): boolean {
@@ -338,12 +338,6 @@ function sortedObjectKeys(value: object): string[] {
     keys.push(key);
   }
   return keys.sort();
-}
-
-function cloneStringArray(values: readonly string[]): string[] {
-  const output = new Array<string>(values.length);
-  for (let index = 0; index < values.length; index += 1) output[index] = values[index]!;
-  return output;
 }
 
 function isThemeEngine(value: ThemeEngine | ThemeEngineOptions): value is ThemeEngine {

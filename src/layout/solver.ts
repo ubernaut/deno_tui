@@ -111,7 +111,7 @@ export function createLayoutNode(options: LayoutNodeOptions): LayoutNode {
   return {
     id,
     tag: options.tag,
-    classes: cloneStringArray(classNames),
+    classes: classNames.slice(),
     attributes,
     text: options.text,
     style: options.style ? cloneComputedLayoutStyle(options.style) : defaultComputedLayoutStyle(),
@@ -129,7 +129,7 @@ export function cloneLayoutNode(node: LayoutNode): LayoutNode {
   return {
     id: node.id,
     tag: node.tag,
-    classes: cloneStringArray(node.classes),
+    classes: node.classes.slice(),
     attributes: { ...node.attributes },
     text: node.text,
     style: cloneComputedLayoutStyle(node.style),
@@ -189,12 +189,6 @@ function splitClassList(value: string | undefined): string[] {
     }
   }
   return classes;
-}
-
-function cloneStringArray(values: readonly string[]): string[] {
-  const cloned = new Array<string>(values.length);
-  for (let index = 0; index < values.length; index += 1) cloned[index] = values[index]!;
-  return cloned;
 }
 
 function isClassWhitespace(char: string): boolean {

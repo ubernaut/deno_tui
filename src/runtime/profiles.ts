@@ -10,6 +10,7 @@ import {
   type RuntimeWorkerStrategy,
 } from "./capabilities.ts";
 import { Signal } from "../signals/mod.ts";
+import { uniqueSortedStrings as uniqueSorted } from "../utils/collections.ts";
 
 /** Public interface describing a runtime Profile Definition. */
 export interface RuntimeProfileDefinition {
@@ -179,7 +180,7 @@ export class RuntimeProfile {
       label: this.label,
       description: this.description,
       options: { ...this.options },
-      tags: cloneStringArray(this.tags),
+      tags: this.tags.slice(),
       priority: this.priority,
     };
   }
@@ -253,7 +254,7 @@ export class RuntimeProfileRegistry {
       }
       this.#orderedIds = ids;
     }
-    return cloneStringArray(this.#orderedIds);
+    return this.#orderedIds.slice();
   }
 
   profiles(): RuntimeProfile[] {
@@ -538,31 +539,12 @@ function normalizeProfileLookup(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
-function uniqueSorted<T extends string>(values: Iterable<T>): T[] {
-  const output: T[] = [];
-  for (const value of values) {
-    let index = 0;
-    while (index < output.length && output[index]! < value) index += 1;
-    if (output[index] === value) continue;
-    output.splice(index, 0, value);
-  }
-  return output;
-}
-
 function compareRuntimeProfiles(left: RuntimeProfile, right: RuntimeProfile): number {
   return right.priority - left.priority || left.id.localeCompare(right.id);
 }
 
 function compareRuntimeProfilePlans(left: RuntimeProfilePlanInspection, right: RuntimeProfilePlanInspection): number {
   return right.priority - left.priority || left.label.localeCompare(right.label);
-}
-
-function cloneStringArray<T extends string>(values: readonly T[]): T[] {
-  const output = new Array<T>(values.length);
-  for (let index = 0; index < values.length; index += 1) {
-    output[index] = values[index]!;
-  }
-  return output;
 }
 
 function profileSearchValueIncludes(value: string, needle: string): boolean {

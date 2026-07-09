@@ -179,11 +179,11 @@ function createThemeGalleryItem(
   const inspection = engine.inspect();
   const palette = typeof pack?.palette === "string" ? pack.palette : pack?.palette?.id ?? "plain";
   const sample = options.sample ?? "Aa";
-  const tokenNames = options.tokens ? sortedThemeTokenNames(options.tokens) : cloneStringArray(themeTokenNames);
+  const tokenNames = options.tokens ? sortedThemeTokenNames(options.tokens) : themeTokenNames.slice();
   const componentNames = options.components
-    ? cloneStringArray(options.components)
+    ? Array.from(options.components)
     : inspectedComponentNames(inspection.components);
-  const stateNames = options.states ? sortedThemeStates(options.states) : cloneStringArray(themeStates);
+  const stateNames = options.states ? sortedThemeStates(options.states) : themeStates.slice();
   const variants: Record<string, string[]> = {};
 
   for (const component of inspection.components) {
@@ -286,14 +286,6 @@ function sortedThemeStates(values: Iterable<string>): ThemeState[] {
   return states;
 }
 
-function cloneStringArray<T extends string>(values: Iterable<T>): T[] {
-  const cloned: T[] = [];
-  for (const value of values) {
-    cloned.push(value);
-  }
-  return cloned;
-}
-
 function inspectedComponentNames(components: ReturnType<ThemeEngine["inspect"]>["components"]): string[] {
   const names = new Array<string>(components.length);
   for (let index = 0; index < components.length; index += 1) {
@@ -328,7 +320,7 @@ function previewThemeGalleryComponents(
   const previews: ThemeGalleryComponentStatePreview[] = [];
   for (const component of componentNames) {
     const variantNames = variantsOption
-      ? cloneStringArray(variantsOption(component, engine))
+      ? Array.from(variantsOption(component, engine))
       : defaultVariantNames(engine, component);
     for (const variant of variantNames) {
       const theme = engine.component(component, variant);
