@@ -224,7 +224,7 @@ export class RuntimeRendererBackendRegistry {
   }
 
   backends(): RuntimeRendererBackend[] {
-    return cloneRendererBackendArray(this.#orderedBackendList());
+    return Array.from(this.#orderedBackendList());
   }
 
   inspect(capabilities: RuntimeCapabilities = detectRuntimeCapabilities()): RuntimeRendererBackendInspection[] {
@@ -549,14 +549,6 @@ function compareRendererBackendInspections(
   right: RuntimeRendererBackendInspection,
 ): number {
   return right.priority - left.priority || left.id.localeCompare(right.id);
-}
-
-function cloneRendererBackendArray(values: readonly RuntimeRendererBackend[]): RuntimeRendererBackend[] {
-  const output = new Array<RuntimeRendererBackend>(values.length);
-  for (let index = 0; index < values.length; index += 1) {
-    output[index] = values[index]!;
-  }
-  return output;
 }
 
 function rendererBackendIncludesSearchPart(

@@ -199,12 +199,12 @@ export class ThemeEngineFactoryRegistry {
       }
       this.#orderedIds = ids;
     }
-    return cloneFactoryStringArray(this.#orderedIds);
+    return Array.from(this.#orderedIds);
   }
 
   /** Returns factories sorted by priority and id. */
   factories(): ThemeEngineFactory[] {
-    return cloneThemeEngineFactories(this.orderedFactoryList());
+    return Array.from(this.orderedFactoryList());
   }
 
   /** Returns serializable inspections for all factories. */
@@ -428,18 +428,6 @@ function compareThemeEngineFactoryInspections(
 
 function compareThemeEngineFactories(left: ThemeEngineFactory, right: ThemeEngineFactory): number {
   return right.priority - left.priority || left.id.localeCompare(right.id);
-}
-
-function cloneThemeEngineFactories(values: readonly ThemeEngineFactory[]): ThemeEngineFactory[] {
-  const output = new Array<ThemeEngineFactory>(values.length);
-  for (let index = 0; index < values.length; index += 1) output[index] = values[index]!;
-  return output;
-}
-
-function cloneFactoryStringArray(values: readonly string[]): string[] {
-  const output = new Array<string>(values.length);
-  for (let index = 0; index < values.length; index += 1) output[index] = values[index]!;
-  return output;
 }
 
 function sortedSetValues(values: Set<string>): string[] {

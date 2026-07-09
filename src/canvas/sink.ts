@@ -328,7 +328,7 @@ export class MemoryCanvasSink implements CanvasCellSink {
     updates: readonly CanvasCellUpdate[],
   ): void {
     for (const range of ranges) {
-      this.rowRanges.push({ ...range, values: cloneCanvasRangeValues(range.values) });
+      this.rowRanges.push({ ...range, values: Array.from(range.values) });
     }
     this.flush(updates, stats);
   }
@@ -338,14 +338,6 @@ export class MemoryCanvasSink implements CanvasCellSink {
     this.rowRanges.length = 0;
     this.lastStats = undefined;
   }
-}
-
-function cloneCanvasRangeValues(values: readonly (string | Uint8Array)[]): (string | Uint8Array)[] {
-  const output = new Array<string | Uint8Array>(values.length);
-  for (let index = 0; index < values.length; index += 1) {
-    output[index] = values[index]!;
-  }
-  return output;
 }
 
 /** Coalesces sorted canvas cell updates into contiguous row ranges. */

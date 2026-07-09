@@ -10897,7 +10897,7 @@ var ModalController = class {
     return {
       open: this.openState.peek(),
       title: this.title.peek(),
-      body: cloneModalBody(this.body.peek()),
+      body: Array.from(this.body.peek()),
       tone: this.tone.peek(),
       actions,
       selectedActionIndex,
@@ -11010,13 +11010,6 @@ function appendSplitModalLines(lines, value) {
     start = index + 1;
   }
   lines.push(text.slice(start));
-}
-function cloneModalBody(body) {
-  const clone = new Array(body.length);
-  for (let index = 0; index < body.length; index += 1) {
-    clone[index] = body[index];
-  }
-  return clone;
 }
 function cloneModalActions(actions) {
   const clone = new Array(actions.length);
@@ -13828,7 +13821,7 @@ var TerminalScrollbackController = class {
       this.#activeMatch = 0;
       this.#offset = clamp(this.#matches[0], 0, this.#maxOffset());
     }
-    return cloneNumberArray(this.#matches);
+    return Array.from(this.#matches);
   }
   nextMatch(delta = 1) {
     if (this.#matches.length === 0) return void 0;
@@ -13884,7 +13877,7 @@ var TerminalScrollbackController = class {
       scrollbackRows: this.screen.inspect().scrollbackRows,
       liveRows: this.screen.rows,
       visibleRows: visibleRows(rows2, offset, this.#viewportRows),
-      matches: cloneNumberArray(this.#matches)
+      matches: Array.from(this.#matches)
     };
     if (this.#query) inspection.query = this.#query;
     if (this.#activeMatch >= 0) inspection.activeMatch = this.#activeMatch;
@@ -13971,11 +13964,6 @@ function visibleRows(rows2, offset, viewportRows) {
   const visible = [];
   for (let index = offset; index < end; index += 1) visible.push(rows2[index]);
   return visible;
-}
-function cloneNumberArray(values) {
-  const cloned = new Array(values.length);
-  for (let index = 0; index < values.length; index += 1) cloned[index] = values[index];
-  return cloned;
 }
 
 // src/runtime/terminal_sequences.ts

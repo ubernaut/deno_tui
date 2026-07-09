@@ -121,7 +121,7 @@ export class TerminalScrollbackController {
       this.#activeMatch = 0;
       this.#offset = clamp(this.#matches[0]!, 0, this.#maxOffset());
     }
-    return cloneNumberArray(this.#matches);
+    return Array.from(this.#matches);
   }
 
   nextMatch(delta = 1): number | undefined {
@@ -184,7 +184,7 @@ export class TerminalScrollbackController {
       scrollbackRows: this.screen.inspect().scrollbackRows,
       liveRows: this.screen.rows,
       visibleRows: visibleRows(rows, offset, this.#viewportRows),
-      matches: cloneNumberArray(this.#matches),
+      matches: Array.from(this.#matches),
     };
     if (this.#query) inspection.query = this.#query;
     if (this.#activeMatch >= 0) inspection.activeMatch = this.#activeMatch;
@@ -289,10 +289,4 @@ function visibleRows(rows: readonly string[], offset: number, viewportRows: numb
   const visible: string[] = [];
   for (let index = offset; index < end; index += 1) visible.push(rows[index]!);
   return visible;
-}
-
-function cloneNumberArray(values: readonly number[]): number[] {
-  const cloned = new Array<number>(values.length);
-  for (let index = 0; index < values.length; index += 1) cloned[index] = values[index]!;
-  return cloned;
 }

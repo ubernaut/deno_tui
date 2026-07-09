@@ -849,7 +849,7 @@ const standardComponentKeySet = new Set(
 
 /** Returns the canonical component names covered by the standard theme preset. */
 export function standardThemeComponentNames(): string[] {
-  return cloneThemeStringArray(standardComponentNames);
+  return Array.from(standardComponentNames);
 }
 
 /** Creates component theme definitions for the built-in widget catalog. */
@@ -2035,13 +2035,9 @@ export function previewThemeProvider(
   const sample = options.sample ?? "Aa";
   const engine = provider.engine.peek();
   const catalog = provider.catalog();
-  const requestedTokens = options.tokens
-    ? sortedThemeTokenNames(options.tokens)
-    : cloneThemeStringArray(themeTokenNames);
-  const componentNames = options.components
-    ? cloneThemeStringArray(options.components)
-    : catalogComponentNames(catalog);
-  const stateNames = options.states ? sortedThemeStates(options.states) : cloneThemeStringArray(themeStates);
+  const requestedTokens = options.tokens ? sortedThemeTokenNames(options.tokens) : Array.from(themeTokenNames);
+  const componentNames = options.components ? Array.from(options.components) : catalogComponentNames(catalog);
+  const stateNames = options.states ? sortedThemeStates(options.states) : Array.from(themeStates);
 
   return {
     sample,
@@ -2144,8 +2140,8 @@ function themeCatalogFromInspection(inspection: ThemeProviderInspection): ThemeC
   }
   return {
     activeId: inspection.activeId,
-    tokens: cloneThemeStringArray(themeTokenNames),
-    states: cloneThemeStringArray(themeStates),
+    tokens: Array.from(themeTokenNames),
+    states: Array.from(themeStates),
     themes,
     layers,
     components: mergeThemeCatalogComponents(...componentSources),
@@ -2158,14 +2154,6 @@ function catalogComponentNames(catalog: ThemeCatalog): string[] {
     names[index] = catalog.components[index]!.name;
   }
   return names;
-}
-
-function cloneThemeStringArray<T extends string>(values: Iterable<T>): T[] {
-  const cloned: T[] = [];
-  for (const value of values) {
-    cloned.push(value);
-  }
-  return cloned;
 }
 
 function mergeThemeCatalogComponents(
@@ -2226,7 +2214,7 @@ function previewThemeProviderComponents(
   const previews: ThemeProviderPreview["components"] = [];
   for (const component of componentNames) {
     const variants = variantsOption
-      ? cloneThemeStringArray(variantsOption(component, engine))
+      ? Array.from(variantsOption(component, engine))
       : defaultThemeProviderVariantNames(engine, component);
     for (const variant of variants) {
       const theme = engine.component(component, variant);
@@ -2362,21 +2350,21 @@ export class ThemeEngine {
       names.sort();
       this.#componentNames = names;
     }
-    return cloneThemeStringArray(this.#componentNames);
+    return Array.from(this.#componentNames);
   }
 
   variants(componentName: string): string[] {
     const cached = this.#variants.get(componentName);
-    if (cached) return cloneThemeStringArray(cached);
+    if (cached) return Array.from(cached);
     const variants = Object.keys(this.resolveComponentDefinition(componentName).variants ?? {});
     variants.sort();
     this.#variants.set(componentName, variants);
-    return cloneThemeStringArray(variants);
+    return Array.from(variants);
   }
 
   inspect(): ThemeInspection {
     return {
-      tokens: cloneThemeStringArray(themeTokenNames),
+      tokens: Array.from(themeTokenNames),
       components: this.componentNames().map((name) => ({
         name,
         variants: this.variants(name),

@@ -72,7 +72,7 @@ export class RouteManager<TRoute extends Route = Route> {
   #ids?: string[];
 
   constructor(routes: readonly TRoute[], initialRouteId = routes[0]?.id ?? "") {
-    this.routes = new Signal(cloneRoutes(routes), { deepObserve: true });
+    this.routes = new Signal(Array.from(routes), { deepObserve: true });
     this.activeRouteId = new Signal(initialRouteId);
     this.routes.subscribe(() => {
       this.invalidateRouteCache();
@@ -158,7 +158,7 @@ export class RouteManager<TRoute extends Route = Route> {
       activeIndex: this.activeIndex(),
       active: this.active(),
       ids: this.ids(),
-      routes: cloneRoutes(routes),
+      routes: Array.from(routes),
     };
   }
 
@@ -410,16 +410,8 @@ export function bindRouteCommands<TAction extends Action = Action, TRoute extend
   return registry.registerAll(routeCommands<TAction, TRoute>(routes, options));
 }
 
-function cloneRoutes<TRoute extends Route>(routes: readonly TRoute[]): TRoute[] {
-  const output = new Array<TRoute>(routes.length);
-  for (let index = 0; index < routes.length; index += 1) {
-    output[index] = routes[index]!;
-  }
-  return output;
-}
-
 function replaceRouteAt<TRoute extends Route>(routes: readonly TRoute[], index: number, route: TRoute): TRoute[] {
-  const output = cloneRoutes(routes);
+  const output = Array.from(routes);
   output[index] = route;
   return output;
 }

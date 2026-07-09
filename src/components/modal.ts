@@ -165,7 +165,7 @@ export class ModalController {
     return {
       open: this.openState.peek(),
       title: this.title.peek(),
-      body: cloneModalBody(this.body.peek()),
+      body: Array.from(this.body.peek()),
       tone: this.tone.peek(),
       actions,
       selectedActionIndex,
@@ -290,14 +290,6 @@ function appendSplitModalLines(lines: string[], value: unknown): void {
     start = index + 1;
   }
   lines.push(text.slice(start));
-}
-
-function cloneModalBody(body: readonly string[]): string[] {
-  const clone = new Array<string>(body.length);
-  for (let index = 0; index < body.length; index += 1) {
-    clone[index] = body[index]!;
-  }
-  return clone;
 }
 
 function cloneModalActions(actions: readonly ModalAction[]): ModalAction[] {

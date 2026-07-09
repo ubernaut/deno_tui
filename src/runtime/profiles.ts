@@ -258,7 +258,7 @@ export class RuntimeProfileRegistry {
   }
 
   profiles(): RuntimeProfile[] {
-    return cloneRuntimeProfiles(this.#orderedProfileList());
+    return Array.from(this.#orderedProfileList());
   }
 
   inspect(): RuntimeProfileInspection[] {
@@ -549,14 +549,6 @@ function compareRuntimeProfilePlans(left: RuntimeProfilePlanInspection, right: R
 
 function profileSearchValueIncludes(value: string, needle: string): boolean {
   return normalizeProfileLookup(value).includes(needle);
-}
-
-function cloneRuntimeProfiles(values: readonly RuntimeProfile[]): RuntimeProfile[] {
-  const output = new Array<RuntimeProfile>(values.length);
-  for (let index = 0; index < values.length; index += 1) {
-    output[index] = values[index]!;
-  }
-  return output;
 }
 
 function createRuntimeProfileLookupIndex(
