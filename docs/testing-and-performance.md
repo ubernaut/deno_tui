@@ -157,10 +157,11 @@ documentation coverage, and `docs/api-stable-baseline.json` stable export drift 
 verifies that `deno.jsonc` exports match the package stability manifest. `deno task e2e` runs finite public console
 reports, web type checks/tests, the GitHub Pages build, and generated browser asset checks in one gate. The generated
 `docs/api-reference.md` file expands that inventory into a complete public module and symbol reference. The screenshot
-task regenerates the README's deterministic JPEG terminal captures for the full demo portfolio under
-`docs/screenshots/`. The visual smoke task runs representative noninteractive demos, strips ANSI, and verifies stable
-anchor text for the gallery, window manager, component catalog, terminal command workflow, and capability report. Use it
-as a fast pre-screenshot check after changing layouts, themes, command output, or generated reports.
+task regenerates the README's curated JPEG captures for distinct interactive and catalog surfaces under
+`docs/screenshots/`; report-style demos remain reproducible as text through their tasks. The visual smoke task runs
+representative noninteractive demos, strips ANSI, and verifies stable anchor text for the gallery, window manager,
+component catalog, terminal command workflow, and capability report. Use it as a fast pre-screenshot check after
+changing layouts, themes, command output, or generated reports.
 
 Run the worker integration path with permissions:
 

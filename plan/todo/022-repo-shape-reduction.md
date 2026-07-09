@@ -17,6 +17,8 @@ What improved:
 - Three ASCII changes are guarded by live renderer, pressure, resize, fullscreen, and PTY visual probes.
 - Recent command-builder work removed repeated implementations instead of merely relocating them.
 - Workspace selection and dynamic Neon Three runtime-budget routing have focused regression coverage.
+- The screenshot catalog is now limited to six distinct surfaces: tracked screenshot weight fell from `26.1MB` to
+  `6.4MB`, and the tracked working tree fell from about `34.0MB` to `14.1MB`.
 
 What needs correction:
 
@@ -27,14 +29,13 @@ What needs correction:
 - Test consolidation reduced shard count but produced several `2k`-`3.9k`-line suites. Further merging would trade one
   navigation problem for another.
 - The old post-audit plan grew to `1,315` lines and this plan grew to `467` lines, mostly duplicating Git history.
-- Generated screenshots occupy about `26.1MB` of the roughly `34.0MB` tracked working tree.
 - The README still duplicates a broad API tour and previously advertised a dependency-free package despite explicit
   Three.js, Yoga, build, and screenshot dependencies.
 
 ## Current Snapshot
 
-- Tracked files: `521`
-- Directory counts: `src 263`, `tests 72`, `docs 50`, `examples 42`, `plan 26`, `scripts 22`, `app 20`
+- Tracked files: `491`
+- Directory counts: `src 263`, `tests 72`, `examples 42`, `plan 26`, `scripts 22`, `docs 20`, `app 20`
 - Top-level TypeScript:
   - `src/app`: `73` files, about `24.8k` lines
   - `src/runtime`: `32` files, about `11.1k` lines
@@ -118,6 +119,8 @@ Implementation policy:
 
 - Keep only screenshots that materially show a distinct interactive surface; report-style command output belongs in text
   documentation and reproducible tasks.
+- The retained screenshot set is Three ASCII, API Workbench, component catalog, Showcase, Neon Exodus, and system
+  monitor.
 - Keep the GitHub Pages bundle only while deployment consumes the checked-in artifact.
 - Treat generated API reference/baseline files as generated contracts and verify deterministic regeneration.
 - Keep active plans concise; use commits and completed summaries for historical detail.
