@@ -333,9 +333,17 @@ Deno.test("formatPackageApiReferenceMarkdown groups public entrypoints by stabil
       inventory: referenceInventory("mod.web.ts", "createWebTui"),
     },
   ];
+  const sharedModule = referenceInventory("shared.ts", "Shared").modules[0]!;
+  for (const section of sections) {
+    section.inventory.modules.push(sharedModule);
+    section.inventory.symbolCount += 1;
+    section.inventory.documentedSymbolCount += 1;
+  }
 
   const markdown = formatPackageApiReferenceMarkdown(sections);
   assertEquals(markdown.includes("Entrypoints: 2"), true);
+  assertEquals(markdown.includes("Unique modules: 3"), true);
+  assertEquals(markdown.includes("Module visits: 4"), true);
   assertEquals(markdown.includes("`./mod.ts`"), true);
   assertEquals(markdown.includes("terminal"), true);
   assertEquals(markdown.includes("stable"), true);
@@ -344,6 +352,9 @@ Deno.test("formatPackageApiReferenceMarkdown groups public entrypoints by stabil
   assertEquals(markdown.includes("beta"), true);
   assertEquals(markdown.includes("## Entrypoint ./web"), true);
   assertEquals(markdown.includes("`createWebTui`"), true);
+  assertEquals(markdown.match(/^### shared\.ts$/gm)?.length, 1);
+  assertEquals(markdown.match(/`Shared`/g)?.length, 1);
+  assertEquals(markdown.includes("_Entrypoints: `.`, `./web`_"), true);
 });
 
 function captureCliParseError(args: readonly string[]): string {

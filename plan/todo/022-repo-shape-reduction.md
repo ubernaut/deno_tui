@@ -24,6 +24,8 @@ What improved:
 - The README is now a focused entry document backed by generated references and queryable catalogs: it fell from `2,729`
   lines / `126KB` to `337` lines / `16KB` while retaining setup, architecture, workflow, demo, and quality-gate
   guidance.
+- The generated API reference now renders `236` unique modules once instead of repeating `492` entrypoint visits. It
+  fell from `9,131` lines / `564KB` to `4,783` lines / `278KB`, with deterministic drift detection in the health gate.
 
 What needs correction:
 
