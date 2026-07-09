@@ -18264,6 +18264,36 @@ function moveWorkbenchAsciiConfigSelection(current, rowCount, delta) {
   if (count === 0) return 0;
   return (Math.floor(current) + Math.floor(delta) + count) % count;
 }
+function resolveWorkbenchAsciiConfigKey(event) {
+  switch (event.key) {
+    case "escape":
+    case "q":
+      return { kind: "modal", action: "cancel" };
+    case "a":
+    case "A":
+      return { kind: "modal", action: "apply" };
+    case "o":
+    case "O":
+      return { kind: "modal", action: "ok" };
+    case "up":
+      return { kind: "selection", delta: -1 };
+    case "down":
+    case "tab":
+      return { kind: "selection", delta: event.shift ? -1 : 1 };
+    case "pageup":
+      return { kind: "selection", delta: -5 };
+    case "pagedown":
+      return { kind: "selection", delta: 5 };
+    case "left":
+      return { kind: "row", action: "previous" };
+    case "right":
+    case "return":
+    case "space":
+      return { kind: "row", action: "next" };
+    default:
+      return { kind: "none" };
+  }
+}
 function workbenchAsciiConfigVisibleRowStart(selected, rowCount, visibleRows2) {
   const count = Math.max(0, Math.floor(rowCount));
   const visible = Math.max(0, Math.floor(visibleRows2));
@@ -21420,52 +21450,24 @@ function applyThreeConfigModalAction(action) {
   if (action === "ok") closeThreeConfigModal();
 }
 function handleThreeConfigKey(event) {
-  const key = event.key.toLowerCase();
-  if (key === "escape") {
-    restoreThreeConfigBaseline();
-    closeThreeConfigModal();
-    return;
+  const action = resolveWorkbenchAsciiConfigKey(event);
+  switch (action.kind) {
+    case "modal":
+      applyThreeConfigModalAction(action.action);
+      return;
+    case "selection":
+      threeConfigSelected.value = moveWorkbenchAsciiConfigSelection(
+        threeConfigSelected.peek(),
+        asciiConfigRows.length,
+        action.delta
+      );
+      return;
+    case "row":
+      applyThreeConfigHit(threeConfigSelected.peek(), action.action);
+      return;
+    case "none":
+      return;
   }
-  if (key === "a") {
-    applyThreeConfigModalAction("apply");
-    return;
-  }
-  if (key === "o" || key === "return") {
-    applyThreeConfigModalAction("ok");
-    return;
-  }
-  if (key === "up") {
-    moveThreeConfigSelection(-1);
-    return;
-  }
-  if (key === "down" || key === "tab") {
-    moveThreeConfigSelection(event.shift ? -1 : 1);
-    return;
-  }
-  if (key === "pageup") {
-    moveThreeConfigSelection(-5);
-    return;
-  }
-  if (key === "pagedown") {
-    moveThreeConfigSelection(5);
-    return;
-  }
-  if (key === "left") {
-    applyThreeConfigHit(threeConfigSelected.peek(), "previous");
-    return;
-  }
-  if (key === "right") {
-    applyThreeConfigHit(threeConfigSelected.peek(), "next");
-    return;
-  }
-  if (key === "space") applyThreeConfigHit(threeConfigSelected.peek(), "activate");
-}
-function moveThreeConfigSelection(delta) {
-  threeConfigSelected.value = moveWorkbenchAsciiConfigSelection(
-    threeConfigSelected.peek(),
-    asciiConfigRows.length,
-    delta
-  );
 }
 function applyThreeConfigHit(index, action) {
   const row = asciiConfigRows[index];

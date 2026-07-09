@@ -155,6 +155,7 @@ import {
   defaultWorkbenchAsciiConfigRows,
   formatWorkbenchAsciiConfigRowText,
   moveWorkbenchAsciiConfigSelection,
+  resolveWorkbenchAsciiConfigKey,
   WorkbenchAsciiConfigController,
   type WorkbenchAsciiConfigRow,
 } from "../../src/app/workbench_ascii.ts";
@@ -1833,53 +1834,24 @@ function applyThreeConfigModalAction(action: WorkbenchAsciiConfigModalAction): v
 }
 
 function handleThreeConfigKey(event: { key: string; shift?: boolean }): void {
-  const key = event.key.toLowerCase();
-  if (key === "escape") {
-    restoreThreeConfigBaseline();
-    closeThreeConfigModal();
-    return;
+  const action = resolveWorkbenchAsciiConfigKey(event);
+  switch (action.kind) {
+    case "modal":
+      applyThreeConfigModalAction(action.action);
+      return;
+    case "selection":
+      threeConfigSelected.value = moveWorkbenchAsciiConfigSelection(
+        threeConfigSelected.peek(),
+        asciiConfigRows.length,
+        action.delta,
+      );
+      return;
+    case "row":
+      applyThreeConfigHit(threeConfigSelected.peek(), action.action);
+      return;
+    case "none":
+      return;
   }
-  if (key === "a") {
-    applyThreeConfigModalAction("apply");
-    return;
-  }
-  if (key === "o" || key === "return") {
-    applyThreeConfigModalAction("ok");
-    return;
-  }
-  if (key === "up") {
-    moveThreeConfigSelection(-1);
-    return;
-  }
-  if (key === "down" || key === "tab") {
-    moveThreeConfigSelection(event.shift ? -1 : 1);
-    return;
-  }
-  if (key === "pageup") {
-    moveThreeConfigSelection(-5);
-    return;
-  }
-  if (key === "pagedown") {
-    moveThreeConfigSelection(5);
-    return;
-  }
-  if (key === "left") {
-    applyThreeConfigHit(threeConfigSelected.peek(), "previous");
-    return;
-  }
-  if (key === "right") {
-    applyThreeConfigHit(threeConfigSelected.peek(), "next");
-    return;
-  }
-  if (key === "space") applyThreeConfigHit(threeConfigSelected.peek(), "activate");
-}
-
-function moveThreeConfigSelection(delta: number): void {
-  threeConfigSelected.value = moveWorkbenchAsciiConfigSelection(
-    threeConfigSelected.peek(),
-    asciiConfigRows.length,
-    delta,
-  );
 }
 
 function applyThreeConfigHit(index: number, action: ConfigHitAction): void {

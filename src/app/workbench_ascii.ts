@@ -206,6 +206,10 @@ export function resolveWorkbenchAsciiConfigKey(
     case "down":
     case "tab":
       return { kind: "selection", delta: event.shift ? -1 : 1 };
+    case "pageup":
+      return { kind: "selection", delta: -5 };
+    case "pagedown":
+      return { kind: "selection", delta: 5 };
     case "left":
       return { kind: "row", action: "previous" };
     case "right":

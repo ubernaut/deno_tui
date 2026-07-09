@@ -251,6 +251,8 @@ Deno.test("workbench ascii config key resolver maps keyboard controls", () => {
   assertEquals(resolveWorkbenchAsciiConfigKey({ key: "up" }), { kind: "selection", delta: -1 });
   assertEquals(resolveWorkbenchAsciiConfigKey({ key: "down" }), { kind: "selection", delta: 1 });
   assertEquals(resolveWorkbenchAsciiConfigKey({ key: "tab", shift: true }), { kind: "selection", delta: -1 });
+  assertEquals(resolveWorkbenchAsciiConfigKey({ key: "pageup" }), { kind: "selection", delta: -5 });
+  assertEquals(resolveWorkbenchAsciiConfigKey({ key: "pagedown" }), { kind: "selection", delta: 5 });
   assertEquals(resolveWorkbenchAsciiConfigKey({ key: "left" }), { kind: "row", action: "previous" });
   assertEquals(resolveWorkbenchAsciiConfigKey({ key: "right" }), { kind: "row", action: "next" });
   assertEquals(resolveWorkbenchAsciiConfigKey({ key: "return" }), { kind: "row", action: "next" });
