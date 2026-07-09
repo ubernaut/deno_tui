@@ -15,9 +15,9 @@ import {
   neonSuiteSections as sectionOrder,
   renderNeonSuiteDemo,
 } from "./neon_suite.ts";
-import { accentColor, makeStyle, palette, requireInteractiveTerminal, severityAccent } from "./styles.ts";
+import { accentColor, createNeonPanelStyles, makeStyle, palette, requireInteractiveTerminal } from "./styles.ts";
 import { ThreePanelView } from "./three_panel.ts";
-import type { Accent, AsciiOptions, BorderMode, PanelRender, Rect } from "./types.ts";
+import type { AsciiOptions, BorderMode, PanelRender, Rect } from "./types.ts";
 import { PanelView } from "./ui.ts";
 import { demos, formatCountdown, type NeonDemo } from "./visualizations.ts";
 
@@ -185,49 +185,7 @@ for (let index = 0; index < demos.length; index += 1) {
     body: new Computed(() => render.value.body),
     bodyPadToWidth: new Computed(() => !(render.value.three && selected.value && threeAsciiAvailable.value)),
     footer: new Computed(() => render.value.footer),
-    backgroundStyle: new Computed(() =>
-      makeStyle({
-        bg: selected.value ? palette.panelSoft : palette.panel,
-        fg: palette.paper,
-      })
-    ),
-    frameStyle: new Computed(() =>
-      makeStyle({
-        fg: selected.value ? palette.paper : accentColor(render.value.accent),
-        bg: selected.value ? palette.panelSoft : undefined,
-        bold: selected.value,
-      })
-    ),
-    titleStyle: new Computed(() =>
-      makeStyle({
-        fg: titleInk(render.value.accent),
-        bg: accentColor(render.value.accent),
-        bold: true,
-      })
-    ),
-    alertStyle: new Computed(() =>
-      makeStyle({
-        fg: titleInk(severityAccent(render.value.severity)),
-        bg: accentColor(severityAccent(render.value.severity)),
-        bold: render.value.alert.length > 0,
-      })
-    ),
-    bodyStyle: new Computed(() =>
-      makeStyle({
-        fg: render.value.severity === "alarm"
-          ? accentColor("alarm")
-          : render.value.severity === "warning"
-          ? accentColor("amber")
-          : palette.paper,
-        bg: selected.value ? palette.panelSoft : palette.panel,
-      })
-    ),
-    footerStyle: new Computed(() =>
-      makeStyle({
-        fg: selected.value ? accentColor(render.value.accent) : palette.dim,
-        bg: selected.value ? palette.panelSoft : palette.panel,
-      })
-    ),
+    ...createNeonPanelStyles(render, selected),
     borderMode: new Computed<BorderMode>(() => selected.value ? "sharp" : "rounded"),
     zIndex: 10,
   });
@@ -375,8 +333,4 @@ function renderShowcaseDemo(demo: NeonDemo, rect: Rect, selected: boolean): Pane
     width: Math.max(8, rect.width - 2),
     height: Math.max(4, rect.height - 4),
   });
-}
-
-function titleInk(accent: Accent) {
-  return accent === "phosphor" || accent === "signal" || accent === "amber" ? palette.void : palette.paper;
 }

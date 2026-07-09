@@ -1,5 +1,6 @@
 import type { Style } from "../src/theme.ts";
-import type { Accent, Severity } from "./types.ts";
+import { Computed } from "../src/signals/mod.ts";
+import type { Accent, PanelRender, Severity } from "./types.ts";
 
 export const palette = {
   void: "#05070d",
@@ -90,6 +91,62 @@ export function severityAccent(severity: Severity): Accent {
     default:
       return "signal";
   }
+}
+
+export function titleInk(accent: Accent): string {
+  return accent === "alarm" || accent === "violet" ? palette.paper : palette.void;
+}
+
+export function createNeonPanelStyles(
+  render: { readonly value: Pick<PanelRender, "accent" | "alert" | "severity"> },
+  selected: { readonly value: boolean },
+  options: { emphasizeSeverity?: boolean } = {},
+) {
+  return {
+    backgroundStyle: new Computed(() =>
+      makeStyle({
+        bg: selected.value ? palette.panelSoft : palette.panel,
+        fg: palette.paper,
+      })
+    ),
+    frameStyle: new Computed(() =>
+      makeStyle({
+        fg: selected.value ? palette.paper : accentColor(render.value.accent),
+        bg: selected.value ? palette.panelSoft : undefined,
+        bold: selected.value || (options.emphasizeSeverity === true && render.value.severity !== "info"),
+      })
+    ),
+    titleStyle: new Computed(() =>
+      makeStyle({
+        fg: titleInk(render.value.accent),
+        bg: accentColor(render.value.accent),
+        bold: true,
+      })
+    ),
+    alertStyle: new Computed(() =>
+      makeStyle({
+        fg: titleInk(severityAccent(render.value.severity)),
+        bg: accentColor(severityAccent(render.value.severity)),
+        bold: render.value.alert.length > 0,
+      })
+    ),
+    bodyStyle: new Computed(() =>
+      makeStyle({
+        fg: render.value.severity === "alarm"
+          ? accentColor("alarm")
+          : render.value.severity === "warning"
+          ? accentColor("amber")
+          : palette.paper,
+        bg: selected.value ? palette.panelSoft : palette.panel,
+      })
+    ),
+    footerStyle: new Computed(() =>
+      makeStyle({
+        fg: selected.value ? accentColor(render.value.accent) : palette.dim,
+        bg: selected.value ? palette.panelSoft : palette.panel,
+      })
+    ),
+  };
 }
 
 export function clamp(value: number, min = 0, max = 1) {

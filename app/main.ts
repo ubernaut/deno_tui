@@ -19,12 +19,18 @@ import {
 } from "../src/three_ascii/options.ts";
 import { textWidth } from "../src/utils/strings.ts";
 import { AudioRegistry, buildSourceCatalog, discoverAudioSources, resolveSourceFramesInto } from "./sources.ts";
-import { accentColor, makeStyle, palette, requireInteractiveTerminal, severityAccent } from "./styles.ts";
+import {
+  accentColor,
+  createNeonPanelStyles,
+  makeStyle,
+  palette,
+  requireInteractiveTerminal,
+  severityAccent,
+} from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
 import { ThreePanelView } from "./three_panel.ts";
 import { FrameView, ListView, MultilineTextView, PanelView } from "./ui.ts";
 import {
-  type Accent,
   type BorderMode,
   borderModes,
   type LayoutId,
@@ -480,49 +486,7 @@ for (const slotId of slotIds) {
         : "";
       return `${renderValue.footer}${cycle}${overflow}`;
     }),
-    backgroundStyle: new Computed(() =>
-      makeStyle({
-        bg: selected.value ? palette.panelSoft : palette.panel,
-        fg: palette.paper,
-      })
-    ),
-    frameStyle: new Computed(() =>
-      makeStyle({
-        fg: selected.value ? palette.paper : accentColor(render.value.accent),
-        bg: selected.value ? palette.panelSoft : undefined,
-        bold: selected.value || render.value.severity !== "info",
-      })
-    ),
-    titleStyle: new Computed(() =>
-      makeStyle({
-        fg: titleInk(render.value.accent),
-        bg: accentColor(render.value.accent),
-        bold: true,
-      })
-    ),
-    alertStyle: new Computed(() =>
-      makeStyle({
-        fg: titleInk(severityAccent(render.value.severity)),
-        bg: accentColor(severityAccent(render.value.severity)),
-        bold: render.value.alert.length > 0,
-      })
-    ),
-    bodyStyle: new Computed(() =>
-      makeStyle({
-        fg: render.value.severity === "alarm"
-          ? accentColor("alarm")
-          : render.value.severity === "warning"
-          ? accentColor("amber")
-          : palette.paper,
-        bg: selected.value ? palette.panelSoft : palette.panel,
-      })
-    ),
-    footerStyle: new Computed(() =>
-      makeStyle({
-        fg: selected.value ? accentColor(render.value.accent) : palette.dim,
-        bg: selected.value ? palette.panelSoft : palette.panel,
-      })
-    ),
+    ...createNeonPanelStyles(render, selected, { emphasizeSeverity: true }),
     borderMode: new Computed(() => slots.value[slotId].ascii.border),
     zIndex: 10,
   });
@@ -1781,10 +1745,6 @@ function createDefaultSlots(): Record<SlotId, SlotConfig> {
       ascii: createDefaultAsciiOptions(),
     },
   };
-}
-
-function titleInk(accent: Accent) {
-  return accent === "alarm" || accent === "violet" ? palette.paper : palette.void;
 }
 
 void handleInput(tui);
