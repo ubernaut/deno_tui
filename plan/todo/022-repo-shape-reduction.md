@@ -21,6 +21,9 @@ What improved:
   second active/fullscreen/minimized signal model before and after every action.
 - The screenshot catalog is now limited to six distinct surfaces: tracked screenshot weight fell from `26.1MB` to
   `6.4MB`, and the tracked working tree fell from about `34.0MB` to `14.1MB`.
+- The README is now a focused entry document backed by generated references and queryable catalogs: it fell from `2,729`
+  lines / `126KB` to `337` lines / `16KB` while retaining setup, architecture, workflow, demo, and quality-gate
+  guidance.
 
 What needs correction:
 
@@ -30,9 +33,7 @@ What needs correction:
   `2.3k` lines.
 - Test consolidation reduced shard count but produced several `2k`-`3.9k`-line suites. Further merging would trade one
   navigation problem for another.
-- The old post-audit plan grew to `1,315` lines and this plan grew to `467` lines, mostly duplicating Git history.
-- The README still duplicates a broad API tour and previously advertised a dependency-free package despite explicit
-  Three.js, Yoga, build, and screenshot dependencies.
+- Historical plans became append-only Git-history substitutes; keep this plan focused on current policy and priorities.
 
 ## Current Snapshot
 
@@ -121,6 +122,8 @@ Implementation policy:
 
 - Keep only screenshots that materially show a distinct interactive surface; report-style command output belongs in text
   documentation and reproducible tasks.
+- Keep the README as an entry document; generated references and queryable catalogs own exhaustive symbol, component,
+  benchmark, plugin, launcher, and task inventories.
 - The retained screenshot set is Three ASCII, API Workbench, component catalog, Showcase, Neon Exodus, and system
   monitor.
 - Keep the GitHub Pages bundle only while deployment consumes the checked-in artifact.
