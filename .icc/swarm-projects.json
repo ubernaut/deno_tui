@@ -21,7 +21,8 @@
         "tmp",
         "assets",
         "docs/assets",
-        "docs/screenshots"
+        "docs/screenshots",
+        "NeonExodus"
       ],
       "verification_commands": [
         "deno fmt --check",

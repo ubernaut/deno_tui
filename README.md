@@ -6,7 +6,7 @@
 [![Deno doc](https://doc.deno.land/badge.svg)](https://doc.deno.land/https://deno.land/x/tui/mod.ts)
 
 A [Deno](https://github.com/denoland/deno/) module for building Terminal User Interfaces. Reactive, composable, and
-zero-dependency.
+Deno-first, with focused package entrypoints for optional Three.js, Yoga, browser-build, and screenshot tooling.
 
 This fork extends the original TUI toolkit into a WebGPU-backed terminal visualization lab. The core component set is
 still here, but the headline additions are a richer three.js ASCII renderer, Neon Exodus-style visualization demos, and
@@ -213,7 +213,8 @@ directly.
 - **Three.js ASCII renderer** — render 3D scenes as ASCII art in the terminal via the `ThreeAscii` component
 - **Styling framework agnostic** — works with any terminal styling library;
   [Crayon](https://github.com/crayon-js/crayon) is recommended
-- **Zero dependencies** — no external runtime dependencies required
+- **Focused dependency boundaries** — core terminal APIs stay Deno-first, while Three.js, Yoga, browser-build, and
+  screenshot tooling are isolated behind their owning entrypoints and tasks
 
 ## OS Support
 

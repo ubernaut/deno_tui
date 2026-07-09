@@ -2,465 +2,147 @@
 
 ## Goal
 
-Reduce repository sprawl and demo/test bloat without weakening the core Deno TUI library. Favor fewer, clearer modules,
-runtime probes that catch real failures, and deletion-heavy refactors over adding more narrow implementation tests.
+Reduce implementation and repository bloat without weakening the Deno TUI library or its real runtime checks. Prefer
+semantic deletion, clear ownership, smaller public surface area, and measured hot-path improvements over moving code
+between files.
+
+## July 9, 2026 Audit
+
+The refactor is moving in the right direction, but the proxy metric drifted.
+
+What improved:
+
+- Tracked files fell from `570` to `521`: `src` is down `33`, `app` is down `9`, and `scripts` is down `5` files.
+- Terminal/browser workbench behavior now shares more renderer-neutral projection and policy.
+- Three ASCII changes are guarded by live renderer, pressure, resize, fullscreen, and PTY visual probes.
+- Recent command-builder work removed repeated implementations instead of merely relocating them.
+- Workspace selection and dynamic Neon Three runtime-budget routing have focused regression coverage.
+
+What needs correction:
+
+- File count became a goal in itself. Recent history contains extraction/folding cycles for the same workbench code.
+- Cohesive internal modules were folded into monoliths: `src/theme.ts` is now roughly `2.5k` lines, while the largest
+  app adapters remain `app/api_workbench.ts` at roughly `3.9k` lines and `examples/web/api_workbench_page.ts` at roughly
+  `2.3k` lines.
+- Test consolidation reduced shard count but produced several `2k`-`3.9k`-line suites. Further merging would trade one
+  navigation problem for another.
+- The old post-audit plan grew to `1,315` lines and this plan grew to `467` lines, mostly duplicating Git history.
+- Generated screenshots occupy about `26.1MB` of the roughly `34.0MB` tracked working tree.
+- The README still duplicates a broad API tour and previously advertised a dependency-free package despite explicit
+  Three.js, Yoga, build, and screenshot dependencies.
 
 ## Current Snapshot
 
-- Tracked files after the current consolidation passes: `570`
-- Tracked top-level file counts:
-  - `src`: `296`
-  - `tests`: `74`
-  - `app`: `29`
-  - `docs`: `50`
-  - `examples`: `42`
-  - `scripts`: `27`
-  - `plan`: `26`
-- Handwritten/code-heavy line counts:
-  - `src/app`: `24,617` lines across `75` top-level files
-  - `src/runtime`: `11,118` lines across `34` files
-  - `src/components`: `10,261` lines across `43` files
-  - `src/three_ascii`: `6,978` lines across `23` top-level files
-  - `app`: `20,346` lines across `29` files
-  - `examples`: `5,043` lines across `34` top-level files
-  - `tests`: `49,629` lines across `71` top-level suites (`74` tracked test files including fixtures)
-- Generated/docs weight:
-  - `docs/screenshots`: roughly `26MB`
-  - `docs/assets/api-workbench.js`: roughly `732KB`
-  - `docs/api-reference.md`: roughly `552KB`
-  - `docs/assets/api-workbench.js.map` is no longer tracked; `deno task web:pages:build` omits sourcemaps and removes
-    stale map artifacts.
+- Tracked files: `521`
+- Directory counts: `src 263`, `tests 72`, `docs 50`, `examples 42`, `plan 26`, `scripts 22`, `app 20`
+- Top-level TypeScript:
+  - `src/app`: `73` files, about `24.8k` lines
+  - `src/runtime`: `32` files, about `11.1k` lines
+  - `src/components`: `43` files, about `10.3k` lines
+  - `src/three_ascii`: `20` files, about `7.0k` lines
+  - `app`: `20` files, about `21.1k` lines
+  - `examples`: `34` files, about `5.0k` lines
+  - `tests`: `69` suites, about `50.9k` lines
+- Largest handwritten implementation surfaces:
+  - `app/api_workbench.ts`: `3,891` lines
+  - `src/theme.ts`: `2,508` lines
+  - `examples/web/api_workbench_page.ts`: `2,343` lines
+  - `app/main.ts`: `1,827` lines
+  - `app/visualizations.ts`: `1,736` lines
+  - `app/api_workbench_window_view.ts`: `1,583` lines
+  - `app/api_workbench_controls.ts`: `1,454` lines
 
-## Findings
+These numbers are review signals, not targets. A large cohesive module can be preferable to many forwarding shards; the
+required evidence is simpler ownership or less implementation, not a particular line count.
 
-The biggest maintainability issue is not one oversized file alone. The repo has accumulated many small feature, adapter,
-parser, and test files around demo-specific behavior. That increases import churn, makes runtime breakage easy to miss,
-and creates the impression of broad coverage even when the real failure mode is interactive workbench behavior.
+## Refactor Rules
 
-The library core is real and valuable, but it needs clearer boundaries:
+A milestone must demonstrate at least one of the following:
 
-- `src` should hold reusable APIs and renderer/runtime internals.
-- `app` should be a thin demo/application layer, not a second framework.
-- `examples` should demonstrate package APIs, not carry parallel app frameworks.
-- `tests` should protect behavior and runtime contracts, not every tiny implementation shard.
-- checked-in docs artifacts should be intentional GitHub Pages inputs, not unexamined bulk.
+- less executable or duplicated implementation;
+- fewer public/internal compatibility paths;
+- a clearer library/demo ownership boundary with callers migrated;
+- fewer tracked generated bytes with deterministic regeneration preserved;
+- a retained runtime or allocation improvement shown by the relevant benchmark and live probe.
 
-## Priority Reductions
+The following do not qualify by themselves:
 
-### P1: Collapse App-Only Helper Shards
+- moving unchanged code into or out of a helper file;
+- reducing file count by creating a larger mixed-responsibility module;
+- splitting a large file into one-caller shards;
+- merging tests without removing duplicate setup or improving behavioral coverage;
+- adding microbenchmarks for private helpers without runtime evidence.
 
-- Consolidate small app-only parser/helper modules that have one runtime caller and direct tests.
-- Completed first passes:
-  - system metrics parser shards are now in `app/system_metrics_sources.ts`
-  - workbench buffer caches are now in `src/app/workbench_buffers.ts`
-  - workbench ANSI cursor/span caches are now private helpers inside `src/app/workbench_ansi_screen.ts`
-  - standalone visualization app navigation and monitor-window helpers are local to `app/main.ts`
-  - API workbench explorer, inspector, and log row projectors are bundled in `app/workbench_panels.ts`
-  - visualization Three fallback/signal helpers are bundled behind `app/visualizations.ts`
-  - the app ASCII options shim was removed in favor of direct `src/three_ascii/*` imports
-  - system metric diagnostics are folded into `app/system_metrics.ts`
-  - system metrics network parsing is folded into `app/system_metrics_sources.ts`
-  - API workbench content-size projection is folded into `app/workbench_panels.ts`
-  - input-widget command helpers are folded into `src/app/widget_commands.ts`
-  - terminal scrollback command helpers are folded into `src/app/terminal_commands.ts`
-  - modal focus binding is folded into `src/focus.ts`
-  - form field binding is folded into `src/app/forms.ts`
-  - runtime profile, renderer, and workload command helpers are folded into `src/app/runtime_commands.ts`
-  - settings reset command helpers are folded into `src/app/settings.ts`
-  - history route and command bindings are folded into `src/app/history.ts`
-  - terminal window layout bindings are folded into `src/app/terminal_commands.ts`
-  - theme pipeline command helpers are folded into `src/app/theme_commands.ts`
-  - theme engine command helpers are folded into `src/app/theme_commands.ts`
-  - data query params/result/table bindings are folded into `src/app/data_query_commands.ts`
-  - route signal, index, and command bindings are folded into `src/app/router.ts`
-  - runtime profile plugin wiring is folded into `src/app/runtime_commands.ts`
-  - runtime renderer backend plugin wiring is folded into `src/app/runtime_commands.ts`
-  - data query plugin wiring is folded into `src/app/data_query_commands.ts`
-  - theme workspace plugin wiring is folded into `src/app/theme_plugin.ts`
-  - API workbench control styles and wrapped-option projection are folded into `app/api_workbench_controls.ts`
-  - API workbench primitive control ids and hit types are folded into `app/api_workbench_controls.ts`
-  - API workbench control row projection is folded into `app/api_workbench_controls.ts`
-  - API workbench textbox projection is folded into `app/api_workbench_controls.ts`
-  - API workbench control traversal is folded into `app/api_workbench_control_base.ts`
-  - API workbench window catalog construction is folded into `app/api_workbench_catalog.ts`
-  - Neon Three ASCII wire overlays are folded into `app/neon_three.ts`
-  - Three panel value, lifecycle, and frame-update helpers are folded into `src/app/three_panel_core.ts`
-  - Workbench Three panel defaults are folded into `src/app/workbench_three_policy.ts`
-  - Workbench terminal size synchronization is folded into `src/app/workbench_repaint_policy.ts`
-  - Workbench Three overlay pressure gating is folded into `src/app/workbench_three_runtime.ts`
-  - Three panel render queue serialization is folded into `src/app/three_panel_core.ts`
-  - Workbench Three cadence telemetry is folded into `src/app/workbench_three_runtime.ts`
-  - app sorted-string insertion is folded into `src/app/commands.ts`
-  - Three ASCII deferred readback staleness now lives in `src/three_ascii/deferred_frame.ts`
-  - Three ASCII deferred readback submission and failure handling now live in `src/three_ascii/renderer.ts`
-  - Three ASCII camera-aspect, image-frame, and mapped-readback helpers now live in `src/three_ascii/renderer.ts`
-  - Three ASCII compute dispatch command encoding now lives in `src/three_ascii/compute_plan.ts`
-  - Three ASCII compute bind-group assembly now lives in `src/three_ascii/compute_resources.ts`
-  - Workbench viewport sizing and active-window reveal scroll math now live in `src/app/workbench_layout.ts`
-  - Workbench frame row assembly now lives in `src/app/workbench_frame.ts`
-  - Workbench ANSI output flushing now lives in `src/app/workbench_ansi_screen.ts`
-  - Workbench diagnostic status/log formatting now lives in `src/app/workbench_status.ts`
-  - Workbench Three window-state resolution now lives in `src/app/workbench_three_policy.ts`
-  - Workbench Three fullscreen/runtime ASCII budget policy now lives in `src/app/workbench_three_policy.ts`
-  - Neon Three scene catalog labels now live with the scene factory in `app/neon_three.ts`
-  - Workbench mobile command strip projection now lives in `src/app/workbench_control_layout.ts`
-  - Visualization slot default ordering now lives with the visualization facade in `app/visualizations.ts`
-  - System monitor process parsing and sorting now live in `app/system_metrics.ts`
-  - Showcase demo rendering now reuses the Neon suite render context and synthetic snapshot path in `app/neon_suite.ts`
-  - Monitor visualization renderers now share the truncation helper from `app/visualization_primitives.ts`
-  - Neon showcase and Neon Exodus now share their empty panel fallback through `app/neon_suite.ts`
-  - CPU monitor and CPU hex grid now share load-average and severity helpers through `app/visualization_primitives.ts`
-  - source-frame detail formatting now reuses compact byte and nullable-number helpers from `app/styles.ts`
-  - visualization panel source/alert summary helpers are folded into `app/visualization_primitives.ts`
-  - API workbench control-line projection is folded into `app/api_workbench_controls.ts`
-  - network monitor rendering is folded into the visualization catalog module that owns its only caller
-  - synthetic waveform helpers are folded into `app/visualization_primitives.ts` so Neon and workbench synthetic data
-    share the existing visualization helper module instead of a standalone app shard
-  - CPU hex-grid monitor layout, interaction, and render helpers are folded into `app/visualization_system.ts`, keeping
-    the public `app/visualizations.ts` facade stable while removing the standalone CPU hex app shard
-  - GPU monitor render helpers are folded into `app/visualization_system.ts` so CPU, memory, disk, process, and GPU
-    resource panels share one system monitor visualization module behind the stable `app/visualizations.ts` facade
-  - Three visualization fallback/signal helpers are folded into `app/visualizations.ts`, keeping renderer selection and
-    fallback behavior behind the same visualization facade instead of a standalone app-only shard
-  - Workbench ANSI span diff helpers are folded into `src/app/workbench_ansi_screen.ts`, keeping retained row diffing
-    inside the screen painter module that owns its only runtime path
-  - API workbench workspace storage defaults are folded into `src/app/workbench_workspace_menu.ts`, keeping workspace
-    menu behavior and persistence policy together instead of in a separate app-only config shard
-  - Three panel graphics-handle and grid-publication helpers are folded into `src/app/three_panel_core.ts`, keeping
-    frame ownership, grid publishing, and raster-image lifecycle logic in one Three panel core module
-  - API workbench terminal paint helpers are now private to `app/api_workbench.ts`, avoiding a reusable `src/app` shard
-    for renderer-specific color mapping that is not part of the public terminal API
-  - API workbench terminal status and output-line colors now live in `app/api_workbench_catalog.ts`, keeping shared
-    console/browser presentation policy app-local without adding public terminal API surface
-  - the unused allocating `resolveSourceFrames` app wrapper was removed; runtime paths use the reusable
-    `resolveSourceFramesInto` buffer API directly
-  - Three ASCII compute-mode resolution is folded into `src/three_ascii/effect_state.ts`, removing an internal renderer
-    shard while keeping the compute pass decision covered by the existing Three ASCII core tests
-  - Three ASCII compute-pipeline creation and caching is folded into `src/three_ascii/compute_resources.ts`, keeping
-    WebGPU pipeline and bind-group resource helpers together instead of in a standalone internal shard
-  - Three ASCII readback grid assembly is folded into `src/three_ascii/readback.ts`, keeping packed readback layout,
-    typed view caching, and ANSI grid assembly adaptation in one internal readback module
-  - Three ASCII indexed ANSI color-key caching is folded into `src/three_ascii/colors.ts`, keeping linear-to-byte color
-    conversion and per-cell color-key reuse together instead of in a standalone internal shard
-  - Three ASCII GPU buffer slot helpers are folded into `src/three_ascii/compute_resources.ts`, keeping WebGPU buffer
-    lifecycle, pipeline caching, and bind-group resource helpers in one internal resource module
-  - Three ASCII compute uniform packing is folded into `src/three_ascii/compute_resources.ts`, keeping uniform buffer
-    layout and compute resource lifecycle in the same internal renderer module
-  - Three ASCII effect option patching is folded into `src/three_ascii/effect_state.ts`, keeping effect defaults, option
-    mutation, uniform dirtiness, and compute-mode decisions in one internal effect module
-  - Three ASCII deferred pre-scene and stale-frame policy is folded into `src/three_ascii/deferred_readback.ts`, keeping
-    deferred queue ownership and readback freshness decisions in one internal module
-  - Three ASCII ANSI background state is folded into `src/three_ascii/colors.ts`, keeping truecolor conversion,
-    background SGR state, and color-key caches in one internal color module
-  - Three ASCII probe CLI helpers are folded into `src/three_ascii/probe.ts`, keeping probe option parsing, summaries,
-    timing formatting, and CLI argument helpers in one probe-support module
-  - Three ASCII panel probe summaries and validation are folded into `src/three_ascii/probe.ts`, keeping renderer and
-    panel live-probe support together instead of split across tiny internal probe shards
-  - Three ASCII direct range copies now collapse repeated output cells through the existing range helper, reducing
-    per-cell work in block-heavy workbench panes without adding another renderer module
-  - Three ASCII fully visible range diffing now removes a redundant per-cell cache-valid branch from recurring frames,
-    keeping the range-queue hot path lean while preserving the cache-invalidation startup path
-  - ANSI canvas range flushing now caches parsed SGR prefix state, reducing repeated string scans while compacting
-    truecolor Three ASCII block spans across warm frames
-  - Workbench Three pressure probe support now lives in `src/app/workbench_three_pressure_probe.ts`, keeping
-    app-specific terminal pressure analysis out of the reusable Three ASCII renderer package boundary
-  - System metrics provider contracts and the Deno-backed provider are folded into `app/system_metrics_sources.ts`,
-    keeping app-only OS sampling sources together and removing a standalone provider shard without public API drift
-  - NVIDIA GPU sampling contracts, parser, and provider are folded into `app/system_metrics_sources.ts`, keeping GPU
-    command sampling with the other app-only system metric source adapters
-  - System snapshot history, alert, and empty-snapshot helpers are folded into `app/system_metrics.ts`, keeping monitor
-    state projection with the monitor controller and removing another app-only helper shard
-  - API workbench data-table row projection is folded into `app/workbench_panels.ts`, keeping panel content projection
-    together and removing a single-purpose app helper used only by the console and browser workbench demos
-  - API workbench modal content helpers are folded into `app/workbench_panels.ts`, keeping shared terminal/browser
-    presentation helpers together and removing another single-purpose app helper shard
-  - Neon Three geometry helpers are folded into `app/neon_three.ts`, keeping primitive scene builders with the scene
-    factory that owns them and removing a standalone app-only geometry shard
-  - Visualization catalog metadata and slot ordering are folded into `app/visualizations.ts`, keeping catalog, family
-    lookup, ordering, and render dispatch behind one stable visualization facade
-  - app multiline text and list views now share one private retained-line lifecycle helper in `app/ui.ts`, removing
-    duplicated resize/draw growth code without adding another app module
-  - Neon Three colors now derive from the shared app palette, removing a duplicated app-only color table while
-    preserving the existing Neon scene facade
-  - Workbench navigation help rows are folded into `src/app/workbench_status.ts`, keeping shortcut/help copy with the
-    status presentation helpers while preserving the public workbench facade export
-  - Workbench prompt-input helpers are folded into `src/app/workbench_text.ts`, keeping single-line prompt editing with
-    the shared text utilities that already own the corresponding tests and facade export
-  - Workbench Three viewport mouse routing is folded into `src/app/workbench_three_panel_registry.ts`, keeping panel
-    lifecycle and pointer interaction ownership together without widening the public workbench facade
-  - Standalone Three ASCII demo window geometry is folded into the app-local type surface in `app/types.ts`, keeping
-    terminal and web Three demo layout helpers out of a standalone app-only shard without widening the stable package
-    API
-  - Three panel rotate/zoom interaction state is folded into `src/app/three_panel_core.ts`, keeping frame lifecycle,
-    grid publication, graphics handles, and renderer interaction ownership in one core helper module while removing a
-    standalone internal shard
-  - Workbench global key resolution is folded into `src/app/workbench_menu.ts`, keeping top-level menu and shortcut
-    behavior in one stable facade module while removing the standalone keymap shard
-  - Three panel adaptive render-cell budgeting now resets on viewport shape changes, preventing stale low-resolution
-    caps when resized panes keep similar total area but change aspect ratio
-  - Workbench Three grid projection pre-sizes zero-column target rows before copying cells, reducing array-growth churn
-    in resized/maximized Three panes while preserving cells outside the projected region
-  - Three panel display-grid scaling is folded into `src/app/three_panel_core.ts`, keeping the pure capped-renderer
-    projection helper out of the app-facing Three panel facade while preserving the live resize behavior.
-  - Workbench Three surface rendering is folded into `src/app/workbench_three_grid.ts`, keeping resize/status projection
-    with the grid projector and removing the standalone surface helper and test shard.
-  - Theme provider report aggregation is folded into `src/theme_provider_report.ts`, keeping report construction and
-    Markdown formatting together behind the public `src/theme.ts` facade.
-  - Workbench Three grid benchmark setup is folded into `scripts/benchmark_cases.ts`, keeping renderer performance
-    coverage in the catalog while removing a single-use benchmark helper shard.
-  - Workbench Three block-span flush benchmark setup is folded into `scripts/benchmark_cases.ts`, keeping the terminal
-    output pressure guard in the catalog while removing another single-use benchmark helper shard.
-  - API workbench control key, style, dropdown, stepper-hit, and table-navigation helpers are folded into
-    `app/api_workbench_controls.ts`, preserving the facade while removing five app-only helper shards.
-  - API workbench control ids, line projection, and slider helpers are folded into `app/api_workbench_controls.ts`,
-    making the controls facade the single app-local implementation surface for the workbench controls panel.
-  - API workbench titlebar, scrollbar, touch-target, and hit-window resolution helpers are folded into
-    `app/api_workbench_controls.ts`, keeping pointer routing policy with the app-local controls facade and removing
-    another standalone workbench helper shard.
-  - Workbench Kitty graphics passthrough detection, status formatting, and paired auto/forced surface ownership are
-    folded into `src/runtime/graphics_surface.ts`, keeping raster terminal capability policy with the graphics surface
-    runtime and removing a single-caller app helper shard.
-  - The stale standalone visualization app layout shard was removed after the monitor switched to
-    `WindowManagerController`; the only live viewport-mode helper is now local to `app/main.ts`, and tests no longer
-    preserve unused slot-rectangle helpers.
-  - Visualization field renderers are folded into `app/visualizations.ts`, keeping app-only fallback/field drawing
-    helpers with the visualization dispatch facade that owns their only runtime path.
-  - TUI terminal resize snapback assertions are folded into `tests/workbench_layout.test.ts`, keeping resize policy
-    coverage with the existing layout/repaint suite instead of preserving a one-purpose test shard.
-  - GPU probe lock CLI behavior is folded into `scripts/gpu_probe_lock.ts`, removing the wrapper script while keeping
-    serialized WebGPU probe tasks on the same lock implementation.
-  - Workbench Three scene gating and equality helpers are folded into `src/app/workbench_three_policy.ts`, keeping the
-    app-internal scene signal policy with the existing Three workbench runtime policy module.
-  - Workbench Three rectangle and graphics-surface geometry helpers are folded into `src/app/workbench_three_policy.ts`,
-    keeping hidden-rect, body-rect, and clipped graphics rect policy with the rest of the workbench Three surface.
-  - Workbench Three header performance formatting is folded into `src/app/workbench_rows.ts`, keeping header row layout
-    and telemetry text projection in one row-rendering module.
-  - Fullscreen workbench visual-smoke driving is folded into `scripts/workbench_visual_smoke.ts`, removing the wrapper
-    script while keeping fullscreen, resize, replay, and inspection logic in one smoke-test module.
-- Next app-layer candidates:
-  - tiny control/window constants that are only consumed by workbench demos
-  - app-only visualization fallback helpers with a single consumer
-  - narrow tests that only defend one private app helper file
-- Keep monitor behavior and tests intact, but reduce file count and import surface.
+Implementation policy:
 
-### P1: Replace Test Shard Proliferation With Behavioral Bundles
+- `src` owns reusable library/runtime behavior; `app` owns demo composition; `examples` consume package APIs.
+- Keep public package entrypoints stable, but stop promoting demo/workbench internals through stable barrels.
+- Prefer a few responsibility-based modules over either one monolith or many one-function files.
+- Keep tests at subsystem boundaries and use integration probes for interactive/runtime failure modes.
+- Run GPU-backed probes serially through the existing lock.
+- Make an independent commit only when a slice is complete and verified.
 
-- Merge tiny tests when they cover the same subsystem and do not need separate fixtures.
-- Preserve meaningful assertions, but stop creating one test file per one tiny helper.
-- Completed first passes:
-  - `tests/utils/*` are now `tests/utils.test.ts`
-  - `src/testing` helper assertions are now bundled into `tests/utils.test.ts`, keeping test-only snapshot, canvas,
-    stdout, and input-target utilities with the general utility suite.
-  - API workbench explorer, inspector, and log projector tests are now `tests/workbench_panels.test.ts`
-  - visualization Three fallback/signal and renderer fallback tests are now `tests/visualization_three.test.ts`
-  - Neon Three scene catalog and geometry helper tests are now bundled into `tests/neon_suite.test.ts`
-  - system metric diagnostics tests are part of `tests/system_metrics.test.ts`
-  - storage fallback diagnostics tests are part of `tests/runtime.test.ts`
-  - tiny theme catalog, ANSI facade, layer stack, registry, engine, diff, coverage, manifest, and validation tests are
-    now `tests/theme_core.test.ts`
-  - theme provider facade, inspection, preview, and report tests are now `tests/theme_provider_workflows.test.ts`
-  - Three ASCII shader, LUT, color, and glyph-key tests are now `tests/three_ascii_core.test.ts`
-  - Three panel timing, value, frame-update, and lifecycle helper tests are now `tests/three_panel_core.test.ts`
-  - Three panel cadence and render-queue helper tests are now bundled into `tests/three_panel_core.test.ts`
-  - Three ASCII probe CLI helper tests are now bundled into `tests/three_ascii_probe.test.ts`
-  - generic visual smoke assertions are now bundled into `tests/workbench_visual_smoke.test.ts`
-  - system metrics source/parser assertions are now bundled into `tests/system_metrics_core.test.ts`
-  - terminal status presentation tests are now bundled into `tests/terminal_process.test.ts`, keeping process/session
-    behavior and presentation assertions in one terminal suite
-  - HTML/CSS layout fixtures and generated simple/Yoga parity checks are now bundled into
-    `tests/html_css_layout.test.ts`, keeping markup/CSS solver coverage with the owning layout suite
-  - Workbench Three pressure-probe summary, validation, CLI, and grid snapshot assertions are bundled into
-    `tests/workbench_three_terminal_pressure.test.ts`
-  - Terminal scrollback controller and command assertions are now bundled into `tests/terminal_screen.test.ts`, keeping
-    scrollback copy-mode/search/selection behavior with the runtime terminal screen coverage.
-  - Terminal workspace layout helper assertions are now bundled into `tests/terminal_workspace.test.ts`, keeping pane
-    creation, clone/prune, replace/remove/resize, title projection, and rect projection with workspace behavior.
-  - EventEmitter behavior tests are now bundled into `tests/app_primitives.test.ts`, removing the standalone root
-    primitive test shard without adding narrower coverage.
-  - Focus manager, focus-scope, modal-focus, and focus-command assertions are now bundled into
-    `tests/app_primitives.test.ts`, keeping focus behavior with the app primitive and command binding suite.
-  - HitTargetStack and rectangle-helper behavior tests are now bundled into `tests/app_primitives.test.ts`, removing
-    another standalone app-primitive shard without changing the covered assertions.
-  - Workbench window-registry and shelf/tab projection tests are now bundled into `tests/workbench_controller.test.ts`,
-    keeping window launch, visibility, minimized shelf, and fullscreen tab behavior in one workbench windowing suite.
-  - system metrics GPU, network, process, and snapshot helper tests are now `tests/system_metrics_core.test.ts`
-  - small Three ASCII renderer option/profile/frame/cache helper shards are now bundled into
-    `tests/three_ascii_core.test.ts`
-  - API workbench window catalog assertions are now bundled into `tests/workbench_panels.test.ts`
-  - visualization panel helper assertions are now bundled into `tests/visualization_primitives.test.ts`
-  - Three ASCII GPU buffer, uniform, performance, and headless canvas helper assertions are now bundled into
-    `tests/three_ascii_core.test.ts`
-  - Three panel effect, grid, and graphics helper assertions are now bundled into `tests/three_panel_core.test.ts`
-  - Three panel diagnostic assertions are now bundled into `tests/three_panel_core.test.ts`
-  - Workbench terminal-size sync assertions are now bundled into `tests/workbench_layout.test.ts`
-  - Workbench diagnostics formatting assertions are now bundled into `tests/workbench_status.test.ts`
-  - Workbench text helper and prompt-input assertions are now bundled into `tests/workbench_facade.test.ts`
-  - Workbench styled-row render assertions are now bundled into `tests/workbench_status.test.ts`
-  - Workbench terminal style assertions are now bundled into `tests/workbench_terminal.test.ts`
-  - Workbench viewport helper assertions are now bundled into `tests/workbench_layout.test.ts`
-  - Workbench Three window-state assertions are now bundled into `tests/workbench_three_policy.test.ts`
-  - Workbench Three fullscreen/runtime ASCII budget assertions are now bundled into
-    `tests/workbench_three_policy.test.ts`
-  - App style helper assertions are now bundled into `tests/app_primitives.test.ts`
-  - Three ASCII deferred pre-scene, staleness, submission, and failure assertions are now bundled into
-    `tests/three_ascii_core.test.ts`
-  - Three ASCII effect option and effect state assertions are now bundled into `tests/three_ascii_core.test.ts`
-  - Three ASCII compute pipeline assertions are now bundled into `tests/three_ascii_core.test.ts`
-  - Three ASCII renderer lifecycle, deferred fallback, and mapped-readback helper assertions are now bundled into
-    `tests/three_ascii_core.test.ts`
-  - Three ASCII compute dispatch and resource-plan assertions are now bundled into `tests/three_ascii_core.test.ts`
-  - Three ASCII compute command and bind-group assertions are now bundled into `tests/three_ascii_core.test.ts`
-  - Three ASCII readback layout, copy-plan, view-cache, and assembly adapter assertions are now bundled into
-    `tests/three_ascii_core.test.ts`
-  - Three ASCII canvas rerender range assertions are now bundled into `tests/three_ascii_diff.test.ts`
-  - Three ASCII deferred readback queue assertions are now bundled into `tests/three_ascii_core.test.ts`
-  - layout recipe, breakpoint markdown, slot inspection, and signal-backed recipe controller assertions are now bundled
-    into `tests/responsive_layout.test.ts`, keeping responsive layout recipe coverage with the layout primitives and
-    window-manager suite.
-  - Three ASCII WebGPU compatibility retry/lost-device assertions are now bundled into `tests/three_ascii_core.test.ts`
-  - Three ASCII preset/default option assertions are now bundled into `tests/workbench_ascii.test.ts`
-  - Standalone Three ASCII demo window geometry assertions are now bundled into `tests/three_ascii_glyphs.test.ts`
-  - Workbench Kitty graphics status and tmux passthrough assertions are now bundled into
-    `tests/graphics_surface.test.ts`
-  - Simple grid solver helper assertions are now bundled into `tests/html_css_layout.test.ts`, keeping private grid
-    placement coverage with the HTML/CSS simple solver behavior
-  - Split-pane rect, resize, ratio, and controller assertions are now bundled into `tests/responsive_layout.test.ts`,
-    keeping split-pane behavior with the rest of the layout primitive and window-manager coverage.
-  - Signal-driven legacy `HorizontalLayout`, `VerticalLayout`, and `GridLayout` assertions are now bundled into
-    `tests/responsive_layout.test.ts`, keeping old and new layout primitive coverage in one subsystem suite.
-  - API workbench data-table panel projection and page-size assertions are now bundled into
-    `tests/workbench_panels.test.ts`, keeping data-table panel rows with the rest of the workbench panel projectors.
-  - Workbench titlebar layout and button render-command assertions are now bundled into `tests/workbench_frame.test.ts`,
-    keeping renderer-neutral window chrome coverage with frame and frame-box projection behavior.
-  - Workbench full-repaint and terminal-size synchronization assertions are now bundled into
-    `tests/workbench_layout.test.ts`, keeping resize/repaint policy checks with the workbench viewport and layout suite.
-  - Workbench Three header, data footer, and styled-row render-command assertions are now bundled into
-    `tests/workbench_status.test.ts`, keeping status, header, footer, and row presentation coverage together.
-  - Workbench Three header telemetry assertions are now bundled into `tests/workbench_three_panel.test.ts`
-  - flex layout assertions are now bundled into `tests/responsive_layout.test.ts`
-  - Visualization panel defaults are now bundled into `tests/visualization_launcher.test.ts`
-  - Workbench mobile command strip assertions are now bundled into `tests/workbench_control_layout.test.ts`
-  - Workspace launcher catalog, file-explorer, window-preview, wrapped-bar, and quit-modal assertions are now bundled
-    into `tests/visualization_launcher.test.ts`, keeping demo launcher behavior in one subsystem suite.
-  - API workbench hit resolution, scrollbar offsets, and touch-target expansion assertions are now bundled into
-    `tests/api_workbench_controls.test.ts`, keeping keyboard, control, pointer, and hit behavior together.
-  - Workbench help and shared modal-content assertions are now bundled into `tests/workbench_facade.test.ts`
-  - Workbench overlay layout, dropdown render-command, modal row, and modal action assertions are now bundled into
-    `tests/workbench_facade.test.ts`, keeping facade-exported workbench helpers in one subsystem suite.
-  - Web API workbench terminal workspace assertions are now bundled into `tests/web_remote_terminal.test.ts`
-  - GPU probe lock assertions are now bundled into `tests/three_ascii_probe.test.ts`
-  - Three panel live-probe summary and validation assertions are now bundled into `tests/three_ascii_probe.test.ts`
-  - Workbench global keymap assertions are now bundled into `tests/workbench_facade.test.ts`
-  - Three panel interaction assertions are now bundled into `tests/three_panel_core.test.ts`
-  - Workbench Three viewport interaction assertions are now bundled into `tests/workbench_three_panel.test.ts`
-  - Workbench Three overlay pressure gate assertions are now bundled into `tests/workbench_three_runtime.test.ts`
-  - Workbench Three panel registry assertions are now bundled into `tests/workbench_three_panel.test.ts`
-  - Workbench Three geometry/rectangle projection assertions are now bundled into `tests/workbench_three_panel.test.ts`
-  - Workbench Three scene projection and equality assertions are now bundled into `tests/workbench_three_panel.test.ts`
-  - Workbench visualization-window row, Three fallback, and browser-preview assertions are now bundled into
-    `tests/visualization_three.test.ts`, keeping Three visualization behavior with the owning fallback/signal suite.
-  - Three panel adaptive render-cell budgeting is folded into `src/app/three_panel_policy.ts`, with its assertions now
-    bundled into `tests/three_panel_core.test.ts`
-  - Three panel diagnostics are folded into `src/app/three_panel_core.ts`, keeping slow-frame, adaptive-budget, and
-    Kitty fallback reporting with the panel runtime helpers instead of a standalone module
-  - Three panel renderer-state/effect comparison helpers are folded into `src/app/three_panel_core.ts`, keeping renderer
-    update decisions with the panel runtime helpers instead of a standalone module
-  - Workbench frame render-command assertions are now bundled into `tests/workbench_frame.test.ts`
-  - Workbench content-size assertions are now bundled into `tests/workbench_panels.test.ts`
-  - Workbench button style assertions are now bundled into `tests/workbench_control_layout.test.ts`
-  - Workbench ANSI span-diff assertions are now covered through `tests/workbench_ansi_screen.test.ts`, and the redundant
-    private-helper microbenchmark was removed in favor of the retained screen-painter span flush benchmark
-  - Canvas spatial-index assertions are now bundled into `tests/canvas_intersections.test.ts`
-  - Canvas dirty-region and rerender-queue assertions are now bundled into `tests/canvas_intersections.test.ts`, keeping
-    dirty-region, spatial-index, and rerender invalidation coverage together
-  - duplicate mouse interaction router assertions were removed from `tests/mouse_bindings.test.ts`; the remaining
-    dynamic-bounds assertion now lives with the existing app interaction coverage in `tests/app_primitives.test.ts`
-  - duplicate Three panel lifecycle-state assertions were removed from `tests/three_panel_frame.test.ts`; the pure
-    helper behavior remains covered in `tests/three_panel_core.test.ts`, keeping frame tests focused on live view
-    behavior.
-  - Workbench retained buffer cache assertions are now bundled into `tests/workbench_controller.test.ts`, keeping shelf,
-    modal, titlebar, and terminal cache behavior with the workbench controller/shelf suite instead of a standalone
-    narrow test shard.
-  - duplicate Three panel render-policy, render-size, and adaptive-budget assertions were removed from
-    `tests/three_panel_frame.test.ts`, then the standalone policy test shard was folded into
-    `tests/three_panel_core.test.ts`; the frame suite stays focused on live panel behavior and renderer lifecycle
-    scenarios.
-  - terminal status tone color mapping is now resolved by the shared API Workbench catalog and covered in
-    `tests/workbench_panels.test.ts`, removing another renderer-local presentation switch without widening the stable
-    package surface.
-  - `app/three_panel.ts` no longer re-exports pure Three panel policy/core helpers for test convenience; tests import
-    those helpers from `src/app/*` directly, keeping the app facade focused on the view classes and factory.
-  - app audio discovery and meter-failure assertions are now bundled into `tests/visualizations_dynamic.test.ts`,
-    keeping app-only audio source behavior with the dynamic visualization/source-frame coverage that consumes it.
-  - visualization field renderer assertions are now bundled into `tests/visualization_primitives.test.ts`, keeping
-    bounded ASCII field coverage with the lower-level visualization drawing helpers.
-  - workbench synthetic source/system assertions are now bundled into `tests/visualizations_dynamic.test.ts`, keeping
-    synthetic monitor fixture behavior with the source-frame and visualization dynamic coverage that consumes it.
-  - API reference markdown formatter assertions are now bundled into `tests/api_inventory.test.ts`, keeping generated
-    package reference coverage with the inventory script behavior that feeds it.
-  - terminal sequence parser assertions are now bundled into `tests/terminal_screen.test.ts`, keeping low-level
-    CSI/OSC/ESC parser coverage with the terminal screen replay behavior that consumes it.
-  - Terminal workspace session descriptor assertions are now bundled into `tests/terminal_workspace.test.ts`, keeping
-    template materialization, clone/duplicate behavior, and runtime-title adoption with terminal workspace behavior.
-  - Terminal shell workspace controller and command assertions are now bundled into `tests/terminal_workspace.test.ts`,
-    keeping live shell coordination with the workspace controller behavior it extends.
-  - GPU monitor helper and renderer assertions are now bundled into `tests/visualization_system.test.ts`, keeping GPU,
-    CPU, memory, disk, thermal, and process monitor rendering coverage with the system visualization module.
-  - HTML/CSS layout view projection assertions are now bundled into `tests/html_css_layout.test.ts`, keeping the demo
-    render-command surface with the parser, cascade, solver, worker, and widget hydration coverage it presents.
-  - standalone visualization app layout and retained panel resize assertions are now bundled into
-    `tests/visualization_primitives.test.ts`, keeping app-local monitor layout and panel rendering coverage with the
-    lower-level visualization drawing helpers that use them.
-  - Three panel display-grid scaling assertions are bundled into `tests/three_panel_core.test.ts`; the live frame suite
-    now only checks that capped renderer output still fills the panel after resize.
-  - Health script catalog and result-formatting assertions are now bundled into `tests/e2e_script.test.ts`, keeping repo
-    gate script coverage together and removing another standalone script micro-suite.
-- Prefer subsystem-level runtime smoke coverage for workbench, Three ASCII, terminal shell, and web interaction.
+## Active Priorities
 
-### P1: Keep Three ASCII Performance Gated By Real Probes
+### P1: Delete Real Duplication
 
-- Continue using benchmark cases for hot helpers, but treat live probes as required evidence:
+- Finish command-builder consolidation where controllers still repeat the same navigation, numeric-value, and action
+  construction logic.
+- Remove dead forwarding APIs and aliases only after confirming package stability policy and migrating callers.
+- Use import/caller evidence before folding any remaining helper shard.
+
+### P1: Thin Workbench Adapters By Ownership
+
+- Move model/controller behavior shared by terminal and web into an existing `src/app/workbench*` owner.
+- Keep terminal paint, browser paint, and demo fixture data in their adapters.
+- Do not create a helper unless it has a stable responsibility or removes substantial duplication from both hosts.
+- Verify workspace, resize, fullscreen, terminal shell, and Neon/Three behavior with focused tests and PTY/browser
+  checks after each slice.
+
+### P1: Keep Performance Evidence Real
+
+- Use helper benchmarks to catch local regressions, but require the matching live probe for renderer changes.
+- Required Three checks:
   - `deno task three-workbench:startup-probe`
   - `deno task three-ascii:live-probe -- --frames 45 --glyphs blocks --max-cells 960 --check --max-average-ms 40`
-- Latest workbench block-mode startup probe after the Three panel interaction-core consolidation: `7.05ms` steady
-  average, about `141.8 fps` at `53x17` cells with the capped default-workbench probe. Latest standalone block-mode live
-  probe defaults to deferred readback and reports `7.11ms` steady average, about `140.6 fps` at `31x15` cells; explicit
-  blocking readback on the same probe previously reported `18.71ms` steady average, about `53.5 fps`.
-- Avoid speculative micro-optimizations unless they improve measured workbench/default-demo behavior.
+- Use workbench resize/fullscreen visual smokes for surface geometry, scaling, or repaint changes.
 
-### P2: Split Demo Framework From Library Framework
+### P2: Restore Coherent Theme Ownership
 
-- Audit `app/api_workbench.ts`, `examples/web/api_workbench_page.ts`, and `app/main.ts` for reusable model/controller
-  code that should live in `src/app/workbench`.
-- Do not add new feature surfaces until the adapter/model split is smaller and easier to reason about.
+- Do not continue folding theme responsibilities into `src/theme.ts`.
+- Before editing the theme subsystem, design a small cycle-free boundary for primitives/types, engine/registry state,
+  and provider/report workflows. Re-splitting is justified only if it removes forwarding wrappers and leaves direct
+  imports, not if it recreates the previous shard graph.
 
-### P2: Rationalize Docs Artifacts
+### P2: Rationalize Documentation Artifacts
 
-- Decide which generated docs artifacts must remain tracked for GitHub Pages.
-- If a generated artifact can be rebuilt deterministically in CI or by `deno task`, stop treating it as source.
-- Keep screenshots only when they are referenced and useful.
-- Completed first pass:
-  - removed the unreferenced `docs/assets/api-workbench.js.map` source map and changed the Pages build to omit future
-    sourcemaps while still tracking the runnable `docs/assets/api-workbench.js` bundle.
+- Keep only screenshots that materially show a distinct interactive surface; report-style command output belongs in text
+  documentation and reproducible tasks.
+- Keep the GitHub Pages bundle only while deployment consumes the checked-in artifact.
+- Treat generated API reference/baseline files as generated contracts and verify deterministic regeneration.
+- Keep active plans concise; use commits and completed summaries for historical detail.
 
-### P3: Reduce Barrel And Compatibility Noise
+### P3: Reduce Stable Barrel Exposure
 
-- Review tiny `mod.ts` and compatibility facade files.
-- Keep public package entrypoints stable, but collapse internal-only barrels that merely forward one or two helpers.
-- The largest API-shape problem is the default stable `mod.ts` path exporting `src/app/mod.ts`, which in turn exports
-  the renderer-neutral Workbench facade and many command helper modules. Removing those exports directly would be a
-  breaking package change, so the next safe cleanup should introduce a focused migration path: keep stable imports
-  working, add clearer package docs around focused entrypoints, and stop promoting new Workbench implementation helpers
-  through `src/app/workbench/mod.ts` unless they are intentionally public.
-- Package checks now grandfather the current stable `src/app/*` module set in `docs/api-stable-app-modules.json` and
-  fail future stable root leaks of new app or Workbench implementation modules unless the allowlist is intentionally
-  updated with migration rationale. The same check now fails stale allowlist entries so compatibility policy shrinks
-  with future export cleanup.
+- Preserve compatibility for existing root exports.
+- Document focused entrypoints and stop adding new workbench implementation exports to the stable root.
+- Remove grandfathered app-module exports only with an explicit migration and package-check update.
 
-## Acceptance Checks
+## Verification
 
-- Each refactor checkpoint must reduce or simplify tracked source/test files, or remove duplicated logic.
-- `deno task health` must pass before commits that touch shared runtime, workbench, or renderer code.
-- Three ASCII checkpoints must pass both live probes above.
-- New tests are allowed only when they replace broader missing runtime evidence or protect a refactor boundary.
-- Each meaningful checkpoint gets an independent commit.
+Every shared runtime/workbench/renderer milestone:
+
+- `DENO_NO_PACKAGE_JSON=1 deno task health`
+
+Additional gates:
+
+- Three ASCII/runtime changes: both live probes above and relevant PTY visual smoke.
+- Web adapter changes: `deno task web:demo:check`, `deno task web:test`, and Pages build when bundle inputs change.
+- Public API changes: package check, API inventory, and generated reference drift check.
+- ICC configuration changes: skill validation plus fresh ICC status.
+
+## Completion
+
+This item is complete only when remaining large adapters are composition-focused, duplicated terminal/web or command
+logic has one owner, generated documentation weight is intentional, and the broad health/runtime gates prove the result.
+Lower file count alone is not completion evidence.
