@@ -27,15 +27,16 @@ inspection, and the same behavior in terminal, browser, and remote bridge contex
 
 ## Scope Boundaries
 
-`plan/todo/018-top-to-bottom-architecture-code-audit.md` tracks library-quality terminal emulation work: parser
-coverage, backend metadata, diagnostics, test fixtures, and health-gated behavior.
+`plan/todo/done/018-top-to-bottom-architecture-code-audit.md` records the completed library-quality terminal emulation
+work: parser coverage, backend metadata, diagnostics, test fixtures, and health-gated behavior.
 
-`plan/todo/017-terminal-multiplexer-experience.md` tracks tmux-like product behavior: multiple sessions, tabs, pane
-splits, scrollback/copy mode, shell command palette actions, detach/attach, remote clients, and manual workflow tests.
+`plan/todo/done/017-terminal-multiplexer-experience.md` records the completed tmux-like product behavior: multiple
+sessions, tabs, pane splits, scrollback/copy mode, shell command palette actions, detach/attach, remote clients, and
+manual workflow tests.
 
 When a task changes the terminal byte parser, screen model, backend inspection, or reusable runtime API, keep it in the
-architecture audit. When it changes how a user manages shell sessions and panes in the Workbench, keep it in the
-multiplexer todo.
+architecture follow-on plan. When it changes how a user manages shell sessions and panes in the Workbench, keep it in
+the active product/refactor plan.
 
 ## Test Policy
 
