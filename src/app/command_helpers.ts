@@ -2,6 +2,27 @@
 import type { Action } from "./actions.ts";
 import type { Command } from "./commands.ts";
 
+export class CommandGroupBuilder<TAction extends Action> {
+  readonly commands: Command<TAction>[] = [];
+
+  constructor(private readonly idPrefix: string, private readonly group: string) {}
+
+  add(
+    id: string,
+    label: string,
+    action: NonNullable<Command<TAction>["action"]>,
+    keywords?: readonly string[],
+    disabled?: Command<TAction>["disabled"],
+    binding?: Command<TAction>["binding"],
+  ): void {
+    const command: Command<TAction> = { id: `${this.idPrefix}.${id}`, label, group: this.group, action };
+    if (keywords !== undefined) command.keywords = keywords;
+    if (disabled !== undefined) command.disabled = disabled;
+    if (binding !== undefined) command.binding = binding;
+    this.commands.push(command);
+  }
+}
+
 export function actionCommand<TAction extends Action, TResult, TPayload>(
   id: string,
   label: string,

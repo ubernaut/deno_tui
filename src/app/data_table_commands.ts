@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { DataTableController } from "../components/data_table.ts";
 import type { Action } from "./actions.ts";
+import { CommandGroupBuilder } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for data Table Command variants. */
@@ -39,90 +40,59 @@ export function dataTableCommands<
   const disabledWhenEmpty = options.disabledWhenEmpty ?? true;
   const empty = () => disabledWhenEmpty && table.view.peek().totalRows <= 0;
   const label = (kind: DataTableCommandKind, fallback: string) => options.labels?.[kind] ?? fallback;
-  const commands: Command<TAction>[] = [];
+  const commands = new CommandGroupBuilder<TAction>(idPrefix, group);
 
   if (options.includeSelectionCommands ?? true) {
-    commands.push(
-      {
-        id: `${idPrefix}.first`,
-        label: label("first", "First Row"),
-        group,
-        binding: { key: "home" },
-        disabled: empty,
-        action: () => table.first(),
-      },
-      {
-        id: `${idPrefix}.previous`,
-        label: label("previous", "Previous Row"),
-        group,
-        binding: { key: "up" },
-        disabled: empty,
-        action: () => table.moveSelection(-1),
-      },
-      {
-        id: `${idPrefix}.next`,
-        label: label("next", "Next Row"),
-        group,
-        binding: { key: "down" },
-        disabled: empty,
-        action: () => table.moveSelection(1),
-      },
-      {
-        id: `${idPrefix}.last`,
-        label: label("last", "Last Row"),
-        group,
-        binding: { key: "end" },
-        disabled: empty,
-        action: () => table.last(),
-      },
-    );
+    commands.add("first", label("first", "First Row"), () => table.first(), undefined, empty, { key: "home" });
+    commands.add("previous", label("previous", "Previous Row"), () => table.moveSelection(-1), undefined, empty, {
+      key: "up",
+    });
+    commands.add("next", label("next", "Next Row"), () => table.moveSelection(1), undefined, empty, { key: "down" });
+    commands.add("last", label("last", "Last Row"), () => table.last(), undefined, empty, { key: "end" });
   }
 
   if (options.includePagingCommands ?? true) {
-    commands.push(
-      {
-        id: `${idPrefix}.pagePrevious`,
-        label: label("pagePrevious", "Previous Page"),
-        group,
-        binding: { key: "pageup" },
-        disabled: () => empty() || table.view.peek().page <= 0,
-        action: () => table.previousPage(),
-      },
-      {
-        id: `${idPrefix}.pageNext`,
-        label: label("pageNext", "Next Page"),
-        group,
-        binding: { key: "pagedown" },
-        disabled: () => empty() || table.view.peek().page >= table.view.peek().pageCount - 1,
-        action: () => table.nextPage(),
-      },
+    commands.add(
+      "pagePrevious",
+      label("pagePrevious", "Previous Page"),
+      () => table.previousPage(),
+      undefined,
+      () => empty() || table.view.peek().page <= 0,
+      { key: "pageup" },
+    );
+    commands.add(
+      "pageNext",
+      label("pageNext", "Next Page"),
+      () => table.nextPage(),
+      undefined,
+      () => empty() || table.view.peek().page >= table.view.peek().pageCount - 1,
+      { key: "pagedown" },
     );
   }
 
   if (options.includeQueryCommands ?? true) {
-    commands.push({
-      id: `${idPrefix}.clearQuery`,
-      label: label("clearQuery", "Clear Table Query"),
-      group,
-      disabled: () => !table.state.peek().query,
-      action: () => table.setQuery(""),
-    });
+    commands.add(
+      "clearQuery",
+      label("clearQuery", "Clear Table Query"),
+      () => table.setQuery(""),
+      undefined,
+      () => !table.state.peek().query,
+    );
   }
 
   if (options.includeSortCommands ?? true) {
     for (const column of table.columns.peek()) {
       if (column.sortable === false) continue;
-      commands.push({
-        id: `${idPrefix}.sort.${column.id}`,
-        label: `${label("sort", "Sort")}: ${column.label ?? column.id}`,
-        group,
-        keywords: dataTableSortKeywords(column.id, column.label),
-        action: () => table.toggleSort(column.id),
-      });
+      commands.add(
+        `sort.${column.id}`,
+        `${label("sort", "Sort")}: ${column.label ?? column.id}`,
+        () => table.toggleSort(column.id),
+        dataTableSortKeywords(column.id, column.label),
+      );
     }
   }
 
-  return commands;
+  return commands.commands;
 }
 
 /** Binds data Table Commands behavior and returns a disposer when applicable. */

@@ -2,6 +2,7 @@
 import { type SelectionController } from "../selection.ts";
 import { Signal } from "../signals/mod.ts";
 import type { Action } from "./actions.ts";
+import { CommandGroupBuilder } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Public type alias for a selection Items Source. */
@@ -155,79 +156,47 @@ export function selectionCommands<TAction extends Action = Action>(
   const disabled = () => disabledWhenEmpty && selection.length.peek() <= 0;
   const pageSize = () => Math.max(1, Math.floor(readPageSize(options.pageSize)));
   const label = (kind: SelectionCommandKind, fallback: string) => options.labels?.[kind] ?? fallback;
-  const commands: Command<TAction>[] = [
+  const commands = new CommandGroupBuilder<TAction>(idPrefix, group);
+  commands.add("first", label("first", "First Item"), () => selection.select(0), undefined, disabled, { key: "home" });
+  commands.add("previous", label("previous", "Previous Item"), () => selection.move(-1), undefined, disabled, {
+    key: "up",
+  });
+  commands.add("next", label("next", "Next Item"), () => selection.move(1), undefined, disabled, { key: "down" });
+  commands.add(
+    "last",
+    label("last", "Last Item"),
+    () => selection.select(selection.length.peek() - 1),
+    undefined,
+    disabled,
     {
-      id: `${idPrefix}.first`,
-      label: label("first", "First Item"),
-      group,
-      binding: { key: "home" },
-      disabled,
-      action: () => selection.select(0),
+      key: "end",
     },
+  );
+  commands.add(
+    "pagePrevious",
+    label("pagePrevious", "Previous Page"),
+    () => selection.move(-pageSize()),
+    undefined,
+    disabled,
     {
-      id: `${idPrefix}.previous`,
-      label: label("previous", "Previous Item"),
-      group,
-      binding: { key: "up" },
-      disabled,
-      action: () => selection.move(-1),
+      key: "pageup",
     },
-    {
-      id: `${idPrefix}.next`,
-      label: label("next", "Next Item"),
-      group,
-      binding: { key: "down" },
-      disabled,
-      action: () => selection.move(1),
-    },
-    {
-      id: `${idPrefix}.last`,
-      label: label("last", "Last Item"),
-      group,
-      binding: { key: "end" },
-      disabled,
-      action: () => selection.select(selection.length.peek() - 1),
-    },
-    {
-      id: `${idPrefix}.pagePrevious`,
-      label: label("pagePrevious", "Previous Page"),
-      group,
-      binding: { key: "pageup" },
-      disabled,
-      action: () => selection.move(-pageSize()),
-    },
-    {
-      id: `${idPrefix}.pageNext`,
-      label: label("pageNext", "Next Page"),
-      group,
-      binding: { key: "pagedown" },
-      disabled,
-      action: () => selection.move(pageSize()),
-    },
-  ];
+  );
+  commands.add("pageNext", label("pageNext", "Next Page"), () => selection.move(pageSize()), undefined, disabled, {
+    key: "pagedown",
+  });
 
   if (options.includeToggle ?? true) {
-    commands.push({
-      id: `${idPrefix}.toggle`,
-      label: label("toggle", "Toggle Selection"),
-      group,
-      binding: { key: "space" },
-      disabled,
-      action: () => selection.toggle(),
+    commands.add("toggle", label("toggle", "Toggle Selection"), () => selection.toggle(), undefined, disabled, {
+      key: "space",
     });
   }
 
   if (options.includeClear ?? false) {
-    commands.push({
-      id: `${idPrefix}.clear`,
-      label: label("clear", "Clear Selection"),
-      group,
-      disabled,
-      action: () => selection.clear(),
-    });
+    commands.add("clear", label("clear", "Clear Selection"), () => selection.clear(), undefined, disabled);
   }
 
-  return commands;
+  return commands.commands;
 }
 
 /** Binds selection Commands behavior and returns a disposer when applicable. */
