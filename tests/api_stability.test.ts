@@ -21,6 +21,7 @@ import {
 Deno.test("package entrypoint manifest separates terminal web and remote surfaces", () => {
   assertEquals(packageEntrypoints.map((entrypoint) => entrypoint.specifier), [
     ".",
+    "./app",
     "./web",
     "./remote",
     "./three-ascii",
@@ -41,6 +42,7 @@ Deno.test("package entrypoint manifest separates terminal web and remote surface
     "./layout/yoga",
   ]);
   assertEquals(filterPackageEntrypoints({ stability: "beta" }).map((entrypoint) => entrypoint.specifier), [
+    "./app",
     "./web",
     "./theme",
     "./runtime",
@@ -55,6 +57,7 @@ Deno.test("package entrypoint manifest separates terminal web and remote surface
 Deno.test("api surface policies mark public experimental and demo-only code", () => {
   assertEquals(filterApiSurfacePolicies({ public: true }).map((policy) => policy.pattern), [
     "mod.ts",
+    "mod.app.ts",
     "mod.web.ts",
     "mod.remote.ts",
     "mod.three_ascii.ts",
@@ -91,6 +94,7 @@ Deno.test("package export validation compares deno export maps with the stabilit
     {
       exports: {
         ".": "./mod.ts",
+        "./app": "./mod.app.ts",
         "./web": "./mod.web.ts",
         "./remote": "./mod.remote.ts",
         "./three-ascii": "./mod.three_ascii.ts",
@@ -127,13 +131,14 @@ Deno.test("package export validation compares deno export maps with the stabilit
     packageEntrypoints,
     {
       exists: (path) =>
-        path !== "mod.remote.ts" && path !== "mod.three_ascii.ts" && path !== "mod.theme.ts" &&
+        path !== "mod.app.ts" && path !== "mod.remote.ts" && path !== "mod.three_ascii.ts" && path !== "mod.theme.ts" &&
         path !== "mod.runtime.ts" && path !== "mod.terminal.ts" && path !== "mod.testing.ts" &&
         path !== "src/layout/solvers/yoga.ts",
     },
   );
   assertEquals(invalid.ok, false);
   assertEquals(invalid.missingExports, [
+    "./app",
     "./remote",
     "./three-ascii",
     "./theme",
@@ -145,6 +150,7 @@ Deno.test("package export validation compares deno export maps with the stabilit
   assertEquals(invalid.mismatchedExports, [{ specifier: "./web", expected: "./mod.web.ts", actual: "./wrong.ts" }]);
   assertEquals(invalid.unexpectedExports, ["./extra"]);
   assertEquals(invalid.missingFiles, [
+    "./mod.app.ts",
     "./mod.remote.ts",
     "./mod.three_ascii.ts",
     "./mod.theme.ts",

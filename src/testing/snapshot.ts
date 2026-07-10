@@ -7,6 +7,7 @@ import { stripAnsi as stripAnsiText } from "../utils/ansi_text.ts";
 export interface TestStdout {
   readonly chunks: Uint8Array[];
   readonly text: string;
+  write(data: Uint8Array): Promise<number>;
   writeSync(data: Uint8Array): number;
   clear(): void;
 }
@@ -49,6 +50,10 @@ export function createTestStdout(): TestStdout {
   const chunks: Uint8Array[] = [];
   return {
     chunks,
+    async write(data: Uint8Array) {
+      chunks.push(data.slice());
+      return data.byteLength;
+    },
     writeSync(data: Uint8Array) {
       chunks.push(data.slice());
       return data.byteLength;

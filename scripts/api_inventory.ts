@@ -151,39 +151,56 @@ export async function createApiInventory(
   const root = options.root ?? Deno.cwd();
   const readTextFile = options.readTextFile ?? ((path: string) => Deno.readTextFile(path));
   const exists = options.exists ?? existsOnDisk;
-  const queue = [normalizeModulePath(entrypoint)];
-  const seen = new Set<string>();
-  const modules: ApiModuleInventory[] = [];
+  const normalizedEntrypoint = normalizeModulePath(entrypoint);
+  const queue = [normalizedEntrypoint];
+  const selections = new Map<string, ApiSymbolSelection>([[normalizedEntrypoint, "all"]]);
+  const processedSelections = new Map<string, string>();
+  const parsedModules = new Map<string, Omit<ApiModuleInventory, "missingTargets">>();
+  const missingTargetsByModule = new Map<string, Set<string>>();
 
   while (queue.length > 0) {
     const module = queue.shift()!;
-    if (seen.has(module)) continue;
-    seen.add(module);
+    const selection = selections.get(module)!;
+    const signature = selectionSignature(selection);
+    if (processedSelections.get(module) === signature) continue;
+    processedSelections.set(module, signature);
 
-    const absoluteModule = joinPath(root, module);
-    const source = await readTextFile(absoluteModule);
-    const exports = parseApiExports(source, module);
-    const symbols = parseApiSymbols(source, module);
-    const missingTargets: string[] = [];
+    let parsed = parsedModules.get(module);
+    if (!parsed) {
+      const source = await readTextFile(joinPath(root, module));
+      parsed = {
+        module,
+        exports: parseApiExports(source, module),
+        symbols: parseApiSymbols(source, module),
+      };
+      parsedModules.set(module, parsed);
+    }
 
-    for (const declaration of exports) {
+    for (const declaration of parsed.exports) {
+      const targetSelection = selectionForExport(selection, declaration);
+      if (!targetSelection) continue;
       if (!isLocalTypeScriptModule(declaration.target)) continue;
       const targetPath = normalizeModulePath(declaration.target);
       if (!(await exists(joinPath(root, targetPath)))) {
-        missingTargets.push(targetPath);
+        const missing = missingTargetsByModule.get(module) ?? new Set<string>();
+        missing.add(targetPath);
+        missingTargetsByModule.set(module, missing);
         continue;
       }
-      if (!seen.has(targetPath)) queue.push(targetPath);
+      if (mergeSymbolSelection(selections, targetPath, targetSelection)) queue.push(targetPath);
     }
-
-    modules.push({
-      module,
-      exports,
-      symbols,
-      missingTargets: [...new Set(missingTargets)].sort(),
-    });
   }
 
+  const modules: ApiModuleInventory[] = [];
+  for (const [module, parsed] of parsedModules) {
+    const selection = selections.get(module)!;
+    modules.push({
+      module,
+      exports: parsed.exports.filter((declaration) => selectionForExport(selection, declaration) !== undefined),
+      symbols: selection === "all" ? parsed.symbols : parsed.symbols.filter((symbol) => selection.has(symbol.name)),
+      missingTargets: [...(missingTargetsByModule.get(module) ?? [])].sort(),
+    });
+  }
   const sortedModules = modules.sort((left, right) => left.module.localeCompare(right.module));
   const missingTargets = [...new Set(modules.flatMap((module) => module.missingTargets))].sort();
   const symbolCount = modules.reduce((total, module) => total + module.symbols.length, 0);
@@ -192,7 +209,7 @@ export async function createApiInventory(
     0,
   );
   return {
-    entrypoint: normalizeModulePath(entrypoint),
+    entrypoint: normalizedEntrypoint,
     modules: sortedModules,
     exportCount: modules.reduce((total, module) => total + module.exports.length, 0),
     symbolCount,
@@ -202,6 +219,56 @@ export async function createApiInventory(
     duplicateSymbols: duplicateApiSymbols(sortedModules),
     missingTargets,
   };
+}
+
+type ApiSymbolSelection = "all" | Set<string>;
+
+function selectionForExport(
+  selection: ApiSymbolSelection,
+  declaration: ApiExportDeclaration,
+): ApiSymbolSelection | undefined {
+  if (declaration.kind === "star") {
+    return selection === "all" ? "all" : new Set(selection);
+  }
+  const declaredNames = new Set(declaration.names.map(normalizeExportSelectionName));
+  if (selection === "all") return declaredNames;
+  const intersection = new Set<string>();
+  for (const name of selection) {
+    if (declaredNames.has(name)) intersection.add(name);
+  }
+  return intersection.size > 0 ? intersection : undefined;
+}
+
+function mergeSymbolSelection(
+  selections: Map<string, ApiSymbolSelection>,
+  module: string,
+  incoming: ApiSymbolSelection,
+): boolean {
+  const current = selections.get(module);
+  if (current === "all") return false;
+  if (incoming === "all") {
+    selections.set(module, "all");
+    return true;
+  }
+  if (!current) {
+    selections.set(module, new Set(incoming));
+    return true;
+  }
+  let changed = false;
+  for (const name of incoming) {
+    if (current.has(name)) continue;
+    current.add(name);
+    changed = true;
+  }
+  return changed;
+}
+
+function selectionSignature(selection: ApiSymbolSelection): string {
+  return selection === "all" ? "*" : [...selection].sort().join("\0");
+}
+
+function normalizeExportSelectionName(name: string): string {
+  return name.replace(/^type\s+/, "");
 }
 
 export function formatApiInventory(inventory: ApiInventory): string {

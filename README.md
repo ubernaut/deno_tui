@@ -11,51 +11,55 @@ an optional Three.js ASCII renderer, and full-screen visualization demos.
 
 ## Quick Start
 
-Replace `VERSION` with a published version:
+New applications should use the focused `./app` entrypoint. Replace the placeholder package name when this fork is
+published:
 
 ```ts
 import { crayon } from "https://deno.land/x/crayon@3.3.3/mod.ts";
-import {
-  Button,
-  Computed,
-  handleInput,
-  handleKeyboardControls,
-  handleMouseControls,
-  Signal,
-  Tui,
-} from "https://deno.land/x/tui@VERSION/mod.ts";
-
-const tui = new Tui({
-  style: crayon.bgBlack,
-  refreshRate: 1000 / 60,
-});
-
-handleInput(tui);
-handleKeyboardControls(tui);
-handleMouseControls(tui);
+import { Button, Computed, createTerminalApp, Signal } from "jsr:@scope/package/app";
 
 const count = new Signal(0);
-
-const button = new Button({
-  parent: tui,
-  rectangle: { column: 2, row: 2, height: 3, width: 18 },
-  label: { text: new Computed(() => `Count: ${count.value}`) },
-  theme: {
-    base: crayon.bgBlue,
-    focused: crayon.bgLightBlue,
-    active: crayon.bgCyan,
+const app = createTerminalApp<{ type: "increment" }>({
+  tuiOptions: { style: crayon.bgBlack },
+  commands: [{
+    id: "increment",
+    label: "Increment",
+    binding: { key: "return" },
+    action: { type: "increment" },
+  }],
+  onAction: () => count.value += 1,
+  setup(app) {
+    const button = new Button({
+      parent: app.tui,
+      rectangle: new Computed(() => ({
+        column: Math.max(1, Math.floor(app.tui.rectangle.value.width / 2) - 9),
+        row: Math.max(1, Math.floor(app.tui.rectangle.value.height / 2) - 1),
+        height: 3,
+        width: 18,
+      })),
+      label: { text: new Computed(() => `Count: ${count.value}`) },
+      theme: {
+        base: crayon.bgBlue,
+        focused: crayon.bgLightBlue,
+        active: crayon.bgCyan,
+      },
+      zIndex: 1,
+      onPress: () => void app.executeCommand("increment"),
+    });
+    app.registerComponent(button);
+    app.focus.focus(button);
   },
 });
 
-button.state.when("active", () => count.value++);
-
-tui.dispatch();
-tui.run();
+app.start();
 ```
 
-From a repository checkout, run the component demo or open the demo launcher:
+`TerminalApp` owns input, command bindings, focus traversal, mouse routing, bracketed paste, terminal signals, and
+cleanup by default. Every binding can be disabled for embedding or tests. From a repository checkout, run the focused
+example, component demo, or launcher:
 
 ```sh
+deno task terminal-app
 deno task demo
 ./visualization
 ```
@@ -85,6 +89,7 @@ The export map in `deno.jsonc` defines the supported package boundaries:
 | Import target   | Source                       | Runtime  | Stability    |
 | --------------- | ---------------------------- | -------- | ------------ |
 | `.`             | `mod.ts`                     | terminal | stable       |
+| `./app`         | `mod.app.ts`                 | terminal | beta         |
 | `./web`         | `mod.web.ts`                 | browser  | beta         |
 | `./remote`      | `mod.remote.ts`              | remote   | experimental |
 | `./three-ascii` | `mod.three_ascii.ts`         | shared   | experimental |
@@ -94,8 +99,9 @@ The export map in `deno.jsonc` defines the supported package boundaries:
 | `./testing`     | `mod.testing.ts`             | shared   | beta         |
 | `./layout/yoga` | `src/layout/solvers/yoga.ts` | shared   | experimental |
 
-Use the root entrypoint for terminal applications. Focused entrypoints let framework and tooling authors avoid taking a
-dependency on the broad terminal surface. Package stability policy and release checks are documented in
+Use `./app` for new terminal applications and the root entrypoint for compatibility or low-level composition. Focused
+entrypoints let application and tooling authors avoid taking a dependency on the broad terminal surface. Package
+stability policy and release checks are documented in
 [API Stability and Packaging](./docs/api-stability-and-packaging.md).
 
 ## Documentation
@@ -194,6 +200,11 @@ See [HTML/CSS-Style Layout](./docs/html-css-layout.md), `examples/layout_recipe_
 `createApp()` assembles the terminal host with an `ActionBus`, `RouteManager`, `CommandRegistry`, focus manager, keymap,
 and lifecycle disposal. Settings bindings, undo/redo history, command surfaces, and plugin helpers build on those owners
 instead of introducing app-local state loops.
+
+`createTerminalApp()` is the recommended application boundary. It accepts routes, commands, key bindings, focus items,
+mouse targets, plugins, middleware, action handling, and component setup in one definition, then owns the standard
+terminal interaction and shutdown wiring. `registerComponent()` connects an interactive component to app focus and
+pointer routing without legacy global control handlers.
 
 The runtime layer provides capability and terminal plans, `AsyncScheduler`, `WorkerPool`, `RenderLoop`, memory and
 IndexedDB stores, persistent signals, async resources, cached pipelines, data queries, process sessions, PTY backend

@@ -8,18 +8,28 @@ Deno export map in `deno.jsonc`, README guidance, and release notes should stay 
 | Import target   | Source                       | Runtime  | Stability    | Use it for                                                                                                                     |
 | --------------- | ---------------------------- | -------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | `.`             | `mod.ts`                     | terminal | stable       | Full Deno terminal apps, reusable widgets, app primitives, themes, runtime helpers, tests, and benchmarks.                     |
+| `./app`         | `mod.app.ts`                 | terminal | beta         | New terminal apps using the opinionated lifecycle, curated widgets, commands, routes, focus, and plugins.                      |
 | `./web`         | `mod.web.ts`                 | browser  | beta         | Standalone browser bundles, GitHub Pages demos, Canvas2D/DOM hosts, browser input, IndexedDB, Workers, and shared controllers. |
 | `./remote`      | `mod.remote.ts`              | remote   | experimental | Browser clients and server bridges that connect transports to hosted terminal session handles.                                 |
 | `./three-ascii` | `mod.three_ascii.ts`         | shared   | experimental | Focused Acerola-style Three.js/WebGPU ASCII renderer APIs, glyph/block/mixed modes, presets, and renderer options.             |
+| `./theme`       | `mod.theme.ts`               | shared   | beta         | Theme engines, semantic tokens, providers, resolvers, galleries, validation, and palette packs.                                |
+| `./runtime`     | `mod.runtime.ts`             | shared   | beta         | Scheduling, workers, storage, resources, diagnostics, terminal plans, graphics, and renderer backends.                         |
+| `./terminal`    | `mod.terminal.ts`            | terminal | beta         | Input parsing, terminal screens, shell/process sessions, PTY backends, scrollback, and workspaces.                             |
+| `./testing`     | `mod.testing.ts`             | shared   | beta         | Downstream input, snapshot, canvas, and application interaction test helpers.                                                  |
 | `./layout/yoga` | `src/layout/solvers/yoga.ts` | shared   | experimental | Optional Yoga-backed Flexbox solving for HTML/CSS-style layout trees.                                                          |
 
 Local development imports use relative paths:
 
 ```ts
 import { createThemeProvider, Tui } from "./mod.ts";
+import { createTerminalApp } from "./mod.app.ts";
 import { createWebTui } from "./mod.web.ts";
 import { RemoteTerminalClient } from "./mod.remote.ts";
 import { createDefaultAsciiOptions } from "./mod.three_ascii.ts";
+import { createThemeEngine } from "./mod.theme.ts";
+import { AsyncScheduler } from "./mod.runtime.ts";
+import { TerminalScreen } from "./mod.terminal.ts";
+import { createTestCanvas } from "./mod.testing.ts";
 import { yogaLayoutSolver } from "./src/layout/solvers/yoga.ts";
 ```
 
@@ -27,9 +37,14 @@ Published package imports should use the same subpaths:
 
 ```ts
 import { Tui } from "jsr:@scope/package";
+import { createTerminalApp } from "jsr:@scope/package/app";
 import { createWebTui } from "jsr:@scope/package/web";
 import { RemoteTerminalClient } from "jsr:@scope/package/remote";
 import { createDefaultAsciiOptions } from "jsr:@scope/package/three-ascii";
+import { createThemeEngine } from "jsr:@scope/package/theme";
+import { AsyncScheduler } from "jsr:@scope/package/runtime";
+import { TerminalScreen } from "jsr:@scope/package/terminal";
+import { createTestCanvas } from "jsr:@scope/package/testing";
 import { yogaLayoutSolver } from "jsr:@scope/package/layout/yoga";
 ```
 
@@ -40,13 +55,19 @@ update the import examples and release notes.
 
 Application authors should start with the narrowest runtime entrypoint that matches where their app runs:
 
+- Use `./app` for new terminal applications. It provides the recommended `TerminalApp` lifecycle and a curated widget,
+  layout, signal, theme, command, route, and plugin surface.
 - Use `.` for Deno terminal applications, reusable terminal widgets, themes, app commands, testing helpers, and
-  terminal-rendered Three ASCII widgets.
+  terminal-rendered Three ASCII widgets that need the broad compatibility surface.
 - Use `./web` for standalone browser packages, GitHub Pages demos, Canvas2D/DOM hosts, browser input, IndexedDB-backed
   state, and Worker-friendly controllers.
 - Use `./remote` only when building a browser client or bridge for a hosted terminal session.
 - Use `./three-ascii` for renderer-focused integrations that need the Acerola-style node, glyph/block/mixed modes,
   presets, or shared ASCII options without importing the full terminal package.
+- Use `./theme` for shared theme tooling without terminal or browser hosts.
+- Use `./runtime` for schedulers, workers, resources, stores, diagnostics, and backend policy.
+- Use `./terminal` for input parsing, terminal sessions, PTY integration, screens, and scrollback.
+- Use `./testing` for downstream headless interaction and snapshot tests.
 - Use `./layout/yoga` only when the optional Yoga dependency is acceptable and Flexbox parity matters more than a
   dependency-free layout solver.
 
@@ -68,9 +89,14 @@ semver-protected package surfaces.
 Current marked surfaces:
 
 - `mod.ts`: stable terminal package.
+- `mod.app.ts`: beta focused application package and recommended starting point for new terminal apps.
 - `mod.web.ts`: beta standalone browser package.
 - `mod.remote.ts`: experimental remote-terminal client and bridge.
 - `mod.three_ascii.ts`: experimental focused Three ASCII renderer package.
+- `mod.theme.ts`: beta theme package.
+- `mod.runtime.ts`: beta runtime and concurrency package.
+- `mod.terminal.ts`: beta terminal integration package.
+- `mod.testing.ts`: beta downstream test package.
 - `src/layout/solvers/yoga.ts`: experimental optional Yoga-backed Flexbox solver.
 - `src/three_ascii/*`: experimental renderer internals and presets, even when re-exported for demos.
 - `src/runtime/graphics_surface.ts`: experimental raster graphics surface abstraction.
@@ -94,7 +120,7 @@ Before a release, run:
 
 ```bash
 deno fmt --check
-deno check mod.ts mod.web.ts mod.remote.ts
+deno check mod.ts mod.app.ts mod.web.ts mod.remote.ts
 deno task package-check -- --quiet
 deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1 --baseline=docs/api-stable-baseline.json
 deno task benchmark

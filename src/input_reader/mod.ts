@@ -37,7 +37,8 @@ export async function emitInputEvents(
   stdin: Stdin,
   emitter: EventEmitter<InputEventRecord>,
   minReadInterval = 1000 / 60,
-) {
+  options: { signal?: AbortSignal } = {},
+): Promise<void> {
   try {
     stdin.setRaw(true, { cbreak: Deno.build.os !== "windows" });
   } catch {
@@ -46,11 +47,10 @@ export async function emitInputEvents(
 
   const maxbuffer = new Uint8Array(1024);
   let pending = new Uint8Array(0);
-  async function read() {
+  const interval = Math.max(0, Number.isFinite(minReadInterval) ? minReadInterval : 0);
+  while (!options.signal?.aborted) {
     const size = await stdin.read(maxbuffer);
-    if (size == null) {
-      return;
-    }
+    if (size == null || options.signal?.aborted) return;
 
     const buffer = maxbuffer.subarray(0, size);
     const combined = pending.length > 0 ? concatBuffers(pending, buffer) : buffer;
@@ -76,9 +76,8 @@ export async function emitInputEvents(
       }
     }
 
-    setTimeout(read, minReadInterval);
+    if (interval > 0) await waitForInputInterval(interval, options.signal);
   }
-  await read();
 }
 
 const textDecoder = new TextDecoder();
@@ -558,6 +557,19 @@ function concatBuffers(left: Uint8Array, right: Uint8Array) {
   merged.set(left);
   merged.set(right, left.length);
   return merged;
+}
+
+function waitForInputInterval(milliseconds: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) return Promise.resolve();
+  return new Promise((resolve) => {
+    const finish = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", finish);
+      resolve();
+    };
+    const timer = setTimeout(finish, milliseconds);
+    signal?.addEventListener("abort", finish, { once: true });
+  });
 }
 
 function startsWithBytes(buffer: Uint8Array, sequence: Uint8Array, start: number): boolean {

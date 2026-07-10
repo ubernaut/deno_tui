@@ -118,7 +118,13 @@ Deno.test("createApiInventory crawls local re-export modules and formats results
     ["/repo/src/components/mod.ts", `export * from "./button.ts";`],
     ["/repo/src/components/button.ts", `export interface ButtonOptions { label: string }`],
     ["/repo/src/runtime/mod.ts", `export { AsyncScheduler } from "./scheduler.ts";`],
-    ["/repo/src/runtime/scheduler.ts", `export class AsyncScheduler {}`],
+    [
+      "/repo/src/runtime/scheduler.ts",
+      [
+        `export class AsyncScheduler {}`,
+        `export class InternalSchedulerProbe {}`,
+      ].join("\n"),
+    ],
   ]);
 
   const inventory = await createApiInventory("mod.ts", {
@@ -141,6 +147,12 @@ Deno.test("createApiInventory crawls local re-export modules and formats results
   assertEquals(inventory.undocumentedSymbolCount, 2);
   assertEquals(inventory.documentationCoverage, 0);
   assertEquals(inventory.duplicateSymbols, {});
+  assertEquals(
+    inventory.modules.find((module) => module.module === "src/runtime/scheduler.ts")?.symbols.map((symbol) =>
+      symbol.name
+    ),
+    ["AsyncScheduler"],
+  );
   assertEquals(inventorySucceeded(inventory), true);
   assertEquals(inventorySucceeded(inventory, { minDocumentationCoverage: 0.1 }), false);
   assertEquals(formatApiInventory(inventory).includes("Exported symbols: 2"), true);

@@ -5,14 +5,14 @@ separate while shared module declarations are listed once with explicit entrypoi
 
 ## Summary
 
-- Entrypoints: 9
-- Unique modules: 236
-- Module visits: 492
-- Unique re-export declarations: 305
-- Re-export declaration visits: 483
-- Unique symbol declarations: 2375
-- Symbol declaration visits: 5368
-- Documented symbol declarations: 2375
+- Entrypoints: 10
+- Unique modules: 238
+- Module visits: 539
+- Unique re-export declarations: 346
+- Re-export declaration visits: 533
+- Unique symbol declarations: 2363
+- Symbol declaration visits: 5369
+- Documented symbol declarations: 2363
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -21,10 +21,11 @@ separate while shared module declarations are listed once with explicit entrypoi
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     219 |    2305 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     198 |    2156 | 100.00% |
-| `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      38 | 100.00% |
-| `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      87 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     219 |    2293 | 100.00% |
+| `./app`         | `./mod.app.ts`                 | terminal | beta         |      47 |      50 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     198 |    2144 | 100.00% |
+| `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      25 | 100.00% |
+| `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      75 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
 | `./runtime`     | `./mod.runtime.ts`             | shared   | beta         |      31 |     402 | 100.00% |
 | `./terminal`    | `./mod.terminal.ts`            | terminal | beta         |      15 |     157 | 100.00% |
@@ -40,8 +41,23 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Stability: stable
 - Modules: 219
 - Re-export declarations: 218
-- Exported symbols: 2305
-- Documented symbols: 2305
+- Exported symbols: 2293
+- Documented symbols: 2293
+- Documentation coverage: 100.00%
+- Duplicate symbols: 0
+- Missing targets: 0
+
+## Entrypoint ./app
+
+Focused terminal application package with opinionated lifecycle wiring and curated widgets.
+
+- Path: `./mod.app.ts`
+- Runtime: terminal
+- Stability: beta
+- Modules: 47
+- Re-export declarations: 50
+- Exported symbols: 50
+- Documented symbols: 50
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -55,8 +71,8 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Stability: beta
 - Modules: 198
 - Re-export declarations: 197
-- Exported symbols: 2156
-- Documented symbols: 2156
+- Exported symbols: 2144
+- Documented symbols: 2144
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -70,8 +86,8 @@ Hosted terminal/client bridge protocol and browser WebSocket transport.
 - Stability: experimental
 - Modules: 4
 - Re-export declarations: 3
-- Exported symbols: 38
-- Documented symbols: 38
+- Exported symbols: 25
+- Documented symbols: 25
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -85,8 +101,8 @@ Focused Three.js/WebGPU ASCII renderer package for glyph, block, mixed, and Kitt
 - Stability: experimental
 - Modules: 11
 - Re-export declarations: 10
-- Exported symbols: 87
-- Documented symbols: 87
+- Exported symbols: 75
+- Documented symbols: 75
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -170,6 +186,7 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 
 | Module                                                                                          | Entrypoints                             | Re-exports | Symbols | Documented |
 | ----------------------------------------------------------------------------------------------- | --------------------------------------- | ---------: | ------: | ---------: |
+| [`mod.app.ts`](#mod-app-ts)                                                                     | `./app`                                 |         41 |       0 |          0 |
 | [`mod.remote.ts`](#mod-remote-ts)                                                               | `./remote`                              |          3 |       0 |          0 |
 | [`mod.runtime.ts`](#mod-runtime-ts)                                                             | `./runtime`                             |          1 |       0 |          0 |
 | [`mod.terminal.ts`](#mod-terminal-ts)                                                           | `./terminal`                            |         14 |       0 |          0 |
@@ -179,11 +196,11 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`mod.ts`](#mod-ts)                                                                             | `.`                                     |         34 |       0 |          0 |
 | [`mod.web.ts`](#mod-web-ts)                                                                     | `./web`                                 |         52 |       0 |          0 |
 | [`src/api_stability.ts`](#src-api-stability-ts)                                                 | `.`, `./web`                            |          0 |      14 |         14 |
-| [`src/app/actions.ts`](#src-app-actions-ts)                                                     | `.`, `./web`                            |          0 |       7 |          7 |
+| [`src/app/actions.ts`](#src-app-actions-ts)                                                     | `.`, `./app`, `./web`                   |          0 |       7 |          7 |
 | [`src/app/app.ts`](#src-app-app-ts)                                                             | `.`, `./web`                            |          0 |      13 |         13 |
 | [`src/app/command_bindings.ts`](#src-app-command-bindings-ts)                                   | `.`, `./web`                            |          0 |      26 |         26 |
 | [`src/app/command_search_index.ts`](#src-app-command-search-index-ts)                           | `.`, `./web`                            |          0 |      11 |         11 |
-| [`src/app/commands.ts`](#src-app-commands-ts)                                                   | `.`, `./web`                            |          0 |       9 |          9 |
+| [`src/app/commands.ts`](#src-app-commands-ts)                                                   | `.`, `./app`, `./web`                   |          0 |       9 |          9 |
 | [`src/app/component_commands.ts`](#src-app-component-commands-ts)                               | `.`, `./web`                            |          0 |       5 |          5 |
 | [`src/app/data_query_commands.ts`](#src-app-data-query-commands-ts)                             | `.`, `./web`                            |          0 |      24 |         24 |
 | [`src/app/data_table_commands.ts`](#src-app-data-table-commands-ts)                             | `.`, `./web`                            |          0 |       4 |          4 |
@@ -201,8 +218,8 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/app/mod.ts`](#src-app-mod-ts)                                                             | `.`, `./web`                            |         39 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                       | `.`, `./web`                            |          0 |      10 |         10 |
 | [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                           | `.`, `./web`                            |          0 |       6 |          6 |
-| [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     | `.`, `./web`                            |          0 |      17 |         17 |
-| [`src/app/router.ts`](#src-app-router-ts)                                                       | `.`, `./web`                            |          0 |      14 |         14 |
+| [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     | `.`, `./app`, `./web`                   |          0 |      17 |         17 |
+| [`src/app/router.ts`](#src-app-router-ts)                                                       | `.`, `./app`, `./web`                   |          0 |      14 |         14 |
 | [`src/app/runtime_commands.ts`](#src-app-runtime-commands-ts)                                   | `.`, `./web`                            |          0 |      25 |         25 |
 | [`src/app/scroll_area_commands.ts`](#src-app-scroll-area-commands-ts)                           | `.`, `./web`                            |          0 |       6 |          6 |
 | [`src/app/selection_bindings.ts`](#src-app-selection-bindings-ts)                               | `.`, `./web`                            |          0 |       8 |          8 |
@@ -211,6 +228,7 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/app/split_pane_commands.ts`](#src-app-split-pane-commands-ts)                             | `.`, `./web`                            |          0 |       7 |          7 |
 | [`src/app/table_commands.ts`](#src-app-table-commands-ts)                                       | `.`, `./web`                            |          0 |       6 |          6 |
 | [`src/app/tabs_commands.ts`](#src-app-tabs-commands-ts)                                         | `.`, `./web`                            |          0 |       6 |          6 |
+| [`src/app/terminal_app.ts`](#src-app-terminal-app-ts)                                           | `./app`                                 |          0 |       6 |          6 |
 | [`src/app/terminal_commands.ts`](#src-app-terminal-commands-ts)                                 | `.`, `./web`                            |          0 |      29 |         29 |
 | [`src/app/terminal_input.ts`](#src-app-terminal-input-ts)                                       | `.`, `./web`                            |          0 |      17 |         17 |
 | [`src/app/theme_commands.ts`](#src-app-theme-commands-ts)                                       | `.`, `./web`                            |          0 |      24 |         24 |
@@ -247,61 +265,61 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/canvas/text.ts`](#src-canvas-text-ts)                                                     | `.`, `./web`                            |          0 |       3 |          3 |
 | [`src/canvas/three_ascii.ts`](#src-canvas-three-ascii-ts)                                       | `.`, `./web`                            |          0 |       6 |          6 |
 | [`src/component.ts`](#src-component-ts)                                                         | `.`                                     |          0 |       4 |          4 |
-| [`src/components/box.ts`](#src-components-box-ts)                                               | `.`, `./web`                            |          0 |       1 |          1 |
+| [`src/components/box.ts`](#src-components-box-ts)                                               | `.`, `./app`, `./web`                   |          0 |       1 |          1 |
 | [`src/components/breadcrumbs.ts`](#src-components-breadcrumbs-ts)                               | `.`, `./web`                            |          0 |       4 |          4 |
-| [`src/components/button.ts`](#src-components-button-ts)                                         | `.`, `./web`                            |          0 |       5 |          5 |
+| [`src/components/button.ts`](#src-components-button-ts)                                         | `.`, `./app`, `./web`                   |          0 |       5 |          5 |
 | [`src/components/catalog.ts`](#src-components-catalog-ts)                                       | `.`, `./web`                            |          0 |      19 |         19 |
 | [`src/components/chart.ts`](#src-components-chart-ts)                                           | `.`, `./web`                            |          0 |       3 |          3 |
-| [`src/components/checkbox.ts`](#src-components-checkbox-ts)                                     | `.`, `./web`                            |          0 |       7 |          7 |
-| [`src/components/combobox.ts`](#src-components-combobox-ts)                                     | `.`, `./web`                            |          0 |       7 |          7 |
-| [`src/components/command_palette.ts`](#src-components-command-palette-ts)                       | `.`, `./web`                            |          0 |      12 |         12 |
-| [`src/components/context_menu.ts`](#src-components-context-menu-ts)                             | `.`, `./web`                            |          0 |      10 |         10 |
+| [`src/components/checkbox.ts`](#src-components-checkbox-ts)                                     | `.`, `./app`, `./web`                   |          0 |       7 |          7 |
+| [`src/components/combobox.ts`](#src-components-combobox-ts)                                     | `.`, `./app`, `./web`                   |          0 |       7 |          7 |
+| [`src/components/command_palette.ts`](#src-components-command-palette-ts)                       | `.`, `./app`, `./web`                   |          0 |      12 |         12 |
+| [`src/components/context_menu.ts`](#src-components-context-menu-ts)                             | `.`, `./app`, `./web`                   |          0 |      10 |         10 |
 | [`src/components/data_table.ts`](#src-components-data-table-ts)                                 | `.`, `./web`                            |          0 |      16 |         16 |
 | [`src/components/empty_state.ts`](#src-components-empty-state-ts)                               | `.`, `./web`                            |          0 |       4 |          4 |
 | [`src/components/file_explorer.ts`](#src-components-file-explorer-ts)                           | `.`, `./web`                            |          0 |       7 |          7 |
-| [`src/components/frame.ts`](#src-components-frame-ts)                                           | `.`, `./web`                            |          0 |       4 |          4 |
+| [`src/components/frame.ts`](#src-components-frame-ts)                                           | `.`, `./app`, `./web`                   |          0 |       4 |          4 |
 | [`src/components/gauge.ts`](#src-components-gauge-ts)                                           | `.`, `./web`                            |          0 |       3 |          3 |
-| [`src/components/input.ts`](#src-components-input-ts)                                           | `.`, `./web`                            |          0 |       8 |          8 |
+| [`src/components/input.ts`](#src-components-input-ts)                                           | `.`, `./app`, `./web`                   |          0 |       8 |          8 |
 | [`src/components/interaction.ts`](#src-components-interaction-ts)                               | `.`, `./web`                            |          0 |       7 |          7 |
 | [`src/components/key_help.ts`](#src-components-key-help-ts)                                     | `.`, `./web`                            |          0 |       3 |          3 |
-| [`src/components/label.ts`](#src-components-label-ts)                                           | `.`, `./web`                            |          0 |       6 |          6 |
-| [`src/components/list.ts`](#src-components-list-ts)                                             | `.`, `./web`                            |          0 |       9 |          9 |
+| [`src/components/label.ts`](#src-components-label-ts)                                           | `.`, `./app`, `./web`                   |          0 |       6 |          6 |
+| [`src/components/list.ts`](#src-components-list-ts)                                             | `.`, `./app`, `./web`                   |          0 |       9 |          9 |
 | [`src/components/log_viewer.ts`](#src-components-log-viewer-ts)                                 | `.`, `./web`                            |          0 |       6 |          6 |
 | [`src/components/menu_bar.ts`](#src-components-menu-bar-ts)                                     | `.`, `./web`                            |          0 |      10 |         10 |
 | [`src/components/metric_series.ts`](#src-components-metric-series-ts)                           | `.`, `./web`                            |          0 |      10 |         10 |
 | [`src/components/mod.ts`](#src-components-mod-ts)                                               | `.`, `./web`                            |         41 |       0 |          0 |
-| [`src/components/modal.ts`](#src-components-modal-ts)                                           | `.`, `./web`                            |          0 |      11 |         11 |
+| [`src/components/modal.ts`](#src-components-modal-ts)                                           | `.`, `./app`, `./web`                   |          0 |      11 |         11 |
 | [`src/components/pad.ts`](#src-components-pad-ts)                                               | `.`, `./web`                            |          0 |      13 |         13 |
-| [`src/components/progressbar.ts`](#src-components-progressbar-ts)                               | `.`, `./web`                            |          0 |      15 |         15 |
-| [`src/components/radio_group.ts`](#src-components-radio-group-ts)                               | `.`, `./web`                            |          0 |      11 |         11 |
-| [`src/components/scroll_area.ts`](#src-components-scroll-area-ts)                               | `.`, `./web`                            |          0 |      13 |         13 |
-| [`src/components/slider.ts`](#src-components-slider-ts)                                         | `.`, `./web`                            |          0 |      14 |         14 |
+| [`src/components/progressbar.ts`](#src-components-progressbar-ts)                               | `.`, `./app`, `./web`                   |          0 |      15 |         15 |
+| [`src/components/radio_group.ts`](#src-components-radio-group-ts)                               | `.`, `./app`, `./web`                   |          0 |      11 |         11 |
+| [`src/components/scroll_area.ts`](#src-components-scroll-area-ts)                               | `.`, `./app`, `./web`                   |          0 |      13 |         13 |
+| [`src/components/slider.ts`](#src-components-slider-ts)                                         | `.`, `./app`, `./web`                   |          0 |      14 |         14 |
 | [`src/components/sparkline.ts`](#src-components-sparkline-ts)                                   | `.`, `./web`                            |          0 |       3 |          3 |
-| [`src/components/spinner.ts`](#src-components-spinner-ts)                                       | `.`, `./web`                            |          0 |       6 |          6 |
-| [`src/components/statusbar.ts`](#src-components-statusbar-ts)                                   | `.`, `./web`                            |          0 |       4 |          4 |
+| [`src/components/spinner.ts`](#src-components-spinner-ts)                                       | `.`, `./app`, `./web`                   |          0 |       6 |          6 |
+| [`src/components/statusbar.ts`](#src-components-statusbar-ts)                                   | `.`, `./app`, `./web`                   |          0 |       4 |          4 |
 | [`src/components/stepper.ts`](#src-components-stepper-ts)                                       | `.`, `./web`                            |          0 |      11 |         11 |
-| [`src/components/table.ts`](#src-components-table-ts)                                           | `.`, `./web`                            |          0 |      13 |         13 |
-| [`src/components/tabs.ts`](#src-components-tabs-ts)                                             | `.`, `./web`                            |          0 |      10 |         10 |
+| [`src/components/table.ts`](#src-components-table-ts)                                           | `.`, `./app`, `./web`                   |          0 |      13 |         13 |
+| [`src/components/tabs.ts`](#src-components-tabs-ts)                                             | `.`, `./app`, `./web`                   |          0 |      10 |         10 |
 | [`src/components/terminal_output.ts`](#src-components-terminal-output-ts)                       | `.`, `./web`                            |          0 |       7 |          7 |
-| [`src/components/text.ts`](#src-components-text-ts)                                             | `.`, `./web`                            |          0 |       2 |          2 |
-| [`src/components/textbox.ts`](#src-components-textbox-ts)                                       | `.`, `./web`                            |          0 |      15 |         15 |
+| [`src/components/text.ts`](#src-components-text-ts)                                             | `.`, `./app`, `./web`                   |          0 |       2 |          2 |
+| [`src/components/textbox.ts`](#src-components-textbox-ts)                                       | `.`, `./app`, `./web`                   |          0 |      15 |         15 |
 | [`src/components/three_ascii.ts`](#src-components-three-ascii-ts)                               | `.`, `./web`                            |          0 |       2 |          2 |
-| [`src/components/toast.ts`](#src-components-toast-ts)                                           | `.`, `./web`                            |          0 |       8 |          8 |
-| [`src/components/tree.ts`](#src-components-tree-ts)                                             | `.`, `./web`                            |          0 |      11 |         11 |
-| [`src/components/virtual_list.ts`](#src-components-virtual-list-ts)                             | `.`, `./web`                            |          0 |       9 |          9 |
+| [`src/components/toast.ts`](#src-components-toast-ts)                                           | `.`, `./app`, `./web`                   |          0 |       8 |          8 |
+| [`src/components/tree.ts`](#src-components-tree-ts)                                             | `.`, `./app`, `./web`                   |          0 |      11 |         11 |
+| [`src/components/virtual_list.ts`](#src-components-virtual-list-ts)                             | `.`, `./app`, `./web`                   |          0 |       9 |          9 |
 | [`src/controls.ts`](#src-controls-ts)                                                           | `.`                                     |          0 |       2 |          2 |
 | [`src/event_emitter.ts`](#src-event-emitter-ts)                                                 | `.`, `./web`                            |          0 |       5 |          5 |
 | [`src/focus.ts`](#src-focus-ts)                                                                 | `.`, `./web`                            |          0 |       9 |          9 |
 | [`src/grwizard_themes.ts`](#src-grwizard-themes-ts)                                             | `.`, `./web`, `./theme`                 |          0 |       5 |          5 |
 | [`src/input_reader/mod.ts`](#src-input-reader-mod-ts)                                           | `.`, `./terminal`                       |          0 |       2 |          2 |
-| [`src/input_reader/types.ts`](#src-input-reader-types-ts)                                       | `./remote`                              |          0 |      11 |         11 |
+| [`src/input_reader/types.ts`](#src-input-reader-types-ts)                                       | `./remote`                              |          0 |       5 |          5 |
 | [`src/input.ts`](#src-input-ts)                                                                 | `.`                                     |          0 |       1 |          1 |
 | [`src/keymap.ts`](#src-keymap-ts)                                                               | `.`                                     |          0 |       6 |          6 |
 | [`src/layout/engine.ts`](#src-layout-engine-ts)                                                 | `.`, `./web`                            |          0 |       6 |          6 |
 | [`src/layout/errors.ts`](#src-layout-errors-ts)                                                 | `.`, `./web`                            |          0 |       2 |          2 |
 | [`src/layout/flex_layout.ts`](#src-layout-flex-layout-ts)                                       | `.`, `./web`                            |          0 |       3 |          3 |
-| [`src/layout/grid_layout.ts`](#src-layout-grid-layout-ts)                                       | `.`, `./web`                            |          0 |       3 |          3 |
-| [`src/layout/horizontal_layout.ts`](#src-layout-horizontal-layout-ts)                           | `.`, `./web`                            |          0 |       1 |          1 |
+| [`src/layout/grid_layout.ts`](#src-layout-grid-layout-ts)                                       | `.`, `./app`, `./web`                   |          0 |       3 |          3 |
+| [`src/layout/horizontal_layout.ts`](#src-layout-horizontal-layout-ts)                           | `.`, `./app`, `./web`                   |          0 |       1 |          1 |
 | [`src/layout/measurement.ts`](#src-layout-measurement-ts)                                       | `.`, `./web`                            |          0 |       6 |          6 |
 | [`src/layout/mod.ts`](#src-layout-mod-ts)                                                       | `.`, `./web`                            |         16 |       0 |          0 |
 | [`src/layout/overlay.ts`](#src-layout-overlay-ts)                                               | `.`, `./web`                            |          0 |      19 |         19 |
@@ -310,10 +328,10 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/layout/solver.ts`](#src-layout-solver-ts)                                                 | `.`, `./web`                            |          0 |      13 |         13 |
 | [`src/layout/solvers/simple.ts`](#src-layout-solvers-simple-ts)                                 | `.`, `./web`                            |          0 |       3 |          3 |
 | [`src/layout/solvers/yoga.ts`](#src-layout-solvers-yoga-ts)                                     | `./layout/yoga`                         |          0 |       3 |          3 |
-| [`src/layout/split_pane.ts`](#src-layout-split-pane-ts)                                         | `.`, `./web`                            |          0 |      10 |         10 |
+| [`src/layout/split_pane.ts`](#src-layout-split-pane-ts)                                         | `.`, `./app`, `./web`                   |          0 |      10 |         10 |
 | [`src/layout/style.ts`](#src-layout-style-ts)                                                   | `.`, `./web`                            |          0 |      33 |         33 |
 | [`src/layout/types.ts`](#src-layout-types-ts)                                                   | `.`, `./web`                            |          0 |       3 |          3 |
-| [`src/layout/vertical_layout.ts`](#src-layout-vertical-layout-ts)                               | `.`, `./web`                            |          0 |       1 |          1 |
+| [`src/layout/vertical_layout.ts`](#src-layout-vertical-layout-ts)                               | `.`, `./app`, `./web`                   |          0 |       1 |          1 |
 | [`src/layout/window_manager.ts`](#src-layout-window-manager-ts)                                 | `.`, `./web`                            |          0 |      10 |         10 |
 | [`src/markup/cascade.ts`](#src-markup-cascade-ts)                                               | `.`, `./web`                            |          0 |       7 |          7 |
 | [`src/markup/css.ts`](#src-markup-css-ts)                                                       | `.`, `./web`                            |          0 |      11 |         11 |
@@ -358,16 +376,16 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)                       | `.`, `./web`, `./runtime`, `./terminal` |          0 |      24 |         24 |
 | [`src/runtime/worker_pool.ts`](#src-runtime-worker-pool-ts)                                     | `.`, `./web`, `./runtime`               |          0 |      12 |         12 |
 | [`src/selection.ts`](#src-selection-ts)                                                         | `.`, `./web`                            |          0 |      16 |         16 |
-| [`src/signals/computed.ts`](#src-signals-computed-ts)                                           | `.`, `./web`                            |          0 |       3 |          3 |
-| [`src/signals/dependency_tracking.ts`](#src-signals-dependency-tracking-ts)                     | `.`, `./web`                            |          0 |       3 |          3 |
-| [`src/signals/effect.ts`](#src-signals-effect-ts)                                               | `.`, `./web`                            |          0 |       3 |          3 |
-| [`src/signals/flusher.ts`](#src-signals-flusher-ts)                                             | `.`, `./web`                            |          0 |       1 |          1 |
-| [`src/signals/lazy_computed.ts`](#src-signals-lazy-computed-ts)                                 | `.`, `./web`                            |          0 |       1 |          1 |
-| [`src/signals/lazy_effect.ts`](#src-signals-lazy-effect-ts)                                     | `.`, `./web`                            |          0 |       1 |          1 |
-| [`src/signals/mod.ts`](#src-signals-mod-ts)                                                     | `.`, `./web`                            |          9 |       0 |          0 |
-| [`src/signals/reactivity.ts`](#src-signals-reactivity-ts)                                       | `.`, `./web`                            |          0 |      13 |         13 |
-| [`src/signals/signal.ts`](#src-signals-signal-ts)                                               | `.`, `./web`                            |          0 |      11 |         11 |
-| [`src/signals/types.ts`](#src-signals-types-ts)                                                 | `.`, `./web`                            |          0 |       4 |          4 |
+| [`src/signals/computed.ts`](#src-signals-computed-ts)                                           | `.`, `./app`, `./web`                   |          0 |       3 |          3 |
+| [`src/signals/dependency_tracking.ts`](#src-signals-dependency-tracking-ts)                     | `.`, `./app`, `./web`                   |          0 |       3 |          3 |
+| [`src/signals/effect.ts`](#src-signals-effect-ts)                                               | `.`, `./app`, `./web`                   |          0 |       3 |          3 |
+| [`src/signals/flusher.ts`](#src-signals-flusher-ts)                                             | `.`, `./app`, `./web`                   |          0 |       1 |          1 |
+| [`src/signals/lazy_computed.ts`](#src-signals-lazy-computed-ts)                                 | `.`, `./app`, `./web`                   |          0 |       1 |          1 |
+| [`src/signals/lazy_effect.ts`](#src-signals-lazy-effect-ts)                                     | `.`, `./app`, `./web`                   |          0 |       1 |          1 |
+| [`src/signals/mod.ts`](#src-signals-mod-ts)                                                     | `.`, `./app`, `./web`                   |          9 |       0 |          0 |
+| [`src/signals/reactivity.ts`](#src-signals-reactivity-ts)                                       | `.`, `./app`, `./web`                   |          0 |      13 |         13 |
+| [`src/signals/signal.ts`](#src-signals-signal-ts)                                               | `.`, `./app`, `./web`                   |          0 |      11 |         11 |
+| [`src/signals/types.ts`](#src-signals-types-ts)                                                 | `.`, `./app`, `./web`                   |          0 |       4 |          4 |
 | [`src/testing/input.ts`](#src-testing-input-ts)                                                 | `.`, `./testing`                        |          0 |       7 |          7 |
 | [`src/testing/snapshot.ts`](#src-testing-snapshot-ts)                                           | `.`, `./testing`                        |          0 |      15 |         15 |
 | [`src/theme_binding.ts`](#src-theme-binding-ts)                                                 | `.`, `./web`, `./theme`                 |          0 |       8 |          8 |
@@ -377,19 +395,19 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/theme_gallery.ts`](#src-theme-gallery-ts)                                                 | `.`, `./web`, `./theme`                 |          0 |      11 |         11 |
 | [`src/theme_resolver.ts`](#src-theme-resolver-ts)                                               | `.`, `./web`, `./theme`                 |          0 |      15 |         15 |
 | [`src/theme_workspace.ts`](#src-theme-workspace-ts)                                             | `.`, `./web`, `./theme`                 |          0 |       7 |          7 |
-| [`src/theme.ts`](#src-theme-ts)                                                                 | `.`, `./web`, `./theme`                 |          0 |     115 |        115 |
+| [`src/theme.ts`](#src-theme-ts)                                                                 | `.`, `./app`, `./web`, `./theme`        |          0 |     115 |        115 |
 | [`src/three_ascii/AcerolaAsciiNode.ts`](#src-three-ascii-acerolaasciinode-ts)                   | `.`, `./web`, `./three-ascii`           |          0 |       3 |          3 |
 | [`src/three_ascii/demo_presets.ts`](#src-three-ascii-demo-presets-ts)                           | `.`, `./web`, `./three-ascii`           |          0 |      14 |         14 |
-| [`src/three_ascii/frame_options.ts`](#src-three-ascii-frame-options-ts)                         | `.`, `./web`, `./three-ascii`           |          0 |       8 |          8 |
+| [`src/three_ascii/frame_options.ts`](#src-three-ascii-frame-options-ts)                         | `.`, `./web`, `./three-ascii`           |          0 |       1 |          1 |
 | [`src/three_ascii/glyphs.ts`](#src-three-ascii-glyphs-ts)                                       | `.`, `./web`, `./three-ascii`           |          0 |      13 |         13 |
 | [`src/three_ascii/mod.ts`](#src-three-ascii-mod-ts)                                             | `.`, `./web`, `./three-ascii`           |          7 |       0 |          0 |
 | [`src/three_ascii/options.ts`](#src-three-ascii-options-ts)                                     | `.`, `./web`, `./three-ascii`           |          0 |      15 |         15 |
-| [`src/three_ascii/performance.ts`](#src-three-ascii-performance-ts)                             | `.`, `./web`, `./three-ascii`           |          0 |       6 |          6 |
+| [`src/three_ascii/performance.ts`](#src-three-ascii-performance-ts)                             | `.`, `./web`, `./three-ascii`           |          0 |       1 |          1 |
 | [`src/three_ascii/render_profile.ts`](#src-three-ascii-render-profile-ts)                       | `.`, `./web`, `./three-ascii`           |          0 |       3 |          3 |
 | [`src/three_ascii/renderer.ts`](#src-three-ascii-renderer-ts)                                   | `.`, `./web`, `./three-ascii`           |          2 |      22 |         22 |
 | [`src/three_ascii/webgpu_compat.ts`](#src-three-ascii-webgpu-compat-ts)                         | `.`, `./web`, `./three-ascii`           |          0 |       3 |          3 |
-| [`src/tui.ts`](#src-tui-ts)                                                                     | `.`                                     |          0 |       3 |          3 |
-| [`src/types.ts`](#src-types-ts)                                                                 | `.`, `./remote`                         |          0 |       8 |          8 |
+| [`src/tui.ts`](#src-tui-ts)                                                                     | `.`, `./app`                            |          0 |       3 |          3 |
+| [`src/types.ts`](#src-types-ts)                                                                 | `.`, `./app`, `./remote`                |          0 |       8 |          8 |
 | [`src/utils/ansi_codes.ts`](#src-utils-ansi-codes-ts)                                           | `.`                                     |          0 |      12 |         12 |
 | [`src/utils/async.ts`](#src-utils-async-ts)                                                     | `.`, `./web`                            |          0 |       1 |          1 |
 | [`src/utils/component.ts`](#src-utils-component-ts)                                             | `.`                                     |          0 |       2 |          2 |
@@ -408,6 +426,56 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/web/remote_terminal.ts`](#src-web-remote-terminal-ts)                                     | `./web`, `./remote`                     |          0 |      19 |         19 |
 
 ## Module Details
+
+### mod.app.ts
+
+_Entrypoints: `./app`_
+
+| Re-export Target                    | Kind  | Names                                                                                                                     |
+| ----------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------- |
+| `src/app/terminal_app.ts`           | named | `TerminalApp`, `createTerminalApp`                                                                                        |
+| `src/app/terminal_app.ts`           | named | `type TerminalAppBindings`, `type TerminalAppComponentOptions`, `type TerminalAppInputOptions`, `type TerminalAppOptions` |
+| `src/app/plugins.ts`                | named | `createAppPlugin`                                                                                                         |
+| `src/app/plugins.ts`                | named | `type AppPluginDefinition`                                                                                                |
+| `src/app/actions.ts`                | named | `type Action`, `type ActionHandler`, `type ActionMiddleware`                                                              |
+| `src/app/commands.ts`               | named | `type Command`                                                                                                            |
+| `src/app/router.ts`                 | named | `type Route`                                                                                                              |
+| `src/signals/mod.ts`                | named | `Computed`, `Effect`, `Signal`                                                                                            |
+| `src/signals/mod.ts`                | named | `type SignalOfObject`                                                                                                     |
+| `src/theme.ts`                      | named | `ThemeEngine`, `createThemeEngine`                                                                                        |
+| `src/tui.ts`                        | named | `Tui`                                                                                                                     |
+| `src/tui.ts`                        | named | `type TuiOptions`                                                                                                         |
+| `src/types.ts`                      | named | `type Rectangle`                                                                                                          |
+| `src/layout/grid_layout.ts`         | named | `GridLayout`                                                                                                              |
+| `src/layout/horizontal_layout.ts`   | named | `HorizontalLayout`                                                                                                        |
+| `src/layout/split_pane.ts`          | named | `SplitPaneController`                                                                                                     |
+| `src/layout/vertical_layout.ts`     | named | `VerticalLayout`                                                                                                          |
+| `src/components/box.ts`             | named | `Box`                                                                                                                     |
+| `src/components/button.ts`          | named | `Button`                                                                                                                  |
+| `src/components/checkbox.ts`        | named | `CheckBox`                                                                                                                |
+| `src/components/combobox.ts`        | named | `ComboBox`                                                                                                                |
+| `src/components/command_palette.ts` | named | `CommandPalette`                                                                                                          |
+| `src/components/context_menu.ts`    | named | `ContextMenu`                                                                                                             |
+| `src/components/frame.ts`           | named | `Frame`                                                                                                                   |
+| `src/components/input.ts`           | named | `Input`                                                                                                                   |
+| `src/components/label.ts`           | named | `Label`                                                                                                                   |
+| `src/components/list.ts`            | named | `List`                                                                                                                    |
+| `src/components/modal.ts`           | named | `Modal`                                                                                                                   |
+| `src/components/progressbar.ts`     | named | `ProgressBar`                                                                                                             |
+| `src/components/radio_group.ts`     | named | `RadioGroup`                                                                                                              |
+| `src/components/scroll_area.ts`     | named | `ScrollArea`                                                                                                              |
+| `src/components/slider.ts`          | named | `Slider`                                                                                                                  |
+| `src/components/spinner.ts`         | named | `Spinner`                                                                                                                 |
+| `src/components/statusbar.ts`       | named | `StatusBar`                                                                                                               |
+| `src/components/table.ts`           | named | `Table`                                                                                                                   |
+| `src/components/tabs.ts`            | named | `Tabs`                                                                                                                    |
+| `src/components/text.ts`            | named | `Text`                                                                                                                    |
+| `src/components/textbox.ts`         | named | `TextBox`                                                                                                                 |
+| `src/components/toast.ts`           | named | `ToastStack`                                                                                                              |
+| `src/components/tree.ts`            | named | `Tree`                                                                                                                    |
+| `src/components/virtual_list.ts`    | named | `VirtualList`                                                                                                             |
+
+_No direct exported symbols._
 
 ### mod.remote.ts
 
@@ -620,7 +688,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/app/actions.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                | Kind      | Type Only | JSDoc |
 | --------------------- | --------- | --------- | ----- |
@@ -705,7 +773,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/app/commands.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                      | Kind      | Type Only | JSDoc |
 | --------------------------- | --------- | --------- | ----- |
@@ -1018,7 +1086,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/app/plugins.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                                  | Kind      | Type Only | JSDoc |
 | --------------------------------------- | --------- | --------- | ----- |
@@ -1042,7 +1110,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/app/router.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                      | Kind      | Type Only | JSDoc |
 | --------------------------- | --------- | --------- | ----- |
@@ -1205,6 +1273,19 @@ _Entrypoints: `.`, `./web`_
 | `TabsCommandOptions` | interface | yes       | yes   |
 | `TabsCommandPayload` | interface | yes       | yes   |
 | `tabsCommands`       | function  | no        | yes   |
+
+### src/app/terminal_app.ts
+
+_Entrypoints: `./app`_
+
+| Symbol                        | Kind      | Type Only | JSDoc |
+| ----------------------------- | --------- | --------- | ----- |
+| `createTerminalApp`           | function  | no        | yes   |
+| `TerminalApp`                 | class     | no        | yes   |
+| `TerminalAppBindings`         | interface | yes       | yes   |
+| `TerminalAppComponentOptions` | interface | yes       | yes   |
+| `TerminalAppInputOptions`     | interface | yes       | yes   |
+| `TerminalAppOptions`          | interface | yes       | yes   |
 
 ### src/app/terminal_commands.ts
 
@@ -2045,7 +2126,7 @@ _Entrypoints: `.`_
 
 ### src/components/box.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol | Kind  | Type Only | JSDoc |
 | ------ | ----- | --------- | ----- |
@@ -2064,7 +2145,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/button.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                    | Kind      | Type Only | JSDoc |
 | ------------------------- | --------- | --------- | ----- |
@@ -2112,7 +2193,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/checkbox.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                      | Kind      | Type Only | JSDoc |
 | --------------------------- | --------- | --------- | ----- |
@@ -2126,7 +2207,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/combobox.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                      | Kind      | Type Only | JSDoc |
 | --------------------------- | --------- | --------- | ----- |
@@ -2140,7 +2221,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/command_palette.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                            | Kind      | Type Only | JSDoc |
 | --------------------------------- | --------- | --------- | ----- |
@@ -2159,7 +2240,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/context_menu.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                         | Kind      | Type Only | JSDoc |
 | ------------------------------ | --------- | --------- | ----- |
@@ -2224,7 +2305,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/frame.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                       | Kind      | Type Only | JSDoc |
 | ---------------------------- | --------- | --------- | ----- |
@@ -2245,7 +2326,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/input.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                   | Kind      | Type Only | JSDoc |
 | ------------------------ | --------- | --------- | ----- |
@@ -2284,7 +2365,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/label.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol            | Kind      | Type Only | JSDoc |
 | ----------------- | --------- | --------- | ----- |
@@ -2297,7 +2378,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/list.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                  | Kind      | Type Only | JSDoc |
 | ----------------------- | --------- | --------- | ----- |
@@ -2410,7 +2491,7 @@ _No direct exported symbols._
 
 ### src/components/modal.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                   | Kind      | Type Only | JSDoc |
 | ------------------------ | --------- | --------- | ----- |
@@ -2448,7 +2529,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/progressbar.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                         | Kind      | Type Only | JSDoc |
 | ------------------------------ | --------- | --------- | ----- |
@@ -2470,7 +2551,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/radio_group.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                        | Kind      | Type Only | JSDoc |
 | ----------------------------- | --------- | --------- | ----- |
@@ -2488,7 +2569,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/scroll_area.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                         | Kind      | Type Only | JSDoc |
 | ------------------------------ | --------- | --------- | ----- |
@@ -2508,7 +2589,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/slider.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                    | Kind      | Type Only | JSDoc |
 | ------------------------- | --------- | --------- | ----- |
@@ -2539,7 +2620,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/spinner.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                   | Kind      | Type Only | JSDoc |
 | ------------------------ | --------- | --------- | ----- |
@@ -2552,7 +2633,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/statusbar.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol              | Kind      | Type Only | JSDoc |
 | ------------------- | --------- | --------- | ----- |
@@ -2581,7 +2662,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/table.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                       | Kind      | Type Only | JSDoc |
 | ---------------------------- | --------- | --------- | ----- |
@@ -2601,7 +2682,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/tabs.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                  | Kind      | Type Only | JSDoc |
 | ----------------------- | --------- | --------- | ----- |
@@ -2632,7 +2713,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/text.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol        | Kind      | Type Only | JSDoc |
 | ------------- | --------- | --------- | ----- |
@@ -2641,7 +2722,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/textbox.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                     | Kind      | Type Only | JSDoc |
 | -------------------------- | --------- | --------- | ----- |
@@ -2672,7 +2753,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/toast.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                        | Kind      | Type Only | JSDoc |
 | ----------------------------- | --------- | --------- | ----- |
@@ -2687,7 +2768,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/tree.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                  | Kind      | Type Only | JSDoc |
 | ----------------------- | --------- | --------- | ----- |
@@ -2705,7 +2786,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/components/virtual_list.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                         | Kind      | Type Only | JSDoc |
 | ------------------------------ | --------- | --------- | ----- |
@@ -2783,16 +2864,10 @@ _Entrypoints: `./remote`_
 
 | Symbol               | Kind      | Type Only | JSDoc |
 | -------------------- | --------- | --------- | ----- |
-| `Alphabet`           | type      | yes       | yes   |
-| `Chars`              | type      | yes       | yes   |
-| `InputEvent`         | type      | yes       | yes   |
-| `Key`                | type      | yes       | yes   |
 | `KeyPressEvent`      | interface | yes       | yes   |
-| `MouseEvent`         | interface | yes       | yes   |
 | `MousePressEvent`    | interface | yes       | yes   |
 | `MouseScrollEvent`   | interface | yes       | yes   |
 | `PasteEvent`         | interface | yes       | yes   |
-| `SpecialKeys`        | type      | yes       | yes   |
 | `TerminalFocusEvent` | interface | yes       | yes   |
 
 ### src/input.ts
@@ -2850,7 +2925,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/layout/grid_layout.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol              | Kind      | Type Only | JSDoc |
 | ------------------- | --------- | --------- | ----- |
@@ -2860,7 +2935,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/layout/horizontal_layout.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol             | Kind  | Type Only | JSDoc |
 | ------------------ | ----- | --------- | ----- |
@@ -3018,7 +3093,7 @@ _Entrypoints: `./layout/yoga`_
 
 ### src/layout/split_pane.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                       | Kind      | Type Only | JSDoc |
 | ---------------------------- | --------- | --------- | ----- |
@@ -3085,7 +3160,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/layout/vertical_layout.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol           | Kind  | Type Only | JSDoc |
 | ---------------- | ----- | --------- | ----- |
@@ -3959,7 +4034,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/signals/computed.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                  | Kind      | Type Only | JSDoc |
 | ----------------------- | --------- | --------- | ----- |
@@ -3969,7 +4044,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/signals/dependency_tracking.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                 | Kind     | Type Only | JSDoc |
 | ---------------------- | -------- | --------- | ----- |
@@ -3979,7 +4054,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/signals/effect.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                    | Kind      | Type Only | JSDoc |
 | ------------------------- | --------- | --------- | ----- |
@@ -3989,7 +4064,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/signals/flusher.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol    | Kind  | Type Only | JSDoc |
 | --------- | ----- | --------- | ----- |
@@ -3997,7 +4072,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/signals/lazy_computed.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol         | Kind  | Type Only | JSDoc |
 | -------------- | ----- | --------- | ----- |
@@ -4005,7 +4080,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/signals/lazy_effect.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol       | Kind  | Type Only | JSDoc |
 | ------------ | ----- | --------- | ----- |
@@ -4013,7 +4088,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/signals/mod.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Re-export Target                     | Kind | Names |
 | ------------------------------------ | ---- | ----- |
@@ -4031,7 +4106,7 @@ _No direct exported symbols._
 
 ### src/signals/reactivity.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                           | Kind     | Type Only | JSDoc |
 | -------------------------------- | -------- | --------- | ----- |
@@ -4051,7 +4126,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/signals/signal.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                           | Kind      | Type Only | JSDoc |
 | -------------------------------- | --------- | --------- | ----- |
@@ -4069,7 +4144,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/signals/types.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol          | Kind      | Type Only | JSDoc |
 | --------------- | --------- | --------- | ----- |
@@ -4243,7 +4318,7 @@ _Entrypoints: `.`, `./web`, `./theme`_
 
 ### src/theme.ts
 
-_Entrypoints: `.`, `./web`, `./theme`_
+_Entrypoints: `.`, `./app`, `./web`, `./theme`_
 
 | Symbol                                    | Kind      | Type Only | JSDoc |
 | ----------------------------------------- | --------- | --------- | ----- |
@@ -4398,16 +4473,9 @@ _Entrypoints: `.`, `./web`, `./three-ascii`_
 
 _Entrypoints: `.`, `./web`, `./three-ascii`_
 
-| Symbol                                      | Kind      | Type Only | JSDoc |
-| ------------------------------------------- | --------- | --------- | ----- |
-| `emptyThreeAsciiRenderFrame`                | function  | no        | yes   |
-| `resolveThreeAsciiRenderFrameSelection`     | function  | no        | yes   |
-| `resolveThreeAsciiRenderFrameSelectionInto` | function  | no        | yes   |
-| `THREE_ASCII_ANSI_FRAME_OPTIONS`            | const     | no        | yes   |
-| `THREE_ASCII_IMAGE_FRAME_OPTIONS`           | const     | no        | yes   |
-| `ThreeAsciiEmptyRenderFrame`                | interface | yes       | yes   |
-| `ThreeAsciiRenderFrameOptions`              | interface | yes       | yes   |
-| `ThreeAsciiRenderFrameSelection`            | interface | yes       | yes   |
+| Symbol                         | Kind      | Type Only | JSDoc |
+| ------------------------------ | --------- | --------- | ----- |
+| `ThreeAsciiRenderFrameOptions` | interface | yes       | yes   |
 
 ### src/three_ascii/glyphs.ts
 
@@ -4471,14 +4539,9 @@ _Entrypoints: `.`, `./web`, `./three-ascii`_
 
 _Entrypoints: `.`, `./web`, `./three-ascii`_
 
-| Symbol                                         | Kind      | Type Only | JSDoc |
-| ---------------------------------------------- | --------- | --------- | ----- |
-| `createThreeAsciiRendererPerformance`          | function  | no        | yes   |
-| `createThreeAsciiRendererSaturatedPerformance` | function  | no        | yes   |
-| `ThreeAsciiReadbackQueueInspection`            | interface | yes       | yes   |
-| `ThreeAsciiRendererPerformance`                | interface | yes       | yes   |
-| `ThreeAsciiRendererPerformanceInput`           | interface | yes       | yes   |
-| `ThreeAsciiRendererSaturatedPerformanceInput`  | interface | yes       | yes   |
+| Symbol                          | Kind      | Type Only | JSDoc |
+| ------------------------------- | --------- | --------- | ----- |
+| `ThreeAsciiRendererPerformance` | interface | yes       | yes   |
 
 ### src/three_ascii/render_profile.ts
 
@@ -4536,7 +4599,7 @@ _Entrypoints: `.`, `./web`, `./three-ascii`_
 
 ### src/tui.ts
 
-_Entrypoints: `.`_
+_Entrypoints: `.`, `./app`_
 
 | Symbol                                  | Kind      | Type Only | JSDoc |
 | --------------------------------------- | --------- | --------- | ----- |
@@ -4546,7 +4609,7 @@ _Entrypoints: `.`_
 
 ### src/types.ts
 
-_Entrypoints: `.`, `./remote`_
+_Entrypoints: `.`, `./app`, `./remote`_
 
 | Symbol        | Kind      | Type Only | JSDoc |
 | ------------- | --------- | --------- | ----- |

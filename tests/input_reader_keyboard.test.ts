@@ -1,6 +1,8 @@
 import { assertEquals } from "./deps.ts";
-import { decodeBuffer } from "../src/input_reader/mod.ts";
+import { EventEmitter } from "../src/event_emitter.ts";
+import { decodeBuffer, emitInputEvents, type InputEventRecord } from "../src/input_reader/mod.ts";
 import type { InputEvent, KeyPressEvent } from "../src/input_reader/types.ts";
+import type { Stdin } from "../src/types.ts";
 
 const encoder = new TextEncoder();
 
@@ -31,6 +33,32 @@ function fullSnapshot(code: string): InputEvent[] {
   }
   return events;
 }
+
+Deno.test("emitInputEvents drains input until EOF and restores event boundaries", async () => {
+  const reads = [encoder.encode("ab"), encoder.encode("\x1b[A"), null];
+  const rawModes: boolean[] = [];
+  const stdin = {
+    async read(buffer: Uint8Array) {
+      const next = reads.shift();
+      if (next == null) return null;
+      buffer.set(next);
+      return next.length;
+    },
+    setRaw(value: boolean) {
+      rawModes.push(value);
+    },
+  } as unknown as Stdin;
+  const emitter = new EventEmitter<InputEventRecord>();
+  const keys: string[] = [];
+  emitter.on("keyPress", (event) => {
+    keys.push(event.key);
+  });
+
+  await emitInputEvents(stdin, emitter, 0);
+
+  assertEquals(keys, ["a", "b", "up"]);
+  assertEquals(rawModes, [true]);
+});
 
 Deno.test("decodeBuffer maps xterm function keys", () => {
   assertEquals(decode("\x1bOP").key, "f1");

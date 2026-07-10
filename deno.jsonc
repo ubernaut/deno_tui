@@ -1,6 +1,7 @@
 {
   "exports": {
     ".": "./mod.ts",
+    "./app": "./mod.app.ts",
     "./web": "./mod.web.ts",
     "./remote": "./mod.remote.ts",
     "./three-ascii": "./mod.three_ascii.ts",
@@ -22,6 +23,7 @@
   },
   "tasks": {
     "demo": "deno run --watch --allow-hrtime ./examples/demo.ts",
+    "terminal-app": "deno run -A ./examples/terminal_app.ts",
     "app-shell": "deno run -A ./examples/app_shell.ts",
     "command-search": "deno run -A ./examples/command_search_index.ts",
     "dashboard": "deno run -A ./examples/dashboard.ts",

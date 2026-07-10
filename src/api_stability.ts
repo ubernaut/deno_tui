@@ -10,6 +10,7 @@ export type PackageRuntime = "shared" | "terminal" | "browser" | "remote" | "dem
 export interface PackageEntrypointManifest {
   specifier:
     | "."
+    | "./app"
     | "./web"
     | "./remote"
     | "./three-ascii"
@@ -20,6 +21,7 @@ export interface PackageEntrypointManifest {
     | "./layout/yoga";
   path:
     | "./mod.ts"
+    | "./mod.app.ts"
     | "./mod.web.ts"
     | "./mod.remote.ts"
     | "./mod.three_ascii.ts"
@@ -85,6 +87,20 @@ export const packageEntrypoints = [
       "Three ASCII renderer",
     ],
     excludes: ["browser-only host helpers", "remote terminal bridge transport"],
+  },
+  {
+    specifier: "./app",
+    path: "./mod.app.ts",
+    runtime: "terminal",
+    stability: "beta",
+    description: "Focused terminal application package with opinionated lifecycle wiring and curated widgets.",
+    includes: [
+      "TerminalApp golden path",
+      "signals and theme engine",
+      "common layouts and widgets",
+      "commands, routes, and app plugins",
+    ],
+    excludes: ["broad compatibility surface", "browser host helpers", "renderer internals", "demo workbench code"],
   },
   {
     specifier: "./web",
@@ -199,6 +215,13 @@ export const apiSurfacePolicies = [
     stability: "stable",
     public: true,
     description: "Default public API. Changes should follow semver and the changelog policy.",
+  },
+  {
+    pattern: "mod.app.ts",
+    runtime: "terminal",
+    stability: "beta",
+    public: true,
+    description: "Focused terminal app API and recommended starting point for new applications.",
   },
   {
     pattern: "mod.web.ts",

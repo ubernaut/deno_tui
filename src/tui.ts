@@ -41,6 +41,8 @@ export interface TuiOptions {
   enableMouse?: boolean;
   enableBracketedPaste?: boolean;
   enableFocusEvents?: boolean;
+  /** Whether this instance should read and track the host terminal size. Defaults to false for a supplied canvas. */
+  manageTerminalSize?: boolean;
 }
 
 /**
@@ -77,11 +79,13 @@ export class Tui extends EventEmitter<
   enableMouse: boolean;
   enableBracketedPaste: boolean;
   enableFocusEvents: boolean;
+  readonly manageTerminalSize: boolean;
   private readonly updateCanvasSize: (options?: { verifyWithStty?: boolean }) => void;
   private readonly sigwinchResizeHandler?: () => void;
   private readonly resizePollTimer?: ReturnType<typeof setInterval>;
   private verifiedTerminalSize?: RecentlyVerifiedTerminalSize;
   private destroyed = false;
+  private stopDispatch?: () => void;
 
   constructor(options: TuiOptions) {
     super();
@@ -89,12 +93,13 @@ export class Tui extends EventEmitter<
     this.stdout = options.stdout ?? Deno.stdout;
     this.refreshRate = options.refreshRate ?? 1000 / 60;
     this.enableMouse = options.enableMouse ?? false;
+    this.manageTerminalSize = options.manageTerminalSize ?? options.canvas === undefined;
     this.canvas = options.canvas ?? new Canvas({
       stdout: this.stdout,
       size: terminalSize({ verified: () => this.verifiedTerminalSize }),
     });
     this.updateCanvasSize = (updateOptions = {}) => {
-      if (this.destroyed) return;
+      if (this.destroyed || !this.manageTerminalSize) return;
       const { canvas } = this;
       const { columns, rows } = terminalSize({
         ...updateOptions,
@@ -132,11 +137,11 @@ export class Tui extends EventEmitter<
       return tuiRectangle;
     });
 
-    this.updateCanvasSize();
+    if (this.manageTerminalSize) this.updateCanvasSize();
 
-    if (Deno.build.os === "windows") {
+    if (this.manageTerminalSize && Deno.build.os === "windows") {
       this.resizePollTimer = setInterval(this.updateCanvasSize, this.refreshRate);
-    } else {
+    } else if (this.manageTerminalSize) {
       this.sigwinchResizeHandler = () => this.updateCanvasSize({ verifyWithStty: true });
       Deno.addSignalListener("SIGWINCH", this.sigwinchResizeHandler);
       this.resizePollTimer = setInterval(
@@ -186,6 +191,8 @@ export class Tui extends EventEmitter<
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.stopDispatch?.();
+    this.stopDispatch = undefined;
     this.off();
 
     this.renderLoop.stop();
@@ -213,27 +220,40 @@ export class Tui extends EventEmitter<
   }
 
   dispatch(): void {
+    if (this.stopDispatch) return;
     const destroyDispatcher = () => {
       this.emit("destroy");
     };
+    const signalNames: Deno.Signal[] = [];
 
     if (Deno.build.os === "windows") {
       Deno.addSignalListener("SIGBREAK", destroyDispatcher);
+      signalNames.push("SIGBREAK");
 
       this.on("keyPress", ({ key, ctrl }) => {
         if (ctrl && key === "c") destroyDispatcher();
       });
     } else {
       Deno.addSignalListener("SIGTERM", destroyDispatcher);
+      signalNames.push("SIGTERM");
     }
 
     Deno.addSignalListener("SIGINT", destroyDispatcher);
+    signalNames.push("SIGINT");
 
-    this.on("destroy", async () => {
+    const stopDestroy = this.on("destroy", async () => {
       this.destroy();
       await Promise.resolve();
       Deno.exit(0);
     });
+    this.stopDispatch = () => {
+      stopDestroy();
+      for (const signal of signalNames) {
+        try {
+          Deno.removeSignalListener(signal, destroyDispatcher);
+        } catch { /**/ }
+      }
+    };
   }
 }
 
