@@ -1,7 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Component, type ComponentOptions } from "../component.ts";
 import { Computed, Signal } from "../signals/mod.ts";
-import { clamp } from "../utils/numbers.ts";
 import {
   ActiveItemController,
   activeItemForIndex,

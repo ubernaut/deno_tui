@@ -122,19 +122,11 @@ export function selectionNavigationCommandEntries<TResult>(
   itemLabel: string,
   keywordPrefix?: readonly string[],
 ): ActionCommandGroupEntry<SelectionNavigationCommandKind, TResult>[] {
-  if (keywordPrefix) {
-    return [
-      ["first", `First ${itemLabel}`, () => controller.first(), [...keywordPrefix, "first"]],
-      ["previous", `Previous ${itemLabel}`, () => controller.move(-1), [...keywordPrefix, "previous"]],
-      ["next", `Next ${itemLabel}`, () => controller.move(1), [...keywordPrefix, "next"]],
-      ["last", `Last ${itemLabel}`, () => controller.last(), [...keywordPrefix, "last"]],
-    ];
-  }
   return [
-    ["first", `First ${itemLabel}`, () => controller.first()],
-    ["previous", `Previous ${itemLabel}`, () => controller.move(-1)],
-    ["next", `Next ${itemLabel}`, () => controller.move(1)],
-    ["last", `Last ${itemLabel}`, () => controller.last()],
+    ["first", `First ${itemLabel}`, () => controller.first(), keywordPrefix && [...keywordPrefix, "first"]],
+    ["previous", `Previous ${itemLabel}`, () => controller.move(-1), keywordPrefix && [...keywordPrefix, "previous"]],
+    ["next", `Next ${itemLabel}`, () => controller.move(1), keywordPrefix && [...keywordPrefix, "next"]],
+    ["last", `Last ${itemLabel}`, () => controller.last(), keywordPrefix && [...keywordPrefix, "last"]],
   ];
 }
 
