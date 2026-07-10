@@ -30,94 +30,59 @@ export interface SettingSignalBindingOptions<T> {
   equals?: (left: T, right: T) => boolean;
 }
 
-/** Options for configuring route Setting Binding. */
-export interface RouteSettingBindingOptions<Stored = string>
-  extends Omit<SettingSignalBindingOptions<string>, "initialSync">, RouteSignalBindingOptions {
+interface PersistentSettingOptions<T, Stored> {
   key?: string;
-  initialValue?: string;
-  setting?: PersistentSignal<string, Stored>;
-  serialize?: (value: string) => Stored;
-  deserialize?: (value: Stored) => string;
+  initialValue?: T;
+  setting?: PersistentSignal<T, Stored>;
+  serialize?: (value: T) => Stored;
+  deserialize?: (value: Stored) => T;
 }
 
+/** Options for configuring route Setting Binding. */
+export interface RouteSettingBindingOptions<Stored = string>
+  extends
+    Omit<SettingSignalBindingOptions<string>, "initialSync">,
+    RouteSignalBindingOptions,
+    PersistentSettingOptions<string, Stored> {}
+
 /** Options for configuring theme Setting Binding. */
-export interface ThemeSettingBindingOptions<Stored = string> extends SettingSignalBindingOptions<string> {
-  key?: string;
-  initialValue?: string;
-  setting?: PersistentSignal<string, Stored>;
-  serialize?: (value: string) => Stored;
-  deserialize?: (value: Stored) => string;
-}
+export interface ThemeSettingBindingOptions<Stored = string>
+  extends SettingSignalBindingOptions<string>, PersistentSettingOptions<string, Stored> {}
 
 /** Options for configuring theme Layer Setting Binding. */
 export interface ThemeLayerSettingBindingOptions<Stored = readonly string[]>
-  extends SettingSignalBindingOptions<readonly string[]> {
-  key?: string;
-  initialValue?: readonly string[];
-  setting?: PersistentSignal<readonly string[], Stored>;
-  serialize?: (value: readonly string[]) => Stored;
-  deserialize?: (value: Stored) => readonly string[];
-}
+  extends SettingSignalBindingOptions<readonly string[]>, PersistentSettingOptions<readonly string[], Stored> {}
 
 /** Options for configuring theme Pipeline Setting Binding. */
 export interface ThemePipelineSettingBindingOptions<Stored = readonly string[]>
-  extends SettingSignalBindingOptions<readonly string[]> {
-  key?: string;
-  initialValue?: readonly string[];
-  setting?: PersistentSignal<readonly string[], Stored>;
-  serialize?: (value: readonly string[]) => Stored;
-  deserialize?: (value: Stored) => readonly string[];
-}
+  extends SettingSignalBindingOptions<readonly string[]>, PersistentSettingOptions<readonly string[], Stored> {}
 
 /** Options for configuring runtime Profile Setting Binding. */
-export interface RuntimeProfileSettingBindingOptions<Stored = string> extends SettingSignalBindingOptions<string> {
-  key?: string;
-  initialValue?: string;
-  setting?: PersistentSignal<string, Stored>;
-  serialize?: (value: string) => Stored;
-  deserialize?: (value: Stored) => string;
-}
+export interface RuntimeProfileSettingBindingOptions<Stored = string>
+  extends SettingSignalBindingOptions<string>, PersistentSettingOptions<string, Stored> {}
 
 /** Options for configuring runtime Renderer Backend Setting Binding. */
 export interface RuntimeRendererBackendSettingBindingOptions<Stored = string>
-  extends SettingSignalBindingOptions<string> {
-  key?: string;
-  initialValue?: string;
-  setting?: PersistentSignal<string, Stored>;
-  serialize?: (value: string) => Stored;
-  deserialize?: (value: Stored) => string;
-}
+  extends SettingSignalBindingOptions<string>, PersistentSettingOptions<string, Stored> {}
 
 /** Options for configuring split Pane Setting Binding. */
 export interface SplitPaneSettingBindingOptions<Stored = SplitPaneControllerOptions>
-  extends SettingSignalBindingOptions<SplitPaneControllerOptions> {
-  key?: string;
-  initialValue?: SplitPaneControllerOptions;
-  setting?: PersistentSignal<SplitPaneControllerOptions, Stored>;
-  serialize?: (value: SplitPaneControllerOptions) => Stored;
-  deserialize?: (value: Stored) => SplitPaneControllerOptions;
-}
+  extends
+    SettingSignalBindingOptions<SplitPaneControllerOptions>,
+    PersistentSettingOptions<SplitPaneControllerOptions, Stored> {}
 
 /** Options for persisting data-table query, sort, pagination, and selected row state. */
 export interface DataTableSettingBindingOptions<Stored = DataTableState>
-  extends SettingSignalBindingOptions<DataTableState> {
-  key?: string;
-  initialValue?: DataTableState;
-  setting?: PersistentSignal<DataTableState, Stored>;
-  serialize?: (value: DataTableState) => Stored;
-  deserialize?: (value: Stored) => DataTableState;
-}
+  extends SettingSignalBindingOptions<DataTableState>, PersistentSettingOptions<DataTableState, Stored> {}
 
 /** Options for persisting data-query search, filters, sort, and pagination params. */
 export interface DataQuerySettingBindingOptions<
   TFilters extends DataQueryFilters = DataQueryFilters,
   Stored = NormalizedDataQueryParams<TFilters>,
-> extends SettingSignalBindingOptions<NormalizedDataQueryParams<TFilters>> {
-  key?: string;
+> extends
+  SettingSignalBindingOptions<NormalizedDataQueryParams<TFilters>>,
+  Omit<PersistentSettingOptions<NormalizedDataQueryParams<TFilters>, Stored>, "initialValue"> {
   initialValue?: DataQueryParams<TFilters>;
-  setting?: PersistentSignal<NormalizedDataQueryParams<TFilters>, Stored>;
-  serialize?: (value: NormalizedDataQueryParams<TFilters>) => Stored;
-  deserialize?: (value: Stored) => NormalizedDataQueryParams<TFilters>;
 }
 
 /** Binds setting Signal behavior and returns a disposer when applicable. */
@@ -351,61 +316,7 @@ export function bindRuntimeProfileSetting<Stored = string>(
   settings: SettingsController,
   options: RuntimeProfileSettingBindingOptions<Stored> = {},
 ): SettingBinding<string, Stored> {
-  const setting = options.setting ??
-    settings.signal(settingDefinition({
-      key: options.key ?? "runtime-profile",
-      initialValue: options.initialValue ?? controller.activeId.peek(),
-      serialize: options.serialize,
-      deserialize: options.deserialize,
-    }));
-
-  let disposed = false;
-  const sync = createSyncGate();
-  const equals = options.equals ?? Object.is;
-
-  const fallbackId = () => controller.ids()[0] ?? "";
-  const sanitize = (id: string) => controller.registry.has(id) ? id : fallbackId();
-  const applyController = (id: string) => {
-    const next = sanitize(id);
-    if (equals(controller.activeId.peek(), next)) return;
-    sync.apply(() => controller.setProfile(next));
-  };
-  const applySetting = (id: string) => {
-    if (disposed || sync.active) return;
-    const next = sanitize(id);
-    if (!equals(setting.value.peek(), next)) {
-      sync.apply(() => setting.set(next));
-    }
-  };
-  const applyLoadedSetting = (id: string) => {
-    if (disposed || sync.active) return;
-    const next = sanitize(id);
-    applyController(next);
-    if (!equals(setting.value.peek(), next)) {
-      sync.apply(() => setting.set(next));
-    }
-  };
-
-  if (options.initialSync === "signal") {
-    setting.set(controller.activeId.peek());
-  } else {
-    applyLoadedSetting(setting.value.peek());
-    setting.ready.then((value) => {
-      if (!disposed) applyLoadedSetting(value);
-    });
-  }
-
-  setting.value.subscribe(applyLoadedSetting);
-  controller.activeId.subscribe(applySetting);
-
-  return {
-    setting,
-    dispose: () => {
-      disposed = true;
-      setting.value.unsubscribe(applyLoadedSetting);
-      controller.activeId.unsubscribe(applySetting);
-    },
-  };
+  return bindRuntimeIdSetting(controller, settings, options);
 }
 
 /** Binds runtime Renderer Backend Setting behavior and returns a disposer when applicable. */
@@ -414,9 +325,21 @@ export function bindRuntimeRendererBackendSetting<Stored = string>(
   settings: SettingsController,
   options: RuntimeRendererBackendSettingBindingOptions<Stored> = {},
 ): SettingBinding<string, Stored> {
+  return bindRuntimeIdSetting(controller, settings, options);
+}
+
+type RuntimeIdSettingController = RuntimeProfileController | RuntimeRendererBackendController;
+
+function bindRuntimeIdSetting<Stored>(
+  controller: RuntimeIdSettingController,
+  settings: SettingsController,
+  options: SettingSignalBindingOptions<string> & PersistentSettingOptions<string, Stored>,
+): SettingBinding<string, Stored> {
+  const rendererController = "setBackend" in controller ? controller : undefined;
+  const profileController = "setProfile" in controller ? controller : undefined;
   const setting = options.setting ??
     settings.signal(settingDefinition({
-      key: options.key ?? "runtime-renderer",
+      key: options.key ?? (rendererController ? "runtime-renderer" : "runtime-profile"),
       initialValue: options.initialValue ?? controller.activeId.peek(),
       serialize: options.serialize,
       deserialize: options.deserialize,
@@ -426,12 +349,12 @@ export function bindRuntimeRendererBackendSetting<Stored = string>(
   const sync = createSyncGate();
   const equals = options.equals ?? Object.is;
 
-  const fallbackId = () => controller.selected()?.id ?? controller.ids()[0] ?? "";
-  const sanitize = (id: string) => controller.registry.has(id) ? id : fallbackId();
+  const sanitize = (id: string) =>
+    controller.registry.has(id) ? id : rendererController?.selected()?.id ?? controller.ids()[0] ?? "";
   const applyController = (id: string) => {
     const next = sanitize(id);
     if (equals(controller.activeId.peek(), next)) return;
-    sync.apply(() => controller.setBackend(next));
+    sync.apply(() => rendererController ? rendererController.setBackend(next) : profileController!.setProfile(next));
   };
   const applySetting = (id: string) => {
     if (disposed || sync.active) return;
