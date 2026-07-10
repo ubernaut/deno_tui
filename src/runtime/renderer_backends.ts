@@ -6,7 +6,7 @@ import {
   type RuntimeRendererStrategy,
 } from "./capabilities.ts";
 import { Signal } from "../signals/mod.ts";
-import { uniqueSortedStrings as uniqueSorted } from "../utils/collections.ts";
+import { OrderedIdCollection, uniqueSortedStrings as uniqueSorted } from "../utils/collections.ts";
 import { everySearchTerm } from "../utils/search.ts";
 
 /** Public interface describing a runtime Renderer Backend Definition. */
@@ -175,9 +175,7 @@ export class RuntimeRendererBackend {
 
 /** Registry for storing and querying runtime Renderer Backend definitions. */
 export class RuntimeRendererBackendRegistry {
-  readonly #backends = new Map<string, RuntimeRendererBackend>();
-  #orderedBackends?: RuntimeRendererBackend[];
-  #orderedIds?: string[];
+  readonly #backends = new OrderedIdCollection<RuntimeRendererBackend>(compareRendererBackends);
 
   constructor(
     backends: Iterable<RuntimeRendererBackend | RuntimeRendererBackendDefinition> = runtimeRendererBackendDefinitions,
@@ -189,19 +187,12 @@ export class RuntimeRendererBackendRegistry {
 
   register(backend: RuntimeRendererBackend | RuntimeRendererBackendDefinition): this {
     const normalized = backend instanceof RuntimeRendererBackend ? backend : createRuntimeRendererBackend(backend);
-    this.#backends.set(normalized.id, normalized);
-    this.#orderedBackends = undefined;
-    this.#orderedIds = undefined;
+    this.#backends.set(normalized);
     return this;
   }
 
   unregister(id: string): boolean {
-    const deleted = this.#backends.delete(id);
-    if (deleted) {
-      this.#orderedBackends = undefined;
-      this.#orderedIds = undefined;
-    }
-    return deleted;
+    return this.#backends.delete(id);
   }
 
   has(id: string): boolean {
@@ -213,46 +204,28 @@ export class RuntimeRendererBackendRegistry {
   }
 
   ids(): string[] {
-    if (!this.#orderedIds) {
-      const backends = this.#orderedBackendList();
-      const ids = new Array<string>(backends.length);
-      for (let index = 0; index < backends.length; index += 1) {
-        ids[index] = backends[index]!.id;
-      }
-      this.#orderedIds = ids;
-    }
-    return this.#orderedIds.slice();
+    return this.#backends.ids();
   }
 
   backends(): RuntimeRendererBackend[] {
-    return Array.from(this.#orderedBackendList());
+    return Array.from(this.#backends.ordered());
   }
 
   inspect(capabilities: RuntimeCapabilities = detectRuntimeCapabilities()): RuntimeRendererBackendInspection[] {
-    return inspectRuntimeRendererBackends(this.#orderedBackendList(), capabilities);
+    return inspectRuntimeRendererBackends(this.#backends.ordered(), capabilities);
   }
 
   select(
     capabilities: RuntimeCapabilities = detectRuntimeCapabilities(),
     options: RuntimeRendererBackendSelectionOptions = {},
   ): RuntimeRendererBackendInspection | undefined {
-    return selectRuntimeRendererBackend(this.#orderedBackendList(), capabilities, options);
+    return selectRuntimeRendererBackend(this.#backends.ordered(), capabilities, options);
   }
 
   catalog(
     options: Omit<RuntimeRendererBackendCatalogOptions, "backends"> = {},
   ): RuntimeRendererBackendCatalogReport {
-    return createRuntimeRendererBackendCatalogReport({ ...options, backends: this.#orderedBackendList() });
-  }
-
-  #orderedBackendList(): readonly RuntimeRendererBackend[] {
-    if (!this.#orderedBackends) {
-      const backends: RuntimeRendererBackend[] = [];
-      for (const backend of this.#backends.values()) backends.push(backend);
-      backends.sort(compareRendererBackends);
-      this.#orderedBackends = backends;
-    }
-    return this.#orderedBackends;
+    return createRuntimeRendererBackendCatalogReport({ ...options, backends: this.#backends.ordered() });
   }
 }
 

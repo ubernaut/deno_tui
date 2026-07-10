@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { MousePressEvent, MouseScrollEvent } from "../input_reader/types.ts";
 import type { Rectangle } from "../types.ts";
+import { OrderedIdCollection } from "../utils/collections.ts";
 
 /** Public type alias for a mouse Interaction Event. */
 export type MouseInteractionEvent = MousePressEvent | MouseScrollEvent;
@@ -70,8 +71,7 @@ interface ResolvedMouseInteractionTarget {
 
 /** Public class implementing a mouse Interaction Router. */
 export class MouseInteractionRouter {
-  readonly #targets = new Map<string, RegisteredMouseInteractionTarget>();
-  #orderedTargets?: RegisteredMouseInteractionTarget[];
+  readonly #targets = new OrderedIdCollection<RegisteredMouseInteractionTarget>(compareRegisteredMouseTargets);
   #sequence = 0;
   #captureId?: string;
 
@@ -80,8 +80,7 @@ export class MouseInteractionRouter {
       ...target,
       sequence: this.#sequence++,
     };
-    this.#targets.set(target.id, registered as RegisteredMouseInteractionTarget);
-    this.#orderedTargets = undefined;
+    this.#targets.set(registered as RegisteredMouseInteractionTarget);
     return () => {
       if (this.#targets.get(target.id) === registered) {
         this.unregister(target.id);
@@ -93,15 +92,12 @@ export class MouseInteractionRouter {
     if (this.#captureId === id) {
       this.#captureId = undefined;
     }
-    const removed = this.#targets.delete(id);
-    if (removed) this.#orderedTargets = undefined;
-    return removed;
+    return this.#targets.delete(id);
   }
 
   clear(): void {
     this.#captureId = undefined;
     this.#targets.clear();
-    this.#orderedTargets = undefined;
   }
 
   has(id: string): boolean {
@@ -113,7 +109,7 @@ export class MouseInteractionRouter {
   }
 
   inspect(): MouseInteractionInspection[] {
-    const targets = this.#ordered();
+    const targets = this.#targets.ordered();
     const inspected = new Array<MouseInteractionInspection>(targets.length);
     for (let index = 0; index < targets.length; index += 1) {
       const target = targets[index]!;
@@ -180,7 +176,7 @@ export class MouseInteractionRouter {
   }
 
   #resolveHit(x: number, y: number, kind: MouseInteractionKind): ResolvedMouseInteractionTarget | undefined {
-    const targets = this.#ordered();
+    const targets = this.#targets.ordered();
     for (let index = 0; index < targets.length; index += 1) {
       const target = targets[index]!;
       if (disabled(target) || handlerFor(target, kind) === undefined) {
@@ -195,21 +191,15 @@ export class MouseInteractionRouter {
   }
 
   targets(): RegisteredMouseInteractionTarget[] {
-    const source = this.#ordered();
-    const targets = new Array<RegisteredMouseInteractionTarget>(source.length);
-    for (let index = 0; index < source.length; index += 1) targets[index] = source[index]!;
-    return targets;
+    return Array.from(this.#targets.ordered());
   }
+}
 
-  #ordered(): RegisteredMouseInteractionTarget[] {
-    if (!this.#orderedTargets) {
-      const targets: RegisteredMouseInteractionTarget[] = [];
-      for (const target of this.#targets.values()) targets.push(target);
-      targets.sort((left, right) => (right.zIndex ?? 0) - (left.zIndex ?? 0) || right.sequence - left.sequence);
-      this.#orderedTargets = targets;
-    }
-    return this.#orderedTargets;
-  }
+function compareRegisteredMouseTargets(
+  left: RegisteredMouseInteractionTarget,
+  right: RegisteredMouseInteractionTarget,
+): number {
+  return (right.zIndex ?? 0) - (left.zIndex ?? 0) || right.sequence - left.sequence;
 }
 
 /** Creates an mouse Interaction Router. */

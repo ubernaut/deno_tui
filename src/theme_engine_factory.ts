@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { AsyncScheduler, runTaskBatch, type ScheduledTaskOptions } from "./runtime/scheduler.ts";
+import { OrderedIdCollection } from "./utils/collections.ts";
 import {
   composeThemeOptions,
   createThemeEngine,
@@ -149,9 +150,7 @@ export class ThemeEngineFactory {
 
 /** Ordered registry for theme engine factories supplied by apps or plugins. */
 export class ThemeEngineFactoryRegistry {
-  readonly #factories = new Map<string, ThemeEngineFactory>();
-  #orderedFactories?: ThemeEngineFactory[];
-  #orderedIds?: string[];
+  readonly #factories = new OrderedIdCollection<ThemeEngineFactory>(compareThemeEngineFactories);
 
   /** Creates a registry and optionally registers initial factories. */
   constructor(factories: Iterable<ThemeEngineFactory | ThemeEngineFactoryDefinition> = []) {
@@ -163,20 +162,13 @@ export class ThemeEngineFactoryRegistry {
   /** Registers or replaces a factory by id. */
   register(factory: ThemeEngineFactory | ThemeEngineFactoryDefinition): this {
     const normalized = factory instanceof ThemeEngineFactory ? factory : createThemeEngineFactory(factory);
-    this.#factories.set(normalized.id, normalized);
-    this.#orderedFactories = undefined;
-    this.#orderedIds = undefined;
+    this.#factories.set(normalized);
     return this;
   }
 
   /** Removes a factory by id. */
   unregister(id: string): boolean {
-    const deleted = this.#factories.delete(id);
-    if (deleted) {
-      this.#orderedFactories = undefined;
-      this.#orderedIds = undefined;
-    }
-    return deleted;
+    return this.#factories.delete(id);
   }
 
   /** Returns whether a factory id is registered. */
@@ -191,30 +183,22 @@ export class ThemeEngineFactoryRegistry {
 
   /** Returns factory ids in priority order. */
   ids(): string[] {
-    if (!this.#orderedIds) {
-      const factories = this.orderedFactoryList();
-      const ids = new Array<string>(factories.length);
-      for (let index = 0; index < factories.length; index += 1) {
-        ids[index] = factories[index]!.id;
-      }
-      this.#orderedIds = ids;
-    }
-    return Array.from(this.#orderedIds);
+    return this.#factories.ids();
   }
 
   /** Returns factories sorted by priority and id. */
   factories(): ThemeEngineFactory[] {
-    return Array.from(this.orderedFactoryList());
+    return Array.from(this.#factories.ordered());
   }
 
   /** Returns serializable inspections for all factories. */
   inspect(): ThemeEngineFactoryInspection[] {
-    return inspectThemeEngineFactories(this.orderedFactoryList());
+    return inspectThemeEngineFactories(this.#factories.ordered());
   }
 
   /** Returns a filtered catalog report for settings panes, docs, and marketplaces. */
   catalog(query: ThemeEngineFactoryCatalogQuery = {}): ThemeEngineFactoryCatalogReport {
-    return createThemeEngineFactoryCatalogReport({ factories: this.orderedFactoryList(), query });
+    return createThemeEngineFactoryCatalogReport({ factories: this.#factories.ordered(), query });
   }
 
   /** Builds one registered factory by id. */
@@ -229,22 +213,12 @@ export class ThemeEngineFactoryRegistry {
   /** Builds registered factories through the scheduler for startup prewarming. */
   prewarm(options: ThemeEnginePrewarmOptions = {}): Promise<ThemeEngineFactoryBuildResult[]> {
     const requested = options.ids ? new Set(options.ids) : undefined;
-    const sorted = this.orderedFactoryList();
+    const sorted = this.#factories.ordered();
     const factories: ThemeEngineFactory[] = [];
     for (const factory of sorted) {
       if (!requested || requested.has(factory.id)) factories.push(factory);
     }
     return prewarmThemeEngines(factories, options);
-  }
-
-  private orderedFactoryList(): readonly ThemeEngineFactory[] {
-    if (!this.#orderedFactories) {
-      const factories: ThemeEngineFactory[] = [];
-      for (const factory of this.#factories.values()) factories.push(factory);
-      factories.sort(compareThemeEngineFactories);
-      this.#orderedFactories = factories;
-    }
-    return this.#orderedFactories;
   }
 }
 

@@ -10,7 +10,7 @@ import {
   type RuntimeWorkerStrategy,
 } from "./capabilities.ts";
 import { Signal } from "../signals/mod.ts";
-import { uniqueSortedStrings as uniqueSorted } from "../utils/collections.ts";
+import { OrderedIdCollection, uniqueSortedStrings as uniqueSorted } from "../utils/collections.ts";
 
 /** Public interface describing a runtime Profile Definition. */
 export interface RuntimeProfileDefinition {
@@ -210,9 +210,7 @@ export class RuntimeProfile {
 
 /** Ordered registry of runtime policy profiles for settings panes and launchers. */
 export class RuntimeProfileRegistry {
-  readonly #profiles = new Map<string, RuntimeProfile>();
-  #orderedProfiles?: RuntimeProfile[];
-  #orderedIds?: string[];
+  readonly #profiles = new OrderedIdCollection<RuntimeProfile>(compareRuntimeProfiles);
 
   constructor(profiles: Iterable<RuntimeProfile | RuntimeProfileDefinition> = runtimeProfileDefinitions) {
     for (const profile of profiles) {
@@ -222,19 +220,12 @@ export class RuntimeProfileRegistry {
 
   register(profile: RuntimeProfile | RuntimeProfileDefinition): this {
     const normalized = profile instanceof RuntimeProfile ? profile : createRuntimeProfile(profile);
-    this.#profiles.set(normalized.id, normalized);
-    this.#orderedProfiles = undefined;
-    this.#orderedIds = undefined;
+    this.#profiles.set(normalized);
     return this;
   }
 
   unregister(id: string): boolean {
-    const deleted = this.#profiles.delete(id);
-    if (deleted) {
-      this.#orderedProfiles = undefined;
-      this.#orderedIds = undefined;
-    }
-    return deleted;
+    return this.#profiles.delete(id);
   }
 
   has(id: string): boolean {
@@ -246,23 +237,15 @@ export class RuntimeProfileRegistry {
   }
 
   ids(): string[] {
-    if (!this.#orderedIds) {
-      const profiles = this.#orderedProfileList();
-      const ids = new Array<string>(profiles.length);
-      for (let index = 0; index < profiles.length; index += 1) {
-        ids[index] = profiles[index]!.id;
-      }
-      this.#orderedIds = ids;
-    }
-    return this.#orderedIds.slice();
+    return this.#profiles.ids();
   }
 
   profiles(): RuntimeProfile[] {
-    return Array.from(this.#orderedProfileList());
+    return Array.from(this.#profiles.ordered());
   }
 
   inspect(): RuntimeProfileInspection[] {
-    const profiles = this.#orderedProfileList();
+    const profiles = this.#profiles.ordered();
     const inspections = new Array<RuntimeProfileInspection>(profiles.length);
     for (let index = 0; index < profiles.length; index += 1) {
       inspections[index] = profiles[index]!.inspect();
@@ -277,17 +260,7 @@ export class RuntimeProfileRegistry {
   }
 
   catalog(options: Omit<RuntimeProfileCatalogReportOptions, "profiles"> = {}): RuntimeProfileCatalogReport {
-    return createRuntimeProfileCatalogReport({ ...options, profiles: this.#orderedProfileList() });
-  }
-
-  #orderedProfileList(): readonly RuntimeProfile[] {
-    if (!this.#orderedProfiles) {
-      const profiles: RuntimeProfile[] = [];
-      for (const profile of this.#profiles.values()) profiles.push(profile);
-      profiles.sort(compareRuntimeProfiles);
-      this.#orderedProfiles = profiles;
-    }
-    return this.#orderedProfiles;
+    return createRuntimeProfileCatalogReport({ ...options, profiles: this.#profiles.ordered() });
   }
 }
 
