@@ -122,6 +122,7 @@ Deno.test("WorkbenchController coordinates menus and window state", () => {
   assertEquals(controller.openMenu("theme", 2), { openId: "theme", focused: true });
   assertEquals(controller.menuIndex("theme"), 1);
   assertEquals(controller.moveMenuIndex("theme", 4, "down"), 2);
+  assertEquals(controller.inspect().menuIndexes, { theme: 2 });
   assertEquals(controller.toggleMenu("new"), { openId: "new", focused: true });
   assertEquals(controller.closeMenus(), { openId: null, focused: false });
 

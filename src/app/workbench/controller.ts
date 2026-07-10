@@ -95,7 +95,7 @@ export class WorkbenchController<MenuId extends string = string> {
 
   setMenuIndex(id: MenuId, index: number, itemCount = Number.POSITIVE_INFINITY): number {
     const clamped = clampMenuIndex(index, itemCount);
-    this.#menuIndexes = { ...this.#menuIndexes, [id]: clamped };
+    this.#menuIndexes[id] = clamped;
     return clamped;
   }
 
