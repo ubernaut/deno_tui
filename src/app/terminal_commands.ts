@@ -15,6 +15,7 @@ import type {
   TerminalWorkspacePaneRect,
 } from "../runtime/terminal_workspace.ts";
 import type { Action } from "./actions.ts";
+import type { IdentifiedLabeledCommandGroupOptions } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Terminal handle bound to a managed window id. */
@@ -125,16 +126,13 @@ export interface TerminalScrollbackCommandPayload {
 }
 
 /** Options for configuring terminal scrollback/copy-mode commands. */
-export interface TerminalScrollbackCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface TerminalScrollbackCommandOptions
+  extends IdentifiedLabeledCommandGroupOptions<TerminalScrollbackCommandKind> {
   searchQuery?: string | (() => string | undefined);
   includeModeCommands?: boolean;
   includeScrollCommands?: boolean;
   includeSearchCommands?: boolean;
   includeSelectionCommands?: boolean;
-  labels?: Partial<Record<TerminalScrollbackCommandKind, string>>;
 }
 
 /** Builds command definitions for terminal scrollback and copy-mode navigation. */
@@ -392,10 +390,7 @@ export interface TerminalCommandPayload {
 }
 
 /** Options for configuring terminal commands. */
-export interface TerminalCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface TerminalCommandOptions extends IdentifiedLabeledCommandGroupOptions<TerminalCommandKind> {
   output?: TerminalOutputController;
   includeRun?: boolean;
   includeStop?: boolean;
@@ -403,7 +398,6 @@ export interface TerminalCommandOptions {
   includeClear?: boolean;
   includeToggleFollow?: boolean;
   includeCopyCommand?: boolean;
-  labels?: Partial<Record<TerminalCommandKind, string>>;
 }
 
 /** Identifier union for terminal workspace command variants. */
@@ -456,10 +450,8 @@ export interface TerminalWorkspaceCommandPayload {
 }
 
 /** Options for configuring terminal workspace commands. */
-export interface TerminalWorkspaceCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface TerminalWorkspaceCommandOptions
+  extends IdentifiedLabeledCommandGroupOptions<TerminalWorkspaceCommandKind> {
   sessionId?: string | (() => string | undefined);
   renameTitle?: string | (() => string | undefined);
   resizeStep?: number;
@@ -470,7 +462,6 @@ export interface TerminalWorkspaceCommandOptions {
   paneRects?: readonly TerminalWorkspacePaneRect[] | (() => readonly TerminalWorkspacePaneRect[]);
   includeResizeCommands?: boolean;
   includeSessionCommands?: boolean;
-  labels?: Partial<Record<TerminalWorkspaceCommandKind, string>>;
 }
 
 /** Identifier union for live shell workspace command variants. */
@@ -502,14 +493,11 @@ export interface TerminalShellWorkspaceCommandPayload {
 }
 
 /** Options for configuring live shell workspace commands. */
-export interface TerminalShellWorkspaceCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface TerminalShellWorkspaceCommandOptions
+  extends IdentifiedLabeledCommandGroupOptions<TerminalShellWorkspaceCommandKind> {
   shellTitle?: string | (() => string | undefined);
   includeSessionCommands?: boolean;
   includeLifecycleCommands?: boolean;
-  labels?: Partial<Record<TerminalShellWorkspaceCommandKind, string>>;
 }
 
 /** Builds command definitions for process-backed terminal output windows. */

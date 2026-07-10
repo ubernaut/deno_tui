@@ -14,6 +14,7 @@ import type { Signal } from "../signals/mod.ts";
 import type { Action } from "./actions.ts";
 import type { AppPlugin, AppPluginDisposer, TuiApp } from "./app.ts";
 import { bindCommandKeymap, type CommandKeymapBindingOptions } from "./command_bindings.ts";
+import type { IdentifiedLabeledCommandGroupOptions } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 import { DisposableStack } from "./disposables.ts";
 import type { Route } from "./router.ts";
@@ -57,10 +58,7 @@ export interface DataQuerySortCommand {
 }
 
 /** Options for configuring data Query Command. */
-export interface DataQueryCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface DataQueryCommandOptions extends IdentifiedLabeledCommandGroupOptions<DataQueryCommandKind> {
   includeReload?: boolean;
   includeRestore?: boolean;
   includeCacheCommands?: boolean;
@@ -72,7 +70,6 @@ export interface DataQueryCommandOptions {
   disabledWhileLoading?: boolean;
   pageSizes?: readonly number[];
   sortFields?: readonly (string | DataQuerySortCommand)[];
-  labels?: Partial<Record<DataQueryCommandKind, string>>;
 }
 
 /** Options for configuring the data query plugin. */

@@ -1,7 +1,12 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TableController, TableInspection } from "../components/table.ts";
 import type { Action } from "./actions.ts";
-import { actionCommandGroup, CommandGroupBuilder, selectionNavigationCommandEntries } from "./command_helpers.ts";
+import {
+  actionCommandGroup,
+  CommandGroupBuilder,
+  type IdentifiedLabeledCommandGroupOptions,
+  selectionNavigationCommandEntries,
+} from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for table Command variants. */
@@ -26,14 +31,10 @@ export interface TableCommandPayload {
 }
 
 /** Options for configuring table Command. */
-export interface TableCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface TableCommandOptions extends IdentifiedLabeledCommandGroupOptions<TableCommandKind> {
   includeMoveCommands?: boolean;
   includePageCommands?: boolean;
   includeSelectCommand?: boolean;
-  labels?: Partial<Record<TableCommandKind, string>>;
 }
 
 /** Builds command definitions for table. */

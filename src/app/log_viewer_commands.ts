@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { LogViewerController, LogViewerInspection } from "../components/log_viewer.ts";
 import type { Action } from "./actions.ts";
+import type { IdentifiedLabeledCommandGroupOptions } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for log Viewer Command variants. */
@@ -18,14 +19,10 @@ export interface LogViewerCommandPayload {
 }
 
 /** Options for configuring log Viewer Command. */
-export interface LogViewerCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface LogViewerCommandOptions extends IdentifiedLabeledCommandGroupOptions<LogViewerCommandKind> {
   includeClear?: boolean;
   includeToggleFollow?: boolean;
   disabledWhenEmpty?: boolean;
-  labels?: Partial<Record<LogViewerCommandKind, string>>;
 }
 
 /** Builds command definitions for log Viewer. */

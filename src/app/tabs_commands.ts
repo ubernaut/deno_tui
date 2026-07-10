@@ -1,7 +1,12 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TabItem, TabsController, TabsInspection } from "../components/tabs.ts";
 import type { Action } from "./actions.ts";
-import { actionCommandGroup, CommandGroupBuilder, selectionNavigationCommandEntries } from "./command_helpers.ts";
+import {
+  actionCommandGroup,
+  CommandGroupBuilder,
+  type IdentifiedLabeledCommandGroupOptions,
+  selectionNavigationCommandEntries,
+} from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for tabs Command variants. */
@@ -19,13 +24,9 @@ export interface TabsCommandPayload {
 }
 
 /** Options for configuring tabs Command. */
-export interface TabsCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface TabsCommandOptions extends IdentifiedLabeledCommandGroupOptions<TabsCommandKind> {
   includeMoveCommands?: boolean;
   includeTabCommands?: boolean;
-  labels?: Partial<Record<TabsCommandKind, string>>;
   tabLabel?: (tab: TabItem, index: number) => string;
 }
 

@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { ToastStackController, ToastStackInspection } from "../components/toast.ts";
 import type { Action } from "./actions.ts";
+import type { LabeledCommandGroupOptions } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for toast Command variants. */
@@ -17,13 +18,10 @@ export interface ToastCommandPayload {
 }
 
 /** Options for configuring toast Command. */
-export interface ToastCommandOptions {
-  idPrefix?: string;
-  group?: string;
+export interface ToastCommandOptions extends LabeledCommandGroupOptions<ToastCommandKind> {
   includeClear?: boolean;
   includeDismissLatest?: boolean;
   disabledWhenEmpty?: boolean;
-  labels?: Partial<Record<ToastCommandKind, string>>;
 }
 
 /** Builds command definitions for toast. */

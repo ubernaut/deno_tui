@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Action } from "./actions.ts";
+import type { IdentifiedLabeledCommandGroupOptions } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 import type { FieldName, FormController, FormSnapshot, FormValues } from "./forms.ts";
 
@@ -34,14 +35,11 @@ export interface FormFieldCommandPayload<TValues extends FormValues = FormValues
 }
 
 /** Options for configuring form Command. */
-export interface FormCommandOptions<TValues extends FormValues = FormValues> {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface FormCommandOptions<TValues extends FormValues = FormValues>
+  extends IdentifiedLabeledCommandGroupOptions<FormCommandKind> {
   includeFormCommands?: boolean;
   includeFieldCommands?: boolean;
   disabledWhenEmpty?: boolean;
-  labels?: Partial<Record<FormCommandKind, string>>;
   fieldLabel?: (field: FieldName<TValues>) => string;
   fieldId?: (field: FieldName<TValues>) => string;
   onSubmit?: (snapshot: FormSnapshot<TValues>) => void | Promise<void>;

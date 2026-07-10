@@ -6,6 +6,7 @@ import type {
   WindowManagerWindowInspection,
 } from "../layout/window_manager.ts";
 import type { Action } from "./actions.ts";
+import type { IdentifiedLabeledCommandGroupOptions } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for window manager command variants. */
@@ -53,10 +54,7 @@ export type WindowManagerRenameFactory = (
 ) => string | undefined;
 
 /** Options for configuring window manager commands. */
-export interface WindowManagerCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface WindowManagerCommandOptions extends IdentifiedLabeledCommandGroupOptions<WindowManagerCommandKind> {
   createWindow?: WindowManagerWindowFactory;
   renameWindow?: WindowManagerRenameFactory;
   moveStep?: number;
@@ -66,7 +64,6 @@ export interface WindowManagerCommandOptions {
   includeStateCommands?: boolean;
   includeOrderCommands?: boolean;
   includeRename?: boolean;
-  labels?: Partial<Record<WindowManagerCommandKind, string>>;
   windowLabel?: (window: WindowManagerWindow, index: number) => string;
 }
 

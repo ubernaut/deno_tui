@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { MetricSeriesController, MetricSeriesInspection } from "../components/metric_series.ts";
 import type { Action } from "./actions.ts";
+import type { IdentifiedLabeledCommandGroupOptions } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for metric Series Command variants. */
@@ -18,15 +19,11 @@ export interface MetricSeriesCommandPayload {
 }
 
 /** Options for configuring metric Series Command. */
-export interface MetricSeriesCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface MetricSeriesCommandOptions extends IdentifiedLabeledCommandGroupOptions<MetricSeriesCommandKind> {
   includeClear?: boolean;
   includeLimitCommands?: boolean;
   disabledWhenEmpty?: boolean;
   limits?: readonly number[];
-  labels?: Partial<Record<MetricSeriesCommandKind, string>>;
   limitLabel?: (limit: number) => string;
 }
 

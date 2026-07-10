@@ -3,6 +3,7 @@ import type { SplitPaneController, SplitPaneControllerOptions, SplitPaneDirectio
 import { Signal } from "../signals/mod.ts";
 import type { Rectangle } from "../types.ts";
 import type { Action } from "./actions.ts";
+import type { IdentifiedLabeledCommandGroupOptions } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for split Pane Command variants. */
@@ -34,10 +35,7 @@ export type SplitPaneBoundsSource =
   | (() => Rectangle);
 
 /** Options for configuring split Pane Command. */
-export interface SplitPaneCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface SplitPaneCommandOptions extends IdentifiedLabeledCommandGroupOptions<SplitPaneCommandKind> {
   bounds?: SplitPaneBoundsSource;
   step?: number;
   ratios?: readonly number[];
@@ -45,7 +43,6 @@ export interface SplitPaneCommandOptions {
   includeDirectionCommands?: boolean;
   includeRatioCommands?: boolean;
   includeReset?: boolean;
-  labels?: Partial<Record<SplitPaneCommandKind, string>>;
   ratioLabel?: (ratio: number) => string;
 }
 

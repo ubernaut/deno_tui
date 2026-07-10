@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Focusable, FocusManager, FocusManagerInspection } from "../focus.ts";
 import type { Action } from "./actions.ts";
-import { CommandGroupBuilder } from "./command_helpers.ts";
+import { CommandGroupBuilder, type IdentifiedLabeledCommandGroupOptions } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for focus Command variants. */
@@ -28,15 +28,11 @@ export interface FocusCommandPayload {
 }
 
 /** Options for configuring focus Command. */
-export interface FocusCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface FocusCommandOptions extends IdentifiedLabeledCommandGroupOptions<FocusCommandKind> {
   includeMoveCommands?: boolean;
   includeClearCommand?: boolean;
   includeTargetCommands?: boolean;
   targets?: readonly FocusCommandTarget[];
-  labels?: Partial<Record<FocusCommandKind, string>>;
 }
 
 /** Builds command definitions for focus. */

@@ -1,7 +1,12 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TreeController, TreeInspection, TreeRowInspection } from "../components/tree.ts";
 import type { Action } from "./actions.ts";
-import { actionCommandGroup, CommandGroupBuilder, selectionNavigationCommandEntries } from "./command_helpers.ts";
+import {
+  actionCommandGroup,
+  CommandGroupBuilder,
+  type IdentifiedLabeledCommandGroupOptions,
+  selectionNavigationCommandEntries,
+} from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for tree Command variants. */
@@ -29,15 +34,11 @@ export interface TreeCommandPayload {
 }
 
 /** Options for configuring tree Command. */
-export interface TreeCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface TreeCommandOptions extends IdentifiedLabeledCommandGroupOptions<TreeCommandKind> {
   includeMoveCommands?: boolean;
   includeToggleCommands?: boolean;
   includeSelectCommand?: boolean;
   includeNodeCommands?: boolean;
-  labels?: Partial<Record<TreeCommandKind, string>>;
   nodeLabel?: (row: TreeRowInspection) => string;
 }
 

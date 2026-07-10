@@ -2,6 +2,16 @@
 import type { Action } from "./actions.ts";
 import type { Command } from "./commands.ts";
 
+export interface LabeledCommandGroupOptions<TKind extends string> {
+  idPrefix?: string;
+  group?: string;
+  labels?: Partial<Record<TKind, string>>;
+}
+
+export interface IdentifiedLabeledCommandGroupOptions<TKind extends string> extends LabeledCommandGroupOptions<TKind> {
+  id?: string;
+}
+
 export type CycleActionCommandKind = "next" | "previous";
 export type CycleActionDirection = -1 | 1;
 

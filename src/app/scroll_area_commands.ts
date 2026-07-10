@@ -1,7 +1,12 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { ScrollAreaController, ScrollAreaInspection } from "../components/scroll_area.ts";
 import type { Action } from "./actions.ts";
-import { actionCommandGroup, type ActionCommandGroupEntry, CommandGroupBuilder } from "./command_helpers.ts";
+import {
+  actionCommandGroup,
+  type ActionCommandGroupEntry,
+  CommandGroupBuilder,
+  type IdentifiedLabeledCommandGroupOptions,
+} from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 const SCROLLBAR_COMMANDS = [
@@ -34,16 +39,12 @@ export interface ScrollAreaCommandPayload {
 }
 
 /** Options for configuring scroll Area Command. */
-export interface ScrollAreaCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface ScrollAreaCommandOptions extends IdentifiedLabeledCommandGroupOptions<ScrollAreaCommandKind> {
   step?: number;
   includeMoveCommands?: boolean;
   includePageCommands?: boolean;
   includeEdgeCommands?: boolean;
   includeScrollbarCommands?: boolean;
-  labels?: Partial<Record<ScrollAreaCommandKind, string>>;
 }
 
 /** Builds command definitions for scroll Area. */

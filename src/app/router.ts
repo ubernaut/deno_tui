@@ -2,6 +2,7 @@
 import { Signal } from "../signals/mod.ts";
 import { clampSelectionIndex } from "../selection.ts";
 import type { Action } from "./actions.ts";
+import type { LabeledCommandGroupOptions } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Public interface describing a route. */
@@ -25,14 +26,12 @@ export interface RouteUnregisterOptions {
 export type RouteCommandKind = "previous" | "next" | "select";
 
 /** Options for configuring route Command. */
-export interface RouteCommandOptions<TRoute extends Route = Route> {
-  idPrefix?: string;
-  group?: string;
+export interface RouteCommandOptions<TRoute extends Route = Route>
+  extends LabeledCommandGroupOptions<RouteCommandKind> {
   routeIds?: RouteIdSource;
   includeCycleCommands?: boolean;
   includeRouteCommands?: boolean;
   disableActiveRoute?: boolean;
-  labels?: Partial<Record<RouteCommandKind, string>>;
   label?: (route: TRoute) => string;
 }
 

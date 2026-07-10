@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { DataTableController } from "../components/data_table.ts";
 import type { Action } from "./actions.ts";
-import { CommandGroupBuilder } from "./command_helpers.ts";
+import { CommandGroupBuilder, type LabeledCommandGroupOptions } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for data Table Command variants. */
@@ -16,15 +16,12 @@ export type DataTableCommandKind =
   | "sort";
 
 /** Options for configuring data Table Command. */
-export interface DataTableCommandOptions {
-  idPrefix?: string;
-  group?: string;
+export interface DataTableCommandOptions extends LabeledCommandGroupOptions<DataTableCommandKind> {
   includeSelectionCommands?: boolean;
   includePagingCommands?: boolean;
   includeQueryCommands?: boolean;
   includeSortCommands?: boolean;
   disabledWhenEmpty?: boolean;
-  labels?: Partial<Record<DataTableCommandKind, string>>;
 }
 
 /** Builds command definitions for data Table. */

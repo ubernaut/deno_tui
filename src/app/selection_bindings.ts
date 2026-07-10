@@ -2,7 +2,7 @@
 import { type SelectionController } from "../selection.ts";
 import { Signal } from "../signals/mod.ts";
 import type { Action } from "./actions.ts";
-import { CommandGroupBuilder } from "./command_helpers.ts";
+import { CommandGroupBuilder, type LabeledCommandGroupOptions } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Public type alias for a selection Items Source. */
@@ -23,14 +23,11 @@ export type SelectionCommandKind =
 export type SelectionPageSize = number | Signal<number> | (() => number);
 
 /** Options for configuring selection Command. */
-export interface SelectionCommandOptions {
-  idPrefix?: string;
-  group?: string;
+export interface SelectionCommandOptions extends LabeledCommandGroupOptions<SelectionCommandKind> {
   pageSize?: SelectionPageSize;
   includeToggle?: boolean;
   includeClear?: boolean;
   disabledWhenEmpty?: boolean;
-  labels?: Partial<Record<SelectionCommandKind, string>>;
 }
 
 /** Options for configuring selection Value Binding. */

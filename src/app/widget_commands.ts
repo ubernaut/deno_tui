@@ -13,6 +13,7 @@ import {
   actionCommandGroup,
   type ActionCommandGroupEntry,
   CommandGroupBuilder,
+  type IdentifiedLabeledCommandGroupOptions,
   selectionNavigationCommandEntries,
 } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
@@ -32,13 +33,9 @@ export interface ButtonCommandPayload {
 }
 
 /** Options for configuring button Command. */
-export interface ButtonCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface ButtonCommandOptions extends IdentifiedLabeledCommandGroupOptions<ButtonCommandKind> {
   includePressCommand?: boolean;
   includeStateCommands?: boolean;
-  labels?: Partial<Record<ButtonCommandKind, string>>;
 }
 
 /** Builds command definitions for button. */
@@ -112,13 +109,9 @@ export interface CheckBoxCommandPayload {
 }
 
 /** Options for configuring check Box Command. */
-export interface CheckBoxCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface CheckBoxCommandOptions extends IdentifiedLabeledCommandGroupOptions<CheckBoxCommandKind> {
   includeToggleCommand?: boolean;
   includeSetCommands?: boolean;
-  labels?: Partial<Record<CheckBoxCommandKind, string>>;
 }
 
 /** Builds command definitions for check Box. */
@@ -213,15 +206,11 @@ export interface ComboBoxCommandPayload {
 }
 
 /** Options for configuring combo Box Command. */
-export interface ComboBoxCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface ComboBoxCommandOptions extends IdentifiedLabeledCommandGroupOptions<ComboBoxCommandKind> {
   includeExpandCommands?: boolean;
   includeMoveCommands?: boolean;
   includeSelectCommand?: boolean;
   includeItemCommands?: boolean;
-  labels?: Partial<Record<ComboBoxCommandKind, string>>;
   itemLabel?: (item: string, index: number) => string;
 }
 
@@ -330,16 +319,12 @@ export interface ProgressBarCommandPayload {
 }
 
 /** Options for configuring progress Bar Command. */
-export interface ProgressBarCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface ProgressBarCommandOptions extends IdentifiedLabeledCommandGroupOptions<ProgressBarCommandKind> {
   step?: number;
   includeMoveCommands?: boolean;
   includeEdgeCommands?: boolean;
   includeValueCommands?: boolean;
   values?: readonly number[];
-  labels?: Partial<Record<ProgressBarCommandKind, string>>;
   valueLabel?: (value: number) => string;
 }
 
@@ -454,14 +439,10 @@ export interface RadioGroupCommandPayload {
 }
 
 /** Options for configuring radio Group Command. */
-export interface RadioGroupCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface RadioGroupCommandOptions extends IdentifiedLabeledCommandGroupOptions<RadioGroupCommandKind> {
   includeMoveCommands?: boolean;
   includeSelectCommand?: boolean;
   includeOptionCommands?: boolean;
-  labels?: Partial<Record<RadioGroupCommandKind, string>>;
   optionLabel?: (option: RadioOption, index: number) => string;
 }
 
@@ -551,16 +532,12 @@ export interface SliderCommandPayload {
 }
 
 /** Options for configuring slider Command. */
-export interface SliderCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface SliderCommandOptions extends IdentifiedLabeledCommandGroupOptions<SliderCommandKind> {
   stepMultiplier?: number;
   includeMoveCommands?: boolean;
   includeEdgeCommands?: boolean;
   includeValueCommands?: boolean;
   values?: readonly number[];
-  labels?: Partial<Record<SliderCommandKind, string>>;
   valueLabel?: (value: number) => string;
 }
 
@@ -602,13 +579,9 @@ export interface StepperCommandPayload {
 }
 
 /** Options for configuring stepper Command. */
-export interface StepperCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface StepperCommandOptions extends IdentifiedLabeledCommandGroupOptions<StepperCommandKind> {
   includeMoveCommands?: boolean;
   includeStepCommands?: boolean;
-  labels?: Partial<Record<StepperCommandKind, string>>;
   stepLabel?: (step: StepperStep, index: number) => string;
 }
 
@@ -691,15 +664,11 @@ export interface TextBoxCommandPayload {
 }
 
 /** Options for configuring text Box Command. */
-export interface TextBoxCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface TextBoxCommandOptions extends IdentifiedLabeledCommandGroupOptions<TextBoxCommandKind> {
   includeClearCommand?: boolean;
   includeCursorCommands?: boolean;
   includeValueCommands?: boolean;
   values?: readonly string[];
-  labels?: Partial<Record<TextBoxCommandKind, string>>;
   valueLabel?: (value: string) => string;
 }
 

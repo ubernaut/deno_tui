@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { InputController, InputInspection } from "../components/input.ts";
 import type { Action } from "./actions.ts";
-import { actionCommandGroup } from "./command_helpers.ts";
+import { actionCommandGroup, type IdentifiedLabeledCommandGroupOptions } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for input Command variants. */
@@ -27,16 +27,12 @@ export interface InputCommandPayload {
 }
 
 /** Options for configuring input Command. */
-export interface InputCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface InputCommandOptions extends IdentifiedLabeledCommandGroupOptions<InputCommandKind> {
   includeSubmitCommand?: boolean;
   includeClearCommand?: boolean;
   includeCursorCommands?: boolean;
   includeValueCommands?: boolean;
   values?: readonly string[];
-  labels?: Partial<Record<InputCommandKind, string>>;
   valueLabel?: (value: string) => string;
 }
 

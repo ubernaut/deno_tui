@@ -1,7 +1,12 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { ListController, ListInspection } from "../components/list.ts";
 import type { Action } from "./actions.ts";
-import { actionCommandGroup, CommandGroupBuilder, selectionNavigationCommandEntries } from "./command_helpers.ts";
+import {
+  actionCommandGroup,
+  CommandGroupBuilder,
+  type IdentifiedLabeledCommandGroupOptions,
+  selectionNavigationCommandEntries,
+} from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for list Command variants. */
@@ -19,14 +24,10 @@ export interface ListCommandPayload {
 }
 
 /** Options for configuring list Command. */
-export interface ListCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface ListCommandOptions extends IdentifiedLabeledCommandGroupOptions<ListCommandKind> {
   includeMoveCommands?: boolean;
   includeSelectCommand?: boolean;
   includeItemCommands?: boolean;
-  labels?: Partial<Record<ListCommandKind, string>>;
   itemLabel?: (item: string, index: number) => string;
 }
 

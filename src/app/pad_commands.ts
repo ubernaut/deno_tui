@@ -1,7 +1,12 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { PadController, PadInspection } from "../components/pad.ts";
 import type { Action } from "./actions.ts";
-import { actionCommandGroup, type ActionCommandGroupEntry, CommandGroupBuilder } from "./command_helpers.ts";
+import {
+  actionCommandGroup,
+  type ActionCommandGroupEntry,
+  CommandGroupBuilder,
+  type IdentifiedLabeledCommandGroupOptions,
+} from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for pad command variants. */
@@ -28,16 +33,12 @@ export interface PadCommandPayload {
 }
 
 /** Options for configuring pad commands. */
-export interface PadCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface PadCommandOptions extends IdentifiedLabeledCommandGroupOptions<PadCommandKind> {
   step?: number;
   includeMoveCommands?: boolean;
   includePageCommands?: boolean;
   includeEdgeCommands?: boolean;
   includeCursorCommands?: boolean;
-  labels?: Partial<Record<PadCommandKind, string>>;
 }
 
 /** Builds command definitions for a PadController. */

@@ -2,6 +2,7 @@
 import type { SignalOptions } from "../signals/mod.ts";
 import { type AsyncStore, PersistentSignal } from "../runtime/storage.ts";
 import type { Action } from "./actions.ts";
+import type { LabeledCommandGroupOptions } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Public interface describing an app Setting Definition. */
@@ -29,13 +30,10 @@ export type SettingsCommandAction =
   | Action<"settings.resetAll", { keys: string[] }>;
 
 /** Options for configuring settings Command. */
-export interface SettingsCommandOptions {
-  idPrefix?: string;
-  group?: string;
+export interface SettingsCommandOptions extends LabeledCommandGroupOptions<SettingsCommandKind> {
   includeResetCommands?: boolean;
   includeResetAll?: boolean;
   disabledWhenEmpty?: boolean;
-  labels?: Partial<Record<SettingsCommandKind, string>>;
   keyLabel?: (key: string) => string;
   keyId?: (key: string) => string;
 }

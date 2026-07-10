@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Action } from "./actions.ts";
+import type { LabeledCommandGroupOptions } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 import type { Route, RouteManager } from "./router.ts";
 
@@ -120,11 +121,8 @@ function inspectEntry(transaction: HistoryTransaction | undefined): HistoryEntry
 export type HistoryCommandKind = "undo" | "redo" | "clear";
 
 /** Options for configuring history Command. */
-export interface HistoryCommandOptions {
-  idPrefix?: string;
-  group?: string;
+export interface HistoryCommandOptions extends LabeledCommandGroupOptions<HistoryCommandKind> {
   includeClear?: boolean;
-  labels?: Partial<Record<HistoryCommandKind, string>>;
 }
 
 /** Options for configuring route History Binding. */

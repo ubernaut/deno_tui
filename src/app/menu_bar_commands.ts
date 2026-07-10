@@ -1,7 +1,12 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { MenuBarController, MenuBarInspection, MenuBarItem } from "../components/menu_bar.ts";
 import type { Action } from "./actions.ts";
-import { actionCommandGroup, CommandGroupBuilder, selectionNavigationCommandEntries } from "./command_helpers.ts";
+import {
+  actionCommandGroup,
+  CommandGroupBuilder,
+  type IdentifiedLabeledCommandGroupOptions,
+  selectionNavigationCommandEntries,
+} from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for menu Bar Command variants. */
@@ -19,14 +24,10 @@ export interface MenuBarCommandPayload {
 }
 
 /** Options for configuring menu Bar Command. */
-export interface MenuBarCommandOptions {
-  id?: string;
-  idPrefix?: string;
-  group?: string;
+export interface MenuBarCommandOptions extends IdentifiedLabeledCommandGroupOptions<MenuBarCommandKind> {
   includeMoveCommands?: boolean;
   includeSelectCommand?: boolean;
   includeItemCommands?: boolean;
-  labels?: Partial<Record<MenuBarCommandKind, string>>;
   itemLabel?: (item: MenuBarItem, index: number) => string;
 }
 
