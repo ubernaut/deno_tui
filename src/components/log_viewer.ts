@@ -1,7 +1,11 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Component, type ComponentOptions } from "../component.ts";
 import { Computed, Signal } from "../signals/mod.ts";
-import { signalify } from "../utils/signals.ts";
+import {
+  BoundedFollowLinesController,
+  type BoundedFollowLinesInspection,
+  type BoundedFollowLinesOptions,
+} from "./bounded_follow_lines.ts";
 import { drawTextRows } from "./text_children.ts";
 
 const DEFAULT_LOG_LINE_LIMIT = 500;
@@ -13,21 +17,10 @@ export interface LogViewerOptions extends ComponentOptions {
 }
 
 /** Options for configuring log Viewer Controller. */
-export interface LogViewerControllerOptions {
-  lines?: string[] | Signal<string[]>;
-  limit?: number | Signal<number>;
-  follow?: boolean | Signal<boolean>;
-}
+export interface LogViewerControllerOptions extends BoundedFollowLinesOptions<string> {}
 
 /** Serializable inspection snapshot for log Viewer. */
-export interface LogViewerInspection {
-  lines: string[];
-  lineCount: number;
-  visible: string[];
-  limit: number;
-  follow: boolean;
-  empty: boolean;
-}
+export interface LogViewerInspection extends BoundedFollowLinesInspection<string> {}
 
 /** Public helper for visible Log Lines. */
 export function visibleLogLines(lines: readonly string[], height: number, follow = true): string[] {
@@ -43,78 +36,21 @@ export function visibleLogLines(lines: readonly string[], height: number, follow
 }
 
 /** State controller for log Viewer behavior. */
-export class LogViewerController {
-  readonly lines: Signal<string[]>;
-  readonly limit: Signal<number>;
-  readonly follow: Signal<boolean>;
-
+export class LogViewerController extends BoundedFollowLinesController<string> {
   constructor(options: LogViewerControllerOptions = {}) {
-    this.lines = signalify(options.lines ?? [], { deepObserve: true });
-    this.limit = signalify(options.limit ?? DEFAULT_LOG_LINE_LIMIT);
-    this.follow = signalify(options.follow ?? true);
-    this.#trim();
+    super(options, DEFAULT_LOG_LINE_LIMIT);
   }
 
-  append(line: string): void {
-    this.lines.value.push(line);
-    this.#trim();
+  protected override normalizeHeight(height: number): number {
+    return Math.max(0, height);
   }
 
-  appendMany(lines: readonly string[]): void {
-    for (const line of lines) {
-      this.lines.value.push(line);
-    }
-    this.#trim();
-  }
-
-  clear(): void {
-    this.lines.value = [];
-  }
-
-  setLimit(limit: number): void {
-    const normalizedLimit = normalizedLogLimit(limit);
-    this.limit.value = normalizedLimit;
-    this.lines.value = tailLogLines(this.lines.peek(), normalizedLimit);
-  }
-
-  setFollow(follow: boolean): void {
-    this.follow.value = follow;
-  }
-
-  toggleFollow(): boolean {
-    this.follow.value = !this.follow.peek();
-    return this.follow.peek();
+  protected override copyLines(lines: readonly string[], start: number, end: number): string[] {
+    return copyLogLines(lines, start, end);
   }
 
   visible(height: number): string[] {
     return visibleLogLines(this.lines.peek(), height, this.follow.peek());
-  }
-
-  inspect(height = this.lines.peek().length): LogViewerInspection {
-    const lines = cloneLogLines(this.lines.peek());
-    return {
-      lines,
-      lineCount: lines.length,
-      visible: visibleLogLines(lines, height, this.follow.peek()),
-      limit: normalizedLogLimit(this.limit.peek()),
-      follow: this.follow.peek(),
-      empty: lines.length === 0,
-    };
-  }
-
-  dispose(): void {
-    this.lines.dispose();
-    this.limit.dispose();
-    this.follow.dispose();
-  }
-
-  #trim(): void {
-    const limit = normalizedLogLimit(this.limit.peek());
-    if (limit === 0) {
-      this.lines.value = [];
-    } else if (this.lines.value.length > limit) {
-      this.lines.value = tailLogLines(this.lines.peek(), limit);
-    }
   }
 }
 
@@ -137,25 +73,10 @@ export class LogViewer extends Component {
   }
 }
 
-function normalizedLogLimit(limit: number): number {
-  return Math.max(0, Math.floor(Number.isFinite(limit) ? limit : DEFAULT_LOG_LINE_LIMIT));
-}
-
-function tailLogLines(lines: readonly string[], limit: number): string[] {
-  const normalizedLimit = normalizedLogLimit(limit);
-  if (normalizedLimit === 0 || lines.length === 0) return [];
-  const start = Math.max(0, lines.length - normalizedLimit);
-  const output = new Array<string>(lines.length - start);
-  for (let index = start; index < lines.length; index += 1) {
-    output[index - start] = lines[index] ?? "";
-  }
-  return output;
-}
-
-function cloneLogLines(lines: readonly string[]): string[] {
-  const output = new Array<string>(lines.length);
-  for (let index = 0; index < lines.length; index += 1) {
-    output[index] = lines[index] ?? "";
+function copyLogLines(lines: readonly string[], start: number, end: number): string[] {
+  const output = new Array<string>(Math.max(0, end - start));
+  for (let index = 0; index < output.length; index += 1) {
+    output[index] = lines[start + index] ?? "";
   }
   return output;
 }

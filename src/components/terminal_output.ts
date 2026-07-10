@@ -1,6 +1,9 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Signal } from "../signals/mod.ts";
-import { signalify } from "../utils/signals.ts";
+import {
+  BoundedFollowLinesController,
+  type BoundedFollowLinesInspection,
+  type BoundedFollowLinesOptions,
+} from "./bounded_follow_lines.ts";
 
 const DEFAULT_TERMINAL_OUTPUT_LIMIT = 1000;
 
@@ -15,21 +18,10 @@ export interface TerminalOutputLine {
 }
 
 /** Options for configuring Terminal Output Controller. */
-export interface TerminalOutputControllerOptions {
-  lines?: TerminalOutputLine[] | Signal<TerminalOutputLine[]>;
-  limit?: number | Signal<number>;
-  follow?: boolean | Signal<boolean>;
-}
+export interface TerminalOutputControllerOptions extends BoundedFollowLinesOptions<TerminalOutputLine> {}
 
 /** Serializable inspection snapshot for terminal Output Controller. */
-export interface TerminalOutputInspection {
-  lines: TerminalOutputLine[];
-  lineCount: number;
-  visible: TerminalOutputLine[];
-  limit: number;
-  follow: boolean;
-  empty: boolean;
-}
+export interface TerminalOutputInspection extends BoundedFollowLinesInspection<TerminalOutputLine> {}
 
 /** Formats an output line for plain text renderers and copy buffers. */
 export function formatTerminalOutputLine(line: TerminalOutputLine, options: { sourcePrefix?: boolean } = {}): string {
@@ -56,102 +48,26 @@ export function visibleTerminalOutputLines(
 }
 
 /** State controller for terminal-style command output panes. */
-export class TerminalOutputController {
-  readonly lines: Signal<TerminalOutputLine[]>;
-  readonly limit: Signal<number>;
-  readonly follow: Signal<boolean>;
-
+export class TerminalOutputController extends BoundedFollowLinesController<TerminalOutputLine> {
   constructor(options: TerminalOutputControllerOptions = {}) {
-    this.lines = signalify(options.lines ?? [], { deepObserve: true });
-    this.limit = signalify(options.limit ?? DEFAULT_TERMINAL_OUTPUT_LIMIT);
-    this.follow = signalify(options.follow ?? true);
-    this.#trim();
+    super(options, DEFAULT_TERMINAL_OUTPUT_LIMIT, normalizeTerminalOutputLine);
   }
 
-  append(line: TerminalOutputLine): void {
-    this.lines.value.push(normalizeTerminalOutputLine(line));
-    this.#trim();
+  protected override copyLines(
+    lines: readonly TerminalOutputLine[],
+    start: number,
+    end: number,
+  ): TerminalOutputLine[] {
+    return copyTerminalOutputLines(lines, start, end);
   }
 
   appendText(source: TerminalOutputSource, text: string, timestamp = Date.now()): void {
     this.append({ source, text, timestamp });
   }
 
-  appendMany(lines: readonly TerminalOutputLine[]): void {
-    for (const line of lines) {
-      this.lines.value.push(normalizeTerminalOutputLine(line));
-    }
-    this.#trim();
-  }
-
-  clear(): void {
-    this.lines.value = [];
-  }
-
-  setLimit(limit: number): void {
-    const normalizedLimit = normalizedTerminalOutputLimit(limit);
-    this.limit.value = normalizedLimit;
-    this.lines.value = tailTerminalOutputLines(this.lines.peek(), normalizedLimit);
-  }
-
-  setFollow(follow: boolean): void {
-    this.follow.value = follow;
-  }
-
-  toggleFollow(): boolean {
-    this.follow.value = !this.follow.peek();
-    return this.follow.peek();
-  }
-
   visible(height: number): TerminalOutputLine[] {
     return visibleTerminalOutputLines(this.lines.peek(), height, this.follow.peek());
   }
-
-  inspect(height = this.lines.peek().length): TerminalOutputInspection {
-    const lines = cloneTerminalOutputLines(this.lines.peek());
-    return {
-      lines,
-      lineCount: lines.length,
-      visible: visibleTerminalOutputLines(lines, height, this.follow.peek()),
-      limit: normalizedTerminalOutputLimit(this.limit.peek()),
-      follow: this.follow.peek(),
-      empty: lines.length === 0,
-    };
-  }
-
-  dispose(): void {
-    this.lines.dispose();
-    this.limit.dispose();
-    this.follow.dispose();
-  }
-
-  #trim(): void {
-    const limit = normalizedTerminalOutputLimit(this.limit.peek());
-    if (limit === 0) {
-      this.lines.value = [];
-    } else if (this.lines.value.length > limit) {
-      this.lines.value = tailTerminalOutputLines(this.lines.peek(), limit);
-    }
-  }
-}
-
-function tailTerminalOutputLines(lines: readonly TerminalOutputLine[], limit: number): TerminalOutputLine[] {
-  const normalizedLimit = normalizedTerminalOutputLimit(limit);
-  if (normalizedLimit === 0 || lines.length === 0) return [];
-  const start = Math.max(0, lines.length - normalizedLimit);
-  const output = new Array<TerminalOutputLine>(lines.length - start);
-  for (let index = start; index < lines.length; index += 1) {
-    output[index - start] = normalizeTerminalOutputLine(lines[index]!);
-  }
-  return output;
-}
-
-function cloneTerminalOutputLines(lines: readonly TerminalOutputLine[]): TerminalOutputLine[] {
-  const output = new Array<TerminalOutputLine>(lines.length);
-  for (let index = 0; index < lines.length; index += 1) {
-    output[index] = normalizeTerminalOutputLine(lines[index]!);
-  }
-  return output;
 }
 
 function normalizeTerminalOutputLine(line: TerminalOutputLine): TerminalOutputLine {
@@ -162,6 +78,14 @@ function normalizeTerminalOutputLine(line: TerminalOutputLine): TerminalOutputLi
   };
 }
 
-function normalizedTerminalOutputLimit(limit: number): number {
-  return Math.max(0, Math.floor(Number.isFinite(limit) ? limit : DEFAULT_TERMINAL_OUTPUT_LIMIT));
+function copyTerminalOutputLines(
+  lines: readonly TerminalOutputLine[],
+  start: number,
+  end: number,
+): TerminalOutputLine[] {
+  const output = new Array<TerminalOutputLine>(Math.max(0, end - start));
+  for (let index = 0; index < output.length; index += 1) {
+    output[index] = normalizeTerminalOutputLine(lines[start + index]!);
+  }
+  return output;
 }

@@ -72,6 +72,12 @@ Deno.test("TerminalOutputController bounds stream-tagged scrollback and follow m
   ]);
   assertEquals(formatTerminalOutputLine({ source: "stderr", text: "warn" }, { sourcePrefix: true }), "[err] warn");
   output.dispose();
+
+  const metadataLine = { source: "stdout" as const, text: "tagged", timestamp: 5, tag: "preserved in view" };
+  const metadataOutput = new TerminalOutputController({ lines: [metadataLine] });
+  assertEquals(metadataOutput.visible(1), [metadataLine]);
+  assertEquals(metadataOutput.inspect().lines, [{ source: "stdout", text: "tagged", timestamp: 5 }]);
+  metadataOutput.dispose();
 });
 
 Deno.test("summarizeTerminalStatus formats process session state", () => {
