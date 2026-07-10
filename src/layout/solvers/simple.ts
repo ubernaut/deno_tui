@@ -1076,36 +1076,17 @@ function measureTextIntrinsic(
 }
 
 function intrinsicMeasurementCacheKey(node: LayoutNode, availableWidth: number, defaultTextHeight: number): string {
-  let key = "v1" +
+  return "v1" +
     "\u001f" + Math.max(1, Math.floor(availableWidth)) +
     "\u001f" + Math.max(1, Math.floor(defaultTextHeight)) +
-    "\u001f" + node.tag +
-    "\u001f" + (node.text ?? "") +
-    "\u001f" + (node.intrinsic?.width ?? "") +
-    "\u001f" + (node.intrinsic?.height ?? "") +
-    "\u001f" + node.style.display +
-    "\u001f" + node.style.position +
-    "\u001f" + node.style.order +
-    "\u001f" + node.style.flexDirection +
-    "\u001f" + layoutLengthSignature(node.style.flexBasis) +
-    "\u001f" + layoutLengthSignature(node.style.width) +
-    "\u001f" + layoutLengthSignature(node.style.height) +
-    "\u001f" + layoutLengthSignature(node.style.minWidth) +
-    "\u001f" + layoutLengthSignature(node.style.minHeight) +
-    "\u001f" + layoutLengthSignature(node.style.maxWidth) +
-    "\u001f" + layoutLengthSignature(node.style.maxHeight) +
-    "\u001f" + node.style.gap +
-    "\u001f" + node.style.rowGap +
-    "\u001f" + node.style.columnGap +
-    "\u001f" + node.style.whiteSpace +
-    "\u001f" + node.style.overflowWrap;
-  for (const child of node.children) {
-    key += "\u001f" + intrinsicNodeSignature(child);
-  }
-  return key;
+    "\u001f" + intrinsicNodeSignature(node, "\u001f", false);
 }
 
-function intrinsicNodeSignature(node: LayoutNode): string {
+function intrinsicNodeSignature(
+  node: LayoutNode,
+  childSeparator = "\u001e",
+  terminateLeaf = true,
+): string {
   let signature = node.tag +
     "\u001f" + (node.text ?? "") +
     "\u001f" + (node.intrinsic?.width ?? "") +
@@ -1126,10 +1107,10 @@ function intrinsicNodeSignature(node: LayoutNode): string {
     "\u001f" + node.style.columnGap +
     "\u001f" + node.style.whiteSpace +
     "\u001f" + node.style.overflowWrap;
-  if (node.children.length === 0) return signature + "\u001f";
+  if (node.children.length === 0) return terminateLeaf ? signature + "\u001f" : signature;
   signature += "\u001f";
   for (let index = 0; index < node.children.length; index += 1) {
-    if (index > 0) signature += "\u001e";
+    if (index > 0) signature += childSeparator;
     signature += intrinsicNodeSignature(node.children[index]!);
   }
   return signature;
