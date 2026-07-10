@@ -183,7 +183,7 @@ function createThemeGalleryItem(
   const tokenNames = options.tokens ? orderedSubset(options.tokens, themeTokenNames) : themeTokenNames.slice();
   const componentNames = options.components
     ? Array.from(options.components)
-    : inspectedComponentNames(inspection.components);
+    : inspection.components.map((component) => component.name);
   const stateNames = options.states ? orderedSubset(options.states, themeStates) : themeStates.slice();
   const variants: Record<string, string[]> = {};
 
@@ -269,14 +269,6 @@ function previewStyle(style: (text: string) => string, sample: string): ThemeSty
   return { raw: sample, styled: style(sample) };
 }
 
-function inspectedComponentNames(components: ReturnType<ThemeEngine["inspect"]>["components"]): string[] {
-  const names = new Array<string>(components.length);
-  for (let index = 0; index < components.length; index += 1) {
-    names[index] = components[index]!.name;
-  }
-  return names;
-}
-
 function previewThemeGalleryTokens(
   engine: ThemeEngine,
   tokenNames: readonly ThemeTokenName[],
@@ -304,7 +296,7 @@ function previewThemeGalleryComponents(
   for (const component of componentNames) {
     const variantNames = variantsOption
       ? Array.from(variantsOption(component, engine))
-      : defaultVariantNames(engine, component);
+      : ["default", ...engine.variants(component)];
     for (const variant of variantNames) {
       const theme = engine.component(component, variant);
       for (const state of stateNames) {
@@ -318,16 +310,6 @@ function previewThemeGalleryComponents(
     }
   }
   return previews;
-}
-
-function defaultVariantNames(engine: ThemeEngine, component: string): string[] {
-  const variants = engine.variants(component);
-  const names = new Array<string>(variants.length + 1);
-  names[0] = "default";
-  for (let index = 0; index < variants.length; index += 1) {
-    names[index + 1] = variants[index]!;
-  }
-  return names;
 }
 
 function addThemeGalleryKeyword(keywords: Set<string>, value: string | undefined): void {

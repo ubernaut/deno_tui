@@ -2,7 +2,7 @@
 import { Computed, Signal } from "./signals/mod.ts";
 import type { AsyncStore } from "./runtime/storage.ts";
 import { componentCatalog, type ComponentCatalogEntry } from "./components/catalog.ts";
-import { orderedSubset } from "./utils/collections.ts";
+import { orderedSubset, uniqueSortedStrings } from "./utils/collections.ts";
 import { escapeMarkdownCell } from "./utils/formatting.ts";
 /** Function that's supposed to return styled text given string as parameter */
 export type Style = (text: string) => string;
@@ -1365,7 +1365,7 @@ function inspectThemeCoverageComponents(
   components: Record<string, ComponentThemeDefinition>,
   options: ThemeCoverageOptions,
 ): ThemeCoverageInspection {
-  const componentNames = options.components ? sortedUniqueStrings(options.components) : Object.keys(components).sort();
+  const componentNames = options.components ? uniqueSortedStrings(options.components) : Object.keys(components).sort();
   const componentCoverage = new Array<ThemeComponentCoverageInspection>(componentNames.length);
   let variantCount = 0;
   let coveredStateCount = 0;
@@ -1485,10 +1485,6 @@ function coveredThemeStates(definition: ComponentThemeDefinition, variant: strin
 function missingThemeStates(covered: readonly ThemeState[]): ThemeState[] {
   const coveredSet = new Set(covered);
   return themeStates.filter((state) => !coveredSet.has(state));
-}
-
-function sortedUniqueStrings(values: Iterable<string>): string[] {
-  return [...new Set(values)].sort();
 }
 
 /** Creates an theme Engine. */
@@ -2038,7 +2034,9 @@ export function previewThemeProvider(
   const engine = provider.engine.peek();
   const catalog = provider.catalog();
   const requestedTokens = options.tokens ? orderedSubset(options.tokens, themeTokenNames) : Array.from(themeTokenNames);
-  const componentNames = options.components ? Array.from(options.components) : catalogComponentNames(catalog);
+  const componentNames = options.components
+    ? Array.from(options.components)
+    : catalog.components.map((component) => component.name);
   const stateNames = options.states ? orderedSubset(options.states, themeStates) : Array.from(themeStates);
 
   return {
@@ -2150,14 +2148,6 @@ function themeCatalogFromInspection(inspection: ThemeProviderInspection): ThemeC
   };
 }
 
-function catalogComponentNames(catalog: ThemeCatalog): string[] {
-  const names = new Array<string>(catalog.components.length);
-  for (let index = 0; index < catalog.components.length; index += 1) {
-    names[index] = catalog.components[index]!.name;
-  }
-  return names;
-}
-
 function mergeThemeCatalogComponents(
   ...groups: readonly ThemeComponentInspection[][]
 ): ThemeCatalogComponent[] {
@@ -2217,7 +2207,7 @@ function previewThemeProviderComponents(
   for (const component of componentNames) {
     const variants = variantsOption
       ? Array.from(variantsOption(component, engine))
-      : defaultThemeProviderVariantNames(engine, component);
+      : ["default", ...engine.variants(component)];
     for (const variant of variants) {
       const theme = engine.component(component, variant);
       for (const state of stateNames) {
@@ -2231,16 +2221,6 @@ function previewThemeProviderComponents(
     }
   }
   return previews;
-}
-
-function defaultThemeProviderVariantNames(engine: ThemeEngine, component: string): string[] {
-  const variants = engine.variants(component);
-  const names = new Array<string>(variants.length + 1);
-  names[0] = "default";
-  for (let index = 0; index < variants.length; index += 1) {
-    names[index + 1] = variants[index]!;
-  }
-  return names;
 }
 
 function formatThemeProviderReportMarkdownFromReport(report: ThemeProviderReport): string {
