@@ -3,6 +3,7 @@ import { type TileLayoutOptions, tileRects } from "../layout/responsive.ts";
 import type { Rectangle } from "../types.ts";
 import type { ViewportOverflowInspection } from "../viewport.ts";
 import { scrollbarGlyph, type ScrollbarThumb } from "../components/scroll_area.ts";
+import { intersects } from "./hit_targets.ts";
 
 /** Options for deriving adaptive workbench tile layout defaults. */
 export interface WorkbenchAdaptiveTileOptions {
@@ -369,7 +370,7 @@ export function workbenchVisibleWindowRectsInto<Id extends string>(
 ): Map<Id, Rectangle> {
   target.clear();
   for (const [id, rect] of rects) {
-    if (rectanglesIntersect(rect, options.viewport)) target.set(id, rect);
+    if (intersects(rect, options.viewport)) target.set(id, rect);
   }
   return target;
 }
@@ -513,9 +514,4 @@ function scrollbarRenderCommand<TCell extends WorkbenchScrollbarCell>(
   command.rect.width = rect.width;
   command.rect.height = rect.height;
   return command;
-}
-
-function rectanglesIntersect(left: Rectangle, right: Rectangle): boolean {
-  return left.column < right.column + right.width && left.column + left.width > right.column &&
-    left.row < right.row + right.height && left.row + left.height > right.row;
 }

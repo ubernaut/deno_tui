@@ -1,5 +1,6 @@
-import { clamp, formatBytes, formatPercent } from "./styles.ts";
+import { clamp, formatBytes, formatOptionalNumber, formatPercent } from "./styles.ts";
 import {
+  alertText,
   buildVisualizationDrive,
   crop,
   formatLoadAverage,
@@ -256,10 +257,12 @@ export function renderGpuCombinedMonitor(
         formatBytes(system.gpu.memoryTotal)
       }`,
       memoryGraph,
-      `TEMP ${formatNullable(system.gpu.temperatureCelsius, "C")}  POWER ${formatNullable(system.gpu.powerWatts, "W")}`,
+      `TEMP ${formatOptionalNumber(system.gpu.temperatureCelsius, "C")}  POWER ${
+        formatOptionalNumber(system.gpu.powerWatts, "W")
+      }`,
     ].join("\n"),
-    footer: `GPU FUSION  GFX ${formatNullable(system.gpu.graphicsClockMhz, "MHz")}  MEMCLK ${
-      formatNullable(system.gpu.memoryClockMhz, "MHz")
+    footer: `GPU FUSION  GFX ${formatOptionalNumber(system.gpu.graphicsClockMhz, "MHz")}  MEMCLK ${
+      formatOptionalNumber(system.gpu.memoryClockMhz, "MHz")
     }`,
     alert: gpuAlert(context),
     accent: gpuAccent(system.gpu.utilizationPercent, system.gpu.memoryPercent, true),
@@ -289,9 +292,11 @@ export function renderGpuChipMonitor(context: RenderContext, dependencies: GpuMo
       `${crop(system.gpu.name.toUpperCase(), Math.max(8, width - 8))} CORE`,
       `UTIL ${formatPercent(system.gpu.utilizationPercent)} ${pulse}`,
       graph,
-      `TEMP ${formatNullable(system.gpu.temperatureCelsius, "C")}  POWER ${formatNullable(system.gpu.powerWatts, "W")}`,
-      `GFX ${formatNullable(system.gpu.graphicsClockMhz, "MHz")}  MEMORY ${
-        formatNullable(system.gpu.memoryClockMhz, "MHz")
+      `TEMP ${formatOptionalNumber(system.gpu.temperatureCelsius, "C")}  POWER ${
+        formatOptionalNumber(system.gpu.powerWatts, "W")
+      }`,
+      `GFX ${formatOptionalNumber(system.gpu.graphicsClockMhz, "MHz")}  MEMORY ${
+        formatOptionalNumber(system.gpu.memoryClockMhz, "MHz")
       }`,
     ].join("\n"),
     footer: `CHIP BUS  VOLATILITY ${(drive.volatility * 100).toFixed(0)}%  SURGE ${
@@ -336,7 +341,7 @@ export function renderGpuMemoryMonitor(
       `${formatBytes(system.gpu.memoryUsed)} USED`,
       `${formatBytes(Math.max(0, system.gpu.memoryTotal - system.gpu.memoryUsed))} FREE`,
       bankRows,
-      `TOTAL ${formatBytes(system.gpu.memoryTotal)}  MEMCLK ${formatNullable(system.gpu.memoryClockMhz, "MHz")}`,
+      `TOTAL ${formatBytes(system.gpu.memoryTotal)}  MEMCLK ${formatOptionalNumber(system.gpu.memoryClockMhz, "MHz")}`,
     ].join("\n"),
     footer: `VRAM BANKS ${bankCount}  FRAGMENT ${(drive.divergence * 100).toFixed(0)}%`,
     alert: system.gpu.memoryPercent >= 92
@@ -367,10 +372,6 @@ function gpuAlert(context: RenderContext) {
   if (gpu.utilizationPercent >= 95) return "GPU EXECUTION WALL";
   if ((gpu.temperatureCelsius ?? 0) >= 84) return "GPU THERMAL LIMIT";
   return "";
-}
-
-function formatNullable(value: number | null, suffix: string) {
-  return value === null ? "--" : `${value.toFixed(value >= 100 ? 0 : 1)}${suffix}`;
 }
 
 function formatDuration(seconds: number) {
@@ -1002,9 +1003,4 @@ function renderGpuOfflinePanel(message: string, accent: Accent): PanelRender {
     accent,
     severity: "info",
   };
-}
-
-function alertText(context: RenderContext) {
-  const alert = context.system.alerts[0];
-  return alert ? `${alert.title} / ${alert.detail}` : "";
 }
