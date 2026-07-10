@@ -13,6 +13,7 @@ import {
   actionCommandGroup,
   type ActionCommandGroupEntry,
   CommandGroupBuilder,
+  selectionNavigationCommandEntries,
 } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
@@ -273,12 +274,7 @@ export function comboBoxCommands<TAction extends Action = ComboBoxCommandAction,
       label,
       payload,
       disabled: () => payload().inspection.empty,
-      entries: [
-        ["first", "First Combo Box Item", () => controller.first()],
-        ["previous", "Previous Combo Box Item", () => controller.move(-1)],
-        ["next", "Next Combo Box Item", () => controller.move(1)],
-        ["last", "Last Combo Box Item", () => controller.last()],
-      ],
+      entries: selectionNavigationCommandEntries(controller, "Combo Box Item"),
     }));
   }
 
@@ -495,12 +491,7 @@ export function radioGroupCommands<TAction extends Action = RadioGroupCommandAct
       keywords: ["radio", "radio-group"],
       label,
       payload,
-      entries: [
-        ["first", "First Radio Option", () => controller.first()],
-        ["previous", "Previous Radio Option", () => controller.move(-1)],
-        ["next", "Next Radio Option", () => controller.move(1)],
-        ["last", "Last Radio Option", () => controller.last()],
-      ],
+      entries: selectionNavigationCommandEntries(controller, "Radio Option"),
     }));
   }
 
@@ -643,12 +634,7 @@ export function stepperCommands<TAction extends Action = StepperCommandAction>(
         keywords: ["step", "stepper"],
         label,
         payload,
-        entries: [
-          ["first", "First Step", () => controller.first()],
-          ["previous", "Previous Step", () => controller.move(-1)],
-          ["next", "Next Step", () => controller.move(1)],
-          ["last", "Last Step", () => controller.last()],
-        ],
+        entries: selectionNavigationCommandEntries(controller, "Step"),
       }),
     );
   }

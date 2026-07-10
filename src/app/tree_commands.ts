@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TreeController, TreeInspection, TreeRowInspection } from "../components/tree.ts";
 import type { Action } from "./actions.ts";
-import { actionCommandGroup, CommandGroupBuilder } from "./command_helpers.ts";
+import { actionCommandGroup, CommandGroupBuilder, selectionNavigationCommandEntries } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for tree Command variants. */
@@ -83,12 +83,7 @@ export function treeCommands<TAction extends Action = TreeCommandAction>(
       label,
       payload,
       disabled: () => payload().inspection.empty,
-      entries: [
-        ["first", "First Tree Node", () => controller.first()],
-        ["previous", "Previous Tree Node", () => controller.move(-1)],
-        ["next", "Next Tree Node", () => controller.move(1)],
-        ["last", "Last Tree Node", () => controller.last()],
-      ],
+      entries: selectionNavigationCommandEntries(controller, "Tree Node"),
     }));
   }
 

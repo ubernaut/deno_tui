@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TableController, TableInspection } from "../components/table.ts";
 import type { Action } from "./actions.ts";
-import { actionCommandGroup, CommandGroupBuilder } from "./command_helpers.ts";
+import { actionCommandGroup, CommandGroupBuilder, selectionNavigationCommandEntries } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for table Command variants. */
@@ -58,12 +58,7 @@ export function tableCommands<TAction extends Action = TableCommandAction>(
       label,
       payload,
       disabled: empty,
-      entries: [
-        ["first", "First Table Row", () => controller.first(), ["table", "first"]],
-        ["previous", "Previous Table Row", () => controller.move(-1), ["table", "previous"]],
-        ["next", "Next Table Row", () => controller.move(1), ["table", "next"]],
-        ["last", "Last Table Row", () => controller.last(), ["table", "last"]],
-      ],
+      entries: selectionNavigationCommandEntries(controller, "Table Row", ["table"]),
     }));
   }
 

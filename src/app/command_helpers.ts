@@ -109,6 +109,35 @@ export type ActionCommandGroupEntry<TKind extends string, TResult> = readonly [
   disabled?: () => boolean,
 ];
 
+export type SelectionNavigationCommandKind = "first" | "previous" | "next" | "last";
+
+export interface SelectionNavigationCommandController<TResult> {
+  first(): TResult;
+  move(delta: number): TResult;
+  last(): TResult;
+}
+
+export function selectionNavigationCommandEntries<TResult>(
+  controller: SelectionNavigationCommandController<TResult>,
+  itemLabel: string,
+  keywordPrefix?: readonly string[],
+): ActionCommandGroupEntry<SelectionNavigationCommandKind, TResult>[] {
+  if (keywordPrefix) {
+    return [
+      ["first", `First ${itemLabel}`, () => controller.first(), [...keywordPrefix, "first"]],
+      ["previous", `Previous ${itemLabel}`, () => controller.move(-1), [...keywordPrefix, "previous"]],
+      ["next", `Next ${itemLabel}`, () => controller.move(1), [...keywordPrefix, "next"]],
+      ["last", `Last ${itemLabel}`, () => controller.last(), [...keywordPrefix, "last"]],
+    ];
+  }
+  return [
+    ["first", `First ${itemLabel}`, () => controller.first()],
+    ["previous", `Previous ${itemLabel}`, () => controller.move(-1)],
+    ["next", `Next ${itemLabel}`, () => controller.move(1)],
+    ["last", `Last ${itemLabel}`, () => controller.last()],
+  ];
+}
+
 export interface ActionCommandGroupOptions<TAction extends Action, TPayload, TKind extends string, TResult> {
   idPrefix: string;
   group: string;

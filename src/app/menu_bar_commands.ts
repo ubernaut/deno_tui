@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { MenuBarController, MenuBarInspection, MenuBarItem } from "../components/menu_bar.ts";
 import type { Action } from "./actions.ts";
-import { actionCommandGroup, CommandGroupBuilder } from "./command_helpers.ts";
+import { actionCommandGroup, CommandGroupBuilder, selectionNavigationCommandEntries } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for menu Bar Command variants. */
@@ -56,12 +56,7 @@ export function menuBarCommands<TAction extends Action = MenuBarCommandAction>(
       keywords: ["menu", "menu-bar"],
       label,
       payload,
-      entries: [
-        ["first", "First Menu Item", () => controller.first()],
-        ["previous", "Previous Menu Item", () => controller.move(-1)],
-        ["next", "Next Menu Item", () => controller.move(1)],
-        ["last", "Last Menu Item", () => controller.last()],
-      ],
+      entries: selectionNavigationCommandEntries(controller, "Menu Item"),
     }));
   }
 

@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TabItem, TabsController, TabsInspection } from "../components/tabs.ts";
 import type { Action } from "./actions.ts";
-import { actionCommandGroup, CommandGroupBuilder } from "./command_helpers.ts";
+import { actionCommandGroup, CommandGroupBuilder, selectionNavigationCommandEntries } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for tabs Command variants. */
@@ -50,12 +50,7 @@ export function tabsCommands<TAction extends Action = TabsCommandAction>(
       keywords: ["tab", "tabs"],
       label,
       payload,
-      entries: [
-        ["first", "First Tab", () => controller.first()],
-        ["previous", "Previous Tab", () => controller.move(-1)],
-        ["next", "Next Tab", () => controller.move(1)],
-        ["last", "Last Tab", () => controller.last()],
-      ],
+      entries: selectionNavigationCommandEntries(controller, "Tab"),
     }));
   }
 

@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { ListController, ListInspection } from "../components/list.ts";
 import type { Action } from "./actions.ts";
-import { actionCommandGroup, CommandGroupBuilder } from "./command_helpers.ts";
+import { actionCommandGroup, CommandGroupBuilder, selectionNavigationCommandEntries } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for list Command variants. */
@@ -52,12 +52,7 @@ export function listCommands<TAction extends Action = ListCommandAction>(
       label,
       payload,
       disabled: () => payload().inspection.empty,
-      entries: [
-        ["first", "First List Item", () => controller.first()],
-        ["previous", "Previous List Item", () => controller.move(-1)],
-        ["next", "Next List Item", () => controller.move(1)],
-        ["last", "Last List Item", () => controller.last()],
-      ],
+      entries: selectionNavigationCommandEntries(controller, "List Item"),
     }));
   }
 
