@@ -39,24 +39,24 @@ What needs correction:
 
 ## Current Snapshot
 
-- Tracked files: `491`
-- Directory counts: `src 263`, `tests 72`, `examples 42`, `plan 26`, `scripts 22`, `docs 20`, `app 20`
+- Tracked files: `496`
+- Directory counts: `src 268`, `tests 72`, `examples 42`, `plan 26`, `scripts 22`, `docs 20`, `app 20`
 - Top-level TypeScript:
-  - `src/app`: `73` files, about `24.8k` lines
-  - `src/runtime`: `32` files, about `11.1k` lines
-  - `src/components`: `43` files, about `10.3k` lines
-  - `src/three_ascii`: `20` files, about `7.0k` lines
+  - `src/app`: `73` files, about `24.4k` lines
+  - `src/runtime`: `32` files, about `10.9k` lines
+  - `src/components`: `45` files, about `10.0k` lines
+  - `src/three_ascii`: `20` files, about `6.9k` lines
   - `app`: `20` files, about `21.1k` lines
   - `examples`: `34` files, about `5.0k` lines
-  - `tests`: `69` suites, about `50.9k` lines
+  - `tests`: `69` suites, about `51.2k` lines
 - Largest handwritten implementation surfaces:
-  - `app/api_workbench.ts`: `3,891` lines
-  - `src/theme.ts`: `2,508` lines
-  - `examples/web/api_workbench_page.ts`: `2,320` lines
-  - `app/main.ts`: `1,827` lines
+  - `app/api_workbench.ts`: `3,645` lines
+  - `src/theme.ts`: `2,496` lines
+  - `examples/web/api_workbench_page.ts`: `2,062` lines
+  - `app/main.ts`: `1,787` lines
   - `app/visualizations.ts`: `1,736` lines
+  - `app/api_workbench_controls.ts`: `1,725` lines
   - `app/api_workbench_window_view.ts`: `1,583` lines
-  - `app/api_workbench_controls.ts`: `1,454` lines
 
 These numbers are review signals, not targets. A large cohesive module can be preferable to many forwarding shards; the
 required evidence is simpler ownership or less implementation, not a particular line count.

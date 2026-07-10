@@ -36,8 +36,8 @@ The repo already has useful browser-ready pieces:
   ANSI theme styles, and Canvas2D sink.
 - `examples/web/api_workbench_page.ts` is the default GitHub Pages source. `deno task web:pages:build` bundles it into
   `docs/index.html` and `docs/assets/api-workbench.js`. The web workbench persists theme, active panel, minimized and
-  maximized panels, and tile density through the runtime store path, using IndexedDB when available plus a localStorage
-  boot cache for immediate startup.
+  maximized panels, tile density, Three ASCII options, and terminal workspace sessions/layout through the runtime store
+  path, using IndexedDB when available plus a localStorage boot cache for immediate startup.
 - Signals, controllers, commands, plugins, layouts, theme engines, data resources, worker pools, settings, and runtime
   capability planning are mostly platform-neutral.
 - `Canvas` now flushes changed cells through `CanvasCellSink`; terminal output is handled by `AnsiCanvasSink`, and
@@ -225,9 +225,8 @@ runtime wrapper around a shared app host.
   Pointer and wheel positions are normalized to terminal cell coordinates.
 - Added a minimal `createWebTui(root, options)` API.
 - Ported a standalone animated browser demo source in `examples/web/standalone.ts`.
-- Added `examples/web/neon_exodus_page.ts` as the default standalone web demo, backed by the existing Neon Exodus suite
-  render helpers. The Pages build uses viewport-derived rows/columns and shared adaptive grid helpers instead of a fixed
-  120x36 frame.
+- Added `examples/web/neon_exodus_page.ts` as a standalone Neon suite demo. The current Pages build mounts the API
+  Workbench; both paths use viewport-derived rows/columns and shared adaptive layout instead of a fixed 120x36 frame.
 
 ### Phase 3: DOM Renderer
 
@@ -252,7 +251,8 @@ runtime wrapper around a shared app host.
 - Added package/export docs for terminal, standalone browser, and remote browser-client usage, backed by
   `src/api_stability.ts` and `deno task package-check`.
 - Add routing/mount helpers for single-page apps.
-- Add persistent browser settings through the existing `Store`/IndexedDB abstractions.
+- Added persistent browser workspace settings through the existing `Store`/IndexedDB abstractions, with a localStorage
+  boot cache for immediate startup.
 - Add docs for embedding one widget, mounting a full app, and sharing code between terminal and browser.
 - Add Playwright tests for rendered DOM, canvas pixel smoke checks, input handling, resize behavior, and theme
   switching.
@@ -268,8 +268,8 @@ runtime wrapper around a shared app host.
 - Added `RemoteTerminalClient`, a JSON protocol for input/resize/ping messages, server data/error/close messages, and a
   browser `WebSocketRemoteTerminalTransport`.
 - Added protocol tests for preserving binary input buffers and emitting terminal data over a fake transport.
-- Still needed: server-side Deno bridge that runs a TUI process or app host, PTY integration, auth/session boundaries,
-  and an xterm-compatible browser renderer example.
+- Still needed: a deployable Deno WebSocket host that connects `RemoteTerminalBridge` to PTY/tmux sessions, plus
+  auth/session boundaries and an xterm-compatible browser renderer example.
 
 ## Key Risks
 

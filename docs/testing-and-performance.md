@@ -139,6 +139,24 @@ deno task e2e
 deno task e2e -- --json
 ```
 
+## Renderer And Workbench Probes
+
+Three ASCII and workbench changes need runtime evidence in addition to unit tests. GPU-backed probes are serialized by
+the repository lock, so run them normally rather than launching several in parallel:
+
+```bash
+DENO_NO_PACKAGE_JSON=1 deno task three-workbench:startup-probe
+DENO_NO_PACKAGE_JSON=1 deno task three-workbench:resize-probe
+DENO_NO_PACKAGE_JSON=1 deno task three-ascii:live-probe -- --frames 45 --glyphs blocks --max-cells 960 --check --max-average-ms 40
+DENO_NO_PACKAGE_JSON=1 deno task workbench-default-resize-visual-smoke
+```
+
+The startup probe checks first-grid publication and steady renderer time. The resize probe grows a live panel from
+`80x24` to `154x41` cells and requires the published grid to reach at least 6,000 cells, which guards the contract that
+the ASCII surface follows its current console rectangle. The PTY resize smoke validates the composed workbench frame,
+truecolor coverage, and nonblank Three pane after a real terminal resize. Use `workbench-fullscreen-resize-visual-smoke`
+when fullscreen geometry, pressure policy, or repaint behavior changes.
+
 Inspect the public re-export graph before release:
 
 ```bash

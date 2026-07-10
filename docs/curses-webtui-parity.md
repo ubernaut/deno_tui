@@ -26,11 +26,11 @@ testing helpers.
 - Added a remote terminal client/bridge protocol with input, resize, output, binary, error, and close coverage.
 - Added workbench terminal focus rules and visible workbench/raw input mode indicators for process-backed terminal
   panes.
+- Wired the API Workbench Shell window through `TerminalShellWorkspaceController`, with optional PTY selection, process
+  fallback, session tabs, split panes, raw input, copy mode, and search.
 
 ## Remaining Priorities
 
-- Workbench UI wiring for PTY-backed interactive terminal windows; the optional PTY backend exists, but the current demo
-  still defaults to process-backed command panes.
 - A persistent tmux/control-mode or daemon backend for true detach/reattach workflows.
 - Rich attributed text spans inside pads and text boxes, beyond the current string/ANSI-oriented helpers.
 - Higher-level form validation flows that coordinate multiple fields, modals, status bars, and command surfaces.
