@@ -286,6 +286,31 @@ export function createApiInventoryBaseline(
   };
 }
 
+export function formatApiInventoryBaseline(baseline: ApiInventoryBaseline): string {
+  const symbols = baseline.symbols.toSorted(compareSymbolChanges);
+  const lines = [
+    "{",
+    `  "entrypoint": ${JSON.stringify(baseline.entrypoint)},`,
+    `  "stability": ${JSON.stringify(baseline.stability)},`,
+    '  "symbols": [',
+  ];
+  for (let index = 0; index < symbols.length; index += 1) {
+    const symbol = symbols[index]!;
+    const suffix = index + 1 < symbols.length ? "," : "";
+    lines.push(`    ${
+      JSON.stringify({
+        module: symbol.module,
+        name: symbol.name,
+        kind: symbol.kind,
+        typeOnly: symbol.typeOnly,
+        documented: symbol.documented,
+      })
+    }${suffix}`);
+  }
+  lines.push("  ]", "}", "");
+  return lines.join("\n");
+}
+
 export function diffApiInventoryBaseline(
   baseline: ApiInventoryBaseline,
   current: ApiInventory,
@@ -523,16 +548,22 @@ if (import.meta.main) {
   } = cli;
   const inventory = await createApiInventory(entrypoint);
   let baselineDiff: ApiInventoryDiff | undefined;
+  let baselineFormatPassed = true;
 
   if (updateBaselinePath) {
     await Deno.writeTextFile(
       updateBaselinePath,
-      `${JSON.stringify(createApiInventoryBaseline(inventory), null, 2)}\n`,
+      formatApiInventoryBaseline(createApiInventoryBaseline(inventory)),
     );
   }
   if (baselinePath) {
-    const baseline = JSON.parse(await Deno.readTextFile(baselinePath)) as ApiInventoryBaseline;
+    const baselineSource = await Deno.readTextFile(baselinePath);
+    const baseline = JSON.parse(baselineSource) as ApiInventoryBaseline;
     baselineDiff = diffApiInventoryBaseline(baseline, inventory);
+    baselineFormatPassed = baselineSource === formatApiInventoryBaseline(baseline);
+    if (check && !baselineFormatPassed) {
+      console.error(`API inventory baseline format drift: regenerate ${baselinePath} with --update-baseline.`);
+    }
   }
 
   if (quiet) {
@@ -548,7 +579,11 @@ if (import.meta.main) {
   }
 
   const baselinePassed = !baselineDiff || (baselineDiff.added.length === 0 && baselineDiff.removed.length === 0);
-  if (check && (!inventorySucceeded(inventory, { failDuplicates, minDocumentationCoverage }) || !baselinePassed)) {
+  if (
+    check &&
+    (!inventorySucceeded(inventory, { failDuplicates, minDocumentationCoverage }) || !baselinePassed ||
+      !baselineFormatPassed)
+  ) {
     Deno.exit(1);
   }
 }

@@ -95,7 +95,7 @@
     "test:workers": "deno test -A ./tests/runtime.test.ts"
   },
   "fmt": {
-    "exclude": ["docs/screenshots", "docs/assets"],
+    "exclude": ["docs/screenshots", "docs/assets", "docs/api-stable-baseline.json"],
     "options": {
       "lineWidth": 120
     }

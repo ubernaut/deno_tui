@@ -6,6 +6,7 @@ import {
   diffApiInventories,
   diffApiInventoryBaseline,
   formatApiInventory,
+  formatApiInventoryBaseline,
   formatApiInventoryDiff,
   inventorySucceeded,
   parseApiExports,
@@ -240,9 +241,24 @@ Deno.test("api inventory baseline detects accidental stable export drift", async
   });
 
   const baseline = createApiInventoryBaseline(baselineInventory, { stability: "stable" });
+  const formatted = formatApiInventoryBaseline(baseline);
   const diff = diffApiInventoryBaseline(baseline, current);
 
   assertEquals(baseline.symbols.map((symbol) => symbol.name), ["Button"]);
+  assertEquals(
+    formatted,
+    [
+      "{",
+      '  "entrypoint": "mod.ts",',
+      '  "stability": "stable",',
+      '  "symbols": [',
+      '    {"module":"src/widgets.ts","name":"Button","kind":"class","typeOnly":false,"documented":false}',
+      "  ]",
+      "}",
+      "",
+    ].join("\n"),
+  );
+  assertEquals(JSON.parse(formatted), baseline);
   assertEquals(diff.stability, "stable");
   assertEquals(diff.added.map((symbol) => symbol.name), ["surpriseExport"]);
   assertEquals(diff.addedByStability.stable.map((symbol) => symbol.name), ["surpriseExport"]);
