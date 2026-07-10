@@ -17181,6 +17181,96 @@ var apiWorkbenchControlIds = [
   "stepper",
   "textbox"
 ];
+var ApiWorkbenchControlsModel = class {
+  density = new SliderController({ min: 1, max: 10, step: 1, value: 6, orientation: "horizontal" });
+  livePreview = new CheckBoxController({ checked: true });
+  compactRows = new CheckBoxController({ checked: false });
+  actionButton;
+  genericButton;
+  modalButton;
+  modal;
+  modeRadio = new RadioGroupController({
+    options: [
+      { value: "fast", label: "Fast" },
+      { value: "balanced", label: "Balanced" },
+      { value: "precise", label: "Precise" }
+    ],
+    selectedValue: "balanced"
+  });
+  themeCombo;
+  dropdown;
+  commandInput;
+  workflowStepper = new StepperController({
+    steps: [
+      { id: "draft", label: "Draft", completed: true },
+      { id: "review", label: "Review" },
+      { id: "ship", label: "Ship" }
+    ],
+    activeIndex: 1
+  });
+  progress = new ProgressBarController({
+    min: 0,
+    max: 100,
+    value: 42,
+    smooth: false,
+    direction: "normal",
+    orientation: "horizontal"
+  });
+  notes;
+  activeControl = new Signal("button");
+  #disposed = false;
+  constructor(options) {
+    this.actionButton = new ButtonController({ label: "Run Action", onPress: () => options.pushLog("button pressed") });
+    this.genericButton = new ButtonController({
+      label: "Generic Button",
+      onPress: () => options.pushLog("generic button pressed")
+    });
+    this.modalButton = new ButtonController({ label: "Open Modal", onPress: options.openModal });
+    this.modal = new ModalController({
+      title: "Confirm Action",
+      body: options.modalBody,
+      tone: "confirm",
+      actions: [
+        { id: "cancel", label: "Cancel" },
+        { id: "details", label: "Details" },
+        { id: "confirm", label: "Confirm", default: true }
+      ],
+      onAction: (action) => options.applyModalAction(action.id),
+      onOpenChange: options.onModalOpenChange
+    });
+    this.themeCombo = new ComboBoxController({
+      items: options.themeLabels,
+      selectedIndex: 0,
+      placeholder: "theme",
+      onSelect: (_item, index) => options.setTheme(index)
+    });
+    this.dropdown = new ComboBoxController({
+      items: ["CPU stream", "GPU queue", "Network bus", "Disk cache"],
+      selectedIndex: 1,
+      placeholder: "source",
+      onSelect: options.onDropdownSelect
+    });
+    this.commandInput = new InputController({
+      text: options.commandText,
+      cursorPosition: options.commandText.length,
+      placeholder: options.commandPlaceholder,
+      onSubmit: options.onCommandSubmit
+    });
+    const noteLines = options.notesText.split("\n");
+    this.notes = new TextBoxController({
+      text: options.notesText,
+      cursorPosition: { x: noteLines.at(-1)?.length ?? 0, y: Math.max(0, noteLines.length - 1) },
+      wordWrap: true
+    });
+  }
+  dispose() {
+    if (this.#disposed) return;
+    this.#disposed = true;
+    for (const owned of Object.values(this)) {
+      owned.dispose();
+    }
+  }
+};
 function nextApiWorkbenchControlId(current, delta, options = {}) {
   const index = apiWorkbenchControlIds.indexOf(current);
   if (index < 0) return options.wrap ? apiWorkbenchControlIds[0] : void 0;
@@ -20128,70 +20218,25 @@ var menu = new MenuBarController({
 var workspaceScroll = new ScrollAreaController({ showScrollbar: true });
 var workspaceViewport = new WorkbenchWorkspaceViewportController({ scroll: workspaceScroll });
 var logScroll = new ScrollAreaController({ showScrollbar: true });
-var slider = new SliderController({ min: 1, max: 10, value: 6, step: 1, orientation: "horizontal" });
-var live = new CheckBoxController({ checked: true });
-var compact = new CheckBoxController({ checked: false });
-var actionButton = new ButtonController({ label: "Run Action", onPress: () => push("button pressed") });
-var genericButton = new ButtonController({ label: "Generic Button", onPress: () => push("generic button pressed") });
-var modalButton = new ButtonController({ label: "Open Modal", onPress: () => openWorkbenchModal() });
-var modal = new ModalController({
-  title: "Confirm Action",
-  tone: "confirm",
-  body: [
+var controlsModel = new ApiWorkbenchControlsModel({
+  themeLabels,
+  commandText: "deno task web:demo:check",
+  commandPlaceholder: "command",
+  notesText: "Browser notes\nsame controllers, same wrapped multiline text area, same keyboard editing.",
+  modalBody: [
     "The web workbench uses the same ModalController shape as the terminal app.",
     "Use Tab or arrows to move actions, Enter to activate, Escape to close."
   ],
-  actions: [
-    { id: "cancel", label: "Cancel" },
-    { id: "details", label: "Details" },
-    { id: "confirm", label: "Confirm", default: true }
-  ],
-  onAction: (action) => applyModalAction(action.id)
+  pushLog: push,
+  openModal: openWorkbenchModal,
+  applyModalAction,
+  setTheme,
+  onDropdownSelect: (item) => push(`dropdown ${item}`)
 });
-var radio = new RadioGroupController({
-  options: [
-    { value: "fast", label: "Fast" },
-    { value: "balanced", label: "Balanced" },
-    { value: "precise", label: "Precise" }
-  ],
-  selectedValue: "balanced"
-});
-var combo = new ComboBoxController({
-  items: themeLabels,
-  selectedIndex: 0,
-  placeholder: "theme",
-  onSelect: (_item, index) => setTheme(index)
-});
-var dropdown = new ComboBoxController({
-  items: ["CPU stream", "GPU queue", "Network bus", "Disk cache"],
-  selectedIndex: 1,
-  placeholder: "source",
-  onSelect: (item) => push(`dropdown ${item}`)
-});
-var input = new InputController({ text: "deno task web:demo:check", cursorPosition: 24, placeholder: "command" });
-var stepper = new StepperController({
-  steps: [
-    { id: "draft", label: "Draft", completed: true },
-    { id: "review", label: "Review" },
-    { id: "ship", label: "Ship" }
-  ],
-  activeIndex: 1
-});
-var progress = new ProgressBarController({
-  min: 0,
-  max: 100,
-  value: 42,
-  smooth: false,
-  direction: "normal",
-  orientation: "horizontal"
-});
-var initialTextBoxText = "Browser notes\nsame controllers, same wrapped multiline text area, same keyboard editing.";
-var textBox = new TextBoxController({
-  text: initialTextBoxText,
-  cursorPosition: { x: initialTextBoxText.split("\n").at(-1)?.length ?? 0, y: 1 },
-  wordWrap: true
-});
-var activeControl = new Signal("button");
+var { density: slider, livePreview: live, compactRows: compact } = controlsModel;
+var { actionButton, genericButton, modalButton, modal, dropdown, progress } = controlsModel;
+var { modeRadio: radio, themeCombo: combo, commandInput: input } = controlsModel;
+var { workflowStepper: stepper, notes: textBox, activeControl } = controlsModel;
 var explorer = new FileExplorerController({
   root: createFileExplorerTree([
     "/README.md",
@@ -20329,18 +20374,7 @@ globalThis.addEventListener("beforeunload", () => {
   clearInterval(timer);
   workspaceScroll.dispose();
   logScroll.dispose();
-  actionButton.dispose();
-  genericButton.dispose();
-  modalButton.dispose();
-  modal.dispose();
-  radio.dispose();
-  combo.dispose();
-  dropdown.dispose();
-  input.dispose();
-  stepper.dispose();
-  progress.dispose();
-  textBox.dispose();
-  compact.dispose();
+  controlsModel.dispose();
   explorer.dispose();
   workbenchController.dispose();
   themeMenuOpen.dispose();

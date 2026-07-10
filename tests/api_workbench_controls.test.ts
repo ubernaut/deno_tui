@@ -10,6 +10,7 @@ import {
   type ApiWorkbenchControlLineRenderCommand,
   apiWorkbenchControlLineRenderCommandsInto,
   type ApiWorkbenchControlLineSegment,
+  ApiWorkbenchControlsModel,
   apiWorkbenchControlsSnapshotRowsInto,
   apiWorkbenchControlTrack,
   apiWorkbenchDropdownPopoverRect,
@@ -48,6 +49,44 @@ const workbenchWindowIds = {
   data: "data",
   explorer: "explorer",
 } as const;
+
+Deno.test("api workbench controls model shares defaults callbacks and lifecycle", () => {
+  let log = "";
+  const noop = () => {};
+  const controls = new ApiWorkbenchControlsModel({
+    themeLabels: ["Dark", "Light"],
+    commandText: "deno task check",
+    commandPlaceholder: "command",
+    notesText: "first\nsecond",
+    modalBody: ["confirm"],
+    pushLog: (message) => log = message,
+    openModal: noop,
+    applyModalAction: noop,
+    setTheme: noop,
+    onDropdownSelect: noop,
+  });
+
+  assertEquals([
+    controls.density.value.peek(),
+    controls.livePreview.checked.peek(),
+    controls.modeRadio.selectedValue.peek(),
+    controls.themeCombo.selected(),
+    controls.dropdown.selected(),
+    controls.activeControl.peek(),
+  ], [6, true, "balanced", "Dark", "GPU queue", "button"]);
+
+  controls.actionButton.press();
+  assertEquals(log, "button pressed");
+
+  controls.dispose();
+  controls.dispose();
+  assertEquals([
+    controls.density.value.inspect().disposed,
+    controls.modal.openState.inspect().disposed,
+    controls.notes.text.inspect().disposed,
+    controls.activeControl.inspect().disposed,
+  ], [true, true, true, true]);
+});
 
 Deno.test("api workbench control ids preserve keyboard traversal order", () => {
   assertEquals(apiWorkbenchControlAtEdge("button", 1), "genericButton");

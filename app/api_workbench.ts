@@ -1,17 +1,7 @@
-import { ButtonController } from "../src/components/button.ts";
-import { CheckBoxController } from "../src/components/checkbox.ts";
-import { ComboBoxController } from "../src/components/combobox.ts";
 import { DataTableController } from "../src/components/data_table.ts";
 import { createFileExplorerTree, FileExplorerController } from "../src/components/file_explorer.ts";
-import { InputController } from "../src/components/input.ts";
 import { MenuBarController } from "../src/components/menu_bar.ts";
-import { ModalController } from "../src/components/modal.ts";
-import { ProgressBarController } from "../src/components/progressbar.ts";
-import { RadioGroupController } from "../src/components/radio_group.ts";
 import { ScrollAreaController } from "../src/components/scroll_area.ts";
-import { SliderController } from "../src/components/slider.ts";
-import { StepperController } from "../src/components/stepper.ts";
-import { TextBoxController } from "../src/components/textbox.ts";
 import {
   appendBoundedWorkbenchLogRow,
   blitWorkbenchFrameCells,
@@ -215,6 +205,7 @@ import {
   apiWorkbenchControlAt,
   apiWorkbenchControlAtEdge,
   type ApiWorkbenchControlId,
+  ApiWorkbenchControlsModel,
   findApiWorkbenchHitTarget,
   isApiWorkbenchTextControlActive,
   isApiWorkbenchTouchOptimizedLayout,
@@ -536,7 +527,29 @@ const threeConfigWindow = new Signal<WindowId>("three");
 const threeConfigBaseline = new Signal<AsciiOptions | null>(null);
 const genericModalBlocksThree = new Signal(false);
 const activeWindow = new Signal<WindowId>("three");
-const activeControl = new Signal<ControlId>("button");
+const controlsModel = new ApiWorkbenchControlsModel({
+  themeLabels,
+  commandText: "deno task health",
+  commandPlaceholder: "type command",
+  notesText:
+    "Editable notes\nclick controls or type here. This text box keeps newline breaks and wraps long lines inside the control.",
+  modalBody: [
+    "Modal windows sit above the workspace and can contain text, menus, warnings, errors, and buttons.",
+    "Use Tab or arrow keys to move between actions; Enter activates the selected action.",
+  ],
+  pushLog,
+  openModal: openWorkbenchModal,
+  applyModalAction,
+  setTheme,
+  onDropdownSelect: (item) => pushLog(`dropdown selected: ${item}`),
+  onCommandSubmit: (value) => pushLog(`input submitted: ${value}`),
+  onModalOpenChange: (open) => {
+    genericModalBlocksThree.value = open && !threeConfigOpen.peek();
+  },
+});
+const { density, livePreview, compactRows, actionButton, genericButton } = controlsModel;
+const { modalButton, modal, modeRadio, themeCombo, dropdown } = controlsModel;
+const { commandInput, workflowStepper, progress, notes, activeControl } = controlsModel;
 const maximized = new Signal<WindowId | null>(null);
 const minimized = new Signal<Record<string, boolean>>({
   explorer: false,
@@ -687,87 +700,6 @@ const workspaceViewport = new WorkbenchWorkspaceViewportController<WindowId>({ s
 const windowScrolls = new Map<WindowId, ScrollAreaController>(
   builtInWindowOrder.map((id) => [id, new ScrollAreaController({ showScrollbar: true })]),
 );
-const density = new SliderController({ min: 1, max: 10, step: 1, value: 6, orientation: "horizontal" });
-const livePreview = new CheckBoxController({ checked: true });
-const compactRows = new CheckBoxController({ checked: false });
-const actionButton = new ButtonController({
-  label: "Run Action",
-  onPress: () => pushLog("button pressed"),
-});
-const genericButton = new ButtonController({
-  label: "Generic Button",
-  onPress: () => pushLog("generic button pressed"),
-});
-const modalButton = new ButtonController({
-  label: "Open Modal",
-  onPress: () => openWorkbenchModal(),
-});
-const modal = new ModalController({
-  title: "Confirm Action",
-  body: [
-    "Modal windows sit above the workspace and can contain text, menus, warnings, errors, and buttons.",
-    "Use Tab or arrow keys to move between actions; Enter activates the selected action.",
-  ],
-  tone: "confirm",
-  actions: [
-    { id: "cancel", label: "Cancel" },
-    { id: "details", label: "Details" },
-    { id: "confirm", label: "Confirm", default: true },
-  ],
-  onAction: (action) => applyModalAction(action.id),
-  onOpenChange: (open) => {
-    genericModalBlocksThree.value = open && !threeConfigOpen.peek();
-  },
-});
-const modeRadio = new RadioGroupController({
-  options: [
-    { value: "fast", label: "Fast" },
-    { value: "balanced", label: "Balanced" },
-    { value: "precise", label: "Precise" },
-  ],
-  selectedValue: "balanced",
-});
-const themeCombo = new ComboBoxController({
-  items: themeLabels,
-  selectedIndex: 0,
-  placeholder: "theme",
-  onSelect: (_item, index) => setTheme(index),
-});
-const dropdown = new ComboBoxController({
-  items: ["CPU stream", "GPU queue", "Network bus", "Disk cache"],
-  selectedIndex: 1,
-  placeholder: "source",
-  onSelect: (item) => pushLog(`dropdown selected: ${item}`),
-});
-const commandInput = new InputController({
-  text: "deno task health",
-  cursorPosition: "deno task health".length,
-  placeholder: "type command",
-  onSubmit: (value) => pushLog(`input submitted: ${value}`),
-});
-const workflowStepper = new StepperController({
-  steps: [
-    { id: "draft", label: "Draft", completed: true },
-    { id: "review", label: "Review" },
-    { id: "ship", label: "Ship" },
-  ],
-  activeIndex: 1,
-});
-const progress = new ProgressBarController({
-  min: 0,
-  max: 100,
-  value: 42,
-  smooth: false,
-  direction: "normal",
-  orientation: "horizontal",
-});
-const initialNotesText =
-  "Editable notes\nclick controls or type here. This text box keeps newline breaks and wraps long lines inside the control.";
-const notes = new TextBoxController({
-  text: initialNotesText,
-  cursorPosition: { x: initialNotesText.split("\n").at(-1)?.length ?? 0, y: 1 },
-  wordWrap: true,
-});
 const explorer = new FileExplorerController({
   root: createFileExplorerTree([
     "/README.md",
@@ -978,16 +910,7 @@ tui.on("destroy", () => {
     scroll.dispose();
   }
   windowManager.dispose();
-  density.dispose();
-  livePreview.dispose();
-  compactRows.dispose();
-  actionButton.dispose();
-  genericButton.dispose();
-  modeRadio.dispose();
-  themeCombo.dispose();
-  dropdown.dispose();
-  modalButton.dispose();
-  modal.dispose();
+  controlsModel.dispose();
   newWindowMenuIndex.dispose();
   workspaceMenuIndex.dispose();
   workspaceNameDraft.dispose();
@@ -1008,10 +931,6 @@ tui.on("destroy", () => {
   genericModalBlocksThree.dispose();
   dynamicVisualizationWindows.dispose();
   selectedCpuHexTiles.dispose();
-  commandInput.dispose();
-  workflowStepper.dispose();
-  progress.dispose();
-  notes.dispose();
   explorer.dispose();
   table.dispose();
   threePanel.dispose();

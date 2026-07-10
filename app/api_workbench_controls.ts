@@ -1,15 +1,27 @@
-import { renderCheckBoxMark } from "../src/components/checkbox.ts";
+import { ButtonController } from "../src/components/button.ts";
+import { CheckBoxController, renderCheckBoxMark } from "../src/components/checkbox.ts";
+import { ComboBoxController } from "../src/components/combobox.ts";
 import type { DataColumn } from "../src/components/data_table.ts";
+import { InputController } from "../src/components/input.ts";
+import { ModalController } from "../src/components/modal.ts";
+import { ProgressBarController } from "../src/components/progressbar.ts";
+import { RadioGroupController } from "../src/components/radio_group.ts";
 import { scrollbarOffsetForPointer } from "../src/components/scroll_area.ts";
-import { renderStepper, type StepperStep } from "../src/components/stepper.ts";
-import type { CursorPosition, TextBoxVisualLine } from "../src/components/textbox.ts";
-import { wrapTextBoxLinesInto } from "../src/components/textbox.ts";
+import { SliderController } from "../src/components/slider.ts";
+import { renderStepper, StepperController, type StepperStep } from "../src/components/stepper.ts";
+import {
+  type CursorPosition,
+  TextBoxController,
+  type TextBoxVisualLine,
+  wrapTextBoxLinesInto,
+} from "../src/components/textbox.ts";
 import {
   layoutWorkbenchControlButtonLine,
   layoutWrappedControlOptions,
   type WorkbenchControlButtonLineSegmentKind,
 } from "../src/app/workbench_control_layout.ts";
 import { buttonText, fitCellText } from "../src/app/workbench_frame.ts";
+import { Signal } from "../src/signals/mod.ts";
 import type { Rectangle } from "../src/types.ts";
 import { textWidth } from "../src/utils/strings.ts";
 
@@ -28,6 +40,115 @@ const apiWorkbenchControlIds = [
 ] as const;
 
 export type ApiWorkbenchControlId = typeof apiWorkbenchControlIds[number];
+
+export interface ApiWorkbenchControlsModelOptions {
+  themeLabels: string[];
+  commandText: string;
+  commandPlaceholder: string;
+  notesText: string;
+  modalBody: string[];
+  pushLog: (message: string) => void;
+  openModal: () => void;
+  applyModalAction: (actionId: string) => void;
+  setTheme: (index: number) => void;
+  onDropdownSelect: (item: string) => void;
+  onCommandSubmit?: (value: string) => void;
+  onModalOpenChange?: (open: boolean) => void;
+}
+
+/** Shared controller graph used by the terminal and browser API Workbench adapters. */
+export class ApiWorkbenchControlsModel {
+  readonly density = new SliderController({ min: 1, max: 10, step: 1, value: 6, orientation: "horizontal" });
+  readonly livePreview = new CheckBoxController({ checked: true });
+  readonly compactRows = new CheckBoxController({ checked: false });
+  readonly actionButton: ButtonController;
+  readonly genericButton: ButtonController;
+  readonly modalButton: ButtonController;
+  readonly modal: ModalController;
+  readonly modeRadio = new RadioGroupController({
+    options: [
+      { value: "fast", label: "Fast" },
+      { value: "balanced", label: "Balanced" },
+      { value: "precise", label: "Precise" },
+    ],
+    selectedValue: "balanced",
+  });
+  readonly themeCombo: ComboBoxController;
+  readonly dropdown: ComboBoxController;
+  readonly commandInput: InputController;
+  readonly workflowStepper = new StepperController({
+    steps: [
+      { id: "draft", label: "Draft", completed: true },
+      { id: "review", label: "Review" },
+      { id: "ship", label: "Ship" },
+    ],
+    activeIndex: 1,
+  });
+  readonly progress = new ProgressBarController({
+    min: 0,
+    max: 100,
+    value: 42,
+    smooth: false,
+    direction: "normal",
+    orientation: "horizontal",
+  });
+  readonly notes: TextBoxController;
+  readonly activeControl = new Signal<ApiWorkbenchControlId>("button");
+  #disposed = false;
+
+  constructor(options: ApiWorkbenchControlsModelOptions) {
+    this.actionButton = new ButtonController({ label: "Run Action", onPress: () => options.pushLog("button pressed") });
+    this.genericButton = new ButtonController({
+      label: "Generic Button",
+      onPress: () => options.pushLog("generic button pressed"),
+    });
+    this.modalButton = new ButtonController({ label: "Open Modal", onPress: options.openModal });
+    this.modal = new ModalController({
+      title: "Confirm Action",
+      body: options.modalBody,
+      tone: "confirm",
+      actions: [
+        { id: "cancel", label: "Cancel" },
+        { id: "details", label: "Details" },
+        { id: "confirm", label: "Confirm", default: true },
+      ],
+      onAction: (action) => options.applyModalAction(action.id),
+      onOpenChange: options.onModalOpenChange,
+    });
+    this.themeCombo = new ComboBoxController({
+      items: options.themeLabels,
+      selectedIndex: 0,
+      placeholder: "theme",
+      onSelect: (_item, index) => options.setTheme(index),
+    });
+    this.dropdown = new ComboBoxController({
+      items: ["CPU stream", "GPU queue", "Network bus", "Disk cache"],
+      selectedIndex: 1,
+      placeholder: "source",
+      onSelect: options.onDropdownSelect,
+    });
+    this.commandInput = new InputController({
+      text: options.commandText,
+      cursorPosition: options.commandText.length,
+      placeholder: options.commandPlaceholder,
+      onSubmit: options.onCommandSubmit,
+    });
+    const noteLines = options.notesText.split("\n");
+    this.notes = new TextBoxController({
+      text: options.notesText,
+      cursorPosition: { x: noteLines.at(-1)?.length ?? 0, y: Math.max(0, noteLines.length - 1) },
+      wordWrap: true,
+    });
+  }
+
+  dispose(): void {
+    if (this.#disposed) return;
+    this.#disposed = true;
+    for (const owned of Object.values(this)) {
+      owned.dispose();
+    }
+  }
+}
 
 export type ApiWorkbenchControlHitAction = "previous" | "next" | "activate" | "set" | "focus" | "toggle";
 

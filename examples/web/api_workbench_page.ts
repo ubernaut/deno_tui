@@ -3,10 +3,7 @@
 import {
   appendBoundedWorkbenchLogRow,
   BoxObject,
-  ButtonController,
-  CheckBoxController,
   clampWorkbenchTileDensity,
-  ComboBoxController,
   Computed,
   type ComputedLayoutBox,
   contrastText,
@@ -23,31 +20,24 @@ import {
   HitTargetStack,
   hydrateWorkbenchPanelWorkspaceStore,
   initialWorkbenchDiagnosticLogRows,
-  InputController,
   loadWorkbenchPanelWorkspaceCache,
   maxTextWidth,
   MenuBarController,
-  ModalController,
   normalizeTerminalWorkspaceSnapshot,
   normalizeWorkbenchPanelWorkspaceState,
   parseHexColor,
   persistWorkbenchPanelWorkspaceState,
   prepareWorkbenchRows,
-  ProgressBarController,
-  RadioGroupController,
   resolveWorkbenchScreenDropdownKey,
   ScrollAreaController,
   scrollbarGlyph,
   scrollbarOffsetForPointer,
   Signal,
-  SliderController,
   snapshotTerminalWorkspace,
-  StepperController,
   subscribeWorkbenchDiagnosticLog,
   TerminalScreenController,
   TerminalScrollbackController,
   type TerminalWorkspaceSnapshot,
-  TextBoxController,
   TextObject,
   type TextRectangle,
   translateHitTargets,
@@ -99,6 +89,7 @@ import {
   apiWorkbenchControlAt,
   apiWorkbenchControlAtEdge,
   type ApiWorkbenchControlId,
+  ApiWorkbenchControlsModel,
   findApiWorkbenchHitTarget,
   isApiWorkbenchTextControlActive,
   isApiWorkbenchTouchOptimizedLayout,
@@ -406,70 +397,25 @@ const menu = new MenuBarController({
 const workspaceScroll = new ScrollAreaController({ showScrollbar: true });
 const workspaceViewport = new WorkbenchWorkspaceViewportController<PanelId>({ scroll: workspaceScroll });
 const logScroll = new ScrollAreaController({ showScrollbar: true });
-const slider = new SliderController({ min: 1, max: 10, value: 6, step: 1, orientation: "horizontal" });
-const live = new CheckBoxController({ checked: true });
-const compact = new CheckBoxController({ checked: false });
-const actionButton = new ButtonController({ label: "Run Action", onPress: () => push("button pressed") });
-const genericButton = new ButtonController({ label: "Generic Button", onPress: () => push("generic button pressed") });
-const modalButton = new ButtonController({ label: "Open Modal", onPress: () => openWorkbenchModal() });
-const modal = new ModalController({
-  title: "Confirm Action",
-  tone: "confirm",
-  body: [
+const controlsModel = new ApiWorkbenchControlsModel({
+  themeLabels,
+  commandText: "deno task web:demo:check",
+  commandPlaceholder: "command",
+  notesText: "Browser notes\nsame controllers, same wrapped multiline text area, same keyboard editing.",
+  modalBody: [
     "The web workbench uses the same ModalController shape as the terminal app.",
     "Use Tab or arrows to move actions, Enter to activate, Escape to close.",
   ],
-  actions: [
-    { id: "cancel", label: "Cancel" },
-    { id: "details", label: "Details" },
-    { id: "confirm", label: "Confirm", default: true },
-  ],
-  onAction: (action) => applyModalAction(action.id),
+  pushLog: push,
+  openModal: openWorkbenchModal,
+  applyModalAction,
+  setTheme,
+  onDropdownSelect: (item) => push(`dropdown ${item}`),
 });
-const radio = new RadioGroupController({
-  options: [
-    { value: "fast", label: "Fast" },
-    { value: "balanced", label: "Balanced" },
-    { value: "precise", label: "Precise" },
-  ],
-  selectedValue: "balanced",
-});
-const combo = new ComboBoxController({
-  items: themeLabels,
-  selectedIndex: 0,
-  placeholder: "theme",
-  onSelect: (_item, index) => setTheme(index),
-});
-const dropdown = new ComboBoxController({
-  items: ["CPU stream", "GPU queue", "Network bus", "Disk cache"],
-  selectedIndex: 1,
-  placeholder: "source",
-  onSelect: (item) => push(`dropdown ${item}`),
-});
-const input = new InputController({ text: "deno task web:demo:check", cursorPosition: 24, placeholder: "command" });
-const stepper = new StepperController({
-  steps: [
-    { id: "draft", label: "Draft", completed: true },
-    { id: "review", label: "Review" },
-    { id: "ship", label: "Ship" },
-  ],
-  activeIndex: 1,
-});
-const progress = new ProgressBarController({
-  min: 0,
-  max: 100,
-  value: 42,
-  smooth: false,
-  direction: "normal",
-  orientation: "horizontal",
-});
-const initialTextBoxText = "Browser notes\nsame controllers, same wrapped multiline text area, same keyboard editing.";
-const textBox = new TextBoxController({
-  text: initialTextBoxText,
-  cursorPosition: { x: initialTextBoxText.split("\n").at(-1)?.length ?? 0, y: 1 },
-  wordWrap: true,
-});
-const activeControl = new Signal<ControlId>("button");
+const { density: slider, livePreview: live, compactRows: compact } = controlsModel;
+const { actionButton, genericButton, modalButton, modal, dropdown, progress } = controlsModel;
+const { modeRadio: radio, themeCombo: combo, commandInput: input } = controlsModel;
+const { workflowStepper: stepper, notes: textBox, activeControl } = controlsModel;
 const explorer = new FileExplorerController({
   root: createFileExplorerTree([
     "/README.md",
@@ -613,18 +559,7 @@ globalThis.addEventListener("beforeunload", () => {
   clearInterval(timer);
   workspaceScroll.dispose();
   logScroll.dispose();
-  actionButton.dispose();
-  genericButton.dispose();
-  modalButton.dispose();
-  modal.dispose();
-  radio.dispose();
-  combo.dispose();
-  dropdown.dispose();
-  input.dispose();
-  stepper.dispose();
-  progress.dispose();
-  textBox.dispose();
-  compact.dispose();
+  controlsModel.dispose();
   explorer.dispose();
   workbenchController.dispose();
   themeMenuOpen.dispose();
