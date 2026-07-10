@@ -6,6 +6,13 @@ export interface WeightedSearchField {
   weight: number;
 }
 
+/** Optional weights for standard id, label, and keyword search fields. */
+export interface WeightedSearchItemFieldOptions {
+  labelWeight?: number;
+  idWeight?: number;
+  keywordWeight?: number;
+}
+
 /** Normalizes human-readable command/search text for stable matching. */
 export function normalizeSearchText(value: string): string {
   return value.trim().toLowerCase().replace(/[_.:/]+/g, " ").replace(/\s+/g, " ");
@@ -53,6 +60,25 @@ export function weightedSearchField(value: string, weight: number): WeightedSear
     normalized,
     acronym: searchAcronym(normalized),
   };
+}
+
+/** Builds standard weighted fields for an id/label/keywords search item. */
+export function weightedSearchItemFields(
+  item: { id: string; label: string; keywords?: readonly string[] },
+  options: WeightedSearchItemFieldOptions = {},
+  createField: (value: string, weight: number) => WeightedSearchField = normalizedWeightedSearchField,
+): WeightedSearchField[] {
+  const keywordCount = item.keywords?.length ?? 0;
+  const fields = new Array<WeightedSearchField>(2 + keywordCount);
+  fields[0] = createField(item.label, options.labelWeight ?? 100);
+  fields[1] = createField(item.id, options.idWeight ?? 80);
+  if (item.keywords) {
+    const keywordWeight = options.keywordWeight ?? 40;
+    for (let index = 0; index < item.keywords.length; index += 1) {
+      fields[index + 2] = createField(item.keywords[index]!, keywordWeight);
+    }
+  }
+  return fields;
 }
 
 /** Scores an item with weighted fields against all query terms. */
@@ -122,6 +148,21 @@ export function insertBoundedRanked<T>(
   if (low >= limit) return;
   ranked.splice(low, 0, candidate);
   if (ranked.length > limit) ranked.pop();
+}
+
+/** Orders scored search matches by score, availability, label, then optional source index. */
+export function compareRankedSearchMatches(
+  left: { score: number; item: { disabled?: boolean; label: string }; index?: number },
+  right: { score: number; item: { disabled?: boolean; label: string }; index?: number },
+): number {
+  return right.score - left.score ||
+    Number(left.item.disabled) - Number(right.item.disabled) ||
+    left.item.label.localeCompare(right.item.label) ||
+    (left.index ?? 0) - (right.index ?? 0);
+}
+
+function normalizedWeightedSearchField(value: string, weight: number): WeightedSearchField {
+  return { value, weight, normalized: normalizeSearchText(value) };
 }
 
 function hasWordStartingWith(field: string, term: string): boolean {

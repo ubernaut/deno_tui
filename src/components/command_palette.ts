@@ -5,8 +5,12 @@ import { signalify } from "../utils/signals.ts";
 import { List, visibleListRows } from "./list.ts";
 import { drawTextChild } from "./text_children.ts";
 import type { KeyPressEvent } from "../input_reader/types.ts";
-import { normalizeSearchText, scoreWeightedSearchFields, searchTerms } from "../utils/search.ts";
-import type { WeightedSearchField } from "../utils/search.ts";
+import {
+  compareRankedSearchMatches,
+  scoreWeightedSearchFields,
+  searchTerms,
+  weightedSearchItemFields,
+} from "../utils/search.ts";
 
 /** Public interface describing a command Palette Item. */
 export interface CommandPaletteItem {
@@ -83,7 +87,7 @@ export function rankCommandPaletteItems(
       ranked.push({ item, score: match.score, matched: match.matched, index });
     }
   }
-  ranked.sort(compareCommandPaletteMatches);
+  ranked.sort(compareRankedSearchMatches);
   const matches = new Array<CommandPaletteMatch>(ranked.length);
   for (let index = 0; index < ranked.length; index += 1) {
     const match = ranked[index]!;
@@ -311,33 +315,5 @@ function scoreCommandPaletteItem(
   item: CommandPaletteItem,
   terms: readonly string[],
 ): { score: number; matched: string[] } | undefined {
-  const fields = commandPaletteSearchFields(item);
-  return scoreWeightedSearchFields(fields, terms, item.disabled);
-}
-
-function commandPaletteSearchFields(item: CommandPaletteItem): WeightedSearchField[] {
-  const keywordCount = item.keywords?.length ?? 0;
-  const fields = new Array<WeightedSearchField>(2 + keywordCount);
-  fields[0] = weightedSearchField(item.label, 100);
-  fields[1] = weightedSearchField(item.id, 80);
-  if (item.keywords) {
-    for (let index = 0; index < item.keywords.length; index += 1) {
-      fields[index + 2] = weightedSearchField(item.keywords[index]!, 40);
-    }
-  }
-  return fields;
-}
-
-function weightedSearchField(value: string, weight: number): WeightedSearchField {
-  return { value, weight, normalized: normalizeSearchText(value) };
-}
-
-function compareCommandPaletteMatches(
-  left: CommandPaletteMatch & { index: number },
-  right: CommandPaletteMatch & { index: number },
-): number {
-  return right.score - left.score ||
-    Number(left.item.disabled) - Number(right.item.disabled) ||
-    left.item.label.localeCompare(right.item.label) ||
-    left.index - right.index;
+  return scoreWeightedSearchFields(weightedSearchItemFields(item), terms, item.disabled);
 }

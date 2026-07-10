@@ -3,11 +3,13 @@ import { Signal } from "../signals/mod.ts";
 import type { AsyncScheduler, ScheduledTaskOptions } from "../runtime/scheduler.ts";
 import type { AsyncStore } from "../runtime/storage.ts";
 import {
+  compareRankedSearchMatches,
   insertBoundedRanked,
   scoreWeightedSearchFields,
   searchTerms,
   type WeightedSearchField,
   weightedSearchField,
+  weightedSearchItemFields,
 } from "../utils/search.ts";
 import type { Action } from "./actions.ts";
 import type { CommandDispatch, CommandRegistry } from "./commands.ts";
@@ -141,7 +143,7 @@ export function searchCommandSearchIndex(
       if (limit === undefined) {
         ranked.push(candidate);
       } else {
-        insertBoundedRanked(ranked, candidate, limit, compareCommandSearchMatches);
+        insertBoundedRanked(ranked, candidate, limit, compareRankedSearchMatches);
       }
     }
   }
@@ -160,7 +162,7 @@ function rankEmptyCommandSearchIndex(
     if (limit === undefined) {
       ranked.push(candidate);
     } else {
-      insertBoundedRanked(ranked, candidate, limit, compareCommandSearchMatches);
+      insertBoundedRanked(ranked, candidate, limit, compareRankedSearchMatches);
     }
   }
   return finishCommandSearchMatches(ranked, limit);
@@ -307,22 +309,8 @@ function createCommandSearchIndexEntry(
   index: number,
   options: CommandSearchIndexOptions,
 ): CommandSearchIndexEntry {
-  const keywordCount = item.keywords?.length ?? 0;
-  const fields = new Array<WeightedSearchField>(2 + keywordCount);
-  fields[0] = commandSearchIndexField(item.label, options.labelWeight ?? 100);
-  fields[1] = commandSearchIndexField(item.id, options.idWeight ?? 80);
-  if (item.keywords) {
-    const keywordWeight = options.keywordWeight ?? 40;
-    for (let keywordIndex = 0; keywordIndex < item.keywords.length; keywordIndex += 1) {
-      fields[keywordIndex + 2] = commandSearchIndexField(item.keywords[keywordIndex]!, keywordWeight);
-    }
-  }
-
+  const fields = weightedSearchItemFields(item, options, weightedSearchField);
   return { item, fields, index };
-}
-
-function commandSearchIndexField(value: string, weight: number): WeightedSearchField {
-  return weightedSearchField(value, weight);
 }
 
 function scoreCommandSearchIndexEntry(
@@ -336,21 +324,11 @@ function finishCommandSearchMatches(
   ranked: Array<CommandSearchMatch & { index: number }>,
   limit: number | undefined,
 ): CommandSearchMatch[] {
-  if (limit === undefined) ranked.sort(compareCommandSearchMatches);
+  if (limit === undefined) ranked.sort(compareRankedSearchMatches);
   const matches = new Array<CommandSearchMatch>(ranked.length);
   for (let index = 0; index < ranked.length; index += 1) {
     const match = ranked[index]!;
     matches[index] = { item: match.item, score: match.score, matched: match.matched };
   }
   return matches;
-}
-
-function compareCommandSearchMatches(
-  left: CommandSearchMatch & { index: number },
-  right: CommandSearchMatch & { index: number },
-): number {
-  return right.score - left.score ||
-    Number(left.item.disabled) - Number(right.item.disabled) ||
-    left.item.label.localeCompare(right.item.label) ||
-    left.index - right.index;
 }

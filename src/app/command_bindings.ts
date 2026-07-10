@@ -3,12 +3,13 @@ import { bindingId, type KeymapRegistry } from "../keymap.ts";
 import type { KeyPressEvent } from "../input_reader/types.ts";
 import { Signal } from "../signals/mod.ts";
 import {
+  compareRankedSearchMatches,
   insertBoundedRanked,
   normalizeSearchText,
   scoreSearchField,
   scoreWeightedSearchFields,
   searchTerms,
-  type WeightedSearchField,
+  weightedSearchItemFields,
 } from "../utils/search.ts";
 import type { Action } from "./actions.ts";
 import { type Command, type CommandDispatch, type CommandRegistry, insertUniqueSortedString } from "./commands.ts";
@@ -274,11 +275,11 @@ export function rankCommandSurfaceItems(
       if (limit === undefined) {
         ranked.push(candidate);
       } else {
-        insertBoundedRanked(ranked, candidate, limit, compareCommandSearchMatches);
+        insertBoundedRanked(ranked, candidate, limit, compareRankedSearchMatches);
       }
     }
   }
-  if (limit === undefined) ranked.sort(compareCommandSearchMatches);
+  if (limit === undefined) ranked.sort(compareRankedSearchMatches);
   return ranked;
 }
 
@@ -293,10 +294,10 @@ function rankEmptyCommandSurfaceItems(
     if (limit === undefined) {
       ranked.push(candidate);
     } else {
-      insertBoundedRanked(ranked, candidate, limit, compareCommandSearchMatches);
+      insertBoundedRanked(ranked, candidate, limit, compareRankedSearchMatches);
     }
   }
-  if (limit === undefined) ranked.sort(compareCommandSearchMatches);
+  if (limit === undefined) ranked.sort(compareRankedSearchMatches);
   return ranked;
 }
 
@@ -566,20 +567,7 @@ function scoreCommandSurfaceItem(
   item: CommandSurfaceItem,
   terms: readonly string[],
 ): { score: number; matched: string[] } | undefined {
-  const keywordCount = item.keywords?.length ?? 0;
-  const fields = new Array<WeightedSearchField>(2 + keywordCount);
-  fields[0] = commandSurfaceSearchField(item.label, 100);
-  fields[1] = commandSurfaceSearchField(item.id, 80);
-  if (item.keywords) {
-    for (let index = 0; index < item.keywords.length; index += 1) {
-      fields[index + 2] = commandSurfaceSearchField(item.keywords[index]!, 40);
-    }
-  }
-  return scoreWeightedSearchFields(fields, terms, item.disabled);
-}
-
-function commandSurfaceSearchField(value: string, weight: number): WeightedSearchField {
-  return { value, weight, normalized: normalizeSearchText(value) };
+  return scoreWeightedSearchFields(weightedSearchItemFields(item), terms, item.disabled);
 }
 
 function compareCommandSearchCandidates<TAction extends Action = Action>(
@@ -590,13 +578,6 @@ function compareCommandSearchCandidates<TAction extends Action = Action>(
     Number(left.disabled) - Number(right.disabled) ||
     left.command.label.localeCompare(right.command.label) ||
     left.index - right.index;
-}
-
-function compareCommandSearchMatches(left: CommandSearchMatch, right: CommandSearchMatch): number {
-  // Stable sort and bounded insertion preserve source order when these fields tie.
-  return right.score - left.score ||
-    Number(left.item.disabled) - Number(right.item.disabled) ||
-    left.item.label.localeCompare(right.item.label);
 }
 
 function inspectCommandKeyBindingConflicts(
