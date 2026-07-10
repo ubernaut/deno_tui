@@ -56,7 +56,24 @@ Deno.test("workbench ascii controller owns root and per-window config signals", 
   assertEquals(controller.configuredWindow("viz", (id) => id === "viz"), "viz");
   assertEquals(controller.configuredWindow("viz", (id) => id === "three"), "three");
 
+  controller.openEditor("viz", (id) => id === "viz");
+  controller.handleEditorKey({ key: "down" }, defaultWorkbenchAsciiConfigRows.length, () => {}, () => {});
+  assertEquals([
+    controller.editorOpen.peek(),
+    controller.editorWindow(),
+    controller.editorSelectedIndex.peek(),
+  ], [true, "viz", 1]);
+  const edited = controller.applyEditorRow(1, "next", defaultWorkbenchAsciiConfigRows, []);
+  assertEquals(edited?.message, "glyph style Mixed");
+  controller.commitEditor();
+  controller.applyEditorRow(1, "next", defaultWorkbenchAsciiConfigRows, []);
+  assertEquals([controller.restoreEditor(), controller.editorSignal().peek().terminalGlyphStyle], [true, "mixed"]);
+  controller.closeEditor();
+  assertEquals(controller.editorOpen.peek(), false);
+
+  controller.openEditor("viz");
   controller.disposeWindow("viz");
+  assertEquals(controller.editorOpen.peek(), false);
   assert(controller.signalForWindow("viz") !== viz);
   controller.dispose();
 });

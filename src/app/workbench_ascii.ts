@@ -305,10 +305,13 @@ export function applyWorkbenchAsciiConfigRowAction(
   };
 }
 
-/** Owns per-window Three ASCII config signals for workbench-style hosts. */
+/** Owns per-window Three ASCII config signals and editor state for workbench-style hosts. */
 export class WorkbenchAsciiConfigController<WindowId extends string> {
   readonly root: Signal<ThreeAsciiConfigOptions>;
+  readonly editorOpen = new Signal(false);
+  readonly editorSelectedIndex = new Signal(0);
   private readonly signals = new Map<WindowId, Signal<ThreeAsciiConfigOptions>>();
+  private editor?: { windowId: WindowId; baseline: ThreeAsciiConfigOptions };
 
   constructor(
     readonly rootWindowId: WindowId,
@@ -332,6 +335,7 @@ export class WorkbenchAsciiConfigController<WindowId extends string> {
 
   disposeWindow(id: WindowId): void {
     if (id === this.rootWindowId) return;
+    if (this.editor?.windowId === id) this.closeEditor();
     const signal = this.signals.get(id);
     signal?.dispose();
     this.signals.delete(id);
@@ -345,11 +349,79 @@ export class WorkbenchAsciiConfigController<WindowId extends string> {
     return this.signalForWindow(this.configuredWindow(candidate, isSupported));
   }
 
+  openEditor(id: WindowId, isSupported?: (id: WindowId) => boolean): void {
+    const windowId = isSupported ? this.configuredWindow(id, isSupported) : id;
+    this.editor = {
+      windowId,
+      baseline: cloneAsciiOptions(this.signalForWindow(windowId).peek()),
+    };
+    this.editorSelectedIndex.value = 0;
+    this.editorOpen.value = true;
+  }
+
+  closeEditor(): void {
+    this.editor = undefined;
+    this.editorOpen.value = false;
+  }
+
+  editorWindow(): WindowId {
+    return this.editor?.windowId ?? this.rootWindowId;
+  }
+
+  editorSignal(): Signal<ThreeAsciiConfigOptions> {
+    return this.signalForWindow(this.editorWindow());
+  }
+
+  restoreEditor(): boolean {
+    if (!this.editor) return false;
+    this.setForWindow(this.editor.windowId, this.editor.baseline);
+    return true;
+  }
+
+  commitEditor(): void {
+    if (this.editor) this.editor.baseline = cloneAsciiOptions(this.editorSignal().peek());
+  }
+
+  applyEditorRow(
+    index: number,
+    action: WorkbenchAsciiConfigAction,
+    rows: readonly WorkbenchAsciiConfigRow[],
+    presetIds: readonly string[],
+  ): WorkbenchAsciiConfigActionResult | undefined {
+    const row = rows[index];
+    if (!row) return undefined;
+    this.editorSelectedIndex.value = index;
+    const next = applyWorkbenchAsciiConfigRowAction(this.editorSignal().peek(), row, action, presetIds);
+    this.setForWindow(this.editorWindow(), next.options);
+    return next;
+  }
+
+  handleEditorKey(
+    event: WorkbenchAsciiConfigKeyEvent,
+    rowCount: number,
+    applyModal: (action: "cancel" | "apply" | "ok") => void,
+    applyRow: (index: number, action: WorkbenchAsciiConfigAction) => void,
+  ): void {
+    const action = resolveWorkbenchAsciiConfigKey(event);
+    if (action.kind === "modal") applyModal(action.action);
+    else if (action.kind === "selection") {
+      this.editorSelectedIndex.value = moveWorkbenchAsciiConfigSelection(
+        this.editorSelectedIndex.peek(),
+        rowCount,
+        action.delta,
+      );
+    } else if (action.kind === "row") {
+      applyRow(this.editorSelectedIndex.peek(), action.action);
+    }
+  }
+
   dispose(): void {
     for (const [id, signal] of this.signals) {
       if (id !== this.rootWindowId) signal.dispose();
     }
     this.signals.clear();
+    this.editorOpen.dispose();
+    this.editorSelectedIndex.dispose();
     this.root.dispose();
   }
 }

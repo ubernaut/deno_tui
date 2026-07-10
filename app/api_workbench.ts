@@ -136,13 +136,10 @@ import {
   WorkbenchTerminalSessionTabBufferCache,
 } from "../src/app/workbench_buffers.ts";
 import {
-  applyWorkbenchAsciiConfigRowAction,
   createDefaultWorkbenchAsciiOptions,
   defaultWorkbenchAsciiConfigRows,
   formatWorkbenchAsciiConfigRowText,
   formatWorkbenchAsciiConfigTitle,
-  moveWorkbenchAsciiConfigSelection,
-  resolveWorkbenchAsciiConfigKey,
   WorkbenchAsciiConfigController,
   type WorkbenchAsciiConfigRow,
   workbenchAsciiRendererModeLabel,
@@ -401,6 +398,8 @@ const savedWorkspaces = new Signal<SavedWorkspace[]>(await loadWorkbenchWorkspac
 const threeAsciiAvailable = new Signal(await probeCompatibleWebGPUDevice());
 const asciiConfigs = new WorkbenchAsciiConfigController<WindowId>("three");
 const ascii = asciiConfigs.root;
+const threeConfigOpen = asciiConfigs.editorOpen;
+const threeConfigSelected = asciiConfigs.editorSelectedIndex;
 
 const tui = new Tui({
   style: makeStyle({ bg: themes[0]!.background }),
@@ -518,10 +517,6 @@ const workbenchController = new WorkbenchController<"theme" | "newWindow" | "wor
 });
 const topMenus = workbenchController.menus;
 const windowManager = workbenchController.windows;
-const threeConfigOpen = new Signal(false);
-const threeConfigSelected = new Signal(0);
-const threeConfigWindow = new Signal<WindowId>("three");
-const threeConfigBaseline = new Signal<AsciiOptions | null>(null);
 const genericModalBlocksThree = new Signal(false);
 const activeWindow = new Signal<WindowId>("three");
 const controlsModel = new ApiWorkbenchControlsModel({
@@ -916,13 +911,9 @@ tui.on("destroy", () => {
   terminalShellSearchPromptOpen.dispose();
   savedWorkspaces.dispose();
   menuFocused.dispose();
-  threeConfigOpen.dispose();
   threeRuntimeAscii.dispose();
   workbenchThreeFullscreenTargetCells.dispose();
   workbenchThreeEffectiveMaxCells.dispose();
-  threeConfigSelected.dispose();
-  threeConfigWindow.dispose();
-  threeConfigBaseline.dispose();
   genericModalBlocksThree.dispose();
   dynamicVisualizationWindows.dispose();
   selectedCpuHexTiles.dispose();
@@ -1925,13 +1916,13 @@ const threeConfigBuffers = new WorkbenchAsciiConfigModalBufferCache<ThreeConfigR
 
 function renderThreeConfigModal(frame: Frame): void {
   const screen = { column: 0, row: 0, width: currentWidth(), height: currentHeight() };
-  const current = configuredAscii().peek();
+  const current = asciiConfigs.editorSignal().peek();
   renderApiWorkbenchThreeConfigModal({
     frame,
     bounds: screen,
     rows: threeConfigRows,
     selectedIndex: threeConfigSelected.peek(),
-    title: formatWorkbenchAsciiConfigTitle(windowTitle(configuredAsciiWindow()), current),
+    title: formatWorkbenchAsciiConfigTitle(windowTitle(asciiConfigs.editorWindow()), current),
     buffers: threeConfigBuffers,
     theme: theme(),
     contrastText,
@@ -1946,7 +1937,7 @@ function renderThreeConfigModal(frame: Frame): void {
 }
 
 function threeConfigRowText(row: ThreeConfigRow): string {
-  const current = configuredAscii().peek();
+  const current = asciiConfigs.editorSignal().peek();
   return formatWorkbenchAsciiConfigRowText(row, current, {
     kittyStatus: formatWorkbenchKittyGraphicsStatus({
       selected: current,
@@ -1962,11 +1953,13 @@ function applyThreeConfigRow(index: number, action: ConfigHitAction = "activate"
     applyThreeConfigModalAction("cancel");
     return;
   }
-  const row = threeConfigRows[index];
-  if (!row) return;
-  threeConfigSelected.value = index;
-  const next = applyWorkbenchAsciiConfigRowAction(configuredAscii().peek(), row, action, ASCII_DEMO_PRESET_IDS);
-  setConfiguredAscii(next.options, `three config ${next.message}`, { persist: false });
+  const next = asciiConfigs.applyEditorRow(
+    index,
+    action,
+    threeConfigRows,
+    ASCII_DEMO_PRESET_IDS,
+  );
+  if (next) recordConfiguredAscii(`three config ${next.message}`, { persist: false });
 }
 
 function drawFrame(frame: Frame, rect: Rectangle, title: string, active: boolean): void {
@@ -2245,38 +2238,24 @@ function disposeAsciiForWindow(id: WindowId): void {
   asciiConfigs.disposeWindow(id);
 }
 
-function configuredAsciiWindow(): WindowId {
-  return asciiConfigs.configuredWindow(threeConfigWindow.peek(), isThreeRenderedWindow);
-}
-
-function configuredAscii(): Signal<AsciiOptions> {
-  return asciiConfigs.configuredSignal(threeConfigWindow.peek(), isThreeRenderedWindow);
-}
-
-function setConfiguredAscii(
-  next: AsciiOptions,
+function recordConfiguredAscii(
   message: string,
   options: { persist?: boolean } = {},
 ): void {
-  const id = configuredAsciiWindow();
-  setAsciiForWindow(id, next);
+  const id = asciiConfigs.editorWindow();
   if (options.persist !== false && isVisualizationWindow(id)) void persistActiveWorkspaceState();
   pushLog(`${message} (${windowTitle(id)})`);
 }
 
 function applyThreeConfigModalAction(action: WorkbenchAsciiConfigModalAction): void {
   if (action === "cancel") {
-    const baseline = threeConfigBaseline.peek();
-    if (baseline) {
-      setConfiguredAscii(cloneAsciiOptions(baseline), "three config cancelled", { persist: true });
-    }
+    if (asciiConfigs.restoreEditor()) recordConfiguredAscii("three config cancelled");
     closeThreeConfigModal();
     return;
   }
 
-  const current = cloneAsciiOptions(configuredAscii().peek());
-  setConfiguredAscii(current, action === "apply" ? "three config applied" : "three config ok", { persist: true });
-  threeConfigBaseline.value = cloneAsciiOptions(current);
+  asciiConfigs.commitEditor();
+  recordConfiguredAscii(action === "apply" ? "three config applied" : "three config ok");
   if (action === "ok") closeThreeConfigModal();
 }
 
@@ -2653,7 +2632,7 @@ function openWorkbenchModal(): void {
 
 function openQuitModal(): void {
   closeTopMenus();
-  threeConfigOpen.value = false;
+  asciiConfigs.closeEditor();
   modal.open(workbenchQuitModalContent({ profile: "terminal" }));
   pushLog("quit confirmation");
 }
@@ -2928,17 +2907,13 @@ function openThreeConfigModal(id: WindowId): void {
   if (!isThreeRenderedWindow(id)) return;
   modal.close();
   closeTopMenus();
-  threeConfigWindow.value = id;
-  threeConfigBaseline.value = cloneAsciiOptions(asciiForWindow(id).peek());
-  threeConfigOpen.value = true;
-  threeConfigSelected.value = 0;
+  asciiConfigs.openEditor(id, isThreeRenderedWindow);
   focus(id);
   pushLog(`configure ${windowTitle(id)}`);
 }
 
 function closeThreeConfigModal(): void {
-  threeConfigOpen.value = false;
-  threeConfigBaseline.value = null;
+  asciiConfigs.closeEditor();
   pushLog("three config closed");
 }
 
@@ -3350,24 +3325,7 @@ function closeTopMenus(clearFocus = true): void {
 }
 
 function handleThreeConfigKey(event: { key: string; shift?: boolean }): void {
-  const action = resolveWorkbenchAsciiConfigKey(event);
-  switch (action.kind) {
-    case "modal":
-      applyThreeConfigModalAction(action.action);
-      return;
-    case "selection":
-      threeConfigSelected.value = moveWorkbenchAsciiConfigSelection(
-        threeConfigSelected.peek(),
-        threeConfigRows.length,
-        action.delta,
-      );
-      return;
-    case "row":
-      applyThreeConfigRow(threeConfigSelected.peek(), action.action);
-      return;
-    case "none":
-      return;
-  }
+  asciiConfigs.handleEditorKey(event, threeConfigRows.length, applyThreeConfigModalAction, applyThreeConfigRow);
 }
 
 function closeWindow(id: WindowId, options: { preserveWorkspace?: boolean } = {}): void {
