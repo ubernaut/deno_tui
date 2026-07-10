@@ -357,6 +357,18 @@ const mobileCommandButtonBuffers = new WorkbenchButtonRowBufferCache<MobileActio
 const webTerminalSessionTabBuffers = new WorkbenchTerminalSessionTabBufferCache();
 const webTerminalHeaderRows: string[] = [];
 const controlViewBuffers = new ApiWorkbenchControlsViewBufferCache();
+const webControlViewOverrides = {
+  combo: {
+    title: "Theme combo",
+    expandedGlyph: "v",
+    collapsedGlyph: ">",
+    previous: true,
+    next: true,
+  },
+  dropdown: { expandedGlyph: "v", collapsedGlyph: ">" },
+  input: { cursorGlyph: "|" },
+  textbox: { renderOptions: { cursorGlyph: "|", continuationGlyph: ">" } },
+} as const;
 const modalBuffers = new WorkbenchModalBufferCache<number>();
 const dropdownOverlayRenderCommands: WorkbenchDropdownOverlayRenderCommand[] = [];
 const themeMenuSlice: WorkbenchTopMenuVisibleSlice = { items: [], indexes: [] };
@@ -1839,66 +1851,10 @@ function applyModalAction(actionId: string): void {
 
 function renderControls(frame: string[], rect: Rectangle): void {
   const t = theme();
-  const currentControl = activeControl.peek();
-  const sliderState = slider.inspect();
   const result = renderApiWorkbenchControls({
     frame,
     rect,
-    state: {
-      activeControl: currentControl,
-      buttonPressCount: actionButton.pressCount.peek(),
-      genericButtonPressCount: genericButton.pressCount.peek(),
-      modalOpen: modal.openState.peek(),
-      slider: {
-        ratio: sliderState.normalizedValue,
-        value: slider.value.peek(),
-        max: 10,
-      },
-      checkboxLivePreview: live.checked.peek(),
-      checkboxCompactRows: compact.checked.peek(),
-      radioOptions: radio.options.peek(),
-      radioSelectedValue: radio.selectedValue.peek(),
-      radioActiveIndex: radio.activeIndex.peek(),
-      combo: {
-        title: "Theme combo",
-        label: combo.label(),
-        expanded: combo.expanded.peek(),
-        items: combo.items.peek(),
-        selectedIndex: combo.selectedIndex.peek(),
-        expandedGlyph: "v",
-        collapsedGlyph: ">",
-        previous: true,
-        next: true,
-      },
-      dropdown: {
-        title: "Dropdown",
-        label: dropdown.label(),
-        expanded: dropdown.expanded.peek(),
-        items: dropdown.items.peek(),
-        selectedIndex: dropdown.selectedIndex.peek(),
-        expandedGlyph: "v",
-        collapsedGlyph: ">",
-      },
-      input: {
-        title: "Input",
-        text: input.text.peek(),
-        active: currentControl === "input",
-        cursorGlyph: "|",
-      },
-      stepper: {
-        steps: stepper.steps.peek(),
-        activeIndex: stepper.activeIndex.peek(),
-      },
-      progress: {
-        ratio: progress.ratio(),
-        value: progress.value.peek(),
-      },
-      textbox: {
-        lines: textBox.lines.peek(),
-        cursor: textBox.cursorPosition.peek(),
-        renderOptions: { cursorGlyph: "|", continuationGlyph: ">" },
-      },
-    },
+    state: controlsModel.viewState(webControlViewOverrides),
     buffers: controlViewBuffers,
     theme: t,
     contrastText,

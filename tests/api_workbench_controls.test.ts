@@ -66,6 +66,10 @@ Deno.test("api workbench controls model shares defaults callbacks and lifecycle"
     onDropdownSelect: noop,
   });
 
+  const viewState = controls.viewState({
+    combo: { title: "Theme combo" },
+    textbox: { renderOptions: { cursorGlyph: "|", continuationGlyph: ">" } },
+  });
   assertEquals([
     controls.density.value.peek(),
     controls.livePreview.checked.peek(),
@@ -73,7 +77,20 @@ Deno.test("api workbench controls model shares defaults callbacks and lifecycle"
     controls.themeCombo.selected(),
     controls.dropdown.selected(),
     controls.activeControl.peek(),
-  ], [6, true, "balanced", "Dark", "GPU queue", "button"]);
+    viewState.slider.value,
+    viewState.combo.title,
+    viewState.textbox.renderOptions?.continuationGlyph,
+  ], [
+    6,
+    true,
+    "balanced",
+    "Dark",
+    "GPU queue",
+    "button",
+    6,
+    "Theme combo",
+    ">",
+  ]);
 
   controls.actionButton.press();
   assertEquals(log, "button pressed");

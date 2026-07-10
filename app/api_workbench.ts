@@ -1486,58 +1486,10 @@ function renderData(frame: Frame, rect: Rectangle): void {
 }
 
 function renderControls(frame: Frame, rect: Rectangle): void {
-  const slider = density.inspect();
-  const currentControl = activeControl.peek();
   const result = renderApiWorkbenchControls({
     frame,
     rect,
-    state: {
-      activeControl: currentControl,
-      buttonPressCount: actionButton.pressCount.peek(),
-      genericButtonPressCount: genericButton.pressCount.peek(),
-      modalOpen: modal.openState.peek(),
-      slider: {
-        ratio: slider.normalizedValue,
-        value: density.value.peek(),
-        max: 10,
-      },
-      checkboxLivePreview: livePreview.checked.peek(),
-      checkboxCompactRows: compactRows.checked.peek(),
-      radioOptions: modeRadio.options.peek(),
-      radioSelectedValue: modeRadio.selectedValue.peek(),
-      radioActiveIndex: modeRadio.activeIndex.peek(),
-      combo: {
-        title: "Theme",
-        label: themeCombo.label(),
-        expanded: themeCombo.expanded.peek(),
-        items: themeCombo.items.peek(),
-        selectedIndex: themeCombo.selectedIndex.peek(),
-      },
-      dropdown: {
-        title: "Dropdown",
-        label: dropdown.label(),
-        expanded: dropdown.expanded.peek(),
-        items: dropdown.items.peek(),
-        selectedIndex: dropdown.selectedIndex.peek(),
-      },
-      input: {
-        title: "Input",
-        text: commandInput.text.peek(),
-        active: currentControl === "input",
-      },
-      stepper: {
-        steps: workflowStepper.steps.peek(),
-        activeIndex: workflowStepper.activeIndex.peek(),
-      },
-      progress: {
-        ratio: progress.ratio(),
-        value: progress.value.peek(),
-      },
-      textbox: {
-        lines: notes.lines.peek(),
-        cursor: notes.cursorPosition.peek(),
-      },
-    },
+    state: controlsModel.viewState(),
     buffers: controlViewBuffers,
     theme: theme(),
     contrastText,

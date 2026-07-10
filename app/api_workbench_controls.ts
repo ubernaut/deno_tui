@@ -56,6 +56,13 @@ export interface ApiWorkbenchControlsModelOptions {
   onModalOpenChange?: (open: boolean) => void;
 }
 
+interface ApiWorkbenchControlsViewOverrides {
+  combo?: Partial<Omit<ApiWorkbenchComboHeaderRowsOptions, "rectWidth">>;
+  dropdown?: Partial<ApiWorkbenchDropdownHeaderRowOptions>;
+  input?: Partial<ApiWorkbenchInputRowOptions>;
+  textbox?: { renderOptions: ApiWorkbenchTextboxRenderOptions };
+}
+
 /** Shared controller graph used by the terminal and browser API Workbench adapters. */
 export class ApiWorkbenchControlsModel {
   readonly density = new SliderController({ min: 1, max: 10, step: 1, value: 6, orientation: "horizontal" });
@@ -139,6 +146,62 @@ export class ApiWorkbenchControlsModel {
       cursorPosition: { x: noteLines.at(-1)?.length ?? 0, y: Math.max(0, noteLines.length - 1) },
       wordWrap: true,
     });
+  }
+
+  viewState(overrides?: ApiWorkbenchControlsViewOverrides) {
+    const slider = this.density.inspect();
+    const activeControl = this.activeControl.peek();
+    return {
+      activeControl,
+      buttonPressCount: this.actionButton.pressCount.peek(),
+      genericButtonPressCount: this.genericButton.pressCount.peek(),
+      modalOpen: this.modal.openState.peek(),
+      slider: {
+        ratio: slider.normalizedValue,
+        value: this.density.value.peek(),
+        max: 10,
+      },
+      checkboxLivePreview: this.livePreview.checked.peek(),
+      checkboxCompactRows: this.compactRows.checked.peek(),
+      radioOptions: this.modeRadio.options.peek(),
+      radioSelectedValue: this.modeRadio.selectedValue.peek(),
+      radioActiveIndex: this.modeRadio.activeIndex.peek(),
+      combo: {
+        title: "Theme",
+        label: this.themeCombo.label(),
+        expanded: this.themeCombo.expanded.peek(),
+        items: this.themeCombo.items.peek(),
+        selectedIndex: this.themeCombo.selectedIndex.peek(),
+        ...overrides?.combo,
+      },
+      dropdown: {
+        title: "Dropdown",
+        label: this.dropdown.label(),
+        expanded: this.dropdown.expanded.peek(),
+        items: this.dropdown.items.peek(),
+        selectedIndex: this.dropdown.selectedIndex.peek(),
+        ...overrides?.dropdown,
+      },
+      input: {
+        title: "Input",
+        text: this.commandInput.text.peek(),
+        active: activeControl === "input",
+        ...overrides?.input,
+      },
+      stepper: {
+        steps: this.workflowStepper.steps.peek(),
+        activeIndex: this.workflowStepper.activeIndex.peek(),
+      },
+      progress: {
+        ratio: this.progress.ratio(),
+        value: this.progress.value.peek(),
+      },
+      textbox: {
+        lines: this.notes.lines.peek(),
+        cursor: this.notes.cursorPosition.peek(),
+        ...overrides?.textbox,
+      },
+    };
   }
 
   dispose(): void {
