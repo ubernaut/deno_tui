@@ -204,6 +204,93 @@ export class ApiWorkbenchControlsModel {
     };
   }
 
+  applyHit(
+    id: ApiWorkbenchControlId,
+    action: ApiWorkbenchControlHitAction,
+    rect?: Rectangle,
+    x?: number,
+    index?: number,
+  ): void {
+    this.activeControl.value = id;
+    if (action === "focus") return;
+    if (id === "button") this.actionButton.press("mouse");
+    else if (id === "genericButton") this.genericButton.press("mouse");
+    else if (id === "modal") this.modalButton.press("mouse");
+    else if (id === "slider") {
+      if (action === "set" && rect && x !== undefined) this.density.handlePointer(rect, x, rect.row);
+      else action === "previous" ? this.density.decrement() : this.density.increment();
+    } else if (id === "checkbox") {
+      index === 1 || action === "next" ? this.compactRows.toggle() : this.livePreview.toggle();
+    } else if (id === "radio") {
+      if (index !== undefined) {
+        this.modeRadio.setActive(index);
+        this.modeRadio.selectActive();
+      } else if (action === "previous") this.modeRadio.move(-1);
+      else if (action === "next") this.modeRadio.move(1);
+      else this.modeRadio.selectActive();
+    } else if (id === "combo") {
+      if (index !== undefined) this.themeCombo.selectIndex(index);
+      else if (action === "previous") this.themeCombo.move(-1);
+      else if (action === "next") this.themeCombo.move(1);
+      else this.themeCombo.selectActive();
+    } else if (id === "dropdown") {
+      if (index !== undefined) this.dropdown.selectIndex(index);
+      else if (action === "toggle") this.dropdown.toggle();
+      else if (action === "previous") this.dropdown.move(-1);
+      else if (action === "next") this.dropdown.move(1);
+      else if (this.dropdown.expanded.peek()) this.dropdown.selectActive();
+      else this.dropdown.open();
+    } else if (id === "input") this.commandInput.submit();
+    else if (id === "stepper") {
+      if (index !== undefined) this.workflowStepper.setActive(index);
+      else action === "previous" ? this.workflowStepper.move(-1) : this.workflowStepper.move(1);
+    } else if (id === "textbox") this.notes.setText(`${this.notes.text.peek()}\nclicked`);
+    this.progress.setValue(Math.min(100, this.progress.value.peek() + 7));
+  }
+
+  handleKey(
+    event: ApiWorkbenchControlKeyEvent,
+    applyControl: (id: ApiWorkbenchControlId, action: ApiWorkbenchControlHitAction) => void,
+  ): void {
+    const id = this.activeControl.peek();
+    const resolved = resolveApiWorkbenchControlKey(id, event, { dropdownExpanded: this.dropdown.expanded.peek() });
+    switch (resolved.type) {
+      case "textInput":
+        id === "input" ? this.commandInput.handleKeyPress(event as never) : this.notes.handleKeyPress(event as never);
+        return;
+      case "dropdown":
+        if (resolved.action === "move") this.dropdown.move(resolved.delta);
+        else if (resolved.action === "first") this.dropdown.first();
+        else if (resolved.action === "last") this.dropdown.last();
+        else if (resolved.action === "close") this.dropdown.close();
+        else this.dropdown.selectActive();
+        return;
+      case "radio":
+        this.modeRadio.move(resolved.delta);
+        return;
+      case "focus":
+        this.moveActive(resolved.delta);
+        return;
+      case "control":
+        applyControl(id, resolved.action);
+        return;
+      case "none":
+        return;
+    }
+  }
+
+  moveActive(delta: number): ApiWorkbenchControlId {
+    const next = apiWorkbenchControlAt(this.activeControl.peek(), delta);
+    this.activeControl.value = next;
+    return next;
+  }
+
+  moveActiveAtEdge(delta: number): ApiWorkbenchControlId | undefined {
+    const next = apiWorkbenchControlAtEdge(this.activeControl.peek(), delta);
+    if (next) this.activeControl.value = next;
+    return next;
+  }
+
   dispose(): void {
     if (this.#disposed) return;
     this.#disposed = true;

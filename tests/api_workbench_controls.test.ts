@@ -52,6 +52,7 @@ const workbenchWindowIds = {
 
 Deno.test("api workbench controls model shares defaults callbacks and lifecycle", () => {
   let log = "";
+  let themeSelections = 0;
   const noop = () => {};
   const controls = new ApiWorkbenchControlsModel({
     themeLabels: ["Dark", "Light"],
@@ -62,7 +63,7 @@ Deno.test("api workbench controls model shares defaults callbacks and lifecycle"
     pushLog: (message) => log = message,
     openModal: noop,
     applyModalAction: noop,
-    setTheme: noop,
+    setTheme: () => themeSelections += 1,
     onDropdownSelect: noop,
   });
 
@@ -91,6 +92,18 @@ Deno.test("api workbench controls model shares defaults callbacks and lifecycle"
     "Theme combo",
     ">",
   ]);
+
+  let keyAction = "";
+  controls.handleKey({ key: "down" }, (id, action) => keyAction = `${id}:${action}`);
+  controls.handleKey({ key: "return" }, (id, action) => keyAction = `${id}:${action}`);
+  controls.applyHit("combo", "activate");
+  controls.applyHit("slider", "next");
+  assertEquals([
+    keyAction,
+    themeSelections,
+    controls.density.value.peek(),
+    controls.progress.value.peek(),
+  ], ["genericButton:activate", 1, 7, 56]);
 
   controls.actionButton.press();
   assertEquals(log, "button pressed");

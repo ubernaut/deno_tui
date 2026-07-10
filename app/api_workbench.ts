@@ -202,15 +202,12 @@ import {
   TERMINAL_SHELL_WINDOW_ID,
 } from "./api_workbench_catalog.ts";
 import {
-  apiWorkbenchControlAt,
-  apiWorkbenchControlAtEdge,
   type ApiWorkbenchControlId,
   ApiWorkbenchControlsModel,
   findApiWorkbenchHitTarget,
   isApiWorkbenchTextControlActive,
   isApiWorkbenchTouchOptimizedLayout,
   nextSortableDataColumn,
-  resolveApiWorkbenchControlKey,
   resolveApiWorkbenchHitWindowId,
   resolveApiWorkbenchTitlebarHitAction,
   resolveApiWorkbenchWindowHScrollbarOffset,
@@ -547,9 +544,7 @@ const controlsModel = new ApiWorkbenchControlsModel({
     genericModalBlocksThree.value = open && !threeConfigOpen.peek();
   },
 });
-const { density, livePreview, compactRows, actionButton, genericButton } = controlsModel;
-const { modalButton, modal, modeRadio, themeCombo, dropdown } = controlsModel;
-const { commandInput, workflowStepper, progress, notes, activeControl } = controlsModel;
+const { density, livePreview, compactRows, modal, progress, activeControl } = controlsModel;
 const maximized = new Signal<WindowId | null>(null);
 const minimized = new Signal<Record<string, boolean>>({
   explorer: false,
@@ -3493,48 +3488,7 @@ function applyControlHit(
 ): void {
   windowManager.focus("controls");
   syncWindowSignalsFromManager();
-  activeControl.value = id;
-  if (action === "focus") {
-    pushLog(`control ${id} focus`);
-    return;
-  }
-  if (id === "button") actionButton.press("mouse");
-  else if (id === "genericButton") genericButton.press("mouse");
-  else if (id === "modal") modalButton.press("mouse");
-  else if (id === "slider") {
-    if (action === "set" && rect && x !== undefined) density.handlePointer(rect, x, rect.row);
-    else action === "previous" ? density.decrement() : density.increment();
-  } else if (id === "checkbox") index === 1 || action === "next" ? compactRows.toggle() : livePreview.toggle();
-  else if (id === "radio") {
-    if (index !== undefined) {
-      modeRadio.setActive(index);
-      modeRadio.selectActive();
-    } else if (action === "previous") modeRadio.move(-1);
-    else if (action === "next") modeRadio.move(1);
-    else modeRadio.selectActive();
-  } else if (id === "combo") {
-    if (index !== undefined) {
-      const selected = themeCombo.selectIndex(index);
-      if (selected) setTheme(index);
-    } else if (action === "previous") themeCombo.move(-1);
-    else if (action === "next") themeCombo.move(1);
-    else {
-      const selected = themeCombo.selectActive();
-      if (selected) setTheme(themeCombo.selectedIndex.peek() ?? 0);
-    }
-  } else if (id === "dropdown") {
-    if (index !== undefined) dropdown.selectIndex(index);
-    else if (action === "toggle") dropdown.toggle();
-    else if (action === "previous") dropdown.move(-1);
-    else if (action === "next") dropdown.move(1);
-    else if (dropdown.expanded.peek()) dropdown.selectActive();
-    else dropdown.open();
-  } else if (id === "input") commandInput.submit();
-  else if (id === "stepper") {
-    if (index !== undefined) workflowStepper.setActive(index);
-    else action === "previous" ? workflowStepper.move(-1) : workflowStepper.move(1);
-  } else if (id === "textbox") notes.setText(`${notes.text.peek()}\nclicked`);
-  progress.setValue(Math.min(100, progress.value.peek() + 7));
+  controlsModel.applyHit(id, action, rect, x, index);
   pushLog(`control ${id} ${action}`);
 }
 
@@ -3586,47 +3540,22 @@ function ensureCpuHexTileVisible(id: VisualizationWindowId, label: string): void
 }
 
 function handleControlsKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
-  const id = activeControl.peek();
-  const resolved = resolveApiWorkbenchControlKey(id, event, { dropdownExpanded: dropdown.expanded.peek() });
-  switch (resolved.type) {
-    case "textInput":
-      id === "input" ? commandInput.handleKeyPress(event as never) : notes.handleKeyPress(event as never);
-      return;
-    case "dropdown":
-      if (resolved.action === "move") dropdown.move(resolved.delta);
-      else if (resolved.action === "first") dropdown.first();
-      else if (resolved.action === "last") dropdown.last();
-      else if (resolved.action === "close") dropdown.close();
-      else dropdown.selectActive();
-      return;
-    case "radio":
-      modeRadio.move(resolved.delta);
-      return;
-    case "focus":
-      activeControl.value = apiWorkbenchControlAt(activeControl.peek(), resolved.delta);
-      return;
-    case "control":
-      applyControlHit(id, resolved.action);
-      return;
-    case "none":
-      return;
-  }
+  controlsModel.handleKey(event, applyControlHit);
 }
 
 function blurTextControl(): void {
   const previous = activeControl.peek();
   windowManager.focus("controls");
   syncWindowSignalsFromManager();
-  activeControl.value = apiWorkbenchControlAt(activeControl.peek(), 1);
+  controlsModel.moveActive(1);
   pushLog(`control ${previous} blur`);
 }
 
 function focusNextControl(delta = 1): void {
   windowManager.focus("controls");
   syncWindowSignalsFromManager();
-  const next = apiWorkbenchControlAtEdge(activeControl.peek(), delta);
+  const next = controlsModel.moveActiveAtEdge(delta);
   if (next) {
-    activeControl.value = next;
     pushLog(`control ${activeControl.peek()} focus`);
     return;
   }

@@ -86,15 +86,12 @@ import {
   nextApiWorkbenchTerminalSessionDraft,
 } from "../../app/api_workbench_catalog.ts";
 import {
-  apiWorkbenchControlAt,
-  apiWorkbenchControlAtEdge,
   type ApiWorkbenchControlId,
   ApiWorkbenchControlsModel,
   findApiWorkbenchHitTarget,
   isApiWorkbenchTextControlActive,
   isApiWorkbenchTouchOptimizedLayout,
   nextSortableDataColumn,
-  resolveApiWorkbenchControlKey,
   resolveApiWorkbenchTitlebarHitAction,
 } from "../../app/api_workbench_controls.ts";
 import { renderApiWorkbenchHtmlCssLayout } from "../../app/html_css_layout_view.ts";
@@ -424,10 +421,7 @@ const controlsModel = new ApiWorkbenchControlsModel({
   setTheme,
   onDropdownSelect: (item) => push(`dropdown ${item}`),
 });
-const { density: slider, livePreview: live, compactRows: compact } = controlsModel;
-const { actionButton, genericButton, modalButton, modal, dropdown, progress } = controlsModel;
-const { modeRadio: radio, themeCombo: combo, commandInput: input } = controlsModel;
-const { workflowStepper: stepper, notes: textBox, activeControl } = controlsModel;
+const { density: slider, livePreview: live, modal, activeControl } = controlsModel;
 const explorer = new FileExplorerController({
   root: createFileExplorerTree([
     "/README.md",
@@ -1874,45 +1868,7 @@ function applyControlHit(
   index?: number,
 ): void {
   activatePanel("controls");
-  activeControl.value = id;
-  if (action === "focus") {
-    push(`control ${id} focus`);
-    return;
-  }
-  if (id === "button") actionButton.press("mouse");
-  else if (id === "genericButton") genericButton.press("mouse");
-  else if (id === "modal") modalButton.press("mouse");
-  else if (id === "slider") {
-    if (action === "set" && rect && x !== undefined) slider.handlePointer(rect, x, rect.row);
-    else action === "previous" ? slider.decrement() : slider.increment();
-  } else if (id === "checkbox") index === 1 || action === "next" ? compact.toggle() : live.toggle();
-  else if (id === "radio") {
-    if (index !== undefined) {
-      radio.setActive(index);
-      radio.selectActive();
-    } else if (action === "previous") radio.move(-1);
-    else if (action === "next") radio.move(1);
-    else radio.selectActive();
-  } else if (id === "combo") {
-    if (index !== undefined) {
-      combo.selectIndex(index);
-      setTheme(index);
-    } else if (action === "previous") combo.move(-1);
-    else if (action === "next") combo.move(1);
-    else combo.selectActive();
-  } else if (id === "dropdown") {
-    if (index !== undefined) dropdown.selectIndex(index);
-    else if (action === "toggle") dropdown.toggle();
-    else if (action === "previous") dropdown.move(-1);
-    else if (action === "next") dropdown.move(1);
-    else if (dropdown.expanded.peek()) dropdown.selectActive();
-    else dropdown.open();
-  } else if (id === "input") input.submit();
-  else if (id === "stepper") {
-    if (index !== undefined) stepper.setActive(index);
-    else action === "previous" ? stepper.move(-1) : stepper.move(1);
-  } else if (id === "textbox") textBox.setText(`${textBox.text.peek()}\nclicked`);
-  progress.setValue(Math.min(100, progress.value.peek() + 7));
+  controlsModel.applyHit(id, action, rect, x, index);
   push(`control ${id} ${action}`);
 }
 
@@ -1923,57 +1879,24 @@ function selectDataRow(index: number): void {
 }
 
 function handleControlsKey(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
-  const id = activeControl.peek();
-  const resolved = resolveApiWorkbenchControlKey(id, event, { dropdownExpanded: dropdown.expanded.peek() });
-  switch (resolved.type) {
-    case "textInput":
-      id === "input" ? input.handleKeyPress(event as never) : textBox.handleKeyPress(event as never);
-      return;
-    case "dropdown":
-      if (resolved.action === "move") dropdown.move(resolved.delta);
-      else if (resolved.action === "first") dropdown.first();
-      else if (resolved.action === "last") dropdown.last();
-      else if (resolved.action === "close") dropdown.close();
-      else dropdown.selectActive();
-      return;
-    case "radio":
-      radio.move(resolved.delta);
-      return;
-    case "focus":
-      activeControl.value = controlAt(resolved.delta);
-      return;
-    case "control":
-      applyControlHit(id, resolved.action);
-      return;
-    case "none":
-      return;
-  }
+  controlsModel.handleKey(event, applyControlHit);
 }
 
 function blurTextControl(): void {
   const previous = activeControl.peek();
   activatePanel("controls");
-  activeControl.value = controlAt(1);
+  controlsModel.moveActive(1);
   push(`control ${previous} blur`);
 }
 
 function focusNextControl(delta = 1): void {
   activatePanel("controls");
-  const next = controlAtEdge(delta);
+  const next = controlsModel.moveActiveAtEdge(delta);
   if (next) {
-    activeControl.value = next;
     push(`control ${activeControl.peek()} focus`);
     return;
   }
   delta < 0 ? focusPrevious() : focusNext();
-}
-
-function controlAt(delta: number): ControlId {
-  return apiWorkbenchControlAt(activeControl.peek(), delta);
-}
-
-function controlAtEdge(delta: number): ControlId | undefined {
-  return apiWorkbenchControlAtEdge(activeControl.peek(), delta);
 }
 function isTextControlActive(): boolean {
   return isApiWorkbenchTextControlActive(activePanel(), "controls", activeControl.peek());
