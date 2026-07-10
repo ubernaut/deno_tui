@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Signal } from "../signals/mod.ts";
 import type { Rectangle } from "../types.ts";
+import { normalizeRectangle } from "../utils/rectangles.ts";
 import { formatProcessCommandLine } from "./process_session.ts";
 import {
   describeAttachTerminalTemplate,
@@ -554,7 +555,7 @@ export function terminalWorkspacePaneRects(
   bounds: Rectangle,
   options: TerminalWorkspacePaneRectOptions = {},
 ): TerminalWorkspacePaneRect[] {
-  const normalizedBounds = normalizeRect(bounds);
+  const normalizedBounds = normalizeRectangle(bounds);
   if (!layout.root || normalizedBounds.width <= 0 || normalizedBounds.height <= 0) return [];
   if (options.respectZoom !== false && layout.zoomedPaneId) {
     const pane = findTerminalWorkspacePaneRef(layout.root, layout.zoomedPaneId);
@@ -1043,15 +1044,6 @@ function collectLayoutIds(node: TerminalWorkspaceLayoutNode | undefined, ids: Se
 function clampSplitSize(value: number, available: number): number {
   if (available <= 1) return available;
   return Math.max(1, Math.min(available - 1, value));
-}
-
-function normalizeRect(rect: Rectangle): Rectangle {
-  return {
-    column: Math.floor(rect.column),
-    row: Math.floor(rect.row),
-    width: Math.max(0, Math.floor(rect.width)),
-    height: Math.max(0, Math.floor(rect.height)),
-  };
 }
 
 function normalizeTerminalWorkspaceLayout(

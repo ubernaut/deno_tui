@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { type ModalInspection, renderModalRows } from "../components/modal.ts";
 import type { Rectangle } from "../types.ts";
+import { normalizeRectangle } from "../utils/rectangles.ts";
 import { clipRect } from "./hit_targets.ts";
 import type { WorkbenchButtonTone } from "./workbench_button_style.ts";
 import type { WorkbenchButtonRowItem } from "./workbench_control_layout.ts";
@@ -74,7 +75,7 @@ export interface WorkbenchModalRowRenderCommand {
 
 /** Returns centered modal geometry shared by terminal and browser workbench adapters. */
 export function layoutWorkbenchModal(options: WorkbenchModalLayoutOptions): WorkbenchModalLayout {
-  const bounds = normalizeRect(options.bounds);
+  const bounds = normalizeRectangle(options.bounds);
   const horizontalMargin = Math.max(0, Math.floor(options.horizontalMargin ?? 8));
   const verticalMargin = Math.max(0, Math.floor(options.verticalMargin ?? 6));
   const topMargin = Math.max(0, Math.floor(options.topMargin ?? 1));
@@ -109,7 +110,7 @@ export function workbenchModalRowRenderCommandsInto(
   target: WorkbenchModalRowRenderCommand[],
   options: WorkbenchModalRowRenderOptions,
 ): WorkbenchModalRowRenderCommand[] {
-  const inner = normalizeRect(options.inner);
+  const inner = normalizeRectangle(options.inner);
   const contentWidth = Math.max(0, Math.floor(options.contentWidth ?? inner.width));
   if (inner.width <= 0 || inner.height <= 0 || contentWidth <= 0) {
     target.length = 0;
@@ -143,7 +144,7 @@ export function workbenchModalRowRenderCommandsInto(
 export function layoutWorkbenchPopover(options: WorkbenchPopoverLayoutOptions): Rectangle | undefined {
   const minWidth = Math.max(0, Math.floor(options.minWidth ?? 8));
   const minHeight = Math.max(0, Math.floor(options.minHeight ?? 1));
-  const clipped = clipRect(normalizeRect(options.rect), normalizeRect(options.bounds));
+  const clipped = clipRect(normalizeRectangle(options.rect), normalizeRectangle(options.bounds));
   return clipped.width < minWidth || clipped.height < minHeight ? undefined : clipped;
 }
 
@@ -152,8 +153,8 @@ export function workbenchDropdownOverlayRenderCommandsInto(
   target: WorkbenchDropdownOverlayRenderCommand[],
   options: WorkbenchDropdownOverlayRenderOptions,
 ): WorkbenchDropdownOverlayRenderCommand[] {
-  const rect = normalizeRect(options.rect);
-  const bounds = normalizeRect(options.bounds);
+  const rect = normalizeRectangle(options.rect);
+  const bounds = normalizeRectangle(options.bounds);
   const clipped = layoutWorkbenchPopover({ rect, bounds });
   if (!clipped || options.items.length === 0) {
     target.length = 0;
@@ -311,14 +312,5 @@ function insetRect(rect: Rectangle, amount: number): Rectangle {
     row: rect.row + inset,
     width: Math.max(0, rect.width - inset * 2),
     height: Math.max(0, rect.height - inset * 2),
-  };
-}
-
-function normalizeRect(rect: Rectangle): Rectangle {
-  return {
-    column: Math.floor(rect.column),
-    row: Math.floor(rect.row),
-    width: Math.max(0, Math.floor(rect.width)),
-    height: Math.max(0, Math.floor(rect.height)),
   };
 }

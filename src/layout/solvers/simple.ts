@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { WidgetHitRegion } from "../../components/interaction.ts";
 import type { Rectangle } from "../../types.ts";
+import { normalizeRectangle } from "../../utils/rectangles.ts";
 import { LayoutMeasurementCache, measureTerminalTextIntrinsic } from "../measurement.ts";
 import { type FlexDirection, type FlexItem, flexRects } from "../flex_layout.ts";
 import {
@@ -49,7 +50,7 @@ export class SimpleLayoutSolver implements LayoutSolver {
   }
 
   solve(input: LayoutSolverInput): LayoutSolverResult {
-    const root = this.#layoutNode(input.root, normalizeRect(input.bounds), true);
+    const root = this.#layoutNode(input.root, normalizeRectangle(input.bounds), true);
     const boxes = flattenComputedLayoutBoxes(root);
     return {
       root,
@@ -688,15 +689,6 @@ function sortLayoutChildrenByOrder(children: LayoutNode[]): void {
   children.sort((left, right) =>
     left.style.order - right.style.order || (positions.get(left) ?? 0) - (positions.get(right) ?? 0)
   );
-}
-
-function normalizeRect(rect: Rectangle): Rectangle {
-  return {
-    column: Math.floor(rect.column),
-    row: Math.floor(rect.row),
-    width: Math.max(0, Math.floor(rect.width)),
-    height: Math.max(0, Math.floor(rect.height)),
-  };
 }
 
 function shrinkByMargin(rect: Rectangle, margin: ComputedLayoutStyle["margin"]): Rectangle {

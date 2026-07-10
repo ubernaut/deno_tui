@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
+import { normalizeRectangle } from "../utils/rectangles.ts";
 import { clipRect, inset } from "./hit_targets.ts";
 import { workbenchAsciiConfigVisibleRowStart } from "./workbench_ascii.ts";
 import {
@@ -104,7 +105,7 @@ export class WorkbenchAsciiConfigModalBufferCache<Row> {
 export function layoutWorkbenchAsciiConfigModal(
   options: WorkbenchAsciiConfigModalLayoutOptions,
 ): WorkbenchAsciiConfigModalLayout {
-  const bounds = normalizeRect(options.bounds);
+  const bounds = normalizeRectangle(options.bounds);
   const minWidth = Math.max(1, Math.floor(options.minWidth ?? 54));
   const maxWidth = Math.max(minWidth, Math.floor(options.maxWidth ?? 82));
   const horizontalMargin = Math.max(0, Math.floor(options.horizontalMargin ?? 8));
@@ -267,13 +268,4 @@ export function workbenchAsciiConfigModalActionRenderCommandsInto(
     options.actionRow,
   );
   return workbenchButtonRowRenderCommandsInto(target, placements);
-}
-
-function normalizeRect(rect: Rectangle): Rectangle {
-  return {
-    column: Math.floor(rect.column),
-    row: Math.floor(rect.row),
-    width: Math.max(0, Math.floor(rect.width)),
-    height: Math.max(0, Math.floor(rect.height)),
-  };
 }
