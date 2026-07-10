@@ -2,8 +2,8 @@
 
 ## Outcome
 
-This pass established the measurement and runtime safeguards needed for later repository-shape work. It is closed and
-superseded by `plan/todo/022-repo-shape-reduction.md`; the detailed milestone history remains available in Git.
+This pass established the measurement and runtime safeguards used by the completed repository-shape work in
+`plan/todo/done/022-repo-shape-reduction.md`; the detailed milestone history remains available in Git.
 
 ## Retained Results
 

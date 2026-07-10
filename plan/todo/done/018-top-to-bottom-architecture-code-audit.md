@@ -105,8 +105,8 @@ Renderer changes additionally used the Three ASCII live/startup probes and workb
 
 ## Follow-On Work
 
-- Current repository-shape and ownership policy lives in
-  [Repo Shape Reduction And Runtime-Focused Refactor](../022-repo-shape-reduction.md).
+- The completed repository-shape and ownership pass is recorded in
+  [Repo Shape Reduction And Runtime-Focused Refactor](022-repo-shape-reduction.md).
 - Terminal product workflow history lives in [Terminal Multiplexer Experience](017-terminal-multiplexer-experience.md).
 - Detailed implementation chronology remains available in Git history from the audited baseline; it is intentionally not
   duplicated here.
