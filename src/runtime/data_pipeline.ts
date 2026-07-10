@@ -262,12 +262,7 @@ export function filterRows<T>(
 export function sortRows<T>(
   compare: (left: T, right: T) => number,
 ): DataTransform<readonly T[], T[]> {
-  return (rows) => {
-    const output = new Array<T>(rows.length);
-    for (let index = 0; index < rows.length; index += 1) output[index] = rows[index]!;
-    output.sort(compare);
-    return output;
-  };
+  return (rows) => rows.slice().sort(compare);
 }
 
 /** Creates a transform that slices row data without mutating the input. */

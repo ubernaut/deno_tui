@@ -340,11 +340,7 @@ export async function prewarmThemeEngines(
     },
   });
 
-  const values = new Array<ThemeEngineFactoryBuildResult>(results.length);
-  for (let index = 0; index < results.length; index += 1) {
-    values[index] = results[index]!.value;
-  }
-  return values;
+  return results.map((result) => result.value);
 }
 
 function themePaletteId(palette: ThemePaletteReference): string {
