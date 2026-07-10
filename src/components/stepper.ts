@@ -24,13 +24,9 @@ export interface StepperStep {
 }
 
 /** Options for configuring stepper. */
-export interface StepperOptions extends ComponentOptions {
-  steps: StepperStep[] | Signal<StepperStep[]>;
-  activeIndex?: number | Signal<number>;
-  orientation?: StepperOrientation | Signal<StepperOrientation>;
+export interface StepperOptions extends ComponentOptions, StepperControllerOptions {
   separator?: string | Signal<string>;
   controller?: StepperController;
-  onChange?: (step: StepperStep, index: number) => void | Promise<void>;
 }
 
 /** Options for configuring stepper Controller. */

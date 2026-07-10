@@ -29,20 +29,9 @@ export interface TextBoxTheme extends Theme {
 }
 
 /** Options for configuring text Box. */
-export interface TextBoxOptions extends ComponentOptions {
-  text?: string | Signal<string>;
-  validator?: RegExp | Signal<RegExp | undefined>;
+export interface TextBoxOptions extends ComponentOptions, TextBoxControllerOptions {
   theme: DeepPartial<TextBoxTheme, "cursor">;
-  multiCodePointSupport?: boolean | Signal<boolean>;
-  cursorPosition?: CursorPosition | Signal<CursorPosition>;
-  /** Whether to highlight currently selected text row */
-  lineHighlighting?: boolean | Signal<boolean>;
-  /** Whether to number textbox rows */
-  lineNumbering?: boolean | Signal<boolean>;
-  /** Whether long logical lines wrap into multiple visual rows */
-  wordWrap?: boolean | Signal<boolean>;
   controller?: TextBoxController;
-  onChange?: (value: string) => void | Promise<void>;
   /** Function that defines what key does what while textbox is focused/active */
   keyboardHandler?: (keyPress: KeyPressEvent) => void;
 }
@@ -53,8 +42,11 @@ export interface TextBoxControllerOptions {
   cursorPosition?: CursorPosition | Signal<CursorPosition>;
   validator?: RegExp | Signal<RegExp | undefined>;
   multiCodePointSupport?: boolean | Signal<boolean>;
+  /** Whether to highlight currently selected text row */
   lineHighlighting?: boolean | Signal<boolean>;
+  /** Whether to number textbox rows */
   lineNumbering?: boolean | Signal<boolean>;
+  /** Whether long logical lines wrap into multiple visual rows */
   wordWrap?: boolean | Signal<boolean>;
   onChange?: (value: string) => void | Promise<void>;
 }

@@ -11,10 +11,8 @@ export enum Mark {
 }
 
 /** Options for configuring check Box. */
-export interface CheckBoxOptions extends ComponentOptions {
-  checked: boolean | Signal<boolean>;
+export interface CheckBoxOptions extends ComponentOptions, CheckBoxControllerOptions {
   controller?: CheckBoxController;
-  onChange?: (checked: boolean) => void | Promise<void>;
 }
 
 /** Options for configuring check Box Controller. */

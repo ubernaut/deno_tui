@@ -31,16 +31,8 @@ export interface InputRectangle {
 }
 
 /** Options for configuring input. */
-export interface InputOptions extends Omit<ComponentOptions, "rectangle"> {
-  text?: string | Signal<string>;
-  validator?: RegExp | Signal<RegExp | undefined>;
-  password?: boolean | Signal<boolean>;
-  placeholder?: string | Signal<string | undefined>;
-  multiCodePointSupport?: boolean | Signal<boolean>;
-  cursorPosition?: number | Signal<number>;
+export interface InputOptions extends Omit<ComponentOptions, "rectangle">, InputControllerOptions {
   controller?: InputController;
-  onChange?: (value: string) => void | Promise<void>;
-  onSubmit?: (value: string) => void | Promise<void>;
   rectangle: InputRectangle | SignalOfObject<InputRectangle>;
   theme: DeepPartial<InputTheme, "cursor">;
 }

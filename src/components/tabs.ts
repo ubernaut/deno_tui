@@ -19,11 +19,8 @@ export interface TabItem {
 }
 
 /** Options for configuring tabs. */
-export interface TabsOptions extends ComponentOptions {
-  tabs: TabItem[] | Signal<TabItem[]>;
-  activeIndex?: number | Signal<number>;
+export interface TabsOptions extends ComponentOptions, TabsControllerOptions {
   controller?: TabsController;
-  onChange?: (tab: TabItem, index: number) => void | Promise<void>;
 }
 
 /** Options for configuring tabs Controller. */

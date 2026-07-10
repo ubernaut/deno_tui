@@ -35,17 +35,8 @@ export interface ProgressBarTheme extends Theme {
 }
 
 /** Options for configuring progress Bar. */
-export interface ProgressBarOptions extends ComponentOptions {
-  min: number | Signal<number>;
-  max: number | Signal<number>;
-  value: number | Signal<number>;
-  smooth: boolean | Signal<boolean>;
-  direction: ProgressBarDirection | Signal<ProgressBarDirection>;
-  orientation: ProgressBarOrientation | Signal<ProgressBarOrientation>;
-  charMap?: ProgressBarCharMapType | SignalOfObject<ProgressBarCharMapType>;
+export interface ProgressBarOptions extends ComponentOptions, ProgressBarControllerOptions {
   controller?: ProgressBarController;
-  onChange?: (value: number) => void | Promise<void>;
-
   theme: DeepPartial<ProgressBarTheme, "progress">;
 }
 

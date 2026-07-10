@@ -20,12 +20,8 @@ export interface RadioOption {
 }
 
 /** Options for configuring radio Group. */
-export interface RadioGroupOptions extends ComponentOptions {
-  options: RadioOption[] | Signal<RadioOption[]>;
-  selectedValue?: string | undefined | Signal<string> | Signal<string | undefined>;
-  activeIndex?: number | Signal<number>;
+export interface RadioGroupOptions extends ComponentOptions, RadioGroupControllerOptions {
   controller?: RadioGroupController;
-  onChange?: (option: RadioOption) => void | Promise<void>;
 }
 
 /** Options for configuring radio Group Controller. */

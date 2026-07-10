@@ -6,11 +6,8 @@ import { signalify } from "../utils/signals.ts";
 import { drawTextRows } from "./text_children.ts";
 
 /** Options for configuring list. */
-export interface ListOptions extends ComponentOptions {
-  items: string[] | Signal<string[]>;
-  selectedIndex?: number | Signal<number>;
+export interface ListOptions extends ComponentOptions, ListControllerOptions {
   controller?: ListController;
-  onSelect?: (item: string, index: number) => void | Promise<void>;
 }
 
 /** Public interface describing a virtual Row. */

@@ -14,9 +14,7 @@ export interface ContextMenuItem {
 }
 
 /** Options for configuring context Menu. */
-export interface ContextMenuOptions extends ComponentOptions {
-  items: ContextMenuItem[] | Signal<ContextMenuItem[]>;
-  selectedIndex?: number | Signal<number>;
+export interface ContextMenuOptions extends ComponentOptions, ContextMenuControllerOptions {
   controller?: ContextMenuController;
   onSelect?: (item: ContextMenuItem) => void | Promise<void>;
 }

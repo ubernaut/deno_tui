@@ -21,12 +21,8 @@ export interface MenuBarItem {
 }
 
 /** Options for configuring menu Bar. */
-export interface MenuBarOptions extends ComponentOptions {
-  items: MenuBarItem[] | Signal<MenuBarItem[]>;
-  activeIndex?: number | Signal<number>;
+export interface MenuBarOptions extends ComponentOptions, MenuBarControllerOptions {
   controller?: MenuBarController;
-  onChange?: (item: MenuBarItem, index: number) => void | Promise<void>;
-  onSelect?: (item: MenuBarItem, index: number) => void | Promise<void>;
 }
 
 /** Options for configuring menu Bar Controller. */

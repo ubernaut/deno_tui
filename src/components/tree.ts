@@ -14,12 +14,8 @@ export interface TreeNode {
 }
 
 /** Options for configuring tree. */
-export interface TreeOptions extends ComponentOptions {
-  nodes: TreeNode[] | Signal<TreeNode[]>;
-  selectedIndex?: number | Signal<number>;
+export interface TreeOptions extends ComponentOptions, TreeControllerOptions {
   controller?: TreeController;
-  onSelect?: (row: TreeRow, index: number) => void | Promise<void>;
-  onToggle?: (row: TreeRow, expanded: boolean) => void | Promise<void>;
 }
 
 /** Public interface describing a tree Row. */

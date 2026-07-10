@@ -20,11 +20,7 @@ export interface SliderTheme extends Theme {
 }
 
 /** Options for configuring slider. */
-export interface SliderOptions extends ComponentOptions {
-  min: number | Signal<number>;
-  max: number | Signal<number>;
-  step: number | Signal<number>;
-  value: number | Signal<number>;
+export interface SliderOptions extends ComponentOptions, SliderControllerOptions {
   /**
    * When false thumb will be 1 cell wide/high.
    *
@@ -33,10 +29,8 @@ export interface SliderOptions extends ComponentOptions {
    * Basically when set to true it'll make slider thumb work just like in browsers.
    */
   adjustThumbSize: boolean | Signal<boolean>;
-  orientation: SliderOrientation | Signal<SliderOrientation>;
   theme: DeepPartial<SliderTheme, "thumb">;
   controller?: SliderController;
-  onChange?: (value: number) => void | Promise<void>;
 }
 
 /** Options for configuring slider Controller. */

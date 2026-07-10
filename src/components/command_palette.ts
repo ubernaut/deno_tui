@@ -16,10 +16,7 @@ export interface CommandPaletteItem {
 }
 
 /** Options for configuring command Palette. */
-export interface CommandPaletteOptions extends ComponentOptions {
-  items: CommandPaletteItem[] | Signal<CommandPaletteItem[]>;
-  query?: string | Signal<string>;
-  selectedIndex?: number | Signal<number>;
+export interface CommandPaletteOptions extends ComponentOptions, CommandPaletteControllerOptions {
   controller?: CommandPaletteController;
   onSelect?: (item: CommandPaletteItem) => void | Promise<void>;
 }
