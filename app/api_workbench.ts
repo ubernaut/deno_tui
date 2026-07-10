@@ -18,7 +18,6 @@ import {
   loadWorkbenchWorkspaceStorage,
   persistWorkbenchWorkspaceStorage,
   prepareWorkbenchFrame,
-  projectWorkbenchStandardTopMenuState,
   renderFrameRow,
   renderFrameSlice,
   resolveWorkbenchGlobalKey,
@@ -473,10 +472,7 @@ handleInput(tui);
 tui.dispatch();
 
 const themeIndex = new Signal(0);
-const themeMenuOpen = new Signal(false);
-const newWindowMenuOpen = new Signal(false);
 const newWindowMenuIndex = new Signal(0);
-const workspaceMenuOpen = new Signal(false);
 const workspaceMenuIndex = new Signal(0);
 const workspaceNameDraft = new Signal("");
 const workspaceNameMode = new Signal<WorkspaceNameMode | null>(null);
@@ -484,18 +480,8 @@ const workspaceTargetName = new Signal<string | null>(null);
 const activeWorkspaceName = new Signal<string | null>(null);
 const terminalShellSearchDraft = new Signal("");
 const terminalShellSearchPromptOpen = new Signal(false);
-const menuFocused = new Signal(false);
 const workbenchController = new WorkbenchController<"theme" | "newWindow" | "workspace">({
   activeId: "three",
-  menu: {
-    onChange: (state) => {
-      const projected = projectWorkbenchStandardTopMenuState(state);
-      themeMenuOpen.value = projected.themeMenuOpen;
-      newWindowMenuOpen.value = projected.newWindowMenuOpen;
-      workspaceMenuOpen.value = projected.workspaceMenuOpen;
-      menuFocused.value = projected.menuFocused;
-    },
-  },
   windows: [
     { id: "explorer", title: apiWorkbenchPanelTitle("explorer"), minWidth: 26, minHeight: 12 },
     { id: "inspector", title: apiWorkbenchPanelTitle("inspector"), minWidth: 32, minHeight: 11 },
@@ -649,18 +635,18 @@ const menu = new MenuBarController({
     if (item.id === "new") {
       workbenchController.toggleMenu("newWindow", newWindowOptions.length);
       newWindowMenuIndex.value = workbenchController.menuIndex("newWindow");
-      pushLog(`${newWindowMenuOpen.peek() ? "open" : "close"} new window menu`);
+      pushLog(`${topMenus.isOpen("newWindow") ? "open" : "close"} new window menu`);
       return;
     }
     if (item.id === "theme") {
       topMenus.toggle("theme");
-      pushLog(`${themeMenuOpen.peek() ? "open" : "close"} theme menu`);
+      pushLog(`${topMenus.isOpen("theme") ? "open" : "close"} theme menu`);
       return;
     }
     if (item.id === "workspace") {
       workbenchController.toggleMenu("workspace", workspaceMenuItemCount());
       workspaceMenuIndex.value = workbenchController.menuIndex("workspace");
-      pushLog(`${workspaceMenuOpen.peek() ? "open" : "close"} workspace menu`);
+      pushLog(`${topMenus.isOpen("workspace") ? "open" : "close"} workspace menu`);
       return;
     }
     if (item.id === "help") {
@@ -783,12 +769,13 @@ tui.on("keyPress", (event) => {
     draw();
     return;
   }
-  if (topMenus.inspect().openId !== null) {
+  const menuState = topMenus.inspect();
+  if (menuState.openId !== null) {
     handleScreenDropdownKey(event);
     draw();
     return;
   }
-  if (menuFocused.peek()) {
+  if (menuState.focused) {
     handleMenuFocusKey(event);
     draw();
     return;
@@ -895,7 +882,6 @@ tui.on("destroy", () => {
   terminalShellSearchDraft.dispose();
   terminalShellSearchPromptOpen.dispose();
   savedWorkspaces.dispose();
-  menuFocused.dispose();
   threeRuntimeAscii.dispose();
   workbenchThreeFullscreenTargetCells.dispose();
   workbenchThreeEffectiveMaxCells.dispose();

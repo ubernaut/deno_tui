@@ -91,6 +91,7 @@ Deno.test("workbench global keymap resolves app-level commands", () => {
   assertEquals(resolveWorkbenchGlobalKey({ key: "n" }), { kind: "openNewWindowMenu" });
   assertEquals(resolveWorkbenchGlobalKey({ key: "t" }), { kind: "cycleTheme" });
   assertEquals(resolveWorkbenchGlobalKey({ key: "t", shift: true }), { kind: "openThemeMenu" });
+  assertEquals(resolveWorkbenchGlobalKey({ key: "T", shift: true }), { kind: "openThemeMenu" });
   assertEquals(resolveWorkbenchGlobalKey({ key: "g" }), { kind: "openThreeConfig" });
   assertEquals(resolveWorkbenchGlobalKey({ key: "c" }), { kind: "closeWindow" });
   assertEquals(resolveWorkbenchGlobalKey({ key: "m" }), { kind: "minimizeWindow" });

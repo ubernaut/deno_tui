@@ -258,15 +258,9 @@ const webDiagnostics = new DiagnosticsCollector(80);
 const storageDiagnostics = new StorageFallbackDiagnostics(webDiagnostics);
 const initialWorkspace = loadCachedWebWorkspaceState();
 const themeIndex = new Signal(initialThemeIndex());
-const themeMenuOpen = new Signal(false);
 const workbenchController = new WorkbenchController<"theme">({
   activeId: initialWorkspace.active ?? "inspector",
   fullscreenId: initialWorkspace.maximized,
-  menu: {
-    onChange: (state) => {
-      themeMenuOpen.value = state.openId === "theme";
-    },
-  },
   windows: panelIds.map((id, order) => ({
     ...createWebPanelWindow(id, order),
     state: initialWorkspace.minimized?.[id] ? "minimized" : "normal",
@@ -387,7 +381,7 @@ const menu = new MenuBarController({
   onSelect: (item) => {
     if (item.id === "theme") {
       topMenus.toggle("theme");
-      push(`${themeMenuOpen.peek() ? "open" : "close"} theme menu`);
+      push(`${topMenus.isOpen("theme") ? "open" : "close"} theme menu`);
       return;
     }
     topMenus.close(false);
@@ -461,7 +455,7 @@ host.platform.size.subscribe(() => {
 });
 
 host.on("keyPress", (event) => {
-  const { key } = event;
+  const key = event.key.toLowerCase();
   if (threeConfigOpen.peek()) {
     handleThreeConfigKey(event);
     draw();
@@ -472,7 +466,7 @@ host.on("keyPress", (event) => {
     draw();
     return;
   }
-  if (themeMenuOpen.peek()) {
+  if (topMenus.isOpen("theme")) {
     handleThemeMenuKey(event);
     draw();
     return;
@@ -563,7 +557,6 @@ globalThis.addEventListener("beforeunload", () => {
   controlsModel.dispose();
   explorer.dispose();
   workbenchController.dispose();
-  themeMenuOpen.dispose();
   tileDensity.dispose();
   asciiConfigs.dispose();
   host.destroy();
@@ -581,13 +574,14 @@ function draw(): void {
     () => paint(" ".repeat(width), theme().text, theme().background),
   );
   const currentTheme = theme();
+  const openMenuId = topMenus.inspect().openId;
   dropdownOverlay = renderApiWorkbenchChromeHeader<string[]>({
     frame,
     width,
     menuItems: menu.items.peek(),
     menuActiveIndex: menu.activeIndex.peek(),
-    openMenuId: topMenus.inspect().openId,
-    dropdownEntries: topMenus.inspect().openId === "theme"
+    openMenuId,
+    dropdownEntries: openMenuId === "theme"
       ? {
         theme: {
           visible: themeMenuSlice,
@@ -704,7 +698,7 @@ function renderMobileCommandStrip(frame: string[]): void {
   workbenchMobileCommandStripItemsInto(mobileCommandButtonBuffers.items, {
     activeTitle: shortPanelTitle(activePanel()),
     controlsActive: activePanel() === "controls",
-    themeActive: themeMenuOpen.peek(),
+    themeActive: topMenus.isOpen("theme"),
   });
   renderApiWorkbenchButtonRow<string[], MobileAction, Hit>({
     frame,
@@ -1551,7 +1545,7 @@ function handleThemeMenuKey(event: { key: string; shift?: boolean }): void {
 
 function toggleThemeMenu(): void {
   topMenus.toggle("theme");
-  push(`${themeMenuOpen.peek() ? "open" : "close"} theme menu`);
+  push(`${topMenus.isOpen("theme") ? "open" : "close"} theme menu`);
 }
 
 function closeThemeMenu(): void {

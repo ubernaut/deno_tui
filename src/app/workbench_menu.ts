@@ -262,7 +262,8 @@ export function resolveWorkbenchGlobalKey(
 ): WorkbenchGlobalKeyAction {
   if (event.ctrl || event.meta) return { kind: "ignore" };
   const controlsWindowId = options.controlsWindowId ?? "controls";
-  switch (event.key) {
+  const key = event.key.toLowerCase();
+  switch (key) {
     case "q":
       return { kind: "quit" };
     case "f10":
@@ -323,7 +324,7 @@ export function resolveWorkbenchGlobalKey(
       return { kind: "toggleLivePreview" };
   }
 
-  const numberIndex = Number.parseInt(event.key, 10);
+  const numberIndex = Number.parseInt(key, 10);
   if (Number.isInteger(numberIndex) && numberIndex >= 1) {
     return { kind: "focusWindowNumber", index: numberIndex - 1 };
   }
