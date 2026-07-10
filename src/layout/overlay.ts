@@ -176,15 +176,7 @@ export function hitTestOverlaySurfaces(
   point: OverlayPoint,
   options: { respectModal?: boolean } = {},
 ): OverlayHit | undefined {
-  const zOrder = sortOverlaySurfaces(surfaces);
-  const modal = options.respectModal === false ? undefined : topmostModal(zOrder);
-  for (let index = zOrder.length - 1; index >= 0; index -= 1) {
-    const surface = zOrder[index]!;
-    if (!surface.visible) continue;
-    if (modal && surface.id !== modal.id && surface.ownerId !== modal.id) continue;
-    if (pointInRect(point, surface.rect)) return overlayHit(surface, point);
-  }
-  return undefined;
+  return hitTestSortedOverlaySurfaces(sortOverlaySurfaces(surfaces), point, options.respectModal);
 }
 
 /** Controller for renderer-neutral overlay stacks, popovers, menus, and modal blockers. */
@@ -285,15 +277,7 @@ export class OverlayStackController {
   }
 
   hitTest(point: OverlayPoint, options: { respectModal?: boolean } = {}): OverlayHit | undefined {
-    const zOrder = this.#sortedZOrder();
-    const modal = options.respectModal === false ? undefined : topmostModal(zOrder);
-    for (let index = zOrder.length - 1; index >= 0; index -= 1) {
-      const surface = zOrder[index]!;
-      if (!surface.visible) continue;
-      if (modal && surface.id !== modal.id && surface.ownerId !== modal.id) continue;
-      if (pointInRect(point, surface.rect)) return overlayHit(surface, point);
-    }
-    return undefined;
+    return hitTestSortedOverlaySurfaces(this.#sortedZOrder(), point, options.respectModal);
   }
 
   handlePointerDown(point: OverlayPoint): OverlayPointerResult {
@@ -389,6 +373,21 @@ export class OverlayStackController {
     }
     return this.#visibleCache ?? [];
   }
+}
+
+function hitTestSortedOverlaySurfaces(
+  zOrder: readonly OverlaySurfaceInspection[],
+  point: OverlayPoint,
+  respectModal?: boolean,
+): OverlayHit | undefined {
+  const modal = respectModal === false ? undefined : topmostModal(zOrder);
+  for (let index = zOrder.length - 1; index >= 0; index -= 1) {
+    const surface = zOrder[index]!;
+    if (!surface.visible) continue;
+    if (modal && surface.id !== modal.id && surface.ownerId !== modal.id) continue;
+    if (pointInRect(point, surface.rect)) return overlayHit(surface, point);
+  }
+  return undefined;
 }
 
 function findOverlaySurface(
