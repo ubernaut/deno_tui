@@ -2,6 +2,40 @@
 import type { Action } from "./actions.ts";
 import type { Command } from "./commands.ts";
 
+export type CycleActionCommandKind = "next" | "previous";
+export type CycleActionDirection = -1 | 1;
+
+export interface CycleActionCommandProfile<TAction extends Action> {
+  type: TAction["type"] & string;
+  label: string;
+  description: string;
+  keywords: (kind: CycleActionCommandKind) => readonly string[];
+  activeId: () => string;
+  cycle: (direction: CycleActionDirection) => string;
+  disabled?: () => boolean;
+}
+
+export function cycleActionCommands<TAction extends Action>(
+  idPrefix: string,
+  group: string,
+  profile: CycleActionCommandProfile<TAction>,
+): Command<TAction>[] {
+  const command = (kind: CycleActionCommandKind, direction: CycleActionDirection): Command<TAction> => ({
+    id: `${idPrefix}.${kind}`,
+    label: `${kind === "next" ? "Next" : "Previous"} ${profile.label}`,
+    description: `Cycle to the ${kind} ${profile.description}.`,
+    group,
+    keywords: profile.keywords(kind),
+    ...(profile.disabled ? { disabled: profile.disabled } : {}),
+    action: () => {
+      const previousId = profile.activeId();
+      const id = profile.cycle(direction);
+      return { type: profile.type, payload: { id, previousId, direction } } as TAction;
+    },
+  });
+  return [command("next", 1), command("previous", -1)];
+}
+
 export class CommandGroupBuilder<TAction extends Action> {
   readonly commands: Command<TAction>[] = [];
 

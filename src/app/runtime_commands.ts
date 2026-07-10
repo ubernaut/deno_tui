@@ -10,6 +10,7 @@ import type { RuntimeWorkloadRegistry, RuntimeWorkloadReport } from "../runtime/
 import type { Action } from "./actions.ts";
 import type { AppPlugin, AppPluginDisposer, TuiApp } from "./app.ts";
 import { bindCommandKeymap, type CommandKeymapBindingOptions } from "./command_bindings.ts";
+import { cycleActionCommands } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 import { DisposableStack } from "./disposables.ts";
 import type { Route } from "./router.ts";
@@ -91,14 +92,14 @@ export function runtimeProfileCommands(
   const commands: Command<RuntimeProfileCommandAction>[] = [];
 
   if (options.includeCycleCommands ?? true) {
-    commands.push(...runtimeCycleCommands<RuntimeProfileCommandAction>(prefix, group, {
+    commands.push(...cycleActionCommands<RuntimeProfileCommandAction>(prefix, group, {
       type: "runtime.profile.changed",
       label: "Runtime Profile",
       description: "runtime strategy profile",
       keywords: (kind) => ["runtime", "profile", kind, "strategy"],
       activeId: () => controller.activeId.peek(),
-      ids: () => controller.ids(),
       cycle: (direction) => direction === 1 ? controller.nextProfile() : controller.previousProfile(),
+      disabled: () => controller.ids().length <= 1,
     }));
   }
 
@@ -272,14 +273,14 @@ export function runtimeRendererBackendCommands(
   const commands: Command<RuntimeRendererBackendCommandAction>[] = [];
 
   if (options.includeCycleCommands ?? true) {
-    commands.push(...runtimeCycleCommands<RuntimeRendererBackendCommandAction>(prefix, group, {
+    commands.push(...cycleActionCommands<RuntimeRendererBackendCommandAction>(prefix, group, {
       type: "runtime.renderer.changed",
       label: "Renderer Backend",
       description: "renderer backend",
       keywords: (kind) => ["runtime", "renderer", "backend", kind],
       activeId: () => controller.activeId.peek(),
-      ids: () => controller.ids(),
       cycle: (direction) => direction === 1 ? controller.nextBackend() : controller.previousBackend(),
+      disabled: () => controller.ids().length <= 1,
     }));
   }
 
@@ -465,40 +466,6 @@ export function bindRuntimeWorkloadCommands<TAction extends Action = RuntimeWork
   options: RuntimeWorkloadCommandOptions = {},
 ): () => void {
   return registry.registerAll(runtimeWorkloadCommands(workloads, options) as unknown as Command<TAction>[]);
-}
-
-type RuntimeCycleCommandKind = "next" | "previous";
-type RuntimeCycleDirection = -1 | 1;
-
-interface RuntimeCycleCommandProfile<TAction extends Action> {
-  type: TAction["type"] & string;
-  label: string;
-  description: string;
-  keywords: (kind: RuntimeCycleCommandKind) => readonly string[];
-  activeId: () => string;
-  ids: () => readonly string[];
-  cycle: (direction: RuntimeCycleDirection) => string;
-}
-
-function runtimeCycleCommands<TAction extends Action>(
-  idPrefix: string,
-  group: string,
-  profile: RuntimeCycleCommandProfile<TAction>,
-): Command<TAction>[] {
-  const command = (kind: RuntimeCycleCommandKind, direction: RuntimeCycleDirection): Command<TAction> => ({
-    id: `${idPrefix}.${kind}`,
-    label: `${kind === "next" ? "Next" : "Previous"} ${profile.label}`,
-    description: `Cycle to the ${kind} ${profile.description}.`,
-    group,
-    keywords: profile.keywords(kind),
-    disabled: () => profile.ids().length <= 1,
-    action: () => {
-      const previousId = profile.activeId();
-      const id = profile.cycle(direction);
-      return { type: profile.type, payload: { id, previousId, direction } } as TAction;
-    },
-  });
-  return [command("next", 1), command("previous", -1)];
 }
 
 function runtimeCommandOptions<TOptions>(options: boolean | TOptions | undefined): TOptions {

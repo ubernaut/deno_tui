@@ -17,6 +17,7 @@ import {
 import type { ThemeEnginePipeline } from "../theme_engine_pipeline.ts";
 import type { ThemeWorkspace } from "../theme_workspace.ts";
 import type { Action } from "./actions.ts";
+import { cycleActionCommands } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Action union emitted by theme Command command helpers. */
@@ -315,32 +316,14 @@ export function themeSelectionCommands(
   const commands: Command<ThemeCommandAction>[] = [];
 
   if (options.includeCycleCommands ?? true) {
-    commands.push(
-      {
-        id: `${prefix}.next`,
-        label: "Next Theme",
-        description: "Cycle to the next registered theme pack.",
-        group,
-        keywords: ["theme", "next", "cycle"],
-        action: () => {
-          const previousId = provider.activeId.peek();
-          const id = provider.nextTheme();
-          return { type: "theme.changed", payload: { id, previousId, direction: 1 } };
-        },
-      },
-      {
-        id: `${prefix}.previous`,
-        label: "Previous Theme",
-        description: "Cycle to the previous registered theme pack.",
-        group,
-        keywords: ["theme", "previous", "cycle"],
-        action: () => {
-          const previousId = provider.activeId.peek();
-          const id = provider.previousTheme();
-          return { type: "theme.changed", payload: { id, previousId, direction: -1 } };
-        },
-      },
-    );
+    commands.push(...cycleActionCommands<ThemeCommandAction>(prefix, group, {
+      type: "theme.changed",
+      label: "Theme",
+      description: "registered theme pack",
+      keywords: (kind) => ["theme", kind, "cycle"],
+      activeId: () => provider.activeId.peek(),
+      cycle: (direction) => direction === 1 ? provider.nextTheme() : provider.previousTheme(),
+    }));
   }
 
   if (options.includeThemeCommands ?? true) {

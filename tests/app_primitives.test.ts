@@ -2968,6 +2968,9 @@ Deno.test("theme command adapters switch packs and report theme actions", async 
   registry.registerAll(themeSelectionCommands(provider));
   const actions: unknown[] = [];
 
+  assertEquals(registry.get("theme.previous")?.description, "Cycle to the previous registered theme pack.");
+  assertEquals(registry.get("theme.previous")?.keywords, ["theme", "previous", "cycle"]);
+  assertEquals(registry.get("theme.previous")?.disabled, undefined);
   assertEquals(registry.get("theme.set.plain")?.disabled instanceof Function, true);
   assertEquals(registry.enabled(registry.get("theme.set.plain")!), false);
   assertEquals(registry.enabled(registry.get("theme.set.terminal")!), true);
