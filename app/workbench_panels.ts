@@ -4,6 +4,7 @@ import { dataFooterRows, type RowStyle, type WorkbenchRowTheme } from "../src/ap
 import { compactSpaces, maxTextWidth, wrapPlainTextInto } from "../src/app/workbench_text.ts";
 import { workbenchButtonPaintOptions } from "../src/app/workbench_button_style.ts";
 import { wrappedControlOptionRowCount } from "../src/app/workbench_control_layout.ts";
+import { workbenchAsciiRendererModeLabel } from "../src/app/workbench_ascii.ts";
 import {
   type DataColumn,
   type DataSort,
@@ -54,6 +55,7 @@ import {
 import type { ApiWorkbenchThemeSpec } from "./api_workbench_catalog.ts";
 import type { AsciiOptions, PanelRender, SystemSnapshot } from "./types.ts";
 import { type CpuHexTileLayout, cpuHexTileLayoutInto } from "./visualization_system.ts";
+import { terminalGlyphStyleLabel } from "../src/three_ascii/options.ts";
 
 /** Minimal column metadata needed to estimate API workbench data-table width. */
 interface WorkbenchContentSizeColumn {
@@ -1246,25 +1248,8 @@ function visualizationThreeStatusLine(
   options: AsciiOptions,
 ): string {
   const mode = rendered.three?.mode.toUpperCase() ?? "TEXT";
-  return compactSpaces(`ACEROLA ${mode} · ${threeRendererModeLabel(options).toUpperCase()} · ${option.label}`);
-}
-
-function threeRendererModeLabel(options: AsciiOptions): string {
-  const glyphs = asciiTerminalGlyphStyleLabel(options.terminalGlyphStyle);
-  if (!options.kittyGraphics) return glyphs;
-  const suffix = options.kittyDisableAscii ? "Kitty only" : "Kitty + ASCII";
-  return `${glyphs} · ${suffix}`;
-}
-
-function asciiTerminalGlyphStyleLabel(style: AsciiOptions["terminalGlyphStyle"]): string {
-  switch (style) {
-    case "blocks":
-      return "Blocks";
-    case "glyphs":
-      return "Glyphs";
-    case "mixed":
-      return "Mixed";
-  }
+  const renderer = workbenchAsciiRendererModeLabel(options, terminalGlyphStyleLabel).toUpperCase();
+  return compactSpaces(`ACEROLA ${mode} · ${renderer} · ${option.label}`);
 }
 
 function visualizationThreeBodyRect(

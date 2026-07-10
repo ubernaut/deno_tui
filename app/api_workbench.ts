@@ -1348,7 +1348,7 @@ function renderVisualizationWindow(frame: Frame, id: VisualizationWindowId, rect
 
 function renderThree(frame: Frame, rect: Rectangle): void {
   const t = theme();
-  const mode = threeRendererModeLabel(ascii.peek()).toUpperCase();
+  const mode = workbenchAsciiRendererModeLabel(ascii.peek(), terminalGlyphStyleLabel).toUpperCase();
   if (threeAsciiAvailable.peek()) {
     const sceneRect = workbenchThreeBodyRect(rect, { headerRows: 3 });
     const resized = setThreeBodyRect(sceneRect);
@@ -2066,10 +2066,6 @@ function visualizationTextContentSize(
     width,
     height: Math.max(baseHeight, rowCount),
   };
-}
-
-function threeRendererModeLabel(options: AsciiOptions): string {
-  return workbenchAsciiRendererModeLabel(options, terminalGlyphStyleLabel);
 }
 
 function buildVisualizationContext(
