@@ -158,6 +158,14 @@ export class Component extends EventEmitter<
     this.lastInteraction.method = method;
   }
 
+  /** Resolves the shared focus-to-active transition for an interaction. */
+  protected nextInteractionState(method: "keyboard" | "mouse"): "active" | "focused" {
+    const interactionInterval = Date.now() - this.lastInteraction.time;
+    return this.state.peek() === "focused" && (interactionInterval < 500 || method === "keyboard")
+      ? "active"
+      : "focused";
+  }
+
   /**
    * Changes visibility of `drawnObjects` (erases/draws them depending on {visible})
    *

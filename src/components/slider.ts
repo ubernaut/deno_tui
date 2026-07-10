@@ -374,10 +374,6 @@ export class Slider extends Box {
 
   override interact(method: "keyboard" | "mouse"): void {
     super.interact(method);
-    const interactionInterval = Date.now() - this.lastInteraction.time;
-
-    this.state.value = this.state.peek() === "focused" && (interactionInterval < 500 || method === "keyboard")
-      ? "active"
-      : "focused";
+    this.state.value = this.nextInteractionState(method);
   }
 }
