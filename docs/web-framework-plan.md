@@ -257,8 +257,9 @@ runtime wrapper around a shared app host.
 - Add Playwright tests for rendered DOM, canvas pixel smoke checks, input handling, resize behavior, and theme
   switching.
 - Ship browser examples with screenshots or short clips generated from real browser runs.
-- Added a GitHub Pages build script: `deno task web:pages:build` generates `docs/index.html` and
-  `docs/assets/api-workbench.js`, with the API Workbench portfolio as the default page.
+- Added a GitHub Pages build script: `deno task web:pages:build` generates `docs/index.html` and a minified
+  `docs/assets/api-workbench.js`, with the API Workbench portfolio as the default page. The E2E artifact gate keeps the
+  tracked bundle below 500 KB.
 
 ### Remote Bridge Track
 

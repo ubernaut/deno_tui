@@ -70,6 +70,14 @@ Deno.test("e2e artifact inspection validates generated browser assets", () => {
 
   assertEquals(failed.passed, false);
   assertEquals(failed.missing, ["minBytes:32", "Generated"]);
+
+  const oversized = inspectE2EArtifactData(
+    { id: "bundle", label: "Bundle", path: "docs/assets/app.js", maxBytes: 16 },
+    20,
+    "// Generated\nmount();",
+  );
+  assertEquals(oversized.passed, false);
+  assertEquals(oversized.missing, ["maxBytes:16"]);
 });
 
 Deno.test("e2e report prints command and artifact failure diagnostics", () => {
