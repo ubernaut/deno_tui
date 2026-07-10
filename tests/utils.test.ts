@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 
 import { sleep } from "../src/utils/async.ts";
+import { readCsiSequenceAt } from "../src/utils/ansi_text.ts";
 import { clamp, fits, fitsInRectangle, normalize } from "../src/utils/numbers.ts";
 import { SortedArray } from "../src/utils/sorted_array.ts";
 import {
@@ -37,6 +38,13 @@ import { assert, assertEquals } from "./deps.ts";
 const unicodeString = "♥☭👀f🌏g⚠5✌💢✅💛🌻";
 const fullWidths = ["０", "１", "２", "３", "４", "ｈ", "ｉ", "ｊ", "ｋ", "ｌ", "テ", "ク", "ワ"];
 const halfWidths = ["a", "b", "1", "ą", "ł", "､", "ﾝ", "ｼ"];
+
+Deno.test("ANSI text reader accepts complete CSI sequences only", () => {
+  assertEquals(readCsiSequenceAt("\x1b[38;2;1;2;3mX", 0), "\x1b[38;2;1;2;3m");
+  assertEquals(readCsiSequenceAt("x\x1b[2J", 1), "\x1b[2J");
+  assertEquals(readCsiSequenceAt("plain", 0), undefined);
+  assertEquals(readCsiSequenceAt("\x1b[38;2", 0), undefined);
+});
 
 Deno.test("utils async helpers sleep for at least the requested interval", async () => {
   const intervals = [0, 1, 33, 50, 100, 150];

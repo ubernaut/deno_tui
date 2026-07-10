@@ -1,4 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
+import { readCsiSequenceAt } from "./ansi_text.ts";
 
 interface SgrStyleState {
   bold: boolean;
@@ -119,28 +120,4 @@ function formatSgrStyleState(state: SgrStyleState): string {
   if (state.inverse) params.push("7");
   params.push(...state.foreground, ...state.background, ...state.extra);
   return params.length ? `\x1b[${params.join(";")}m` : "";
-}
-
-function readCsiSequenceAt(value: string, start: number): string | undefined {
-  if (value.charCodeAt(start) !== 0x1b || value[start + 1] !== "[") return undefined;
-  let index = start + 2;
-  while (index < value.length) {
-    const code = value.charCodeAt(index);
-    if (code >= 0x30 && code <= 0x3f) {
-      index += 1;
-      continue;
-    }
-    break;
-  }
-  while (index < value.length) {
-    const code = value.charCodeAt(index);
-    if (code >= 0x20 && code <= 0x2f) {
-      index += 1;
-      continue;
-    }
-    break;
-  }
-  const finalCode = value.charCodeAt(index);
-  if (!(finalCode >= 0x40 && finalCode <= 0x7e)) return undefined;
-  return value.slice(start, index + 1);
 }
