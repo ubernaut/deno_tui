@@ -6,6 +6,7 @@ import type {
   TerminalSessionHandleInspection,
 } from "./terminal_backend.ts";
 import { formatProcessCommandLine, type ProcessSessionCommand } from "./process_session.ts";
+import { normalizeTerminalDimension } from "./terminal_values.ts";
 
 /** Restart policy metadata for terminal workspace sessions. */
 export type TerminalRestartPolicy = "never" | "on-failure" | "always";
@@ -309,11 +310,6 @@ function readEnv(name: string): string | undefined {
   } catch {
     return undefined;
   }
-}
-
-function normalizeTerminalDimension(value: number | undefined): number | undefined {
-  if (!Number.isFinite(value)) return undefined;
-  return Math.max(1, Math.floor(value!));
 }
 
 function normalizeScrollbackLimit(value: number | undefined): number | undefined {

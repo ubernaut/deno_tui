@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TerminalMultiplexer } from "./terminal_capabilities.ts";
+import { detectTerminalMultiplexer } from "./terminal_values.ts";
 
 /** Kitty graphics protocol command action. */
 export type KittyGraphicsAction = "a" | "c" | "d" | "f" | "p" | "q" | "t" | "T";
@@ -247,7 +248,7 @@ export function detectKittyGraphicsCapability(options: KittyGraphicsDetectionOpt
   const env = envGetter(options.env);
   const term = options.term ?? env("TERM") ?? "";
   const termProgram = options.termProgram ?? env("TERM_PROGRAM") ?? "";
-  const multiplexer = options.multiplexer ?? detectMultiplexer(term, env);
+  const multiplexer = options.multiplexer ?? detectTerminalMultiplexer(term, env);
   const remote = Boolean(env("SSH_TTY") || env("SSH_CONNECTION") || env("SSH_CLIENT"));
   const isTty = options.isTty ?? true;
   const disabled = env("DENO_TUI_KITTY") === "0" || env("DENO_TUI_KITTY") === "false";
@@ -356,13 +357,4 @@ function envGetter(env: KittyGraphicsDetectionOptions["env"]): (name: string) =>
     Deno?: { env?: { get(name: string): string | undefined } };
   }).Deno;
   return deno?.env?.get ? (name) => deno.env!.get(name) : () => undefined;
-}
-
-function detectMultiplexer(
-  term: string,
-  env: (name: string) => string | undefined,
-): TerminalMultiplexer {
-  if (env("TMUX") || /^tmux/i.test(term)) return "tmux";
-  if (env("STY") || /^screen/i.test(term)) return "screen";
-  return "none";
 }

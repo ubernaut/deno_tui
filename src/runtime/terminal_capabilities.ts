@@ -1,4 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
+import { detectTerminalMultiplexer } from "./terminal_values.ts";
 
 /** Color fidelity available for terminal output. */
 export type TerminalColorDepth = "none" | "ansi16" | "ansi256" | "truecolor";
@@ -565,15 +566,6 @@ function isDumbTerminal(term: string): boolean {
 
 function isLinuxConsole(term: string): boolean {
   return /^linux$/i.test(term);
-}
-
-function detectTerminalMultiplexer(
-  term: string,
-  env: (name: string) => string | undefined,
-): TerminalMultiplexer {
-  if (env("TMUX") || /^tmux/i.test(term)) return "tmux";
-  if (env("STY") || /^screen/i.test(term)) return "screen";
-  return "none";
 }
 
 function isRemoteTerminal(env: (name: string) => string | undefined): boolean {

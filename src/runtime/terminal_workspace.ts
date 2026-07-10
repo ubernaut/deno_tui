@@ -8,6 +8,7 @@ import {
   type TerminalSessionDescriptor,
   type TerminalTemplate,
 } from "./terminal_templates.ts";
+import { normalizeTerminalDimension } from "./terminal_values.ts";
 
 /** Options for constructing a terminal workspace controller. */
 export interface TerminalWorkspaceControllerOptions {
@@ -581,8 +582,8 @@ function createTerminalWorkspacePaneNode(
     id: uniqueTerminalWorkspaceLayoutId(`pane-${sanitizeTerminalWorkspaceLayoutId(sessionId)}`, root),
     sessionId,
     title: options.title,
-    minColumns: normalizePaneDimension(options.minColumns),
-    minRows: normalizePaneDimension(options.minRows),
+    minColumns: normalizeTerminalDimension(options.minColumns),
+    minRows: normalizeTerminalDimension(options.minRows),
   };
 }
 
@@ -774,8 +775,8 @@ function descriptorFromTerminalTemplate(
       ...describeAttachTerminalTemplate(template, now),
       title: options.title ?? template.title,
       backendId: options.backendId,
-      columns: normalizeTerminalWorkspaceDimension(options.columns),
-      rows: normalizeTerminalWorkspaceDimension(options.rows),
+      columns: normalizeTerminalDimension(options.columns),
+      rows: normalizeTerminalDimension(options.rows),
       status: options.status,
       running: options.running,
       detached: false,
@@ -790,8 +791,8 @@ function descriptorFromTerminalTemplate(
     commandLine,
     status: options.status ?? "idle",
     running: options.running ?? false,
-    columns: normalizeTerminalWorkspaceDimension(options.columns ?? template.columns),
-    rows: normalizeTerminalWorkspaceDimension(options.rows ?? template.rows),
+    columns: normalizeTerminalDimension(options.columns ?? template.columns),
+    rows: normalizeTerminalDimension(options.rows ?? template.rows),
     reconnectable: template.reconnectable ?? false,
     restartPolicy: template.restartPolicy ?? "never",
     createdAt: now,
@@ -858,11 +859,6 @@ function cloneTerminalTemplate(template: TerminalTemplate): TerminalTemplate {
     env: template.env ? { ...template.env } : undefined,
     metadata: template.metadata ? { ...template.metadata } : undefined,
   };
-}
-
-function normalizeTerminalWorkspaceDimension(value: number | undefined): number | undefined {
-  if (!Number.isFinite(value)) return undefined;
-  return Math.max(1, Math.floor(value!));
 }
 
 function uniqueTerminalWorkspaceSessionId(prefix: string, ids: ReadonlySet<string>): string {
@@ -1056,11 +1052,6 @@ function normalizeRect(rect: Rectangle): Rectangle {
     width: Math.max(0, Math.floor(rect.width)),
     height: Math.max(0, Math.floor(rect.height)),
   };
-}
-
-function normalizePaneDimension(value: number | undefined): number | undefined {
-  if (!Number.isFinite(value)) return undefined;
-  return Math.max(1, Math.floor(value!));
 }
 
 function normalizeTerminalWorkspaceLayout(

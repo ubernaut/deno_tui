@@ -16,7 +16,18 @@ export function cloneTerminalCommand(command: TerminalCommandValue): TerminalCom
   };
 }
 
-export function normalizeTerminalDimension(value: number | undefined, fallback: number): number {
+export function normalizeTerminalDimension(value: number | undefined): number | undefined;
+export function normalizeTerminalDimension(value: number | undefined, fallback: number): number;
+export function normalizeTerminalDimension(value: number | undefined, fallback?: number): number | undefined {
   if (!Number.isFinite(value)) return fallback;
   return Math.max(1, Math.floor(value!));
+}
+
+export function detectTerminalMultiplexer(
+  term: string,
+  env: (name: string) => string | undefined,
+): "none" | "tmux" | "screen" {
+  if (env("TMUX") || /^tmux/i.test(term)) return "tmux";
+  if (env("STY") || /^screen/i.test(term)) return "screen";
+  return "none";
 }
