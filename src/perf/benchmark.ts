@@ -1,4 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
+import { sortedSetValues } from "../utils/collections.ts";
 import { everySearchTerm } from "../utils/search.ts";
 
 /** A named benchmark workload with optional warmup and pass/fail thresholds. */
@@ -318,10 +319,6 @@ function matchesBenchmarkQuery(benchmark: BenchmarkCaseInspection, query: Benchm
 function benchmarkMatchesName(name: string, queryName: string | readonly string[]): boolean {
   if (Array.isArray(queryName)) return queryName.includes(name);
   return name === queryName;
-}
-
-function sortedSetValues<T extends string>(values: Set<T>): T[] {
-  return [...values].sort();
 }
 
 function compareBenchmarkCaseInspections(left: BenchmarkCaseInspection, right: BenchmarkCaseInspection): number {

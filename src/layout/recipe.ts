@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
 import { Computed, Signal } from "../signals/mod.ts";
+import { sortedSetValues } from "../utils/collections.ts";
 import { dockRect, insetRect, resolveBreakpoint, splitRect } from "./responsive.ts";
 
 /** Public type alias for a layout Region Direction. */
@@ -303,15 +304,6 @@ function sortedLayoutIds<T extends string>(layouts: Record<string, LayoutRegion<
   const output: string[] = [];
   for (const id in layouts) {
     output.push(id);
-  }
-  output.sort();
-  return output;
-}
-
-function sortedSetValues<T extends string>(values: Set<T>): T[] {
-  const output: T[] = [];
-  for (const value of values) {
-    output.push(value);
   }
   output.sort();
   return output;

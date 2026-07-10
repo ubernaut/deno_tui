@@ -1,6 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { AsyncScheduler, runTaskBatch, type ScheduledTaskOptions } from "./runtime/scheduler.ts";
-import { OrderedIdCollection } from "./utils/collections.ts";
+import { OrderedIdCollection, sortedSetValues } from "./utils/collections.ts";
 import {
   composeThemeOptions,
   createThemeEngine,
@@ -402,10 +402,6 @@ function compareThemeEngineFactoryInspections(
 
 function compareThemeEngineFactories(left: ThemeEngineFactory, right: ThemeEngineFactory): number {
   return right.priority - left.priority || left.id.localeCompare(right.id);
-}
-
-function sortedSetValues(values: Set<string>): string[] {
-  return [...values].sort();
 }
 
 function factoryMatchesSearch(factory: ThemeEngineFactoryInspection, search: string): boolean {

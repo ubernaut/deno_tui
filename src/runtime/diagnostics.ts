@@ -1,4 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
+import { escapeMarkdownCell as escapeMarkdownTableCell } from "../utils/formatting.ts";
 
 /** Diagnostic severity for degraded runtime and backend states. */
 export type DiagnosticSeverity = "debug" | "info" | "warning" | "error";
@@ -219,8 +220,4 @@ function severityWeight(severity: DiagnosticSeverity): number {
     case "debug":
       return 1;
   }
-}
-
-function escapeMarkdownTableCell(value: string): string {
-  return value.replaceAll("|", "\\|").replaceAll("\n", " ");
 }

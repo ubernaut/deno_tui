@@ -5,6 +5,7 @@ import {
   type TerminalOutputSource,
 } from "../components/terminal_output.ts";
 import { Signal } from "../signals/mod.ts";
+import { errorMessage } from "../utils/formatting.ts";
 import type { DiagnosticsCollector } from "./diagnostics.ts";
 import { cloneTerminalCommand } from "./terminal_values.ts";
 
@@ -316,8 +317,4 @@ function spawnDenoProcessSessionChild(spec: ProcessSessionCommand): ProcessSessi
     stdout: "piped",
     stderr: "piped",
   }).spawn();
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

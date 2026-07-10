@@ -17,6 +17,7 @@ import {
   type ThemeProviderCache,
   type ThemeProviderCacheInspection,
 } from "./theme_engine_cache.ts";
+import { escapeMarkdownCell } from "./utils/formatting.ts";
 
 /** Public interface describing a theme Style Request. */
 export interface ThemeStyleRequest {
@@ -257,8 +258,4 @@ export function formatThemeResolutionMarkdown(
   }
 
   return lines.join("\n");
-}
-
-function escapeMarkdownCell(value: string): string {
-  return value.replaceAll("|", "\\|").replaceAll("\n", " ");
 }

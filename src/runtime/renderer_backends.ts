@@ -7,6 +7,7 @@ import {
 } from "./capabilities.ts";
 import { Signal } from "../signals/mod.ts";
 import { OrderedIdCollection, uniqueSortedStrings as uniqueSorted } from "../utils/collections.ts";
+import { escapeMarkdownCell } from "../utils/formatting.ts";
 import { everySearchTerm } from "../utils/search.ts";
 
 /** Public interface describing a runtime Renderer Backend Definition. */
@@ -524,8 +525,4 @@ function rendererBackendIncludesSearchPart(
     if (tag.toLowerCase().includes(part)) return true;
   }
   return false;
-}
-
-function escapeMarkdownCell(value: string): string {
-  return value.replaceAll("|", "\\|").replaceAll("\n", " ");
 }

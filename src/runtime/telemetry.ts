@@ -2,6 +2,7 @@
 import type { AsyncSchedulerInspection } from "./scheduler.ts";
 import type { WorkerPoolInspection } from "./worker_pool.ts";
 import { uniqueSortedStrings as uniqueSorted } from "../utils/collections.ts";
+import { escapeMarkdownCell } from "../utils/formatting.ts";
 
 /** Runtime work primitive supported by the shared telemetry helpers. */
 export type RuntimeWorkloadKind = "scheduler" | "worker-pool";
@@ -284,10 +285,6 @@ function runtimeWorkloadState(
 
 function inferRuntimeWorkloadKind(raw: AsyncSchedulerInspection | WorkerPoolInspection): RuntimeWorkloadKind {
   return "concurrency" in raw ? "scheduler" : "worker-pool";
-}
-
-function escapeMarkdownCell(value: string): string {
-  return value.replaceAll("|", "\\|").replaceAll("\n", " ");
 }
 
 function cloneRuntimeWorkloadSources(values: readonly RuntimeWorkloadSource[]): RuntimeWorkloadSource[] {

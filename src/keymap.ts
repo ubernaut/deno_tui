@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { DisposableStack } from "./app/disposables.ts";
+import { sortedSetValues } from "./utils/collections.ts";
 
 /** Public interface describing a key Binding. */
 export interface KeyBinding {
@@ -112,8 +113,4 @@ export function formatKeyBinding(binding: KeyBinding): string {
 
 function compareKeyBindings(left: KeyBinding, right: KeyBinding): number {
   return (left.group ?? "").localeCompare(right.group ?? "") || left.key.localeCompare(right.key);
-}
-
-function sortedSetValues(values: Set<string>): string[] {
-  return [...values].sort();
 }

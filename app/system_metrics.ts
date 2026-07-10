@@ -1,5 +1,6 @@
 import { Signal } from "../src/signals/mod.ts";
 import type { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
+import { errorMessage } from "../src/utils/formatting.ts";
 import { clamp } from "./styles.ts";
 import type {
   AlertMessage,
@@ -1396,10 +1397,6 @@ function normalizePositiveInteger(value: number | undefined, fallback: number): 
 function normalizeNonNegativeInteger(value: number | undefined, fallback: number): number {
   if (!Number.isFinite(value)) return fallback;
   return Math.max(0, Math.floor(value!));
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 function safeHostname(provider: SystemMetricsProvider, diagnostics?: DiagnosticsCollector) {

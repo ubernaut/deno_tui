@@ -11,6 +11,7 @@ import {
   searchTerms,
   weightedSearchItemFields,
 } from "../utils/search.ts";
+import { escapeMarkdownCell } from "../utils/formatting.ts";
 import type { Action } from "./actions.ts";
 import { type Command, type CommandDispatch, type CommandRegistry, insertUniqueSortedString } from "./commands.ts";
 
@@ -628,8 +629,4 @@ function commandIdsText(commands: readonly CommandKeyBindingInspection[]): strin
     output += commands[index]!.commandId;
   }
   return output;
-}
-
-function escapeMarkdownCell(value: string): string {
-  return value.replaceAll("|", "\\|").replaceAll("\n", " ");
 }

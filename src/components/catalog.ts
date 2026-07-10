@@ -1,4 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
+import { sortedSetValues } from "../utils/collections.ts";
+import { escapeMarkdownCell } from "../utils/formatting.ts";
 
 /** High-level widget grouping for catalogs and docs browsers. */
 export type ComponentCategory =
@@ -497,13 +499,6 @@ function collectComponentCapabilities(entries: readonly ComponentCatalogEntry[])
   return sortedSetValues(capabilities);
 }
 
-function sortedSetValues<T extends string>(values: Set<T>): T[] {
-  const sorted: T[] = [];
-  for (const value of values) sorted.push(value);
-  sorted.sort();
-  return sorted;
-}
-
 function formatNonZeroEntries<T extends string>(record: Record<T, number>): string {
   const parts: string[] = [];
   for (const key in record) {
@@ -511,8 +506,4 @@ function formatNonZeroEntries<T extends string>(record: Record<T, number>): stri
     if (count > 0) parts.push(`${key} (${count})`);
   }
   return parts.join(", ");
-}
-
-function escapeMarkdownCell(value: string): string {
-  return value.replaceAll("|", "\\|").replaceAll("\n", " ");
 }

@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Signal, type SignalOptions } from "../signals/mod.ts";
+import { errorMessage } from "../utils/formatting.ts";
 import type { DiagnosticsCollector } from "./diagnostics.ts";
 
 /** Public interface describing an async Store. */
@@ -360,8 +361,4 @@ function requestValue<T>(
     };
     request.onsuccess = () => resolve(request.result);
   });
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

@@ -2,6 +2,7 @@
 import { Computed, Signal } from "./signals/mod.ts";
 import type { AsyncStore } from "./runtime/storage.ts";
 import { componentCatalog, type ComponentCatalogEntry } from "./components/catalog.ts";
+import { escapeMarkdownCell } from "./utils/formatting.ts";
 /** Function that's supposed to return styled text given string as parameter */
 export type Style = (text: string) => string;
 
@@ -2301,10 +2302,6 @@ function formatThemeProviderReportMarkdownFromReport(report: ThemeProviderReport
   }
 
   return lines.join("\n");
-}
-
-function escapeMarkdownCell(value: string): string {
-  return value.replaceAll("|", "\\|").replaceAll("\n", " ");
 }
 
 /** Public class implementing a theme Engine. */

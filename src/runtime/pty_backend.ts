@@ -17,6 +17,7 @@ import type {
 import type { TerminalBackendAvailability, TerminalBackendProvider } from "./terminal_backend_registry.ts";
 import type { DiagnosticsCollector } from "./diagnostics.ts";
 import { cloneTerminalCommand, normalizeTerminalDimension } from "./terminal_values.ts";
+import { errorMessage } from "../utils/formatting.ts";
 
 const INPUT_DECODER = new TextDecoder();
 
@@ -393,8 +394,4 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
       output: this.output.inspect(),
     };
   }
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
