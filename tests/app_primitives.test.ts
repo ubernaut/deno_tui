@@ -3171,6 +3171,8 @@ Deno.test("runtime profile commands switch selected runtime policies", async () 
     "runtime.profile.set.portable",
     "runtime.profile.set.ephemeral",
   ]);
+  assertEquals(registry.get("runtime.profile.next")?.description, "Cycle to the next runtime strategy profile.");
+  assertEquals(registry.get("runtime.profile.next")?.keywords, ["runtime", "profile", "next", "strategy"]);
   assertEquals(registry.enabled(registry.get("runtime.profile.set.balanced")!), false);
 
   assertEquals(await registry.execute("runtime.profile.set.portable", (action) => void actions.push(action)), true);
@@ -3212,6 +3214,8 @@ Deno.test("runtime renderer commands switch selected renderer backends", async (
     "runtime.renderer.set.webgl-canvas",
     "runtime.renderer.set.terminal-cpu",
   ]);
+  assertEquals(registry.get("runtime.renderer.previous")?.description, "Cycle to the previous renderer backend.");
+  assertEquals(registry.get("runtime.renderer.previous")?.keywords, ["runtime", "renderer", "backend", "previous"]);
   assertEquals(registry.enabled(registry.get("runtime.renderer.set.webgpu-three-ascii")!), false);
   assertEquals(registry.enabled(registry.get("runtime.renderer.set.webgl-canvas")!), false);
 

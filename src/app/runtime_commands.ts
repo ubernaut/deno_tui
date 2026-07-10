@@ -91,34 +91,15 @@ export function runtimeProfileCommands(
   const commands: Command<RuntimeProfileCommandAction>[] = [];
 
   if (options.includeCycleCommands ?? true) {
-    commands.push(
-      {
-        id: `${prefix}.next`,
-        label: "Next Runtime Profile",
-        description: "Cycle to the next runtime strategy profile.",
-        group,
-        keywords: ["runtime", "profile", "next", "strategy"],
-        disabled: () => controller.ids().length <= 1,
-        action: () => {
-          const previousId = controller.activeId.peek();
-          const id = controller.nextProfile();
-          return { type: "runtime.profile.changed", payload: { id, previousId, direction: 1 } };
-        },
-      },
-      {
-        id: `${prefix}.previous`,
-        label: "Previous Runtime Profile",
-        description: "Cycle to the previous runtime strategy profile.",
-        group,
-        keywords: ["runtime", "profile", "previous", "strategy"],
-        disabled: () => controller.ids().length <= 1,
-        action: () => {
-          const previousId = controller.activeId.peek();
-          const id = controller.previousProfile();
-          return { type: "runtime.profile.changed", payload: { id, previousId, direction: -1 } };
-        },
-      },
-    );
+    commands.push(...runtimeCycleCommands<RuntimeProfileCommandAction>(prefix, group, {
+      type: "runtime.profile.changed",
+      label: "Runtime Profile",
+      description: "runtime strategy profile",
+      keywords: (kind) => ["runtime", "profile", kind, "strategy"],
+      activeId: () => controller.activeId.peek(),
+      ids: () => controller.ids(),
+      cycle: (direction) => direction === 1 ? controller.nextProfile() : controller.previousProfile(),
+    }));
   }
 
   if (options.includeProfileCommands ?? true) {
@@ -174,21 +155,21 @@ export function createRuntimeProfilePlugin<
           const binding = bindRuntimeProfileSetting<unknown>(
             controller,
             options.settings,
-            runtimeProfileSettingOptions(persistProfile),
+            runtimeSettingOptions(persistProfile),
           );
           profileSetting = binding;
           stack.defer(binding.dispose);
         }
 
         if (options.commands ?? true) {
-          const commandOptions = runtimeProfileCommandOptions(options.commands);
+          const commandOptions = runtimeCommandOptions<RuntimeProfileCommandOptions>(options.commands);
           stack.defer(bindRuntimeProfileCommands(app.commands, controller, commandOptions));
           if (options.mirrorKeymap) {
             stack.defer(
               bindCommandKeymap(
                 app.commands,
                 app.keymap,
-                runtimeProfileKeymapOptions(options.mirrorKeymap, commandOptions),
+                runtimeKeymapOptions(options.mirrorKeymap, commandOptions),
               ),
             );
           }
@@ -291,34 +272,15 @@ export function runtimeRendererBackendCommands(
   const commands: Command<RuntimeRendererBackendCommandAction>[] = [];
 
   if (options.includeCycleCommands ?? true) {
-    commands.push(
-      {
-        id: `${prefix}.next`,
-        label: "Next Renderer Backend",
-        description: "Cycle to the next renderer backend.",
-        group,
-        keywords: ["runtime", "renderer", "backend", "next"],
-        disabled: () => controller.ids().length <= 1,
-        action: () => {
-          const previousId = controller.activeId.peek();
-          const id = controller.nextBackend();
-          return { type: "runtime.renderer.changed", payload: { id, previousId, direction: 1 } };
-        },
-      },
-      {
-        id: `${prefix}.previous`,
-        label: "Previous Renderer Backend",
-        description: "Cycle to the previous renderer backend.",
-        group,
-        keywords: ["runtime", "renderer", "backend", "previous"],
-        disabled: () => controller.ids().length <= 1,
-        action: () => {
-          const previousId = controller.activeId.peek();
-          const id = controller.previousBackend();
-          return { type: "runtime.renderer.changed", payload: { id, previousId, direction: -1 } };
-        },
-      },
-    );
+    commands.push(...runtimeCycleCommands<RuntimeRendererBackendCommandAction>(prefix, group, {
+      type: "runtime.renderer.changed",
+      label: "Renderer Backend",
+      description: "renderer backend",
+      keywords: (kind) => ["runtime", "renderer", "backend", kind],
+      activeId: () => controller.activeId.peek(),
+      ids: () => controller.ids(),
+      cycle: (direction) => direction === 1 ? controller.nextBackend() : controller.previousBackend(),
+    }));
   }
 
   if (options.includeSelectCommand ?? true) {
@@ -404,21 +366,21 @@ export function createRuntimeRendererBackendPlugin<
           const binding = bindRuntimeRendererBackendSetting<unknown>(
             controller,
             options.settings,
-            runtimeRendererBackendSettingOptions(persistBackend),
+            runtimeSettingOptions(persistBackend),
           );
           backendSetting = binding;
           stack.defer(binding.dispose);
         }
 
         if (options.commands ?? true) {
-          const commandOptions = runtimeRendererBackendCommandOptions(options.commands);
+          const commandOptions = runtimeCommandOptions<RuntimeRendererBackendCommandOptions>(options.commands);
           stack.defer(bindRuntimeRendererBackendCommands(app.commands, controller, commandOptions));
           if (options.mirrorKeymap) {
             stack.defer(
               bindCommandKeymap(
                 app.commands,
                 app.keymap,
-                runtimeRendererBackendKeymapOptions(options.mirrorKeymap, commandOptions),
+                runtimeKeymapOptions(options.mirrorKeymap, commandOptions),
               ),
             );
           }
@@ -505,36 +467,51 @@ export function bindRuntimeWorkloadCommands<TAction extends Action = RuntimeWork
   return registry.registerAll(runtimeWorkloadCommands(workloads, options) as unknown as Command<TAction>[]);
 }
 
-function runtimeProfileCommandOptions(
-  options: boolean | RuntimeProfileCommandOptions | undefined,
-): RuntimeProfileCommandOptions {
-  return typeof options === "object" ? options : {};
+type RuntimeCycleCommandKind = "next" | "previous";
+type RuntimeCycleDirection = -1 | 1;
+
+interface RuntimeCycleCommandProfile<TAction extends Action> {
+  type: TAction["type"] & string;
+  label: string;
+  description: string;
+  keywords: (kind: RuntimeCycleCommandKind) => readonly string[];
+  activeId: () => string;
+  ids: () => readonly string[];
+  cycle: (direction: RuntimeCycleDirection) => string;
 }
 
-function runtimeProfileKeymapOptions(
+function runtimeCycleCommands<TAction extends Action>(
+  idPrefix: string,
+  group: string,
+  profile: RuntimeCycleCommandProfile<TAction>,
+): Command<TAction>[] {
+  const command = (kind: RuntimeCycleCommandKind, direction: RuntimeCycleDirection): Command<TAction> => ({
+    id: `${idPrefix}.${kind}`,
+    label: `${kind === "next" ? "Next" : "Previous"} ${profile.label}`,
+    description: `Cycle to the ${kind} ${profile.description}.`,
+    group,
+    keywords: profile.keywords(kind),
+    disabled: () => profile.ids().length <= 1,
+    action: () => {
+      const previousId = profile.activeId();
+      const id = profile.cycle(direction);
+      return { type: profile.type, payload: { id, previousId, direction } } as TAction;
+    },
+  });
+  return [command("next", 1), command("previous", -1)];
+}
+
+function runtimeCommandOptions<TOptions>(options: boolean | TOptions | undefined): TOptions {
+  return typeof options === "object" ? options : {} as TOptions;
+}
+
+function runtimeKeymapOptions(
   options: true | CommandKeymapBindingOptions,
-  commandOptions: RuntimeProfileCommandOptions,
+  commandOptions: { group?: string },
 ): CommandKeymapBindingOptions {
   return options === true ? { group: commandOptions.group ?? "runtime" } : options;
 }
 
-function runtimeProfileSettingOptions<TOptions>(options: true | TOptions): TOptions {
-  return options === true ? {} as TOptions : options;
-}
-
-function runtimeRendererBackendCommandOptions(
-  options: boolean | RuntimeRendererBackendCommandOptions | undefined,
-): RuntimeRendererBackendCommandOptions {
-  return typeof options === "object" ? options : {};
-}
-
-function runtimeRendererBackendKeymapOptions(
-  options: true | CommandKeymapBindingOptions,
-  commandOptions: RuntimeRendererBackendCommandOptions,
-): CommandKeymapBindingOptions {
-  return options === true ? { group: commandOptions.group ?? "runtime" } : options;
-}
-
-function runtimeRendererBackendSettingOptions<TOptions>(options: true | TOptions): TOptions {
+function runtimeSettingOptions<TOptions>(options: true | TOptions): TOptions {
   return options === true ? {} as TOptions : options;
 }
