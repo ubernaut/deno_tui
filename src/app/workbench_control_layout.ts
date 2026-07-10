@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
+import { setRectangle } from "../utils/rectangles.ts";
 import { type WorkbenchButtonState, type WorkbenchButtonTone } from "./workbench_button_style.ts";
 import { buttonText, fitCellText } from "./workbench_frame.ts";
 import { textWidth } from "../utils/strings.ts";
@@ -144,8 +145,8 @@ export function workbenchButtonRowRenderCommandsInto<TAction>(
     command.text = fitCellText(text, width);
     command.state = placement.state;
     command.tone = placement.tone;
-    setRect(command.rect, placement.rect.column, placement.rect.row, width, 1);
-    setRect(command.hitRect, placement.rect.column, placement.rect.row, width, 1);
+    setRectangle(command.rect, placement.rect.column, placement.rect.row, width, 1);
+    setRectangle(command.hitRect, placement.rect.column, placement.rect.row, width, 1);
     target[written] = command;
     written += 1;
   }
@@ -248,11 +249,4 @@ export function wrappedControlOptionRowCount(
     lineWidth += tokenWidth;
   }
   return rows + 1;
-}
-
-function setRect(target: Rectangle, column: number, row: number, width: number, height: number): void {
-  target.column = column;
-  target.row = row;
-  target.width = width;
-  target.height = height;
 }

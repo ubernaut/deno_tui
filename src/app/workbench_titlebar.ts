@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
+import { setRectangle } from "../utils/rectangles.ts";
 import { buttonText, fitCellText } from "./workbench_frame.ts";
 import { textWidth } from "../utils/strings.ts";
 
@@ -149,8 +150,8 @@ export function workbenchTitlebarButtonRenderCommandsInto(
     command.text = fitCellText(text, width);
     command.tone = button.tone;
     command.compact = button.compact;
-    setRect(command.rect, button.rect.column, button.rect.row, width, 1);
-    setRect(command.hitRect, button.rect.column, button.rect.row, width, 1);
+    setRectangle(command.rect, button.rect.column, button.rect.row, width, 1);
+    setRectangle(command.hitRect, button.rect.column, button.rect.row, width, 1);
     target[written] = command;
     written += 1;
   }
@@ -197,11 +198,4 @@ function createTitlebarButton(
     compact: spec.compact,
     rect: { column, row, width, height: 1 },
   };
-}
-
-function setRect(target: Rectangle, column: number, row: number, width: number, height: number): void {
-  target.column = column;
-  target.row = row;
-  target.width = width;
-  target.height = height;
 }

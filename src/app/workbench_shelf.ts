@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
+import { setRectangle } from "../utils/rectangles.ts";
 import { textWidth } from "../utils/strings.ts";
 import {
   layoutWorkbenchButtonRowInto,
@@ -200,7 +201,7 @@ export function workbenchShelfRenderCommandsInto<TId extends string>(
     }) as WorkbenchShelfPrefixRenderCommand;
     command.kind = "prefix";
     command.text = fitCellText(layout.prefix, prefixWidth);
-    setRect(command.rect, layout.prefixRect.column, layout.prefixRect.row, prefixWidth, 1);
+    setRectangle(command.rect, layout.prefixRect.column, layout.prefixRect.row, prefixWidth, 1);
     target[written] = command;
     written += 1;
   }
@@ -230,8 +231,8 @@ export function workbenchShelfRenderCommandsInto<TId extends string>(
     command.hidden = button.hidden;
     command.state = button.selected ? "active" : "base";
     command.tone = button.hidden ? "muted" : "default";
-    setRect(command.rect, button.rect.column, button.rect.row, width, 1);
-    setRect(command.hitRect, button.rect.column, button.rect.row, width, 1);
+    setRectangle(command.rect, button.rect.column, button.rect.row, width, 1);
+    setRectangle(command.hitRect, button.rect.column, button.rect.row, width, 1);
     target[written] = command;
     written += 1;
   }
@@ -297,11 +298,4 @@ function layoutButtonRowInto<TId extends string>(
 export interface WorkbenchShelfButtonRowItem<TId extends string> extends WorkbenchButtonRowItem<TId> {
   selected: boolean;
   hidden: boolean;
-}
-
-function setRect(rect: Rectangle, column: number, row: number, width: number, height: number): void {
-  rect.column = column;
-  rect.row = row;
-  rect.width = width;
-  rect.height = height;
 }

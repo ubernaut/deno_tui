@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { WidgetHitRegion } from "../../components/interaction.ts";
 import type { Rectangle } from "../../types.ts";
-import { normalizeRectangle } from "../../utils/rectangles.ts";
+import { insetRectangleByEdges, normalizeRectangle } from "../../utils/rectangles.ts";
 import { LayoutMeasurementCache, measureTerminalTextIntrinsic } from "../measurement.ts";
 import { type FlexDirection, type FlexItem, flexRects } from "../flex_layout.ts";
 import {
@@ -73,7 +73,7 @@ export class SimpleLayoutSolver implements LayoutSolver {
       this.#defaultTextHeight,
       this.#intrinsicMeasurementCache,
     );
-    const contentRect = contentRectangle(rect, style);
+    const contentRect = insetRectangleByEdges(rect, style.border, style.padding);
     const visible = style.visibility === "visible" && style.display !== "none";
     const children = style.display === "flex"
       ? this.#layoutFlexChildren(node, contentRect)
@@ -729,19 +729,6 @@ function resolveNodeRect(
     row: allocated.row,
     width: Math.min(width, allocated.width),
     height: Math.min(height, allocated.height),
-  };
-}
-
-function contentRectangle(rect: Rectangle, style: ComputedLayoutStyle): Rectangle {
-  const left = style.border.left + style.padding.left;
-  const right = style.border.right + style.padding.right;
-  const top = style.border.top + style.padding.top;
-  const bottom = style.border.bottom + style.padding.bottom;
-  return {
-    column: rect.column + left,
-    row: rect.row + top,
-    width: Math.max(0, rect.width - left - right),
-    height: Math.max(0, rect.height - top - bottom),
   };
 }
 

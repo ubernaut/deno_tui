@@ -2,7 +2,7 @@
 import { type ModalInspection, renderModalRows } from "../components/modal.ts";
 import type { Rectangle } from "../types.ts";
 import { normalizeRectangle } from "../utils/rectangles.ts";
-import { clipRect } from "./hit_targets.ts";
+import { clipRect, inset } from "./hit_targets.ts";
 import type { WorkbenchButtonTone } from "./workbench_button_style.ts";
 import type { WorkbenchButtonRowItem } from "./workbench_control_layout.ts";
 
@@ -95,7 +95,7 @@ export function layoutWorkbenchModal(options: WorkbenchModalLayoutOptions): Work
   const clippedRect = clipRect(rect, bounds);
   return {
     rect: clippedRect,
-    inner: insetRect(clippedRect, 1),
+    inner: inset(clippedRect, 1),
     shadow: clipRect({
       column: clippedRect.column + 2,
       row: clippedRect.row + 1,
@@ -303,14 +303,4 @@ function fitPlain(text: string, width: number): string {
   const normalizedWidth = Math.max(0, Math.floor(width));
   if (text.length >= normalizedWidth) return text.slice(0, normalizedWidth);
   return text.padEnd(normalizedWidth, " ");
-}
-
-function insetRect(rect: Rectangle, amount: number): Rectangle {
-  const inset = Math.max(0, Math.floor(amount));
-  return {
-    column: rect.column + inset,
-    row: rect.row + inset,
-    width: Math.max(0, rect.width - inset * 2),
-    height: Math.max(0, rect.height - inset * 2),
-  };
 }

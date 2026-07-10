@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import Yoga from "yoga-layout";
 import type { Rectangle } from "../../types.ts";
+import { insetRectangleByEdges } from "../../utils/rectangles.ts";
 import { measureTerminalTextIntrinsic } from "../measurement.ts";
 import type { ComputedLayoutStyle, LayoutAlignItems, LayoutJustifyContent, LayoutLengthValue } from "../style.ts";
 import {
@@ -81,7 +82,7 @@ export class YogaLayoutSolver implements LayoutSolver {
       width: Math.max(0, Math.round(layout.width)),
       height: Math.max(0, Math.round(layout.height)),
     };
-    const contentRect = yogaContentRect(rect, node.style);
+    const contentRect = insetRectangleByEdges(rect, node.style.border, node.style.padding);
     const children: ComputedLayoutBox[] = [];
     let scrollWidth = contentRect.width;
     let scrollHeight = contentRect.height;
@@ -280,19 +281,6 @@ function yogaFlexWrap(value: ComputedLayoutStyle["flexWrap"]): number {
 
 function yogaOverflow(value: "visible" | "scroll"): number {
   return value === "visible" ? Yoga.OVERFLOW_VISIBLE : Yoga.OVERFLOW_SCROLL;
-}
-
-function yogaContentRect(rect: Rectangle, style: ComputedLayoutStyle): Rectangle {
-  const left = style.border.left + style.padding.left;
-  const right = style.border.right + style.padding.right;
-  const top = style.border.top + style.padding.top;
-  const bottom = style.border.bottom + style.padding.bottom;
-  return {
-    column: rect.column + left,
-    row: rect.row + top,
-    width: Math.max(0, rect.width - left - right),
-    height: Math.max(0, rect.height - top - bottom),
-  };
 }
 
 function defaultMeasureText(
