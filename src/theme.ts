@@ -2,6 +2,7 @@
 import { Computed, Signal } from "./signals/mod.ts";
 import type { AsyncStore } from "./runtime/storage.ts";
 import { componentCatalog, type ComponentCatalogEntry } from "./components/catalog.ts";
+import { orderedSubset } from "./utils/collections.ts";
 import { escapeMarkdownCell } from "./utils/formatting.ts";
 /** Function that's supposed to return styled text given string as parameter */
 export type Style = (text: string) => string;
@@ -656,7 +657,7 @@ export class ThemePaletteRegistry {
       inspections[index] = {
         id,
         label: palette.label ?? id,
-        tokens: sortedThemeTokenNames(Object.keys(palette.tokens)),
+        tokens: orderedSubset(Object.keys(palette.tokens), themeTokenNames),
       };
     }
     return inspections;
@@ -1127,18 +1128,18 @@ export function inspectThemeManifest(manifest: ThemePackManifest): ThemeManifest
     id: manifest.id,
     label: manifest.label ?? manifest.id,
     palette: manifest.palette ?? "plain",
-    tokens: sortedThemeTokenNames(Object.keys(manifest.options?.tokens ?? {})),
+    tokens: orderedSubset(Object.keys(manifest.options?.tokens ?? {}), themeTokenNames),
     components: Object.entries(components)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([name, definition]) => ({
         name,
         extends: normalizeThemeExtends(definition.extends),
-        states: sortedThemeStates(Object.keys(definition.base ?? {})),
+        states: orderedSubset(Object.keys(definition.base ?? {}), themeStates),
         variants: Object.entries(definition.variants ?? {})
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([variant, states]) => ({
             name: variant,
-            states: sortedThemeStates(Object.keys(states)),
+            states: orderedSubset(Object.keys(states), themeStates),
           })),
       })),
     issues: validateThemeOptions(options),
@@ -1152,9 +1153,9 @@ export function previewThemeManifest(
 ): ThemeManifestPreview {
   const sample = options.sample ?? "Aa";
   const engine = createThemeEngineFromManifest(manifest);
-  const tokenNames = options.tokens ? sortedThemeTokenNames([...options.tokens]) : [...themeTokenNames];
+  const tokenNames = options.tokens ? orderedSubset(options.tokens, themeTokenNames) : [...themeTokenNames];
   const componentNames = options.components ? [...options.components] : engine.componentNames();
-  const stateNames = options.states ? sortedThemeStates([...options.states]) : [...themeStates];
+  const stateNames = options.states ? orderedSubset(options.states, themeStates) : [...themeStates];
 
   return {
     sample,
@@ -2036,9 +2037,9 @@ export function previewThemeProvider(
   const sample = options.sample ?? "Aa";
   const engine = provider.engine.peek();
   const catalog = provider.catalog();
-  const requestedTokens = options.tokens ? sortedThemeTokenNames(options.tokens) : Array.from(themeTokenNames);
+  const requestedTokens = options.tokens ? orderedSubset(options.tokens, themeTokenNames) : Array.from(themeTokenNames);
   const componentNames = options.components ? Array.from(options.components) : catalogComponentNames(catalog);
-  const stateNames = options.states ? sortedThemeStates(options.states) : Array.from(themeStates);
+  const stateNames = options.states ? orderedSubset(options.states, themeStates) : Array.from(themeStates);
 
   return {
     sample,
@@ -2480,14 +2481,4 @@ function themeDiffVariants(component: string, before: ThemeEngine, after: ThemeE
     if (b === "default") return 1;
     return a.localeCompare(b);
   });
-}
-
-function sortedThemeTokenNames(values: Iterable<string>): ThemeTokenName[] {
-  const requested = new Set(values);
-  return themeTokenNames.filter((token) => requested.has(token));
-}
-
-function sortedThemeStates(values: Iterable<string>): ThemeState[] {
-  const requested = new Set(values);
-  return themeStates.filter((state) => requested.has(state));
 }

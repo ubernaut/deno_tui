@@ -10,6 +10,16 @@ export function sortedSetValues<T extends string>(values: ReadonlySet<T>): T[] {
   return [...values].sort();
 }
 
+/** Filters a reference order to values requested by an iterable. */
+export function orderedSubset<T>(values: Iterable<unknown>, order: readonly T[]): T[] {
+  const requested = new Set(values);
+  const output: T[] = [];
+  for (const value of order) {
+    if (requested.has(value)) output.push(value);
+  }
+  return output;
+}
+
 /** Internal id-keyed collection with lazily cached sorted values and ids. */
 export class OrderedIdCollection<T extends { readonly id: string }> {
   readonly #values = new Map<string, T>();

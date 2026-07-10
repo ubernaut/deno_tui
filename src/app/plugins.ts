@@ -3,6 +3,7 @@ import type { Focusable } from "../focus.ts";
 import { bindingId, type KeyBinding } from "../keymap.ts";
 import type { RuntimeWorkloadSource } from "../runtime/telemetry.ts";
 import { uniqueSortedStrings as uniqueSorted } from "../utils/collections.ts";
+import { isAsciiWhitespaceCharacter } from "../utils/formatting.ts";
 import type { Action, ActionMiddleware } from "./actions.ts";
 import type { AppPlugin, AppPluginDisposer, TuiApp } from "./app.ts";
 import type { Command } from "./commands.ts";
@@ -406,7 +407,7 @@ function pluginMatchesSearch(plugin: AppPluginDefinitionInspection, search: stri
   const normalized = search.toLowerCase();
   for (let index = 0; index <= normalized.length; index += 1) {
     const char = index < normalized.length ? normalized[index] : " ";
-    if (char !== undefined && !isPluginSearchWhitespace(char)) {
+    if (char !== undefined && !isAsciiWhitespaceCharacter(char)) {
       if (start < 0) start = index;
       continue;
     }
@@ -415,10 +416,6 @@ function pluginMatchesSearch(plugin: AppPluginDefinitionInspection, search: stri
     start = -1;
   }
   return true;
-}
-
-function isPluginSearchWhitespace(char: string): boolean {
-  return char === " " || char === "\n" || char === "\t" || char === "\r" || char === "\f";
 }
 
 function pluginRouteIds<TRoute extends Route>(routes: readonly (TRoute | AppPluginRoute<TRoute>)[]): string[] {

@@ -7,9 +7,8 @@ import {
   insertBoundedRanked,
   normalizeSearchText,
   scoreSearchField,
-  scoreWeightedSearchFields,
+  scoreWeightedSearchItem,
   searchTerms,
-  weightedSearchItemFields,
 } from "../utils/search.ts";
 import { escapeMarkdownCell } from "../utils/formatting.ts";
 import type { Action } from "./actions.ts";
@@ -270,7 +269,7 @@ export function rankCommandSurfaceItems(
   const ranked: CommandSearchMatch[] = [];
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index]!;
-    const match = scoreCommandSurfaceItem(item, terms);
+    const match = scoreWeightedSearchItem(item, terms);
     if (match) {
       const candidate = { item, score: match.score, matched: match.matched };
       if (limit === undefined) {
@@ -562,13 +561,6 @@ function writeCommandSearchField(
   normalizedFields[index] = normalizeSearchText(value);
   fieldWeights[index] = weight;
   return index + 1;
-}
-
-function scoreCommandSurfaceItem(
-  item: CommandSurfaceItem,
-  terms: readonly string[],
-): { score: number; matched: string[] } | undefined {
-  return scoreWeightedSearchFields(weightedSearchItemFields(item), terms, item.disabled);
 }
 
 function compareCommandSearchCandidates<TAction extends Action = Action>(

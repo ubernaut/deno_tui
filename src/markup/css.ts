@@ -1,4 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
+import { isAsciiWhitespaceCharacter } from "../utils/formatting.ts";
 
 /** CSS-like declaration for the TUI layout subset. */
 export interface TuiCssDeclaration {
@@ -140,17 +141,13 @@ export function selectorParts(selector: string): Array<{ simple: string; combina
       combinator = "child";
       continue;
     }
-    if (char === undefined || isCssSelectorWhitespace(char)) {
+    if (char === undefined || isAsciiWhitespaceCharacter(char)) {
       flushToken(index);
       continue;
     }
     if (tokenStart < 0) tokenStart = index;
   }
   return parts;
-}
-
-function isCssSelectorWhitespace(char: string): boolean {
-  return char === " " || char === "\n" || char === "\t" || char === "\r" || char === "\f";
 }
 
 function splitSelectorList(source: string): string[] {

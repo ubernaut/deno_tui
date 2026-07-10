@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { WidgetHitRegion } from "../components/interaction.ts";
 import type { Rectangle } from "../types.ts";
+import { isAsciiWhitespaceCharacter } from "../utils/formatting.ts";
 import { inspectViewportOverflow, type ViewportOverflowInspection } from "../viewport.ts";
 import {
   type BoxEdges,
@@ -179,7 +180,7 @@ function splitClassList(value: string | undefined): string[] {
   let start = -1;
   for (let index = 0; index <= value.length; index += 1) {
     const char = index < value.length ? value[index] : " ";
-    if (char !== undefined && !isClassWhitespace(char)) {
+    if (char !== undefined && !isAsciiWhitespaceCharacter(char)) {
       if (start < 0) start = index;
       continue;
     }
@@ -189,8 +190,4 @@ function splitClassList(value: string | undefined): string[] {
     }
   }
   return classes;
-}
-
-function isClassWhitespace(char: string): boolean {
-  return char === " " || char === "\n" || char === "\t" || char === "\r" || char === "\f";
 }

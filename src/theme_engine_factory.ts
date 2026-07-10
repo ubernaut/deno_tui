@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { AsyncScheduler, runTaskBatch, type ScheduledTaskOptions } from "./runtime/scheduler.ts";
-import { OrderedIdCollection, sortedSetValues } from "./utils/collections.ts";
+import { OrderedIdCollection, orderedSubset, sortedSetValues } from "./utils/collections.ts";
+import { isAsciiWhitespaceCharacter } from "./utils/formatting.ts";
 import {
   composeThemeOptions,
   createThemeEngine,
@@ -139,7 +140,7 @@ export class ThemeEngineFactory {
       palette: themePaletteId(this.palette),
       tags: [...this.tags],
       priority: this.priority,
-      tokenOverrides: sortedThemeTokens(Object.keys(this.options.tokens ?? {})),
+      tokenOverrides: orderedSubset(Object.keys(this.options.tokens ?? {}), themeTokenNames),
       components: Object.keys(components).sort(),
       variants,
       issues,
@@ -278,7 +279,7 @@ export function inspectThemeEngineFactoryCatalog(
     palettes: sortedSetValues(palettes),
     tags: sortedSetValues(tags),
     components: sortedSetValues(components),
-    tokenOverrides: sortedThemeTokens(tokenOverrides),
+    tokenOverrides: orderedSubset(tokenOverrides, themeTokenNames),
   };
 }
 
@@ -346,15 +347,6 @@ export async function prewarmThemeEngines(
   return values;
 }
 
-function sortedThemeTokens(values: Iterable<string>): ThemeTokenName[] {
-  const requested = new Set(values);
-  const tokens: ThemeTokenName[] = [];
-  for (const token of themeTokenNames) {
-    if (requested.has(token)) tokens.push(token);
-  }
-  return tokens;
-}
-
 function themePaletteId(palette: ThemePaletteReference): string {
   return typeof palette === "string" ? palette : palette.id;
 }
@@ -409,7 +401,7 @@ function factoryMatchesSearch(factory: ThemeEngineFactoryInspection, search: str
   const normalized = search.toLowerCase();
   for (let index = 0; index <= normalized.length; index += 1) {
     const char = index < normalized.length ? normalized[index] : " ";
-    if (char !== undefined && !isFactorySearchWhitespace(char)) {
+    if (char !== undefined && !isAsciiWhitespaceCharacter(char)) {
       if (start < 0) start = index;
       continue;
     }
@@ -441,8 +433,4 @@ function factoryIncludesSearchPart(factory: ThemeEngineFactoryInspection, part: 
     }
   }
   return false;
-}
-
-function isFactorySearchWhitespace(char: string): boolean {
-  return char === " " || char === "\n" || char === "\t" || char === "\r" || char === "\f";
 }

@@ -7,3 +7,7 @@ export function errorMessage(error: unknown): string {
 export function escapeMarkdownCell(value: string): string {
   return value.replaceAll("|", "\\|").replaceAll("\n", " ");
 }
+
+export function isAsciiWhitespaceCharacter(char: string): boolean {
+  return char === " " || char === "\n" || char === "\t" || char === "\r" || char === "\f";
+}

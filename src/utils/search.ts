@@ -81,6 +81,14 @@ export function weightedSearchItemFields(
   return fields;
 }
 
+/** Scores a standard id/label/keywords item against normalized terms. */
+export function scoreWeightedSearchItem(
+  item: { id: string; label: string; keywords?: readonly string[]; disabled?: boolean },
+  terms: readonly string[],
+): { score: number; matched: string[] } | undefined {
+  return scoreWeightedSearchFields(weightedSearchItemFields(item), terms, item.disabled);
+}
+
 /** Scores an item with weighted fields against all query terms. */
 export function scoreWeightedSearchFields(
   fields: readonly WeightedSearchField[],

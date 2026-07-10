@@ -5,12 +5,7 @@ import { signalify } from "../utils/signals.ts";
 import { List, visibleListRows } from "./list.ts";
 import { drawTextChild } from "./text_children.ts";
 import type { KeyPressEvent } from "../input_reader/types.ts";
-import {
-  compareRankedSearchMatches,
-  scoreWeightedSearchFields,
-  searchTerms,
-  weightedSearchItemFields,
-} from "../utils/search.ts";
+import { compareRankedSearchMatches, scoreWeightedSearchItem, searchTerms } from "../utils/search.ts";
 
 /** Public interface describing a command Palette Item. */
 export interface CommandPaletteItem {
@@ -82,7 +77,7 @@ export function rankCommandPaletteItems(
   const ranked: Array<CommandPaletteMatch & { index: number }> = [];
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index]!;
-    const match = scoreCommandPaletteItem(item, terms);
+    const match = scoreWeightedSearchItem(item, terms);
     if (match) {
       ranked.push({ item, score: match.score, matched: match.matched, index });
     }
@@ -309,11 +304,4 @@ function commandPaletteRenderLabels(items: readonly CommandPaletteItem[]): strin
     labels[index] = item.disabled ? `(${item.label})` : item.label;
   }
   return labels;
-}
-
-function scoreCommandPaletteItem(
-  item: CommandPaletteItem,
-  terms: readonly string[],
-): { score: number; matched: string[] } | undefined {
-  return scoreWeightedSearchFields(weightedSearchItemFields(item), terms, item.disabled);
 }

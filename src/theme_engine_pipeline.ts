@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { AsyncScheduler, runTaskBatch, type ScheduledTaskOptions } from "./runtime/scheduler.ts";
+import { orderedSubset } from "./utils/collections.ts";
 import {
   composeThemeOptions,
   ThemeEngine,
@@ -317,19 +318,10 @@ function inspectPipelineStep(
     description: step.description,
     enabled,
     hasTransform: step.transform !== undefined,
-    tokenOverrides: sortedThemeTokens(Object.keys(options.tokens ?? {})),
+    tokenOverrides: orderedSubset(Object.keys(options.tokens ?? {}), themeTokenNames),
     components: componentNames,
     variants,
   };
-}
-
-function sortedThemeTokens(values: Iterable<string>): ThemeTokenName[] {
-  const requested = new Set(values);
-  const tokens: ThemeTokenName[] = [];
-  for (const token of themeTokenNames) {
-    if (requested.has(token)) tokens.push(token);
-  }
-  return tokens;
 }
 
 function sortedObjectKeys(value: object): string[] {

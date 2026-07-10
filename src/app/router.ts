@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Signal } from "../signals/mod.ts";
+import { clampSelectionIndex } from "../selection.ts";
 import type { Action } from "./actions.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
@@ -271,7 +272,7 @@ export function bindRouteIndex<TRoute extends Route = Route>(
   };
   const routeIdAt = (index: number) => {
     const ids = routeIds();
-    return ids[clampRouteIndex(index, ids.length)];
+    return ids[clampSelectionIndex(ids.length, index)];
   };
   const routeIndex = (routeId: string) => routeIds().indexOf(routeId);
   const fallbackIndex = () => {
@@ -312,7 +313,7 @@ export function bindRouteIndex<TRoute extends Route = Route>(
       return;
     }
 
-    const nextIndex = clampRouteIndex(index, ids.length);
+    const nextIndex = clampSelectionIndex(ids.length, index);
     if (nextIndex !== index) {
       options.onInvalidIndex?.(index);
     }
@@ -431,11 +432,6 @@ function removeRoute<TRoute extends Route>(routes: readonly TRoute[], routeId: s
     if (route.id !== routeId) output.push(route);
   }
   return output;
-}
-
-function clampRouteIndex(index: number, length: number): number {
-  if (length <= 0) return 0;
-  return Math.max(0, Math.min(Math.floor(index), length - 1));
 }
 
 function routesForSource<TRoute extends Route>(

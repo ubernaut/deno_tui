@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { rankCommandPaletteItems } from "./components/command_palette.ts";
 import type { CommandPaletteItem } from "./components/command_palette.ts";
+import { orderedSubset } from "./utils/collections.ts";
 import {
   type ThemeEngine,
   type ThemeProvider,
@@ -179,11 +180,11 @@ function createThemeGalleryItem(
   const inspection = engine.inspect();
   const palette = typeof pack?.palette === "string" ? pack.palette : pack?.palette?.id ?? "plain";
   const sample = options.sample ?? "Aa";
-  const tokenNames = options.tokens ? sortedThemeTokenNames(options.tokens) : themeTokenNames.slice();
+  const tokenNames = options.tokens ? orderedSubset(options.tokens, themeTokenNames) : themeTokenNames.slice();
   const componentNames = options.components
     ? Array.from(options.components)
     : inspectedComponentNames(inspection.components);
-  const stateNames = options.states ? sortedThemeStates(options.states) : themeStates.slice();
+  const stateNames = options.states ? orderedSubset(options.states, themeStates) : themeStates.slice();
   const variants: Record<string, string[]> = {};
 
   for (const component of inspection.components) {
@@ -266,24 +267,6 @@ function themeGalleryKeywords(
 
 function previewStyle(style: (text: string) => string, sample: string): ThemeStylePreview {
   return { raw: sample, styled: style(sample) };
-}
-
-function sortedThemeTokenNames(values: Iterable<string>): ThemeTokenName[] {
-  const requested = new Set(values);
-  const tokens: ThemeTokenName[] = [];
-  for (const token of themeTokenNames) {
-    if (requested.has(token)) tokens.push(token);
-  }
-  return tokens;
-}
-
-function sortedThemeStates(values: Iterable<string>): ThemeState[] {
-  const requested = new Set(values);
-  const states: ThemeState[] = [];
-  for (const state of themeStates) {
-    if (requested.has(state)) states.push(state);
-  }
-  return states;
 }
 
 function inspectedComponentNames(components: ReturnType<ThemeEngine["inspect"]>["components"]): string[] {
