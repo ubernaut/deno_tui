@@ -123,7 +123,6 @@ import {
   workbenchVisualizationThreeScene,
 } from "../src/app/workbench_three_policy.ts";
 import {
-  inspectWorkbenchWindowSignalState,
   WorkbenchController,
   workbenchWindowActionLog,
   type WorkbenchWindowActionLogKind,
@@ -518,7 +517,6 @@ const workbenchController = new WorkbenchController<"theme" | "newWindow" | "wor
 const topMenus = workbenchController.menus;
 const windowManager = workbenchController.windows;
 const genericModalBlocksThree = new Signal(false);
-const activeWindow = new Signal<WindowId>("three");
 const controlsModel = new ApiWorkbenchControlsModel({
   themeLabels,
   commandText: "deno task health",
@@ -540,15 +538,6 @@ const controlsModel = new ApiWorkbenchControlsModel({
   },
 });
 const { density, livePreview, compactRows, modal, progress, activeControl } = controlsModel;
-const maximized = new Signal<WindowId | null>(null);
-const minimized = new Signal<Record<string, boolean>>({
-  explorer: false,
-  inspector: false,
-  data: false,
-  controls: false,
-  logs: false,
-  three: false,
-}, { deepObserve: true });
 const commandLog = new Signal<string[]>(
   initialWorkbenchDiagnosticLogRows(workbenchDiagnostics, ["ready: API workbench mounted"], { maxLogEntries: 8 }),
   { deepObserve: true },
@@ -724,14 +713,14 @@ const threeRuntimeAscii = new Signal<AsciiOptions>(ascii.peek());
 const threeScene = new Computed<WorkbenchThreeScene | null>(() =>
   workbenchStudioScene({
     blocked: false,
-    minimized: minimized.value.three,
+    minimized: isWindowMinimized("three", windowManager.windows.value),
     available: threeAsciiAvailable.value,
     density: density.value.value,
     progress: progress.value.value,
     progressRatio: progress.ratio(),
     compactRows: compactRows.checked.value,
     livePreview: livePreview.checked.value,
-    active: activeWindow.value === "three",
+    active: windowManager.activeId.value === "three",
     pressed: activeControl.value === "button",
   })
 );
@@ -763,10 +752,7 @@ const threeViewportInteraction = new WorkbenchThreeViewportInteractionController
   findHit,
   panelForWindow: (id) =>
     id === "three" ? threePanel : isVisualizationWindow(id) ? visualizationThreePanels.get(id)?.panel : undefined,
-  focusWindow: (id) => {
-    windowManager.focus(id);
-    syncWindowSignalsFromManager();
-  },
+  focusWindow: (id) => void windowManager.focus(id),
 });
 
 tui.canvas.size.subscribe(() => {
@@ -899,7 +885,6 @@ tui.on("destroy", () => {
   for (const scroll of windowScrolls.values()) {
     scroll.dispose();
   }
-  windowManager.dispose();
   controlsModel.dispose();
   newWindowMenuIndex.dispose();
   workspaceMenuIndex.dispose();
@@ -922,6 +907,7 @@ tui.on("destroy", () => {
   threePanel.dispose();
   visualizationThreePanels.clear();
   threeScene.dispose();
+  windowManager.dispose();
   threeBodyRect.dispose();
   threeGraphicsRect.dispose();
   void kittyGraphics.clear("visible");
@@ -971,7 +957,7 @@ function syncWorkbenchThreeRuntimeBudgetForViewport(
 ): void {
   const snapshot = resolveWorkbenchThreeRuntimeBudgetSnapshot({
     id: source.id,
-    fullscreenId: maximized.peek(),
+    fullscreenId: fullscreenWindowId(),
     ascii: source.ascii,
     liveMaxCells: workbenchThreeLiveMaxCells.peek(),
     liveViewport: source.liveViewport,
@@ -1098,12 +1084,12 @@ function renderWorkspace(frame: Frame): void {
     return;
   }
   const layout = workspaceLayout({ column: 0, row: 0, width: Math.max(1, bounds.width - 1), height: bounds.height });
-  const offset = workspaceViewport.update({ layout, viewportHeight: bounds.height, activeId: activeWindow.peek() });
+  const offset = workspaceViewport.update({ layout, viewportHeight: bounds.height, activeId: activeWindowId() });
   const virtual = prepareWorkbenchFrame(workspaceVirtualFrame, Math.max(bounds.height, layout.contentHeight));
   frameWidthHints.set(virtual, layout.bounds.width);
   fillRect(virtual, layout.bounds, theme().backgroundSoft);
   const hitStart = hitTargets.length;
-  const max = maximized.peek();
+  const max = fullscreenWindowId();
   if (max) {
     const fullscreenRect = workbenchFullscreenWindowRect(layout.bounds);
     withWorkspacePlacement(bounds, 0, () => renderWindow(virtual, max, fullscreenRect));
@@ -1159,8 +1145,8 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
     frame,
     id,
     rect,
-    minimized: Boolean(minimized.peek()[id]),
-    active: activeWindow.peek() === id,
+    minimized: false,
+    active: activeWindowId() === id,
     title: windowTitle(id),
     showConfig: isThreeRenderedWindow(id),
     theme: theme(),
@@ -1628,7 +1614,7 @@ function renderTerminalShell(frame: Frame, rect: Rectangle): void {
     activeShell: activeTerminalShell(),
     shellForSession: (sessionId) => terminalShell.shell(sessionId),
     copyMode,
-    rawInputActive: activeWindow.peek() === TERMINAL_SHELL_WINDOW_ID && terminalShellInputMode.peek() === "raw",
+    rawInputActive: activeWindowId() === TERMINAL_SHELL_WINDOW_ID && terminalShellInputMode.peek() === "raw",
     buffers: terminalShellBuffers,
     theme: t,
     contrastText,
@@ -1858,7 +1844,7 @@ function renderStatus(frame: Frame): void {
     frame,
     row: currentHeight() - 1,
     width,
-    focus: windowTitle(activeWindow.peek()),
+    focus: windowTitle(activeWindowId()),
     themeLabel: theme().label,
     tileDensity: tileDensity.peek(),
     diagnostics: formatWorkbenchDiagnosticStatus(workbenchDiagnostics),
@@ -1981,7 +1967,7 @@ function workspaceLayout(bounds: Rectangle): {
   contentHeight: number;
   rects: Map<WindowId, Rectangle>;
 } {
-  const active = activeWindow.peek();
+  const active = activeWindowId();
   return workbenchAdaptiveWindowLayout<WindowId>(windowManager, {
     bounds,
     tileDensity: tileDensity.peek(),
@@ -2123,7 +2109,7 @@ function createVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
   const scene = new Signal<WorkbenchThreeScene | null>(null);
   const runtimeAscii = new Computed<AsciiOptions>(() => {
     const savedAscii = asciiForWindow(id).value;
-    const fullscreenId = maximized.value;
+    const fullscreenId = windowManager.fullscreenId.value as WindowId | undefined;
     if (fullscreenId === id) {
       return resolveWorkbenchThreeFullscreenAsciiOptions({
         id,
@@ -2161,7 +2147,7 @@ function createVisualizationThreePanel(id: VisualizationWindowId): DynamicThreeP
 
 function syncWorkbenchThreeWindowState(): WorkbenchThreeWindowState<WindowId> {
   return resolveWorkbenchThreeWindowStateInto(workbenchThreeWindowState, {
-    activeId: activeWindow.peek(),
+    activeId: activeWindowId(),
     fullscreenId: windowManager.fullscreenId.peek() as WindowId | undefined,
     windows: windowManager.orderedWindows(),
     isThreeWindow: (id) => isThreeRenderedWindow(id as WindowId),
@@ -2324,49 +2310,52 @@ function scrollWindow(id: WindowId, columns: number, rows: number): void {
 
 function focus(id: WindowId): void {
   windowManager.focus(id);
-  syncAndLogWindowAction("focus", id);
+  logWindowAction("focus", id);
 }
 
 function focusNext(): void {
   const next = windowManager.focusNext(1)?.id as WindowId | undefined;
-  if (next) syncAndLogWindowAction("focus", next);
+  if (next) logWindowAction("focus", next);
 }
 
 function focusPrevious(): void {
   const next = windowManager.focusNext(-1)?.id as WindowId | undefined;
-  if (next) syncAndLogWindowAction("focus", next);
+  if (next) logWindowAction("focus", next);
 }
 
 function minimize(id: WindowId): void {
   windowManager.minimize(id);
-  syncAndLogWindowAction("minimize", id);
+  logWindowAction("minimize", id);
 }
 
 function toggleMaximize(id: WindowId): void {
   windowManager.fullscreen(id);
-  syncWindowSignalsFromManager();
-  pushLog(workbenchWindowActionLog(maximized.peek() === id ? "maximize" : "restore", windowTitle(id)));
+  pushLog(workbenchWindowActionLog(fullscreenWindowId() === id ? "maximize" : "restore", windowTitle(id)));
 }
 
 function restoreAll(): void {
   windowManager.restore();
-  syncWindowSignalsFromManager();
   pushLog("restore all windows");
 }
 
-function syncAndLogWindowAction(kind: WorkbenchWindowActionLogKind, id: WindowId): void {
-  syncWindowSignalsFromManager();
+function logWindowAction(kind: WorkbenchWindowActionLogKind, id: WindowId): void {
   pushLog(workbenchWindowActionLog(kind, windowTitle(id)));
 }
 
-function syncWindowSignalsFromManager(): void {
-  const state = inspectWorkbenchWindowSignalState<WindowId>(windowManager, {
-    windowIds: windowManager.ids({ includeClosed: true }) as WindowId[],
-    defaultActiveId: "explorer",
-  });
-  activeWindow.value = state.activeId ?? "explorer";
-  maximized.value = state.fullscreenId ?? null;
-  minimized.value = state.minimized;
+function activeWindowId(): WindowId {
+  return (windowManager.activeId.peek() as WindowId | undefined) ?? "explorer";
+}
+
+function fullscreenWindowId(): WindowId | undefined {
+  return windowManager.fullscreenId.peek() as WindowId | undefined;
+}
+
+function isWindowMinimized(id: WindowId, windows = windowManager.windows.peek()): boolean {
+  for (let index = 0; index < windows.length; index++) {
+    const window = windows[index]!;
+    if (window.id === id) return window.state === "minimized";
+  }
+  return false;
 }
 
 function adjustTileDensity(delta: number): void {
@@ -2560,7 +2549,6 @@ function closeAllWindowsForWorkspaceLoad(): void {
   if (plan.selectedVisualizationTilesChanged) {
     selectedCpuHexTiles.value = plan.selectedVisualizationTiles as Record<VisualizationWindowId, string>;
   }
-  syncWindowSignalsFromManager();
   pushLog(`closed ${plan.windowIds.length} window(s) for workspace load`);
 }
 
@@ -2702,7 +2690,7 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
   } else if (action.type === "quit") openQuitModal();
   else if (action.type === "windowTab") {
     windowManager.selectTab(action.id);
-    syncAndLogWindowAction("fullscreenTab", action.id);
+    logWindowAction("fullscreenTab", action.id);
   } else if (action.type === "focus") focus(action.id);
   else if (action.type === "minimize") minimize(action.id);
   else if (action.type === "maximize") toggleMaximize(action.id);
@@ -2714,7 +2702,6 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
   else if (action.type === "asciiConfigBackdrop") return;
   else if (action.type === "restore") {
     windowManager.restore(action.id);
-    syncWindowSignalsFromManager();
     pushLog(`restore ${windowTitle(action.id)}`);
   } else if (action.type === "control") {
     applyControlHit(action.id, action.action ?? "activate", target.rect, x, action.index);
@@ -2760,7 +2747,6 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
     });
     scroll.scrollTo(next.columns, next.rows);
     windowManager.focus(action.id);
-    syncWindowSignalsFromManager();
   } else if (action.type === "windowHScrollbar") {
     const scroll = windowScroll(action.id);
     const next = resolveApiWorkbenchWindowHScrollbarOffset({
@@ -2771,7 +2757,6 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
     });
     scroll.scrollTo(next.columns, next.rows);
     windowManager.focus(action.id);
-    syncWindowSignalsFromManager();
   } else if (action.type === "workspaceScrollbar") {
     const next = resolveApiWorkbenchWorkspaceScrollbarOffset({
       contentHeight: workspaceScroll.contentHeight.peek(),
@@ -2914,26 +2899,27 @@ function closeThreeConfigModal(): void {
 }
 
 function handleWorkbenchKey(event: KeyPressEvent): void {
-  if (activeWindow.peek() === TERMINAL_SHELL_WINDOW_ID && handleTerminalShellKey(event)) return;
-  if (activeWindow.peek() === TERMINAL_OUTPUT_WINDOW_ID && handleTerminalOutputKey(event)) return;
-  const global = resolveWorkbenchGlobalKey(event, { activeWindowId: activeWindow.peek() });
+  const active = activeWindowId();
+  if (active === TERMINAL_SHELL_WINDOW_ID && handleTerminalShellKey(event)) return;
+  if (active === TERMINAL_OUTPUT_WINDOW_ID && handleTerminalOutputKey(event)) return;
+  const global = resolveWorkbenchGlobalKey(event, { activeWindowId: active });
   const globalHandled = applyWorkbenchGlobalKeyAction(global, { phase: "primary" });
   if (globalHandled) return;
   if (event.ctrl || event.meta) return;
 
   if (handleCpuHexGridKey(event)) return;
   if (applyWorkbenchGlobalKeyAction(global, { phase: "preWindow" })) return;
-  if (activeWindow.peek() === "explorer" && explorerKeys.has(event.key)) {
+  if (active === "explorer" && explorerKeys.has(event.key)) {
     explorer.handleKeyPress(event, Math.max(1, currentHeight() - 8));
-  } else if (activeWindow.peek() === "controls") handleControlsKey(event);
-  else if (activeWindow.peek() === "data" && event.key.toLowerCase() === "s") {
+  } else if (active === "controls") handleControlsKey(event);
+  else if (active === "data" && event.key.toLowerCase() === "s") {
     const current = table.state.peek().sort?.columnId;
     const next = nextSortableDataColumn(columns, current, event.shift ? -1 : 1);
     if (next) {
       table.toggleSort(next.id);
       pushLog(`sort data by ${next.label}`);
     }
-  } else if (activeWindow.peek() === "data") table.handleKeyPress(event as never);
+  } else if (active === "data") table.handleKeyPress(event as never);
   else applyWorkbenchGlobalKeyAction(global, { phase: "postWindow" });
 }
 
@@ -2941,7 +2927,7 @@ function applyWorkbenchGlobalKeyAction(
   action: ReturnType<typeof resolveWorkbenchGlobalKey>,
   options: { phase: "primary" | "preWindow" | "postWindow" },
 ): boolean {
-  const id = activeWindow.peek();
+  const id = activeWindowId();
   switch (action.kind) {
     case "ignore":
       return false;
@@ -2997,7 +2983,6 @@ function applyWorkbenchGlobalKeyAction(
           pushLog("no minimized windows");
           return true;
         }
-        syncWindowSignalsFromManager();
         pushLog(`restore ${windowTitle(restored.id as WindowId)}`);
       }
       return true;
@@ -3105,7 +3090,7 @@ function handleTerminalShellKey(event: KeyPressEvent): boolean {
 }
 
 function handleTerminalShellPaste(event: PasteEvent): boolean {
-  if (activeWindow.peek() !== TERMINAL_SHELL_WINDOW_ID || terminalShellInputMode.peek() !== "raw") return false;
+  if (activeWindowId() !== TERMINAL_SHELL_WINDOW_ID || terminalShellInputMode.peek() !== "raw") return false;
   const shell = activeTerminalShell();
   if (!shell) return false;
   void routeTerminalPaste(shell, event, {
@@ -3119,7 +3104,7 @@ function handleTerminalShellPaste(event: PasteEvent): boolean {
 }
 
 function handleTerminalShellMouse(event: MousePressEvent | MouseScrollEvent, rect: Rectangle): boolean {
-  if (activeWindow.peek() !== TERMINAL_SHELL_WINDOW_ID || terminalShellInputMode.peek() !== "raw") return false;
+  if (activeWindowId() !== TERMINAL_SHELL_WINDOW_ID || terminalShellInputMode.peek() !== "raw") return false;
   const shell = activeTerminalShell();
   if (!shell) return false;
   const mouseRouting = terminalMouseRoutingFromPrivateModes(shell.inspect().screen.privateModes);
@@ -3136,7 +3121,7 @@ function handleTerminalShellMouse(event: MousePressEvent | MouseScrollEvent, rec
 }
 
 function handleTerminalShellScroll(event: MouseScrollEvent): boolean {
-  if (activeWindow.peek() !== TERMINAL_SHELL_WINDOW_ID) return false;
+  if (activeWindowId() !== TERMINAL_SHELL_WINDOW_ID) return false;
   const shell = activeTerminalShell();
   if (!shell) return false;
   const inspection = shell.scrollback.inspect();
@@ -3148,7 +3133,7 @@ function handleTerminalShellScroll(event: MouseScrollEvent): boolean {
 }
 
 function shellShouldReceiveCtrlC(): boolean {
-  return activeWindow.peek() === TERMINAL_SHELL_WINDOW_ID && terminalShellInputMode.peek() === "raw" &&
+  return activeWindowId() === TERMINAL_SHELL_WINDOW_ID && terminalShellInputMode.peek() === "raw" &&
     activeTerminalShell()?.running === true;
 }
 
@@ -3182,7 +3167,7 @@ function handleCpuHexGridKey(event: { key: string; ctrl?: boolean; meta?: boolea
     return false;
   }
 
-  const id = activeWindow.peek();
+  const id = activeWindowId();
   if (!isVisualizationWindow(id) || dynamicVisualizationWindows.peek()[id] !== "cpu-hex-grid") return false;
 
   const system = systemMonitor.snapshot.peek();
@@ -3345,7 +3330,6 @@ function closeWindow(id: WindowId, options: { preserveWorkspace?: boolean } = {}
   }
   windowManager.close(id);
   windowContentFrames.delete(id);
-  syncWindowSignalsFromManager();
   pushLog(`close ${windowTitle(id)}`);
 }
 
@@ -3376,7 +3360,6 @@ function toggleBuiltInWindow(
   }
   if (!plan.keepMenuOpen) closeTopMenus();
   windowManager.restore(id);
-  syncWindowSignalsFromManager();
   focus(id);
   const shell = activeTerminalShell();
   if (plan.startTerminalShell && shell && !shell.running && shell.status.peek() !== "starting") {
@@ -3441,14 +3424,12 @@ function applyControlHit(
   index?: number,
 ): void {
   windowManager.focus("controls");
-  syncWindowSignalsFromManager();
   controlsModel.applyHit(id, action, rect, x, index);
   pushLog(`control ${id} ${action}`);
 }
 
 function selectDataRow(index: number): void {
   windowManager.focus("data");
-  syncWindowSignalsFromManager();
   table.select(index);
   const selected = table.selectedKey() ?? `${index}`;
   pushLog(`data row selected: ${selected}`);
@@ -3456,7 +3437,6 @@ function selectDataRow(index: number): void {
 
 function selectExplorerRow(index: number): void {
   windowManager.focus("explorer");
-  syncWindowSignalsFromManager();
   explorer.tree.setSelectedIndex(index);
   const entry = explorer.selected();
   if (entry?.kind === "file") explorer.openActive();
@@ -3468,7 +3448,6 @@ function selectCpuHexTile(id: VisualizationWindowId, label: string): void {
   if (dynamicVisualizationWindows.peek()[id] !== "cpu-hex-grid") return;
   selectedCpuHexTiles.value = selectedCpuHexTilesWith(selectedCpuHexTiles.peek(), id, label);
   windowManager.focus(id);
-  syncWindowSignalsFromManager();
   ensureCpuHexTileVisible(id, label);
   pushLog(`cpu ${label} selected: ${topCpuProcessLabelForCpu(label, systemMonitor.snapshot.peek().processes)}`);
 }
@@ -3500,14 +3479,12 @@ function handleControlsKey(event: { key: string; ctrl?: boolean; meta?: boolean;
 function blurTextControl(): void {
   const previous = activeControl.peek();
   windowManager.focus("controls");
-  syncWindowSignalsFromManager();
   controlsModel.moveActive(1);
   pushLog(`control ${previous} blur`);
 }
 
 function focusNextControl(delta = 1): void {
   windowManager.focus("controls");
-  syncWindowSignalsFromManager();
   const next = controlsModel.moveActiveAtEdge(delta);
   if (next) {
     pushLog(`control ${activeControl.peek()} focus`);
@@ -3517,7 +3494,7 @@ function focusNextControl(delta = 1): void {
 }
 
 function isTextControlActive(): boolean {
-  return isApiWorkbenchTextControlActive(activeWindow.peek(), "controls", activeControl.peek());
+  return isApiWorkbenchTextControlActive(activeWindowId(), "controls", activeControl.peek());
 }
 
 function pushLog(message: string): void {
