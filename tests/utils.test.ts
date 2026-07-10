@@ -3,6 +3,7 @@
 import { sleep } from "../src/utils/async.ts";
 import { readCsiSequenceAt } from "../src/utils/ansi_text.ts";
 import { clamp, fits, fitsInRectangle, normalize } from "../src/utils/numbers.ts";
+import { splitSearchTerms } from "../src/utils/search.ts";
 import { SortedArray } from "../src/utils/sorted_array.ts";
 import {
   characterWidth,
@@ -44,6 +45,10 @@ Deno.test("ANSI text reader accepts complete CSI sequences only", () => {
   assertEquals(readCsiSequenceAt("x\x1b[2J", 1), "\x1b[2J");
   assertEquals(readCsiSequenceAt("plain", 0), undefined);
   assertEquals(readCsiSequenceAt("\x1b[38;2", 0), undefined);
+});
+
+Deno.test("search terms preserve punctuation and split ASCII and Unicode whitespace", () => {
+  assertEquals(splitSearchTerms(" Foo/bar\tBAZ\u00a0qux\u3000zap "), ["foo/bar", "baz", "qux", "zap"]);
 });
 
 Deno.test("utils async helpers sleep for at least the requested interval", async () => {

@@ -1,4 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
+import { everySearchTerm } from "../utils/search.ts";
+
 /** A named benchmark workload with optional warmup and pass/fail thresholds. */
 export interface BenchmarkCase {
   name: string;
@@ -327,19 +329,7 @@ function compareBenchmarkCaseInspections(left: BenchmarkCaseInspection, right: B
 }
 
 function benchmarkMatchesSearch(benchmark: BenchmarkCaseInspection, search: string): boolean {
-  let start = -1;
-  const normalized = search.toLowerCase();
-  for (let index = 0; index <= normalized.length; index += 1) {
-    const char = index < normalized.length ? normalized[index] : " ";
-    if (char !== undefined && !isSearchWhitespace(char)) {
-      if (start < 0) start = index;
-      continue;
-    }
-    if (start < 0) continue;
-    if (!benchmarkIncludesSearchPart(benchmark, normalized.slice(start, index))) return false;
-    start = -1;
-  }
-  return true;
+  return everySearchTerm(search, benchmark, benchmarkIncludesSearchPart);
 }
 
 function benchmarkIncludesSearchPart(benchmark: BenchmarkCaseInspection, part: string): boolean {
@@ -350,8 +340,4 @@ function benchmarkIncludesSearchPart(benchmark: BenchmarkCaseInspection, part: s
     if (tag.toLowerCase().includes(part)) return true;
   }
   return false;
-}
-
-function isSearchWhitespace(char: string): boolean {
-  return char === " " || char === "\n" || char === "\t" || char === "\r" || char === "\f";
 }

@@ -1,13 +1,13 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Computed, Signal } from "../signals/mod.ts";
 import { clamp } from "../utils/numbers.ts";
+import { splitSearchTerms } from "../utils/search.ts";
 import {
   CachedAsyncResource,
   type CachedAsyncResourceInspection,
   type CachedAsyncResourceOptions,
 } from "./resource.ts";
 
-const QUERY_WHITESPACE = /\s/;
 type ActiveDataQueryFilter = { field: string; expected: unknown };
 
 /** Public type alias for a data Query Sort Direction. */
@@ -234,7 +234,7 @@ export function queryLocalData<
   options: LocalDataQueryOptions<TRow, TFilters> = {},
 ): DataQueryResult<TRow> {
   const normalized = normalizeDataQueryParams(params);
-  const terms = parseDataQueryTerms(normalized.query);
+  const terms = splitSearchTerms(normalized.query);
   const activeFilters = activeDataQueryFilters(normalized.filters);
   let matched: readonly TRow[] = rows;
   if (terms.length > 0 || activeFilters.length > 0 || options.filter) {
@@ -353,25 +353,6 @@ function activeDataQueryFilters(filters: DataQueryFilters): ActiveDataQueryFilte
     }
   }
   return active;
-}
-
-function parseDataQueryTerms(query: string): string[] {
-  const normalized = query.trim().toLowerCase();
-  if (!normalized) return [];
-  const terms: string[] = [];
-  let start = -1;
-  for (let index = 0; index <= normalized.length; index += 1) {
-    const whitespace = index >= normalized.length || QUERY_WHITESPACE.test(normalized[index]!);
-    if (whitespace) {
-      if (start >= 0) {
-        terms.push(normalized.slice(start, index));
-        start = -1;
-      }
-    } else if (start < 0) {
-      start = index;
-    }
-  }
-  return terms;
 }
 
 function sortLocalData<TRow extends Record<string, unknown>>(

@@ -3,6 +3,7 @@ import type { KeyPressEvent } from "../input_reader/types.ts";
 import { clampSelectionIndex } from "../selection.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { clamp } from "../utils/numbers.ts";
+import { splitSearchTerms } from "../utils/search.ts";
 import { cropToWidth, textWidth } from "../utils/strings.ts";
 
 /** Public type alias for a sort Direction. */
@@ -252,7 +253,7 @@ export function filterDataRows<TRow extends Record<string, unknown>>(
   columns: readonly DataColumn<TRow>[],
   query: string,
 ): TRow[] {
-  const terms = parseSearchTerms(query);
+  const terms = splitSearchTerms(query);
   if (terms.length === 0) return copyDataRows(rows);
   const filtered: TRow[] = [];
   for (const row of rows) {
@@ -373,29 +374,6 @@ function selectedRowIndex<TRow extends Record<string, unknown>>(
     if (rowKey(rows[index]!, index) === state.selectedKey) return index;
   }
   return -1;
-}
-
-function parseSearchTerms(query: string): string[] {
-  const normalized = query.trim().toLowerCase();
-  if (!normalized) return [];
-  const terms: string[] = [];
-  let start = -1;
-  for (let index = 0; index <= normalized.length; index += 1) {
-    const whitespace = index >= normalized.length || isSearchWhitespace(normalized.charCodeAt(index));
-    if (whitespace) {
-      if (start >= 0) {
-        terms.push(normalized.slice(start, index));
-        start = -1;
-      }
-    } else if (start < 0) {
-      start = index;
-    }
-  }
-  return terms;
-}
-
-function isSearchWhitespace(charCode: number): boolean {
-  return charCode === 32 || charCode === 9 || charCode === 10 || charCode === 13 || charCode === 12 || charCode === 11;
 }
 
 function stringifyCell(value: unknown): string {

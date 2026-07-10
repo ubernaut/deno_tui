@@ -17,6 +17,23 @@ export function searchTerms(query: string): string[] {
   return normalized.length === 0 ? [] : normalized.split(" ");
 }
 
+/** Splits plain search text on whitespace while preserving punctuation. */
+export function splitSearchTerms(query: string): string[] {
+  return query.toLowerCase().match(/\S+/g) ?? [];
+}
+
+/** Returns whether every normalized term satisfies a predicate. */
+export function everySearchTerm<T>(
+  query: string,
+  subject: T,
+  predicate: (subject: T, term: string) => boolean,
+): boolean {
+  for (const term of splitSearchTerms(query)) {
+    if (!predicate(subject, term)) return false;
+  }
+  return true;
+}
+
 /** Builds weighted search fields with precomputed normalized text. */
 export function weightedSearchFields(fields: readonly { value: string; weight: number }[]): WeightedSearchField[] {
   const weighted = new Array<WeightedSearchField>(fields.length);

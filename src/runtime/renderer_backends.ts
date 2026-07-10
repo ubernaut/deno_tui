@@ -7,6 +7,7 @@ import {
 } from "./capabilities.ts";
 import { Signal } from "../signals/mod.ts";
 import { uniqueSortedStrings as uniqueSorted } from "../utils/collections.ts";
+import { everySearchTerm } from "../utils/search.ts";
 
 /** Public interface describing a runtime Renderer Backend Definition. */
 export interface RuntimeRendererBackendDefinition {
@@ -521,23 +522,7 @@ function matchesRendererBackend(
 }
 
 function rendererBackendMatchesSearch(backend: RuntimeRendererBackendInspection, search: string): boolean {
-  let start = -1;
-  const normalized = search.toLowerCase();
-  for (let index = 0; index <= normalized.length; index += 1) {
-    const char = index < normalized.length ? normalized[index] : " ";
-    if (char !== undefined && !isSearchWhitespace(char)) {
-      if (start < 0) start = index;
-      continue;
-    }
-    if (start < 0) continue;
-    if (!rendererBackendIncludesSearchPart(backend, normalized.slice(start, index))) return false;
-    start = -1;
-  }
-  return true;
-}
-
-function isSearchWhitespace(char: string): boolean {
-  return char === " " || char === "\n" || char === "\t" || char === "\r" || char === "\f";
+  return everySearchTerm(search, backend, rendererBackendIncludesSearchPart);
 }
 
 function compareRendererBackends(left: RuntimeRendererBackend, right: RuntimeRendererBackend): number {
