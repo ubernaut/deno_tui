@@ -1602,6 +1602,28 @@ Deno.test("three ascii saturated performance preserves previous frame timing", (
   );
 });
 
+Deno.test("three ascii performance projection reuses retained snapshots and clears stale fields", () => {
+  const input = {
+    columns: 12,
+    rows: 8,
+    terminalGlyphStyle: "blocks" as const,
+    frameMs: 16,
+    sceneMs: 9,
+    ansiMs: 7,
+    readbackMs: 4,
+    assemblyMs: 2,
+  };
+  const target = createThreeAsciiRendererPerformance(input);
+  target.deferredReadbackSlots = 4;
+  target.deferredReadbackSaturated = true;
+
+  assertStrictEquals(createThreeAsciiRendererPerformance(input, target), target);
+  assertEquals(
+    [target.totalMs, target.sceneMs, target.cells, target.deferredReadbackSlots, target.deferredReadbackSaturated],
+    [16, 9, 96, undefined, undefined],
+  );
+});
+
 Deno.test("three ascii headless canvas compacts tightly packed and padded mapped rows", () => {
   const tightSource = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
   const tightTarget = new Uint8Array(8);

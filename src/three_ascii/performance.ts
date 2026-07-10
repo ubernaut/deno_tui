@@ -57,52 +57,67 @@ export interface ThreeAsciiRendererSaturatedPerformanceInput {
   queue: Pick<ThreeAsciiReadbackQueueInspection, "slotCount" | "pending" | "unresolved" | "resolved">;
 }
 
-/** Creates a renderer performance snapshot from measured frame timings. */
+/** Creates or updates a renderer performance snapshot from measured frame timings. */
 export function createThreeAsciiRendererPerformance(
   input: ThreeAsciiRendererPerformanceInput,
+  target = emptyThreeAsciiRendererPerformance(input.terminalGlyphStyle),
 ): ThreeAsciiRendererPerformance {
-  return {
-    columns: input.columns,
-    rows: input.rows,
-    cells: input.columns * input.rows,
-    terminalGlyphStyle: input.terminalGlyphStyle,
-    totalMs: input.frameMs,
-    initMs: input.initMs ?? 0,
-    sceneMs: input.sceneMs,
-    sceneUpdateMs: input.sceneUpdateMs,
-    sceneRenderMs: input.sceneRenderMs,
-    ansiMs: input.ansiMs,
-    readbackMs: input.readbackMs,
-    assemblyMs: input.assemblyMs,
-    deferredReadbackSlots: input.queue?.slotCount,
-    deferredReadbackPending: input.queue?.pending,
-    deferredReadbackUnresolved: input.queue?.unresolved,
-    deferredReadbackResolved: input.queue?.resolved,
-    deferredReadbackSaturated: input.queue?.saturated,
-  };
+  target.columns = input.columns;
+  target.rows = input.rows;
+  target.cells = input.columns * input.rows;
+  target.terminalGlyphStyle = input.terminalGlyphStyle;
+  target.totalMs = input.frameMs;
+  target.initMs = input.initMs ?? 0;
+  target.sceneMs = input.sceneMs;
+  target.sceneUpdateMs = input.sceneUpdateMs;
+  target.sceneRenderMs = input.sceneRenderMs;
+  target.ansiMs = input.ansiMs;
+  target.readbackMs = input.readbackMs;
+  target.assemblyMs = input.assemblyMs;
+  target.deferredReadbackSlots = input.queue?.slotCount;
+  target.deferredReadbackPending = input.queue?.pending;
+  target.deferredReadbackUnresolved = input.queue?.unresolved;
+  target.deferredReadbackResolved = input.queue?.resolved;
+  target.deferredReadbackSaturated = input.queue?.saturated;
+  return target;
 }
 
-/** Creates a renderer performance snapshot for a saturated deferred-readback frame. */
+/** Creates or updates a performance snapshot for a saturated deferred-readback frame. */
 export function createThreeAsciiRendererSaturatedPerformance(
   input: ThreeAsciiRendererSaturatedPerformanceInput,
+  target = emptyThreeAsciiRendererPerformance(input.terminalGlyphStyle),
 ): ThreeAsciiRendererPerformance {
+  target.columns = input.columns;
+  target.rows = input.rows;
+  target.cells = input.columns * input.rows;
+  target.terminalGlyphStyle = input.terminalGlyphStyle;
+  target.totalMs = input.previousFrameMs ?? input.frameMs;
+  target.initMs = 0;
+  target.sceneMs = 0;
+  target.sceneUpdateMs = 0;
+  target.sceneRenderMs = 0;
+  target.ansiMs = 0;
+  target.readbackMs = input.readbackMs;
+  target.assemblyMs = 0;
+  target.deferredReadbackSlots = input.queue.slotCount;
+  target.deferredReadbackPending = input.queue.pending;
+  target.deferredReadbackUnresolved = input.queue.unresolved;
+  target.deferredReadbackResolved = input.queue.resolved;
+  target.deferredReadbackSaturated = true;
+  return target;
+}
+
+function emptyThreeAsciiRendererPerformance(terminalGlyphStyle: TerminalGlyphStyle): ThreeAsciiRendererPerformance {
   return {
-    columns: input.columns,
-    rows: input.rows,
-    cells: input.columns * input.rows,
-    terminalGlyphStyle: input.terminalGlyphStyle,
-    totalMs: input.previousFrameMs ?? input.frameMs,
+    columns: 0,
+    rows: 0,
+    cells: 0,
+    terminalGlyphStyle,
+    totalMs: 0,
     initMs: 0,
     sceneMs: 0,
-    sceneUpdateMs: 0,
-    sceneRenderMs: 0,
     ansiMs: 0,
-    readbackMs: input.readbackMs,
+    readbackMs: 0,
     assemblyMs: 0,
-    deferredReadbackSlots: input.queue.slotCount,
-    deferredReadbackPending: input.queue.pending,
-    deferredReadbackUnresolved: input.queue.unresolved,
-    deferredReadbackResolved: input.queue.resolved,
-    deferredReadbackSaturated: true,
   };
 }
