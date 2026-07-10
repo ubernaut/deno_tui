@@ -58,6 +58,20 @@ Deno.test("parseAnsiCell extracts text and ANSI colors for browser rendering", (
     bold: false,
     dim: false,
   });
+  assertEquals(parseAnsiCell("\x1b[90;107mP"), {
+    text: "P",
+    foreground: "#475569",
+    background: "#f8fafc",
+    bold: false,
+    dim: false,
+  });
+  assertEquals(parseAnsiCell("\x1b[38;5;232;48;5;255mG"), {
+    text: "G",
+    foreground: "rgb(8,8,8)",
+    background: "rgb(238,238,238)",
+    bold: false,
+    dim: false,
+  });
 });
 
 Deno.test("BrowserCellCanvasSink paints dirty cells to a 2D context", () => {
