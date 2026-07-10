@@ -441,7 +441,45 @@ Deno.test("HorizontalLayout indexes elements and drops stale entries when patter
   assertThrows(() => layout.element("tools"), LayoutMissingElementError);
   assertEquals(layout.element("main").peek(), rect(0, 0, 80, 10));
 
+  assertThrows(() => {
+    pattern.value = ["main", "tools", "main"];
+  }, LayoutInvalidElementsPatternError);
   layout.dispose();
+});
+
+Deno.test("linear layouts preserve axis-specific uneven gap geometry", () => {
+  const horizontal = new HorizontalLayout({
+    pattern: ["a", "a", "b", "c"],
+    rectangle: rect(2, 3, 14, 9),
+    gapX: 1,
+    gapY: 2,
+  });
+  assertEquals(
+    horizontal.elements.map((element) => ({ name: element.name, rectangle: element.rectangle.peek() })),
+    [
+      { name: "a", rectangle: rect(3, 5, 5, 5) },
+      { name: "b", rectangle: rect(9, 5, 2, 5) },
+      { name: "c", rectangle: rect(12, 5, 2, 5) },
+    ],
+  );
+
+  const vertical = new VerticalLayout({
+    pattern: ["a", "a", "b", "c"],
+    rectangle: rect(2, 3, 14, 11),
+    gapX: 2,
+    gapY: 1,
+  });
+  assertEquals(
+    vertical.elements.map((element) => ({ name: element.name, rectangle: element.rectangle.peek() })),
+    [
+      { name: "a", rectangle: rect(4, 4, 10, 3) },
+      { name: "b", rectangle: rect(4, 8, 10, 1) },
+      { name: "c", rectangle: rect(4, 10, 10, 2) },
+    ],
+  );
+
+  horizontal.dispose();
+  vertical.dispose();
 });
 
 Deno.test("VerticalLayout indexes elements handles empty patterns and stops reacting after dispose", async () => {
