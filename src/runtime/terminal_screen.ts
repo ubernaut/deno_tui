@@ -6,6 +6,7 @@ import {
 } from "./terminal_sequences.ts";
 import { clamp } from "../utils/numbers.ts";
 import { textWidth, UNICODE_CHAR_REGEXP } from "../utils/strings.ts";
+import { normalizeTerminalDimension } from "./terminal_values.ts";
 
 /** Styled terminal cell tracked by TerminalScreenController. */
 export interface TerminalScreenCell {
@@ -83,8 +84,8 @@ export class TerminalScreenController {
   readonly #decoder = new TextDecoder();
 
   constructor(options: TerminalScreenControllerOptions = {}) {
-    this.#columns = normalizeDimension(options.columns, DEFAULT_COLUMNS);
-    this.#rows = normalizeDimension(options.rows, DEFAULT_ROWS);
+    this.#columns = normalizeTerminalDimension(options.columns, DEFAULT_COLUMNS);
+    this.#rows = normalizeTerminalDimension(options.rows, DEFAULT_ROWS);
     this.#scrollbackLimit = Math.max(0, Math.floor(options.scrollbackLimit ?? DEFAULT_SCROLLBACK_LIMIT));
     this.#state = {
       cells: createRows(this.#columns, this.#rows),
@@ -128,8 +129,8 @@ export class TerminalScreenController {
   }
 
   resize(columns: number, rows: number): void {
-    const nextColumns = normalizeDimension(columns, this.#columns);
-    const nextRows = normalizeDimension(rows, this.#rows);
+    const nextColumns = normalizeTerminalDimension(columns, this.#columns);
+    const nextRows = normalizeTerminalDimension(rows, this.#rows);
     if (nextColumns === this.#columns && nextRows === this.#rows) return;
     this.#columns = nextColumns;
     this.#rows = nextRows;
@@ -866,11 +867,6 @@ function cloneState(state: TerminalScreenState): TerminalScreenState {
     cells: cloneTerminalCellRows(state.cells),
     cursor: { ...state.cursor },
   };
-}
-
-function normalizeDimension(value: number | undefined, fallback: number): number {
-  if (!Number.isFinite(value)) return fallback;
-  return Math.max(1, Math.floor(value!));
 }
 
 function clampByte(value: number): number {

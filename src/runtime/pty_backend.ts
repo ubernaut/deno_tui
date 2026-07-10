@@ -16,6 +16,7 @@ import type {
 } from "./terminal_backend.ts";
 import type { TerminalBackendAvailability, TerminalBackendProvider } from "./terminal_backend_registry.ts";
 import type { DiagnosticsCollector } from "./diagnostics.ts";
+import { cloneTerminalCommand, normalizeTerminalDimension } from "./terminal_values.ts";
 
 const INPUT_DECODER = new TextDecoder();
 
@@ -239,7 +240,7 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
     diagnostics?: DiagnosticsCollector;
   }) {
     this.backendId = options.backendId;
-    this.command = cloneProcessSessionCommand(options.command);
+    this.command = cloneTerminalCommand(options.command);
     this.#pty = options.pty;
     this.output = options.output ?? new TerminalOutputController();
     this.#onData = options.onData;
@@ -384,7 +385,7 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
 
   #processInspection(): ProcessSessionInspection {
     return {
-      command: cloneProcessSessionCommand(this.command),
+      command: cloneTerminalCommand(this.command),
       commandLine: formatProcessCommandLine(this.command),
       status: this.#status,
       running: this.#status === "running",
@@ -392,20 +393,6 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
       output: this.output.inspect(),
     };
   }
-}
-
-function cloneProcessSessionCommand(command: ProcessSessionCommand): ProcessSessionCommand {
-  return {
-    command: command.command,
-    args: command.args ? [...command.args] : undefined,
-    cwd: command.cwd,
-    env: command.env ? { ...command.env } : undefined,
-  };
-}
-
-function normalizeTerminalDimension(value: number | undefined, fallback: number): number {
-  if (!Number.isFinite(value)) return fallback;
-  return Math.max(1, Math.floor(value!));
 }
 
 function errorMessage(error: unknown): string {

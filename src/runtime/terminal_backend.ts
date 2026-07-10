@@ -10,6 +10,7 @@ import {
   type ProcessSessionSpawner,
   type ProcessSessionStatus,
 } from "./process_session.ts";
+import { normalizeTerminalDimension } from "./terminal_values.ts";
 
 /** Command and geometry options for spawning a terminal session backend. */
 export interface TerminalBackendSpawnOptions extends ProcessSessionCommand {
@@ -193,9 +194,4 @@ class ProcessTerminalSessionHandle implements TerminalSessionHandle {
   dispose(): Promise<void> {
     return this.#session.dispose();
   }
-}
-
-function normalizeTerminalDimension(value: number | undefined, fallback: number): number {
-  if (!Number.isFinite(value)) return fallback;
-  return Math.max(1, Math.floor(value!));
 }

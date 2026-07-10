@@ -39,11 +39,11 @@ What needs correction:
 
 ## Current Snapshot
 
-- Tracked files: `496`
-- Directory counts: `src 268`, `tests 72`, `examples 42`, `plan 26`, `scripts 22`, `docs 20`, `app 20`
+- Tracked files: `497`
+- Directory counts: `src 269`, `tests 72`, `examples 42`, `plan 26`, `scripts 22`, `docs 20`, `app 20`
 - Top-level TypeScript:
   - `src/app`: `73` files, about `24.4k` lines
-  - `src/runtime`: `32` files, about `10.9k` lines
+  - `src/runtime`: `33` files, about `10.9k` lines
   - `src/components`: `45` files, about `10.0k` lines
   - `src/three_ascii`: `20` files, about `6.9k` lines
   - `app`: `20` files, about `21.1k` lines

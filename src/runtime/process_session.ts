@@ -6,6 +6,7 @@ import {
 } from "../components/terminal_output.ts";
 import { Signal } from "../signals/mod.ts";
 import type { DiagnosticsCollector } from "./diagnostics.ts";
+import { cloneTerminalCommand } from "./terminal_values.ts";
 
 const INPUT_ENCODER = new TextEncoder();
 
@@ -78,7 +79,7 @@ export class ProcessSessionController {
   #startedAt = 0;
 
   constructor(options: ProcessSessionControllerOptions) {
-    this.command = new Signal(normalizeProcessSessionCommand(options));
+    this.command = new Signal(cloneTerminalCommand(options));
     this.output = options.output ?? new TerminalOutputController({ limit: options.limit });
     this.#appendCommandLine = options.appendCommandLine ?? true;
     this.#now = options.now ?? (() => Date.now());
@@ -95,7 +96,7 @@ export class ProcessSessionController {
     if (this.running) {
       throw new Error("Cannot change a running process session command");
     }
-    this.command.value = normalizeProcessSessionCommand(command);
+    this.command.value = cloneTerminalCommand(command);
   }
 
   async start(command?: ProcessSessionCommand): Promise<boolean> {
@@ -299,15 +300,6 @@ export function formatProcessCommandLine(command: ProcessSessionCommand): string
     line += ` ${quoteCommandToken(args[index]!)}`;
   }
   return line;
-}
-
-function normalizeProcessSessionCommand(command: ProcessSessionCommand): ProcessSessionCommand {
-  return {
-    command: command.command,
-    args: command.args ? [...command.args] : undefined,
-    cwd: command.cwd,
-    env: command.env ? { ...command.env } : undefined,
-  };
 }
 
 function quoteCommandToken(token: string): string {

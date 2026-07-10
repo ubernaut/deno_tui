@@ -12,6 +12,7 @@ import type { DiagnosticsCollector } from "./diagnostics.ts";
 import { TerminalScrollbackController, type TerminalScrollbackInspection } from "./terminal_scrollback.ts";
 import { TerminalScreenController, type TerminalScreenInspection } from "./terminal_screen.ts";
 import { shellTerminalTemplate, terminalTemplateToSpawnOptions } from "./terminal_templates.ts";
+import { cloneTerminalCommand, normalizeTerminalDimension } from "./terminal_values.ts";
 
 /** Options for an interactive shell session backed by a terminal backend. */
 export interface TerminalShellControllerOptions {
@@ -82,8 +83,8 @@ export class TerminalShellController {
     this.#cwd = options.cwd;
     this.#env = options.env ? { ...options.env } : undefined;
     this.#diagnostics = options.diagnostics;
-    this.#columns = normalizeTerminalShellDimension(options.columns, 80);
-    this.#rows = normalizeTerminalShellDimension(options.rows, 24);
+    this.#columns = normalizeTerminalDimension(options.columns, 80);
+    this.#rows = normalizeTerminalDimension(options.rows, 24);
     this.#now = options.now ?? (() => Date.now());
     this.#onUpdate = options.onUpdate;
     this.output = options.output ?? new TerminalOutputController();
@@ -190,8 +191,8 @@ export class TerminalShellController {
   }
 
   resize(columns: number, rows: number): void {
-    const nextColumns = normalizeTerminalShellDimension(columns, this.#columns);
-    const nextRows = normalizeTerminalShellDimension(rows, this.#rows);
+    const nextColumns = normalizeTerminalDimension(columns, this.#columns);
+    const nextRows = normalizeTerminalDimension(rows, this.#rows);
     if (nextColumns === this.#columns && nextRows === this.#rows) return;
     this.#columns = nextColumns;
     this.#rows = nextRows;
@@ -209,7 +210,7 @@ export class TerminalShellController {
   inspect(): TerminalShellInspection {
     const session = this.#session?.inspect();
     const status = this.status.peek();
-    const command = cloneShellCommand(this.#command);
+    const command = cloneTerminalCommand(this.#command);
     const screen = this.screen.inspect();
     const result: TerminalShellInspection = {
       title: screen.title,
@@ -256,18 +257,4 @@ export class TerminalShellController {
       },
     });
   }
-}
-
-function cloneShellCommand(command: ProcessSessionCommand): ProcessSessionCommand {
-  return {
-    command: command.command,
-    args: command.args ? [...command.args] : undefined,
-    cwd: command.cwd,
-    env: command.env ? { ...command.env } : undefined,
-  };
-}
-
-function normalizeTerminalShellDimension(value: number | undefined, fallback: number): number {
-  if (!Number.isFinite(value)) return fallback;
-  return Math.max(1, Math.floor(value!));
 }

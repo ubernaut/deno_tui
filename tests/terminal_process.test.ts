@@ -262,12 +262,23 @@ Deno.test("terminal hint formatters cover process output shell and copy modes", 
 
 Deno.test("ProcessSessionController streams stdout stderr and exit metadata", async () => {
   const raw: string[] = [];
+  const args = ["--stdout", "--stderr"];
+  const env = { MODE: "test" };
   const session = new ProcessSessionController({
     command: "demo",
-    args: ["--stdout", "--stderr"],
+    args,
+    env,
     now: () => 10,
     spawn: () => completedChild("alpha\n", "beta\n", { code: 0, success: true }),
     onOutputData: (source, data) => raw.push(`${source}:${new TextDecoder().decode(data)}`),
+  });
+  args[0] = "--mutated";
+  env.MODE = "mutated";
+  assertEquals(session.command.peek(), {
+    command: "demo",
+    args: ["--stdout", "--stderr"],
+    cwd: undefined,
+    env: { MODE: "test" },
   });
 
   assertEquals(await session.start(), true);
