@@ -32,6 +32,42 @@ Every new feature cluster should include:
 
 These helpers are intentionally small and do not choose a test framework. They work with Deno's built-in test runner.
 
+## Application Pilot
+
+`createTestTerminalApp()` constructs the real opinionated app shell on a deterministic in-memory canvas and returns a
+`TerminalAppPilot`. It disables host stdin and process-signal ownership while preserving commands, action middleware,
+focus, component registration, pointer routing, responsive layout, and rendering.
+
+```ts
+import { assertEquals } from "jsr:@std/assert";
+import { createTestTerminalApp } from "jsr:@scope/package/testing";
+
+let count = 0;
+const harness = await createTestTerminalApp<{ type: "increment" }>({
+  commands: [{
+    id: "increment",
+    label: "Increment",
+    binding: { key: "i" },
+    action: { type: "increment" },
+  }],
+  onAction: () => count += 1,
+});
+
+try {
+  await harness.pilot.press("i");
+  await harness.pilot.resize(100, 30);
+  assertEquals(count, 1);
+  assertEquals(harness.canvas.size.peek(), { columns: 100, rows: 30 });
+} finally {
+  harness.destroy();
+}
+```
+
+The pilot also provides `click()`, `scroll()`, `paste()`, `focus()`, `executeCommand()`, direct action `dispatch()`,
+`settle()`, `waitFor()`, and normalized canvas `snapshot()`. Key and action methods settle asynchronous action handlers
+before returning. Pointer methods await the app mouse router directly, making async hit targets deterministic without a
+real terminal input loop.
+
 ## Runtime Performance Layer
 
 `src/runtime/mod.ts` exposes:

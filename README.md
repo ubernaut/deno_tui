@@ -96,7 +96,7 @@ The export map in `deno.jsonc` defines the supported package boundaries:
 | `./theme`       | `mod.theme.ts`               | shared   | beta         |
 | `./runtime`     | `mod.runtime.ts`             | shared   | beta         |
 | `./terminal`    | `mod.terminal.ts`            | terminal | beta         |
-| `./testing`     | `mod.testing.ts`             | shared   | beta         |
+| `./testing`     | `mod.testing.ts`             | terminal | beta         |
 | `./layout/yoga` | `src/layout/solvers/yoga.ts` | shared   | experimental |
 
 Use `./app` for new terminal applications and the root entrypoint for compatibility or low-level composition. Focused

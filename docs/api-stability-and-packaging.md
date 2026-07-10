@@ -15,7 +15,7 @@ Deno export map in `deno.jsonc`, README guidance, and release notes should stay 
 | `./theme`       | `mod.theme.ts`               | shared   | beta         | Theme engines, semantic tokens, providers, resolvers, galleries, validation, and palette packs.                                |
 | `./runtime`     | `mod.runtime.ts`             | shared   | beta         | Scheduling, workers, storage, resources, diagnostics, terminal plans, graphics, and renderer backends.                         |
 | `./terminal`    | `mod.terminal.ts`            | terminal | beta         | Input parsing, terminal screens, shell/process sessions, PTY backends, scrollback, and workspaces.                             |
-| `./testing`     | `mod.testing.ts`             | shared   | beta         | Downstream input, snapshot, canvas, and application interaction test helpers.                                                  |
+| `./testing`     | `mod.testing.ts`             | terminal | beta         | Downstream headless app interaction, input, snapshot, stdout, and canvas test helpers.                                         |
 | `./layout/yoga` | `src/layout/solvers/yoga.ts` | shared   | experimental | Optional Yoga-backed Flexbox solving for HTML/CSS-style layout trees.                                                          |
 
 Local development imports use relative paths:

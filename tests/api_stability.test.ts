@@ -36,6 +36,12 @@ Deno.test("package entrypoint manifest separates terminal web and remote surface
   assertEquals(packageEntrypointFor("./mod.three_ascii.ts")?.specifier, "./three-ascii");
   assertEquals(packageEntrypointFor("./mod.theme.ts")?.specifier, "./theme");
   assertEquals(filterPackageEntrypoints({ runtime: "browser" }).map((entrypoint) => entrypoint.specifier), ["./web"]);
+  assertEquals(filterPackageEntrypoints({ runtime: "terminal" }).map((entrypoint) => entrypoint.specifier), [
+    ".",
+    "./app",
+    "./terminal",
+    "./testing",
+  ]);
   assertEquals(filterPackageEntrypoints({ stability: "experimental" }).map((entrypoint) => entrypoint.specifier), [
     "./remote",
     "./three-ascii",

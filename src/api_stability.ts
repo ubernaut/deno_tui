@@ -189,11 +189,16 @@ export const packageEntrypoints = [
   {
     specifier: "./testing",
     path: "./mod.testing.ts",
-    runtime: "shared",
+    runtime: "terminal",
     stability: "beta",
     description:
-      "Testing helpers for snapshots, fake input events, focus targets, stdout capture, and canvas snapshots.",
-    includes: ["test input factories", "snapshot normalization", "test stdout", "test canvas helpers"],
+      "Headless terminal app pilot, snapshots, fake input events, stdout capture, and deterministic canvas helpers.",
+    includes: [
+      "TerminalApp interaction pilot",
+      "test input factories",
+      "snapshot normalization",
+      "test stdout and canvas helpers",
+    ],
     excludes: ["demo screenshots", "Playwright harnesses", "runtime benchmarks"],
   },
   {
@@ -267,7 +272,7 @@ export const apiSurfacePolicies = [
   },
   {
     pattern: "mod.testing.ts",
-    runtime: "shared",
+    runtime: "terminal",
     stability: "beta",
     public: true,
     description: "Focused test helper package entrypoint for downstream apps.",

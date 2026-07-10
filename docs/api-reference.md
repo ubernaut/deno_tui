@@ -6,13 +6,13 @@ separate while shared module declarations are listed once with explicit entrypoi
 ## Summary
 
 - Entrypoints: 10
-- Unique modules: 238
-- Module visits: 539
-- Unique re-export declarations: 346
-- Re-export declaration visits: 533
-- Unique symbol declarations: 2363
-- Symbol declaration visits: 5369
-- Documented symbol declarations: 2363
+- Unique modules: 239
+- Module visits: 540
+- Unique re-export declarations: 347
+- Re-export declaration visits: 534
+- Unique symbol declarations: 2372
+- Symbol declaration visits: 5378
+- Documented symbol declarations: 2372
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -29,7 +29,7 @@ separate while shared module declarations are listed once with explicit entrypoi
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
 | `./runtime`     | `./mod.runtime.ts`             | shared   | beta         |      31 |     402 | 100.00% |
 | `./terminal`    | `./mod.terminal.ts`            | terminal | beta         |      15 |     157 | 100.00% |
-| `./testing`     | `./mod.testing.ts`             | shared   | beta         |       3 |      22 | 100.00% |
+| `./testing`     | `./mod.testing.ts`             | terminal | beta         |       4 |      31 | 100.00% |
 | `./layout/yoga` | `./src/layout/solvers/yoga.ts` | shared   | experimental |       1 |       3 | 100.00% |
 
 ## Entrypoint .
@@ -154,15 +154,15 @@ Terminal parser, screen, shell, backend, PTY, workspace, and input-reader primit
 
 ## Entrypoint ./testing
 
-Testing helpers for snapshots, fake input events, focus targets, stdout capture, and canvas snapshots.
+Headless terminal app pilot, snapshots, fake input events, stdout capture, and deterministic canvas helpers.
 
 - Path: `./mod.testing.ts`
-- Runtime: shared
+- Runtime: terminal
 - Stability: beta
-- Modules: 3
-- Re-export declarations: 2
-- Exported symbols: 22
-- Documented symbols: 22
+- Modules: 4
+- Re-export declarations: 3
+- Exported symbols: 31
+- Documented symbols: 31
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -190,7 +190,7 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`mod.remote.ts`](#mod-remote-ts)                                                               | `./remote`                              |          3 |       0 |          0 |
 | [`mod.runtime.ts`](#mod-runtime-ts)                                                             | `./runtime`                             |          1 |       0 |          0 |
 | [`mod.terminal.ts`](#mod-terminal-ts)                                                           | `./terminal`                            |         14 |       0 |          0 |
-| [`mod.testing.ts`](#mod-testing-ts)                                                             | `./testing`                             |          2 |       0 |          0 |
+| [`mod.testing.ts`](#mod-testing-ts)                                                             | `./testing`                             |          3 |       0 |          0 |
 | [`mod.theme.ts`](#mod-theme-ts)                                                                 | `./theme`                               |          9 |       0 |          0 |
 | [`mod.three_ascii.ts`](#mod-three-ascii-ts)                                                     | `./three-ascii`                         |          1 |       0 |          0 |
 | [`mod.ts`](#mod-ts)                                                                             | `.`                                     |         34 |       0 |          0 |
@@ -386,6 +386,7 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/signals/reactivity.ts`](#src-signals-reactivity-ts)                                       | `.`, `./app`, `./web`                   |          0 |      13 |         13 |
 | [`src/signals/signal.ts`](#src-signals-signal-ts)                                               | `.`, `./app`, `./web`                   |          0 |      11 |         11 |
 | [`src/signals/types.ts`](#src-signals-types-ts)                                                 | `.`, `./app`, `./web`                   |          0 |       4 |          4 |
+| [`src/testing/app.ts`](#src-testing-app-ts)                                                     | `./testing`                             |          0 |       9 |          9 |
 | [`src/testing/input.ts`](#src-testing-input-ts)                                                 | `.`, `./testing`                        |          0 |       7 |          7 |
 | [`src/testing/snapshot.ts`](#src-testing-snapshot-ts)                                           | `.`, `./testing`                        |          0 |      15 |         15 |
 | [`src/theme_binding.ts`](#src-theme-binding-ts)                                                 | `.`, `./web`, `./theme`                 |          0 |       8 |          8 |
@@ -530,6 +531,7 @@ _Entrypoints: `./testing`_
 | ------------------------- | ---- | ----- |
 | `src/testing/input.ts`    | star | -     |
 | `src/testing/snapshot.ts` | star | -     |
+| `src/testing/app.ts`      | star | -     |
 
 _No direct exported symbols._
 
@@ -4152,6 +4154,22 @@ _Entrypoints: `.`, `./app`, `./web`_
 | `Dependency`    | interface | yes       | yes   |
 | `LazyDependant` | interface | yes       | yes   |
 | `Subscription`  | interface | yes       | yes   |
+
+### src/testing/app.ts
+
+_Entrypoints: `./testing`_
+
+| Symbol                           | Kind      | Type Only | JSDoc |
+| -------------------------------- | --------- | --------- | ----- |
+| `createTestTerminalApp`          | function  | no        | yes   |
+| `TerminalAppPilot`               | class     | no        | yes   |
+| `TerminalAppPilotClickResult`    | interface | yes       | yes   |
+| `TerminalAppPilotPointerOptions` | interface | yes       | yes   |
+| `TerminalAppPilotSettleOptions`  | interface | yes       | yes   |
+| `TerminalAppPilotWaitOptions`    | interface | yes       | yes   |
+| `TestTerminalAppHarness`         | interface | yes       | yes   |
+| `TestTerminalAppOptions`         | type      | yes       | yes   |
+| `TestTerminalAppTuiOptions`      | type      | yes       | yes   |
 
 ### src/testing/input.ts
 
