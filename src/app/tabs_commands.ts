@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TabItem, TabsController, TabsInspection } from "../components/tabs.ts";
 import type { Action } from "./actions.ts";
-import { actionCommandGroup } from "./command_helpers.ts";
+import { actionCommandGroup, CommandGroupBuilder } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for tabs Command variants. */
@@ -40,10 +40,10 @@ export function tabsCommands<TAction extends Action = TabsCommandAction>(
   const label = (kind: TabsCommandKind, fallback: string) => options.labels?.[kind] ?? fallback;
   const tabLabel = options.tabLabel ?? ((tab: TabItem) => tab.label);
   const payload = (): TabsCommandPayload => ({ id, inspection: controller.inspect() });
-  const commands: Command<TAction>[] = [];
+  const builder = new CommandGroupBuilder<TAction>(idPrefix, group);
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(...actionCommandGroup<TAction, TabsCommandPayload, TabsCommandKind, TabItem | undefined>({
+    builder.commands.push(...actionCommandGroup<TAction, TabsCommandPayload, TabsCommandKind, TabItem | undefined>({
       idPrefix,
       group,
       type: "tabs.changed",
@@ -61,27 +61,22 @@ export function tabsCommands<TAction extends Action = TabsCommandAction>(
 
   if (options.includeTabCommands ?? false) {
     for (const [index, tab] of controller.tabs.peek().entries()) {
-      commands.push({
-        id: `${idPrefix}.tab.${tab.id}`,
-        label: `${label("tab", "Go to Tab")}: ${tabLabel(tab, index)}`,
-        group,
-        keywords: ["tab", "tabs", tab.id, tab.label],
-        disabled: () => {
+      builder.addOptionalAction(
+        `tab.${tab.id}`,
+        `${label("tab", "Go to Tab")}: ${tabLabel(tab, index)}`,
+        "tabs.tabSelected",
+        () => controller.setActive(index) ?? controller.tabs.peek()[index] ?? tab,
+        (selected) => ({ ...payload(), tab: selected }),
+        ["tab", "tabs", tab.id, tab.label],
+        () => {
           const current = controller.tabs.peek()[index];
           return current === undefined || current.disabled === true || controller.activeIndex.peek() === index;
         },
-        action: () => {
-          const selected = controller.setActive(index) ?? controller.tabs.peek()[index] ?? tab;
-          return {
-            type: "tabs.tabSelected",
-            payload: { ...payload(), tab: selected },
-          } as TAction;
-        },
-      });
+      );
     }
   }
 
-  return commands;
+  return builder.commands;
 }
 
 /** Binds tabs Commands behavior and returns a disposer when applicable. */

@@ -21,6 +21,30 @@ export class CommandGroupBuilder<TAction extends Action> {
     if (binding !== undefined) command.binding = binding;
     this.commands.push(command);
   }
+
+  addOptionalAction<TResult, TPayload>(
+    id: string,
+    label: string,
+    type: TAction["type"] & string,
+    update: () => TResult | undefined,
+    payload: (result: TResult) => TPayload,
+    keywords?: readonly string[],
+    disabled?: Command<TAction>["disabled"],
+    binding?: Command<TAction>["binding"],
+  ): void {
+    this.add(
+      id,
+      label,
+      () => {
+        const result = update();
+        if (result === undefined) return undefined;
+        return { type, payload: payload(result) } as TAction;
+      },
+      keywords,
+      disabled,
+      binding,
+    );
+  }
 }
 
 export function actionCommand<TAction extends Action, TResult, TPayload>(

@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TableController, TableInspection } from "../components/table.ts";
 import type { Action } from "./actions.ts";
-import { actionCommandGroup } from "./command_helpers.ts";
+import { actionCommandGroup, CommandGroupBuilder } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for table Command variants. */
@@ -47,10 +47,10 @@ export function tableCommands<TAction extends Action = TableCommandAction>(
   const label = (kind: TableCommandKind, fallback: string) => options.labels?.[kind] ?? fallback;
   const payload = (): TableCommandPayload => ({ id, inspection: controller.inspect() });
   const empty = () => controller.inspect().empty;
-  const commands: Command<TAction>[] = [];
+  const builder = new CommandGroupBuilder<TAction>(idPrefix, group);
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(...actionCommandGroup<TAction, TableCommandPayload, TableCommandKind, number>({
+    builder.commands.push(...actionCommandGroup<TAction, TableCommandPayload, TableCommandKind, number>({
       idPrefix,
       group,
       type: "table.changed",
@@ -68,7 +68,7 @@ export function tableCommands<TAction extends Action = TableCommandAction>(
   }
 
   if (options.includePageCommands ?? true) {
-    commands.push(...actionCommandGroup<TAction, TableCommandPayload, TableCommandKind, number>({
+    builder.commands.push(...actionCommandGroup<TAction, TableCommandPayload, TableCommandKind, number>({
       idPrefix,
       group,
       type: "table.changed",
@@ -84,23 +84,18 @@ export function tableCommands<TAction extends Action = TableCommandAction>(
   }
 
   if (options.includeSelectCommand ?? true) {
-    commands.push({
-      id: `${idPrefix}.select`,
-      label: label("select", "Select Table Row"),
-      group,
-      keywords: ["table", "select", "row"],
-      disabled: empty,
-      action: () => {
-        const row = controller.select(controller.selectedRow.peek(), false);
-        return {
-          type: "table.rowSelected",
-          payload: { ...payload(), row },
-        } as TAction;
-      },
-    });
+    builder.addOptionalAction(
+      "select",
+      label("select", "Select Table Row"),
+      "table.rowSelected",
+      () => controller.select(controller.selectedRow.peek(), false),
+      (row) => ({ ...payload(), row }),
+      ["table", "select", "row"],
+      empty,
+    );
   }
 
-  return commands;
+  return builder.commands;
 }
 
 /** Binds table Commands behavior and returns a disposer when applicable. */

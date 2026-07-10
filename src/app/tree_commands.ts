@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { TreeController, TreeInspection, TreeRowInspection } from "../components/tree.ts";
 import type { Action } from "./actions.ts";
-import { actionCommandGroup } from "./command_helpers.ts";
+import { actionCommandGroup, CommandGroupBuilder } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for tree Command variants. */
@@ -52,10 +52,30 @@ export function treeCommands<TAction extends Action = TreeCommandAction>(
   const label = (kind: TreeCommandKind, fallback: string) => options.labels?.[kind] ?? fallback;
   const nodeLabel = options.nodeLabel ?? ((row: TreeRowInspection) => row.label);
   const payload = (): TreeCommandPayload => ({ id, inspection: controller.inspect() });
-  const commands: Command<TAction>[] = [];
+  const builder = new CommandGroupBuilder<TAction>(idPrefix, group);
+  const addToggle = (
+    kind: Extract<TreeCommandKind, "toggle" | "expand" | "collapse">,
+    fallback: string,
+    toggle: () => unknown,
+    disabled?: (row: TreeRowInspection | undefined) => boolean,
+  ): void => {
+    const commandLabel = label(kind, fallback);
+    builder.addOptionalAction(
+      kind,
+      commandLabel,
+      "tree.nodeToggled",
+      () => {
+        toggle();
+        return payload().inspection.selected;
+      },
+      (row) => ({ ...payload(), row, expanded: row.expanded }),
+      ["tree", "node", "toggle", commandLabel],
+      () => disabled?.(payload().inspection.selected) ?? controller.selected()?.hasChildren !== true,
+    );
+  };
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(...actionCommandGroup<TAction, TreeCommandPayload, TreeCommandKind, unknown>({
+    builder.commands.push(...actionCommandGroup<TAction, TreeCommandPayload, TreeCommandKind, unknown>({
       idPrefix,
       group,
       type: "tree.changed",
@@ -73,78 +93,55 @@ export function treeCommands<TAction extends Action = TreeCommandAction>(
   }
 
   if (options.includeToggleCommands ?? true) {
-    commands.push(
-      toggleCommand(
-        `${idPrefix}.toggle`,
-        label("toggle", "Toggle Tree Node"),
-        group,
-        controller,
-        () => controller.toggleActive(),
-        payload,
-      ),
-      toggleCommand(
-        `${idPrefix}.expand`,
-        label("expand", "Expand Tree Node"),
-        group,
-        controller,
-        () => controller.expandActive(),
-        payload,
-        (row) => row === undefined || !row.hasChildren || row.expanded,
-      ),
-      toggleCommand(
-        `${idPrefix}.collapse`,
-        label("collapse", "Collapse Tree Node"),
-        group,
-        controller,
-        () => controller.collapseActive(),
-        payload,
-        (row) => row === undefined || !row.hasChildren || !row.expanded,
-      ),
+    addToggle("toggle", "Toggle Tree Node", () => controller.toggleActive());
+    addToggle(
+      "expand",
+      "Expand Tree Node",
+      () => controller.expandActive(),
+      (row) => row === undefined || !row.hasChildren || row.expanded,
+    );
+    addToggle(
+      "collapse",
+      "Collapse Tree Node",
+      () => controller.collapseActive(),
+      (row) => row === undefined || !row.hasChildren || !row.expanded,
     );
   }
 
   if (options.includeSelectCommand ?? true) {
-    commands.push({
-      id: `${idPrefix}.select`,
-      label: label("select", "Select Tree Node"),
-      group,
-      keywords: ["tree", "select", "node", "active"],
-      disabled: () => controller.selected() === undefined,
-      action: () => {
-        const row = controller.selectActive();
-        if (!row) return undefined;
-        return {
-          type: "tree.nodeSelected",
-          payload: { ...payload(), row: payload().inspection.selected! },
-        } as TAction;
-      },
-    });
+    builder.addOptionalAction(
+      "select",
+      label("select", "Select Tree Node"),
+      "tree.nodeSelected",
+      () => controller.selectActive(),
+      () => ({ ...payload(), row: payload().inspection.selected! }),
+      ["tree", "select", "node", "active"],
+      () => controller.selected() === undefined,
+    );
   }
 
   if (options.includeNodeCommands ?? false) {
     for (const row of controller.inspect().rows) {
-      commands.push({
-        id: `${idPrefix}.node.${row.id}`,
-        label: `${label("node", "Select Tree Node")}: ${nodeLabel(row)}`,
-        group,
-        keywords: ["tree", "node", row.id, row.label],
-        disabled: () => controller.inspect().rows.every((entry) => entry.id !== row.id),
-        action: () => {
+      builder.addOptionalAction(
+        `node.${row.id}`,
+        `${label("node", "Select Tree Node")}: ${nodeLabel(row)}`,
+        "tree.nodeSelected",
+        () => {
           const index = controller.inspect().rows.findIndex((entry) => entry.id === row.id);
           if (index < 0) return undefined;
           const selected = controller.setSelectedIndex(index);
           if (!selected) return undefined;
           controller.selectActive();
-          return {
-            type: "tree.nodeSelected",
-            payload: { ...payload(), row: payload().inspection.selected! },
-          } as TAction;
+          return selected;
         },
-      });
+        () => ({ ...payload(), row: payload().inspection.selected! }),
+        ["tree", "node", row.id, row.label],
+        () => controller.inspect().rows.every((entry) => entry.id !== row.id),
+      );
     }
   }
 
-  return commands;
+  return builder.commands;
 }
 
 /** Binds tree Commands behavior and returns a disposer when applicable. */
@@ -154,31 +151,4 @@ export function bindTreeCommands<TAction extends Action = TreeCommandAction>(
   options: TreeCommandOptions = {},
 ): () => void {
   return registry.registerAll(treeCommands<TAction>(controller, options));
-}
-
-function toggleCommand<TAction extends Action>(
-  id: string,
-  label: string,
-  group: string,
-  controller: TreeController,
-  toggle: () => unknown,
-  payload: () => TreeCommandPayload,
-  disabled?: (row: TreeRowInspection | undefined) => boolean,
-): Command<TAction> {
-  return {
-    id,
-    label,
-    group,
-    keywords: ["tree", "node", "toggle", label],
-    disabled: () => disabled?.(payload().inspection.selected) ?? controller.selected()?.hasChildren !== true,
-    action: () => {
-      toggle();
-      const inspection = payload().inspection;
-      if (!inspection.selected) return undefined;
-      return {
-        type: "tree.nodeToggled",
-        payload: { ...payload(), row: inspection.selected, expanded: inspection.selected.expanded },
-      } as TAction;
-    },
-  };
 }

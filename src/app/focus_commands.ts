@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Focusable, FocusManager, FocusManagerInspection } from "../focus.ts";
 import type { Action } from "./actions.ts";
+import { CommandGroupBuilder } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for focus Command variants. */
@@ -53,68 +54,62 @@ export function focusCommands<TAction extends Action = FocusCommandAction>(
     inspection: manager.inspect(),
   });
   const empty = () => manager.items.length === 0;
-  const commands: Command<TAction>[] = [];
+  const builder = new CommandGroupBuilder<TAction>(idPrefix, group);
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(
-      {
-        id: `${idPrefix}.previous`,
-        label: label("previous", "Previous Focus Target"),
-        group,
-        keywords: ["focus", "previous"],
-        binding: { key: "tab", shift: true },
-        disabled: empty,
-        action: () => {
-          manager.previous();
-          return { type: "focus.changed", payload: payload() } as TAction;
-        },
+    builder.add(
+      "previous",
+      label("previous", "Previous Focus Target"),
+      () => {
+        manager.previous();
+        return { type: "focus.changed", payload: payload() } as TAction;
       },
-      {
-        id: `${idPrefix}.next`,
-        label: label("next", "Next Focus Target"),
-        group,
-        keywords: ["focus", "next"],
-        binding: { key: "tab" },
-        disabled: empty,
-        action: () => {
-          manager.next();
-          return { type: "focus.changed", payload: payload() } as TAction;
-        },
+      ["focus", "previous"],
+      empty,
+      { key: "tab", shift: true },
+    );
+    builder.add(
+      "next",
+      label("next", "Next Focus Target"),
+      () => {
+        manager.next();
+        return { type: "focus.changed", payload: payload() } as TAction;
       },
+      ["focus", "next"],
+      empty,
+      { key: "tab" },
     );
   }
 
   if (options.includeClearCommand ?? true) {
-    commands.push({
-      id: `${idPrefix}.clear`,
-      label: label("clear", "Clear Focus"),
-      group,
-      keywords: ["focus", "clear"],
-      disabled: () => !manager.current(),
-      action: () => {
+    builder.add(
+      "clear",
+      label("clear", "Clear Focus"),
+      () => {
         manager.clear();
         return { type: "focus.cleared", payload: payload() } as TAction;
       },
-    });
+      ["focus", "clear"],
+      () => !manager.current(),
+    );
   }
 
   if (options.includeTargetCommands ?? false) {
     for (const target of options.targets ?? []) {
-      commands.push({
-        id: `${idPrefix}.target.${target.id}`,
-        label: `${label("target", "Focus")}: ${target.label}`,
-        group,
-        keywords: ["focus", target.id, target.label, ...(target.keywords ?? [])],
-        disabled: () => manager.current() === target.item,
-        action: () => {
+      builder.add(
+        `target.${target.id}`,
+        `${label("target", "Focus")}: ${target.label}`,
+        () => {
           manager.focus(target.item);
           return { type: "focus.changed", payload: payload() } as TAction;
         },
-      });
+        ["focus", target.id, target.label, ...(target.keywords ?? [])],
+        () => manager.current() === target.item,
+      );
     }
   }
 
-  return commands;
+  return builder.commands;
 }
 
 /** Binds focus Commands behavior and returns a disposer when applicable. */

@@ -8,7 +8,12 @@ import type { SliderController, SliderInspection } from "../components/slider.ts
 import type { StepperController, StepperInspection, StepperStep } from "../components/stepper.ts";
 import type { TextBoxController, TextBoxInspection } from "../components/textbox.ts";
 import type { Action } from "./actions.ts";
-import { actionCommand, actionCommandGroup, type ActionCommandGroupEntry } from "./command_helpers.ts";
+import {
+  actionCommand,
+  actionCommandGroup,
+  type ActionCommandGroupEntry,
+  CommandGroupBuilder,
+} from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for button Command variants. */
@@ -45,24 +50,22 @@ export function buttonCommands<TAction extends Action = ButtonCommandAction>(
   const group = options.group ?? "input";
   const label = (kind: ButtonCommandKind, fallback: string) => options.labels?.[kind] ?? fallback;
   const payload = (): ButtonCommandPayload => ({ id, inspection: controller.inspect() });
-  const commands: Command<TAction>[] = [];
+  const builder = new CommandGroupBuilder<TAction>(idPrefix, group);
 
   if (options.includePressCommand ?? true) {
-    commands.push({
-      id: `${idPrefix}.press`,
-      label: label("press", "Press Button"),
-      group,
-      keywords: ["button", "press", "submit", controller.label.peek()],
-      disabled: () => controller.disabled.peek(),
-      action: () => {
-        if (!controller.press()) return undefined;
-        return { type: "button.pressed", payload: payload() } as TAction;
-      },
-    });
+    builder.addOptionalAction(
+      "press",
+      label("press", "Press Button"),
+      "button.pressed",
+      () => controller.press() || undefined,
+      payload,
+      ["button", "press", "submit", controller.label.peek()],
+      () => controller.disabled.peek(),
+    );
   }
 
   if (options.includeStateCommands ?? true) {
-    commands.push(...actionCommandGroup<TAction, ButtonCommandPayload, ButtonCommandKind, boolean>({
+    builder.commands.push(...actionCommandGroup<TAction, ButtonCommandPayload, ButtonCommandKind, boolean>({
       idPrefix,
       group,
       type: "button.changed",
@@ -82,7 +85,7 @@ export function buttonCommands<TAction extends Action = ButtonCommandAction>(
     }));
   }
 
-  return commands;
+  return builder.commands;
 }
 
 /** Binds button Commands behavior and returns a disposer when applicable. */
@@ -232,10 +235,10 @@ export function comboBoxCommands<TAction extends Action = ComboBoxCommandAction,
   const label = (kind: ComboBoxCommandKind, fallback: string) => options.labels?.[kind] ?? fallback;
   const itemLabel = options.itemLabel ?? ((item: string) => item);
   const payload = (): ComboBoxCommandPayload => ({ id, inspection: controller.inspect() });
-  const commands: Command<TAction>[] = [];
+  const builder = new CommandGroupBuilder<TAction>(idPrefix, group);
 
   if (options.includeExpandCommands ?? true) {
-    commands.push(...actionCommandGroup<
+    builder.commands.push(...actionCommandGroup<
       TAction,
       ComboBoxCommandPayload & { expanded: boolean },
       ComboBoxCommandKind,
@@ -257,7 +260,7 @@ export function comboBoxCommands<TAction extends Action = ComboBoxCommandAction,
   }
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(...actionCommandGroup<
+    builder.commands.push(...actionCommandGroup<
       TAction,
       ComboBoxCommandPayload,
       ComboBoxCommandKind,
@@ -280,44 +283,32 @@ export function comboBoxCommands<TAction extends Action = ComboBoxCommandAction,
   }
 
   if (options.includeSelectCommand ?? true) {
-    commands.push({
-      id: `${idPrefix}.select`,
-      label: label("select", "Select Combo Box Item"),
-      group,
-      keywords: ["combobox", "combo-box", "select", "active"],
-      disabled: () => controller.selected() === undefined,
-      action: () => {
-        const item = controller.selectActive();
-        if (item === undefined) return undefined;
-        return {
-          type: "comboBox.itemSelected",
-          payload: { ...payload(), item, index: payload().inspection.selectedIndex! },
-        } as TAction;
-      },
-    });
+    builder.addOptionalAction(
+      "select",
+      label("select", "Select Combo Box Item"),
+      "comboBox.itemSelected",
+      () => controller.selectActive(),
+      (item) => ({ ...payload(), item, index: payload().inspection.selectedIndex! }),
+      ["combobox", "combo-box", "select", "active"],
+      () => controller.selected() === undefined,
+    );
   }
 
   if (options.includeItemCommands ?? false) {
     for (const [index, item] of controller.items.peek().entries()) {
-      commands.push({
-        id: `${idPrefix}.item.${index}`,
-        label: `${label("item", "Select Combo Box Item")}: ${itemLabel(item, index)}`,
-        group,
-        keywords: ["combobox", "combo-box", "item", item, `${index}`],
-        disabled: () => controller.items.peek()[index] === undefined || controller.selectedIndex.peek() === index,
-        action: () => {
-          const selected = controller.selectIndex(index);
-          if (selected === undefined) return undefined;
-          return {
-            type: "comboBox.itemSelected",
-            payload: { ...payload(), item: selected, index },
-          } as TAction;
-        },
-      });
+      builder.addOptionalAction(
+        `item.${index}`,
+        `${label("item", "Select Combo Box Item")}: ${itemLabel(item, index)}`,
+        "comboBox.itemSelected",
+        () => controller.selectIndex(index),
+        (selected) => ({ ...payload(), item: selected, index }),
+        ["combobox", "combo-box", "item", item, `${index}`],
+        () => controller.items.peek()[index] === undefined || controller.selectedIndex.peek() === index,
+      );
     }
   }
 
-  return commands;
+  return builder.commands;
 }
 
 /** Binds combo Box Commands behavior and returns a disposer when applicable. */
@@ -489,10 +480,10 @@ export function radioGroupCommands<TAction extends Action = RadioGroupCommandAct
   const label = (kind: RadioGroupCommandKind, fallback: string) => options.labels?.[kind] ?? fallback;
   const optionLabel = options.optionLabel ?? ((option: RadioOption) => option.label);
   const payload = (): RadioGroupCommandPayload => ({ id, inspection: controller.inspect() });
-  const commands: Command<TAction>[] = [];
+  const builder = new CommandGroupBuilder<TAction>(idPrefix, group);
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(...actionCommandGroup<
+    builder.commands.push(...actionCommandGroup<
       TAction,
       RadioGroupCommandPayload,
       RadioGroupCommandKind,
@@ -514,48 +505,36 @@ export function radioGroupCommands<TAction extends Action = RadioGroupCommandAct
   }
 
   if (options.includeSelectCommand ?? true) {
-    commands.push({
-      id: `${idPrefix}.select`,
-      label: label("select", "Select Radio Option"),
-      group,
-      keywords: ["radio", "select", "active"],
-      disabled: () => controller.active() === undefined,
-      action: () => {
-        const option = controller.selectActive();
-        if (!option) return undefined;
-        return {
-          type: "radioGroup.optionSelected",
-          payload: { ...payload(), option },
-        } as TAction;
-      },
-    });
+    builder.addOptionalAction(
+      "select",
+      label("select", "Select Radio Option"),
+      "radioGroup.optionSelected",
+      () => controller.selectActive(),
+      (option) => ({ ...payload(), option }),
+      ["radio", "select", "active"],
+      () => controller.active() === undefined,
+    );
   }
 
   if (options.includeOptionCommands ?? false) {
     for (const [index, option] of controller.options.peek().entries()) {
-      commands.push({
-        id: `${idPrefix}.option.${option.value}`,
-        label: `${label("option", "Select Radio Option")}: ${optionLabel(option, index)}`,
-        group,
-        keywords: ["radio", "option", option.value, option.label],
-        disabled: () => {
+      builder.addOptionalAction(
+        `option.${option.value}`,
+        `${label("option", "Select Radio Option")}: ${optionLabel(option, index)}`,
+        "radioGroup.optionSelected",
+        () => controller.selectValue(option.value),
+        (selected) => ({ ...payload(), option: selected }),
+        ["radio", "option", option.value, option.label],
+        () => {
           const current = controller.options.peek()[index];
           return current === undefined || current.disabled === true ||
             controller.selectedValue.peek() === current.value;
         },
-        action: () => {
-          const selected = controller.selectValue(option.value);
-          if (!selected) return undefined;
-          return {
-            type: "radioGroup.optionSelected",
-            payload: { ...payload(), option: selected },
-          } as TAction;
-        },
-      });
+      );
     }
   }
 
-  return commands;
+  return builder.commands;
 }
 
 /** Binds radio Group Commands behavior and returns a disposer when applicable. */
@@ -653,48 +632,45 @@ export function stepperCommands<TAction extends Action = StepperCommandAction>(
   const label = (kind: StepperCommandKind, fallback: string) => options.labels?.[kind] ?? fallback;
   const stepLabel = options.stepLabel ?? ((step: StepperStep) => step.label);
   const payload = (): StepperCommandPayload => ({ id, inspection: controller.inspect() });
-  const commands: Command<TAction>[] = [];
+  const builder = new CommandGroupBuilder<TAction>(idPrefix, group);
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(...actionCommandGroup<TAction, StepperCommandPayload, StepperCommandKind, StepperStep | undefined>({
-      idPrefix,
-      group,
-      type: "stepper.changed",
-      keywords: ["step", "stepper"],
-      label,
-      payload,
-      entries: [
-        ["first", "First Step", () => controller.first()],
-        ["previous", "Previous Step", () => controller.move(-1)],
-        ["next", "Next Step", () => controller.move(1)],
-        ["last", "Last Step", () => controller.last()],
-      ],
-    }));
+    builder.commands.push(
+      ...actionCommandGroup<TAction, StepperCommandPayload, StepperCommandKind, StepperStep | undefined>({
+        idPrefix,
+        group,
+        type: "stepper.changed",
+        keywords: ["step", "stepper"],
+        label,
+        payload,
+        entries: [
+          ["first", "First Step", () => controller.first()],
+          ["previous", "Previous Step", () => controller.move(-1)],
+          ["next", "Next Step", () => controller.move(1)],
+          ["last", "Last Step", () => controller.last()],
+        ],
+      }),
+    );
   }
 
   if (options.includeStepCommands ?? false) {
     for (const [index, step] of controller.steps.peek().entries()) {
-      commands.push({
-        id: `${idPrefix}.step.${step.id}`,
-        label: `${label("step", "Go to Step")}: ${stepLabel(step, index)}`,
-        group,
-        keywords: ["step", "stepper", step.id, step.label],
-        disabled: () => {
+      builder.addOptionalAction(
+        `step.${step.id}`,
+        `${label("step", "Go to Step")}: ${stepLabel(step, index)}`,
+        "stepper.stepSelected",
+        () => controller.setActive(index) ?? controller.steps.peek()[index] ?? step,
+        (selected) => ({ ...payload(), step: selected }),
+        ["step", "stepper", step.id, step.label],
+        () => {
           const current = controller.steps.peek()[index];
           return current === undefined || current.disabled === true || controller.activeIndex.peek() === index;
         },
-        action: () => {
-          const selected = controller.setActive(index);
-          return {
-            type: "stepper.stepSelected",
-            payload: { ...payload(), step: selected ?? controller.steps.peek()[index] ?? step },
-          } as TAction;
-        },
-      });
+      );
     }
   }
 
-  return commands;
+  return builder.commands;
 }
 
 /** Binds stepper Commands behavior and returns a disposer when applicable. */

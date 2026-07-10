@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { MenuBarController, MenuBarInspection, MenuBarItem } from "../components/menu_bar.ts";
 import type { Action } from "./actions.ts";
-import { actionCommandGroup } from "./command_helpers.ts";
+import { actionCommandGroup, CommandGroupBuilder } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for menu Bar Command variants. */
@@ -41,10 +41,15 @@ export function menuBarCommands<TAction extends Action = MenuBarCommandAction>(
   const label = (kind: MenuBarCommandKind, fallback: string) => options.labels?.[kind] ?? fallback;
   const itemLabel = options.itemLabel ?? ((item: MenuBarItem) => item.label);
   const payload = (): MenuBarCommandPayload => ({ id, inspection: controller.inspect() });
-  const commands: Command<TAction>[] = [];
+  const builder = new CommandGroupBuilder<TAction>(idPrefix, group);
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(...actionCommandGroup<TAction, MenuBarCommandPayload, MenuBarCommandKind, MenuBarItem | undefined>({
+    builder.commands.push(...actionCommandGroup<
+      TAction,
+      MenuBarCommandPayload,
+      MenuBarCommandKind,
+      MenuBarItem | undefined
+    >({
       idPrefix,
       group,
       type: "menuBar.changed",
@@ -61,47 +66,39 @@ export function menuBarCommands<TAction extends Action = MenuBarCommandAction>(
   }
 
   if (options.includeSelectCommand ?? true) {
-    commands.push({
-      id: `${idPrefix}.select`,
-      label: label("select", "Select Menu Item"),
-      group,
-      keywords: ["menu", "select", "active"],
-      disabled: () => controller.active() === undefined,
-      action: () => {
-        const item = controller.selectActive();
-        if (!item) return undefined;
-        return {
-          type: "menuBar.itemSelected",
-          payload: { ...payload(), item },
-        } as TAction;
-      },
-    });
+    builder.addOptionalAction(
+      "select",
+      label("select", "Select Menu Item"),
+      "menuBar.itemSelected",
+      () => controller.selectActive(),
+      (item) => ({ ...payload(), item }),
+      ["menu", "select", "active"],
+      () => controller.active() === undefined,
+    );
   }
 
   if (options.includeItemCommands ?? false) {
     for (const [index, item] of controller.items.peek().entries()) {
-      commands.push({
-        id: `${idPrefix}.item.${item.id}`,
-        label: `${label("item", "Select Menu Item")}: ${itemLabel(item, index)}`,
-        group,
-        keywords: ["menu", "item", item.id, item.label],
-        disabled: () => {
+      builder.addOptionalAction(
+        `item.${item.id}`,
+        `${label("item", "Select Menu Item")}: ${itemLabel(item, index)}`,
+        "menuBar.itemSelected",
+        () => {
+          const selected = controller.setActive(index) ?? controller.items.peek()[index] ?? item;
+          controller.selectActive();
+          return selected;
+        },
+        (selected) => ({ ...payload(), item: selected }),
+        ["menu", "item", item.id, item.label],
+        () => {
           const current = controller.items.peek()[index];
           return current === undefined || current.disabled === true;
         },
-        action: () => {
-          const selected = controller.setActive(index) ?? controller.items.peek()[index] ?? item;
-          controller.selectActive();
-          return {
-            type: "menuBar.itemSelected",
-            payload: { ...payload(), item: selected },
-          } as TAction;
-        },
-      });
+      );
     }
   }
 
-  return commands;
+  return builder.commands;
 }
 
 /** Binds menu Bar Commands behavior and returns a disposer when applicable. */

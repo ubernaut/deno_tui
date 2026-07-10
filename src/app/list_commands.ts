@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { ListController, ListInspection } from "../components/list.ts";
 import type { Action } from "./actions.ts";
-import { actionCommandGroup } from "./command_helpers.ts";
+import { actionCommandGroup, CommandGroupBuilder } from "./command_helpers.ts";
 import type { Command, CommandRegistry } from "./commands.ts";
 
 /** Identifier union for list Command variants. */
@@ -41,10 +41,10 @@ export function listCommands<TAction extends Action = ListCommandAction>(
   const label = (kind: ListCommandKind, fallback: string) => options.labels?.[kind] ?? fallback;
   const itemLabel = options.itemLabel ?? ((item: string) => item);
   const payload = (): ListCommandPayload => ({ id, inspection: controller.inspect() });
-  const commands: Command<TAction>[] = [];
+  const builder = new CommandGroupBuilder<TAction>(idPrefix, group);
 
   if (options.includeMoveCommands ?? true) {
-    commands.push(...actionCommandGroup<TAction, ListCommandPayload, ListCommandKind, string | undefined>({
+    builder.commands.push(...actionCommandGroup<TAction, ListCommandPayload, ListCommandKind, string | undefined>({
       idPrefix,
       group,
       type: "list.changed",
@@ -62,45 +62,36 @@ export function listCommands<TAction extends Action = ListCommandAction>(
   }
 
   if (options.includeSelectCommand ?? true) {
-    commands.push({
-      id: `${idPrefix}.select`,
-      label: label("select", "Select List Item"),
-      group,
-      keywords: ["list", "select", "active"],
-      disabled: () => controller.selected() === undefined,
-      action: () => {
-        const item = controller.selectActive();
-        if (item === undefined) return undefined;
-        return {
-          type: "list.itemSelected",
-          payload: { ...payload(), item, index: controller.selectedIndex.peek() },
-        } as TAction;
-      },
-    });
+    builder.addOptionalAction(
+      "select",
+      label("select", "Select List Item"),
+      "list.itemSelected",
+      () => controller.selectActive(),
+      (item) => ({ ...payload(), item, index: controller.selectedIndex.peek() }),
+      ["list", "select", "active"],
+      () => controller.selected() === undefined,
+    );
   }
 
   if (options.includeItemCommands ?? false) {
     for (const [index, item] of controller.items.peek().entries()) {
-      commands.push({
-        id: `${idPrefix}.item.${index}`,
-        label: `${label("item", "Select List Item")}: ${itemLabel(item, index)}`,
-        group,
-        keywords: ["list", "item", item, `${index}`],
-        disabled: () => controller.items.peek()[index] === undefined || controller.selectedIndex.peek() === index,
-        action: () => {
+      builder.addOptionalAction(
+        `item.${index}`,
+        `${label("item", "Select List Item")}: ${itemLabel(item, index)}`,
+        "list.itemSelected",
+        () => {
           const selected = controller.setSelectedIndex(index);
-          if (selected === undefined) return undefined;
-          controller.selectActive();
-          return {
-            type: "list.itemSelected",
-            payload: { ...payload(), item: selected, index },
-          } as TAction;
+          if (selected !== undefined) controller.selectActive();
+          return selected;
         },
-      });
+        (selected) => ({ ...payload(), item: selected, index }),
+        ["list", "item", item, `${index}`],
+        () => controller.items.peek()[index] === undefined || controller.selectedIndex.peek() === index,
+      );
     }
   }
 
-  return commands;
+  return builder.commands;
 }
 
 /** Binds list Commands behavior and returns a disposer when applicable. */
