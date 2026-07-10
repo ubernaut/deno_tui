@@ -2,6 +2,13 @@
 import { Component, type ComponentOptions } from "../component.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
+import {
+  ActiveItemController,
+  BOUNDED_ACTIVE_ITEM_INDEX_POLICY,
+  clampActiveItemIndex,
+  cloneActiveItems,
+  shiftActiveItemIndex,
+} from "./active_item.ts";
 import { stackedRowIndexAt } from "./interaction.ts";
 import { drawTextRows } from "./text_children.ts";
 
@@ -86,25 +93,12 @@ export function visibleRadioOptions(
 
 /** Clamps radio Index to its valid range. */
 export function clampRadioIndex(options: readonly RadioOption[], activeIndex: number): number {
-  if (options.length === 0) return 0;
-  const clamped = Math.max(0, Math.min(activeIndex, options.length - 1));
-  if (!options[clamped]?.disabled) return clamped;
-  const next = shiftRadioIndex(options, clamped, 1);
-  if (!options[next]?.disabled) return next;
-  const previous = shiftRadioIndex(options, clamped, -1);
-  return options[previous]?.disabled ? clamped : previous;
+  return clampActiveItemIndex(options, activeIndex, BOUNDED_ACTIVE_ITEM_INDEX_POLICY);
 }
 
 /** Moves radio Index by a relative offset. */
 export function shiftRadioIndex(options: readonly RadioOption[], activeIndex: number, delta: number): number {
-  if (options.length === 0) return 0;
-  let next = Math.max(0, Math.min(activeIndex, options.length - 1));
-  for (let count = 0; count < options.length; count += 1) {
-    next = Math.max(0, Math.min(options.length - 1, next + delta));
-    if (!options[next]?.disabled) return next;
-    if (next === 0 || next === options.length - 1) break;
-  }
-  return activeIndex;
+  return shiftActiveItemIndex(options, activeIndex, delta, BOUNDED_ACTIVE_ITEM_INDEX_POLICY);
 }
 
 /** Public helper for option For Value. */
@@ -116,53 +110,28 @@ export function optionForValue(options: readonly RadioOption[], value: string | 
 }
 
 /** State controller for radio Group behavior. */
-export class RadioGroupController {
+export class RadioGroupController extends ActiveItemController<RadioOption> {
   readonly options: Signal<RadioOption[]>;
   readonly selectedValue: Signal<string | undefined>;
-  readonly activeIndex: Signal<number>;
-  readonly #ownsOptions: boolean;
   readonly #ownsSelectedValue: boolean;
-  readonly #ownsActiveIndex: boolean;
   readonly #onChange?: (option: RadioOption) => void | Promise<void>;
 
   constructor(options: RadioGroupControllerOptions) {
-    this.#ownsOptions = !(options.options instanceof Signal);
+    super({
+      items: options.options,
+      activeIndex: options.activeIndex,
+      policy: BOUNDED_ACTIVE_ITEM_INDEX_POLICY,
+    });
+    this.options = this.activeItems;
     this.#ownsSelectedValue = !(options.selectedValue instanceof Signal);
-    this.#ownsActiveIndex = !(options.activeIndex instanceof Signal);
-    this.options = signalify(options.options, { deepObserve: true });
     this.selectedValue = options.selectedValue instanceof Signal
       ? options.selectedValue as Signal<string | undefined>
       : signalify(options.selectedValue);
-    this.activeIndex = signalify(options.activeIndex ?? 0);
     this.#onChange = options.onChange;
-    this.activeIndex.value = clampRadioIndex(this.options.peek(), this.activeIndex.peek());
-  }
-
-  active(): RadioOption | undefined {
-    const option = this.options.peek()[clampRadioIndex(this.options.peek(), this.activeIndex.peek())];
-    return option?.disabled ? undefined : option;
   }
 
   selected(): RadioOption | undefined {
     return optionForValue(this.options.peek(), this.selectedValue.peek());
-  }
-
-  move(delta: number): RadioOption | undefined {
-    return this.setActive(shiftRadioIndex(this.options.peek(), this.activeIndex.peek(), delta));
-  }
-
-  first(): RadioOption | undefined {
-    return this.setActive(0);
-  }
-
-  last(): RadioOption | undefined {
-    return this.setActive(this.options.peek().length - 1);
-  }
-
-  setActive(index: number): RadioOption | undefined {
-    const next = clampRadioIndex(this.options.peek(), index);
-    this.activeIndex.value = next;
-    return this.active();
   }
 
   selectActive(): RadioOption | undefined {
@@ -204,24 +173,8 @@ export class RadioGroupController {
     return this.selectIndex(row.index);
   }
 
-  handleKeyPress({ key, ctrl, meta, shift }: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
-    if (ctrl || meta || shift) return;
-    if (key === "up") {
-      this.move(-1);
-    } else if (key === "down") {
-      this.move(1);
-    } else if (key === "home") {
-      this.first();
-    } else if (key === "end") {
-      this.last();
-    } else if (key === "return" || key === "space") {
-      this.selectActive();
-    }
-    this.activeIndex.value = clampRadioIndex(this.options.peek(), this.activeIndex.peek());
-  }
-
   inspect(): RadioGroupInspection {
-    const options = cloneRadioOptions(this.options.peek());
+    const options = cloneActiveItems(this.options.peek());
     const activeIndex = clampRadioIndex(options, this.activeIndex.peek());
     const active = options[activeIndex];
     const selected = optionForValue(options, this.selectedValue.peek());
@@ -236,10 +189,25 @@ export class RadioGroupController {
     };
   }
 
-  dispose(): void {
-    if (this.#ownsOptions) this.options.dispose();
+  override dispose(): void {
+    super.dispose();
     if (this.#ownsSelectedValue) this.selectedValue.dispose();
-    if (this.#ownsActiveIndex) this.activeIndex.dispose();
+  }
+
+  protected override keyAxis(): "vertical" {
+    return "vertical";
+  }
+
+  protected override selectsOnKeyPress(): boolean {
+    return true;
+  }
+
+  protected override selectActiveFromKey(): void {
+    this.selectActive();
+  }
+
+  protected override afterKeyPress(): void {
+    this.activeIndex.value = this.clampIndex(this.activeIndex.peek());
   }
 }
 
@@ -248,14 +216,6 @@ function radioOptionIndexForValue(options: readonly RadioOption[], value: string
     if (options[index]!.value === value) return index;
   }
   return -1;
-}
-
-function cloneRadioOptions(options: readonly RadioOption[]): RadioOption[] {
-  const clone = new Array<RadioOption>(options.length);
-  for (let index = 0; index < options.length; index += 1) {
-    clone[index] = { ...options[index]! };
-  }
-  return clone;
 }
 
 /** Public class implementing a radio Group. */

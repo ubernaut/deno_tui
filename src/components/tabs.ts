@@ -1,8 +1,15 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Component, type ComponentOptions } from "../component.ts";
 import { Computed, Signal } from "../signals/mod.ts";
-import { signalify } from "../utils/signals.ts";
 import { clamp } from "../utils/numbers.ts";
+import {
+  ActiveItemController,
+  activeItemForIndex,
+  clampActiveItemIndex,
+  cloneActiveItems,
+  shiftActiveItemIndex,
+  WRAPPED_ACTIVE_ITEM_INDEX_POLICY,
+} from "./active_item.ts";
 import { drawTextChild } from "./text_children.ts";
 
 /** Public interface describing a tab Item. */
@@ -51,91 +58,35 @@ export function renderTabs(tabs: readonly TabItem[], activeIndex: number): strin
 
 /** Clamps tab Index to its valid range. */
 export function clampTabIndex(tabs: readonly TabItem[], activeIndex: number): number {
-  if (tabs.length === 0) return -1;
-  const clamped = clamp(activeIndex, 0, tabs.length - 1);
-  if (!tabs[clamped]?.disabled) return clamped;
-  const next = shiftTabIndex(tabs, clamped, 1);
-  if (!tabs[next]?.disabled) return next;
-  const previous = shiftTabIndex(tabs, clamped, -1);
-  return tabs[previous]?.disabled ? clamped : previous;
+  return clampActiveItemIndex(tabs, activeIndex, WRAPPED_ACTIVE_ITEM_INDEX_POLICY);
 }
 
 /** Moves tab Index by a relative offset. */
 export function shiftTabIndex(tabs: readonly TabItem[], activeIndex: number, delta: number): number {
-  if (tabs.length === 0) return -1;
-  let next = clamp(activeIndex, 0, tabs.length - 1);
-  for (let count = 0; count < tabs.length; count += 1) {
-    next = (next + delta + tabs.length) % tabs.length;
-    if (!tabs[next]?.disabled) return next;
-  }
-  return activeIndex;
+  return shiftActiveItemIndex(tabs, activeIndex, delta, WRAPPED_ACTIVE_ITEM_INDEX_POLICY);
 }
 
 /** Public helper for tab For Index. */
 export function tabForIndex(tabs: readonly TabItem[], activeIndex: number): TabItem | undefined {
-  const tab = tabs[clampTabIndex(tabs, activeIndex)];
-  return tab?.disabled ? undefined : tab;
+  return activeItemForIndex(tabs, activeIndex, WRAPPED_ACTIVE_ITEM_INDEX_POLICY);
 }
 
 /** State controller for tabs behavior. */
-export class TabsController {
+export class TabsController extends ActiveItemController<TabItem> {
   readonly tabs: Signal<TabItem[]>;
-  readonly activeIndex: Signal<number>;
-  readonly #ownsTabs: boolean;
-  readonly #ownsActiveIndex: boolean;
-  readonly #onChange?: (tab: TabItem, index: number) => void | Promise<void>;
 
   constructor(options: TabsControllerOptions) {
-    this.#ownsTabs = !(options.tabs instanceof Signal);
-    this.#ownsActiveIndex = !(options.activeIndex instanceof Signal);
-    this.tabs = signalify(options.tabs, { deepObserve: true });
-    this.activeIndex = signalify(options.activeIndex ?? 0);
-    this.#onChange = options.onChange;
-    this.activeIndex.value = clampTabIndex(this.tabs.peek(), this.activeIndex.peek());
-  }
-
-  active(): TabItem | undefined {
-    return tabForIndex(this.tabs.peek(), this.activeIndex.peek());
-  }
-
-  move(delta: number): TabItem | undefined {
-    return this.setActive(shiftTabIndex(this.tabs.peek(), this.activeIndex.peek(), delta));
-  }
-
-  first(): TabItem | undefined {
-    return this.setActive(0);
-  }
-
-  last(): TabItem | undefined {
-    return this.setActive(this.tabs.peek().length - 1);
-  }
-
-  setActive(index: number): TabItem | undefined {
-    const next = clampTabIndex(this.tabs.peek(), index);
-    this.activeIndex.value = next;
-    const tab = this.tabs.peek()[next];
-    if (tab && !tab.disabled) {
-      void this.#onChange?.(tab, next);
-      return tab;
-    }
-    return undefined;
-  }
-
-  handleKeyPress({ key, ctrl, meta, shift }: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
-    if (ctrl || meta || shift) return;
-    if (key === "left") {
-      this.move(-1);
-    } else if (key === "right") {
-      this.move(1);
-    } else if (key === "home") {
-      this.first();
-    } else if (key === "end") {
-      this.last();
-    }
+    super({
+      items: options.tabs,
+      activeIndex: options.activeIndex,
+      policy: WRAPPED_ACTIVE_ITEM_INDEX_POLICY,
+      onChange: options.onChange,
+    });
+    this.tabs = this.activeItems;
   }
 
   inspect(): TabsInspection {
-    const tabs = cloneTabs(this.tabs.peek());
+    const tabs = cloneActiveItems(this.tabs.peek());
     const activeIndex = clampTabIndex(tabs, this.activeIndex.peek());
     const active = tabForIndex(tabs, activeIndex);
     return {
@@ -146,19 +97,6 @@ export class TabsController {
       empty: tabs.length === 0,
     };
   }
-
-  dispose(): void {
-    if (this.#ownsTabs) this.tabs.dispose();
-    if (this.#ownsActiveIndex) this.activeIndex.dispose();
-  }
-}
-
-function cloneTabs(tabs: readonly TabItem[]): TabItem[] {
-  const clone = new Array<TabItem>(tabs.length);
-  for (let index = 0; index < tabs.length; index += 1) {
-    clone[index] = { ...tabs[index]! };
-  }
-  return clone;
 }
 
 /** Public class implementing a tabs. */

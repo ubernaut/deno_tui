@@ -1,8 +1,17 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Component, type ComponentOptions } from "../component.ts";
 import { Computed, Signal } from "../signals/mod.ts";
-import { signalify } from "../utils/signals.ts";
+import {
+  ActiveItemController,
+  activeItemForIndex,
+  type ActiveItemIndexPolicy,
+  clampActiveItemIndex,
+  cloneActiveItems,
+  shiftActiveItemIndex,
+} from "./active_item.ts";
 import { drawTextChild } from "./text_children.ts";
+
+const MENU_ACTIVE_ITEM_INDEX_POLICY: ActiveItemIndexPolicy = { emptyIndex: -1, wrap: true, clampStart: false };
 
 /** Public interface describing a menu Bar Item. */
 export interface MenuBarItem {
@@ -51,80 +60,37 @@ export function renderMenuBar(items: readonly MenuBarItem[], activeIndex: number
 
 /** Moves menu Index by a relative offset. */
 export function shiftMenuIndex(items: readonly MenuBarItem[], activeIndex: number, delta: number): number {
-  if (items.length === 0) return -1;
-  let next = activeIndex;
-  for (let count = 0; count < items.length; count += 1) {
-    next = (next + delta + items.length) % items.length;
-    if (!items[next]?.disabled) return next;
-  }
-  return activeIndex;
+  return shiftActiveItemIndex(items, activeIndex, delta, MENU_ACTIVE_ITEM_INDEX_POLICY);
 }
 
 /** Clamps menu Index to its valid range. */
 export function clampMenuIndex(items: readonly MenuBarItem[], activeIndex: number): number {
-  if (items.length === 0) return -1;
-  const clamped = Math.max(0, Math.min(activeIndex, items.length - 1));
-  if (!items[clamped]?.disabled) return clamped;
-  const next = shiftMenuIndex(items, clamped, 1);
-  if (!items[next]?.disabled) return next;
-  const previous = shiftMenuIndex(items, clamped, -1);
-  return items[previous]?.disabled ? clamped : previous;
+  return clampActiveItemIndex(items, activeIndex, MENU_ACTIVE_ITEM_INDEX_POLICY);
 }
 
 /** Public helper for menu Item For Index. */
 export function menuItemForIndex(items: readonly MenuBarItem[], activeIndex: number): MenuBarItem | undefined {
-  const item = items[clampMenuIndex(items, activeIndex)];
-  return item?.disabled ? undefined : item;
+  return activeItemForIndex(items, activeIndex, MENU_ACTIVE_ITEM_INDEX_POLICY);
 }
 
 /** State controller for menu Bar behavior. */
-export class MenuBarController {
+export class MenuBarController extends ActiveItemController<MenuBarItem> {
   readonly items: Signal<MenuBarItem[]>;
-  readonly activeIndex: Signal<number>;
-  readonly #ownsItems: boolean;
-  readonly #ownsActiveIndex: boolean;
-  readonly #onChange?: (item: MenuBarItem, index: number) => void | Promise<void>;
   readonly #onSelect?: (item: MenuBarItem, index: number) => void | Promise<void>;
 
   constructor(options: MenuBarControllerOptions) {
-    this.#ownsItems = !(options.items instanceof Signal);
-    this.#ownsActiveIndex = !(options.activeIndex instanceof Signal);
-    this.items = signalify(options.items, { deepObserve: true });
-    this.activeIndex = signalify(options.activeIndex ?? 0);
-    this.#onChange = options.onChange;
+    super({
+      items: options.items,
+      activeIndex: options.activeIndex,
+      policy: MENU_ACTIVE_ITEM_INDEX_POLICY,
+      onChange: options.onChange,
+    });
+    this.items = this.activeItems;
     this.#onSelect = options.onSelect;
-    this.activeIndex.value = clampMenuIndex(this.items.peek(), this.activeIndex.peek());
-  }
-
-  active(): MenuBarItem | undefined {
-    return menuItemForIndex(this.items.peek(), this.activeIndex.peek());
-  }
-
-  move(delta: number): MenuBarItem | undefined {
-    return this.setActive(shiftMenuIndex(this.items.peek(), this.activeIndex.peek(), delta));
-  }
-
-  first(): MenuBarItem | undefined {
-    return this.setActive(0);
-  }
-
-  last(): MenuBarItem | undefined {
-    return this.setActive(this.items.peek().length - 1);
-  }
-
-  setActive(index: number): MenuBarItem | undefined {
-    const next = clampMenuIndex(this.items.peek(), index);
-    this.activeIndex.value = next;
-    const item = this.items.peek()[next];
-    if (item && !item.disabled) {
-      void this.#onChange?.(item, next);
-      return item;
-    }
-    return undefined;
   }
 
   selectActive(): MenuBarItem | undefined {
-    const index = clampMenuIndex(this.items.peek(), this.activeIndex.peek());
+    const index = this.clampIndex(this.activeIndex.peek());
     const item = this.items.peek()[index];
     if (item && !item.disabled) {
       void this.#onSelect?.(item, index);
@@ -133,23 +99,8 @@ export class MenuBarController {
     return undefined;
   }
 
-  handleKeyPress({ key, ctrl, meta, shift }: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
-    if (ctrl || meta || shift) return;
-    if (key === "left") {
-      this.move(-1);
-    } else if (key === "right") {
-      this.move(1);
-    } else if (key === "home") {
-      this.first();
-    } else if (key === "end") {
-      this.last();
-    } else if (key === "return" || key === "space") {
-      this.selectActive();
-    }
-  }
-
   inspect(): MenuBarInspection {
-    const items = cloneMenuBarItems(this.items.peek());
+    const items = cloneActiveItems(this.items.peek());
     const activeIndex = clampMenuIndex(items, this.activeIndex.peek());
     const active = menuItemForIndex(items, activeIndex);
     return {
@@ -161,18 +112,13 @@ export class MenuBarController {
     };
   }
 
-  dispose(): void {
-    if (this.#ownsItems) this.items.dispose();
-    if (this.#ownsActiveIndex) this.activeIndex.dispose();
+  protected override selectsOnKeyPress(): boolean {
+    return true;
   }
-}
 
-function cloneMenuBarItems(items: readonly MenuBarItem[]): MenuBarItem[] {
-  const clone = new Array<MenuBarItem>(items.length);
-  for (let index = 0; index < items.length; index += 1) {
-    clone[index] = { ...items[index]! };
+  protected override selectActiveFromKey(): void {
+    this.selectActive();
   }
-  return clone;
 }
 
 /** Public class implementing a menu Bar. */

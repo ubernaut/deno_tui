@@ -2,6 +2,14 @@
 import { Component, type ComponentOptions } from "../component.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
+import {
+  ActiveItemController,
+  activeItemForIndex,
+  BOUNDED_ACTIVE_ITEM_INDEX_POLICY,
+  clampActiveItemIndex,
+  cloneActiveItems,
+  shiftActiveItemIndex,
+} from "./active_item.ts";
 import { drawTextRows } from "./text_children.ts";
 
 /** Public type alias for a stepper Orientation. */
@@ -71,97 +79,39 @@ export function renderStepper(
 
 /** Clamps stepper Index to its valid range. */
 export function clampStepperIndex(steps: readonly StepperStep[], activeIndex: number): number {
-  if (steps.length === 0) return 0;
-  const clamped = Math.max(0, Math.min(activeIndex, steps.length - 1));
-  if (!steps[clamped]?.disabled) return clamped;
-  const next = shiftStepperIndex(steps, clamped, 1);
-  if (!steps[next]?.disabled) return next;
-  const previous = shiftStepperIndex(steps, clamped, -1);
-  return steps[previous]?.disabled ? clamped : previous;
+  return clampActiveItemIndex(steps, activeIndex, BOUNDED_ACTIVE_ITEM_INDEX_POLICY);
 }
 
 /** Moves stepper Index by a relative offset. */
 export function shiftStepperIndex(steps: readonly StepperStep[], activeIndex: number, delta: number): number {
-  if (steps.length === 0) return 0;
-  let next = Math.max(0, Math.min(activeIndex, steps.length - 1));
-  for (let count = 0; count < steps.length; count += 1) {
-    next = Math.max(0, Math.min(steps.length - 1, next + delta));
-    if (!steps[next]?.disabled) return next;
-    if (next === 0 || next === steps.length - 1) break;
-  }
-  return activeIndex;
+  return shiftActiveItemIndex(steps, activeIndex, delta, BOUNDED_ACTIVE_ITEM_INDEX_POLICY);
 }
 
 /** Public helper for step For Index. */
 export function stepForIndex(steps: readonly StepperStep[], activeIndex: number): StepperStep | undefined {
-  const step = steps[clampStepperIndex(steps, activeIndex)];
-  return step?.disabled ? undefined : step;
+  return activeItemForIndex(steps, activeIndex, BOUNDED_ACTIVE_ITEM_INDEX_POLICY);
 }
 
 /** State controller for stepper behavior. */
-export class StepperController {
+export class StepperController extends ActiveItemController<StepperStep> {
   readonly steps: Signal<StepperStep[]>;
-  readonly activeIndex: Signal<number>;
   readonly orientation: Signal<StepperOrientation>;
-  readonly #ownsSteps: boolean;
-  readonly #ownsActiveIndex: boolean;
   readonly #ownsOrientation: boolean;
-  readonly #onChange?: (step: StepperStep, index: number) => void | Promise<void>;
 
   constructor(options: StepperControllerOptions) {
-    this.#ownsSteps = !(options.steps instanceof Signal);
-    this.#ownsActiveIndex = !(options.activeIndex instanceof Signal);
+    super({
+      items: options.steps,
+      activeIndex: options.activeIndex,
+      policy: BOUNDED_ACTIVE_ITEM_INDEX_POLICY,
+      onChange: options.onChange,
+    });
+    this.steps = this.activeItems;
     this.#ownsOrientation = !(options.orientation instanceof Signal);
-    this.steps = signalify(options.steps, { deepObserve: true });
-    this.activeIndex = signalify(options.activeIndex ?? 0);
     this.orientation = signalify(options.orientation ?? "horizontal");
-    this.#onChange = options.onChange;
-    this.activeIndex.value = clampStepperIndex(this.steps.peek(), this.activeIndex.peek());
-  }
-
-  active(): StepperStep | undefined {
-    return stepForIndex(this.steps.peek(), this.activeIndex.peek());
-  }
-
-  move(delta: number): StepperStep | undefined {
-    return this.setActive(shiftStepperIndex(this.steps.peek(), this.activeIndex.peek(), delta));
-  }
-
-  first(): StepperStep | undefined {
-    return this.setActive(0);
-  }
-
-  last(): StepperStep | undefined {
-    return this.setActive(this.steps.peek().length - 1);
-  }
-
-  setActive(index: number): StepperStep | undefined {
-    const next = clampStepperIndex(this.steps.peek(), index);
-    this.activeIndex.value = next;
-    const step = this.steps.peek()[next];
-    if (step && !step.disabled) {
-      void this.#onChange?.(step, next);
-      return step;
-    }
-    return undefined;
-  }
-
-  handleKeyPress({ key, ctrl, meta, shift }: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }): void {
-    if (ctrl || meta || shift) return;
-    const orientation = this.orientation.peek();
-    if ((orientation === "horizontal" && key === "left") || (orientation === "vertical" && key === "up")) {
-      this.move(-1);
-    } else if ((orientation === "horizontal" && key === "right") || (orientation === "vertical" && key === "down")) {
-      this.move(1);
-    } else if (key === "home") {
-      this.first();
-    } else if (key === "end") {
-      this.last();
-    }
   }
 
   inspect(): StepperInspection {
-    const steps = cloneStepperSteps(this.steps.peek());
+    const steps = cloneActiveItems(this.steps.peek());
     const activeIndex = clampStepperIndex(steps, this.activeIndex.peek());
     const active = stepForIndex(steps, activeIndex);
     return {
@@ -174,19 +124,14 @@ export class StepperController {
     };
   }
 
-  dispose(): void {
-    if (this.#ownsSteps) this.steps.dispose();
-    if (this.#ownsActiveIndex) this.activeIndex.dispose();
+  override dispose(): void {
+    super.dispose();
     if (this.#ownsOrientation) this.orientation.dispose();
   }
-}
 
-function cloneStepperSteps(steps: readonly StepperStep[]): StepperStep[] {
-  const clone = new Array<StepperStep>(steps.length);
-  for (let index = 0; index < steps.length; index += 1) {
-    clone[index] = { ...steps[index]! };
+  protected override keyAxis(): StepperOrientation {
+    return this.orientation.peek();
   }
-  return clone;
 }
 
 function renderHorizontalStep(step: StepperStep, active: boolean): string {

@@ -1133,6 +1133,24 @@ Deno.test("TabsController navigates and inspects tab state", () => {
   controller.dispose();
 });
 
+Deno.test("active item controllers retain caller-owned collection and index signals", () => {
+  const tabs = new Signal([
+    { id: "overview", label: "Overview" },
+    { id: "settings", label: "Settings" },
+  ]);
+  const activeIndex = new Signal(0);
+  const controller = new TabsController({ tabs, activeIndex });
+
+  controller.move(1);
+  controller.dispose();
+
+  assertEquals(activeIndex.peek(), 1);
+  assertEquals(tabs.disposed, false);
+  assertEquals(activeIndex.disposed, false);
+  tabs.dispose();
+  activeIndex.dispose();
+});
+
 Deno.test("tabsCommands move and select tabs", async () => {
   const controller = new TabsController({
     tabs: [
@@ -1228,6 +1246,23 @@ Deno.test("menu bar renders active item and skips disabled entries", () => {
   assertEquals(shiftMenuIndex(items, 0, 1), 2);
   assertEquals(clampMenuIndex(items, 1), 2);
   assertEquals(menuItemForIndex(items, 1)?.id, "view");
+});
+
+Deno.test("active item helpers preserve wrapped and bounded boundary policies", () => {
+  const items = [
+    { id: "first", value: "first", label: "First" },
+    { id: "disabled", value: "disabled", label: "Disabled", disabled: true },
+    { id: "last", value: "last", label: "Last" },
+  ];
+
+  assertEquals(shiftMenuIndex(items, 2, 1), 0);
+  assertEquals(shiftTabIndex(items, 2, 1), 0);
+  assertEquals(shiftRadioIndex(items, 2, 1), 2);
+  assertEquals(shiftStepperIndex(items, 2, 1), 2);
+  assertEquals(clampMenuIndex([], 4), -1);
+  assertEquals(clampTabIndex([], 4), -1);
+  assertEquals(clampRadioIndex([], 4), 0);
+  assertEquals(clampStepperIndex([], 4), 0);
 });
 
 Deno.test("ModalController opens updates actions and closes on escape", () => {
