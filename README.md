@@ -158,6 +158,24 @@ The main design rule is separation between state, projection, and host rendering
 `deno task component-catalog` is the authoritative component inventory. It supports text and JSON output and includes
 category, capability, controller, and Three.js metadata.
 
+The beta `./app` entrypoint also includes `Markdown` and `MarkdownController`. A pinned `markdown-it` parser produces a
+renderer-neutral document model; the terminal projection adds cell-width wrapping, nested lists and quotes, task items,
+fenced code, links, rules, tables, semantic ANSI styling, scrolling, and responsive reflow. `parseMarkdown()` and
+`renderMarkdown()` can be used without mounting the component.
+
+```ts
+import { Markdown } from "jsr:@scope/package/app";
+
+const document = new Markdown({
+  parent: app.tui,
+  rectangle: { column: 0, row: 0, width: 80, height: 24 },
+  zIndex: 1,
+  theme: { base: crayon.white, focused: crayon.white },
+  source: "# Status\n\n- [x] Runtime ready\n- [ ] Deploy",
+});
+app.registerComponent(document);
+```
+
 Controllers can be used without mounting a component. Their command adapters preserve the same behavior across command
 palettes, menus, key bindings, and tests:
 

@@ -98,6 +98,7 @@ export const packageEntrypoints = [
       "TerminalApp golden path",
       "signals and theme engine",
       "common layouts and widgets",
+      "Markdown document and terminal renderer",
       "commands, routes, and app plugins",
     ],
     excludes: ["broad compatibility surface", "browser host helpers", "renderer internals", "demo workbench code"],

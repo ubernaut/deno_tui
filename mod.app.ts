@@ -41,6 +41,33 @@ export { Input } from "./src/components/input.ts";
 export { Label } from "./src/components/label.ts";
 export { List } from "./src/components/list.ts";
 export { Modal } from "./src/components/modal.ts";
+export {
+  defaultMarkdownStyles,
+  formatMarkdownRenderLine,
+  Markdown,
+  MarkdownController,
+} from "./src/components/markdown.ts";
+export type {
+  MarkdownControllerOptions,
+  MarkdownInspection,
+  MarkdownOptions,
+  MarkdownStyleKey,
+  MarkdownStyles,
+} from "./src/components/markdown.ts";
+export { markdownRenderText, parseMarkdown, renderMarkdown } from "./src/content/markdown.ts";
+export type {
+  MarkdownBlock,
+  MarkdownBlockKind,
+  MarkdownDocument,
+  MarkdownInlineMark,
+  MarkdownInlineSpan,
+  MarkdownParseOptions,
+  MarkdownRenderLine,
+  MarkdownRenderOptions,
+  MarkdownRenderRole,
+  MarkdownRenderSegment,
+  MarkdownTableCell,
+} from "./src/content/markdown.ts";
 export { ProgressBar } from "./src/components/progressbar.ts";
 export { RadioGroup } from "./src/components/radio_group.ts";
 export { ScrollArea } from "./src/components/scroll_area.ts";

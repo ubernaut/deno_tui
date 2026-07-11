@@ -6,13 +6,13 @@ separate while shared module declarations are listed once with explicit entrypoi
 ## Summary
 
 - Entrypoints: 10
-- Unique modules: 239
-- Module visits: 540
-- Unique re-export declarations: 347
-- Re-export declaration visits: 534
-- Unique symbol declarations: 2372
-- Symbol declaration visits: 5378
-- Documented symbol declarations: 2372
+- Unique modules: 241
+- Module visits: 542
+- Unique re-export declarations: 351
+- Re-export declaration visits: 538
+- Unique symbol declarations: 2395
+- Symbol declaration visits: 5401
+- Documented symbol declarations: 2395
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -22,7 +22,7 @@ separate while shared module declarations are listed once with explicit entrypoi
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
 | `.`             | `./mod.ts`                     | terminal | stable       |     219 |    2293 | 100.00% |
-| `./app`         | `./mod.app.ts`                 | terminal | beta         |      47 |      50 | 100.00% |
+| `./app`         | `./mod.app.ts`                 | terminal | beta         |      49 |      73 | 100.00% |
 | `./web`         | `./mod.web.ts`                 | browser  | beta         |     198 |    2144 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      25 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      75 | 100.00% |
@@ -54,10 +54,10 @@ Focused terminal application package with opinionated lifecycle wiring and curat
 - Path: `./mod.app.ts`
 - Runtime: terminal
 - Stability: beta
-- Modules: 47
-- Re-export declarations: 50
-- Exported symbols: 50
-- Documented symbols: 50
+- Modules: 49
+- Re-export declarations: 54
+- Exported symbols: 73
+- Documented symbols: 73
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -186,7 +186,7 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 
 | Module                                                                                          | Entrypoints                             | Re-exports | Symbols | Documented |
 | ----------------------------------------------------------------------------------------------- | --------------------------------------- | ---------: | ------: | ---------: |
-| [`mod.app.ts`](#mod-app-ts)                                                                     | `./app`                                 |         41 |       0 |          0 |
+| [`mod.app.ts`](#mod-app-ts)                                                                     | `./app`                                 |         45 |       0 |          0 |
 | [`mod.remote.ts`](#mod-remote-ts)                                                               | `./remote`                              |          3 |       0 |          0 |
 | [`mod.runtime.ts`](#mod-runtime-ts)                                                             | `./runtime`                             |          1 |       0 |          0 |
 | [`mod.terminal.ts`](#mod-terminal-ts)                                                           | `./terminal`                            |         14 |       0 |          0 |
@@ -285,6 +285,7 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/components/label.ts`](#src-components-label-ts)                                           | `.`, `./app`, `./web`                   |          0 |       6 |          6 |
 | [`src/components/list.ts`](#src-components-list-ts)                                             | `.`, `./app`, `./web`                   |          0 |       9 |          9 |
 | [`src/components/log_viewer.ts`](#src-components-log-viewer-ts)                                 | `.`, `./web`                            |          0 |       6 |          6 |
+| [`src/components/markdown.ts`](#src-components-markdown-ts)                                     | `./app`                                 |          0 |       9 |          9 |
 | [`src/components/menu_bar.ts`](#src-components-menu-bar-ts)                                     | `.`, `./web`                            |          0 |      10 |         10 |
 | [`src/components/metric_series.ts`](#src-components-metric-series-ts)                           | `.`, `./web`                            |          0 |      10 |         10 |
 | [`src/components/mod.ts`](#src-components-mod-ts)                                               | `.`, `./web`                            |         41 |       0 |          0 |
@@ -307,6 +308,7 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/components/toast.ts`](#src-components-toast-ts)                                           | `.`, `./app`, `./web`                   |          0 |       8 |          8 |
 | [`src/components/tree.ts`](#src-components-tree-ts)                                             | `.`, `./app`, `./web`                   |          0 |      11 |         11 |
 | [`src/components/virtual_list.ts`](#src-components-virtual-list-ts)                             | `.`, `./app`, `./web`                   |          0 |       9 |          9 |
+| [`src/content/markdown.ts`](#src-content-markdown-ts)                                           | `./app`                                 |          0 |      14 |         14 |
 | [`src/controls.ts`](#src-controls-ts)                                                           | `.`                                     |          0 |       2 |          2 |
 | [`src/event_emitter.ts`](#src-event-emitter-ts)                                                 | `.`, `./web`                            |          0 |       5 |          5 |
 | [`src/focus.ts`](#src-focus-ts)                                                                 | `.`, `./web`                            |          0 |       9 |          9 |
@@ -432,49 +434,53 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 
 _Entrypoints: `./app`_
 
-| Re-export Target                    | Kind  | Names                                                                                                                     |
-| ----------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------- |
-| `src/app/terminal_app.ts`           | named | `TerminalApp`, `createTerminalApp`                                                                                        |
-| `src/app/terminal_app.ts`           | named | `type TerminalAppBindings`, `type TerminalAppComponentOptions`, `type TerminalAppInputOptions`, `type TerminalAppOptions` |
-| `src/app/plugins.ts`                | named | `createAppPlugin`                                                                                                         |
-| `src/app/plugins.ts`                | named | `type AppPluginDefinition`                                                                                                |
-| `src/app/actions.ts`                | named | `type Action`, `type ActionHandler`, `type ActionMiddleware`                                                              |
-| `src/app/commands.ts`               | named | `type Command`                                                                                                            |
-| `src/app/router.ts`                 | named | `type Route`                                                                                                              |
-| `src/signals/mod.ts`                | named | `Computed`, `Effect`, `Signal`                                                                                            |
-| `src/signals/mod.ts`                | named | `type SignalOfObject`                                                                                                     |
-| `src/theme.ts`                      | named | `ThemeEngine`, `createThemeEngine`                                                                                        |
-| `src/tui.ts`                        | named | `Tui`                                                                                                                     |
-| `src/tui.ts`                        | named | `type TuiOptions`                                                                                                         |
-| `src/types.ts`                      | named | `type Rectangle`                                                                                                          |
-| `src/layout/grid_layout.ts`         | named | `GridLayout`                                                                                                              |
-| `src/layout/horizontal_layout.ts`   | named | `HorizontalLayout`                                                                                                        |
-| `src/layout/split_pane.ts`          | named | `SplitPaneController`                                                                                                     |
-| `src/layout/vertical_layout.ts`     | named | `VerticalLayout`                                                                                                          |
-| `src/components/box.ts`             | named | `Box`                                                                                                                     |
-| `src/components/button.ts`          | named | `Button`                                                                                                                  |
-| `src/components/checkbox.ts`        | named | `CheckBox`                                                                                                                |
-| `src/components/combobox.ts`        | named | `ComboBox`                                                                                                                |
-| `src/components/command_palette.ts` | named | `CommandPalette`                                                                                                          |
-| `src/components/context_menu.ts`    | named | `ContextMenu`                                                                                                             |
-| `src/components/frame.ts`           | named | `Frame`                                                                                                                   |
-| `src/components/input.ts`           | named | `Input`                                                                                                                   |
-| `src/components/label.ts`           | named | `Label`                                                                                                                   |
-| `src/components/list.ts`            | named | `List`                                                                                                                    |
-| `src/components/modal.ts`           | named | `Modal`                                                                                                                   |
-| `src/components/progressbar.ts`     | named | `ProgressBar`                                                                                                             |
-| `src/components/radio_group.ts`     | named | `RadioGroup`                                                                                                              |
-| `src/components/scroll_area.ts`     | named | `ScrollArea`                                                                                                              |
-| `src/components/slider.ts`          | named | `Slider`                                                                                                                  |
-| `src/components/spinner.ts`         | named | `Spinner`                                                                                                                 |
-| `src/components/statusbar.ts`       | named | `StatusBar`                                                                                                               |
-| `src/components/table.ts`           | named | `Table`                                                                                                                   |
-| `src/components/tabs.ts`            | named | `Tabs`                                                                                                                    |
-| `src/components/text.ts`            | named | `Text`                                                                                                                    |
-| `src/components/textbox.ts`         | named | `TextBox`                                                                                                                 |
-| `src/components/toast.ts`           | named | `ToastStack`                                                                                                              |
-| `src/components/tree.ts`            | named | `Tree`                                                                                                                    |
-| `src/components/virtual_list.ts`    | named | `VirtualList`                                                                                                             |
+| Re-export Target                    | Kind  | Names                                                                                                                                                                                                                                                                                                  |
+| ----------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/app/terminal_app.ts`           | named | `TerminalApp`, `createTerminalApp`                                                                                                                                                                                                                                                                     |
+| `src/app/terminal_app.ts`           | named | `type TerminalAppBindings`, `type TerminalAppComponentOptions`, `type TerminalAppInputOptions`, `type TerminalAppOptions`                                                                                                                                                                              |
+| `src/app/plugins.ts`                | named | `createAppPlugin`                                                                                                                                                                                                                                                                                      |
+| `src/app/plugins.ts`                | named | `type AppPluginDefinition`                                                                                                                                                                                                                                                                             |
+| `src/app/actions.ts`                | named | `type Action`, `type ActionHandler`, `type ActionMiddleware`                                                                                                                                                                                                                                           |
+| `src/app/commands.ts`               | named | `type Command`                                                                                                                                                                                                                                                                                         |
+| `src/app/router.ts`                 | named | `type Route`                                                                                                                                                                                                                                                                                           |
+| `src/signals/mod.ts`                | named | `Computed`, `Effect`, `Signal`                                                                                                                                                                                                                                                                         |
+| `src/signals/mod.ts`                | named | `type SignalOfObject`                                                                                                                                                                                                                                                                                  |
+| `src/theme.ts`                      | named | `ThemeEngine`, `createThemeEngine`                                                                                                                                                                                                                                                                     |
+| `src/tui.ts`                        | named | `Tui`                                                                                                                                                                                                                                                                                                  |
+| `src/tui.ts`                        | named | `type TuiOptions`                                                                                                                                                                                                                                                                                      |
+| `src/types.ts`                      | named | `type Rectangle`                                                                                                                                                                                                                                                                                       |
+| `src/layout/grid_layout.ts`         | named | `GridLayout`                                                                                                                                                                                                                                                                                           |
+| `src/layout/horizontal_layout.ts`   | named | `HorizontalLayout`                                                                                                                                                                                                                                                                                     |
+| `src/layout/split_pane.ts`          | named | `SplitPaneController`                                                                                                                                                                                                                                                                                  |
+| `src/layout/vertical_layout.ts`     | named | `VerticalLayout`                                                                                                                                                                                                                                                                                       |
+| `src/components/box.ts`             | named | `Box`                                                                                                                                                                                                                                                                                                  |
+| `src/components/button.ts`          | named | `Button`                                                                                                                                                                                                                                                                                               |
+| `src/components/checkbox.ts`        | named | `CheckBox`                                                                                                                                                                                                                                                                                             |
+| `src/components/combobox.ts`        | named | `ComboBox`                                                                                                                                                                                                                                                                                             |
+| `src/components/command_palette.ts` | named | `CommandPalette`                                                                                                                                                                                                                                                                                       |
+| `src/components/context_menu.ts`    | named | `ContextMenu`                                                                                                                                                                                                                                                                                          |
+| `src/components/frame.ts`           | named | `Frame`                                                                                                                                                                                                                                                                                                |
+| `src/components/input.ts`           | named | `Input`                                                                                                                                                                                                                                                                                                |
+| `src/components/label.ts`           | named | `Label`                                                                                                                                                                                                                                                                                                |
+| `src/components/list.ts`            | named | `List`                                                                                                                                                                                                                                                                                                 |
+| `src/components/modal.ts`           | named | `Modal`                                                                                                                                                                                                                                                                                                |
+| `src/components/markdown.ts`        | named | `Markdown`, `MarkdownController`, `defaultMarkdownStyles`, `formatMarkdownRenderLine`                                                                                                                                                                                                                  |
+| `src/components/markdown.ts`        | named | `type MarkdownControllerOptions`, `type MarkdownInspection`, `type MarkdownOptions`, `type MarkdownStyleKey`, `type MarkdownStyles`                                                                                                                                                                    |
+| `src/content/markdown.ts`           | named | `markdownRenderText`, `parseMarkdown`, `renderMarkdown`                                                                                                                                                                                                                                                |
+| `src/content/markdown.ts`           | named | `type MarkdownBlock`, `type MarkdownBlockKind`, `type MarkdownDocument`, `type MarkdownInlineMark`, `type MarkdownInlineSpan`, `type MarkdownParseOptions`, `type MarkdownRenderLine`, `type MarkdownRenderOptions`, `type MarkdownRenderRole`, `type MarkdownRenderSegment`, `type MarkdownTableCell` |
+| `src/components/progressbar.ts`     | named | `ProgressBar`                                                                                                                                                                                                                                                                                          |
+| `src/components/radio_group.ts`     | named | `RadioGroup`                                                                                                                                                                                                                                                                                           |
+| `src/components/scroll_area.ts`     | named | `ScrollArea`                                                                                                                                                                                                                                                                                           |
+| `src/components/slider.ts`          | named | `Slider`                                                                                                                                                                                                                                                                                               |
+| `src/components/spinner.ts`         | named | `Spinner`                                                                                                                                                                                                                                                                                              |
+| `src/components/statusbar.ts`       | named | `StatusBar`                                                                                                                                                                                                                                                                                            |
+| `src/components/table.ts`           | named | `Table`                                                                                                                                                                                                                                                                                                |
+| `src/components/tabs.ts`            | named | `Tabs`                                                                                                                                                                                                                                                                                                 |
+| `src/components/text.ts`            | named | `Text`                                                                                                                                                                                                                                                                                                 |
+| `src/components/textbox.ts`         | named | `TextBox`                                                                                                                                                                                                                                                                                              |
+| `src/components/toast.ts`           | named | `ToastStack`                                                                                                                                                                                                                                                                                           |
+| `src/components/tree.ts`            | named | `Tree`                                                                                                                                                                                                                                                                                                 |
+| `src/components/virtual_list.ts`    | named | `VirtualList`                                                                                                                                                                                                                                                                                          |
 
 _No direct exported symbols._
 
@@ -2407,6 +2413,22 @@ _Entrypoints: `.`, `./web`_
 | `LogViewerOptions`           | interface | yes       | yes   |
 | `visibleLogLines`            | function  | no        | yes   |
 
+### src/components/markdown.ts
+
+_Entrypoints: `./app`_
+
+| Symbol                      | Kind      | Type Only | JSDoc |
+| --------------------------- | --------- | --------- | ----- |
+| `defaultMarkdownStyles`     | const     | no        | yes   |
+| `formatMarkdownRenderLine`  | function  | no        | yes   |
+| `Markdown`                  | class     | no        | yes   |
+| `MarkdownController`        | class     | no        | yes   |
+| `MarkdownControllerOptions` | interface | yes       | yes   |
+| `MarkdownInspection`        | interface | yes       | yes   |
+| `MarkdownOptions`           | interface | yes       | yes   |
+| `MarkdownStyleKey`          | type      | yes       | yes   |
+| `MarkdownStyles`            | type      | yes       | yes   |
+
 ### src/components/menu_bar.ts
 
 _Entrypoints: `.`, `./web`_
@@ -2801,6 +2823,27 @@ _Entrypoints: `.`, `./app`, `./web`_
 | `VirtualListOptions`           | interface | yes       | yes   |
 | `VirtualListRow`               | interface | yes       | yes   |
 | `virtualListRows`              | function  | no        | yes   |
+
+### src/content/markdown.ts
+
+_Entrypoints: `./app`_
+
+| Symbol                  | Kind      | Type Only | JSDoc |
+| ----------------------- | --------- | --------- | ----- |
+| `MarkdownBlock`         | interface | yes       | yes   |
+| `MarkdownBlockKind`     | type      | yes       | yes   |
+| `MarkdownDocument`      | interface | yes       | yes   |
+| `MarkdownInlineMark`    | type      | yes       | yes   |
+| `MarkdownInlineSpan`    | interface | yes       | yes   |
+| `MarkdownParseOptions`  | interface | yes       | yes   |
+| `MarkdownRenderLine`    | interface | yes       | yes   |
+| `MarkdownRenderOptions` | interface | yes       | yes   |
+| `MarkdownRenderRole`    | type      | yes       | yes   |
+| `MarkdownRenderSegment` | interface | yes       | yes   |
+| `markdownRenderText`    | function  | no        | yes   |
+| `MarkdownTableCell`     | interface | yes       | yes   |
+| `parseMarkdown`         | function  | no        | yes   |
+| `renderMarkdown`        | function  | no        | yes   |
 
 ### src/controls.ts
 

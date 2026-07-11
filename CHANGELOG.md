@@ -12,6 +12,8 @@ quickly, but the affected entrypoint or module family should be named here.
   wiring, disposable input handling, component registration, and a focused runnable example.
 - Added a headless `TerminalAppPilot` through `./testing` for deterministic key, pointer, paste, focus, resize, command,
   action, settle, wait, and canvas snapshot tests.
+- Added parser-backed Markdown documents, terminal rendering, semantic styling, scrolling, and the `Markdown` component
+  through the beta `./app` entrypoint.
 - Added a renderer-neutral HTML/CSS-style layout foundation with markup parsing, CSS-like cascade, block/flex solving,
   computed layout boxes, and a runnable `deno task html-css-layout` example.
 - Added markup widget hydration for common controls, including a default registry, focus order, controller lookup,
@@ -25,4 +27,5 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Changed
 
+- Text-row components now allocate and retire visible rows as their terminal height changes, including styled ANSI rows.
 - Tightened the contributor API inventory gate to require duplicate-free public exports and 100% JSDoc coverage.
