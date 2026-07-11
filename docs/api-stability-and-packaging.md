@@ -36,20 +36,21 @@ import { yogaLayoutSolver } from "./src/layout/solvers/yoga.ts";
 Published package imports should use the same subpaths:
 
 ```ts
-import { Tui } from "jsr:@scope/package";
-import { createTerminalApp } from "jsr:@scope/package/app";
-import { createWebTui } from "jsr:@scope/package/web";
-import { RemoteTerminalClient } from "jsr:@scope/package/remote";
-import { createDefaultAsciiOptions } from "jsr:@scope/package/three-ascii";
-import { createThemeEngine } from "jsr:@scope/package/theme";
-import { AsyncScheduler } from "jsr:@scope/package/runtime";
-import { TerminalScreen } from "jsr:@scope/package/terminal";
-import { createTestCanvas } from "jsr:@scope/package/testing";
-import { yogaLayoutSolver } from "jsr:@scope/package/layout/yoga";
+import { Tui } from "jsr:@ubernaut/deno-tui";
+import { createTerminalApp } from "jsr:@ubernaut/deno-tui/app";
+import { createWebTui } from "jsr:@ubernaut/deno-tui/web";
+import { RemoteTerminalClient } from "jsr:@ubernaut/deno-tui/remote";
+import { createDefaultAsciiOptions } from "jsr:@ubernaut/deno-tui/three-ascii";
+import { createThemeEngine } from "jsr:@ubernaut/deno-tui/theme";
+import { AsyncScheduler } from "jsr:@ubernaut/deno-tui/runtime";
+import { TerminalScreen } from "jsr:@ubernaut/deno-tui/terminal";
+import { createTestCanvas } from "jsr:@ubernaut/deno-tui/testing";
+import { yogaLayoutSolver } from "jsr:@ubernaut/deno-tui/layout/yoga";
 ```
 
-The package is not pinned to a public JSR scope in this repository yet. Choose the final scope during publication, then
-update the import examples and release notes.
+The package identity and version are pinned in `deno.jsonc` as `@ubernaut/deno-tui`. The first upload still requires the
+`ubernaut` JSR scope to exist and authorize the publisher; repository checks deliberately stop at a dry run and do not
+perform authentication or publication.
 
 ## Import Guidance
 
@@ -119,21 +120,29 @@ Every externally useful release should update `CHANGELOG.md`. Use these sections
 Before a release, run:
 
 ```bash
-deno fmt --check
-deno check mod.ts mod.app.ts mod.web.ts mod.remote.ts
-deno task package-check -- --quiet
-deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1 --baseline=docs/api-stable-baseline.json
-deno task benchmark
-deno test
+deno task health
+deno task release-check -- --clean
 ```
 
+`deno task release-check` runs the package policy checks followed by a strict `deno publish --dry-run`. It does not use
+`--allow-slow-types`, so JSR declaration generation and Node.js compatibility remain part of the gate. During normal
+development the task allows a dirty worktree so it can run inside `deno task health`; `--clean` removes that allowance
+for the final release candidate. The task also isolates Deno from an unrelated root `package.json` and reports the file
+count and approximate upload size.
+
+The publish allowlist contains only release metadata, root entrypoints, and `src/**/*.ts`. Demo applications, examples,
+tests, scripts, plans, screenshots, generated browser assets, and the generated API reference remain in the repository
+but are not uploaded to JSR. `deno task package-check` treats changes to that allowlist as reviewed package-policy
+changes, which prevents accidental artifact bloat.
+
 `deno task package-check` compares `deno.jsonc` exports with `packageEntrypoints`, verifies the entrypoint files exist,
-reports drift separately for stable, beta, experimental, and internal tiers, and blocks new `src/app/*` modules from
-leaking through the stable root entrypoint unless the legacy app-module allowlist in `docs/api-stable-app-modules.json`
-is intentionally updated. The current stable root still exposes older app and Workbench helper modules for
-compatibility; new Workbench implementation helpers should stay behind focused modules or app-local imports until they
-are intentionally promoted. Stale entries in the app-module allowlist also fail the package check, so removing a stable
-app export must remove its compatibility-policy entry in the same change.
+checks the package identity, SemVer version, and publish allowlist, reports drift separately for stable, beta,
+experimental, and internal tiers, and blocks new `src/app/*` modules from leaking through the stable root entrypoint
+unless the legacy app-module allowlist in `docs/api-stable-app-modules.json` is intentionally updated. The current
+stable root still exposes older app and Workbench helper modules for compatibility; new Workbench implementation helpers
+should stay behind focused modules or app-local imports until they are intentionally promoted. Stale entries in the
+app-module allowlist also fail the package check, so removing a stable app export must remove its compatibility-policy
+entry in the same change.
 `deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1
 --baseline=docs/api-stable-baseline.json`
 enforces a duplicate-free stable re-export graph with 100% JSDoc coverage and fails if the stable root API changes

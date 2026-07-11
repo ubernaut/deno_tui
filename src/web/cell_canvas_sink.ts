@@ -1,5 +1,3 @@
-/// <reference lib="dom" />
-/// <reference lib="dom.iterable" />
 // Copyright 2023 Im-Beast. MIT license.
 import type { CanvasCellSink, CanvasCellUpdate, CanvasRowRangeUpdate } from "../canvas/sink.ts";
 import type { CanvasRenderStats } from "../canvas/canvas.ts";

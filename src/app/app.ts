@@ -95,12 +95,12 @@ export interface TuiAppInspection<TRoute extends Route = Route> {
 /** High-level composition root for routes, commands, focus, mouse, plugins, and runtime workloads. */
 export class TuiApp<TAction extends Action = Action, TRoute extends Route = Route> {
   readonly tui: Tui;
-  readonly actions = new ActionBus<TAction>();
-  readonly commands = new CommandRegistry<TAction>();
-  readonly focus = new FocusManager();
-  readonly keymap = new KeymapRegistry();
-  readonly mouse = new MouseInteractionRouter();
-  readonly workloads = new RuntimeWorkloadRegistry();
+  readonly actions: ActionBus<TAction> = new ActionBus<TAction>();
+  readonly commands: CommandRegistry<TAction> = new CommandRegistry<TAction>();
+  readonly focus: FocusManager = new FocusManager();
+  readonly keymap: KeymapRegistry = new KeymapRegistry();
+  readonly mouse: MouseInteractionRouter = new MouseInteractionRouter();
+  readonly workloads: RuntimeWorkloadRegistry = new RuntimeWorkloadRegistry();
   readonly routes: RouteManager<TRoute>;
   readonly #disposers = new Set<() => void>();
   readonly #plugins = new Map<string, AppPluginInspection & { dispose: () => void }>();

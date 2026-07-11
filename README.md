@@ -1,9 +1,8 @@
 # Tui
 
-<img src="https://raw.githubusercontent.com/Im-Beast/deno_tui/main/docs/logo-transparent.png" align="right" width="250" height="250" alt="Deno mascot made as ASCII art" />
+<img src="https://raw.githubusercontent.com/ubernaut/deno_tui/main/docs/logo-transparent.png" align="right" width="250" height="250" alt="Deno mascot made as ASCII art" />
 
-[![Deno](https://github.com/Im-Beast/deno_tui/actions/workflows/deno.yml/badge.svg)](https://github.com/Im-Beast/deno_tui/actions/workflows/deno.yml)
-[![Deno doc](https://doc.deno.land/badge.svg)](https://doc.deno.land/https://deno.land/x/tui/mod.ts)
+[![Deno](https://github.com/ubernaut/deno_tui/actions/workflows/deno.yml/badge.svg)](https://github.com/ubernaut/deno_tui/actions/workflows/deno.yml)
 
 A reactive, composable, Deno-first toolkit for terminal user interfaces. This fork includes the original canvas and
 component foundation plus controller-first widgets, app and runtime primitives, browser and remote-terminal entrypoints,
@@ -11,12 +10,11 @@ an optional Three.js ASCII renderer, and full-screen visualization demos.
 
 ## Quick Start
 
-New applications should use the focused `./app` entrypoint. Replace the placeholder package name when this fork is
-published:
+New applications should use the focused `./app` entrypoint:
 
 ```ts
 import { crayon } from "https://deno.land/x/crayon@3.3.3/mod.ts";
-import { Button, Computed, createTerminalApp, Signal } from "jsr:@scope/package/app";
+import { Button, Computed, createTerminalApp, Signal } from "jsr:@ubernaut/deno-tui/app";
 
 const count = new Signal(0);
 const app = createTerminalApp<{ type: "increment" }>({
@@ -102,23 +100,28 @@ The export map in `deno.jsonc` defines the supported package boundaries:
 Use `./app` for new terminal applications and the root entrypoint for compatibility or low-level composition. Focused
 entrypoints let application and tooling authors avoid taking a dependency on the broad terminal surface. Package
 stability policy and release checks are documented in
-[API Stability and Packaging](./docs/api-stability-and-packaging.md).
+[API Stability and Packaging](https://github.com/ubernaut/deno_tui/blob/main/docs/api-stability-and-packaging.md).
 
 ## Documentation
 
-- [Repository Overview](./docs/repo-overview.md) maps module families, integration surfaces, demos, and quality gates.
-- [API Reference](./docs/api-reference.md) is generated from the public re-export graph and lists every exported symbol.
-- [API Stability and Packaging](./docs/api-stability-and-packaging.md) defines entrypoint tiers and release policy.
-- [Testing and Performance](./docs/testing-and-performance.md) covers test helpers, benchmarks, probes, and contributor
-  gates.
-- [Visualization App](./docs/visualization-app.md) documents the system monitor shell and visualization controls.
-- [HTML/CSS-Style Layout](./docs/html-css-layout.md) documents markup parsing, the supported CSS subset, and the simple
-  and optional Yoga solvers.
-- [Terminal Emulation Strategy](./docs/terminal-emulation-strategy.md) describes process, PTY, screen, and scrollback
-  scope.
-- [Curses and WebTUI Parity](./docs/curses-webtui-parity.md) records terminal and browser toolkit expectations.
-- [Browser Framework Plan](./docs/web-framework-plan.md) explains the browser host, DOM target, remote bridge, and Pages
-  build direction.
+- [Repository Overview](https://github.com/ubernaut/deno_tui/blob/main/docs/repo-overview.md) maps module families,
+  integration surfaces, demos, and quality gates.
+- [API Reference](https://github.com/ubernaut/deno_tui/blob/main/docs/api-reference.md) is generated from the public
+  re-export graph and lists every exported symbol.
+- [API Stability and Packaging](https://github.com/ubernaut/deno_tui/blob/main/docs/api-stability-and-packaging.md)
+  defines entrypoint tiers and release policy.
+- [Testing and Performance](https://github.com/ubernaut/deno_tui/blob/main/docs/testing-and-performance.md) covers test
+  helpers, benchmarks, probes, and contributor gates.
+- [Visualization App](https://github.com/ubernaut/deno_tui/blob/main/docs/visualization-app.md) documents the system
+  monitor shell and visualization controls.
+- [HTML/CSS-Style Layout](https://github.com/ubernaut/deno_tui/blob/main/docs/html-css-layout.md) documents markup
+  parsing, the supported CSS subset, and the simple and optional Yoga solvers.
+- [Terminal Emulation Strategy](https://github.com/ubernaut/deno_tui/blob/main/docs/terminal-emulation-strategy.md)
+  describes process, PTY, screen, and scrollback scope.
+- [Curses and WebTUI Parity](https://github.com/ubernaut/deno_tui/blob/main/docs/curses-webtui-parity.md) records
+  terminal and browser toolkit expectations.
+- [Browser Framework Plan](https://github.com/ubernaut/deno_tui/blob/main/docs/web-framework-plan.md) explains the
+  browser host, DOM target, remote bridge, and Pages build direction.
 
 Use the generated and queryable catalogs instead of maintaining parallel symbol lists:
 
@@ -164,7 +167,7 @@ fenced code, links, rules, tables, semantic ANSI styling, scrolling, and respons
 `renderMarkdown()` can be used without mounting the component.
 
 ```ts
-import { Markdown } from "jsr:@scope/package/app";
+import { Markdown } from "jsr:@ubernaut/deno-tui/app";
 
 const document = new Markdown({
   parent: app.tui,
@@ -210,8 +213,9 @@ responsive recipes, and `WindowManagerController` support application shells and
 an HTML/CSS-style tree with terminal-cell media queries, Flexbox, Grid, absolute positioning, overflow inspection, and
 an optional Yoga backend.
 
-See [HTML/CSS-Style Layout](./docs/html-css-layout.md), `examples/layout_recipe_report.ts`,
-`examples/html_css_layout.ts`, and `examples/window_manager_demo.ts` for executable examples.
+See [HTML/CSS-Style Layout](https://github.com/ubernaut/deno_tui/blob/main/docs/html-css-layout.md),
+`examples/layout_recipe_report.ts`, `examples/html_css_layout.ts`, and `examples/window_manager_demo.ts` for executable
+examples.
 
 ### App And Runtime
 
@@ -280,7 +284,7 @@ deno task three-ascii
 
 The API Workbench and Neon applications exercise the renderer inside resizable, tiled, fullscreen, and minimized
 windows. GPU-backed probes and visual smokes are documented in
-[Testing and Performance](./docs/testing-and-performance.md).
+[Testing and Performance](https://github.com/ubernaut/deno_tui/blob/main/docs/testing-and-performance.md).
 
 ## Demos
 
@@ -308,19 +312,19 @@ limited to distinct interactive or catalog surfaces.
 
 ### Renderer And Workbench
 
-![Three ASCII renderer terminal screenshot](./docs/screenshots/three-ascii.jpg)
+![Three ASCII renderer terminal screenshot](https://raw.githubusercontent.com/ubernaut/deno_tui/main/docs/screenshots/three-ascii.jpg)
 
-![API workbench terminal screenshot](./docs/screenshots/api-workbench.jpg)
+![API workbench terminal screenshot](https://raw.githubusercontent.com/ubernaut/deno_tui/main/docs/screenshots/api-workbench.jpg)
 
 ### Applications And Catalog
 
-![Component catalog terminal screenshot](./docs/screenshots/component-catalog.jpg)
+![Component catalog terminal screenshot](https://raw.githubusercontent.com/ubernaut/deno_tui/main/docs/screenshots/component-catalog.jpg)
 
-![Showcase terminal screenshot](./docs/screenshots/showcase.jpg)
+![Showcase terminal screenshot](https://raw.githubusercontent.com/ubernaut/deno_tui/main/docs/screenshots/showcase.jpg)
 
-![Neon Exodus suite terminal screenshot](./docs/screenshots/neon-exodus.jpg)
+![Neon Exodus suite terminal screenshot](https://raw.githubusercontent.com/ubernaut/deno_tui/main/docs/screenshots/neon-exodus.jpg)
 
-![System monitor terminal screenshot](./docs/screenshots/system-monitor.jpg)
+![System monitor terminal screenshot](https://raw.githubusercontent.com/ubernaut/deno_tui/main/docs/screenshots/system-monitor.jpg)
 
 ## Development
 
@@ -342,7 +346,8 @@ deno task e2e
 ```
 
 Renderer and workbench changes also require the matching live probe or PTY/browser visual smoke. See
-[Testing and Performance](./docs/testing-and-performance.md) for the current matrix and thresholds.
+[Testing and Performance](https://github.com/ubernaut/deno_tui/blob/main/docs/testing-and-performance.md) for the
+current matrix and thresholds.
 
 ## OS Support
 

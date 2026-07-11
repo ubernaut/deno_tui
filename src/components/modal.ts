@@ -141,7 +141,7 @@ export class ModalController {
     return this.actions.peek()[clampModalActionIndex(this.actions.peek(), this.selectedActionIndex.peek())];
   }
 
-  activateAction(index = this.selectedActionIndex.peek()): ModalAction | undefined {
+  activateAction(index: number = this.selectedActionIndex.peek()): ModalAction | undefined {
     const action = this.actions.peek()[clampModalActionIndex(this.actions.peek(), index)];
     if (!action || action.disabled) return undefined;
     this.selectedActionIndex.value = clampModalActionIndex(this.actions.peek(), index);
@@ -150,7 +150,9 @@ export class ModalController {
     return action;
   }
 
-  handleKeyPress({ key, ctrl, meta, shift }: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }) {
+  handleKeyPress(
+    { key, ctrl, meta, shift }: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean },
+  ): ModalAction | ModalInspection | undefined {
     if (!this.openState.peek() || ctrl || meta) return undefined;
     if (key === "escape" && this.closeOnEscape.peek()) return this.close();
     if (key === "left" || (key === "tab" && shift)) return this.moveAction(-1);

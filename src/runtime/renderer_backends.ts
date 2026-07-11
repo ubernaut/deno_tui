@@ -104,7 +104,7 @@ export interface RuntimeRendererBackendControllerInspection {
 }
 
 /** Public constant for a runtime Renderer Backend Definitions. */
-export const runtimeRendererBackendDefinitions = [
+export const runtimeRendererBackendDefinitions: readonly RuntimeRendererBackendDefinition[] = [
   {
     id: "webgpu-three-ascii",
     label: "WebGPU Three ASCII",

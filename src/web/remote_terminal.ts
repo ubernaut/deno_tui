@@ -1,5 +1,3 @@
-/// <reference lib="dom" />
-/// <reference lib="dom.iterable" />
 // Copyright 2023 Im-Beast. MIT license.
 import { EventEmitter } from "../event_emitter.ts";
 import { encodeTerminalKeyPress, encodeTerminalPaste } from "../app/terminal_input.ts";
@@ -127,7 +125,7 @@ export class RemoteTerminalClient extends EventEmitter<RemoteTerminalClientEvent
     this.#send({ type: "resize", size });
   }
 
-  ping(id = crypto.randomUUID()): string {
+  ping(id: string = crypto.randomUUID()): string {
     this.#send({ type: "ping", id });
     return id;
   }

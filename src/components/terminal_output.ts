@@ -61,7 +61,7 @@ export class TerminalOutputController extends BoundedFollowLinesController<Termi
     return copyTerminalOutputLines(lines, start, end);
   }
 
-  appendText(source: TerminalOutputSource, text: string, timestamp = Date.now()): void {
+  appendText(source: TerminalOutputSource, text: string, timestamp: number = Date.now()): void {
     this.append({ source, text, timestamp });
   }
 

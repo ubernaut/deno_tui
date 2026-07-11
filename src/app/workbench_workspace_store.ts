@@ -63,7 +63,7 @@ export async function loadWorkbenchWorkspaceStorage<TAscii = unknown>(
 export async function persistWorkbenchWorkspaceStorage<TAscii = unknown>(
   workspaces: readonly WorkbenchWorkspace<TAscii>[],
   options: WorkbenchWorkspaceStorageOptions<TAscii>,
-  savedAt = Date.now(),
+  savedAt: number = Date.now(),
 ): Promise<void> {
   await options.store.set(options.key, serializeWorkbenchWorkspaces(workspaces, savedAt)).catch((error) => {
     reportWorkbenchWorkspaceStorageFallback(options, "workspace persist", error);

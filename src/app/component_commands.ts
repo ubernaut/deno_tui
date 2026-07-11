@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import {
   type ComponentCatalogEntry,
+  type ComponentCatalogInspection,
   type ComponentCatalogQuery,
   inspectComponentCatalog,
   queryComponents,
@@ -59,7 +60,9 @@ export function bindComponentCatalogCommands<TAction extends Action = ComponentC
 }
 
 /** Creates a serializable inspection snapshot for component Catalog Commands. */
-export function inspectComponentCatalogCommands(options: ComponentCatalogCommandOptions = {}) {
+export function inspectComponentCatalogCommands(
+  options: ComponentCatalogCommandOptions = {},
+): ComponentCatalogInspection & { commandCount: number; group: string } {
   const entries = options.entries ?? queryComponents(options.query);
   return {
     ...inspectComponentCatalog(entries),

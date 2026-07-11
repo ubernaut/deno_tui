@@ -1,5 +1,3 @@
-/// <reference lib="dom" />
-/// <reference lib="dom.iterable" />
 // Copyright 2023 Im-Beast. MIT license.
 import { Signal } from "../signals/mod.ts";
 import type { ConsoleSize } from "../types.ts";

@@ -128,7 +128,7 @@ export function normalizeWorkbenchWorkspaces<TAscii = unknown>(
 /** Serializes workspaces into the current versioned storage envelope. */
 export function serializeWorkbenchWorkspaces<TAscii>(
   workspaces: readonly WorkbenchWorkspace<TAscii>[],
-  savedAt = Date.now(),
+  savedAt: number = Date.now(),
 ): WorkbenchWorkspaceStorage<TAscii> {
   const serialized: WorkbenchWorkspace<TAscii>[] = new Array(workspaces.length);
   for (let index = 0; index < workspaces.length; index++) {
@@ -204,7 +204,7 @@ export function renameWorkbenchWorkspace<TAscii>(
   workspaces: readonly WorkbenchWorkspace<TAscii>[],
   currentName: string,
   nextName: string,
-  savedAt = Date.now(),
+  savedAt: number = Date.now(),
   limit = 24,
 ): WorkbenchWorkspace<TAscii>[] {
   const current = findWorkbenchWorkspace(workspaces, currentName);

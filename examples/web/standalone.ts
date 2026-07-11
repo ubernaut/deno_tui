@@ -1,5 +1,3 @@
-/// <reference lib="dom" />
-/// <reference lib="dom.iterable" />
 import { BoxObject, createAnsiStyle, createWebTui, Signal, TextObject } from "../../mod.web.ts";
 
 const root = document.querySelector<HTMLElement>("#app");

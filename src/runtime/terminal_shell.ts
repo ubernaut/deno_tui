@@ -54,7 +54,7 @@ export interface TerminalShellInspection {
 
 /** Interactive shell controller that streams raw backend data into a terminal screen model. */
 export class TerminalShellController {
-  readonly status = new Signal<ProcessSessionStatus | "starting">("idle");
+  readonly status: Signal<ProcessSessionStatus | "starting"> = new Signal<ProcessSessionStatus | "starting">("idle");
   readonly output: TerminalOutputController;
   readonly screen: TerminalScreenController;
   readonly scrollback: TerminalScrollbackController;

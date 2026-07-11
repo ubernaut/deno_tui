@@ -72,7 +72,7 @@ export interface ComponentCatalogMarkdownOptions extends ComponentCatalogReportO
 }
 
 /** Built-in component and helper inventory for demos, docs, and plugin surfaces. */
-export const componentCatalog = [
+export const componentCatalog: readonly ComponentCatalogEntry[] = [
   component("box", "Box", "primitive", "Filled rectangular surface for backgrounds and panels.", [
     "component",
     "themeable",

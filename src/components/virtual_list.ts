@@ -233,7 +233,7 @@ export class VirtualListController<T, TValue = T> {
     return undefined;
   }
 
-  inspect(height = this.#capacity.peek()): VirtualListInspection<T> {
+  inspect(height: number = this.#capacity.peek()): VirtualListInspection<T> {
     const state = this.selection.state.peek();
     return {
       itemCount: this.items.peek().length,

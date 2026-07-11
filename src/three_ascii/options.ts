@@ -128,7 +128,7 @@ export function normalizeAsciiOptions(
 }
 
 /** Convert a terminal glyph style identifier into UI display text. */
-export function terminalGlyphStyleLabel(style: TerminalGlyphStyle) {
+export function terminalGlyphStyleLabel(style: TerminalGlyphStyle): "Blocks" | "Glyphs" | "Mixed" {
   switch (style) {
     case "blocks":
       return "Blocks";
@@ -150,7 +150,7 @@ export function applyAsciiPreset(target: ThreeAsciiConfigOptions, presetId: stri
 }
 
 /** Return the display label for a named ASCII preset. */
-export function asciiPresetLabel(presetId: string) {
+export function asciiPresetLabel(presetId: string): string {
   return presetMap.get(presetId)?.label ?? presetId.toUpperCase();
 }
 
@@ -175,7 +175,7 @@ export function asciiEffectOptions(options: ThreeAsciiConfigOptions): AcerolaAsc
 /** Return the recommended stepped values for a numeric Three ASCII control. */
 export function asciiControlValues(
   key: ThreeAsciiOptionNumericControlKey,
-) {
+): number[] {
   switch (key) {
     case "edgeThreshold":
       return [4, 6, 8, 10, 12, 14, 16, 18];
@@ -234,7 +234,7 @@ export function clampAsciiControlValue(key: ThreeAsciiOptionNumericControlKey, v
 export function formatAsciiControlValue(
   key: ThreeAsciiOptionNumericControlKey,
   value: number,
-) {
+): string {
   switch (key) {
     case "edgeThreshold":
       return value.toFixed(1);

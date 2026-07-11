@@ -84,7 +84,10 @@ export class FileExplorerController {
     return entry;
   }
 
-  handleKeyPress(event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }, height = 1) {
+  handleKeyPress(
+    event: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean },
+    height = 1,
+  ): FileExplorerEntry | undefined {
     if (event.key === "return") return this.openActive();
     this.tree.handleKeyPress(event, height);
     return this.selected();

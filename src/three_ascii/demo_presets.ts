@@ -265,7 +265,10 @@ export function asciiDemoPresets(style?: TerminalGlyphStyle): AsciiDemoPreset[] 
 }
 
 /** Finds a matching ascii Demo Preset record when one exists. */
-export function findAsciiDemoPreset(id: string, fallbackId = ASCII_DEMO_PRESETS[0]?.id): AsciiDemoPreset | undefined {
+export function findAsciiDemoPreset(
+  id: string,
+  fallbackId: string | undefined = ASCII_DEMO_PRESETS[0]?.id,
+): AsciiDemoPreset | undefined {
   const preset = findPreset(id) ?? findPreset(fallbackId);
   return preset === undefined ? undefined : cloneAsciiDemoPreset(preset);
 }

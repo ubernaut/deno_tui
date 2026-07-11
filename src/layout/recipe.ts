@@ -112,7 +112,7 @@ export class LayoutRecipeController<T extends string = string> {
     return new Computed(() => this.rects.value[id]);
   }
 
-  slots(breakpoint = this.breakpoint.peek()): T[] {
+  slots(breakpoint: string = this.breakpoint.peek()): T[] {
     const region = this.recipe.layouts[breakpoint] ?? this.recipe.layouts[this.recipe.fallback ?? ""] ??
       firstLayout(this.recipe.layouts);
     return region ? layoutRecipeSlots(region) : [];

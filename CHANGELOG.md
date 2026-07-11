@@ -24,8 +24,11 @@ quickly, but the affected entrypoint or module family should be named here.
 - Added the experimental `./layout/yoga` package subpath for the optional Yoga-backed Flexbox solver.
 - Added a package stability manifest for terminal, browser, remote, experimental, and demo-only surfaces.
 - Added `deno task package-check` to verify the Deno export map stays aligned with the stability manifest.
+- Added `@ubernaut/deno-tui` package metadata, a lean JSR publish allowlist, and `deno task release-check` for strict
+  publish dry runs with artifact-size reporting.
 
 ### Changed
 
 - Text-row components now allocate and retire visible rows as their terminal height changes, including styled ANSI rows.
 - Tightened the contributor API inventory gate to require duplicate-free public exports and 100% JSDoc coverage.
+- Made every published entrypoint pass JSR fast-type and declaration-output validation without `--allow-slow-types`.

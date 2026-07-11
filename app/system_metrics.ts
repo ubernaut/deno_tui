@@ -103,14 +103,14 @@ export class DenoSystemMetricsProvider implements SystemMetricsProvider {
         ? await Promise.race([
           output,
           new Promise<never>((_, reject) => {
-            timeout = setTimeout(() => {
+            timeout = Number(setTimeout(() => {
               try {
                 child.kill("SIGKILL");
               } catch {
                 // The process may have exited between the timer firing and kill.
               }
               reject(new Error(`${command} timed out after ${options.timeoutMs}ms`));
-            }, options.timeoutMs);
+            }, options.timeoutMs));
           }),
         ])
         : await output;
@@ -1008,9 +1008,9 @@ export class SystemMonitor {
 
   async start(intervalMs = 1000) {
     await this.sample();
-    this.#timer = setInterval(() => {
+    this.#timer = Number(setInterval(() => {
       void this.sample();
-    }, intervalMs);
+    }, intervalMs));
   }
 
   stop() {
@@ -1357,7 +1357,10 @@ async function runMetricCommand(
     return await Promise.race([
       provider.command(command, args, { timeoutMs }),
       new Promise<never>((_, reject) => {
-        timeout = setTimeout(() => reject(new Error(`${command} timed out after ${timeoutMs}ms`)), timeoutMs);
+        timeout = Number(setTimeout(
+          () => reject(new Error(`${command} timed out after ${timeoutMs}ms`)),
+          timeoutMs,
+        ));
       }),
     ]);
   } finally {

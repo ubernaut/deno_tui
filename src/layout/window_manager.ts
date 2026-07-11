@@ -198,7 +198,7 @@ export class WindowManagerController {
     return this.focus(windows[(current + delta + windows.length) % windows.length]!.id);
   }
 
-  minimize(id = this.activeId.peek()): WindowManagerWindow | undefined {
+  minimize(id: string | undefined = this.activeId.peek()): WindowManagerWindow | undefined {
     if (!id) return undefined;
     const window = this.#window(id);
     if (!window || windowState(window) === "closed") return undefined;
@@ -210,7 +210,7 @@ export class WindowManagerController {
     return this.#window(id);
   }
 
-  close(id = this.activeId.peek()): WindowManagerWindow | undefined {
+  close(id: string | undefined = this.activeId.peek()): WindowManagerWindow | undefined {
     if (!id) return undefined;
     const window = this.#window(id);
     if (!window || window.closable === false) return window;
@@ -247,7 +247,7 @@ export class WindowManagerController {
     return this.restore(window.id);
   }
 
-  fullscreen(id = this.activeId.peek()): WindowManagerWindow | undefined {
+  fullscreen(id: string | undefined = this.activeId.peek()): WindowManagerWindow | undefined {
     if (!id) return undefined;
     const window = this.#window(id);
     if (!window || windowState(window) === "closed") return undefined;

@@ -26,7 +26,7 @@ export interface KeymapInspection {
 
 /** Registry for storing and querying keymap definitions. */
 export class KeymapRegistry {
-  readonly bindings = new Map<string, KeyBinding>();
+  readonly bindings: Map<string, KeyBinding> = new Map<string, KeyBinding>();
 
   register(binding: KeyBinding): () => void {
     this.bindings.set(bindingId(binding), binding);

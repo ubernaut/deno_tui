@@ -10,10 +10,14 @@ import {
 } from "../mod.ts";
 import {
   formatPackageExportValidation,
+  formatPackageMetadataValidation,
   formatStableAppExportValidation,
   formatStableDemoExportValidation,
+  PACKAGE_NAME,
+  PACKAGE_PUBLISH_INCLUDES,
   parseStableAppExportPolicy,
   validatePackageExports,
+  validatePackageMetadata,
   validateStableAppExports,
   validateStableDemoExports,
 } from "../scripts/package_check.ts";
@@ -87,12 +91,41 @@ Deno.test("api surface policies mark public experimental and demo-only code", ()
 Deno.test("package release policy lists the package quality gate", () => {
   assertEquals(packageReleasePolicy.changelogFile, "CHANGELOG.md");
   assertEquals(packageReleasePolicy.releaseChecklist.includes("deno task package-check -- --quiet"), true);
+  assertEquals(packageReleasePolicy.releaseChecklist.includes("deno task release-check -- --clean"), true);
   assertEquals(
     packageReleasePolicy.releaseChecklist.includes(
       "deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1",
     ),
     true,
   );
+});
+
+Deno.test("package metadata validation pins identity, semver, and the lean publish boundary", () => {
+  const valid = validatePackageMetadata({
+    name: PACKAGE_NAME,
+    version: "0.1.0",
+    publish: { include: [...PACKAGE_PUBLISH_INCLUDES] },
+  });
+  assertEquals(valid.ok, true);
+  assertEquals(formatPackageMetadataValidation(valid), "ok package metadata matches release policy");
+
+  const invalid = validatePackageMetadata({
+    name: "@scope/other",
+    version: "next",
+    publish: { include: ["README.md", "docs/*.md", 42] },
+  });
+  assertEquals(invalid.ok, false);
+  assertEquals(invalid.invalidName, true);
+  assertEquals(invalid.invalidVersion, true);
+  assertEquals(invalid.invalidPublishIncludes, true);
+  assertEquals(invalid.missingPublishIncludes, [
+    "CHANGELOG.md",
+    "LICENSE.md",
+    "mod*.ts",
+    "src/**/*.ts",
+  ]);
+  assertEquals(invalid.unexpectedPublishIncludes, ["docs/*.md"]);
+  assertEquals(formatPackageMetadataValidation(invalid).includes("invalid package version: next"), true);
 });
 
 Deno.test("package export validation compares deno export maps with the stability manifest", () => {

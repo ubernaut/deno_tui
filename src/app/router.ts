@@ -71,7 +71,7 @@ export class RouteManager<TRoute extends Route = Route> {
   #routeIndex?: Map<string, number>;
   #ids?: string[];
 
-  constructor(routes: readonly TRoute[], initialRouteId = routes[0]?.id ?? "") {
+  constructor(routes: readonly TRoute[], initialRouteId: string = routes[0]?.id ?? "") {
     this.routes = new Signal(Array.from(routes), { deepObserve: true });
     this.activeRouteId = new Signal(initialRouteId);
     this.routes.subscribe(() => {

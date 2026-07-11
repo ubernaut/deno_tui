@@ -39,7 +39,7 @@ Not implemented yet:
 ## Quick Start
 
 ```ts
-import { createMarkupLayout } from "https://deno.land/x/tui@VERSION/mod.ts";
+import { createMarkupLayout } from "jsr:@ubernaut/deno-tui";
 
 const result = createMarkupLayout({
   markup: `
@@ -165,8 +165,8 @@ The default solver is dependency-free and ships through the main entrypoint.
 Yoga is opt-in through a separate experimental subpath:
 
 ```ts
-import { createMarkupLayout } from "https://deno.land/x/tui@VERSION/mod.ts";
-import { yogaLayoutSolver } from "https://deno.land/x/tui@VERSION/layout/yoga";
+import { createMarkupLayout } from "jsr:@ubernaut/deno-tui";
+import { yogaLayoutSolver } from "jsr:@ubernaut/deno-tui/layout/yoga";
 
 const result = createMarkupLayout({
   markup,

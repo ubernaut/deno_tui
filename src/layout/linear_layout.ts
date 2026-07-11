@@ -13,7 +13,7 @@ export abstract class LinearLayout<T extends string> implements Layout<T> {
   pattern: Signal<T[]>;
   totalUnitLength = 0;
   elements: LayoutElement<T>[] = [];
-  elementNameToIndex = new Map<T, number>();
+  elementNameToIndex: Map<T, number> = new Map<T, number>();
 
   readonly #patternEffect: Effect;
   readonly #elementsEffect: Effect;

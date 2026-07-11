@@ -71,7 +71,7 @@ export abstract class BoundedFollowLinesController<T> {
     return this.follow.peek();
   }
 
-  inspect(height = this.lines.peek().length): BoundedFollowLinesInspection<T> {
+  inspect(height: number = this.lines.peek().length): BoundedFollowLinesInspection<T> {
     const lines = this.copyLines(this.lines.peek(), 0, this.lines.peek().length);
     return {
       lines,

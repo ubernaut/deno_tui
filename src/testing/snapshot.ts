@@ -81,7 +81,7 @@ export function canvasSnapshot(canvas: Canvas): string {
 }
 
 /** Public helper for canvas Row Text. */
-export function canvasRowText(canvas: Canvas, row: number, width = canvas.size.peek().columns): string {
+export function canvasRowText(canvas: Canvas, row: number, width: number = canvas.size.peek().columns): string {
   return Array.from({ length: Math.max(0, width) }, (_, column) => String(canvas.frameBuffer[row]?.[column] ?? " "))
     .join("");
 }

@@ -66,8 +66,8 @@ export interface ProcessSessionInspection {
 /** State and lifecycle controller for non-PTY subprocess output windows. */
 export class ProcessSessionController {
   readonly command: Signal<ProcessSessionCommand>;
-  readonly status = new Signal<ProcessSessionStatus>("idle");
-  readonly exit = new Signal<ProcessSessionExit | undefined>(undefined);
+  readonly status: Signal<ProcessSessionStatus> = new Signal<ProcessSessionStatus>("idle");
+  readonly exit: Signal<ProcessSessionExit | undefined> = new Signal<ProcessSessionExit | undefined>(undefined);
   readonly output: TerminalOutputController;
 
   readonly #appendCommandLine: boolean;

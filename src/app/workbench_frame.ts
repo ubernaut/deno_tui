@@ -467,8 +467,8 @@ export function writeFrameCells(
   cells: string[],
   column: number,
   values: readonly string[],
-  start = 0,
-  count = values.length - start,
+  start: number = 0,
+  count: number = values.length - start,
 ): void {
   let targetColumn = Math.floor(column);
   let sourceStart = Math.max(0, Math.floor(start));

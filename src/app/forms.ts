@@ -118,9 +118,9 @@ export interface FormSubmitResult<TValues extends FormValues = FormValues> {
 /** State controller for form behavior. */
 export class FormController<TValues extends FormValues = FormValues> {
   readonly values: Signal<TValues>;
-  readonly errors = new Signal<Record<string, string[]>>({}, { deepObserve: true });
-  readonly touched = new Signal<Record<string, boolean>>({}, { deepObserve: true });
-  readonly dirty = new Signal<Record<string, boolean>>({}, { deepObserve: true });
+  readonly errors: Signal<Record<string, string[]>> = new Signal<Record<string, string[]>>({}, { deepObserve: true });
+  readonly touched: Signal<Record<string, boolean>> = new Signal<Record<string, boolean>>({}, { deepObserve: true });
+  readonly dirty: Signal<Record<string, boolean>> = new Signal<Record<string, boolean>>({}, { deepObserve: true });
 
   private readonly fields = new Map<FieldName<TValues>, FormField<unknown, TValues>>();
   private readonly initialValues: TValues;
@@ -496,7 +496,10 @@ export function required(message = "Required"): FieldValidator<unknown> {
 }
 
 /** Public helper for min Length. */
-export function minLength(length: number, message = `Must be at least ${length} characters`): FieldValidator<unknown> {
+export function minLength(
+  length: number,
+  message: string = `Must be at least ${length} characters`,
+): FieldValidator<unknown> {
   return (value) => {
     return typeof value === "string" && value.length < length ? message : undefined;
   };

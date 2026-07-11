@@ -1,5 +1,6 @@
 import { type ApiStabilityTier, type PackageEntrypointManifest, packageEntrypoints } from "../src/api_stability.ts";
 import { apiStabilityTiers, createApiInventory } from "./api_inventory.ts";
+import { parse as parseJsonc } from "jsonc";
 
 export interface PackageExportValidation {
   ok: boolean;
@@ -8,6 +9,18 @@ export interface PackageExportValidation {
   unexpectedExports: string[];
   missingFiles: string[];
   byStability: Record<ApiStabilityTier, PackageExportStabilityValidation>;
+}
+
+export interface PackageMetadataValidation {
+  ok: boolean;
+  name?: string;
+  version?: string;
+  expectedName: string;
+  invalidName: boolean;
+  invalidVersion: boolean;
+  invalidPublishIncludes: boolean;
+  missingPublishIncludes: string[];
+  unexpectedPublishIncludes: string[];
 }
 
 export interface PackageExportStabilityValidation {
@@ -37,10 +50,62 @@ export interface StableAppExportPolicy {
 }
 
 type PackageConfig = {
+  name?: unknown;
+  version?: unknown;
   exports?: string | Record<string, string>;
+  publish?: {
+    include?: unknown;
+  };
 };
 
 export const STABLE_APP_EXPORT_POLICY_PATH = "docs/api-stable-app-modules.json";
+export const PACKAGE_NAME = "@ubernaut/deno-tui";
+export const PACKAGE_PUBLISH_INCLUDES = [
+  "CHANGELOG.md",
+  "LICENSE.md",
+  "README.md",
+  "mod*.ts",
+  "src/**/*.ts",
+] as const;
+
+const SEMVER_PATTERN =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
+
+export function validatePackageMetadata(
+  config: PackageConfig,
+  options: { expectedName?: string; expectedPublishIncludes?: readonly string[] } = {},
+): PackageMetadataValidation {
+  const expectedName = options.expectedName ?? PACKAGE_NAME;
+  const expectedPublishIncludes = [...(options.expectedPublishIncludes ?? PACKAGE_PUBLISH_INCLUDES)].sort();
+  const name = typeof config.name === "string" ? config.name : undefined;
+  const version = typeof config.version === "string" ? config.version : undefined;
+  const rawInclude = config.publish?.include;
+  const include = Array.isArray(rawInclude)
+    ? rawInclude.filter((entry): entry is string => typeof entry === "string").sort()
+    : [];
+  const expected = new Set(expectedPublishIncludes);
+  const actual = new Set(include);
+  const missingPublishIncludes = expectedPublishIncludes.filter((entry) => !actual.has(entry));
+  const unexpectedPublishIncludes = include.filter((entry) => !expected.has(entry));
+  const invalidName = name !== expectedName;
+  const invalidVersion = version === undefined || !SEMVER_PATTERN.test(version);
+  const invalidPublishIncludes = !Array.isArray(rawInclude) ||
+    rawInclude.some((entry) => typeof entry !== "string") ||
+    new Set(include).size !== include.length;
+
+  return {
+    ok: !invalidName && !invalidVersion && !invalidPublishIncludes &&
+      missingPublishIncludes.length === 0 && unexpectedPublishIncludes.length === 0,
+    name,
+    version,
+    expectedName,
+    invalidName,
+    invalidVersion,
+    invalidPublishIncludes,
+    missingPublishIncludes,
+    unexpectedPublishIncludes,
+  };
+}
 
 export function validatePackageExports(
   config: PackageConfig,
@@ -123,6 +188,28 @@ export function formatPackageExportValidation(validation: PackageExportValidatio
     for (const path of tierValidation.missingFiles) {
       lines.push(`  missing file: ${path}`);
     }
+  }
+  return lines.join("\n");
+}
+
+export function formatPackageMetadataValidation(validation: PackageMetadataValidation): string {
+  const lines = [
+    validation.ok ? "ok package metadata matches release policy" : "fail package metadata drifted from release policy",
+  ];
+  if (validation.invalidName) {
+    lines.push(`invalid package name: expected ${validation.expectedName} got ${validation.name ?? "missing"}`);
+  }
+  if (validation.invalidVersion) {
+    lines.push(`invalid package version: ${validation.version ?? "missing"}`);
+  }
+  if (validation.invalidPublishIncludes) {
+    lines.push("invalid publish include list: expected unique string entries");
+  }
+  for (const entry of validation.missingPublishIncludes) {
+    lines.push(`missing publish include: ${entry}`);
+  }
+  for (const entry of validation.unexpectedPublishIncludes) {
+    lines.push(`unexpected publish include: ${entry}`);
   }
   return lines.join("\n");
 }
@@ -259,17 +346,12 @@ function existsOnDisk(path: string): boolean {
   }
 }
 
-function stripJsonComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/(^|[^:])\/\/.*$/gm, "$1");
-}
-
 if (import.meta.main) {
   const json = Deno.args.includes("--json");
   const quiet = Deno.args.includes("--quiet");
   const source = await Deno.readTextFile("deno.jsonc");
-  const config = JSON.parse(stripJsonComments(source)) as PackageConfig;
+  const config = parseJsonc(source) as PackageConfig;
+  const metadataValidation = validatePackageMetadata(config);
   const validation = validatePackageExports(config);
   const stableInventory = await createApiInventory("mod.ts");
   const stableDemoValidation = validateStableDemoExports(stableInventory);
@@ -282,6 +364,7 @@ if (import.meta.main) {
     console.log(JSON.stringify(
       {
         ...validation,
+        metadata: metadataValidation,
         stableDemoExports: stableDemoValidation,
         stableAppExports: stableAppValidation,
       },
@@ -289,12 +372,13 @@ if (import.meta.main) {
       2,
     ));
   } else if (!quiet) {
+    console.log(formatPackageMetadataValidation(metadataValidation));
     console.log(formatPackageExportValidation(validation));
     console.log(formatStableDemoExportValidation(stableDemoValidation));
     console.log(formatStableAppExportValidation(stableAppValidation));
   }
 
-  if (!validation.ok || !stableDemoValidation.ok || !stableAppValidation.ok) Deno.exit(1);
+  if (!metadataValidation.ok || !validation.ok || !stableDemoValidation.ok || !stableAppValidation.ok) Deno.exit(1);
 }
 
 function isDemoLikeStableModule(module: string): boolean {

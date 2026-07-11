@@ -1,5 +1,3 @@
-/// <reference lib="dom" />
-/// <reference lib="dom.iterable" />
 // Copyright 2023 Im-Beast. MIT license.
 import { Canvas } from "../canvas/canvas.ts";
 import { EventEmitter } from "../event_emitter.ts";

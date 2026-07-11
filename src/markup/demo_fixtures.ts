@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 
 import type { ComputedLayoutBox, LayoutSolver } from "../layout/mod.ts";
-import { createMarkupLayout } from "./hydrate.ts";
+import { createMarkupLayout, type MarkupLayoutResult } from "./hydrate.ts";
 import type { Rectangle } from "../types.ts";
 
 /** Stable window id used by the HTML/CSS layout demo fixture. */
@@ -11,7 +11,7 @@ export const HTML_CSS_LAYOUT_WINDOW_ID = "htmlLayout";
 export const HTML_CSS_LAYOUT_OPTION_ID = "html-css-layout";
 
 /** HTML-like markup used by the reusable HTML/CSS layout demo fixture. */
-export const htmlCssLayoutDemoMarkup = `
+export const htmlCssLayoutDemoMarkup: string = `
   <window id="layout-demo" class="shell">
     <menu-bar id="layout-toolbar">File View Theme Help</menu-bar>
     <div id="layout-stage" class="stage">
@@ -32,7 +32,7 @@ export const htmlCssLayoutDemoMarkup = `
 `;
 
 /** CSS-like styles used by the reusable HTML/CSS layout demo fixture. */
-export const htmlCssLayoutDemoCss = `
+export const htmlCssLayoutDemoCss: string = `
   window {
     display: flex;
     flex-direction: column;
@@ -153,7 +153,10 @@ export interface HtmlCssLayoutDemoOptions {
 }
 
 /** Creates the reusable HTML/CSS layout demo with optional solver injection. */
-export function createHtmlCssLayoutDemo(bounds: Rectangle, options: HtmlCssLayoutDemoOptions = {}) {
+export function createHtmlCssLayoutDemo(
+  bounds: Rectangle,
+  options: HtmlCssLayoutDemoOptions = {},
+): MarkupLayoutResult {
   return createMarkupLayout({
     markup: htmlCssLayoutDemoMarkup,
     css: htmlCssLayoutDemoCss,

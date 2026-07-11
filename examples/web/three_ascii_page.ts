@@ -1,5 +1,3 @@
-/// <reference lib="dom" />
-/// <reference lib="dom.iterable" />
 import {
   ASCII_DEMO_PRESETS,
   BoxObject,

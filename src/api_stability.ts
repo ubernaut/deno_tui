@@ -70,7 +70,7 @@ export interface PackageReleasePolicy {
 }
 
 /** Public package entrypoints exposed by the Deno export map. */
-export const packageEntrypoints = [
+export const packageEntrypoints: readonly PackageEntrypointManifest[] = [
   {
     specifier: ".",
     path: "./mod.ts",
@@ -214,7 +214,7 @@ export const packageEntrypoints = [
 ] as const satisfies readonly PackageEntrypointManifest[];
 
 /** Stability markers for public, experimental, demo, terminal-only, and web-only surfaces. */
-export const apiSurfacePolicies = [
+export const apiSurfacePolicies: readonly ApiSurfacePolicy[] = [
   {
     pattern: "mod.ts",
     runtime: "terminal",
@@ -341,11 +341,12 @@ export const packageReleasePolicy: PackageReleasePolicy = {
   deprecationPolicy: "Prefer one minor release of deprecation notice before removing stable public APIs.",
   releaseChecklist: [
     "deno fmt --check",
-    "deno check mod.ts mod.web.ts mod.remote.ts",
+    "deno check mod.ts mod.app.ts mod.web.ts mod.remote.ts mod.three_ascii.ts mod.theme.ts mod.runtime.ts mod.terminal.ts mod.testing.ts src/layout/solvers/yoga.ts",
     "deno task package-check -- --quiet",
     "deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1",
     "deno task benchmark",
     "deno test",
+    "deno task release-check -- --clean",
   ],
 };
 

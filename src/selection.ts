@@ -230,7 +230,7 @@ export class SelectionController {
   }
 
   /** Toggles an index in multiple-selection mode. */
-  toggle(index = this.state.peek().activeIndex): void {
+  toggle(index: number = this.state.peek().activeIndex): void {
     this.state.value = toggleSelection(this.state.peek(), this.length.peek(), index);
   }
 

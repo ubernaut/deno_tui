@@ -1,5 +1,3 @@
-/// <reference lib="dom" />
-/// <reference lib="dom.iterable" />
 import { BoxObject } from "../../src/canvas/box.ts";
 import { TextObject, type TextRectangle } from "../../src/canvas/text.ts";
 import { Computed, Signal } from "../../src/signals/mod.ts";

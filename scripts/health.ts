@@ -29,6 +29,7 @@ export const defaultHealthSteps: readonly HealthStep[] = [
     ],
   },
   { name: "package-check", command: ["deno", "task", "package-check", "--", "--quiet"] },
+  { name: "release-check", command: ["deno", "task", "release-check", "--", "--quiet"] },
   {
     name: "api-reference",
     command: ["deno", "run", "-A", "scripts/api_reference.ts", "--check=docs/api-reference.md"],

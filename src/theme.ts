@@ -191,7 +191,15 @@ export interface ThemeTokens {
 /** Public type alias for a theme Token Name. */
 export type ThemeTokenName = keyof ThemeTokens;
 /** Public constant for a theme Token Names. */
-export const themeTokenNames = [
+export const themeTokenNames: readonly [
+  "foreground",
+  "muted",
+  "accent",
+  "success",
+  "warning",
+  "danger",
+  "surface",
+] = [
   "foreground",
   "muted",
   "accent",
@@ -253,7 +261,12 @@ function createThemeCore(tokens: Partial<ThemeTokens> = {}): Theme & { tokens: T
 /** Public type alias for a theme State. */
 export type ThemeState = keyof Theme;
 /** Public constant for a theme States. */
-export const themeStates = ["base", "focused", "active", "disabled"] as const satisfies readonly ThemeState[];
+export const themeStates: readonly ["base", "focused", "active", "disabled"] = [
+  "base",
+  "focused",
+  "active",
+  "disabled",
+];
 
 /** Public interface describing a component Theme Definition. */
 export interface ComponentThemeDefinition {
@@ -1910,7 +1923,7 @@ export class ThemeProvider {
     await this.#pendingWrite;
   }
 
-  async resetTheme(id = this.themeIds()[0] ?? this.activeId.peek()): Promise<boolean> {
+  async resetTheme(id: string = this.themeIds()[0] ?? this.activeId.peek()): Promise<boolean> {
     if (!this.registry.has(id)) return false;
     await this.ready;
     this.#suspendWrites = true;

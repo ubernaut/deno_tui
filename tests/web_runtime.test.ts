@@ -1,4 +1,3 @@
-/// <reference lib="dom" />
 import { assertEquals, assertExists } from "./deps.ts";
 import { createAnsiThemeTokens, createTheme } from "../src/theme.ts";
 import {

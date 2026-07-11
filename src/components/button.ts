@@ -43,9 +43,11 @@ export interface ButtonInspection {
 export class ButtonController {
   readonly label: Signal<string>;
   readonly disabled: Signal<boolean>;
-  readonly pressCount = new Signal(0);
-  readonly lastPressedAt = new Signal<number | undefined>(undefined);
-  readonly lastMethod = new Signal<"keyboard" | "mouse" | undefined>(undefined);
+  readonly pressCount: Signal<number> = new Signal(0);
+  readonly lastPressedAt: Signal<number | undefined> = new Signal<number | undefined>(undefined);
+  readonly lastMethod: Signal<"keyboard" | "mouse" | undefined> = new Signal<"keyboard" | "mouse" | undefined>(
+    undefined,
+  );
   readonly #ownsLabel: boolean;
   readonly #ownsDisabled: boolean;
   readonly #onPress?: (inspection: ButtonInspection) => void | Promise<void>;
@@ -76,7 +78,7 @@ export class ButtonController {
     return this.setDisabled(true);
   }
 
-  press(method?: "keyboard" | "mouse", now = Date.now()): boolean {
+  press(method?: "keyboard" | "mouse", now: number = Date.now()): boolean {
     if (this.disabled.peek()) return false;
     this.pressCount.value++;
     this.lastPressedAt.value = now;

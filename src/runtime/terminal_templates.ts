@@ -225,7 +225,7 @@ export function createTerminalTemplateSession(
 /** Creates a serializable descriptor for a spawned template session. */
 export function describeTerminalTemplateSession(
   session: TerminalTemplateSession,
-  now = Date.now(),
+  now: number = Date.now(),
 ): TerminalSessionDescriptor {
   const inspected = session.handle.inspect();
   const descriptor: TerminalSessionDescriptor = {
@@ -251,7 +251,7 @@ export function describeTerminalTemplateSession(
 /** Creates a serializable descriptor for an attachable session reference. */
 export function describeAttachTerminalTemplate(
   template: AttachTerminalTemplate,
-  now = Date.now(),
+  now: number = Date.now(),
 ): TerminalSessionDescriptor {
   return {
     id: template.id,

@@ -153,7 +153,7 @@ export class ListController {
     return undefined;
   }
 
-  inspect(height = this.items.peek().length): ListInspection {
+  inspect(height: number = this.items.peek().length): ListInspection {
     const items = [...this.items.peek()];
     const selectedIndex = clampSelectionIndex(items.length, this.selectedIndex.peek());
     return {

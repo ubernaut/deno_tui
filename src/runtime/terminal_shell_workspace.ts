@@ -106,11 +106,11 @@ export class TerminalShellWorkspaceController {
     return this.workspace.activateRelative(delta);
   }
 
-  shell(id = this.workspace.activeId.peek()): TerminalShellController | undefined {
+  shell(id: string | undefined = this.workspace.activeId.peek()): TerminalShellController | undefined {
     return id ? this.#shells.get(id) : undefined;
   }
 
-  async start(id = this.workspace.activeId.peek()): Promise<boolean> {
+  async start(id: string | undefined = this.workspace.activeId.peek()): Promise<boolean> {
     const shell = this.shell(id);
     if (!shell) return false;
     const started = await shell.start();
@@ -118,7 +118,7 @@ export class TerminalShellWorkspaceController {
     return started;
   }
 
-  async stop(id = this.workspace.activeId.peek()): Promise<boolean> {
+  async stop(id: string | undefined = this.workspace.activeId.peek()): Promise<boolean> {
     const shell = this.shell(id);
     if (!shell) return false;
     const stopped = await shell.stop();
@@ -126,7 +126,7 @@ export class TerminalShellWorkspaceController {
     return stopped;
   }
 
-  async restart(id = this.workspace.activeId.peek()): Promise<boolean> {
+  async restart(id: string | undefined = this.workspace.activeId.peek()): Promise<boolean> {
     const shell = this.shell(id);
     if (!shell) return false;
     const restarted = await shell.restart();
@@ -134,12 +134,12 @@ export class TerminalShellWorkspaceController {
     return restarted;
   }
 
-  async write(data: string | Uint8Array, id = this.workspace.activeId.peek()): Promise<boolean> {
+  async write(data: string | Uint8Array, id: string | undefined = this.workspace.activeId.peek()): Promise<boolean> {
     const shell = this.shell(id);
     return shell ? await shell.write(data) : false;
   }
 
-  resize(columns: number, rows: number, id = this.workspace.activeId.peek()): boolean {
+  resize(columns: number, rows: number, id: string | undefined = this.workspace.activeId.peek()): boolean {
     const shell = this.shell(id);
     if (!shell) return false;
     shell.resize(columns, rows);

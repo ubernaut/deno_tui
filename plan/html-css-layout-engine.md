@@ -179,18 +179,18 @@ Useful idea:
 </template>
 
 <style>
-  window {
-    display: flex;
-    flex-direction: column;
-  }
-  button {
-    background: var(--button-bg);
-    color: var(--button-fg);
-  }
+window {
+  display: flex;
+  flex-direction: column;
+}
+button {
+  background: var(--button-bg);
+  color: var(--button-fg);
+}
 </style>
 
 <script type="module">
-  export function refresh() {}
+export function refresh() {}
 </script>
 ```
 

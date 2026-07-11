@@ -133,17 +133,19 @@ The default contributor gate is:
 deno task health
 ```
 
-It checks formatting, public API exports, API inventory uniqueness, package export-map drift, documentation coverage,
-examples, apps, the full test suite, and worker-enabled runtime tests. `deno task package-check -- --quiet` also
-prevents new `src/app/*` and Workbench implementation modules from being added to the stable root export graph by
-accident. Existing app helpers are grandfathered in `docs/api-stable-app-modules.json` for compatibility, but new
-app/demo internals should use focused entrypoints or direct local imports until they are intentionally promoted. The
-same policy file is checked for stale entries when app exports are removed.
+It checks formatting, public API exports, API inventory uniqueness, package metadata and export-map drift, a strict JSR
+publish dry run, documentation coverage, examples, apps, benchmarks, the full test suite, and worker-enabled runtime
+tests. `deno task package-check -- --quiet` also prevents new `src/app/*` and Workbench implementation modules from
+being added to the stable root export graph by accident. Existing app helpers are grandfathered in
+`docs/api-stable-app-modules.json` for compatibility, but new app/demo internals should use focused entrypoints or
+direct local imports until they are intentionally promoted. The same policy file is checked for stale entries when app
+exports are removed.
 
 The API inventory gate currently enforces duplicate-free public exports and 100% JSDoc coverage:
 
 ```sh
 deno task package-check -- --quiet
+deno task release-check
 deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1 --baseline=docs/api-stable-baseline.json
 ```
 

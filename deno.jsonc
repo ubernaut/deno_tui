@@ -1,4 +1,6 @@
 {
+  "name": "@ubernaut/deno-tui",
+  "version": "0.1.0",
   "exports": {
     ".": "./mod.ts",
     "./app": "./mod.app.ts",
@@ -11,16 +13,29 @@
     "./testing": "./mod.testing.ts",
     "./layout/yoga": "./src/layout/solvers/yoga.ts"
   },
+  "publish": {
+    "include": [
+      "CHANGELOG.md",
+      "LICENSE.md",
+      "README.md",
+      "mod*.ts",
+      "src/**/*.ts"
+    ]
+  },
   "imports": {
     "crayon": "https://deno.land/x/crayon@3.3.3/mod.ts",
     "esbuild": "npm:esbuild@0.24.2",
     "jpeg-js": "npm:jpeg-js@0.4.4",
+    "jsonc": "jsr:@std/jsonc@1.0.2",
     "markdown-it": "npm:markdown-it@14.3.0",
     "pngjs": "npm:pngjs@7.0.0",
     "three": "npm:three@0.183.2",
     "three/tsl": "npm:three@0.183.2/tsl",
     "three/webgpu": "npm:three@0.183.2/webgpu",
     "yoga-layout": "npm:yoga-layout@3.2.1"
+  },
+  "compilerOptions": {
+    "lib": ["deno.window", "dom", "dom.iterable"]
   },
   "tasks": {
     "demo": "deno run --watch --allow-hrtime ./examples/demo.ts",
@@ -48,6 +63,7 @@
     "api-inventory": "deno run -A ./scripts/api_inventory.ts",
     "api-reference": "deno run -A ./scripts/api_reference.ts",
     "package-check": "deno run -A ./scripts/package_check.ts",
+    "release-check": "deno run -A ./scripts/release_check.ts",
     "screenshots": "deno run -A ./scripts/generate_screenshots.ts",
     "visual-smoke": "deno run -A ./scripts/visual_smoke.ts",
     "workbench-visual-smoke": "deno run -A ./scripts/gpu_probe_lock.ts -- deno run -A ./scripts/workbench_visual_smoke.ts",
@@ -99,9 +115,7 @@
   },
   "fmt": {
     "exclude": ["docs/screenshots", "docs/assets", "docs/api-stable-baseline.json"],
-    "options": {
-      "lineWidth": 120
-    }
+    "lineWidth": 120
   },
   "lock": false
 }

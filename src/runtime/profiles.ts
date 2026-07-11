@@ -106,7 +106,7 @@ export interface RuntimeProfileControllerInspection {
 }
 
 /** Public constant for a runtime Profile Definitions. */
-export const runtimeProfileDefinitions = [
+export const runtimeProfileDefinitions: readonly RuntimeProfileDefinition[] = [
   {
     id: "balanced",
     label: "Balanced",

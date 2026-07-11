@@ -80,6 +80,10 @@ function webExternalDependencyPlugin(): esbuild.Plugin {
         path: npmSpecifierToEsmSh(args.path),
         external: true,
       }));
+      build.onResolve({ filter: /^jsr:/ }, (args) => ({
+        path: args.path,
+        external: true,
+      }));
     },
   };
 }

@@ -73,7 +73,9 @@ const defaultReservedKeys = new Set(["f10", "escape"]);
 const defaultReservedCtrlKeys = new Set(["c"]);
 
 /** Encodes a decoded key press into terminal input bytes for a child process. */
-export function encodeTerminalKeyPress(event: Pick<KeyPressEvent, "key" | "buffer" | "ctrl" | "meta" | "shift">) {
+export function encodeTerminalKeyPress(
+  event: Pick<KeyPressEvent, "key" | "buffer" | "ctrl" | "meta" | "shift">,
+): Uint8Array | undefined {
   if (event.buffer.byteLength > 0) return new Uint8Array(event.buffer);
   if (event.meta) return undefined;
   if (event.ctrl && /^[a-z]$/.test(event.key)) {

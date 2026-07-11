@@ -304,7 +304,7 @@ export class TerminalWorkspaceController {
   }
 
   duplicate(
-    id = this.activeId.peek(),
+    id: string | undefined = this.activeId.peek(),
     options: DuplicateTerminalWorkspaceSessionOptions = {},
   ): TerminalSessionDescriptor | undefined {
     if (!id) return undefined;
@@ -316,7 +316,7 @@ export class TerminalWorkspaceController {
     return this.upsert(descriptor, { activate: options.activate ?? true });
   }
 
-  detach(id = this.activeId.peek()): boolean {
+  detach(id: string | undefined = this.activeId.peek()): boolean {
     if (!id) return false;
     const sessions = this.sessions.peek();
     const index = terminalSessionIndex(sessions, id);
@@ -330,7 +330,7 @@ export class TerminalWorkspaceController {
     return true;
   }
 
-  attach(id = this.activeId.peek()): boolean {
+  attach(id: string | undefined = this.activeId.peek()): boolean {
     if (!id) return false;
     const sessions = this.sessions.peek();
     const index = terminalSessionIndex(sessions, id);
@@ -343,7 +343,7 @@ export class TerminalWorkspaceController {
     return this.activate(id);
   }
 
-  restart(id = this.activeId.peek()): boolean {
+  restart(id: string | undefined = this.activeId.peek()): boolean {
     if (!id) return false;
     const sessions = this.sessions.peek();
     const index = terminalSessionIndex(sessions, id);
@@ -454,7 +454,7 @@ export class TerminalWorkspaceController {
     return this.resizeSplit(nearest.split.id, nextRatio);
   }
 
-  toggleZoomPane(paneId = this.layout.peek().activePaneId): boolean {
+  toggleZoomPane(paneId: string | undefined = this.layout.peek().activePaneId): boolean {
     if (!paneId || !findTerminalWorkspacePaneRef(this.layout.peek().root, paneId)) return false;
     const current = this.layout.peek();
     this.layout.value = {

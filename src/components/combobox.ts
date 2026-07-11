@@ -168,7 +168,9 @@ export class ComboBoxController<Items extends string[] = string[]> {
     return index === undefined ? undefined : this.selectIndex(index);
   }
 
-  handleKeyPress({ key, ctrl, meta, shift }: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean }) {
+  handleKeyPress(
+    { key, ctrl, meta, shift }: { key: string; ctrl?: boolean; meta?: boolean; shift?: boolean },
+  ): Items[number] | undefined {
     if (ctrl || meta || shift) return undefined;
     if (key === "up") {
       this.open();

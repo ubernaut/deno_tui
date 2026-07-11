@@ -241,7 +241,12 @@ export function tileRects(bounds: Rectangle, options: TileLayoutOptions): TileLa
 }
 
 /** Public helper for split Rect. */
-export function splitRect(rect: Rectangle, direction: "row" | "column", firstSize: number, gap = 0) {
+export function splitRect(
+  rect: Rectangle,
+  direction: "row" | "column",
+  firstSize: number,
+  gap = 0,
+): { first: Rectangle; second: Rectangle } {
   const safeGap = Math.max(0, gap);
   const size = Math.max(0, Math.floor(firstSize));
   if (direction === "row") {
@@ -272,7 +277,12 @@ export function splitRect(rect: Rectangle, direction: "row" | "column", firstSiz
 }
 
 /** Public helper for dock Rect. */
-export function dockRect(rect: Rectangle, edge: "top" | "right" | "bottom" | "left", size: number, gap = 0) {
+export function dockRect(
+  rect: Rectangle,
+  edge: "top" | "right" | "bottom" | "left",
+  size: number,
+  gap = 0,
+): { first: Rectangle; second: Rectangle } {
   const safeSize = Math.max(0, Math.floor(size));
   const safeGap = Math.max(0, gap);
   switch (edge) {

@@ -24,13 +24,13 @@ export const ENABLE_FOCUS_EVENTS = "\x1b[?1004h";
 export const DISABLE_FOCUS_EVENTS = "\x1b[?1004l";
 
 /** ANSI escape code to hide terminal cursor  */
-export const HIDE_CURSOR = `\x1b[?25l`;
+export const HIDE_CURSOR: "\x1b[?25l" = `\x1b[?25l`;
 
 /** ANSI escape code to show terminal cursor  */
-export const SHOW_CURSOR = `\x1b[?25h`;
+export const SHOW_CURSOR: "\x1b[?25h" = `\x1b[?25h`;
 
 /** ANSI escape code to clear screen  */
-export const CLEAR_SCREEN = `\x1b[2J`;
+export const CLEAR_SCREEN: "\x1b[2J" = `\x1b[2J`;
 
 /** ANSI escape code to tell terminal to use secondary buffer */
 export const USE_SECONDARY_BUFFER = "\x1b[?1049h";

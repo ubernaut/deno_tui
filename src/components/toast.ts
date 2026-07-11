@@ -53,7 +53,7 @@ export class ToastStackController {
     this.#trim();
   }
 
-  show(message: string, level: ToastLevel = "info", id = this.#idFactory()): ToastMessage {
+  show(message: string, level: ToastLevel = "info", id: string = this.#idFactory()): ToastMessage {
     return this.push({ id, level, message });
   }
 

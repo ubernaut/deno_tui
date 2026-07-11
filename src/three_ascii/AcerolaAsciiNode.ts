@@ -10,6 +10,7 @@ import {
   RenderTarget,
   TempNode,
   Texture,
+  type UniformNode,
   Vector2,
 } from "three/webgpu";
 import {
@@ -134,47 +135,47 @@ export class AcerolaAsciiNode extends TempNode {
 
   readonly resolutionScale: number;
 
-  readonly zoom = uniform(1);
-  readonly offset = uniform(new Vector2());
-  readonly kernelSize = uniform(2);
-  readonly sigma = uniform(2);
-  readonly sigmaScale = uniform(1.6);
-  readonly tau = uniform(1);
-  readonly threshold = uniform(0.005);
-  readonly useDepth = uniform(true);
-  readonly depthThreshold = uniform(0.1);
-  readonly useNormals = uniform(true);
-  readonly normalThreshold = uniform(0.1);
-  readonly depthCutoff = uniform(0);
-  readonly edgeThreshold = uniform(8);
-  readonly edges = uniform(true);
-  readonly fill = uniform(true);
-  readonly exposure = uniform(1);
-  readonly attenuation = uniform(1);
-  readonly invertLuminance = uniform(false);
-  readonly asciiColor = uniform(new Color(0xffffff));
-  readonly backgroundColor = uniform(new Color(0x000000));
-  readonly blendWithBase = uniform(0);
-  readonly depthFalloff = uniform(0);
-  readonly depthOffset = uniform(0);
-  readonly viewDog = uniform(false);
-  readonly viewUncompressed = uniform(false);
-  readonly viewEdges = uniform(false);
-  readonly cameraNear = uniform(0.1);
-  readonly cameraFar = uniform(1000);
-  readonly renderSize = uniform(new Vector2(1, 1));
-  readonly inverseRenderSize = uniform(new Vector2(1, 1));
-  readonly downscaleSize = uniform(new Vector2(1, 1));
+  readonly zoom: UniformNode = uniform(1);
+  readonly offset: UniformNode = uniform(new Vector2());
+  readonly kernelSize: UniformNode = uniform(2);
+  readonly sigma: UniformNode = uniform(2);
+  readonly sigmaScale: UniformNode = uniform(1.6);
+  readonly tau: UniformNode = uniform(1);
+  readonly threshold: UniformNode = uniform(0.005);
+  readonly useDepth: UniformNode = uniform(true);
+  readonly depthThreshold: UniformNode = uniform(0.1);
+  readonly useNormals: UniformNode = uniform(true);
+  readonly normalThreshold: UniformNode = uniform(0.1);
+  readonly depthCutoff: UniformNode = uniform(0);
+  readonly edgeThreshold: UniformNode = uniform(8);
+  readonly edges: UniformNode = uniform(true);
+  readonly fill: UniformNode = uniform(true);
+  readonly exposure: UniformNode = uniform(1);
+  readonly attenuation: UniformNode = uniform(1);
+  readonly invertLuminance: UniformNode = uniform(false);
+  readonly asciiColor: UniformNode = uniform(new Color(0xffffff));
+  readonly backgroundColor: UniformNode = uniform(new Color(0x000000));
+  readonly blendWithBase: UniformNode = uniform(0);
+  readonly depthFalloff: UniformNode = uniform(0);
+  readonly depthOffset: UniformNode = uniform(0);
+  readonly viewDog: UniformNode = uniform(false);
+  readonly viewUncompressed: UniformNode = uniform(false);
+  readonly viewEdges: UniformNode = uniform(false);
+  readonly cameraNear: UniformNode = uniform(0.1);
+  readonly cameraFar: UniformNode = uniform(1000);
+  readonly renderSize: UniformNode = uniform(new Vector2(1, 1));
+  readonly inverseRenderSize: UniformNode = uniform(new Vector2(1, 1));
+  readonly downscaleSize: UniformNode = uniform(new Vector2(1, 1));
 
-  readonly luminanceTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
-  readonly downscaleTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
-  readonly blurTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
-  readonly dogTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
-  readonly normalsTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
-  readonly edgesTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
-  readonly sobelXTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
-  readonly sobelTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
-  readonly asciiTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
+  readonly luminanceTarget: RenderTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
+  readonly downscaleTarget: RenderTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
+  readonly blurTarget: RenderTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
+  readonly dogTarget: RenderTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
+  readonly normalsTarget: RenderTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
+  readonly edgesTarget: RenderTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
+  readonly sobelXTarget: RenderTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
+  readonly sobelTarget: RenderTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
+  readonly asciiTarget: RenderTarget = new RenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
 
   private readonly luminanceTextureNode = texture(this.luminanceTarget.texture);
   private readonly downscaleTextureNode = texture(this.downscaleTarget.texture);

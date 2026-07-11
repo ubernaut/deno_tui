@@ -158,7 +158,7 @@ export class RadioGroupController extends ActiveItemController<RadioOption> {
   handleMousePress(
     event: { y: number; ctrl?: boolean; meta?: boolean; shift?: boolean },
     groupRow = 0,
-    height = this.options.peek().length,
+    height: number = this.options.peek().length,
   ): RadioOption | undefined {
     if (event.ctrl || event.meta || event.shift) return undefined;
     const rowIndex = stackedRowIndexAt(event.y, groupRow, Math.max(0, height));
