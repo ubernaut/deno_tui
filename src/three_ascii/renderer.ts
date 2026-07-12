@@ -386,12 +386,14 @@ function terminalGlyphForCell(
 
   const bucket = fillBucketFromGlyphIndex(fillGlyphIndex);
   switch (style) {
+    case "blocks":
+      return bucket === 0 ? " " : "█";
     case "glyphs":
       return ASCII_FILL_GLYPHS[bucket] ?? " ";
     case "mixed":
       return pickMixedFillGlyph(fillGlyphIndex);
     default:
-      return FILL_GLYPHS[bucket] ?? " ";
+      return " ";
   }
 }
 
