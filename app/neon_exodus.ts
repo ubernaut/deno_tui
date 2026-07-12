@@ -54,9 +54,9 @@ tui.dispatch();
 
 const phase = new Signal(0);
 const source = new Signal<NeonSuiteSource>("opentui");
-const section = new Signal<NeonSuiteSection>("all");
+const section = new Signal<NeonSuiteSection>(initialSection(Deno.args));
 const selectedIndex = new Signal(0);
-const maximized = new Signal(false);
+const maximized = new Signal(Deno.args.includes("--maximized"));
 const volume = new Signal(70);
 const threeAsciiAvailable = new Signal(await probeCompatibleWebGPUDevice());
 const ascii = new Signal<AsciiOptions>({
@@ -297,6 +297,11 @@ tui.on("destroy", () => {
 });
 
 tui.run();
+
+function initialSection(args: readonly string[]): NeonSuiteSection {
+  const value = args.find((arg) => arg.startsWith("--section="))?.slice("--section=".length);
+  return neonSuiteSections.includes(value as NeonSuiteSection) ? value as NeonSuiteSection : "all";
+}
 
 function setSource(next: NeonSuiteSource) {
   if (source.peek() === next) return;

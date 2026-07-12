@@ -4,6 +4,17 @@ type RafCallback = (time: number) => void;
 const WRITE_BUFFER_PATCHED = Symbol.for("deno_tui.three_ascii.write_buffer_patched");
 const SHADER_MODULE_PATCHED = Symbol.for("deno_tui.three_ascii.shader_module_patched");
 const CREATE_BUFFER_PATCHED = Symbol.for("deno_tui.three_ascii.create_buffer_patched");
+const READBACK_PROBE_BYTES = 4;
+
+class WebGPUReadbackProbeError extends Error {
+  override readonly cause: unknown;
+
+  constructor(cause: unknown) {
+    super("WebGPU adapter does not support the mapped readback required by Three ASCII.");
+    this.name = "WebGPUReadbackProbeError";
+    this.cause = cause;
+  }
+}
 
 function ensureAnimationFrame(): void {
   if (!("requestAnimationFrame" in globalThis)) {
@@ -150,6 +161,60 @@ function patchMappedAtCreationBuffers(device: GPUDevice): GPUDevice {
   return device;
 }
 
+async function verifyCompatibleDeviceReadback(device: GPUDevice): Promise<void> {
+  const buffer = device.createBuffer({
+    label: "deno_tui.three_ascii.readback.probe",
+    size: READBACK_PROBE_BYTES,
+    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+  });
+  let mapped = false;
+  try {
+    await buffer.mapAsync(GPUMapMode.READ);
+    mapped = true;
+    buffer.getMappedRange(0, READBACK_PROBE_BYTES);
+  } catch (error) {
+    throw new WebGPUReadbackProbeError(error);
+  } finally {
+    if (mapped) buffer.unmap();
+    buffer.destroy();
+  }
+}
+
+async function requestCompatibleAdapter(forceFallbackAdapter = false): Promise<GPUAdapter> {
+  const adapterOptions: GPURequestAdapterOptions & { featureLevel: "compatibility" } = {
+    featureLevel: "compatibility",
+    forceFallbackAdapter,
+  };
+  const adapter = await navigator.gpu.requestAdapter(adapterOptions);
+  if (!adapter) {
+    throw new Error(
+      forceFallbackAdapter ? "Unable to acquire a fallback WebGPU adapter." : "Unable to acquire a WebGPU adapter.",
+    );
+  }
+  return adapter;
+}
+
+async function requestCompatibleDevice(adapter: GPUAdapter): Promise<GPUDevice> {
+  const device = await adapter.requestDevice({
+    // Requesting every exposed adapter feature can fail on lower-memory
+    // runtimes even though the ASCII pipeline only uses baseline WebGPU.
+    requiredFeatures: [],
+    requiredLimits: {},
+  });
+  const nativeLost = hasNativeDeviceLostPromise(device);
+  const patched = patchMappedAtCreationBuffers(
+    patchErrorScopes(patchShaderModules(patchQueueWriteBuffer(ensureDeviceLostPromise(device)))),
+  );
+  try {
+    await verifyCompatibleDeviceReadback(patched);
+  } catch (error) {
+    patched.destroy();
+    throw error;
+  }
+  if (nativeLost) watchCompatibleDeviceLoss(patched);
+  return patched;
+}
+
 /** Public helper for get Compatible Web GPUDevice. */
 export async function getCompatibleWebGPUDevice(): Promise<GPUDevice> {
   ensureAnimationFrame();
@@ -160,29 +225,22 @@ export async function getCompatibleWebGPUDevice(): Promise<GPUDevice> {
       throw new Error("WebGPU is not available in this Deno runtime.");
     }
 
-    const adapterOptions: GPURequestAdapterOptions & { featureLevel: "compatibility" } = {
-      featureLevel: "compatibility",
-    };
-    const adapter = await navigator.gpu.requestAdapter(adapterOptions);
-
-    if (!adapter) {
-      throw new Error("Unable to acquire a WebGPU adapter.");
+    const adapter = await requestCompatibleAdapter();
+    try {
+      compatibleDevice = await requestCompatibleDevice(adapter);
+    } catch (error) {
+      if (!(error instanceof WebGPUReadbackProbeError)) throw error;
+      const fallbackAdapter = await requestCompatibleAdapter(true);
+      try {
+        compatibleDevice = await requestCompatibleDevice(fallbackAdapter);
+      } catch (fallbackError) {
+        throw new AggregateError(
+          [error, fallbackError],
+          "Primary and fallback WebGPU adapters cannot provide Three ASCII readback.",
+        );
+      }
     }
-
-    const device = await adapter.requestDevice({
-      // Requesting every exposed adapter feature can fail on lower-memory
-      // runtimes even though the ASCII pipeline only uses baseline WebGPU.
-      requiredFeatures: [],
-      requiredLimits: {},
-    });
-    const nativeLost = hasNativeDeviceLostPromise(device);
-
-    const patched = patchMappedAtCreationBuffers(
-      patchErrorScopes(patchShaderModules(patchQueueWriteBuffer(ensureDeviceLostPromise(device)))),
-    );
-    compatibleDevice = patched;
-    if (nativeLost) watchCompatibleDeviceLoss(patched);
-    return patched;
+    return compatibleDevice;
   })();
 
   try {

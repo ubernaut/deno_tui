@@ -1645,6 +1645,37 @@ Deno.test("ThreeAsciiObject queues a startup grid before first frame completes",
   }
 });
 
+Deno.test("ThreeAsciiObject keeps its startup grid across an empty deferred frame", async () => {
+  const rectangle = new Signal({ column: 0, row: 0, width: 32, height: 8 }, { deepObserve: true });
+  const sink = new MemoryCanvasSink();
+  const canvas = new Canvas({ sink, size: { columns: 40, rows: 20 } });
+  let renderer: EmptyThenSlowGridRenderer | undefined;
+  const object = new ThreeAsciiObject({
+    canvas,
+    rectangle,
+    scene: {} as Scene,
+    camera: {} as Camera,
+    style: emptyStyle,
+    zIndex: 1,
+    frameInterval: 1,
+    rendererFactory: (options) => renderer = new EmptyThenSlowGridRenderer(options.columns, options.rows),
+  });
+
+  object.draw();
+
+  try {
+    await waitFor(() => (renderer?.secondFrameStartCount ?? 0) >= 1);
+    assertEquals(gridText(object).includes("ASCII RENDERER STARTING"), true);
+    renderer?.completeSecondFrame();
+    await waitFor(() => gridText(object).includes("ASCII RENDERER STARTING") === false);
+    assertEquals(object.grid.length, 8);
+    assertEquals(object.grid[0]?.length, 32);
+  } finally {
+    object.erase();
+    rectangle.dispose();
+  }
+});
+
 Deno.test("ThreeAsciiObject erases safely while a frame is rendering", async () => {
   const rectangle = new Signal({ column: 0, row: 0, width: 12, height: 6 }, { deepObserve: true });
   const sink = new MemoryCanvasSink();
@@ -2080,6 +2111,36 @@ class EmptyThenGridRenderer extends FakeGridRenderer {
   completeEmptyFrame(): void {
     const release = this.releaseEmptyFrame;
     this.releaseEmptyFrame = undefined;
+    release?.();
+  }
+}
+
+class EmptyThenSlowGridRenderer extends FakeGridRenderer {
+  secondFrameStartCount = 0;
+  private releaseSecondFrame?: () => void;
+
+  override async renderFrame(
+    deltaTime?: number,
+    onFrame?: (deltaTime: number) => void | Promise<void>,
+    _options: ThreeAsciiRenderFrameOptions = { ansi: true },
+  ) {
+    if (this.renderCount === 0) {
+      this.renderCount = 1;
+      await onFrame?.(deltaTime ?? 0.016);
+      return { grid: [], gridRevision: 0 };
+    }
+
+    this.secondFrameStartCount += 1;
+    await new Promise<void>((resolve) => {
+      this.releaseSecondFrame = resolve;
+    });
+    const grid = await super.renderToAnsiGrid(deltaTime, onFrame);
+    return { grid, gridRevision: this.renderCount };
+  }
+
+  completeSecondFrame(): void {
+    const release = this.releaseSecondFrame;
+    this.releaseSecondFrame = undefined;
     release?.();
   }
 }

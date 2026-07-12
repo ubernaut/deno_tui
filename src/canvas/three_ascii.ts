@@ -314,6 +314,12 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
           return;
         }
 
+        // Deferred readback intentionally returns an empty bootstrap frame. Keep
+        // the startup or last complete grid visible until GPU output is ready.
+        if (!hasThreeAsciiGridCells(grid)) {
+          return;
+        }
+
         this.grid = grid;
         if (this.queueChangedGridCells(grid, rectangle, frame.gridRevision)) {
           this.updated = false;
@@ -442,6 +448,10 @@ export class ThreeAsciiObject extends DrawObject<"three_ascii"> {
       this.canvas.updateObjects.push(this);
     }
   }
+}
+
+function hasThreeAsciiGridCells(grid: readonly (readonly string[] | undefined)[]): boolean {
+  return grid.length > 0 && (grid[0]?.length ?? 0) > 0;
 }
 
 interface ApplyThreeAsciiRerenderRangesOptions {

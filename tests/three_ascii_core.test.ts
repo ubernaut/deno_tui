@@ -2776,6 +2776,31 @@ Deno.test("getCompatibleWebGPUDevice refreshes after a native device lost signal
   }
 });
 
+Deno.test("getCompatibleWebGPUDevice falls back when the primary adapter cannot map readback buffers", async () => {
+  const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  const primary = fakeCompatibleWebGpuDevice({ mapError: new Error("primary map failed") });
+  const fallback = fakeCompatibleWebGpuDevice();
+  const requestedFallback: boolean[] = [];
+  installCompatibleNavigatorGpu({
+    requestAdapter: (options) => {
+      const forceFallback = options?.forceFallbackAdapter ?? false;
+      requestedFallback.push(forceFallback);
+      return Promise.resolve({
+        requestDevice: () => Promise.resolve((forceFallback ? fallback : primary) as GPUDevice),
+      });
+    },
+  });
+  resetCompatibleWebGPUDeviceCache();
+
+  try {
+    assertEquals(await getCompatibleWebGPUDevice(), fallback);
+    assertEquals(requestedFallback, [false, true]);
+  } finally {
+    resetCompatibleWebGPUDeviceCache();
+    restoreCompatibleNavigator(originalNavigator);
+  }
+});
+
 const deferredReadbackLayout: ThreeAsciiReadbackLayout = {
   byteLength: 20,
   fillOffset: 0,
@@ -2989,7 +3014,9 @@ function fakeBuffer(label: string): GPUBuffer {
   return label as unknown as GPUBuffer;
 }
 
-function installCompatibleNavigatorGpu(gpu: { requestAdapter: () => Promise<unknown> }): void {
+function installCompatibleNavigatorGpu(
+  gpu: { requestAdapter: (options?: GPURequestAdapterOptions) => Promise<unknown> },
+): void {
   Object.defineProperty(globalThis, "navigator", {
     configurable: true,
     value: { gpu },
@@ -3004,7 +3031,9 @@ function restoreCompatibleNavigator(descriptor: PropertyDescriptor | undefined):
   Reflect.deleteProperty(globalThis, "navigator");
 }
 
-function fakeCompatibleWebGpuDevice(options: { lost?: Promise<GPUDeviceLostInfo> } = {}): Partial<GPUDevice> {
+function fakeCompatibleWebGpuDevice(
+  options: { lost?: Promise<GPUDeviceLostInfo>; mapError?: unknown } = {},
+): Partial<GPUDevice> {
   return {
     lost: options.lost,
     queue: {
@@ -3015,10 +3044,12 @@ function fakeCompatibleWebGpuDevice(options: { lost?: Promise<GPUDeviceLostInfo>
     createBuffer: (descriptor) =>
       ({
         descriptor,
+        mapAsync: () => options.mapError === undefined ? Promise.resolve() : Promise.reject(options.mapError),
         getMappedRange: () => new ArrayBuffer(Number(descriptor.size) || 0),
         unmap() {},
         destroy() {},
       }) as unknown as GPUBuffer,
+    destroy() {},
   };
 }
 

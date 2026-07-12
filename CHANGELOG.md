@@ -32,3 +32,12 @@ quickly, but the affected entrypoint or module family should be named here.
 - Text-row components now allocate and retire visible rows as their terminal height changes, including styled ANSI rows.
 - Tightened the contributor API inventory gate to require duplicate-free public exports and 100% JSDoc coverage.
 - Made every published entrypoint pass JSR fast-type and declaration-output validation without `--allow-slow-types`.
+
+### Fixed
+
+- Three ASCII now verifies mapped GPU readback before selecting an adapter and falls back to a compatible software
+  adapter when the primary device cannot support terminal readback.
+- Three ASCII canvas objects keep their startup or last complete grid visible while deferred readback warms, including
+  across terminal resizes.
+- Screenshot generation serializes GPU access and rejects startup, fallback, sparse, or unavailable renderer captures;
+  the Neon Exodus capture now exercises a maximized Three scene.

@@ -13,6 +13,12 @@ interface ScreenshotTarget {
   command: string[];
   mode: "pty" | "stdout";
   timeoutMs?: number;
+  contentStartRow?: number;
+  contentEndRow?: number;
+  contentStartColumn?: number;
+  contentEndColumn?: number;
+  minimumContentCells?: number;
+  forbiddenContent?: readonly string[];
 }
 
 type ScreenshotTheme = "neon" | "exodus" | "system" | "gallery";
@@ -54,7 +60,17 @@ const targets: ScreenshotTarget[] = [
     rows: 36,
     command: ["deno", "task", "three-ascii", "--", "--no-controls"],
     mode: "pty",
-    timeoutMs: 3200,
+    timeoutMs: 6500,
+    contentStartRow: 4,
+    contentEndRow: 34,
+    contentStartColumn: 2,
+    contentEndColumn: 118,
+    minimumContentCells: 300,
+    forbiddenContent: [
+      "ASCII RENDERER STARTING",
+      "ASCII RENDERER OFFLINE",
+      "GPU READBACK UNAVAILABLE",
+    ],
   },
   {
     filename: "api-workbench.jpg",
@@ -65,6 +81,11 @@ const targets: ScreenshotTarget[] = [
     command: ["deno", "task", "api-workbench"],
     mode: "pty",
     timeoutMs: 6000,
+    forbiddenContent: [
+      "ASCII RENDERER OFFLINE",
+      "ASCII RENDERER UNAVAILABLE",
+      "GPU READBACK UNAVAILABLE",
+    ],
   },
   {
     filename: "component-catalog.jpg",
@@ -91,9 +112,20 @@ const targets: ScreenshotTarget[] = [
     theme: "exodus",
     columns: 120,
     rows: 36,
-    command: ["deno", "task", "neon-exodus"],
+    command: ["deno", "task", "neon-exodus", "--", "--section=three", "--maximized"],
     mode: "pty",
-    timeoutMs: 1200,
+    timeoutMs: 6500,
+    contentStartRow: 8,
+    contentEndRow: 34,
+    contentStartColumn: 3,
+    contentEndColumn: 117,
+    minimumContentCells: 100,
+    forbiddenContent: [
+      "TEXT FALLBACK ACTIVE",
+      "ASCII RENDERER OFFLINE",
+      "ASCII RENDERER UNAVAILABLE",
+      "GPU READBACK UNAVAILABLE",
+    ],
   },
   {
     filename: "system-monitor.jpg",
@@ -116,6 +148,7 @@ if (import.meta.main) {
   for (const target of targets) {
     const output = await captureTarget(target);
     const frame = replayTerminal(output, target);
+    validateScreenshotFrame(frame, target);
     await writeJpegScreenshot(frame, `docs/screenshots/${target.filename}`, browser);
   }
 
@@ -123,6 +156,33 @@ if (import.meta.main) {
     if (entry.isFile && /\.(?:jpe?g|svg)$/i.test(entry.name) && !expected.has(entry.name)) {
       await Deno.remove(`docs/screenshots/${entry.name}`);
     }
+  }
+}
+
+function validateScreenshotFrame(frame: TerminalFrame, target: ScreenshotTarget): void {
+  const text = frame.cells
+    .map((row) => row.map((cell) => cell?.char ?? " ").join(""))
+    .join("\n");
+  for (const forbidden of target.forbiddenContent ?? []) {
+    if (text.includes(forbidden)) {
+      throw new Error(`failed to capture ${target.filename}: renderer output contains ${forbidden}`);
+    }
+  }
+  if (target.minimumContentCells === undefined) return;
+  const startRow = Math.max(0, Math.floor(target.contentStartRow ?? 0));
+  const endRow = Math.min(frame.cells.length, Math.floor(target.contentEndRow ?? frame.cells.length));
+  const startColumn = Math.max(0, Math.floor(target.contentStartColumn ?? 0));
+  const endColumn = Math.max(startColumn, Math.floor(target.contentEndColumn ?? target.columns));
+  let visibleCells = 0;
+  for (let row = startRow; row < endRow; row += 1) {
+    for (const cell of (frame.cells[row] ?? []).slice(startColumn, endColumn)) {
+      if (cell?.char && cell.char !== " ") visibleCells += 1;
+    }
+  }
+  if (visibleCells < target.minimumContentCells) {
+    throw new Error(
+      `failed to capture ${target.filename}: expected at least ${target.minimumContentCells} visible content cells, got ${visibleCells}`,
+    );
   }
 }
 

@@ -37,6 +37,7 @@
   "compilerOptions": {
     "lib": ["deno.window", "dom", "dom.iterable"]
   },
+  "nodeModulesDir": "none",
   "tasks": {
     "demo": "deno run --watch --allow-hrtime ./examples/demo.ts",
     "terminal-app": "deno run -A ./examples/terminal_app.ts",
@@ -64,7 +65,7 @@
     "api-reference": "deno run -A ./scripts/api_reference.ts",
     "package-check": "deno run -A ./scripts/package_check.ts",
     "release-check": "deno run -A ./scripts/release_check.ts",
-    "screenshots": "deno run -A ./scripts/generate_screenshots.ts",
+    "screenshots": "deno run -A ./scripts/gpu_probe_lock.ts -- deno run -A ./scripts/generate_screenshots.ts",
     "visual-smoke": "deno run -A ./scripts/visual_smoke.ts",
     "workbench-visual-smoke": "deno run -A ./scripts/gpu_probe_lock.ts -- deno run -A ./scripts/workbench_visual_smoke.ts",
     "workbench-default-resize-visual-smoke": "deno run -A ./scripts/gpu_probe_lock.ts -- deno run -A ./scripts/workbench_visual_smoke.ts --columns 100 --rows 30 --resize-columns 160 --resize-rows 48 --settle-ms 9000 --timeout-ms 26000",
