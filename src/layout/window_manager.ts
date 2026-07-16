@@ -184,7 +184,7 @@ export class WindowManagerController {
   }
 
   focusNext(delta = 1): WindowManagerWindow | undefined {
-    const windows = this.#orderedWindows(false);
+    const windows = this.#orderedWindows(false).filter((entry) => windowState(entry) === "normal");
     if (windows.length === 0) return undefined;
     const activeId = this.activeId.peek();
     let currentIndex = -1;
@@ -285,7 +285,7 @@ export class WindowManagerController {
         minWidth = Math.max(minWidth, entry.minWidth ?? 0);
         minHeight = Math.max(minHeight, entry.minHeight ?? 0);
       }
-      const layout = tileRects(bounds, {
+      const tileOptions = {
         itemCount: visible.length,
         minTileWidth: minWidth,
         minTileHeight: minHeight,
@@ -295,7 +295,12 @@ export class WindowManagerController {
         allowVerticalOverflow: true,
         ...this.tileOptions.peek(),
         ...options.tileOptions,
-      });
+      };
+      // Adapter-wide tile preferences may make panes larger, but they must not
+      // silently weaken constraints declared by an individual window.
+      tileOptions.minTileWidth = Math.max(minWidth, Math.floor(tileOptions.minTileWidth ?? minWidth));
+      tileOptions.minTileHeight = Math.max(minHeight, Math.floor(tileOptions.minTileHeight ?? minHeight));
+      const layout = tileRects(bounds, tileOptions);
       for (const [index, entry] of visible.entries()) {
         rects.set(entry.id, layout.rects[index]!);
       }

@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Color } from "three";
+import type { Color } from "three";
 
 import {
   ASCII_FILL_GLYPHS,
@@ -854,8 +854,10 @@ function createGlyphKeyTable(): string[] {
   for (let index = 0; index < FILL_GLYPHS.length + 5; index += 1) {
     const bucket = fillBucketFromGlyphIndex(index);
     table[index] = blockFillGlyphForBucket(bucket);
-    table[GLYPH_KEY_GLYPHS_OFFSET + index] = ASCII_FILL_GLYPHS[bucket] ?? " ";
     table[GLYPH_KEY_MIXED_OFFSET + index] = MIXED_FILL_GLYPHS_BY_INDEX[index] ?? " ";
+  }
+  for (let bucket = 0; bucket < ASCII_FILL_GLYPHS.length; bucket += 1) {
+    table[GLYPH_KEY_GLYPHS_OFFSET + bucket] = ASCII_FILL_GLYPHS[bucket] ?? " ";
   }
   for (let index = 0; index < EDGE_GLYPHS.length; index += 1) {
     table[EDGE_GLYPH_KEY_OFFSET + index] = EDGE_GLYPHS[index] ?? " ";

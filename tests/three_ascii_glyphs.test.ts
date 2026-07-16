@@ -489,14 +489,19 @@ Deno.test("three ascii ANSI grid assembler keeps glyph style cache keys distinct
   const blocks = assembler.build({ ...base, terminalGlyphStyle: "blocks" })[0][0];
   const glyphs = assembler.build({ ...base, terminalGlyphStyle: "glyphs" })[0][0];
   const mixed = assembler.build({ ...base, terminalGlyphStyle: "mixed" })[0][0];
+  const glyphsAgain = assembler.build({ ...base, terminalGlyphStyle: "glyphs" })[0][0];
+  const blocksAgain = assembler.build({ ...base, terminalGlyphStyle: "blocks" })[0][0];
 
   assertEquals(blocks, buildThreeAsciiAnsiGrid({ ...base, terminalGlyphStyle: "blocks" })[0][0]);
   assertEquals(glyphs, buildThreeAsciiAnsiGrid({ ...base, terminalGlyphStyle: "glyphs" })[0][0]);
   assertEquals(mixed, buildThreeAsciiAnsiGrid({ ...base, terminalGlyphStyle: "mixed" })[0][0]);
   assertEquals(blocks, blockCell(255, 255, 255));
   assertEquals(blocks.includes("\x1b[38;2;255;255;255m"), true);
-  assertEquals(glyphs.includes("="), true);
+  assertEquals(glyphs.includes("@"), true);
+  assertEquals(glyphsAgain, glyphs);
+  assertEquals(blocksAgain, blocks);
   assertEquals(blocks !== glyphs, true);
+  assertEquals(glyphs !== mixed, true);
 });
 
 Deno.test("three ascii ANSI grid assembler can use color alpha for block visibility", () => {

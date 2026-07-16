@@ -33,6 +33,7 @@ import {
   workspaceSavedModalContent,
 } from "../src/app/workbench_workspace_menu.ts";
 import type { WorkbenchWorkspace, WorkbenchWorkspaceWindow } from "../src/app/mod.ts";
+import { TILED_WORKSPACE_SNAPSHOT_VERSION } from "../src/layout/tiled_workspace.ts";
 
 Deno.test("API workbench workspace config exposes stable storage defaults", () => {
   assertEquals(API_WORKBENCH_WORKSPACE_STORE_KEY, "api-workbench.workspaces");
@@ -347,6 +348,31 @@ Deno.test("active workspace identity clears after manual visualization window mu
   );
 });
 
+Deno.test("workspace save state captures complete managed and tiled layout metadata", () => {
+  const result = saveWorkspaceState({
+    workspaces: [],
+    draftName: "Layout",
+    windows: [],
+    managedWindows: [
+      { id: "three", state: "normal", order: 0 },
+      { id: "logs", state: "minimized", order: 1 },
+    ],
+    activeWindowId: "three",
+    tileDensity: -2,
+    tiledLayout: {
+      version: TILED_WORKSPACE_SNAPSHOT_VERSION,
+      gap: 1,
+      layout: { root: { kind: "pane", id: "pane-three", windowId: "three" } },
+    },
+    now: 10,
+  });
+
+  assertEquals(result.workspace.managedWindows?.map((window) => window.id), ["three", "logs"]);
+  assertEquals(result.workspace.activeWindowId, "three");
+  assertEquals(result.workspace.tileDensity, -2);
+  assertEquals(result.workspace.tiledLayout?.layout.root?.kind, "pane");
+});
+
 Deno.test("workspace state transitions save rename and delete workspaces", () => {
   const existing: WorkbenchWorkspace<{ style: string }>[] = [
     { name: "Alpha", visualizationIds: ["cpu"], savedAt: 10 },
@@ -439,7 +465,7 @@ Deno.test("workspaceNameModalBody describes save and rename prompts", () => {
       loadedVisualizationIds: ["cpu", "gpu"],
     }),
     [
-      "Name the current set of loaded widget windows.",
+      "Name the current panel and tiled layout.",
       "Name: Ops|",
       "Windows: cpu, gpu",
       "Storage: IndexedDB",
@@ -490,7 +516,7 @@ Deno.test("workspace modal content helpers project prompts and outcomes", () => 
     tone: "warning",
     body: [
       'Delete saved workspace "Ops"?',
-      "2 widget window(s) saved in this workspace.",
+      "2 panel window(s) saved in this workspace.",
       "This removes the saved workspace only; it does not close any currently open windows.",
     ],
     actions: [
@@ -502,7 +528,7 @@ Deno.test("workspace modal content helpers project prompts and outcomes", () => 
   assertEquals(workspaceSavedModalContent("Ops", 2), {
     title: "Workspace Saved",
     tone: "success",
-    body: ["Ops", "2 widget window(s) saved."],
+    body: ["Ops", "2 panel window(s) saved."],
     actions: [{ id: "dismiss", label: "OK", default: true }],
   });
   assertEquals(workspaceMissingModalContent(null), {
@@ -514,7 +540,7 @@ Deno.test("workspace modal content helpers project prompts and outcomes", () => 
   assertEquals(workspaceRenamedModalContent("Ops", "Night Ops", 3), {
     title: "Workspace Renamed",
     tone: "success",
-    body: ["Ops -> Night Ops", "3 widget window(s)."],
+    body: ["Ops -> Night Ops", "3 panel window(s)."],
     actions: [{ id: "dismiss", label: "OK", default: true }],
   });
   assertEquals(workspaceDeletedModalContent("Ops"), {

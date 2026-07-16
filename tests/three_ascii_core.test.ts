@@ -254,13 +254,22 @@ Deno.test("three ascii grid glyph and mixed modes keep distinct fill glyph table
   const glyphCell = renderSingleThreeAsciiCell({ terminalGlyphStyle: "glyphs", fillGlyphs: [12] });
   const mixedCell = renderSingleThreeAsciiCell({ terminalGlyphStyle: "mixed", fillGlyphs: [12] });
 
-  assertEquals(glyphCell, ":");
+  assertEquals(glyphCell, "#");
   assertEquals(mixedCell, "▇");
+});
+
+Deno.test("three ascii grid glyph mode preserves the complete semantic fill ramp", () => {
+  const renderedRamp = Array.from(
+    { length: 10 },
+    (_, bucket) => renderSingleThreeAsciiCell({ terminalGlyphStyle: "glyphs", fillGlyphs: [bucket + 5] }),
+  ).join("");
+
+  assertEquals(renderedRamp, " .:-=+*#%@");
 });
 
 Deno.test("three ascii grid promotes strong edges in edge-capable modes", () => {
   assertEquals(renderSingleThreeAsciiCell({ terminalGlyphStyle: "glyphs", edgeGlyphs: [1, 64, 64, 0] }), "|");
-  assertEquals(renderSingleThreeAsciiCell({ terminalGlyphStyle: "glyphs", edgeGlyphs: [1, 1, 64, 0] }), "=");
+  assertEquals(renderSingleThreeAsciiCell({ terminalGlyphStyle: "glyphs", edgeGlyphs: [1, 1, 64, 0] }), "@");
 });
 
 Deno.test("three ascii camera aspect accounts for terminal cell geometry", () => {

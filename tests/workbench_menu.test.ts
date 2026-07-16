@@ -30,6 +30,8 @@ Deno.test("workbench standard top menu helpers map item ids and signal state", (
   assertEquals(workbenchStandardTopMenuIdForItem("theme"), "theme");
   assertEquals(workbenchStandardTopMenuIdForItem("new"), "newWindow");
   assertEquals(workbenchStandardTopMenuIdForItem("workspace"), "workspace");
+  assertEquals(workbenchStandardTopMenuIdForItem("view"), "view");
+  assertEquals(workbenchStandardTopMenuIdForItem("layout"), "layout");
   assertEquals(workbenchStandardTopMenuIdForItem("file"), null);
   assertEquals(workbenchStandardTopMenuIdForItem(undefined), null);
 
@@ -37,12 +39,16 @@ Deno.test("workbench standard top menu helpers map item ids and signal state", (
     themeMenuOpen: false,
     newWindowMenuOpen: true,
     workspaceMenuOpen: false,
+    viewMenuOpen: false,
+    layoutMenuOpen: false,
     menuFocused: true,
   });
   assertEquals(projectWorkbenchStandardTopMenuState({ openId: null, focused: false }), {
     themeMenuOpen: false,
     newWindowMenuOpen: false,
     workspaceMenuOpen: false,
+    viewMenuOpen: false,
+    layoutMenuOpen: false,
     menuFocused: false,
   });
 });

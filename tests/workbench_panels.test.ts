@@ -182,21 +182,26 @@ Deno.test("workbench explorer rows reuse caller-owned row objects", () => {
   assertEquals(projected[0], { text: "▾ src", fg: "#44dd66", bg: "#050510", bold: true });
 });
 
-Deno.test("workbench inspector projects API surface rows and theme label", () => {
+Deno.test("workbench inspector projects focused panel layout state and theme", () => {
   const rows = workbenchInspectorRowsInto([], {
     width: 80,
     height: 11,
     themeLabel: "Unit-01 Signal",
+    focusTitle: "Three ASCII",
+    focusState: "normal",
+    layoutSummary: "3 panes · docked",
     logs: [],
     theme: inspectorTheme,
     fit,
     buffers: { actionTextRows: [], wrappedTextRows: [] },
   });
 
-  assertEquals(rows.length, 11);
-  assertEquals(rows[0], { text: " Composable API surfaces ", fg: "#000000", bg: "#aaff00", bold: true });
-  assertEquals(rows[8], { text: "theme     Unit-01 Signal", fg: "#ffaa00", bg: "#050510", bold: true });
-  assertEquals(rows[10], { text: " Recent actions ", fg: "#000000", bg: "#663399", bold: true });
+  assertEquals(rows.length, 7);
+  assertEquals(rows[0], { text: " Focused panel ", fg: "#000000", bg: "#aaff00", bold: true });
+  assertEquals(rows[1]?.text, "title     Three ASCII");
+  assertEquals(rows[3]?.text, "layout    3 panes · docked");
+  assertEquals(rows[4], { text: "theme     Unit-01 Signal", fg: "#ffaa00", bg: "#050510", bold: true });
+  assertEquals(rows[6], { text: " Recent actions ", fg: "#000000", bg: "#663399", bold: true });
 });
 
 Deno.test("workbench inspector wraps and clips recent action rows", () => {
@@ -211,9 +216,9 @@ Deno.test("workbench inspector wraps and clips recent action rows", () => {
     buffers,
   });
 
-  assertEquals(rows.length, 14);
-  assertEquals(rows.slice(11).map((row) => row.text), ["updated", "• workspace saved", "successfully"]);
-  assert(rows.slice(11).every((row) => row.fg === "#eeeeee" && row.bg === "#111122"));
+  assertEquals(rows.length, 13);
+  assertEquals(rows.slice(-3).map((row) => row.text), ["updated", "• workspace saved", "successfully"]);
+  assert(rows.slice(7).every((row) => row.fg === "#eeeeee" && row.bg === "#111122"));
   assert(buffers.actionTextRows.length >= 3);
   assert(buffers.wrappedTextRows.length > 0);
 });
@@ -246,7 +251,7 @@ Deno.test("workbench inspector reuses caller-owned row storage", () => {
 
   assertEquals(second === target, true);
   assertEquals(second[0] === firstHeader, false);
-  assertEquals(second[8]?.text, "theme     B");
+  assertEquals(second[4]?.text, "theme     B");
   assertEquals(buffers.actionTextRows.some((row) => row.includes("stale")), false);
 });
 
@@ -546,22 +551,29 @@ Deno.test("api workbench catalog exposes built-in window order", () => {
   ]);
 });
 
-Deno.test("api workbench catalog places terminal and layout options before visualizations", () => {
+Deno.test("api workbench catalog exposes every built-in before visualizations", () => {
   const catalog = createApiWorkbenchWindowCatalog([
     { id: "cpu-monitor", name: "CPU", description: "CPU usage", family: "monitor" },
     { id: "three-lattice", name: "Lattice", description: "3D lattice", family: "neon3d" },
   ]);
 
   assertEquals(catalog.newWindowOptions.map((option) => option.id), [
+    "panel-three",
+    "panel-explorer",
+    "panel-inspector",
+    "panel-activity",
+    "panel-data",
+    "panel-controls",
     "terminal-shell",
     "terminal-output",
     HTML_CSS_LAYOUT_OPTION_ID,
     "cpu-monitor",
     "three-lattice",
   ]);
-  assertEquals(catalog.newWindowOptions[0]!.windowId, TERMINAL_SHELL_WINDOW_ID);
-  assertEquals(catalog.newWindowOptions[1]!.windowId, TERMINAL_OUTPUT_WINDOW_ID);
-  assertEquals(catalog.newWindowOptions[2]!.windowId, HTML_CSS_LAYOUT_WINDOW_ID);
+  assertEquals(catalog.newWindowOptions[0]!.windowId, "three");
+  assertEquals(catalog.newWindowOptions[6]!.windowId, TERMINAL_SHELL_WINDOW_ID);
+  assertEquals(catalog.newWindowOptions[7]!.windowId, TERMINAL_OUTPUT_WINDOW_ID);
+  assertEquals(catalog.newWindowOptions[8]!.windowId, HTML_CSS_LAYOUT_WINDOW_ID);
   assertEquals(catalog.visualizationWindowOptionIds, ["cpu-monitor", "three-lattice"]);
   assertEquals(catalog.visualizationWindowOptionById.get("three-lattice")?.group, "Neon 3D");
 });

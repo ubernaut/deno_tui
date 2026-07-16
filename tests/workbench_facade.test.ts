@@ -98,6 +98,7 @@ Deno.test("workbench global keymap resolves app-level commands", () => {
   assertEquals(resolveWorkbenchGlobalKey({ key: "return" }), { kind: "toggleMaximize" });
   assertEquals(resolveWorkbenchGlobalKey({ key: "escape" }), { kind: "restoreAll" });
   assertEquals(resolveWorkbenchGlobalKey({ key: "0" }), { kind: "restoreNextMinimized" });
+  assertEquals(resolveWorkbenchGlobalKey({ key: "f6" }), { kind: "toggleLayoutMode" });
 });
 
 Deno.test("workbench modal layout centers within desktop bounds", () => {
@@ -348,16 +349,29 @@ Deno.test("workbench global keymap resolves layout, density, preview, and scroll
 Deno.test("workbench global keymap ignores modified and unmapped shortcuts", () => {
   assertEquals(resolveWorkbenchGlobalKey({ key: "q", ctrl: true }), { kind: "ignore" });
   assertEquals(resolveWorkbenchGlobalKey({ key: "left", meta: true }), { kind: "ignore" });
+  assertEquals(resolveWorkbenchGlobalKey({ key: "left" }, { layoutMode: true }), {
+    kind: "focusWindow",
+    delta: -1,
+  });
+  assertEquals(resolveWorkbenchGlobalKey({ key: "right", shift: true }, { layoutMode: true }), {
+    kind: "moveWindow",
+    delta: 1,
+  });
+  assertEquals(resolveWorkbenchGlobalKey({ key: "down", ctrl: true }, { layoutMode: true }), {
+    kind: "resizeWindow",
+    columns: 0,
+    rows: 1,
+  });
   assertEquals(resolveWorkbenchGlobalKey({ key: "unknown" }), { kind: "ignore" });
 });
 
 Deno.test("workbench help rows expose terminal navigation coverage", () => {
   const rows = workbenchHelpRows();
 
-  assertEquals(rows.length, 17);
+  assertEquals(rows.length, 18);
   assertEquals(rows.some((row) => row.includes("F10")), true);
   assertEquals(rows.some((row) => row.includes("Three ASCII widgets")), true);
-  assertEquals(rows.some((row) => row.includes("Workspace menu")), true);
+  assertEquals(rows.some((row) => row.includes("Use File")), true);
 });
 
 Deno.test("workbench help rows expose compact web and touch guidance", () => {
@@ -392,7 +406,7 @@ Deno.test("workbench modal helpers build help details and confirmation content",
   const confirmed = workbenchModalConfirmedContent({ profile: "terminal" });
 
   assertEquals(help.title, "Workbench Help");
-  assertEquals(Array.isArray(help.body) && help.body.length, 17);
+  assertEquals(Array.isArray(help.body) && help.body.length, 18);
   assertEquals(help.actions?.map((action) => action.id), ["dismiss", "controls"]);
   assertEquals(details.title, "Modal Details");
   assertEquals(details.actions?.map((action) => action.id), ["back", "confirm", "dismiss"]);

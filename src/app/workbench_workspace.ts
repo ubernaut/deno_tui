@@ -1,4 +1,9 @@
 // Copyright 2023 Im-Beast. MIT license.
+import {
+  normalizeTiledWorkspaceSnapshot,
+  TILED_WORKSPACE_SNAPSHOT_VERSION,
+  type TiledWorkspaceSnapshot,
+} from "../layout/tiled_workspace.ts";
 
 /** A saved workbench window entry with optional per-window ASCII renderer settings. */
 export interface WorkbenchWorkspaceWindow<TAscii = unknown> {
@@ -6,16 +11,28 @@ export interface WorkbenchWorkspaceWindow<TAscii = unknown> {
   ascii?: TAscii;
 }
 
+/** Lifecycle and order snapshot for one open or minimized managed workbench window. */
+export interface WorkbenchWorkspaceManagedWindow {
+  id: string;
+  state: "normal" | "minimized";
+  order: number;
+}
+
 /** Version-tolerant saved workbench workspace shape shared by terminal and web adapters. */
 export interface WorkbenchWorkspace<TAscii = unknown> {
   name: string;
   visualizationIds: string[];
   windows?: WorkbenchWorkspaceWindow<TAscii>[];
+  managedWindows?: WorkbenchWorkspaceManagedWindow[];
+  activeWindowId?: string;
+  fullscreenWindowId?: string;
+  tileDensity?: number;
+  tiledLayout?: TiledWorkspaceSnapshot;
   savedAt: number;
 }
 
 /** Current version for serialized workbench workspace collections. */
-export const WORKBENCH_WORKSPACE_STORAGE_VERSION = 1;
+export const WORKBENCH_WORKSPACE_STORAGE_VERSION = 2;
 
 /** Versioned persisted workbench workspace collection shared by renderer adapters. */
 export interface WorkbenchWorkspaceStorage<TAscii = unknown> {
@@ -115,10 +132,22 @@ export function normalizeWorkbenchWorkspaces<TAscii = unknown>(
       ? workspaceVisualizationIds(windows)
       : normalizeVisualizationIds(candidate.visualizationIds, validIds);
 
+    const hasManagedWindows = Array.isArray(candidate.managedWindows);
+    const managedWindows = normalizeWorkbenchManagedWindows(candidate.managedWindows);
+    const managedIds = new Set(managedWindows.map((window) => window.id));
+    const tiledLayout = normalizeWorkspaceTiledLayout(candidate.tiledLayout);
+    const activeWindowId = normalizeManagedWindowId(candidate.activeWindowId, managedIds);
+    const fullscreenWindowId = normalizeManagedWindowId(candidate.fullscreenWindowId, managedIds);
+    const tileDensity = normalizeWorkspaceTileDensity(candidate.tileDensity);
     workspaces.push({
       name,
       visualizationIds,
       windows: windows.length > 0 ? windows : undefined,
+      ...(hasManagedWindows ? { managedWindows } : {}),
+      ...(activeWindowId ? { activeWindowId } : {}),
+      ...(fullscreenWindowId ? { fullscreenWindowId } : {}),
+      ...(tileDensity !== undefined ? { tileDensity } : {}),
+      ...(tiledLayout ? { tiledLayout } : {}),
       savedAt: typeof candidate.savedAt === "number" && Number.isFinite(candidate.savedAt) ? candidate.savedAt : 0,
     });
   }
@@ -146,7 +175,16 @@ export function serializeWorkbenchWorkspaces<TAscii>(
       }
     }
 
-    serialized[index] = { ...workspace, visualizationIds, windows };
+    const next: WorkbenchWorkspace<TAscii> = {
+      ...workspace,
+      visualizationIds,
+      windows,
+    };
+    if (workspace.managedWindows) next.managedWindows = workspace.managedWindows.map((window) => ({ ...window }));
+    else delete next.managedWindows;
+    if (workspace.tiledLayout) next.tiledLayout = normalizeTiledWorkspaceSnapshot(workspace.tiledLayout);
+    else delete next.tiledLayout;
+    serialized[index] = next;
   }
 
   return {
@@ -289,4 +327,42 @@ function workspaceVisualizationIds<TAscii>(windows: readonly WorkbenchWorkspaceW
     ids[index] = windows[index]!.visualizationId;
   }
   return ids;
+}
+
+function normalizeWorkbenchManagedWindows(value: unknown): WorkbenchWorkspaceManagedWindow[] {
+  if (!Array.isArray(value)) return [];
+  const windows: WorkbenchWorkspaceManagedWindow[] = [];
+  const ids = new Set<string>();
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") continue;
+    const candidate = entry as Partial<WorkbenchWorkspaceManagedWindow>;
+    const id = typeof candidate.id === "string" ? candidate.id.trim() : "";
+    if (!id || ids.has(id)) continue;
+    ids.add(id);
+    windows.push({
+      id,
+      state: candidate.state === "minimized" ? "minimized" : "normal",
+      order: Number.isFinite(candidate.order) ? Math.max(0, Math.floor(candidate.order!)) : windows.length,
+    });
+  }
+  return windows;
+}
+
+function normalizeManagedWindowId(value: unknown, validIds: ReadonlySet<string>): string | undefined {
+  return typeof value === "string" && validIds.has(value) ? value : undefined;
+}
+
+function normalizeWorkspaceTileDensity(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(-3, Math.min(3, Math.trunc(value))) : undefined;
+}
+
+function normalizeWorkspaceTiledLayout(value: unknown): TiledWorkspaceSnapshot | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const candidate = value as Partial<TiledWorkspaceSnapshot>;
+  if (
+    candidate.version !== TILED_WORKSPACE_SNAPSHOT_VERSION || !candidate.layout || typeof candidate.layout !== "object"
+  ) {
+    return undefined;
+  }
+  return normalizeTiledWorkspaceSnapshot(candidate as TiledWorkspaceSnapshot);
 }

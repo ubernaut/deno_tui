@@ -358,7 +358,7 @@ Deno.test("API workbench Three policy compares every runtime ASCII option", () =
   assertEquals(sameWorkbenchThreeAsciiOptions(base, { ...base }), true);
   assertEquals(sameWorkbenchThreeAsciiOptions(base, { ...base, renderMaxCells: base.renderMaxCells + 1 }), false);
   assertEquals(sameWorkbenchThreeAsciiOptions(base, { ...base, kittyGraphics: !base.kittyGraphics }), false);
-  assertEquals(sameWorkbenchThreeAsciiOptions(base, { ...base, terminalGlyphStyle: "glyphs" }), false);
+  assertEquals(sameWorkbenchThreeAsciiOptions(base, { ...base, terminalGlyphStyle: "blocks" }), false);
 });
 
 Deno.test("API workbench Three policy starts at the full live tier but keeps rescue cadence available", () => {

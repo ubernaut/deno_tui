@@ -127,6 +127,8 @@ Deno.test("WorkbenchController coordinates menus and window state", () => {
   assertEquals(controller.closeMenus(), { openId: null, focused: false });
 
   assertEquals(controller.focusNextWindow(), "explorer");
+  assertEquals(controller.moveWindow("explorer", 1), "explorer");
+  assertEquals(controller.windows.ids(), ["inspector", "explorer"]);
   assertEquals(controller.toggleFullscreenWindow(), "explorer");
   assertEquals(controller.inspect().fullscreenWindowId, "explorer");
   assertEquals(controller.minimizeWindow("explorer"), "explorer");
@@ -1007,13 +1009,14 @@ Deno.test("renderApiWorkbenchWindowTabs paints tab strip and registers tab hits"
 Deno.test("renderApiWorkbenchWindowShell paints frame content titlebar and scrollbars", () => {
   type TestWindowAction =
     | { type: "focus"; id: "logs" }
+    | { type: "drag"; id: "logs" }
     | { type: "titlebar"; id: "logs"; kind: string }
     | { type: "scrollbar"; id: "logs"; axis: "vertical" | "horizontal" };
 
   const frame: string[][] = [];
   const contentFrame: string[][] = [];
   const fills: Array<{ row: number; width: number; bg: string }> = [];
-  const buttons: Array<{ label: string; tone?: string }> = [];
+  const buttons: Array<{ label: string; tone?: string; accessibilityLabel?: string; shortcut?: string }> = [];
   const hits: Array<TestWindowAction & { width: number }> = [];
   const hints: number[] = [];
   let contentRows = 0;
@@ -1045,6 +1048,7 @@ Deno.test("renderApiWorkbenchWindowShell paints frame content titlebar and scrol
     rect: { column: 0, row: 0, width: 28, height: 8 },
     minimized: false,
     active: true,
+    maximized: false,
     title: "Logs",
     showConfig: true,
     theme: testWorkbenchTheme(),
@@ -1068,6 +1072,7 @@ Deno.test("renderApiWorkbenchWindowShell paints frame content titlebar and scrol
     },
     focusAction: (id) => ({ type: "focus", id }),
     titlebarAction: (id, kind) => ({ type: "titlebar", id, kind }),
+    titlebarDragAction: (id) => ({ type: "drag", id }),
     scrollbarAction: (id, axis) => ({ type: "scrollbar", id, axis }),
     paint: (text, style) => `${style.bg ?? ""}:${style.fg ?? ""}:${style.bold ? "b:" : ""}${text}`,
     write: (target, row, column, value) => {
@@ -1076,7 +1081,12 @@ Deno.test("renderApiWorkbenchWindowShell paints frame content titlebar and scrol
     },
     fillRect,
     writeButton: (_target, _row, _column, label, options) => {
-      buttons.push({ label, tone: options?.tone });
+      buttons.push({
+        label,
+        tone: options?.tone,
+        accessibilityLabel: options?.accessibilityLabel,
+        shortcut: options?.shortcut,
+      });
       return label.length;
     },
     addHit: (rect, action) => hits.push({ ...action, width: rect.width }),
@@ -1089,8 +1099,15 @@ Deno.test("renderApiWorkbenchWindowShell paints frame content titlebar and scrol
   assertEquals(translatedHitStart, 5);
   assertEquals(frame[1]?.[1], "BODY");
   assertEquals(buttons.some((button) => button.label === "x" && button.tone === "danger"), true);
+  assertEquals(
+    buttons.some((button) =>
+      button.label === "x" && button.accessibilityLabel === "Close window" && button.shortcut === "C"
+    ),
+    true,
+  );
   assertEquals(hits.some((hit) => hit.type === "focus" && hit.width === 28), true);
   assertEquals(hits.some((hit) => hit.type === "titlebar" && hit.kind === "close"), true);
+  assertEquals(hits.some((hit) => hit.type === "drag"), true);
   assertEquals(hits.some((hit) => hit.type === "scrollbar" && hit.axis === "vertical"), true);
   assertEquals(fills.some((fill) => fill.row === 0 && fill.width === 28), true);
 });
@@ -1136,7 +1153,7 @@ Deno.test("renderApiWorkbenchChromeHeader paints header hits and top menu overla
       hits.push({ type: action.type, index: "index" in action ? action.index : undefined, width: rect.width }),
   });
 
-  assertEquals(fills, [{ row: 0, bg: "#111" }, { row: 1, bg: "#111" }]);
+  assertEquals(fills, [{ row: 0, bg: "#111" }]);
   assertEquals(frame[0]?.[0], "#0f0:#000:b: API WORKBENCH ");
   assertEquals(frame[0]?.[17]?.includes("[Theme]"), true);
   assertEquals(buttons, [{ label: "x", row: 0, tone: "danger" }]);
@@ -1443,7 +1460,7 @@ Deno.test("renderApiWorkbenchInspectorPanel and logs panel project text rows", (
     writeRows: (_target, _rect, outputRows) => written.push(outputRows.map((row) => row.text)),
   });
 
-  assertEquals(written[0]?.some((row) => row.includes("Composable API surfaces")), true);
+  assertEquals(written[0]?.some((row) => row.includes("Focused panel")), true);
   assertEquals(written[0]?.some((row) => row.includes("opened modal")), true);
   assertEquals(written[1], ["docs", "event one", "event two"]);
   assertEquals(actionTextRows.length > 0, true);
@@ -1680,7 +1697,7 @@ Deno.test("renderApiWorkbenchVisualizationThreeChrome paints chrome and returns 
   assertEquals(sceneRect, { column: 2, row: 6, width: 40, height: 6 });
   assertEquals(rows[0], { text: " MONITOR · Load ", fg: "#000", bg: "#0f0", bold: true });
   assertEquals(rows[1], { text: "CPU monitor", fg: "#ccc", bg: "#111", bold: false });
-  assertEquals(rows[2]?.text, "ACEROLA LATTICE · BLOCKS · CPU");
+  assertEquals(rows[2]?.text, "ACEROLA LATTICE · GLYPHS · CPU");
   assertEquals(writes, ["12:2:#222:#aaa:footer detail"]);
 });
 

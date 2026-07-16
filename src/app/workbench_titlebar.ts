@@ -14,6 +14,10 @@ export type WorkbenchTitlebarButtonTone = "default" | "muted" | "warning" | "suc
 export interface WorkbenchTitlebarButton {
   kind: WorkbenchTitlebarButtonKind;
   label: string;
+  /** Human-readable action name for semantic renderers, tooltips, and assistive technology. */
+  accessibilityLabel: string;
+  /** Keyboard equivalent advertised by hosts that expose shortcut metadata. */
+  shortcut?: string;
   rect: Rectangle;
   tone: WorkbenchTitlebarButtonTone;
   compact: boolean;
@@ -26,6 +30,10 @@ export interface WorkbenchTitlebarLayoutOptions {
   showConfig?: boolean;
   controlsMinWidth?: number;
   configLabel?: string;
+  configAccessibilityLabel?: string;
+  configShortcut?: string;
+  /** Selects one state-aware maximize/restore control. Omit to retain the legacy four-control layout. */
+  maximized?: boolean;
 }
 
 /** Renderer-neutral titlebar layout result. */
@@ -39,6 +47,8 @@ export interface WorkbenchTitlebarButtonRenderCommand {
   button: WorkbenchTitlebarButton;
   kind: WorkbenchTitlebarButtonKind;
   label: string;
+  accessibilityLabel: string;
+  shortcut?: string;
   text: string;
   rect: Rectangle;
   hitRect: Rectangle;
@@ -46,11 +56,57 @@ export interface WorkbenchTitlebarButtonRenderCommand {
   compact: boolean;
 }
 
-const WINDOW_CONTROL_SPECS: readonly Omit<WorkbenchTitlebarButton, "rect">[] = [
-  { kind: "close", label: "x", tone: "danger", compact: true },
-  { kind: "restore", label: "R", tone: "muted", compact: true },
-  { kind: "maximize", label: "M", tone: "success", compact: true },
-  { kind: "minimize", label: "-", tone: "warning", compact: true },
+type WorkbenchTitlebarButtonSpec = Omit<WorkbenchTitlebarButton, "rect">;
+
+const CLOSE_CONTROL_SPEC: WorkbenchTitlebarButtonSpec = {
+  kind: "close",
+  label: "x",
+  accessibilityLabel: "Close window",
+  shortcut: "C",
+  tone: "danger",
+  compact: true,
+};
+const RESTORE_CONTROL_SPEC: WorkbenchTitlebarButtonSpec = {
+  kind: "restore",
+  label: "R",
+  accessibilityLabel: "Restore window",
+  shortcut: "R",
+  tone: "muted",
+  compact: true,
+};
+const MAXIMIZE_CONTROL_SPEC: WorkbenchTitlebarButtonSpec = {
+  kind: "maximize",
+  label: "M",
+  accessibilityLabel: "Maximize window",
+  shortcut: "F",
+  tone: "success",
+  compact: true,
+};
+const MINIMIZE_CONTROL_SPEC: WorkbenchTitlebarButtonSpec = {
+  kind: "minimize",
+  label: "-",
+  accessibilityLabel: "Minimize window",
+  shortcut: "M",
+  tone: "warning",
+  compact: true,
+};
+
+// Specs are ordered from the right edge toward the title; layout output is reversed into visual order.
+const LEGACY_WINDOW_CONTROL_SPECS: readonly WorkbenchTitlebarButtonSpec[] = [
+  CLOSE_CONTROL_SPEC,
+  RESTORE_CONTROL_SPEC,
+  MAXIMIZE_CONTROL_SPEC,
+  MINIMIZE_CONTROL_SPEC,
+];
+const NORMAL_WINDOW_CONTROL_SPECS: readonly WorkbenchTitlebarButtonSpec[] = [
+  CLOSE_CONTROL_SPEC,
+  MAXIMIZE_CONTROL_SPEC,
+  MINIMIZE_CONTROL_SPEC,
+];
+const MAXIMIZED_WINDOW_CONTROL_SPECS: readonly WorkbenchTitlebarButtonSpec[] = [
+  CLOSE_CONTROL_SPEC,
+  RESTORE_CONTROL_SPEC,
+  MINIMIZE_CONTROL_SPEC,
 ];
 
 /** Creates caller-owned storage for repeated titlebar layout projections. */
@@ -68,7 +124,12 @@ export function layoutWorkbenchTitlebarInto(
   target: WorkbenchTitlebarLayout,
   options: WorkbenchTitlebarLayoutOptions,
 ): WorkbenchTitlebarLayout {
-  const controlsMinWidth = options.controlsMinWidth ?? 16;
+  const windowControlSpecs = options.maximized === undefined
+    ? LEGACY_WINDOW_CONTROL_SPECS
+    : options.maximized
+    ? MAXIMIZED_WINDOW_CONTROL_SPECS
+    : NORMAL_WINDOW_CONTROL_SPECS;
+  const controlsMinWidth = options.controlsMinWidth ?? windowControlSpecs.length * 4;
   const configLabel = options.configLabel ?? "config";
   const buttons = target.buttons;
   let buttonCount = 0;
@@ -80,15 +141,15 @@ export function layoutWorkbenchTitlebarInto(
 
   if (hasWindowControls) {
     let cursor = rightBorderColumn;
-    for (let index = 0; index < WINDOW_CONTROL_SPECS.length; index += 1) {
-      const spec = WINDOW_CONTROL_SPECS[index]!;
+    for (let index = 0; index < windowControlSpecs.length; index += 1) {
+      const spec = windowControlSpecs[index]!;
       const width = textWidth(buttonText(spec.label, { compact: spec.compact }));
       const column = cursor - width;
-      writeTitlebarButton(buttons, WINDOW_CONTROL_SPECS.length - index - 1, spec, column, row, width);
+      writeTitlebarButton(buttons, windowControlSpecs.length - index - 1, spec, column, row, width);
       leftmostControlColumn = column;
       cursor = column - 1;
     }
-    buttonCount = WINDOW_CONTROL_SPECS.length;
+    buttonCount = windowControlSpecs.length;
   }
 
   const configWidth = textWidth(buttonText(configLabel));
@@ -100,7 +161,14 @@ export function layoutWorkbenchTitlebarInto(
         buttons[index] = buttons[index - 1]!;
       }
       buttons[0] = createTitlebarButton(
-        { kind: "config", label: configLabel, tone: "default", compact: false },
+        {
+          kind: "config",
+          label: configLabel,
+          accessibilityLabel: options.configAccessibilityLabel ?? "Configure renderer",
+          shortcut: options.configShortcut ?? "G",
+          tone: "default",
+          compact: false,
+        },
         configColumn,
         row,
         configWidth,
@@ -110,7 +178,14 @@ export function layoutWorkbenchTitlebarInto(
       writeTitlebarButton(
         buttons,
         0,
-        { kind: "config", label: configLabel, tone: "default", compact: false },
+        {
+          kind: "config",
+          label: configLabel,
+          accessibilityLabel: options.configAccessibilityLabel ?? "Configure renderer",
+          shortcut: options.configShortcut ?? "G",
+          tone: "default",
+          compact: false,
+        },
         configColumn,
         row,
         configWidth,
@@ -138,6 +213,8 @@ export function workbenchTitlebarButtonRenderCommandsInto(
       button,
       kind: button.kind,
       label: "",
+      accessibilityLabel: "",
+      shortcut: undefined,
       text: "",
       rect: { column: 0, row: 0, width: 0, height: 1 },
       hitRect: { column: 0, row: 0, width: 0, height: 1 },
@@ -147,6 +224,8 @@ export function workbenchTitlebarButtonRenderCommandsInto(
     command.button = button;
     command.kind = button.kind;
     command.label = button.label;
+    command.accessibilityLabel = button.accessibilityLabel;
+    command.shortcut = button.shortcut;
     command.text = fitCellText(text, width);
     command.tone = button.tone;
     command.compact = button.compact;
@@ -162,7 +241,7 @@ export function workbenchTitlebarButtonRenderCommandsInto(
 function writeTitlebarButton(
   buttons: WorkbenchTitlebarButton[],
   index: number,
-  spec: Omit<WorkbenchTitlebarButton, "rect">,
+  spec: WorkbenchTitlebarButtonSpec,
   column: number,
   row: number,
   width: number,
@@ -176,6 +255,8 @@ function writeTitlebarButton(
   };
   button.kind = spec.kind;
   button.label = spec.label;
+  button.accessibilityLabel = spec.accessibilityLabel;
+  button.shortcut = spec.shortcut;
   button.tone = spec.tone;
   button.compact = spec.compact;
   button.rect.column = column;
@@ -186,7 +267,7 @@ function writeTitlebarButton(
 }
 
 function createTitlebarButton(
-  spec: Omit<WorkbenchTitlebarButton, "rect">,
+  spec: WorkbenchTitlebarButtonSpec,
   column: number,
   row: number,
   width: number,
@@ -194,6 +275,8 @@ function createTitlebarButton(
   return {
     kind: spec.kind,
     label: spec.label,
+    accessibilityLabel: spec.accessibilityLabel,
+    shortcut: spec.shortcut,
     tone: spec.tone,
     compact: spec.compact,
     rect: { column, row, width, height: 1 },

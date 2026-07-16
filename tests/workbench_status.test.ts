@@ -52,9 +52,18 @@ Deno.test("workbench status helper composes optional diagnostics", () => {
   );
 });
 
-Deno.test("workbench status helper compacts redundant diagnostics for tight rows", () => {
+Deno.test("workbench status helper compacts only redundant diagnostic breakdowns", () => {
   assertEquals(workbenchCompactStatusDiagnostics(undefined), undefined);
   assertEquals(workbenchCompactStatusDiagnostics("diag 1 warning (1 warning)"), "diag 1 warning");
+  assertEquals(workbenchCompactStatusDiagnostics("diag 2 Warnings ( 2 warning )"), "diag 2 Warnings");
+  assertEquals(
+    workbenchCompactStatusDiagnostics("diag 3 error (1 error, 2 warning)"),
+    "diag 3 error (1 error, 2 warning)",
+  );
+  assertEquals(
+    workbenchCompactStatusDiagnostics("diag 1 warning (renderer unavailable)"),
+    "diag 1 warning (renderer unavailable)",
+  );
   assertEquals(
     workbenchStatusLine({
       focus: "Three ASCII",
@@ -63,14 +72,14 @@ Deno.test("workbench status helper compacts redundant diagnostics for tight rows
       diagnostics: "diag 1 warning (1 warning)",
       width: 118,
     }),
-    "focus Three ASCII | Unit-01 Signal | tiles balanced | diag 1 warning          F10 menu  N new  G config  M/F/R  Q quit",
+    "focus Three ASCII | Unit-01 Signal | tiles balanced | diag 1 warning   F10 menu  N panels  F6 layout  G config  Q quit",
   );
 });
 
 Deno.test("workbench status helper exposes terminal and web shortcut profiles", () => {
   assertEquals(
     workbenchStatusShortcuts(),
-    "F10 menu  N new  Shift+T themes  G config  0 restore minimized",
+    "F10 menu  N panels  F6 layout  Shift+T themes  G config",
   );
   assertEquals(
     workbenchStatusShortcuts("web"),
@@ -78,7 +87,7 @@ Deno.test("workbench status helper exposes terminal and web shortcut profiles", 
   );
   assertEquals(
     workbenchStatusShortcuts("terminal", 118),
-    "F10 menu  N new  G config  M/F/R  Q quit",
+    "F10 menu  N panels  F6 layout  G config  Q quit",
   );
   assertEquals(
     workbenchStatusShortcuts("web", 64),
@@ -107,6 +116,17 @@ Deno.test("workbench status helper composes aligned full status lines", () => {
     }),
     "focus data | Unit-01 | tiles dense |  1-8 focus  T theme  H help  Q quit",
   );
+  assertEquals(
+    workbenchStatusLine({
+      focus: "Three",
+      theme: "Unit-01",
+      tileDensity: 0,
+      diagnostics: "diag 2 warning (2 warning)",
+      width: 80,
+      showShortcuts: false,
+    }),
+    "focus Three | Unit-01 | tiles balanced | diag 2 warning",
+  );
 });
 
 Deno.test("workbench status snapshot helper composes aligned status lines", () => {
@@ -128,7 +148,7 @@ Deno.test("workbench status snapshot helper composes aligned status lines", () =
 Deno.test("workbench empty workspace messages classify closed minimized and hidden states", () => {
   assertEquals(
     workbenchEmptyWorkspaceMessage({ windows: [{ closed: true }, { closed: true }] }),
-    "All windows closed. Use New to add a widget window.",
+    "All windows closed. Use Panels to add a window.",
   );
   assertEquals(
     workbenchEmptyWorkspaceMessage({ windows: [{ minimized: true }, { minimized: true }] }),
@@ -136,7 +156,7 @@ Deno.test("workbench empty workspace messages classify closed minimized and hidd
   );
   assertEquals(
     workbenchEmptyWorkspaceMessage({ windows: [{}, { closed: true }] }),
-    "No visible windows. Use New to add a widget window.",
+    "No visible windows. Use Panels to add a window.",
   );
   assertEquals(
     workbenchEmptyWorkspaceMessage({
@@ -147,16 +167,21 @@ Deno.test("workbench empty workspace messages classify closed minimized and hidd
   );
 });
 
-Deno.test("workbench header help adapts to available width", () => {
+Deno.test("workbench header help is collapsed by default and adapts when expanded", () => {
   assertEquals(workbenchHeaderHelp({ width: 20 }), "");
-  assertEquals(workbenchHeaderHelp({ width: 40 }), "F10 menu  Q quit");
-  assertEquals(workbenchHeaderHelp({ width: 56 }), "F10 menu  N new  Tab focus  Q quit");
-  assertEquals(workbenchHeaderHelp({ width: 96 }), "F10 menu  N new  G config  Tab  M/F/R  Q quit");
+  assertEquals(workbenchHeaderHelp({ width: 132 }), "");
+  assertEquals(workbenchHeaderHelp({ width: 20, expanded: true }), "");
+  assertEquals(workbenchHeaderHelp({ width: 40, expanded: true }), "F10 menu  Q quit");
+  assertEquals(workbenchHeaderHelp({ width: 56, expanded: true }), "F10 menu  N panels  Tab focus  Q quit");
   assertEquals(
-    workbenchHeaderHelp({ width: 132 }),
-    "F10 menu  N new  T theme  G config  C close  Tab focus  M/F/R  Q quit",
+    workbenchHeaderHelp({ width: 96, expanded: true }),
+    "F10 menu  N panels  F6 layout  G config  Tab focus  Q quit",
   );
-  assertEquals(workbenchHeaderHelp({ width: 20, minVisibleWidth: 12 }), "F10 menu  Q quit");
+  assertEquals(
+    workbenchHeaderHelp({ width: 132, expanded: true }),
+    "F10 menu  N panels  F6 layout  T theme  G config  C close  Tab focus  Q quit",
+  );
+  assertEquals(workbenchHeaderHelp({ width: 20, minVisibleWidth: 12, expanded: true }), "F10 menu  Q quit");
 });
 
 Deno.test("workbench diagnostics helpers format initial logs and compact status", () => {
@@ -180,7 +205,7 @@ Deno.test("workbench diagnostics helpers format initial logs and compact status"
       "diagnostic 1 warning (1 warning) latest three-panel/kitty-graphics-fallback",
     ],
   );
-  assertEquals(formatWorkbenchDiagnosticStatus(diagnostics), "diag 1 warning (1 warning)");
+  assertEquals(formatWorkbenchDiagnosticStatus(diagnostics), "diag 1 warning");
 });
 
 Deno.test("workbench diagnostics subscription forwards future entries only", () => {

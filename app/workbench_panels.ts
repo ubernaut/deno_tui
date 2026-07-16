@@ -128,6 +128,9 @@ interface WorkbenchInspectorRowsOptions {
   width: number;
   height: number;
   themeLabel: string;
+  focusTitle?: string;
+  focusState?: string;
+  layoutSummary?: string;
   logs: readonly string[];
   theme: WorkbenchInspectorTheme;
   fit: (value: string, width: number) => string;
@@ -183,6 +186,9 @@ interface ApiWorkbenchInspectorPanelRenderOptions<Frame = WorkbenchFrame> {
   frame: Frame;
   rect: Rectangle;
   themeLabel: string;
+  focusTitle?: string;
+  focusState?: string;
+  layoutSummary?: string;
   logs: readonly string[];
   renderRows: RowStyle[];
   actionTextRows: string[];
@@ -670,7 +676,7 @@ export function workbenchExplorerRowsInto(
   return target;
 }
 
-/** Projects API surface and recent-action rows for the workbench inspector panel. */
+/** Projects contextual focused-window and recent-activity rows for the workbench inspector panel. */
 export function workbenchInspectorRowsInto(
   target: RowStyle[],
   options: WorkbenchInspectorRowsOptions,
@@ -678,14 +684,10 @@ export function workbenchInspectorRowsInto(
   const t = options.theme;
   target.length = 0;
   target.push(
-    { text: " Composable API surfaces ", fg: t.background, bg: t.accent, bold: true },
-    { text: "explorer  FileExplorerController", fg: t.good, bg: t.surface },
-    { text: "menu      MenuBarController", fg: t.good, bg: t.surface },
-    { text: "layout    WindowManagerController", fg: t.good, bg: t.surface },
-    { text: "viewport  ScrollAreaController", fg: t.good, bg: t.surface },
-    { text: "data      DataTableController", fg: t.good, bg: t.surface },
-    { text: "controls  SliderController / CheckBoxController", fg: t.good, bg: t.surface },
-    { text: "three     ThreePanelFrameView + Acerola ASCII", fg: t.good, bg: t.surface },
+    { text: " Focused panel ", fg: t.background, bg: t.accent, bold: true },
+    { text: `title     ${options.focusTitle ?? "none"}`, fg: t.good, bg: t.surface, bold: true },
+    { text: `state     ${options.focusState ?? "normal"}`, fg: t.good, bg: t.surface },
+    { text: `layout    ${options.layoutSummary ?? "automatic"}`, fg: t.good, bg: t.surface },
     { text: `theme     ${options.themeLabel}`, fg: t.warn, bg: t.surface, bold: true },
     { text: "", bg: t.surface },
     { text: " Recent actions ", fg: t.background, bg: t.border, bold: true },
@@ -772,7 +774,21 @@ export function renderApiWorkbenchExplorerPanel<Frame = WorkbenchFrame>(
 export function renderApiWorkbenchInspectorPanel<Frame = WorkbenchFrame>(
   options: ApiWorkbenchInspectorPanelRenderOptions<Frame>,
 ): void {
-  const { frame, rect, themeLabel, logs, renderRows, actionTextRows, wrappedTextRows, theme, fit, writeRows } = options;
+  const {
+    frame,
+    rect,
+    themeLabel,
+    focusTitle,
+    focusState,
+    layoutSummary,
+    logs,
+    renderRows,
+    actionTextRows,
+    wrappedTextRows,
+    theme,
+    fit,
+    writeRows,
+  } = options;
   writeRows(
     frame,
     rect,
@@ -780,6 +796,9 @@ export function renderApiWorkbenchInspectorPanel<Frame = WorkbenchFrame>(
       width: rect.width,
       height: rect.height,
       themeLabel,
+      focusTitle,
+      focusState,
+      layoutSummary,
       logs,
       theme,
       fit,

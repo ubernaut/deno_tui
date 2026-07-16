@@ -129,6 +129,10 @@ export class WorkbenchController<MenuId extends string = string> {
     return this.windows.focusNext(delta)?.id;
   }
 
+  moveWindow(id: string, delta: number): string | undefined {
+    return this.windows.move(id, delta)?.id;
+  }
+
   minimizeWindow(id?: string): string | undefined {
     return this.windows.minimize(id)?.id;
   }

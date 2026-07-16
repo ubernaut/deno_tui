@@ -8,8 +8,10 @@ import {
   renameWorkbenchWorkspace,
   upsertWorkbenchWorkspace,
   type WorkbenchWorkspace,
+  type WorkbenchWorkspaceManagedWindow,
   type WorkbenchWorkspaceWindow,
 } from "./workbench_workspace.ts";
+import { normalizeTiledWorkspaceSnapshot, type TiledWorkspaceSnapshot } from "../layout/tiled_workspace.ts";
 import {
   createWorkbenchWorkspaceStore,
   type WorkbenchWorkspaceStorageDiagnosticSink,
@@ -88,7 +90,7 @@ export interface WorkspaceNameModalBodyOptions {
   cursor?: string;
   storageLabel: string;
   loadedVisualizationIds?: readonly string[];
-  targetWorkspace?: Pick<WorkbenchWorkspace, "name" | "visualizationIds"> | null;
+  targetWorkspace?: Pick<WorkbenchWorkspace, "name" | "visualizationIds" | "managedWindows"> | null;
   targetName?: string | null;
 }
 
@@ -137,6 +139,11 @@ export interface SaveWorkspaceStateOptions<TAscii = unknown> {
   workspaces: readonly WorkbenchWorkspace<TAscii>[];
   draftName: string;
   windows: readonly WorkbenchWorkspaceWindow<TAscii>[];
+  managedWindows?: readonly WorkbenchWorkspaceManagedWindow[];
+  activeWindowId?: string;
+  fullscreenWindowId?: string;
+  tileDensity?: number;
+  tiledLayout?: TiledWorkspaceSnapshot;
   now?: number;
 }
 
@@ -219,14 +226,16 @@ export function renameWorkspaceModalContent(body: string[]): ModalContent {
 
 /** Builds the delete-workspace confirmation content for the workbench modal controller. */
 export function deleteWorkspaceModalContent(
-  workspace: Pick<WorkbenchWorkspace, "name" | "visualizationIds">,
+  workspace: Pick<WorkbenchWorkspace, "name" | "visualizationIds" | "managedWindows">,
 ): ModalContent {
   return {
     title: "Delete Workspace?",
     tone: "warning",
     body: [
       `Delete saved workspace "${workspace.name}"?`,
-      `${workspace.visualizationIds.length} widget window(s) saved in this workspace.`,
+      `${
+        workspace.managedWindows?.length ?? workspace.visualizationIds.length
+      } panel window(s) saved in this workspace.`,
       "This removes the saved workspace only; it does not close any currently open windows.",
     ],
     actions: [
@@ -241,7 +250,7 @@ export function workspaceSavedModalContent(name: string, visualizationCount: num
   return {
     title: "Workspace Saved",
     tone: "success",
-    body: [name, `${Math.max(0, Math.floor(visualizationCount))} widget window(s) saved.`],
+    body: [name, `${Math.max(0, Math.floor(visualizationCount))} panel window(s) saved.`],
     actions: [{ id: "dismiss", label: "OK", default: true }],
   };
 }
@@ -265,7 +274,7 @@ export function workspaceRenamedModalContent(
   return {
     title: "Workspace Renamed",
     tone: "success",
-    body: [`${previousName} -> ${nextName}`, `${Math.max(0, Math.floor(visualizationCount))} widget window(s).`],
+    body: [`${previousName} -> ${nextName}`, `${Math.max(0, Math.floor(visualizationCount))} panel window(s).`],
     actions: [{ id: "dismiss", label: "OK", default: true }],
   };
 }
@@ -296,7 +305,7 @@ export function buildWorkspaceMenuEntriesInto(
   for (const workspace of workspaces) {
     target[written] = workspaceMenuEntry(
       target[written],
-      `[>] Open ${workspace.name} (${workspace.visualizationIds.length})`,
+      `[>] Open ${workspace.name} (${workspace.managedWindows?.length ?? workspace.visualizationIds.length})`,
       "open",
       workspace.name,
     );
@@ -471,6 +480,13 @@ export function saveWorkspaceState<TAscii = unknown>(
     name,
     visualizationIds,
     windows,
+    ...(options.managedWindows ? { managedWindows: copyManagedWindows(options.managedWindows) } : {}),
+    ...(options.activeWindowId ? { activeWindowId: options.activeWindowId } : {}),
+    ...(options.fullscreenWindowId ? { fullscreenWindowId: options.fullscreenWindowId } : {}),
+    ...(Number.isFinite(options.tileDensity)
+      ? { tileDensity: Math.max(-3, Math.min(3, Math.trunc(options.tileDensity!))) }
+      : {}),
+    ...(options.tiledLayout ? { tiledLayout: normalizeTiledWorkspaceSnapshot(options.tiledLayout) } : {}),
     savedAt: options.now ?? Date.now(),
   };
   return {
@@ -498,7 +514,7 @@ export function renameWorkspaceState<TAscii = unknown>(
     status: "renamed",
     previousName: workspace.name,
     name,
-    visualizationCount: renamed.visualizationIds.length,
+    visualizationCount: renamed.managedWindows?.length ?? renamed.visualizationIds.length,
     workspaces,
     activeWorkspaceName,
   };
@@ -530,14 +546,16 @@ export function workspaceNameModalBody(options: WorkspaceNameModalBodyOptions): 
       "Rename the saved workspace.",
       `Name: ${options.draftName}${cursor}`,
       `Current: ${options.targetWorkspace?.name ?? options.targetName ?? "unknown"}`,
-      `Windows: ${options.targetWorkspace?.visualizationIds.length ?? 0}`,
+      `Windows: ${
+        options.targetWorkspace?.managedWindows?.length ?? options.targetWorkspace?.visualizationIds.length ?? 0
+      }`,
       `Storage: ${options.storageLabel}`,
     ];
   }
 
   const loaded = options.loadedVisualizationIds ?? [];
   return [
-    "Name the current set of loaded widget windows.",
+    "Name the current panel and tiled layout.",
     `Name: ${options.draftName}${cursor}`,
     `Windows: ${loaded.length === 0 ? "none" : loaded.join(", ")}`,
     `Storage: ${options.storageLabel}`,
@@ -550,6 +568,12 @@ function copyWorkspaceWindows<TAscii>(
   const copy = new Array<WorkbenchWorkspaceWindow<TAscii>>(windows.length);
   for (let index = 0; index < windows.length; index++) copy[index] = { ...windows[index]! };
   return copy;
+}
+
+function copyManagedWindows(
+  windows: readonly WorkbenchWorkspaceManagedWindow[],
+): WorkbenchWorkspaceManagedWindow[] {
+  return windows.map((window) => ({ ...window }));
 }
 
 function writeWorkspaceWindow<TAscii>(

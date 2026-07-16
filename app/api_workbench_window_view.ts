@@ -63,7 +63,7 @@ import {
 import {
   type WorkbenchButtonRowBufferCache,
   type WorkbenchModalBufferCache,
-  WorkbenchShelfBufferCache,
+  type WorkbenchShelfBufferCache,
   type WorkbenchTerminalBufferCache,
   type WorkbenchTerminalSessionTabBufferCache,
   WorkbenchTitlebarBufferCache,
@@ -159,6 +159,8 @@ type ApiWorkbenchDropdownOverlayHitAction =
   | { type: "theme"; index: number }
   | { type: "newWindow"; index: number }
   | { type: "workspace"; index: number }
+  | { type: "view"; index: number }
+  | { type: "layout"; index: number }
   | { type: "control"; id: "dropdown"; action: "activate"; index: number };
 
 export class ApiWorkbenchWindowShellBufferCache<TId extends string> {
@@ -297,6 +299,7 @@ interface ApiWorkbenchWindowShellRenderOptions<TId extends string, TAction> {
   rect: Rectangle;
   minimized: boolean;
   active: boolean;
+  maximized?: boolean;
   title: string;
   showConfig: boolean;
   theme: ApiWorkbenchThemeSpec;
@@ -310,6 +313,7 @@ interface ApiWorkbenchWindowShellRenderOptions<TId extends string, TAction> {
   afterRenderContent: (context: ApiWorkbenchWindowContentRenderedContext) => void;
   focusAction: (id: TId) => TAction;
   titlebarAction: (id: TId, kind: WorkbenchTitlebarButtonKind) => TAction;
+  titlebarDragAction?: (id: TId) => TAction;
   scrollbarAction: (id: TId, axis: WorkbenchScrollbarAxis) => TAction;
   paint: (text: string, options: ApiWorkbenchWindowPaintStyle) => string;
   write: (frame: WorkbenchFrame, row: number, column: number, value: string) => void;
@@ -319,7 +323,12 @@ interface ApiWorkbenchWindowShellRenderOptions<TId extends string, TAction> {
     row: number,
     column: number,
     label: string,
-    options?: { compact?: boolean; tone?: WorkbenchButtonTone },
+    options?: {
+      compact?: boolean;
+      tone?: WorkbenchButtonTone;
+      accessibilityLabel?: string;
+      shortcut?: string;
+    },
   ) => number;
   addHit: (rect: Rectangle, action: TAction) => void;
 }
@@ -1140,7 +1149,6 @@ export function renderApiWorkbenchChromeHeader<Frame = WorkbenchFrame>(
     addHit,
   } = options;
   fillRow(frame, 0, theme.backgroundSoft);
-  fillRow(frame, 1, theme.panel);
   write(
     frame,
     0,
@@ -1192,11 +1200,12 @@ export function renderApiWorkbenchChromeHeader<Frame = WorkbenchFrame>(
     entries: dropdownEntries,
     measureText: textWidth,
   });
-  const help = options.showHelp === false ? "" : workbenchHeaderHelp({ width });
+  const help = workbenchHeaderHelp({ width, expanded: options.showHelp === true });
   const helpWidth = textWidth(help);
   const showHelp = help.length > 0;
   const helpStart = showHelp ? Math.max(0, width - helpWidth) : width;
   if (showHelp) {
+    fillRow(frame, 1, theme.panel);
     write(
       frame,
       1,
@@ -1382,10 +1391,12 @@ export function renderApiWorkbenchWindowShell<TId extends string, TAction>(
     rect,
     title,
     showConfig,
+    maximized: options.maximized,
     buffers: buffers.titlebars,
     writeButton,
     addHit,
     titlebarAction: options.titlebarAction,
+    titlebarDragAction: options.titlebarDragAction,
   });
 
   const inner = inset(rect, 1);
@@ -1434,28 +1445,49 @@ export function renderApiWorkbenchWindowTitlebar<TId extends string, TAction, Fr
     rect: Rectangle;
     title: string;
     showConfig: boolean;
+    maximized?: boolean;
     buffers: WorkbenchTitlebarBufferCache<TId>;
     writeButton: (
       frame: Frame,
       row: number,
       column: number,
       label: string,
-      options?: { compact?: boolean; tone?: WorkbenchButtonTone },
+      options?: {
+        compact?: boolean;
+        tone?: WorkbenchButtonTone;
+        accessibilityLabel?: string;
+        shortcut?: string;
+      },
     ) => number;
     addHit: (rect: Rectangle, action: TAction) => void;
     titlebarAction: (id: TId, kind: WorkbenchTitlebarButtonKind) => TAction;
+    titlebarDragAction?: (id: TId) => TAction;
   },
 ): void {
   const titlebar = layoutWorkbenchTitlebarInto(options.buffers.layout(options.id), {
     rect: options.rect,
     title: options.title,
     showConfig: options.showConfig,
+    maximized: options.maximized,
   });
+  if (options.titlebarDragAction) {
+    let firstButtonColumn = options.rect.column + options.rect.width - 1;
+    for (const button of titlebar.buttons) firstButtonColumn = Math.min(firstButtonColumn, button.rect.column);
+    const dragRect = {
+      column: options.rect.column + 1,
+      row: options.rect.row,
+      width: Math.max(0, firstButtonColumn - options.rect.column - 2),
+      height: 1,
+    };
+    if (dragRect.width > 0) options.addHit(dragRect, options.titlebarDragAction(options.id));
+  }
   const commands = workbenchTitlebarButtonRenderCommandsInto(options.buffers.renderCommands(options.id), titlebar);
   for (const command of commands) {
     options.writeButton(options.frame, command.rect.row, command.rect.column, command.label, {
       compact: command.compact,
       tone: command.tone,
+      accessibilityLabel: command.accessibilityLabel,
+      shortcut: command.shortcut,
     });
     options.addHit(command.hitRect, options.titlebarAction(options.id, command.kind));
   }

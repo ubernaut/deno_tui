@@ -5,8 +5,8 @@ import {
   applyAsciiPreset,
   asciiControlValues,
   asciiPresetLabel,
+  buildAsciiOptionsFromPreset,
   cloneAsciiOptions,
-  createDefaultAsciiOptions,
   formatAsciiControlValue,
   terminalGlyphStyleLabel,
   type ThreeAsciiConfigOptions,
@@ -91,8 +91,7 @@ export const defaultWorkbenchAsciiConfigRows: readonly WorkbenchAsciiConfigRow[]
 /** Create the default workbench Three ASCII configuration. */
 export function createDefaultWorkbenchAsciiOptions(): ThreeAsciiConfigOptions {
   return {
-    ...createDefaultAsciiOptions("sharp"),
-    preset: "custom",
+    ...buildAsciiOptionsFromPreset("glyph-atlas", "sharp"),
     renderMaxCells: 960,
     deferredReadbackSlots: 2,
   };

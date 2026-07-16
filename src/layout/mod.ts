@@ -9,6 +9,7 @@ export * from "./responsive.ts";
 export * from "./split_pane.ts";
 export * from "./recipe.ts";
 export * from "./window_manager.ts";
+export * from "./tiled_workspace.ts";
 export * from "./overlay.ts";
 export * from "./style.ts";
 export * from "./solver.ts";

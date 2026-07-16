@@ -125,13 +125,15 @@ export interface WorkbenchTopMenuInspection<MenuId extends string = string> {
 }
 
 /** Built-in top-menu dropdown ids used by the API/workbench demos. */
-export type WorkbenchStandardTopMenuId = "theme" | "newWindow" | "workspace";
+export type WorkbenchStandardTopMenuId = "theme" | "newWindow" | "workspace" | "view" | "layout";
 
 /** Renderer adapter signal state projected from standard top-menu disclosure state. */
 export interface WorkbenchStandardTopMenuSignalState {
   themeMenuOpen: boolean;
   newWindowMenuOpen: boolean;
   workspaceMenuOpen: boolean;
+  viewMenuOpen: boolean;
+  layoutMenuOpen: boolean;
   menuFocused: boolean;
 }
 
@@ -177,6 +179,9 @@ export type WorkbenchGlobalKeyAction =
   | { kind: "focusWindow"; delta: -1 | 1 }
   | { kind: "focusWindowNumber"; index: number }
   | { kind: "restoreNextMinimized" }
+  | { kind: "toggleLayoutMode" }
+  | { kind: "moveWindow"; delta: -1 | 1 }
+  | { kind: "resizeWindow"; columns: number; rows: number }
   | { kind: "adjustTileDensity"; delta: -1 | 1 }
   | { kind: "scrollPage"; delta: -1 | 1 }
   | { kind: "scrollHome" }
@@ -258,11 +263,29 @@ export class WorkbenchTopMenuController<MenuId extends string = string> {
 /** Resolve a global workbench key before window-specific fallback handling. */
 export function resolveWorkbenchGlobalKey(
   event: WorkbenchGlobalKey,
-  options: { activeWindowId?: string; controlsWindowId?: string } = {},
+  options: { activeWindowId?: string; controlsWindowId?: string; layoutMode?: boolean } = {},
 ): WorkbenchGlobalKeyAction {
-  if (event.ctrl || event.meta) return { kind: "ignore" };
   const controlsWindowId = options.controlsWindowId ?? "controls";
   const key = event.key.toLowerCase();
+  if (key === "f6") return { kind: "toggleLayoutMode" };
+  if (options.layoutMode) {
+    if (key === "escape") return { kind: "toggleLayoutMode" };
+    if (key === "return") return { kind: "toggleMaximize" };
+    if (key === "left" || key === "right" || key === "up" || key === "down") {
+      const delta = key === "left" || key === "up" ? -1 : 1;
+      if (event.meta) return { kind: "ignore" };
+      if (event.ctrl) {
+        return {
+          kind: "resizeWindow",
+          columns: key === "left" || key === "right" ? delta * 2 : 0,
+          rows: key === "up" || key === "down" ? delta : 0,
+        };
+      }
+      return event.shift ? { kind: "moveWindow", delta } : { kind: "focusWindow", delta };
+    }
+    return { kind: "ignore" };
+  }
+  if (event.ctrl || event.meta) return { kind: "ignore" };
   switch (key) {
     case "q":
       return { kind: "quit" };
@@ -352,6 +375,10 @@ export function workbenchStandardTopMenuIdForItem(
       return "newWindow";
     case "workspace":
       return "workspace";
+    case "view":
+      return "view";
+    case "layout":
+      return "layout";
     default:
       return null;
   }
@@ -365,6 +392,8 @@ export function projectWorkbenchStandardTopMenuState(
     themeMenuOpen: state.openId === "theme",
     newWindowMenuOpen: state.openId === "newWindow",
     workspaceMenuOpen: state.openId === "workspace",
+    viewMenuOpen: state.openId === "view",
+    layoutMenuOpen: state.openId === "layout",
     menuFocused: state.focused,
   };
 }

@@ -146,8 +146,8 @@ const apiWorkbenchPanelTitles: Record<string, string> = {
   explorer: "Explorer",
   inspector: "Inspector",
   data: "Data Table",
-  controls: "Controls",
-  logs: "Logs",
+  controls: "Component Gallery",
+  logs: "Activity / Diagnostics",
   three: "Three ASCII",
   htmlLayout: "HTML/CSS Layout",
   terminal: "Terminal",
@@ -228,6 +228,51 @@ const apiWorkbenchBuiltInWindowOrder: readonly ApiWorkbenchBuiltInWindowId[] = [
   TERMINAL_SHELL_WINDOW_ID,
 ];
 
+const apiWorkbenchCoreWindowOptions: readonly WorkbenchWindowOption[] = [
+  {
+    id: "panel-three",
+    label: "Three ASCII",
+    group: "Neon 3D",
+    description: "Primary live Three.js ASCII visualization and renderer controls.",
+    windowId: "three",
+  },
+  {
+    id: "panel-explorer",
+    label: "Explorer",
+    group: "Layout",
+    description: "Browse the workbench source-map example.",
+    windowId: "explorer",
+  },
+  {
+    id: "panel-inspector",
+    label: "Inspector",
+    group: "Layout",
+    description: "Inspect the focused panel, layout, theme, and recent activity.",
+    windowId: "inspector",
+  },
+  {
+    id: "panel-activity",
+    label: "Activity / Diagnostics",
+    group: "Monitor",
+    description: "Runtime actions and diagnostic events.",
+    windowId: "logs",
+  },
+  {
+    id: "panel-data",
+    label: "Data Table",
+    group: "Layout",
+    description: "Sortable, selectable data-table component example.",
+    windowId: "data",
+  },
+  {
+    id: "panel-controls",
+    label: "Component Gallery",
+    group: "Layout",
+    description: "Interactive controls and input component gallery.",
+    windowId: "controls",
+  },
+];
+
 const apiWorkbenchHtmlCssLayoutWindowOption: WorkbenchWindowOption = {
   id: HTML_CSS_LAYOUT_OPTION_ID,
   label: "HTML/CSS Layout",
@@ -272,6 +317,7 @@ export function createApiWorkbenchWindowCatalog(
     visualizationWindowOptionIds,
     visualizationWindowOptionById,
     newWindowOptions: [
+      ...apiWorkbenchCoreWindowOptions,
       apiWorkbenchTerminalShellWindowOption,
       apiWorkbenchTerminalOutputWindowOption,
       apiWorkbenchHtmlCssLayoutWindowOption,

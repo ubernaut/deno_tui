@@ -87,6 +87,39 @@ Deno.test("window manager restores the next minimized open window in order", () 
   manager.dispose();
 });
 
+Deno.test("window manager focus traversal skips minimized windows without restoring them", () => {
+  const manager = new WindowManagerController({
+    activeId: "one",
+    windows: [
+      { id: "one", title: "One" },
+      { id: "two", title: "Two", state: "minimized" },
+      { id: "three", title: "Three" },
+    ],
+  });
+
+  assertEquals(manager.focusNext()?.id, "three");
+  assertEquals(manager.focusNext()?.id, "one");
+  assertEquals(manager.inspect().windows.find((entry) => entry.id === "two")?.minimized, true);
+  manager.dispose();
+});
+
+Deno.test("window manager adapter tile options cannot weaken per-window minimums", () => {
+  const manager = new WindowManagerController({
+    windows: [
+      { id: "wide", title: "Wide", minWidth: 54, minHeight: 14 },
+      { id: "small", title: "Small", minWidth: 20, minHeight: 6 },
+    ],
+  });
+
+  const layout = manager.layout({
+    bounds: { column: 0, row: 0, width: 120, height: 30 },
+    tileOptions: { minTileWidth: 26, minTileHeight: 8 },
+  });
+  assertEquals(layout.visible.every((entry) => (entry.rect?.width ?? 0) >= 54), true);
+  assertEquals(layout.visible.every((entry) => (entry.rect?.height ?? 0) >= 14), true);
+  manager.dispose();
+});
+
 Deno.test("window manager can upsert rename and reorder managed windows", () => {
   const manager = new WindowManagerController({
     activeId: "editor",

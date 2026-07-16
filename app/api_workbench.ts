@@ -27,7 +27,6 @@ import {
   resolveWorkbenchTerminalShellKeyAction,
   subscribeWorkbenchDiagnosticLog,
   translateHitTargets,
-  workbenchAdaptiveWindowLayout,
   type WorkbenchAnsiScreenFlushStats,
   WorkbenchAnsiScreenPainter,
   workbenchBuiltInWindowTogglePlan,
@@ -51,6 +50,7 @@ import {
   workbenchWindowOptionMenuLabelsInto,
   workbenchWindowOptionTogglePlan,
   type WorkbenchWorkspace,
+  type WorkbenchWorkspaceManagedWindow,
   workbenchWorkspaceScrollbarRenderCommandsInto,
   WorkbenchWorkspaceViewportController,
   type WorkbenchWorkspaceWindow,
@@ -158,7 +158,7 @@ import {
 import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
 import { formatProcessCommandLine, ProcessSessionController } from "../src/runtime/process_session.ts";
 import { FrameScheduler } from "../src/runtime/render_loop.ts";
-import { type TerminalBackend } from "../src/runtime/terminal_backend.ts";
+import type { TerminalBackend } from "../src/runtime/terminal_backend.ts";
 import type { TerminalShellController } from "../src/runtime/terminal_shell.ts";
 import { TerminalShellWorkspaceController } from "../src/runtime/terminal_shell_workspace.ts";
 import { formatTerminalOutputWindowTitle, formatTerminalShellWindowTitle } from "../src/runtime/terminal_status.ts";
@@ -167,6 +167,14 @@ import { Computed, Signal } from "../src/signals/mod.ts";
 import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
 import { Tui } from "../src/tui.ts";
 import type { Rectangle } from "../src/types.ts";
+import {
+  TiledWorkspaceController,
+  type TiledWorkspaceDockEdge,
+  type TiledWorkspaceLayoutInspection,
+  type TiledWorkspaceSeparatorAxis,
+  type TiledWorkspaceSnapshot,
+  type TiledWorkspaceWindow,
+} from "../src/layout/tiled_workspace.ts";
 import { textWidth } from "../src/utils/strings.ts";
 import { maxTextWidth, type VisibleMenuSlice } from "../src/app/workbench_text.ts";
 import {
@@ -182,7 +190,6 @@ import {
 import {
   type ApiWorkbenchBuiltInWindowId,
   apiWorkbenchColumns,
-  apiWorkbenchDocs,
   apiWorkbenchLiveRowsInto,
   apiWorkbenchPanelTitle,
   type ApiWorkbenchProcessRow,
@@ -216,7 +223,7 @@ import { cloneAsciiOptions, normalizeAsciiOptions, terminalGlyphStyleLabel } fro
 import { AudioRegistry, resolveSourceFramesInto } from "./sources.ts";
 import { makeStyle, requireInteractiveTerminal } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
-import { createWorkbenchThreePanelFrameView, ThreePanelFrameView } from "./three_panel.ts";
+import { createWorkbenchThreePanelFrameView, type ThreePanelFrameView } from "./three_panel.ts";
 import {
   addApiWorkbenchCpuHexTileHits,
   ApiWorkbenchControlsViewBufferCache,
@@ -242,7 +249,7 @@ import {
   WorkbenchKittyGraphicsController,
 } from "../src/runtime/graphics_surface.ts";
 import { WorkbenchFramePainter } from "../src/app/workbench_row_render.ts";
-import { type RowStyle, type ThreeHeaderPerformance } from "../src/app/workbench_rows.ts";
+import type { RowStyle, ThreeHeaderPerformance } from "../src/app/workbench_rows.ts";
 import { shouldCountWorkbenchThreeGridPressure } from "../src/app/workbench_three_terminal_pressure.ts";
 import {
   type WorkbenchThreePanelEntry,
@@ -301,6 +308,8 @@ type HitAction =
   | { type: "quit" }
   | { type: "windowTab"; id: WindowId }
   | { type: "focus"; id: WindowId }
+  | { type: "windowTitlebar"; id: WindowId }
+  | { type: "layoutSeparator"; splitId: string; axis: TiledWorkspaceSeparatorAxis }
   | { type: "minimize"; id: WindowId }
   | { type: "maximize"; id: WindowId }
   | { type: "restore"; id: WindowId }
@@ -313,6 +322,8 @@ type HitAction =
   | { type: "theme"; index: number }
   | { type: "newWindow"; index: number }
   | { type: "workspace"; index: number }
+  | { type: "view"; index: number }
+  | { type: "layout"; index: number }
   | { type: "modalAction"; index: number }
   | { type: "control"; id: ControlId; action?: ControlHitAction; index?: number }
   | { type: "terminalOutput"; action: TerminalOutputAction }
@@ -340,8 +351,58 @@ type NewWindowOption = WorkbenchWindowOption;
 
 type SavedWorkspace = WorkbenchWorkspace<AsciiOptions>;
 type SavedWorkspaceWindow = WorkbenchWorkspaceWindow<AsciiOptions>;
+type SavedWorkspaceManagedWindow = WorkbenchWorkspaceManagedWindow;
 
 type WorkspaceNameMode = "save" | "rename";
+
+type LayoutMenuAction =
+  | "toggleMode"
+  | "moveEarlier"
+  | "moveLater"
+  | "growHorizontal"
+  | "shrinkHorizontal"
+  | "growVertical"
+  | "shrinkVertical"
+  | "maximize"
+  | "reset"
+  | "wider"
+  | "denser";
+
+interface LayoutMenuEntry {
+  label: string;
+  action: LayoutMenuAction;
+}
+
+interface ViewMenuEntry {
+  label: string;
+  windowId: BuiltInWindowId;
+}
+
+const LAYOUT_MENU_ENTRIES: readonly LayoutMenuEntry[] = [
+  { label: "Layout mode (F6)", action: "toggleMode" },
+  { label: "Move pane earlier (Shift+Arrow)", action: "moveEarlier" },
+  { label: "Move pane later (Shift+Arrow)", action: "moveLater" },
+  { label: "Grow horizontally (Ctrl+Right)", action: "growHorizontal" },
+  { label: "Shrink horizontally (Ctrl+Left)", action: "shrinkHorizontal" },
+  { label: "Grow vertically (Ctrl+Down)", action: "growVertical" },
+  { label: "Shrink vertically (Ctrl+Up)", action: "shrinkVertical" },
+  { label: "Maximize / restore (Enter)", action: "maximize" },
+  { label: "Reset tiled layout", action: "reset" },
+  { label: "Wider tiles ([)", action: "wider" },
+  { label: "Denser tiles (])", action: "denser" },
+];
+
+const VIEW_MENU_ENTRIES: readonly ViewMenuEntry[] = [
+  { label: "Three ASCII", windowId: "three" },
+  { label: "Explorer", windowId: "explorer" },
+  { label: "Inspector", windowId: "inspector" },
+  { label: "Activity / Diagnostics", windowId: "logs" },
+  { label: "Data Table", windowId: "data" },
+  { label: "Component Gallery", windowId: "controls" },
+  { label: "HTML/CSS Layout", windowId: HTML_CSS_LAYOUT_WINDOW_ID },
+  { label: "Terminal Output", windowId: TERMINAL_OUTPUT_WINDOW_ID },
+  { label: "Shell", windowId: TERMINAL_SHELL_WINDOW_ID },
+];
 
 const terminalOutputButtonBuffers = new WorkbenchButtonRowBufferCache<TerminalOutputAction>();
 const terminalShellButtonBuffers = new WorkbenchButtonRowBufferCache<TerminalShellAction>();
@@ -356,7 +417,6 @@ const themeMenuWidth = Math.max(20, maxTextWidth(themeLabels) + 6);
 const rows: ProcessRow[] = apiWorkbenchRows;
 const liveRowsBuffer: ProcessRow[] = [];
 const columns = apiWorkbenchColumns;
-const docs = apiWorkbenchDocs;
 const htmlCssLayoutBoxes: ComputedLayoutBox[] = [];
 const htmlCssLayoutRenderCommands: HtmlCssLayoutRenderCommand[] = [];
 const dataTableTextRows: string[] = [];
@@ -478,14 +538,14 @@ const workspaceTargetName = new Signal<string | null>(null);
 const activeWorkspaceName = new Signal<string | null>(null);
 const terminalShellSearchDraft = new Signal("");
 const terminalShellSearchPromptOpen = new Signal(false);
-const workbenchController = new WorkbenchController<"theme" | "newWindow" | "workspace">({
+const workbenchController = new WorkbenchController<"theme" | "newWindow" | "workspace" | "view" | "layout">({
   activeId: "three",
   windows: [
-    { id: "explorer", title: apiWorkbenchPanelTitle("explorer"), minWidth: 26, minHeight: 12 },
-    { id: "inspector", title: apiWorkbenchPanelTitle("inspector"), minWidth: 32, minHeight: 11 },
-    { id: "data", title: apiWorkbenchPanelTitle("data"), minWidth: 42, minHeight: 12 },
-    { id: "controls", title: apiWorkbenchPanelTitle("controls"), minWidth: 40, minHeight: 18 },
-    { id: "logs", title: apiWorkbenchPanelTitle("logs"), minWidth: 36, minHeight: 12 },
+    { id: "explorer", title: apiWorkbenchPanelTitle("explorer"), minWidth: 26, minHeight: 12, state: "closed" },
+    { id: "inspector", title: apiWorkbenchPanelTitle("inspector"), minWidth: 32, minHeight: 11, state: "closed" },
+    { id: "data", title: apiWorkbenchPanelTitle("data"), minWidth: 42, minHeight: 12, state: "closed" },
+    { id: "controls", title: apiWorkbenchPanelTitle("controls"), minWidth: 40, minHeight: 18, state: "closed" },
+    { id: "logs", title: apiWorkbenchPanelTitle("logs"), minWidth: 36, minHeight: 12, state: "closed" },
     { id: "three", title: apiWorkbenchPanelTitle("three"), minWidth: 42, minHeight: 16 },
     {
       id: HTML_CSS_LAYOUT_WINDOW_ID,
@@ -500,6 +560,8 @@ const workbenchController = new WorkbenchController<"theme" | "newWindow" | "wor
 });
 const topMenus = workbenchController.menus;
 const windowManager = workbenchController.windows;
+const tileDensity = new Signal(0);
+const tiledWorkspace = new TiledWorkspaceController({ windows: tiledWindowInventory(), activeWindowId: "three" });
 const genericModalBlocksThree = new Signal(false);
 const controlsModel = new ApiWorkbenchControlsModel({
   themeLabels,
@@ -545,6 +607,10 @@ const newWindowMenuLabels: string[] = [];
 const workspaceMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
 const workspaceMenuEntryBuffer: WorkspaceMenuEntry[] = [];
 const workspaceMenuLabelBuffer: string[] = [];
+const viewMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
+const viewMenuLabelBuffer: string[] = [];
+const layoutMenuSlice: VisibleMenuSlice = { items: [], indexes: [] };
+const layoutMenuLabelBuffer: string[] = [];
 const realSourceIdBuffer: string[] = [];
 const realSourceFrameBuffer: SourceFrame[] = [];
 const syntheticSourceFrameBuffer: SourceFrame[] = [];
@@ -586,6 +652,9 @@ const workbenchThreeOverlayPressureGate = new WorkbenchThreeOverlayPressureGate(
   WORKBENCH_THREE_OVERLAY_PRESSURE_COOLDOWN_FRAMES,
 );
 let dropdownOverlay: DropdownOverlay | null = null;
+let tiledLayoutProjection: TiledWorkspaceLayoutInspection | null = null;
+const tiledVisibleWindowIdBuffer = new Set<string>();
+let layoutPointerSession: LayoutPointerSession | null = null;
 let windowRenderContext: WindowRenderContext | null = null;
 let workspacePlacementContext: WorkspacePlacementContext | null = null;
 const drawScheduler = new FrameScheduler({ intervalMs: WORKBENCH_THREE_DRAW_INTERVAL_MS });
@@ -619,11 +688,20 @@ interface WorkspacePlacementContext {
   clip: Rectangle;
 }
 
+interface WorkbenchScreenGeometry {
+  workspace: Rectangle;
+  auxiliaryRow?: number;
+  statusRow?: number;
+}
+
+type LayoutPointerSession =
+  | { kind: "separator"; splitId: string; axis: TiledWorkspaceSeparatorAxis }
+  | { kind: "window"; sourceId: WindowId; startX: number; startY: number; moved: boolean };
+
 const menu = new MenuBarController({
   items: [
-    { id: "file", label: "File" },
-    { id: "new", label: "New" },
-    { id: "workspace", label: "Workspace" },
+    { id: "workspace", label: "File" },
+    { id: "new", label: "Panels" },
     { id: "view", label: "View" },
     { id: "layout", label: "Layout" },
     { id: "theme", label: "Theme" },
@@ -645,6 +723,16 @@ const menu = new MenuBarController({
       pushLog(`${topMenus.isOpen("workspace") ? "open" : "close"} workspace menu`);
       return;
     }
+    if (item.id === "view") {
+      workbenchController.toggleMenu("view", VIEW_MENU_ENTRIES.length);
+      pushLog(`${topMenus.isOpen("view") ? "open" : "close"} view menu`);
+      return;
+    }
+    if (item.id === "layout") {
+      workbenchController.toggleMenu("layout", LAYOUT_MENU_ENTRIES.length);
+      pushLog(`${topMenus.isOpen("layout") ? "open" : "close"} layout menu`);
+      return;
+    }
     if (item.id === "help") {
       topMenus.close();
       openHelpModal();
@@ -655,7 +743,7 @@ const menu = new MenuBarController({
     pushLog(`menu selected: ${item.label}`);
   },
 });
-const tileDensity = new Signal(0);
+const layoutMode = new Signal(false);
 const workspaceScroll = new ScrollAreaController({ showScrollbar: true });
 const workspaceViewport = new WorkbenchWorkspaceViewportController<WindowId>({ scroll: workspaceScroll });
 const windowScrolls = new Map<WindowId, ScrollAreaController>(
@@ -800,6 +888,10 @@ tui.on("paste", (event) => {
 });
 
 tui.on("mousePress", (event) => {
+  if (handleLayoutPointerPress(event)) {
+    draw();
+    return;
+  }
   const shellHit = findHit(event.x, event.y);
   if (shellHit?.action.type === "terminalShellContent" && handleTerminalShellMouse(event, shellHit.rect)) {
     draw();
@@ -882,6 +974,9 @@ tui.on("destroy", () => {
   genericModalBlocksThree.dispose();
   dynamicVisualizationWindows.dispose();
   selectedCpuHexTiles.dispose();
+  tileDensity.dispose();
+  layoutMode.dispose();
+  tiledWorkspace.dispose();
   explorer.dispose();
   table.dispose();
   threePanel.dispose();
@@ -1042,7 +1137,28 @@ function renderHeader(frame: Frame): void {
           maxVisibleItems: Math.max(6, currentHeight() - 5),
         },
       }
+      : openMenuId === "view"
+      ? {
+        view: {
+          visible: viewMenuSlice,
+          labels: viewMenuLabels(),
+          selectedIndex: workbenchController.menuIndex("view"),
+          preferredWidth: 34,
+          maxVisibleItems: Math.max(6, currentHeight() - 3),
+        },
+      }
+      : openMenuId === "layout"
+      ? {
+        layout: {
+          visible: layoutMenuSlice,
+          labels: layoutMenuLabels(),
+          selectedIndex: workbenchController.menuIndex("layout"),
+          preferredWidth: 42,
+          maxVisibleItems: Math.max(6, currentHeight() - 3),
+        },
+      }
       : {},
+    showHelp: false,
     headerLayout,
     menuHitLayouts: menuBarHitLayouts,
     theme: theme(),
@@ -1055,7 +1171,8 @@ function renderHeader(frame: Frame): void {
 }
 
 function renderWorkspace(frame: Frame): void {
-  const bounds = { column: 0, row: 3, width: currentWidth(), height: Math.max(0, currentHeight() - 5) };
+  const geometry = workbenchScreenGeometry();
+  const bounds = geometry.workspace;
   fillRect(frame, bounds, theme().backgroundSoft);
   renderedVisualizationThreePanels.clear();
   if (bounds.width < 2 || bounds.height < 1) {
@@ -1079,7 +1196,7 @@ function renderWorkspace(frame: Frame): void {
     hideVisualizationThreePanelsExcept(renderedVisualizationThreePanels);
     translateHitTargets(hitTargets, { startIndex: hitStart, rowDelta: bounds.row, clip: bounds });
     blitWorkbenchFrameCells(frame, virtual, { ...bounds, width: layout.bounds.width }, { columns: 0, rows: 0 });
-    renderWindowTabs(frame);
+    if (geometry.auxiliaryRow !== undefined) renderWindowTabs(frame, geometry.auxiliaryRow);
     return;
   }
 
@@ -1094,7 +1211,7 @@ function renderWorkspace(frame: Frame): void {
         fg: theme().warn,
       }),
     );
-    renderShelf(frame);
+    if (geometry.auxiliaryRow !== undefined) renderShelf(frame, geometry.auxiliaryRow);
     return;
   }
 
@@ -1110,6 +1227,7 @@ function renderWorkspace(frame: Frame): void {
       }
     }
   });
+  renderTiledSeparators(virtual);
   if (!renderedThree) {
     hideBuiltinThreeRects();
   }
@@ -1117,7 +1235,7 @@ function renderWorkspace(frame: Frame): void {
   translateHitTargets(hitTargets, { startIndex: hitStart, rowDelta: bounds.row - offset, clip: bounds });
   blitWorkbenchFrameCells(frame, virtual, { ...bounds, width: layout.bounds.width }, { columns: 0, rows: offset });
   renderWorkspaceScrollbar(frame, bounds);
-  renderShelf(frame);
+  if (geometry.auxiliaryRow !== undefined) renderShelf(frame, geometry.auxiliaryRow);
 }
 
 function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
@@ -1127,6 +1245,7 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
     rect,
     minimized: false,
     active: activeWindowId() === id,
+    maximized: fullscreenWindowId() === id,
     title: windowTitle(id),
     showConfig: isThreeRenderedWindow(id),
     theme: theme(),
@@ -1165,6 +1284,7 @@ function renderWindow(frame: Frame, id: WindowId, rect: Rectangle): void {
     },
     focusAction: (targetId): HitAction => ({ type: "focus", id: targetId }),
     titlebarAction: (targetId, kind) => resolveApiWorkbenchTitlebarHitAction(targetId, kind),
+    titlebarDragAction: (targetId): HitAction => ({ type: "windowTitlebar", id: targetId }),
     scrollbarAction: (targetId, axis): HitAction =>
       axis === "vertical" ? { type: "windowVScrollbar", id: targetId } : { type: "windowHScrollbar", id: targetId },
     paint,
@@ -1402,10 +1522,14 @@ function renderExplorer(frame: Frame, rect: Rectangle): void {
 }
 
 function renderInspector(frame: Frame, rect: Rectangle): void {
+  const active = windowManager.inspect().windows.find((entry) => entry.id === activeWindowId());
   renderApiWorkbenchInspectorPanel({
     frame,
     rect,
     themeLabel: themes[themeIndex.peek()]!.label,
+    focusTitle: windowTitle(activeWindowId()),
+    focusState: active?.fullscreen ? "fullscreen" : active?.state ?? "closed",
+    layoutSummary: `${tiledWorkspace.inspect().count} pane(s) · ${layoutMode.peek() ? "editing" : "docked"}`,
     logs: commandLog.peek(),
     renderRows: inspectorRenderRows,
     actionTextRows: inspectorActionTextRows,
@@ -1457,7 +1581,7 @@ function renderLogs(frame: Frame, rect: Rectangle): void {
   renderApiWorkbenchLogsPanel({
     frame,
     rect,
-    sources: [docs, commandLog.peek()],
+    sources: [commandLog.peek()],
     renderRows: logRenderRows,
     theme: theme(),
     writeRows,
@@ -1781,8 +1905,7 @@ function renderHtmlCssLayout(frame: Frame, rect: Rectangle): void {
   });
 }
 
-function renderShelf(frame: Frame): void {
-  const row = currentHeight() - 2;
+function renderShelf(frame: Frame, row: number): void {
   renderApiWorkbenchShelf({
     frame,
     row,
@@ -1799,8 +1922,7 @@ function renderShelf(frame: Frame): void {
   });
 }
 
-function renderWindowTabs(frame: Frame): void {
-  const row = currentHeight() - 2;
+function renderWindowTabs(frame: Frame, row: number): void {
   renderApiWorkbenchWindowTabs({
     frame,
     row,
@@ -1820,11 +1942,13 @@ function renderWindowTabs(frame: Frame): void {
 
 function renderStatus(frame: Frame): void {
   const width = currentWidth();
+  const row = workbenchScreenGeometry().statusRow;
+  if (row === undefined) return;
   renderApiWorkbenchStatus({
     frame,
-    row: currentHeight() - 1,
+    row,
     width,
-    focus: windowTitle(activeWindowId()),
+    focus: `${layoutMode.peek() ? "LAYOUT · " : ""}${windowTitle(activeWindowId())}`,
     themeLabel: theme().label,
     tileDensity: tileDensity.peek(),
     diagnostics: formatWorkbenchDiagnosticStatus(workbenchDiagnostics),
@@ -1835,7 +1959,7 @@ function renderStatus(frame: Frame): void {
 }
 
 function renderActiveDropdownOverlay(frame: Frame): void {
-  const bounds = { column: 0, row: 3, width: currentWidth(), height: Math.max(0, currentHeight() - 5) };
+  const bounds = workbenchScreenGeometry().workspace;
   renderApiWorkbenchDropdownOverlay({
     frame,
     overlay: dropdownOverlay,
@@ -1849,6 +1973,22 @@ function renderActiveDropdownOverlay(frame: Frame): void {
     fillRect,
     addHit,
   });
+}
+
+function workbenchScreenGeometry(): WorkbenchScreenGeometry {
+  const width = Math.max(0, currentWidth());
+  const height = Math.max(0, currentHeight());
+  const statusRows = height >= 2 ? 1 : 0;
+  const inspection = windowManager.inspect();
+  const needsAuxiliaryRow = height >= 3 &&
+    (inspection.fullscreenId !== undefined || inspection.windows.some((entry) => entry.minimized));
+  const auxiliaryRows = needsAuxiliaryRow ? 1 : 0;
+  const workspaceHeight = Math.max(0, height - Math.min(1, height) - statusRows - auxiliaryRows);
+  return {
+    workspace: { column: 0, row: height > 0 ? 1 : 0, width, height: workspaceHeight },
+    auxiliaryRow: needsAuxiliaryRow ? height - statusRows - 1 : undefined,
+    statusRow: statusRows > 0 ? height - 1 : undefined,
+  };
 }
 
 function renderModalOverlay(frame: Frame): void {
@@ -1948,14 +2088,73 @@ function workspaceLayout(bounds: Rectangle): {
   rects: Map<WindowId, Rectangle>;
 } {
   const active = activeWindowId();
-  return workbenchAdaptiveWindowLayout<WindowId>(windowManager, {
-    bounds,
-    tileDensity: tileDensity.peek(),
-    featuredId: isThreeRenderedWindow(active) ? active : undefined,
-    featuredMinWidth: 96,
-    featuredMinHeight: 18,
-    featuredHeightRatio: 0.62,
+  tiledWorkspace.reconcile(tiledWindowInventory(), { activeWindowId: active });
+  tiledWorkspace.focus(active);
+  const gap = workbenchTiledGap();
+  if (tiledWorkspace.gap.peek() !== gap) tiledWorkspace.gap.value = gap;
+  const projection = tiledWorkspace.layout(bounds, {
+    gap,
+    separatorHitSize: 3,
+    visibleWindowIds: tiledVisibleWindowIds(),
   });
+  const rects = new Map<WindowId, Rectangle>();
+  const compactFocus = !projection.fitsMinimumSize;
+  const focusedPane = compactFocus
+    ? projection.panes.find((pane) => pane.windowId === active) ?? projection.panes[0]
+    : undefined;
+  tiledLayoutProjection = compactFocus
+    ? {
+      ...projection,
+      activePaneId: focusedPane?.pane.id,
+      activeWindowId: focusedPane?.windowId,
+      panes: focusedPane ? [{ ...focusedPane, rect: { ...bounds }, active: true }] : [],
+      separators: [],
+    }
+    : projection;
+  for (const pane of tiledLayoutProjection.panes) {
+    rects.set(pane.windowId as WindowId, pane.rect);
+  }
+  return { bounds, contentHeight: bounds.height, rects };
+}
+
+function tiledWindowInventory(): TiledWorkspaceWindow[] {
+  const windows: TiledWorkspaceWindow[] = [];
+  const densityOffset = tileDensity.peek() * 3;
+  for (const entry of windowManager.inspect().windows) {
+    if (entry.state === "closed") continue;
+    windows.push({
+      id: entry.id,
+      minWidth: Math.max(20, (entry.minWidth ?? 20) - densityOffset),
+      minHeight: entry.minHeight,
+    });
+  }
+  return windows;
+}
+
+function tiledVisibleWindowIds(): ReadonlySet<string> {
+  tiledVisibleWindowIdBuffer.clear();
+  for (const entry of windowManager.inspect().windows) {
+    if (entry.state === "normal") tiledVisibleWindowIdBuffer.add(entry.id);
+  }
+  return tiledVisibleWindowIdBuffer;
+}
+
+function workbenchTiledGap(): number {
+  const density = tileDensity.peek();
+  return density <= -2 ? 2 : density >= 2 ? 0 : 1;
+}
+
+function renderTiledSeparators(frame: Frame): void {
+  if (fullscreenWindowId() || !tiledLayoutProjection || tiledLayoutProjection.separators.length === 0) return;
+  const color = layoutMode.peek() ? theme().borderStrong : theme().backgroundSoft;
+  for (const separator of tiledLayoutProjection.separators) {
+    if (separator.rect.width > 0 && separator.rect.height > 0) fillRect(frame, separator.rect, color);
+    addHit(separator.hitRect, {
+      type: "layoutSeparator",
+      splitId: separator.splitId,
+      axis: separator.axis,
+    });
+  }
 }
 
 function windowScroll(id: WindowId): ScrollAreaController {
@@ -1972,7 +2171,7 @@ function windowContentSize(id: WindowId, viewport: Rectangle): { width: number; 
   return workbenchWindowContentSize({
     id,
     viewport,
-    docs,
+    docs: commandLog.peek(),
     explorerRows: explorerTextRowsInto(explorerContentTextRows, explorer.entries(), (entry) => entry.text),
     dataColumns: columns,
     dataRowCount: rows.length,
@@ -2305,16 +2504,19 @@ function focusPrevious(): void {
 
 function minimize(id: WindowId): void {
   windowManager.minimize(id);
+  void persistActiveWorkspaceState();
   logWindowAction("minimize", id);
 }
 
 function toggleMaximize(id: WindowId): void {
   windowManager.fullscreen(id);
+  void persistActiveWorkspaceState();
   pushLog(workbenchWindowActionLog(fullscreenWindowId() === id ? "maximize" : "restore", windowTitle(id)));
 }
 
 function restoreAll(): void {
   windowManager.restore();
+  void persistActiveWorkspaceState();
   pushLog("restore all windows");
 }
 
@@ -2323,7 +2525,7 @@ function logWindowAction(kind: WorkbenchWindowActionLogKind, id: WindowId): void
 }
 
 function activeWindowId(): WindowId {
-  return (windowManager.activeId.peek() as WindowId | undefined) ?? "explorer";
+  return (windowManager.activeId.peek() as WindowId | undefined) ?? "three";
 }
 
 function fullscreenWindowId(): WindowId | undefined {
@@ -2340,6 +2542,7 @@ function isWindowMinimized(id: WindowId, windows = windowManager.windows.peek())
 
 function adjustTileDensity(delta: number): void {
   tileDensity.value = clampWorkbenchTileDensity(tileDensity.peek() + delta);
+  void persistActiveWorkspaceState();
   pushLog(`tile density ${tileDensity.peek()}`);
 }
 
@@ -2423,12 +2626,15 @@ async function saveCurrentWorkspace(): Promise<void> {
     workspaces: savedWorkspaces.peek(),
     draftName: workspaceNameDraft.peek(),
     windows: currentWorkspaceWindows(),
+    ...currentWorkspaceLayoutState(),
   });
   savedWorkspaces.value = result.workspaces;
   await persistSavedWorkspaces();
   activeWorkspaceName.value = result.name;
   clearWorkspaceModalState();
-  modal.open(workspaceSavedModalContent(result.name, result.visualizationIds.length));
+  modal.open(
+    workspaceSavedModalContent(result.name, result.workspace.managedWindows?.length ?? result.visualizationIds.length),
+  );
   pushLog(`workspace saved ${result.name}`);
 }
 
@@ -2499,12 +2705,154 @@ function applyWorkspaceMenuItem(index: number): void {
   }
 }
 
+function viewMenuLabels(): string[] {
+  const loaded = new Set(windowManager.ids());
+  viewMenuLabelBuffer.length = VIEW_MENU_ENTRIES.length;
+  for (let index = 0; index < VIEW_MENU_ENTRIES.length; index += 1) {
+    const entry = VIEW_MENU_ENTRIES[index]!;
+    viewMenuLabelBuffer[index] = `${loaded.has(entry.windowId) ? "[x]" : "[ ]"} ${entry.label}`;
+  }
+  return viewMenuLabelBuffer;
+}
+
+function layoutMenuLabels(): string[] {
+  layoutMenuLabelBuffer.length = LAYOUT_MENU_ENTRIES.length;
+  for (let index = 0; index < LAYOUT_MENU_ENTRIES.length; index += 1) {
+    const entry = LAYOUT_MENU_ENTRIES[index]!;
+    layoutMenuLabelBuffer[index] = index === 0 ? `${layoutMode.peek() ? "[x]" : "[ ]"} ${entry.label}` : entry.label;
+  }
+  return layoutMenuLabelBuffer;
+}
+
+function applyViewMenuItem(index: number): void {
+  const entry = VIEW_MENU_ENTRIES[index];
+  if (!entry) return;
+  toggleBuiltInWindow(entry.windowId, { keepMenuOpen: true });
+}
+
+function applyLayoutMenuItem(index: number): void {
+  const entry = LAYOUT_MENU_ENTRIES[index];
+  if (!entry) return;
+  switch (entry.action) {
+    case "toggleMode":
+      toggleLayoutMode();
+      return;
+    case "moveEarlier":
+      moveActiveWindow(-1);
+      return;
+    case "moveLater":
+      moveActiveWindow(1);
+      return;
+    case "growHorizontal":
+      resizeActiveTile(2, 0);
+      return;
+    case "shrinkHorizontal":
+      resizeActiveTile(-2, 0);
+      return;
+    case "growVertical":
+      resizeActiveTile(0, 1);
+      return;
+    case "shrinkVertical":
+      resizeActiveTile(0, -1);
+      return;
+    case "maximize":
+      toggleMaximize(activeWindowId());
+      return;
+    case "reset":
+      resetTiledLayout();
+      return;
+    case "wider":
+      adjustTileDensity(-1);
+      return;
+    case "denser":
+      adjustTileDensity(1);
+      return;
+  }
+}
+
+function toggleLayoutMode(): void {
+  layoutMode.value = !layoutMode.peek();
+  closeTopMenus();
+  pushLog(`layout mode ${layoutMode.peek() ? "on" : "off"}`);
+}
+
+function moveActiveWindow(delta: -1 | 1): void {
+  const id = activeWindowId();
+  const visible = tiledVisibleWindowIds();
+  const windowIds = tiledWorkspace.windowIds().filter((windowId) => visible.has(windowId));
+  const index = windowIds.indexOf(id);
+  const targetIndex = Math.max(0, Math.min(windowIds.length - 1, index + delta));
+  if (index < 0 || targetIndex === index || !tiledWorkspace.swap(id, windowIds[targetIndex]!)) return;
+  syncWindowManagerOrderFromTiles();
+  void persistActiveWorkspaceState();
+  pushLog(`move ${windowTitle(id)} ${delta < 0 ? "earlier" : "later"}`);
+}
+
+function resizeActiveTile(columns: number, rows: number): void {
+  const projection = tiledLayoutProjection;
+  const active = activeWindowId();
+  const pane = projection?.panes.find((entry) => entry.windowId === active);
+  if (!projection || !pane) return;
+  const axis: TiledWorkspaceSeparatorAxis = columns !== 0 ? "column" : "row";
+  const requested = columns !== 0 ? columns : rows;
+  const candidates = projection.separators
+    .filter((separator) => separator.axis === axis && rectangleContains(separator.bounds, pane.rect))
+    .sort((left, right) => rectangleArea(left.bounds) - rectangleArea(right.bounds));
+  const separator = candidates[0];
+  if (!separator) {
+    pushLog(`resize ${windowTitle(active)} unavailable on ${axis} axis`);
+    return;
+  }
+  const inFirst = rectangleContains(separator.firstRect, pane.rect);
+  const delta = inFirst ? requested : -requested;
+  if (
+    tiledWorkspace.resizeSplit(separator.splitId, delta, projection.bounds, {
+      gap: workbenchTiledGap(),
+      separatorHitSize: 3,
+      visibleWindowIds: tiledVisibleWindowIds(),
+    })
+  ) {
+    void persistActiveWorkspaceState();
+    pushLog(`resize ${windowTitle(active)} ${columns}:${rows}`);
+  }
+}
+
+function resetTiledLayout(): void {
+  tileDensity.value = 0;
+  tiledWorkspace.state.value = {};
+  tiledWorkspace.reconcile(tiledWindowInventory(), { activeWindowId: activeWindowId() });
+  syncWindowManagerOrderFromTiles();
+  workspaceScroll.scrollTo(0, 0);
+  void persistActiveWorkspaceState();
+  pushLog("layout reset");
+}
+
+function syncWindowManagerOrderFromTiles(): void {
+  const order = new Map(tiledWorkspace.windowIds().map((id, index) => [id, index]));
+  const current = windowManager.windows.peek();
+  windowManager.windows.value = current.map((entry, fallback) => ({
+    ...entry,
+    order: order.get(entry.id) ?? entry.order ?? order.size + fallback,
+  }));
+}
+
+function rectangleContains(outer: Rectangle, inner: Rectangle): boolean {
+  return inner.column >= outer.column && inner.row >= outer.row &&
+    inner.column + inner.width <= outer.column + outer.width &&
+    inner.row + inner.height <= outer.row + outer.height;
+}
+
+function rectangleArea(rect: Rectangle): number {
+  return Math.max(0, rect.width) * Math.max(0, rect.height);
+}
+
 function loadWorkspace(workspace: SavedWorkspace): void {
   closeTopMenus();
   closeAllWindowsForWorkspaceLoad();
   for (const entry of workspaceWindowEntries(workspace)) {
     addVisualizationWindow(visualizationOption(entry.visualizationId), { ascii: entry.ascii, preserveWorkspace: true });
   }
+  restoreWorkspaceLayoutState(workspace);
   activeWorkspaceName.value = workspace.name;
   workspaceScroll.scrollTo(0, 0);
   pushLog(`workspace loaded ${workspace.name}`);
@@ -2550,6 +2898,64 @@ function currentWorkspaceWindows(): SavedWorkspaceWindow[] {
   });
 }
 
+function currentWorkspaceManagedWindows(): SavedWorkspaceManagedWindow[] {
+  return windowManager.inspect().windows
+    .filter((entry) => !entry.closed)
+    .map((entry, index) => ({
+      id: entry.id,
+      state: entry.minimized ? "minimized" as const : "normal" as const,
+      order: entry.order ?? index,
+    }));
+}
+
+function currentWorkspaceLayoutState(): {
+  managedWindows: SavedWorkspaceManagedWindow[];
+  activeWindowId?: string;
+  fullscreenWindowId?: string;
+  tileDensity: number;
+  tiledLayout: TiledWorkspaceSnapshot;
+} {
+  tiledWorkspace.reconcile(tiledWindowInventory(), { activeWindowId: activeWindowId() });
+  return {
+    managedWindows: currentWorkspaceManagedWindows(),
+    activeWindowId: windowManager.activeId.peek(),
+    fullscreenWindowId: windowManager.fullscreenId.peek(),
+    tileDensity: tileDensity.peek(),
+    tiledLayout: tiledWorkspace.snapshot(),
+  };
+}
+
+function restoreWorkspaceLayoutState(workspace: SavedWorkspace): void {
+  if (workspace.managedWindows) {
+    const saved = new Map(workspace.managedWindows.map((entry) => [entry.id, entry]));
+    windowManager.windows.value = windowManager.windows.peek().map((entry, fallbackOrder) => {
+      const state = saved.get(entry.id);
+      return {
+        ...entry,
+        state: state?.state ?? "closed",
+        order: state?.order ?? fallbackOrder,
+      };
+    });
+    const normalIds = new Set(
+      windowManager.windows.peek().filter((entry) => entry.state === "normal").map((entry) => entry.id),
+    );
+    const activeId = workspace.activeWindowId && normalIds.has(workspace.activeWindowId)
+      ? workspace.activeWindowId
+      : normalIds.values().next().value;
+    windowManager.activeId.value = activeId;
+    windowManager.fullscreenId.value = workspace.fullscreenWindowId && normalIds.has(workspace.fullscreenWindowId)
+      ? workspace.fullscreenWindowId
+      : undefined;
+  }
+  if (workspace.tileDensity !== undefined) tileDensity.value = workspace.tileDensity;
+  if (workspace.tiledLayout) tiledWorkspace.restore(workspace.tiledLayout, tiledWindowInventory());
+  else {
+    tiledWorkspace.state.value = {};
+    tiledWorkspace.reconcile(tiledWindowInventory(), { activeWindowId: activeWindowId() });
+  }
+  syncWindowManagerOrderFromTiles();
+}
+
 function workspaceByName(name: string | null | undefined): SavedWorkspace | undefined {
   return findWorkbenchWorkspace(savedWorkspaces.peek(), name);
 }
@@ -2570,6 +2976,7 @@ async function persistActiveWorkspaceState(): Promise<void> {
     workspaces: savedWorkspaces.peek(),
     draftName: workspace.name,
     windows: currentWorkspaceWindows(),
+    ...currentWorkspaceLayoutState(),
   }).workspaces;
   await persistSavedWorkspaces();
 }
@@ -2662,6 +3069,100 @@ function applyModalAction(actionId: string): void {
   pushLog(`modal ${actionId}`);
 }
 
+function handleLayoutPointerPress(event: MousePressEvent): boolean {
+  if (event.release) {
+    const session = layoutPointerSession;
+    layoutPointerSession = null;
+    if (!session) return false;
+    if (session.kind === "window" && session.moved) finishWindowDock(session.sourceId, event.x, event.y);
+    if (session.kind === "separator") void persistActiveWorkspaceState();
+    return true;
+  }
+
+  const session = layoutPointerSession;
+  if (session) {
+    if (session.kind === "separator") {
+      const projection = tiledLayoutProjection;
+      const delta = session.axis === "column" ? event.movementX : event.movementY;
+      if (projection && delta !== 0) {
+        tiledWorkspace.resizeSplit(session.splitId, delta, projection.bounds, {
+          gap: workbenchTiledGap(),
+          separatorHitSize: 3,
+          visibleWindowIds: tiledVisibleWindowIds(),
+        });
+      }
+    } else if (event.drag) {
+      session.moved ||= event.x !== session.startX || event.y !== session.startY;
+    }
+    return true;
+  }
+
+  const hit = findHit(event.x, event.y);
+  if (hit?.action.type === "layoutSeparator") {
+    layoutPointerSession = {
+      kind: "separator",
+      splitId: hit.action.splitId,
+      axis: hit.action.axis,
+    };
+    return true;
+  }
+  if (hit?.action.type === "windowTitlebar" && !fullscreenWindowId()) {
+    focus(hit.action.id);
+    layoutPointerSession = {
+      kind: "window",
+      sourceId: hit.action.id,
+      startX: event.x,
+      startY: event.y,
+      moved: event.drag,
+    };
+    return true;
+  }
+  return false;
+}
+
+function finishWindowDock(sourceId: WindowId, screenColumn: number, screenRow: number): void {
+  const projection = tiledLayoutProjection;
+  if (!projection) return;
+  const geometry = workbenchScreenGeometry();
+  const column = screenColumn - geometry.workspace.column;
+  const row = screenRow - geometry.workspace.row + workspaceScroll.offset.peek().rows;
+  const target = projection.panes.find((pane) =>
+    pane.windowId !== sourceId && pointInRectangle(column, row, pane.rect)
+  );
+  if (!target) return;
+
+  const edge = tiledDockEdgeAt(target.rect, column, row);
+  const changed = edge
+    ? tiledWorkspace.dock(sourceId, target.windowId, edge, { ratio: 0.5 })
+    : tiledWorkspace.swap(sourceId, target.windowId);
+  if (!changed) return;
+  tiledWorkspace.focus(sourceId);
+  syncWindowManagerOrderFromTiles();
+  windowManager.focus(sourceId);
+  void persistActiveWorkspaceState();
+  pushLog(
+    `${edge ? `dock ${edge}` : "swap"} ${windowTitle(sourceId)} with ${windowTitle(target.windowId as WindowId)}`,
+  );
+}
+
+function tiledDockEdgeAt(rect: Rectangle, column: number, row: number): TiledWorkspaceDockEdge | null {
+  if (rect.width <= 0 || rect.height <= 0) return null;
+  const x = Math.max(0, Math.min(1, (column - rect.column) / rect.width));
+  const y = Math.max(0, Math.min(1, (row - rect.row) / rect.height));
+  const distances: Array<{ edge: TiledWorkspaceDockEdge; distance: number }> = [
+    { edge: "left", distance: x },
+    { edge: "right", distance: 1 - x },
+    { edge: "top", distance: y },
+    { edge: "bottom", distance: 1 - y },
+  ];
+  distances.sort((left, right) => left.distance - right.distance);
+  return distances[0]!.distance <= 0.3 ? distances[0]!.edge : null;
+}
+
+function pointInRectangle(column: number, row: number, rect: Rectangle): boolean {
+  return column >= rect.column && row >= rect.row && column < rect.column + rect.width && row < rect.row + rect.height;
+}
+
 function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: number): void {
   const action = target.action;
   if (action.type === "menu") {
@@ -2672,6 +3173,7 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
     windowManager.selectTab(action.id);
     logWindowAction("fullscreenTab", action.id);
   } else if (action.type === "focus") focus(action.id);
+  else if (action.type === "windowTitlebar") focus(action.id);
   else if (action.type === "minimize") minimize(action.id);
   else if (action.type === "maximize") toggleMaximize(action.id);
   else if (action.type === "close") closeWindow(action.id);
@@ -2682,6 +3184,7 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
   else if (action.type === "asciiConfigBackdrop") return;
   else if (action.type === "restore") {
     windowManager.restore(action.id);
+    void persistActiveWorkspaceState();
     pushLog(`restore ${windowTitle(action.id)}`);
   } else if (action.type === "control") {
     applyControlHit(action.id, action.action ?? "activate", target.rect, x, action.index);
@@ -2717,6 +3220,8 @@ function applyHit(target: { rect: Rectangle; action: HitAction }, x: number, y: 
   else if (action.type === "newWindow") {
     toggleNewWindowOption(newWindowOptions[action.index], { keepMenuOpen: true });
   } else if (action.type === "workspace") applyWorkspaceMenuItem(action.index);
+  else if (action.type === "view") applyViewMenuItem(action.index);
+  else if (action.type === "layout") applyLayoutMenuItem(action.index);
   else if (action.type === "windowVScrollbar") {
     const scroll = windowScroll(action.id);
     const next = resolveApiWorkbenchWindowVScrollbarOffset({
@@ -2880,9 +3385,13 @@ function closeThreeConfigModal(): void {
 
 function handleWorkbenchKey(event: KeyPressEvent): void {
   const active = activeWindowId();
+  const global = resolveWorkbenchGlobalKey(event, { activeWindowId: active, layoutMode: layoutMode.peek() });
+  if (event.key.toLowerCase() === "f6" || layoutMode.peek()) {
+    if (applyWorkbenchGlobalKeyAction(global, { phase: "primary" })) return;
+    return;
+  }
   if (active === TERMINAL_SHELL_WINDOW_ID && handleTerminalShellKey(event)) return;
   if (active === TERMINAL_OUTPUT_WINDOW_ID && handleTerminalOutputKey(event)) return;
-  const global = resolveWorkbenchGlobalKey(event, { activeWindowId: active });
   const globalHandled = applyWorkbenchGlobalKeyAction(global, { phase: "primary" });
   if (globalHandled) return;
   if (event.ctrl || event.meta) return;
@@ -2963,8 +3472,18 @@ function applyWorkbenchGlobalKeyAction(
           pushLog("no minimized windows");
           return true;
         }
+        void persistActiveWorkspaceState();
         pushLog(`restore ${windowTitle(restored.id as WindowId)}`);
       }
+      return true;
+    case "toggleLayoutMode":
+      toggleLayoutMode();
+      return true;
+    case "moveWindow":
+      moveActiveWindow(action.delta);
+      return true;
+    case "resizeWindow":
+      resizeActiveTile(action.columns, action.rows);
       return true;
     case "adjustTileDensity":
       adjustTileDensity(action.delta);
@@ -3194,11 +3713,15 @@ function handleScreenDropdownKey(event: { key: string; ctrl?: boolean; meta?: bo
       theme: themeIndex.peek(),
       newWindow: workbenchController.menuIndex("newWindow"),
       workspace: workbenchController.menuIndex("workspace"),
+      view: workbenchController.menuIndex("view"),
+      layout: workbenchController.menuIndex("layout"),
     },
     counts: {
       theme: themes.length,
       newWindow: newWindowOptions.length,
       workspace: workspaceMenuItemCount(),
+      view: VIEW_MENU_ENTRIES.length,
+      layout: LAYOUT_MENU_ENTRIES.length,
     },
   });
 
@@ -3232,9 +3755,15 @@ function handleScreenDropdownKey(event: { key: string; ctrl?: boolean; meta?: bo
         if (action.activate) {
           toggleNewWindowOption(newWindowOptions[action.index], { keepMenuOpen: true });
         }
-      } else {
+      } else if (action.menuId === "workspace") {
         workbenchController.setMenuIndex("workspace", action.index, workspaceMenuItemCount());
         if (action.activate) applyWorkspaceMenuItem(action.index);
+      } else if (action.menuId === "view") {
+        workbenchController.setMenuIndex("view", action.index, VIEW_MENU_ENTRIES.length);
+        if (action.activate) applyViewMenuItem(action.index);
+      } else {
+        workbenchController.setMenuIndex("layout", action.index, LAYOUT_MENU_ENTRIES.length);
+        if (action.activate) applyLayoutMenuItem(action.index);
       }
   }
 }
@@ -3261,6 +3790,12 @@ function openActiveTopMenu(): void {
         pushLog("open workspace menu");
       }
       return;
+    case "view":
+      openViewMenu();
+      return;
+    case "layout":
+      openLayoutMenu();
+      return;
   }
   topMenus.close(false);
 }
@@ -3277,6 +3812,20 @@ function openNewWindowMenu(): void {
   if (index >= 0) menu.setActive(index);
   workbenchController.openMenu("newWindow", newWindowOptions.length);
   pushLog("open new window menu");
+}
+
+function openViewMenu(): void {
+  const index = menu.items.peek().findIndex((item) => item.id === "view");
+  if (index >= 0) menu.setActive(index);
+  workbenchController.openMenu("view", VIEW_MENU_ENTRIES.length);
+  pushLog("open view menu");
+}
+
+function openLayoutMenu(): void {
+  const index = menu.items.peek().findIndex((item) => item.id === "layout");
+  if (index >= 0) menu.setActive(index);
+  workbenchController.openMenu("layout", LAYOUT_MENU_ENTRIES.length);
+  pushLog("open layout menu");
 }
 
 function closeTopMenus(clearFocus = true): void {
@@ -3307,6 +3856,7 @@ function closeWindow(id: WindowId, options: { preserveWorkspace?: boolean } = {}
     terminalShellInputMode.value = "workbench";
   }
   windowManager.close(id);
+  if (!plan.visualizationWindowId) void persistActiveWorkspaceState();
   windowContentFrames.delete(id);
   pushLog(`close ${windowTitle(id)}`);
 }
@@ -3339,6 +3889,7 @@ function toggleBuiltInWindow(
   if (!plan.keepMenuOpen) closeTopMenus();
   windowManager.restore(id);
   focus(id);
+  void persistActiveWorkspaceState();
   const shell = activeTerminalShell();
   if (plan.startTerminalShell && shell && !shell.running && shell.status.peek() !== "starting") {
     void terminalShell.start().then((started) => {

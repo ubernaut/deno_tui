@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "thresholds": {
+    "max_file_lines": 2000
+  },
+  "justifications": [
+    {
+      "path": "app/api_workbench.ts",
+      "status": "accepted",
+      "task_id": "implement-glyphs-tiled-workbench-ui-20260716",
+      "reason": "This file remains the operational compatibility facade that composes the terminal event loop, renderer resources, and legacy workbench callbacks in one adapter boundary.",
+      "mitigation": "New behavior must be extracted into focused modules; this change moves tiled geometry into src/layout/tiled_workspace.ts and keeps shared menu, workspace, titlebar, and panel logic under src/app.",
+      "migration_evidence": [
+        "src/layout/tiled_workspace.ts",
+        "src/app/workbench_menu.ts",
+        "src/app/workbench_workspace.ts",
+        "app/api_workbench_window_view.ts"
+      ]
+    },
+    {
+      "path": "examples/web/api_workbench_page.ts",
+      "status": "accepted",
+      "task_id": "implement-glyphs-tiled-workbench-ui-20260716",
+      "reason": "This browser demo is a compatibility facade that co-locates canvas host wiring and the full API-workbench showcase so the generated standalone page stays directly runnable.",
+      "mitigation": "New layout algorithms and shared control behavior must remain in reusable modules; this change consumes the extracted tiled-workspace module and shared workbench chrome instead of duplicating those services.",
+      "migration_evidence": [
+        "src/layout/tiled_workspace.ts",
+        "app/api_workbench_window_view.ts",
+        "src/app/workbench_titlebar.ts"
+      ]
+    }
+  ]
+}

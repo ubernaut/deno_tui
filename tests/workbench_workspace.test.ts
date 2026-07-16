@@ -22,6 +22,7 @@ import {
   workbenchWorkspaceWindowEntries,
 } from "../src/app/mod.ts";
 import { MemoryStore } from "../src/runtime/storage.ts";
+import { TILED_WORKSPACE_SNAPSHOT_VERSION } from "../src/layout/tiled_workspace.ts";
 
 Deno.test("workbench log helpers append bounded immutable rows", () => {
   const rows = ["one", "two", "three"];
@@ -131,6 +132,65 @@ Deno.test("workbench workspace helpers serialize versioned storage and migrate l
       savedAt: 30,
     }], { validVisualizationIds: ["cpu", "gpu"] }),
     [{ name: "Legacy", visualizationIds: ["gpu"], windows: undefined, savedAt: 30 }],
+  );
+});
+
+Deno.test("workbench workspace storage normalizes and clone-safely persists complete tiled layout state", () => {
+  const workspace: WorkbenchWorkspace = {
+    name: "Workbench",
+    visualizationIds: [],
+    managedWindows: [
+      { id: "three", state: "normal", order: 0 },
+      { id: "logs", state: "minimized", order: 1 },
+    ],
+    activeWindowId: "three",
+    fullscreenWindowId: "three",
+    tileDensity: 9,
+    tiledLayout: {
+      version: TILED_WORKSPACE_SNAPSHOT_VERSION,
+      gap: 1,
+      layout: { root: { kind: "pane", id: "pane-three", windowId: "three" } },
+    },
+    savedAt: 10,
+  };
+
+  const normalized = normalizeWorkbenchWorkspaces([workspace], { validVisualizationIds: [] });
+  assertEquals(normalized[0]?.tileDensity, 3);
+  assertEquals(normalized[0]?.managedWindows, workspace.managedWindows);
+  assertEquals(normalized[0]?.tiledLayout?.layout.root?.kind, "pane");
+
+  const serialized = serializeWorkbenchWorkspaces(normalized, 20);
+  const root = normalized[0]?.tiledLayout?.layout.root;
+  if (root?.kind === "pane") root.windowId = "mutated";
+  assertEquals(serialized.workspaces[0]?.tiledLayout?.layout.root, {
+    kind: "pane",
+    id: "pane-three",
+    windowId: "three",
+    minWidth: undefined,
+    minHeight: undefined,
+  });
+});
+
+Deno.test("workbench workspace storage preserves an explicitly empty managed layout", () => {
+  const normalized = normalizeWorkbenchWorkspaces([{
+    name: "Empty",
+    visualizationIds: [],
+    managedWindows: [],
+    savedAt: 10,
+  }], { validVisualizationIds: [] });
+
+  assertEquals(normalized, [{
+    name: "Empty",
+    visualizationIds: [],
+    windows: undefined,
+    managedWindows: [],
+    savedAt: 10,
+  }]);
+  assertEquals(
+    normalizeWorkbenchWorkspaceStorage(serializeWorkbenchWorkspaces(normalized, 20), {
+      validVisualizationIds: [],
+    })[0]?.managedWindows,
+    [],
   );
 });
 
