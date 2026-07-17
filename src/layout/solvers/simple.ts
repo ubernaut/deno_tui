@@ -2,6 +2,7 @@
 import type { WidgetHitRegion } from "../../components/interaction.ts";
 import type { Rectangle } from "../../types.ts";
 import { insetRectangleByEdges, normalizeRectangle } from "../../utils/rectangles.ts";
+import { SIMPLE_LAYOUT_SOLVER_CAPABILITIES } from "../capabilities.ts";
 import { LayoutMeasurementCache, measureTerminalTextIntrinsic } from "../measurement.ts";
 import { type FlexDirection, type FlexItem, flexRects } from "../flex_layout.ts";
 import {
@@ -33,6 +34,7 @@ export interface SimpleLayoutSolverOptions {
 /** Built-in deterministic block/flex layout solver for terminal-cell rectangles. */
 export class SimpleLayoutSolver implements LayoutSolver {
   readonly id = "simple";
+  readonly capabilities = SIMPLE_LAYOUT_SOLVER_CAPABILITIES;
   readonly #defaultTextHeight: number;
   readonly #intrinsicMeasurementCache?: LayoutMeasurementCache;
 

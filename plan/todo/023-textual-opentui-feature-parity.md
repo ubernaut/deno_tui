@@ -1,11 +1,13 @@
 # Textual And OpenTUI Feature-Parity Roadmap
 
-Status: proposed on July 16, 2026; awaiting approval.
+Status: L0 completed on July 16, 2026; later milestones await separate approval. Core imperative advanced windowing is
+already implemented; W1 and W2 track the remaining screen/modal lifecycle and declarative-markup integration.
 
 ## Decision Gate
 
-This file is a research-backed proposal, not authorization to implement the listed features. Every checkbox is
-intentionally open. After approval, each accepted milestone should become its own ICC task and reviewable commit.
+This file is the durable research-backed backlog. Completed L0 items are checked below; every other checkbox remains
+open and is not authorization to implement that feature. Each accepted milestone should become its own ICC task and
+reviewable commit.
 
 The recommended first implementation milestone is L0, followed by the bounded L2 Taffy spike. L1 and L3 should be
 approved only after that adoption decision, so advanced Flexbox, intrinsic-sizing, and Grid work targets the chosen
@@ -243,16 +245,21 @@ Sources: [crate overview](https://docs.rs/taffy/0.12.1/taffy/),
 
 ### L0 - Freeze A Solver-Neutral Layout Contract (P0, Small)
 
-- [ ] Add a solver capability matrix that distinguishes simple, Yoga, and future Taffy support instead of reporting one
+- [x] Add a solver capability matrix that distinguishes simple, Yoga, and future Taffy support instead of reporting one
       blended CSS list.
-- [ ] Turn the current shared Flex/Grid fixtures into a backend conformance corpus with explicit supported,
-      solver-specific, and rejected cases.
-- [ ] Define cell rounding, overflow, intrinsic measurement, hidden-node, absolute-child, and min/max invariants before
+- [x] Turn the current shared Flex/Grid fixtures into a backend conformance corpus with explicit supported,
+      solver-specific, and unsupported/diagnosed-fallback cases.
+- [x] Define cell rounding, overflow, intrinsic measurement, hidden-node, absolute-child, and min/max invariants before
       adding another solver.
-- [ ] Correct documentation drift, including the older prose that still calls template areas unsupported while the
+- [x] Correct documentation drift, including the older prose that still calls template areas unsupported while the
       simple solver supports them.
-- [ ] Require diagnostics for unsupported declarations and solver fallback; never silently accept a property and ignore
+- [x] Require diagnostics for unsupported declarations and solver fallback; never silently accept a property and ignore
       it in the selected backend.
+
+Completed July 16, 2026: the dependency-free capability profiles cover all 45 normalized fields and six invariants;
+matched declaration diagnostics validate winning-field provenance and supported value grammar; Simple/Yoga share one
+conformance table with exact solver-specific output and diagnostics; worker results preserve diagnostics without putting
+callbacks in structured-clone payloads.
 
 Acceptance:
 
@@ -348,6 +355,10 @@ Acceptance:
 - The same live markup fixture runs in terminal and browser hosts.
 
 ### W1 - Screen Stacks And Modal Lifecycle (P1, Medium)
+
+The persistent tiled workspace baseline already provides docking/swapping, splitter resize, keyboard layout mode,
+minimize, maximize/restore, compact focus behavior, serialization, and terminal/web parity. W1 and W2 extend that one
+window manager; they do not replace or reimplement the landed core.
 
 - [ ] Add named screen stacks with push/pop/switch and independent named modes on top of the existing router.
 - [ ] Add typed modal results that can be awaited or delivered to a callback, plus suspend/resume lifecycle events.
@@ -510,7 +521,7 @@ Acceptance:
 
 ## Recommended Sequence
 
-1. Approve and implement L0.
+1. L0 completed.
 2. Approve and run the bounded L2 spike against L0, then make an evidence-backed Taffy adoption decision.
 3. Approve L1 and L3 separately, targeting the chosen backend strategy while keeping the public solver boundary stable.
 4. Approve C1 and D1 separately so accepted advanced layout is usable from live markup, not only low-level objects.
@@ -544,7 +555,7 @@ Acceptance:
 
 ## Approval Choices
 
-- Approve L0 only. This is the recommended next step and creates the evidence needed for every solver decision.
+- L0 is complete and provides the evidence needed for later solver decisions.
 - After L0 lands, approve L2 as a bounded spike; its report determines whether L1 and L3 should target simple/Yoga,
   Taffy, or a deliberate combination.
 - Approve any later milestone separately by ID: L1, L3, C1, D1, W1, W2, R1, G1, V1, K1, T1, T2, or T3.

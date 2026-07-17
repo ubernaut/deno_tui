@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "./deps.ts";
+import { assert, assertEquals, assertThrows } from "./deps.ts";
 import {
   htmlCssLayoutBoxStyle,
   type HtmlCssLayoutRenderCommand,
@@ -14,20 +14,24 @@ import {
   CheckBoxController,
   ComboBoxController,
   createHtmlCssLayoutDemo,
+  createLayoutEngine,
   createLayoutNode,
   createMarkupLayout,
   createMarkupLayoutWorkerHandler,
   defaultComputedLayoutStyle,
   hydrateMarkupWidgets,
   InputController,
+  inspectLayoutSolverCapabilities,
   inspectTuiCssSupport,
   LayoutMeasurementCache,
+  LayoutSolverUnsupportedError,
   layoutTree,
   MarkupLayoutCache,
   MarkupWidgetHydrationRegistry,
   matchesCssMedia,
   matchesCssSelector,
   measureTerminalTextIntrinsic,
+  NORMALIZED_LAYOUT_STYLE_FIELDS,
   parseCssMediaQuery,
   parseCssStylesheet,
   parseTuiMarkup,
@@ -35,6 +39,7 @@ import {
   runMarkupLayoutInWorker,
   ScrollAreaController,
   selectorParts,
+  SIMPLE_LAYOUT_SOLVER_CAPABILITIES,
   simpleLayoutSolver,
   SliderController,
   TabsController,
@@ -45,9 +50,12 @@ import {
 import { computedLayoutBoxOverflow } from "../src/layout/solver.ts";
 import { yogaLayoutSolver } from "../src/layout/solvers/yoga.ts";
 import type {
+  ApplyCssCascadeOptions,
   ComputedLayoutBox,
+  LayoutDiagnosticCode,
   LayoutNode,
   LayoutSolver,
+  LayoutSolverResult,
   MarkupLayoutWorkerPayload,
   MarkupLayoutWorkerResult,
   Rectangle,
@@ -651,7 +659,322 @@ Deno.test("inspectTuiCssSupport reports the documented HTML/CSS subset", () => {
   assert(report.hydratedWidgetTags.includes("radio-group"));
   assert(report.hydratedWidgetTags.includes("tree"));
   assert(report.markupTags.includes("three-ascii"));
-  assert(report.unsupported.includes("Yoga solver named grid-area parity"));
+  assert(report.unsupported.includes("Yoga solver CSS Grid support"));
+  assertEquals(report.solverCapabilities.normalizedStyleFields, [...NORMALIZED_LAYOUT_STYLE_FIELDS]);
+  assertEquals(report.solverCapabilities.solvers.map((solver) => [solver.solverId, solver.availability]), [
+    ["simple", "built-in"],
+    ["yoga", "optional"],
+    ["taffy", "planned"],
+  ]);
+});
+
+Deno.test("layout solver capability report exhaustively classifies normalized fields and invariants", () => {
+  const report = inspectLayoutSolverCapabilities();
+  const expectedFields = [
+    ...Object.keys(defaultComputedLayoutStyle()),
+    "gridArea",
+    "color",
+    "backgroundColor",
+    "borderColor",
+    "borderStyle",
+  ].sort();
+
+  assertEquals([...report.normalizedStyleFields].sort(), expectedFields);
+  assertEquals(report.normalizedStyleFields.length, 45);
+  assertEquals(report.invariantIds, [
+    "cell-rounding",
+    "overflow-inspection",
+    "intrinsic-measurement",
+    "hidden-nodes",
+    "absolute-children",
+    "min-max-constraints",
+  ]);
+  for (const solver of report.solvers) {
+    assertEquals(Object.keys(solver.style).sort(), expectedFields, solver.solverId);
+    assertEquals(Object.keys(solver.invariants).sort(), [...report.invariantIds].sort(), solver.solverId);
+  }
+
+  const simple = report.solvers.find((solver) => solver.solverId === "simple")!;
+  const yoga = report.solvers.find((solver) => solver.solverId === "yoga")!;
+  const taffy = report.solvers.find((solver) => solver.solverId === "taffy")!;
+  assertEquals(simple.style.gridTemplateAreas, "supported");
+  assertEquals(yoga.style.gridTemplateAreas, "unsupported");
+  assertEquals(yoga.style.alignSelf, "unsupported");
+  assertEquals(yoga.invariants["intrinsic-measurement"].support, "partial");
+  assertEquals(taffy.style.display, "unsupported");
+  assert(Object.isFrozen(SIMPLE_LAYOUT_SOLVER_CAPABILITIES));
+  assert(Object.isFrozen(SIMPLE_LAYOUT_SOLVER_CAPABILITIES.style));
+  const mutatedReport = inspectLayoutSolverCapabilities();
+  (mutatedReport.solvers[0]!.style as Record<string, string>).display = "unsupported";
+  assertEquals(inspectLayoutSolverCapabilities().solvers[0]!.style.display, "supported");
+});
+
+Deno.test("createMarkupLayout reports unknown declarations and selected-solver fallbacks", () => {
+  const result = createMarkupLayout({
+    markup: `<window id="main"><panel id="item">Item</panel></window>`,
+    css: `
+      #main {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        mystery-layout: enabled;
+      }
+    `,
+    bounds: { column: 0, row: 0, width: 20, height: 6 },
+    solver: yogaLayoutSolver(),
+    widgets: false,
+  });
+
+  assertEquals(result.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.property, diagnostic.nodeId]), [
+    ["solver-fallback", "display", "main"],
+    ["unsupported-by-solver", "grid-template-columns", "main"],
+    ["unsupported-declaration", "mystery-layout", "main"],
+  ]);
+});
+
+Deno.test("layout diagnostics validate values and only report winning solver declarations", () => {
+  const invalid = createMarkupLayout({
+    markup: `<window id="main">Main</window>`,
+    css: `
+      #main {
+        display: inline;
+        flex-direction: row-reverse;
+        justify-content: space-evenly;
+        grid-auto-flow: dense;
+        grid-template-areas: "a a" "a b";
+        width: 10px;
+        margin: auto;
+        border: 1 2;
+      }
+    `,
+    bounds: { column: 0, row: 0, width: 20, height: 5 },
+    widgets: false,
+  });
+  assertEquals(
+    invalid.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.property]),
+    [
+      ["unsupported-declaration", "display"],
+      ["unsupported-declaration", "flex-direction"],
+      ["unsupported-declaration", "justify-content"],
+      ["unsupported-declaration", "grid-auto-flow"],
+      ["unsupported-declaration", "grid-template-areas"],
+      ["unsupported-declaration", "width"],
+      ["unsupported-declaration", "margin"],
+      ["unsupported-declaration", "border"],
+    ],
+  );
+
+  const winning = createMarkupLayout({
+    markup: `<window id="main" class="shell" style="display: flex">Main</window>`,
+    css: `.shell { display: grid; } #main { display: grid; }`,
+    bounds: { column: 0, row: 0, width: 20, height: 5 },
+    solver: yogaLayoutSolver(),
+    widgets: false,
+  });
+  assertEquals(winning.styledRoot.style.display, "flex");
+  assertEquals(winning.diagnostics, []);
+
+  const provenance = createMarkupLayout({
+    markup: `<window id="main" class="shell">Main</window>`,
+    css: `.shell { display: grid; } #main { display: grid; }`,
+    bounds: { column: 0, row: 0, width: 20, height: 5 },
+    solver: yogaLayoutSolver(),
+    widgets: false,
+  });
+  assertEquals(provenance.diagnostics.map(({ code, selector, source }) => ({ code, selector, source })), [{
+    code: "solver-fallback",
+    selector: "#main",
+    source: "stylesheet",
+  }]);
+
+  const invalidOverride = createMarkupLayout({
+    markup: `<window id="main" class="shell">Main</window>`,
+    css: `.shell { display: grid; } #main { display: inline; }`,
+    bounds: { column: 0, row: 0, width: 20, height: 5 },
+    solver: yogaLayoutSolver(),
+    widgets: false,
+  });
+  assertEquals(invalidOverride.styledRoot.style.display, "grid");
+  assertEquals(invalidOverride.diagnostics.map((diagnostic) => diagnostic.code), [
+    "solver-fallback",
+    "unsupported-declaration",
+  ]);
+});
+
+Deno.test("layout diagnostics expose contextual Simple solver limitations", () => {
+  const flex = createMarkupLayout({
+    markup: `<window id="main"><panel id="child">Child</panel></window>`,
+    css: `
+      #main { display: flex; margin: 1; gap: 2; row-gap: 0; }
+      #child { flex: none; align-self: end; justify-self: end; }
+    `,
+    bounds: { column: 0, row: 0, width: 20, height: 5 },
+    widgets: false,
+  });
+  const flexFields = flex.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.nodeId, diagnostic.field]);
+  assert(
+    flexFields.some(([code, nodeId, field]) =>
+      code === "partial-solver-support" && nodeId === "main" && field === "rowGap"
+    ),
+  );
+  assert(
+    flexFields.some(([code, nodeId, field]) =>
+      code === "partial-solver-support" && nodeId === "child" && field === "flexShrink"
+    ),
+  );
+  assert(
+    flexFields.some(([code, nodeId, field]) =>
+      code === "unsupported-by-solver" && nodeId === "main" && field === "margin"
+    ),
+  );
+  assert(
+    flexFields.some(([code, nodeId, field]) =>
+      code === "unsupported-by-solver" && nodeId === "child" && field === "alignSelf"
+    ),
+  );
+  assert(
+    flexFields.some(([code, nodeId, field]) =>
+      code === "unsupported-by-solver" && nodeId === "child" && field === "justifySelf"
+    ),
+  );
+
+  const grid = createMarkupLayout({
+    markup: `<window id="main"><panel id="child">Child</panel></window>`,
+    css: `#main { display: grid; grid-template-columns: 1fr; align-items: center; justify-content: center; }`,
+    bounds: { column: 0, row: 0, width: 20, height: 5 },
+    widgets: false,
+  });
+  assertEquals(
+    grid.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.field]),
+    [
+      ["unsupported-by-solver", "alignItems"],
+      ["unsupported-by-solver", "justifyContent"],
+    ],
+  );
+});
+
+Deno.test("layout diagnostics preserve shorthand provenance and distinct same-field issues", () => {
+  const yoga = createMarkupLayout({
+    markup: `<window id="main"><panel id="child">Child</panel></window>`,
+    css: `#main { display: flex; } #child { flex: 1 1 2fr; place-self: center; }`,
+    bounds: { column: 0, row: 0, width: 20, height: 5 },
+    solver: yogaLayoutSolver(),
+    widgets: false,
+  });
+  assertEquals(
+    yoga.diagnostics.map(({ code, nodeId, property, field, selector, source }) => ({
+      code,
+      nodeId,
+      property,
+      field,
+      selector,
+      source,
+    })),
+    [
+      {
+        code: "unsupported-by-solver",
+        nodeId: "child",
+        property: "flex",
+        field: "flexBasis",
+        selector: "#child",
+        source: "stylesheet",
+      },
+      {
+        code: "unsupported-by-solver",
+        nodeId: "child",
+        property: "place-self",
+        field: "alignSelf",
+        selector: "#child",
+        source: "stylesheet",
+      },
+      {
+        code: "unsupported-by-solver",
+        nodeId: "child",
+        property: "place-self",
+        field: "justifySelf",
+        selector: "#child",
+        source: "stylesheet",
+      },
+    ],
+  );
+
+  const simple = createMarkupLayout({
+    markup: `<window id="main">Main</window>`,
+    css: `#main { position: relative; top: 1fr; }`,
+    bounds: { column: 0, row: 0, width: 20, height: 5 },
+    widgets: false,
+  });
+  assertEquals(simple.diagnostics.map(({ code, property, field }) => ({ code, property, field })), [
+    { code: "unsupported-by-solver", property: "top", field: "inset" },
+    { code: "unsupported-by-solver", property: undefined, field: "inset" },
+  ]);
+  assert(simple.diagnostics[0]!.message.includes("fr unit"));
+  assert(simple.diagnostics[1]!.message.includes("relative-position insets"));
+});
+
+Deno.test("markup layout worker preserves serializable layout diagnostics", () => {
+  const handler = createMarkupLayoutWorkerHandler({ cache: false });
+  const result = handler({
+    markup: `<window id="main">Main</window>`,
+    css: `#main { unsupported-layout-property: 1; }`,
+    bounds: { column: 0, row: 0, width: 12, height: 3 },
+  });
+
+  assertEquals(result.diagnostics, [{
+    code: "unsupported-declaration",
+    severity: "warning",
+    message: 'Layout declaration "unsupported-layout-property" is not recognized and was ignored.',
+    solverId: "simple",
+    nodeId: "main",
+    selector: "#main",
+    source: "stylesheet",
+    property: "unsupported-layout-property",
+    value: "1",
+    field: undefined,
+  }]);
+});
+
+Deno.test("layout engine diagnoses unknown custom capabilities without changing unsupported-root errors", () => {
+  const root = createLayoutNode({ id: "root", tag: "window" });
+  const baseSolver = simpleLayoutSolver();
+  const diagnostics: string[] = [];
+  const customSolver: LayoutSolver = {
+    id: "custom",
+    supports: () => true,
+    solve: (input) => baseSolver.solve(input),
+  };
+  const result = createLayoutEngine({
+    solver: customSolver,
+    onDiagnostic: (diagnostic) => diagnostics.push(diagnostic.code),
+  }).layout({ root, bounds: { column: 0, row: 0, width: 10, height: 3 } });
+
+  assertEquals(result.root.rect, { column: 0, row: 0, width: 10, height: 3 });
+  assertEquals(diagnostics, ["solver-capabilities-unavailable"]);
+
+  const rejectingSolver: LayoutSolver = {
+    id: "rejecting",
+    supports: () => false,
+    solve: (input) => baseSolver.solve(input),
+  };
+  assertThrows(
+    () =>
+      createLayoutEngine({ solver: rejectingSolver }).layout({
+        root,
+        bounds: { column: 0, row: 0, width: 10, height: 3 },
+      }),
+    LayoutSolverUnsupportedError,
+    'Layout solver "rejecting" does not support root tag "window".',
+  );
+});
+
+Deno.test("layout engine diagnoses Yoga's programmatic Block approximation", () => {
+  const child = createLayoutNode({ id: "child", tag: "panel" });
+  const root = createLayoutNode({ id: "root", tag: "window", children: [child] });
+  const diagnostics: Array<[string, string | undefined, string | undefined]> = [];
+  createLayoutEngine({
+    solver: yogaLayoutSolver(),
+    onDiagnostic: (diagnostic) => diagnostics.push([diagnostic.code, diagnostic.nodeId, diagnostic.field]),
+  }).layout({ root, bounds: { column: 0, row: 0, width: 10, height: 3 } });
+  assertEquals(diagnostics, [["solver-fallback", "root", "display"]]);
 });
 
 Deno.test("createMarkupLayout applies media rules from layout bounds", () => {
@@ -742,15 +1065,25 @@ Deno.test("runMarkupLayoutInWorker solves markup layout through WorkerPool", asy
     workerUrl,
     size: 1,
   });
+  let declarationCallbacks = 0;
+  const widenedCascade: ApplyCssCascadeOptions = {
+    variables: { "--worker-width": "18" },
+    onDeclaration: () => declarationCallbacks += 1,
+  };
   try {
     const result = await runMarkupLayoutInWorker(pool, {
       markup: `<window id="main"><panel id="hero">Hero</panel></window>`,
-      css: `#hero { width: 18; height: 3; }`,
+      css: `#hero { width: var(--worker-width); height: 3; unsupported-worker-layout: 1; }`,
       bounds: { column: 2, row: 1, width: 40, height: 10 },
+      cascade: widenedCascade,
     });
 
     assertEquals(result.document.nodeCount, 2);
     assertEquals(result.layout.byId.get("hero")?.rect, { column: 2, row: 1, width: 18, height: 3 });
+    assertEquals(declarationCallbacks, 0);
+    assertEquals(result.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.property]), [
+      ["unsupported-declaration", "unsupported-worker-layout"],
+    ]);
   } finally {
     pool.terminate();
   }
@@ -1758,24 +2091,37 @@ interface ExpectedMarkupFixtureBox {
 
 interface MarkupLayoutFixture {
   name: string;
+  category: "common" | "solver-specific";
   markup: string;
   css: string;
   bounds: Rectangle;
-  expected: ExpectedMarkupFixtureBox[];
-  solvers: Array<{
+  expected?: ExpectedMarkupFixtureBox[];
+  expectedScroll?: Array<{ id: string; width: number; height: number }>;
+  backends: Array<{
     name: string;
     solver: () => LayoutSolver;
+    disposition: "supported" | "solver-specific" | "unsupported";
+    expected?: ExpectedMarkupFixtureBox[];
+    expectedBoxIds?: string[];
+    expectedVisibility?: Array<{ id: string; visible: boolean; hitRegions: number }>;
+    expectedDiagnostics?: Array<{
+      code: LayoutDiagnosticCode;
+      nodeId?: string;
+      property?: string;
+      field?: string;
+    }>;
   }>;
 }
 
 const sharedMarkupFlexSolvers = [
-  { name: "simple", solver: () => simpleLayoutSolver() },
-  { name: "yoga", solver: () => yogaLayoutSolver() },
+  { name: "simple", solver: () => simpleLayoutSolver(), disposition: "supported" as const },
+  { name: "yoga", solver: () => yogaLayoutSolver(), disposition: "supported" as const },
 ];
 
 const markupLayoutFixtures: MarkupLayoutFixture[] = [
   {
     name: "column shell with fixed toolbar and flexible body",
+    category: "common",
     markup: `
       <window id="main">
         <menu-bar id="toolbar">Tools</menu-bar>
@@ -1796,7 +2142,6 @@ const markupLayoutFixtures: MarkupLayoutFixture[] = [
 
       #body {
         flex: 1;
-        min-height: 2;
         overflow: auto;
       }
     `,
@@ -1806,10 +2151,11 @@ const markupLayoutFixtures: MarkupLayoutFixture[] = [
       { id: "toolbar", rect: { column: 0, row: 0, width: 80, height: 3 } },
       { id: "body", rect: { column: 0, row: 3, width: 80, height: 21 } },
     ],
-    solvers: sharedMarkupFlexSolvers,
+    backends: sharedMarkupFlexSolvers,
   },
   {
     name: "wrapped row flex cards",
+    category: "common",
     markup: `
       <window id="main">
         <panel id="a">A</panel>
@@ -1839,10 +2185,11 @@ const markupLayoutFixtures: MarkupLayoutFixture[] = [
       { id: "b", rect: { column: 5, row: 0, width: 4, height: 1 } },
       { id: "c", rect: { column: 0, row: 2, width: 4, height: 1 } },
     ],
-    solvers: sharedMarkupFlexSolvers,
+    backends: sharedMarkupFlexSolvers,
   },
   {
     name: "row flex honors padding border and gap",
+    category: "common",
     markup: `
       <window id="main">
         <panel id="a">A</panel>
@@ -1863,7 +2210,6 @@ const markupLayoutFixtures: MarkupLayoutFixture[] = [
       panel {
         width: 5;
         height: 2;
-        flex-shrink: 0;
       }
     `,
     bounds: { column: 4, row: 2, width: 80, height: 20 },
@@ -1872,10 +2218,230 @@ const markupLayoutFixtures: MarkupLayoutFixture[] = [
       { id: "a", rect: { column: 7, row: 4, width: 5, height: 2 } },
       { id: "b", rect: { column: 14, row: 4, width: 5, height: 2 } },
     ],
-    solvers: sharedMarkupFlexSolvers,
+    backends: sharedMarkupFlexSolvers,
+  },
+  {
+    name: "absolute child leaves normal flow",
+    category: "common",
+    markup: `
+      <window id="main">
+        <panel id="flow">Flow</panel>
+        <panel id="badge">Badge</panel>
+      </window>
+    `,
+    css: `
+      #main {
+        display: flex;
+        flex-direction: column;
+        width: 20;
+        height: 10;
+      }
+
+      #flow { height: 3; }
+      #badge {
+        position: absolute;
+        top: 1;
+        right: 2;
+        width: 6;
+        height: 2;
+      }
+    `,
+    bounds: { column: 0, row: 0, width: 20, height: 10 },
+    expected: [
+      { id: "main", rect: { column: 0, row: 0, width: 20, height: 10 } },
+      { id: "flow", rect: { column: 0, row: 0, width: 20, height: 3 } },
+      { id: "badge", rect: { column: 12, row: 1, width: 6, height: 2 } },
+    ],
+    backends: sharedMarkupFlexSolvers,
+  },
+  {
+    name: "overflow inspection includes positive absolute extents",
+    category: "common",
+    markup: `<window id="main"><panel id="child">Child</panel></window>`,
+    css: `
+      #main { display: flex; position: relative; width: 10; height: 4; overflow: auto; }
+      #child { position: absolute; left: 12; top: 1; width: 4; height: 1; }
+    `,
+    bounds: { column: 0, row: 0, width: 10, height: 4 },
+    expected: [
+      { id: "main", rect: { column: 0, row: 0, width: 10, height: 4 } },
+      { id: "child", rect: { column: 12, row: 1, width: 4, height: 1 } },
+    ],
+    expectedScroll: [{ id: "main", width: 16, height: 4 }],
+    backends: sharedMarkupFlexSolvers,
+  },
+  {
+    name: "fractional input bounds normalize to terminal cells",
+    category: "common",
+    markup: `<window id="main">Main</window>`,
+    css: "",
+    bounds: { column: 1.8, row: 2.9, width: 10.8, height: 3.7 },
+    expected: [{ id: "main", rect: { column: 1, row: 2, width: 10, height: 3 } }],
+    backends: sharedMarkupFlexSolvers,
+  },
+  {
+    name: "cell max constraint is shared",
+    category: "common",
+    markup: `<window id="main"><panel id="child">Child</panel></window>`,
+    css: `
+      #main { display: flex; width: 20; height: 4; }
+      #child { width: 15; max-width: 7; height: 1; }
+    `,
+    bounds: { column: 0, row: 0, width: 20, height: 4 },
+    expected: [
+      { id: "main", rect: { column: 0, row: 0, width: 20, height: 4 } },
+      { id: "child", rect: { column: 0, row: 0, width: 7, height: 1 } },
+    ],
+    backends: sharedMarkupFlexSolvers,
+  },
+  {
+    name: "dual-edge absolute auto sizing is explicit per backend",
+    category: "solver-specific",
+    markup: `<window id="main"><panel id="badge">Badge</panel></window>`,
+    css: `
+      #main { display: flex; position: relative; width: 20; height: 10; }
+      #badge { position: absolute; left: 2; right: 3; top: 1; bottom: 2; }
+    `,
+    bounds: { column: 0, row: 0, width: 20, height: 10 },
+    backends: [
+      {
+        name: "simple",
+        solver: () => simpleLayoutSolver(),
+        disposition: "solver-specific",
+        expected: [
+          { id: "main", rect: { column: 0, row: 0, width: 20, height: 10 } },
+          { id: "badge", rect: { column: 2, row: 1, width: 15, height: 1 } },
+        ],
+        expectedDiagnostics: [{ code: "partial-solver-support", nodeId: "badge", field: "inset" }],
+      },
+      {
+        name: "yoga",
+        solver: () => yogaLayoutSolver(),
+        disposition: "solver-specific",
+        expected: [
+          { id: "main", rect: { column: 0, row: 0, width: 20, height: 10 } },
+          { id: "badge", rect: { column: 2, row: 1, width: 15, height: 7 } },
+        ],
+      },
+    ],
+  },
+  {
+    name: "display and visibility hiding retain declared backend shape",
+    category: "solver-specific",
+    markup: `
+      <window id="main">
+        <panel id="gone"><button id="gone-child">Gone child</button></panel>
+        <panel id="invisible"><button id="visible-override">Visible override</button></panel>
+        <panel id="flow">Flow</panel>
+      </window>
+    `,
+    css: `
+      #main { display: flex; width: 10; height: 4; }
+      #gone { display: none; width: 3; height: 1; }
+      #invisible { display: flex; flex-direction: column; visibility: hidden; width: 3; height: 1; }
+      #visible-override { visibility: visible; width: 2; height: 1; }
+      #flow { width: 3; height: 1; }
+    `,
+    bounds: { column: 0, row: 0, width: 10, height: 4 },
+    backends: [
+      {
+        name: "simple",
+        solver: () => simpleLayoutSolver(),
+        disposition: "solver-specific",
+        expectedBoxIds: ["main", "invisible", "visible-override", "flow"],
+        expectedVisibility: [
+          { id: "invisible", visible: false, hitRegions: 0 },
+          { id: "visible-override", visible: true, hitRegions: 1 },
+        ],
+      },
+      {
+        name: "yoga",
+        solver: () => yogaLayoutSolver(),
+        disposition: "solver-specific",
+        expectedBoxIds: ["main", "gone", "gone-child", "invisible", "visible-override", "flow"],
+        expectedVisibility: [
+          { id: "gone", visible: false, hitRegions: 0 },
+          { id: "gone-child", visible: false, hitRegions: 0 },
+          { id: "invisible", visible: false, hitRegions: 0 },
+          { id: "visible-override", visible: true, hitRegions: 1 },
+        ],
+      },
+    ],
+  },
+  {
+    name: "minimum overflow policy is explicit per backend",
+    category: "solver-specific",
+    markup: `<window id="main"><panel id="child">Child</panel></window>`,
+    css: `
+      #main { display: flex; width: 5; height: 3; }
+      #child { width: 1; min-width: 8; max-width: 10; height: 1; }
+    `,
+    bounds: { column: 0, row: 0, width: 5, height: 3 },
+    backends: [
+      {
+        name: "simple",
+        solver: () => simpleLayoutSolver(),
+        disposition: "solver-specific",
+        expected: [
+          { id: "main", rect: { column: 0, row: 0, width: 5, height: 3 } },
+          { id: "child", rect: { column: 0, row: 0, width: 5, height: 1 } },
+        ],
+        expectedDiagnostics: [{
+          code: "partial-solver-support",
+          nodeId: "child",
+          property: "min-width",
+          field: "minWidth",
+        }],
+      },
+      {
+        name: "yoga",
+        solver: () => yogaLayoutSolver(),
+        disposition: "solver-specific",
+        expected: [
+          { id: "main", rect: { column: 0, row: 0, width: 5, height: 3 } },
+          { id: "child", rect: { column: 0, row: 0, width: 8, height: 1 } },
+        ],
+      },
+    ],
+  },
+  {
+    name: "width-constrained intrinsic text is explicit per backend",
+    category: "solver-specific",
+    markup: `<window id="main"><panel id="child">aa bbbb cc</panel></window>`,
+    css: `
+      #main { display: flex; align-items: start; width: 20; height: 5; }
+      #child { width: 6; height: auto; }
+    `,
+    bounds: { column: 0, row: 0, width: 20, height: 5 },
+    backends: [
+      {
+        name: "simple",
+        solver: () => simpleLayoutSolver(),
+        disposition: "solver-specific",
+        expected: [
+          { id: "main", rect: { column: 0, row: 0, width: 20, height: 5 } },
+          { id: "child", rect: { column: 0, row: 0, width: 6, height: 1 } },
+        ],
+        expectedDiagnostics: [{
+          code: "partial-solver-support",
+          nodeId: "child",
+          field: "height",
+        }],
+      },
+      {
+        name: "yoga",
+        solver: () => yogaLayoutSolver(),
+        disposition: "solver-specific",
+        expected: [
+          { id: "main", rect: { column: 0, row: 0, width: 20, height: 5 } },
+          { id: "child", rect: { column: 0, row: 0, width: 6, height: 3 } },
+        ],
+      },
+    ],
   },
   {
     name: "grid placement with spanning cell",
+    category: "solver-specific",
     markup: `
       <window id="main">
         <panel id="left">Left</panel>
@@ -1905,24 +2471,89 @@ const markupLayoutFixtures: MarkupLayoutFixture[] = [
       { id: "right", rect: { column: 12, row: 1, width: 10, height: 3 } },
       { id: "footer", rect: { column: 2, row: 5, width: 20, height: 2 } },
     ],
-    solvers: [{ name: "simple", solver: () => simpleLayoutSolver() }],
+    backends: [
+      { name: "simple", solver: () => simpleLayoutSolver(), disposition: "solver-specific" },
+      {
+        name: "yoga",
+        solver: () => yogaLayoutSolver(),
+        disposition: "unsupported",
+        expectedDiagnostics: [
+          { code: "solver-fallback", nodeId: "main", property: "display", field: "display" },
+          {
+            code: "unsupported-by-solver",
+            nodeId: "main",
+            property: "grid-template-columns",
+            field: "gridTemplateColumns",
+          },
+          {
+            code: "unsupported-by-solver",
+            nodeId: "main",
+            property: "grid-template-rows",
+            field: "gridTemplateRows",
+          },
+          {
+            code: "unsupported-by-solver",
+            nodeId: "footer",
+            property: "grid-column",
+            field: "gridColumn",
+          },
+          {
+            code: "unsupported-by-solver",
+            nodeId: "footer",
+            property: "grid-row",
+            field: "gridRow",
+          },
+        ],
+      },
+    ],
   },
 ];
 
 for (const fixture of markupLayoutFixtures) {
-  for (const solver of fixture.solvers) {
-    Deno.test(`layout fixture: ${fixture.name} (${solver.name})`, () => {
+  for (const backend of fixture.backends) {
+    Deno.test(`layout fixture: ${fixture.category}: ${fixture.name} (${backend.name}, ${backend.disposition})`, () => {
       const result = createMarkupLayout({
         markup: fixture.markup,
         css: fixture.css,
         bounds: fixture.bounds,
-        solver: solver.solver(),
+        solver: backend.solver(),
         widgets: false,
       });
 
-      for (const expected of fixture.expected) {
-        assertEquals(result.layout.byId.get(expected.id)?.rect, expected.rect, expected.id);
+      assertLayoutResultContract(result.layout, `${fixture.name} (${backend.name})`);
+      const expectedBoxes = backend.expected ?? fixture.expected ?? [];
+      if (backend.disposition !== "unsupported") {
+        assert(expectedBoxes.length > 0 || (backend.expectedBoxIds?.length ?? 0) > 0, "fixture must assert boxes");
+        for (const expected of expectedBoxes) {
+          assertEquals(result.layout.byId.get(expected.id)?.rect, expected.rect, expected.id);
+        }
+        for (const expected of fixture.expectedScroll ?? []) {
+          const box = result.layout.byId.get(expected.id);
+          assertEquals([box?.scrollWidth, box?.scrollHeight], [expected.width, expected.height], expected.id);
+        }
       }
+      if (backend.expectedBoxIds) {
+        assertEquals(result.layout.boxes.map((box) => box.id), backend.expectedBoxIds);
+      } else if (backend.disposition !== "unsupported") {
+        assertEquals(result.layout.boxes.map((box) => box.id), expectedBoxes.map((box) => box.id));
+      }
+      for (const expectation of backend.expectedVisibility ?? []) {
+        const box = result.layout.byId.get(expectation.id);
+        assertEquals(box?.visible, expectation.visible, `${expectation.id} visibility`);
+        assertEquals(box?.hitRegions.length, expectation.hitRegions, `${expectation.id} hits`);
+      }
+      const actualDiagnostics = result.diagnostics.map(({ code, nodeId, property, field }) => {
+        const diagnostic: { code: LayoutDiagnosticCode; nodeId?: string; property?: string; field?: string } = { code };
+        if (nodeId !== undefined) diagnostic.nodeId = nodeId;
+        if (property !== undefined) diagnostic.property = property;
+        if (field !== undefined) diagnostic.field = field;
+        return diagnostic;
+      });
+      assertEquals(
+        actualDiagnostics,
+        backend.expectedDiagnostics ?? [],
+        `${fixture.name} (${backend.name}) diagnostics`,
+      );
     });
   }
 }
@@ -1993,6 +2624,65 @@ function assertRectWithin(rect: Rectangle, bounds: Rectangle, label: string): vo
   assertEquals(rect.row >= bounds.row, true, `${label} row lower bound`);
   assertEquals(rect.column + rect.width <= bounds.column + bounds.width, true, `${label} column upper bound`);
   assertEquals(rect.row + rect.height <= bounds.row + bounds.height, true, `${label} row upper bound`);
+}
+
+function assertLayoutResultContract(result: LayoutSolverResult, label: string): void {
+  const preorder: ComputedLayoutBox[] = [];
+  visit(result.root);
+  assertEquals(result.boxes.map((box) => box.id), preorder.map((box) => box.id), `${label} preorder`);
+  assert(result.boxes[0] === result.root, `${label} root identity`);
+  for (let index = 0; index < preorder.length; index += 1) {
+    assert(result.boxes[index] === preorder[index], `${label} preorder identity ${index}`);
+  }
+  assertEquals(result.byId.size, result.boxes.length, `${label} byId size`);
+  assertEquals(result.contentWidth, result.root.scrollWidth, `${label} content width`);
+  assertEquals(result.contentHeight, result.root.scrollHeight, `${label} content height`);
+
+  for (const box of result.boxes) {
+    assert(result.byId.get(box.id) === box, `${label} map identity ${box.id}`);
+    for (
+      const value of [
+        box.rect.column,
+        box.rect.row,
+        box.rect.width,
+        box.rect.height,
+        box.contentRect.column,
+        box.contentRect.row,
+        box.contentRect.width,
+        box.contentRect.height,
+        box.scrollWidth,
+        box.scrollHeight,
+      ]
+    ) {
+      assert(Number.isFinite(value) && Number.isInteger(value), `${label} integer cells ${box.id}`);
+    }
+    assert(box.rect.width >= 0 && box.rect.height >= 0, `${label} non-negative rect ${box.id}`);
+    assert(box.contentRect.width >= 0 && box.contentRect.height >= 0, `${label} non-negative content ${box.id}`);
+    assert(box.contentRect.column >= box.rect.column, `${label} content column lower bound ${box.id}`);
+    assert(box.contentRect.row >= box.rect.row, `${label} content row lower bound ${box.id}`);
+    assert(
+      box.contentRect.column + box.contentRect.width <= box.rect.column + box.rect.width,
+      `${label} content column upper bound ${box.id}`,
+    );
+    assert(
+      box.contentRect.row + box.contentRect.height <= box.rect.row + box.rect.height,
+      `${label} content row upper bound ${box.id}`,
+    );
+    assert(box.scrollWidth >= box.contentRect.width, `${label} scroll width ${box.id}`);
+    assert(box.scrollHeight >= box.contentRect.height, `${label} scroll height ${box.id}`);
+    assertEquals(
+      box.overflow,
+      computedLayoutBoxOverflow(box.contentRect, box.scrollWidth, box.scrollHeight, box.overflowX, box.overflowY),
+      `${label} overflow ${box.id}`,
+    );
+    if (!box.visible) assertEquals(box.hitRegions, [], `${label} hidden hits ${box.id}`);
+    for (const region of box.hitRegions) assertEquals(region.bounds, box.rect, `${label} hit bounds ${box.id}`);
+  }
+
+  function visit(box: ComputedLayoutBox): void {
+    preorder.push(box);
+    for (const child of box.children) visit(child);
+  }
 }
 
 function seededRandom(seed: number): () => number {

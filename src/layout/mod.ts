@@ -12,6 +12,7 @@ export * from "./window_manager.ts";
 export * from "./tiled_workspace.ts";
 export * from "./overlay.ts";
 export * from "./style.ts";
+export * from "./capabilities.ts";
 export * from "./solver.ts";
 export * from "./engine.ts";
 export * from "./measurement.ts";

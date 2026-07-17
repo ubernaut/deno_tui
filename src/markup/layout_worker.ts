@@ -1,11 +1,15 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
+import type { LayoutDiagnostic } from "../layout/capabilities.ts";
 import type { WorkerPool, WorkerPoolRunOptions } from "../runtime/worker_pool.ts";
 import type { ApplyCssCascadeOptions } from "./cascade.ts";
 import type { TuiCssStylesheet } from "./css.ts";
 import { createMarkupLayout, MarkupLayoutCache, type MarkupLayoutCacheOptions } from "./hydrate.ts";
 import type { TuiMarkupDocument, TuiMarkupParseOptions } from "./html.ts";
 import type { LayoutNode, LayoutSolverResult } from "../layout/solver.ts";
+
+/** Structured-clone-safe cascade options accepted by worker payloads. */
+export type MarkupLayoutWorkerCascadeOptions = Omit<ApplyCssCascadeOptions, "onDeclaration">;
 
 /** Payload accepted by the markup layout worker helper. */
 export interface MarkupLayoutWorkerPayload {
@@ -14,7 +18,7 @@ export interface MarkupLayoutWorkerPayload {
   stylesheet?: TuiCssStylesheet;
   bounds: Rectangle;
   parse?: TuiMarkupParseOptions;
-  cascade?: ApplyCssCascadeOptions;
+  cascade?: MarkupLayoutWorkerCascadeOptions;
   cache?: boolean;
 }
 
@@ -23,6 +27,7 @@ export interface MarkupLayoutWorkerResult {
   document: TuiMarkupDocument;
   styledRoot: LayoutNode;
   layout: LayoutSolverResult;
+  diagnostics: LayoutDiagnostic[];
   cache?: {
     documents: number;
     stylesheets: number;
@@ -62,6 +67,7 @@ export function createMarkupLayoutWorkerHandler(
       document: result.document,
       styledRoot: result.styledRoot,
       layout: result.layout,
+      diagnostics: result.diagnostics,
     };
     if (activeCache) output.cache = activeCache.inspect();
     return output;
@@ -74,5 +80,17 @@ export function runMarkupLayoutInWorker(
   payload: MarkupLayoutWorkerPayload,
   options: WorkerPoolRunOptions = {},
 ): Promise<MarkupLayoutWorkerResult> {
-  return pool.run(payload, options);
+  const cascade = payload.cascade;
+  const workerPayload: MarkupLayoutWorkerPayload = {
+    ...payload,
+    cascade: cascade
+      ? {
+        variables: cascade.variables,
+        states: cascade.states,
+        baseStyle: cascade.baseStyle,
+        viewport: cascade.viewport,
+      }
+      : undefined,
+  };
+  return pool.run(workerPayload, options);
 }

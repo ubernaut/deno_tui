@@ -6,13 +6,13 @@ separate while shared module declarations are listed once with explicit entrypoi
 ## Summary
 
 - Entrypoints: 10
-- Unique modules: 241
-- Module visits: 542
-- Unique re-export declarations: 351
-- Re-export declaration visits: 538
-- Unique symbol declarations: 2395
-- Symbol declaration visits: 5401
-- Documented symbol declarations: 2395
+- Unique modules: 243
+- Module visits: 546
+- Unique re-export declarations: 353
+- Re-export declaration visits: 542
+- Unique symbol declarations: 2452
+- Symbol declaration visits: 5514
+- Documented symbol declarations: 2452
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -21,16 +21,16 @@ separate while shared module declarations are listed once with explicit entrypoi
 
 | Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     219 |    2293 | 100.00% |
+| `.`             | `./mod.ts`                     | terminal | stable       |     221 |    2349 | 100.00% |
 | `./app`         | `./mod.app.ts`                 | terminal | beta         |      49 |      73 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     198 |    2144 | 100.00% |
+| `./web`         | `./mod.web.ts`                 | browser  | beta         |     200 |    2200 | 100.00% |
 | `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      25 | 100.00% |
 | `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      75 | 100.00% |
 | `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
 | `./runtime`     | `./mod.runtime.ts`             | shared   | beta         |      31 |     402 | 100.00% |
 | `./terminal`    | `./mod.terminal.ts`            | terminal | beta         |      15 |     157 | 100.00% |
 | `./testing`     | `./mod.testing.ts`             | terminal | beta         |       4 |      31 | 100.00% |
-| `./layout/yoga` | `./src/layout/solvers/yoga.ts` | shared   | experimental |       1 |       3 | 100.00% |
+| `./layout/yoga` | `./src/layout/solvers/yoga.ts` | shared   | experimental |       1 |       4 | 100.00% |
 
 ## Entrypoint .
 
@@ -39,10 +39,10 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Path: `./mod.ts`
 - Runtime: terminal
 - Stability: stable
-- Modules: 219
-- Re-export declarations: 218
-- Exported symbols: 2293
-- Documented symbols: 2293
+- Modules: 221
+- Re-export declarations: 220
+- Exported symbols: 2349
+- Documented symbols: 2349
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -69,10 +69,10 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Path: `./mod.web.ts`
 - Runtime: browser
 - Stability: beta
-- Modules: 198
-- Re-export declarations: 197
-- Exported symbols: 2144
-- Documented symbols: 2144
+- Modules: 200
+- Re-export declarations: 199
+- Exported symbols: 2200
+- Documented symbols: 2200
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -176,8 +176,8 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 - Stability: experimental
 - Modules: 1
 - Re-export declarations: 0
-- Exported symbols: 3
-- Documented symbols: 3
+- Exported symbols: 4
+- Documented symbols: 4
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -253,7 +253,7 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                               | `.`, `./web`                            |          0 |      10 |         10 |
 | [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)                 | `.`, `./web`                            |          0 |      27 |         27 |
 | [`src/app/workbench_workspace_store.ts`](#src-app-workbench-workspace-store-ts)                 | `.`, `./web`                            |          0 |       6 |          6 |
-| [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)                             | `.`, `./web`                            |          0 |      18 |         18 |
+| [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)                             | `.`, `./web`                            |          0 |      19 |         19 |
 | [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                         | `.`, `./web`                            |         18 |       0 |          0 |
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                                       | `.`, `./web`                            |          0 |       2 |          2 |
 | [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                                 | `.`, `./web`                            |          0 |       4 |          4 |
@@ -317,30 +317,32 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/input_reader/types.ts`](#src-input-reader-types-ts)                                       | `./remote`                              |          0 |       5 |          5 |
 | [`src/input.ts`](#src-input-ts)                                                                 | `.`                                     |          0 |       1 |          1 |
 | [`src/keymap.ts`](#src-keymap-ts)                                                               | `.`                                     |          0 |       6 |          6 |
+| [`src/layout/capabilities.ts`](#src-layout-capabilities-ts)                                     | `.`, `./web`                            |          0 |      26 |         26 |
 | [`src/layout/engine.ts`](#src-layout-engine-ts)                                                 | `.`, `./web`                            |          0 |       6 |          6 |
 | [`src/layout/errors.ts`](#src-layout-errors-ts)                                                 | `.`, `./web`                            |          0 |       2 |          2 |
 | [`src/layout/flex_layout.ts`](#src-layout-flex-layout-ts)                                       | `.`, `./web`                            |          0 |       3 |          3 |
 | [`src/layout/grid_layout.ts`](#src-layout-grid-layout-ts)                                       | `.`, `./app`, `./web`                   |          0 |       3 |          3 |
 | [`src/layout/horizontal_layout.ts`](#src-layout-horizontal-layout-ts)                           | `.`, `./app`, `./web`                   |          0 |       1 |          1 |
 | [`src/layout/measurement.ts`](#src-layout-measurement-ts)                                       | `.`, `./web`                            |          0 |       6 |          6 |
-| [`src/layout/mod.ts`](#src-layout-mod-ts)                                                       | `.`, `./web`                            |         16 |       0 |          0 |
+| [`src/layout/mod.ts`](#src-layout-mod-ts)                                                       | `.`, `./web`                            |         18 |       0 |          0 |
 | [`src/layout/overlay.ts`](#src-layout-overlay-ts)                                               | `.`, `./web`                            |          0 |      19 |         19 |
 | [`src/layout/recipe.ts`](#src-layout-recipe-ts)                                                 | `.`, `./web`                            |          0 |      18 |         18 |
 | [`src/layout/responsive.ts`](#src-layout-responsive-ts)                                         | `.`, `./web`                            |          0 |      14 |         14 |
 | [`src/layout/solver.ts`](#src-layout-solver-ts)                                                 | `.`, `./web`                            |          0 |      13 |         13 |
 | [`src/layout/solvers/simple.ts`](#src-layout-solvers-simple-ts)                                 | `.`, `./web`                            |          0 |       3 |          3 |
-| [`src/layout/solvers/yoga.ts`](#src-layout-solvers-yoga-ts)                                     | `./layout/yoga`                         |          0 |       3 |          3 |
+| [`src/layout/solvers/yoga.ts`](#src-layout-solvers-yoga-ts)                                     | `./layout/yoga`                         |          0 |       4 |          4 |
 | [`src/layout/split_pane.ts`](#src-layout-split-pane-ts)                                         | `.`, `./app`, `./web`                   |          0 |      10 |         10 |
 | [`src/layout/style.ts`](#src-layout-style-ts)                                                   | `.`, `./web`                            |          0 |      33 |         33 |
+| [`src/layout/tiled_workspace.ts`](#src-layout-tiled-workspace-ts)                               | `.`, `./web`                            |          0 |      27 |         27 |
 | [`src/layout/types.ts`](#src-layout-types-ts)                                                   | `.`, `./web`                            |          0 |       3 |          3 |
 | [`src/layout/vertical_layout.ts`](#src-layout-vertical-layout-ts)                               | `.`, `./app`, `./web`                   |          0 |       1 |          1 |
 | [`src/layout/window_manager.ts`](#src-layout-window-manager-ts)                                 | `.`, `./web`                            |          0 |      10 |         10 |
-| [`src/markup/cascade.ts`](#src-markup-cascade-ts)                                               | `.`, `./web`                            |          0 |       7 |          7 |
+| [`src/markup/cascade.ts`](#src-markup-cascade-ts)                                               | `.`, `./web`                            |          0 |       8 |          8 |
 | [`src/markup/css.ts`](#src-markup-css-ts)                                                       | `.`, `./web`                            |          0 |      11 |         11 |
 | [`src/markup/demo_fixtures.ts`](#src-markup-demo-fixtures-ts)                                   | `.`, `./web`                            |          0 |       7 |          7 |
 | [`src/markup/html.ts`](#src-markup-html-ts)                                                     | `.`, `./web`                            |          0 |       3 |          3 |
 | [`src/markup/hydrate.ts`](#src-markup-hydrate-ts)                                               | `.`, `./web`                            |          0 |       5 |          5 |
-| [`src/markup/layout_worker.ts`](#src-markup-layout-worker-ts)                                   | `.`, `./web`                            |          0 |       6 |          6 |
+| [`src/markup/layout_worker.ts`](#src-markup-layout-worker-ts)                                   | `.`, `./web`                            |          0 |       7 |          7 |
 | [`src/markup/mod.ts`](#src-markup-mod-ts)                                                       | `.`, `./web`                            |          8 |       0 |          0 |
 | [`src/markup/support.ts`](#src-markup-support-ts)                                               | `.`, `./web`                            |          0 |       2 |          2 |
 | [`src/markup/widgets.ts`](#src-markup-widgets-ts)                                               | `.`, `./web`                            |          0 |      15 |         15 |
@@ -1987,6 +1989,7 @@ _Entrypoints: `.`, `./web`_
 | `WORKBENCH_WORKSPACE_STORAGE_VERSION`          | const     | no        | yes   |
 | `WorkbenchPanelWorkspaceState`                 | interface | yes       | yes   |
 | `WorkbenchWorkspace`                           | interface | yes       | yes   |
+| `WorkbenchWorkspaceManagedWindow`              | interface | yes       | yes   |
 | `WorkbenchWorkspaceStorage`                    | interface | yes       | yes   |
 | `WorkbenchWorkspaceWindow`                     | interface | yes       | yes   |
 | `workbenchWorkspaceWindowEntries`              | function  | no        | yes   |
@@ -2936,6 +2939,39 @@ _Entrypoints: `.`_
 | `KeymapInspection`     | interface | yes       | yes   |
 | `KeymapRegistry`       | class     | no        | yes   |
 
+### src/layout/capabilities.ts
+
+_Entrypoints: `.`, `./web`_
+
+| Symbol                                  | Kind      | Type Only | JSDoc |
+| --------------------------------------- | --------- | --------- | ----- |
+| `inspectLayoutDeclarationCompatibility` | function  | no        | yes   |
+| `inspectLayoutSolverCapabilities`       | function  | no        | yes   |
+| `inspectLayoutTreeCompatibility`        | function  | no        | yes   |
+| `knownLayoutSolverCapabilities`         | function  | no        | yes   |
+| `KnownLayoutSolverId`                   | type      | yes       | yes   |
+| `LAYOUT_CSS_PROPERTY_FIELDS`            | const     | no        | yes   |
+| `LayoutContractInvariantCapability`     | interface | yes       | yes   |
+| `LayoutContractInvariantId`             | type      | yes       | yes   |
+| `LayoutDeclarationInspection`           | interface | yes       | yes   |
+| `LayoutDiagnostic`                      | interface | yes       | yes   |
+| `LayoutDiagnosticCode`                  | type      | yes       | yes   |
+| `LayoutSolverAvailability`              | type      | yes       | yes   |
+| `LayoutSolverCapabilities`              | interface | yes       | yes   |
+| `LayoutSolverCapabilityReport`          | interface | yes       | yes   |
+| `LayoutSolverFieldSupport`              | type      | yes       | yes   |
+| `LayoutSolverStyleCapabilities`         | type      | yes       | yes   |
+| `LayoutStyleField`                      | type      | yes       | yes   |
+| `mergeLayoutDiagnostics`                | function  | no        | yes   |
+| `NORMALIZED_LAYOUT_STYLE_FIELDS`        | const     | no        | yes   |
+| `resolvedLayoutDeclarationFields`       | function  | no        | yes   |
+| `resolveLayoutSolverCapabilities`       | function  | no        | yes   |
+| `SIMPLE_LAYOUT_SOLVER_CAPABILITIES`     | const     | no        | yes   |
+| `SUPPORTED_LAYOUT_CSS_PROPERTIES`       | const     | no        | yes   |
+| `TAFFY_LAYOUT_SOLVER_CAPABILITIES`      | const     | no        | yes   |
+| `unknownLayoutSolverCapabilities`       | function  | no        | yes   |
+| `YOGA_LAYOUT_SOLVER_CAPABILITIES`       | const     | no        | yes   |
+
 ### src/layout/engine.ts
 
 _Entrypoints: `.`, `./web`_
@@ -3015,8 +3051,10 @@ _Entrypoints: `.`, `./web`_
 | `src/layout/split_pane.ts`        | star | -     |
 | `src/layout/recipe.ts`            | star | -     |
 | `src/layout/window_manager.ts`    | star | -     |
+| `src/layout/tiled_workspace.ts`   | star | -     |
 | `src/layout/overlay.ts`           | star | -     |
 | `src/layout/style.ts`             | star | -     |
+| `src/layout/capabilities.ts`      | star | -     |
 | `src/layout/solver.ts`            | star | -     |
 | `src/layout/engine.ts`            | star | -     |
 | `src/layout/measurement.ts`       | star | -     |
@@ -3130,11 +3168,12 @@ _Entrypoints: `.`, `./web`_
 
 _Entrypoints: `./layout/yoga`_
 
-| Symbol                    | Kind      | Type Only | JSDoc |
-| ------------------------- | --------- | --------- | ----- |
-| `yogaLayoutSolver`        | function  | no        | yes   |
-| `YogaLayoutSolver`        | class     | no        | yes   |
-| `YogaLayoutSolverOptions` | interface | yes       | yes   |
+| Symbol                            | Kind      | Type Only | JSDoc |
+| --------------------------------- | --------- | --------- | ----- |
+| `YOGA_LAYOUT_SOLVER_CAPABILITIES` | const     | no        | yes   |
+| `yogaLayoutSolver`                | function  | no        | yes   |
+| `YogaLayoutSolver`                | class     | no        | yes   |
+| `YogaLayoutSolverOptions`         | interface | yes       | yes   |
 
 ### src/layout/split_pane.ts
 
@@ -3193,6 +3232,40 @@ _Entrypoints: `.`, `./web`_
 | `resolveLayoutLength`        | function  | no        | yes   |
 | `ZERO_BOX_EDGES`             | const     | no        | yes   |
 
+### src/layout/tiled_workspace.ts
+
+_Entrypoints: `.`, `./web`_
+
+| Symbol                                       | Kind      | Type Only | JSDoc |
+| -------------------------------------------- | --------- | --------- | ----- |
+| `createTiledWorkspaceController`             | function  | no        | yes   |
+| `createTiledWorkspaceControllerFromSnapshot` | function  | no        | yes   |
+| `DockTiledWorkspaceOptions`                  | interface | yes       | yes   |
+| `normalizeTiledWorkspaceLayout`              | function  | no        | yes   |
+| `normalizeTiledWorkspaceSnapshot`            | function  | no        | yes   |
+| `projectTiledWorkspaceLayout`                | function  | no        | yes   |
+| `reconcileTiledWorkspaceLayout`              | function  | no        | yes   |
+| `ReconcileTiledWorkspaceOptions`             | interface | yes       | yes   |
+| `TILED_WORKSPACE_SNAPSHOT_VERSION`           | const     | no        | yes   |
+| `TiledWorkspaceController`                   | class     | no        | yes   |
+| `TiledWorkspaceControllerOptions`            | interface | yes       | yes   |
+| `TiledWorkspaceDockEdge`                     | type      | yes       | yes   |
+| `TiledWorkspaceInspection`                   | interface | yes       | yes   |
+| `TiledWorkspaceLayoutInspection`             | interface | yes       | yes   |
+| `TiledWorkspaceLayoutNode`                   | type      | yes       | yes   |
+| `TiledWorkspaceLayoutOptions`                | interface | yes       | yes   |
+| `TiledWorkspaceLayoutState`                  | interface | yes       | yes   |
+| `tiledWorkspaceMinimumSize`                  | function  | no        | yes   |
+| `TiledWorkspaceMinimumSize`                  | interface | yes       | yes   |
+| `TiledWorkspacePaneLayout`                   | interface | yes       | yes   |
+| `TiledWorkspacePaneNode`                     | interface | yes       | yes   |
+| `TiledWorkspaceSeparatorAxis`                | type      | yes       | yes   |
+| `TiledWorkspaceSeparatorLayout`              | interface | yes       | yes   |
+| `TiledWorkspaceSnapshot`                     | interface | yes       | yes   |
+| `TiledWorkspaceSplitDirection`               | type      | yes       | yes   |
+| `TiledWorkspaceSplitNode`                    | interface | yes       | yes   |
+| `TiledWorkspaceWindow`                       | interface | yes       | yes   |
+
 ### src/layout/types.ts
 
 _Entrypoints: `.`, `./web`_
@@ -3232,15 +3305,16 @@ _Entrypoints: `.`, `./web`_
 
 _Entrypoints: `.`, `./web`_
 
-| Symbol                   | Kind      | Type Only | JSDoc |
-| ------------------------ | --------- | --------- | ----- |
-| `applyCssCascade`        | function  | no        | yes   |
-| `ApplyCssCascadeOptions` | interface | yes       | yes   |
-| `matchesCssMedia`        | function  | no        | yes   |
-| `matchesCssSelector`     | function  | no        | yes   |
-| `resolveCssVariables`    | function  | no        | yes   |
-| `TuiCssNodeState`        | type      | yes       | yes   |
-| `TuiCssViewport`         | interface | yes       | yes   |
+| Symbol                     | Kind      | Type Only | JSDoc |
+| -------------------------- | --------- | --------- | ----- |
+| `AppliedTuiCssDeclaration` | interface | yes       | yes   |
+| `applyCssCascade`          | function  | no        | yes   |
+| `ApplyCssCascadeOptions`   | interface | yes       | yes   |
+| `matchesCssMedia`          | function  | no        | yes   |
+| `matchesCssSelector`       | function  | no        | yes   |
+| `resolveCssVariables`      | function  | no        | yes   |
+| `TuiCssNodeState`          | type      | yes       | yes   |
+| `TuiCssViewport`           | interface | yes       | yes   |
 
 ### src/markup/css.ts
 
@@ -3303,6 +3377,7 @@ _Entrypoints: `.`, `./web`_
 | Symbol                             | Kind      | Type Only | JSDoc |
 | ---------------------------------- | --------- | --------- | ----- |
 | `createMarkupLayoutWorkerHandler`  | function  | no        | yes   |
+| `MarkupLayoutWorkerCascadeOptions` | type      | yes       | yes   |
 | `MarkupLayoutWorkerHandler`        | type      | yes       | yes   |
 | `MarkupLayoutWorkerHandlerOptions` | interface | yes       | yes   |
 | `MarkupLayoutWorkerPayload`        | interface | yes       | yes   |

@@ -1,7 +1,8 @@
 // Copyright 2023 Im-Beast. MIT license.
 import Yoga from "yoga-layout";
 import type { Rectangle } from "../../types.ts";
-import { insetRectangleByEdges } from "../../utils/rectangles.ts";
+import { insetRectangleByEdges, normalizeRectangle } from "../../utils/rectangles.ts";
+import { YOGA_LAYOUT_SOLVER_CAPABILITIES as yogaLayoutSolverCapabilities } from "../capabilities.ts";
 import { measureTerminalTextIntrinsic } from "../measurement.ts";
 import type { ComputedLayoutStyle, LayoutAlignItems, LayoutJustifyContent, LayoutLengthValue } from "../style.ts";
 import {
@@ -20,9 +21,13 @@ export interface YogaLayoutSolverOptions {
   measureText?: (text: string, width: number) => { width: number; height: number };
 }
 
+/** Dependency-free capability profile published by the optional Yoga adapter. */
+export const YOGA_LAYOUT_SOLVER_CAPABILITIES = yogaLayoutSolverCapabilities;
+
 /** Optional Yoga-backed Flexbox solver for CSS-compatible TUI layout. */
 export class YogaLayoutSolver implements LayoutSolver {
   readonly id = "yoga";
+  readonly capabilities = YOGA_LAYOUT_SOLVER_CAPABILITIES;
   readonly #measureText: (text: string, width: number, style: ComputedLayoutStyle) => { width: number; height: number };
 
   constructor(options: YogaLayoutSolverOptions = {}) {
@@ -34,9 +39,10 @@ export class YogaLayoutSolver implements LayoutSolver {
   }
 
   solve(input: LayoutSolverInput): LayoutSolverResult {
+    const bounds = normalizeRectangle(input.bounds);
     const rootYogaNode = this.#createYogaNode(input.root);
-    rootYogaNode.calculateLayout(input.bounds.width, input.bounds.height, Yoga.DIRECTION_LTR);
-    const root = this.#toComputedBox(input.root, rootYogaNode, input.bounds);
+    rootYogaNode.calculateLayout(bounds.width, bounds.height, Yoga.DIRECTION_LTR);
+    const root = this.#toComputedBox(input.root, rootYogaNode, bounds);
     rootYogaNode.freeRecursive();
     const boxes = flattenComputedLayoutBoxes(root);
     return {
@@ -74,6 +80,7 @@ export class YogaLayoutSolver implements LayoutSolver {
     yogaNode: YogaNode,
     rootBounds: Rectangle,
     parentOffset: { column: number; row: number } = { column: rootBounds.column, row: rootBounds.row },
+    ancestorDisplayed = true,
   ): ComputedLayoutBox {
     const layout = yogaNode.getComputedLayout();
     const rect = {
@@ -83,6 +90,8 @@ export class YogaLayoutSolver implements LayoutSolver {
       height: Math.max(0, Math.round(layout.height)),
     };
     const contentRect = insetRectangleByEdges(rect, node.style.border, node.style.padding);
+    const displayed = ancestorDisplayed && node.style.display !== "none";
+    const visible = displayed && node.style.visibility === "visible";
     const children: ComputedLayoutBox[] = [];
     let scrollWidth = contentRect.width;
     let scrollHeight = contentRect.height;
@@ -90,12 +99,17 @@ export class YogaLayoutSolver implements LayoutSolver {
     for (let index = 0; index < orderedChildren.length; index += 1) {
       const child = orderedChildren[index]!;
       const childYogaNode = yogaNode.getChild(index) as YogaNode;
-      const childBox = this.#toComputedBox(child, childYogaNode, rootBounds, { column: rect.column, row: rect.row });
+      const childBox = this.#toComputedBox(
+        child,
+        childYogaNode,
+        rootBounds,
+        { column: rect.column, row: rect.row },
+        displayed,
+      );
       children.push(childBox);
       scrollWidth = Math.max(scrollWidth, childBox.rect.column + childBox.rect.width - contentRect.column);
       scrollHeight = Math.max(scrollHeight, childBox.rect.row + childBox.rect.height - contentRect.row);
     }
-    const visible = node.style.visibility === "visible" && node.style.display !== "none";
     return {
       id: node.id,
       tag: node.tag,

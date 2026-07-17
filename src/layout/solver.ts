@@ -3,6 +3,7 @@ import type { WidgetHitRegion } from "../components/interaction.ts";
 import type { Rectangle } from "../types.ts";
 import { isAsciiWhitespaceCharacter } from "../utils/formatting.ts";
 import { inspectViewportOverflow, type ViewportOverflowInspection } from "../viewport.ts";
+import type { LayoutSolverCapabilities } from "./capabilities.ts";
 import {
   type BoxEdges,
   cloneComputedLayoutStyle,
@@ -81,6 +82,7 @@ export interface LayoutSolverResult {
 /** Public interface implemented by pluggable layout solvers. */
 export interface LayoutSolver {
   readonly id: string;
+  readonly capabilities?: LayoutSolverCapabilities;
   supports(node: LayoutNode): boolean;
   solve(input: LayoutSolverInput): LayoutSolverResult;
 }

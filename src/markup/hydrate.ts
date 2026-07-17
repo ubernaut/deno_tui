@@ -1,8 +1,17 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
+import {
+  inspectLayoutDeclarationCompatibility,
+  LAYOUT_CSS_PROPERTY_FIELDS,
+  type LayoutDiagnostic,
+  type LayoutStyleField,
+  mergeLayoutDiagnostics,
+  resolvedLayoutDeclarationFields,
+  resolveLayoutSolverCapabilities,
+} from "../layout/capabilities.ts";
 import { createLayoutEngine } from "../layout/engine.ts";
-import { cloneLayoutNode, type LayoutSolver, type LayoutSolverResult } from "../layout/solver.ts";
-import { applyCssCascade, type ApplyCssCascadeOptions } from "./cascade.ts";
+import { cloneLayoutNode, type LayoutSolver, type LayoutSolverResult, walkLayoutNodes } from "../layout/solver.ts";
+import { type AppliedTuiCssDeclaration, applyCssCascade, type ApplyCssCascadeOptions } from "./cascade.ts";
 import {
   parseCssStylesheet,
   type TuiCssDeclaration,
@@ -37,6 +46,7 @@ export interface MarkupLayoutResult {
   styledRoot: TuiMarkupDocument["root"];
   layout: LayoutSolverResult;
   widgets: MarkupWidgetHydration;
+  diagnostics: LayoutDiagnostic[];
 }
 
 /** Bounded cache for parsed markup documents and parsed CSS stylesheets. */
@@ -101,21 +111,73 @@ export function createMarkupLayout(options: MarkupLayoutOptions): MarkupLayoutRe
     : parseTuiMarkup(options.markup, options.parse);
   const stylesheet = options.stylesheet ??
     (cache ? cache.stylesheet(options.css ?? "") : parseCssStylesheet(options.css ?? ""));
+  const engineDiagnostics: LayoutDiagnostic[] = [];
+  const appliedDeclarations: AppliedTuiCssDeclaration[] = [];
+  const engine = createLayoutEngine({
+    solver: options.solver,
+    onDiagnostic: (diagnostic) => engineDiagnostics.push(diagnostic),
+  });
+  const capabilities = resolveLayoutSolverCapabilities(engine.solver);
+  const onDeclaration = options.cascade?.onDeclaration;
   const styledRoot = applyCssCascade(document.root, stylesheet, {
     ...(options.cascade ?? {}),
     viewport: options.cascade?.viewport ?? {
       width: options.bounds.width,
       height: options.bounds.height,
     },
+    onDeclaration: (declaration) => {
+      onDeclaration?.(declaration);
+      appliedDeclarations.push(declaration);
+    },
   });
-  const layout = createLayoutEngine({ solver: options.solver }).layout({
+  const declarationDiagnostics = inspectWinningDeclarations(appliedDeclarations, styledRoot, capabilities);
+  const layout = engine.layout({
     root: styledRoot,
     bounds: options.bounds,
   });
   const widgets = options.widgets === false
     ? new MarkupWidgetHydration([])
     : hydrateMarkupWidgets(styledRoot, { layout, ...(options.widgets ?? {}) });
-  return { document, styledRoot, layout, widgets };
+  const diagnostics = mergeLayoutDiagnostics(declarationDiagnostics, engineDiagnostics);
+  return { document, styledRoot, layout, widgets, diagnostics };
+}
+
+function inspectWinningDeclarations(
+  declarations: readonly AppliedTuiCssDeclaration[],
+  styledRoot: TuiMarkupDocument["root"],
+  capabilities: ReturnType<typeof resolveLayoutSolverCapabilities>,
+): LayoutDiagnostic[] {
+  const ownerByNodeAndField = new Map<string, number>();
+  for (let index = 0; index < declarations.length; index += 1) {
+    const declaration = declarations[index]!;
+    const fields = resolvedLayoutDeclarationFields(declaration.property, declaration.value);
+    if (!fields) continue;
+    for (const field of fields) ownerByNodeAndField.set(`${declaration.nodeId}\u001f${field}`, index);
+  }
+
+  const fieldsByDeclaration = new Map<number, LayoutStyleField[]>();
+  for (const [key, index] of ownerByNodeAndField) {
+    const field = key.slice(key.lastIndexOf("\u001f") + 1) as LayoutStyleField;
+    const fields = fieldsByDeclaration.get(index) ?? [];
+    fields.push(field);
+    fieldsByDeclaration.set(index, fields);
+  }
+
+  const stylesById = new Map<string, TuiMarkupDocument["root"]["style"]>();
+  walkLayoutNodes(styledRoot, (node) => stylesById.set(node.id, node.style));
+
+  const diagnostics: LayoutDiagnostic[] = [];
+  for (let index = 0; index < declarations.length; index += 1) {
+    const declaration = declarations[index]!;
+    const property = declaration.property.trim().toLowerCase();
+    const mapped = LAYOUT_CSS_PROPERTY_FIELDS[property as keyof typeof LAYOUT_CSS_PROPERTY_FIELDS];
+    diagnostics.push(...inspectLayoutDeclarationCompatibility(capabilities, {
+      ...declaration,
+      fields: mapped ? fieldsByDeclaration.get(index) ?? [] : undefined,
+      style: stylesById.get(declaration.nodeId),
+    }));
+  }
+  return diagnostics;
 }
 
 function markupCacheKey(markup: string, options: TuiMarkupParseOptions | undefined): string {

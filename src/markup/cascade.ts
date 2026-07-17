@@ -23,6 +23,16 @@ export interface ApplyCssCascadeOptions {
   states?: Record<string, readonly TuiCssNodeState[]>;
   baseStyle?: ComputedLayoutStyle;
   viewport?: TuiCssViewport;
+  onDeclaration?: (declaration: AppliedTuiCssDeclaration) => void;
+}
+
+/** One resolved declaration applied to a concrete node by the CSS-like cascade. */
+export interface AppliedTuiCssDeclaration {
+  nodeId: string;
+  property: string;
+  value: string;
+  source: "stylesheet" | "inline";
+  selector?: string;
 }
 
 /** Terminal-cell viewport dimensions used by CSS-like media rules. */
@@ -35,6 +45,8 @@ interface MatchedRule {
   declarations: TuiCssDeclaration[];
   specificity: number;
   order: number;
+  selector?: string;
+  source: "stylesheet" | "inline";
 }
 /** Applies CSS-like rules and inline styles to a cloned layout tree. */
 export function applyCssCascade(
@@ -113,15 +125,27 @@ function applyNode(
         declarations: rule.declarations,
         specificity: rule.specificity,
         order: rule.order,
+        selector: rule.selector,
+        source: "stylesheet",
       });
     }
   }
   matches.sort((left, right) => left.specificity - right.specificity || left.order - right.order);
 
-  next.style = applyMatchedRules(style, matches);
+  next.style = applyMatchedRules(style, matches, node.id, options.onDeclaration);
   const inline = node.attributes.style ? parseCssDeclarations(node.attributes.style) : [];
   if (inline.length > 0) {
-    next.style = applyMatchedRules(next.style, [{ declarations: inline, specificity: 1_000, order: 1_000_000 }]);
+    next.style = applyMatchedRules(
+      next.style,
+      [{
+        declarations: inline,
+        specificity: 1_000,
+        order: 1_000_000,
+        source: "inline",
+      }],
+      node.id,
+      options.onDeclaration,
+    );
   }
 
   const childAncestors = appendAncestor(ancestors, node);
@@ -147,11 +171,23 @@ export function matchesCssMedia(
   });
 }
 
-function applyMatchedRules(style: ComputedLayoutStyle, matches: readonly MatchedRule[]): ComputedLayoutStyle {
+function applyMatchedRules(
+  style: ComputedLayoutStyle,
+  matches: readonly MatchedRule[],
+  nodeId: string,
+  onDeclaration: ApplyCssCascadeOptions["onDeclaration"],
+): ComputedLayoutStyle {
   let next = style;
   for (const match of matches) {
     for (const declaration of match.declarations) {
       const value = resolveCssVariables(declaration.value, next.variables);
+      onDeclaration?.({
+        nodeId,
+        property: declaration.property,
+        value,
+        source: match.source,
+        selector: match.selector,
+      });
       next = applyLayoutDeclaration(next, declaration.property, value);
     }
   }

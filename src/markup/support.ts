@@ -1,4 +1,9 @@
 // Copyright 2023 Im-Beast. MIT license.
+import {
+  inspectLayoutSolverCapabilities,
+  type LayoutSolverCapabilityReport,
+  SUPPORTED_LAYOUT_CSS_PROPERTIES,
+} from "../layout/capabilities.ts";
 
 /** Serializable report describing the supported HTML/CSS-style TUI authoring subset. */
 export interface TuiCssSupportReport {
@@ -10,82 +15,9 @@ export interface TuiCssSupportReport {
   lengthUnits: string[];
   markupTags: string[];
   hydratedWidgetTags: string[];
+  solverCapabilities: LayoutSolverCapabilityReport;
   unsupported: string[];
 }
-
-const supportedProperties = [
-  "display",
-  "position",
-  "flex-direction",
-  "flex-wrap",
-  "flex-flow",
-  "flex-grow",
-  "flex-shrink",
-  "flex-basis",
-  "flex",
-  "order",
-  "align-items",
-  "justify-content",
-  "align-self",
-  "justify-self",
-  "place-self",
-  "grid-template-columns",
-  "grid-template-rows",
-  "grid-template-areas",
-  "grid-auto-columns",
-  "grid-auto-rows",
-  "grid-auto-flow",
-  "grid-column",
-  "grid-row",
-  "grid-area",
-  "grid-column-start",
-  "grid-column-end",
-  "grid-row-start",
-  "grid-row-end",
-  "width",
-  "height",
-  "min-width",
-  "min-height",
-  "max-width",
-  "max-height",
-  "inset",
-  "top",
-  "right",
-  "bottom",
-  "left",
-  "margin",
-  "margin-top",
-  "margin-right",
-  "margin-bottom",
-  "margin-left",
-  "padding",
-  "padding-top",
-  "padding-right",
-  "padding-bottom",
-  "padding-left",
-  "border",
-  "border-width",
-  "border-top",
-  "border-right",
-  "border-bottom",
-  "border-left",
-  "border-style",
-  "border-color",
-  "gap",
-  "row-gap",
-  "column-gap",
-  "overflow",
-  "overflow-x",
-  "overflow-y",
-  "z-index",
-  "color",
-  "background",
-  "background-color",
-  "visibility",
-  "white-space",
-  "overflow-wrap",
-  "word-wrap",
-] as const;
 
 const supportedHydratedWidgetTags = [
   "button",
@@ -131,7 +63,7 @@ export function inspectTuiCssSupport(): TuiCssSupportReport {
     ],
     pseudoStates: ["active", "disabled", "focus", "hover"],
     mediaFeatures: ["min-width", "max-width", "min-height", "max-height"],
-    properties: [...supportedProperties],
+    properties: [...SUPPORTED_LAYOUT_CSS_PROPERTIES],
     lengthUnits: ["cells", "%", "fr", "auto"],
     markupTags: [
       "window",
@@ -160,6 +92,7 @@ export function inspectTuiCssSupport(): TuiCssSupportReport {
       "three-ascii",
     ],
     hydratedWidgetTags: [...supportedHydratedWidgetTags],
+    solverCapabilities: inspectLayoutSolverCapabilities(),
     unsupported: [
       "browser CSS parser parity",
       "em/rem/vh/vw/calc/container-query units",
@@ -169,7 +102,7 @@ export function inspectTuiCssSupport(): TuiCssSupportReport {
       "shadows, filters, gradients, and compositing effects",
       "advanced nth-child an+b formulas, complex pseudo classes, and pseudo elements",
       "named grid lines",
-      "Yoga solver named grid-area parity",
+      "Yoga solver CSS Grid support",
       "subgrid",
       "dense browser Grid packing parity",
       "full browser intrinsic sizing and baseline alignment",

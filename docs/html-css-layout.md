@@ -24,6 +24,10 @@ Implemented pieces:
 - The default `simpleLayoutSolver()` is dependency-free and supports practical block/flex/grid layout, including wrapped
   flex rows/columns, a CSS Grid subset, and absolute-positioned children for terminal-cell containers.
 - `./layout/yoga` exposes an experimental Yoga-backed Flexbox solver.
+- `inspectLayoutSolverCapabilities()` reports every normalized style field and frozen invariant separately for Simple,
+  Yoga, and the planned-but-unavailable Taffy adapter.
+- `createMarkupLayout()` returns deterministic warnings for matched unknown or invalid declarations, selected-solver
+  omissions, known partial cases, and semantic fallbacks.
 - `examples/html_css_layout.ts` reports the computed tree through the simple solver or Yoga.
 
 Not implemented yet:
@@ -120,8 +124,8 @@ Responsive rules use terminal-cell dimensions:
 CSS Grid support is intentionally a terminal-cell subset. The default solver supports explicit tracks, `repeat(n, ...)`,
 `fr` track distribution, `gap`, `grid-auto-flow: row | column`, implicit auto tracks, `grid-column`/`grid-row`
 placements, and `grid-column-start`/`grid-column-end`/`grid-row-start`/`grid-row-end` longhands with numeric lines or
-`span`. Grid items can also use `align-self`, `justify-self`, or `place-self` to align explicit-size boxes inside a
-larger grid track.
+`span`. It also supports rectangular `grid-template-areas` plus per-item `grid-area` names. Grid items can use
+`align-self`, `justify-self`, or `place-self` to align explicit-size boxes inside a larger grid track.
 
 ```css
 #main {
@@ -193,9 +197,9 @@ solver for the shared flex subset covered by fixtures:
 - terminal-cell rounding into `ComputedLayoutBox.rect`
 - shared overflow inspection on solved boxes
 
-The same capability list is available at runtime with `inspectTuiCssSupport()`, which returns supported display modes,
-selectors, pseudo states, media features, CSS properties, markup tags, hydrated widget tags, and explicit unsupported
-items.
+Authoring support is available at runtime with `inspectTuiCssSupport()`, which returns selectors, pseudo states, media
+features, CSS properties, markup tags, hydrated widget tags, explicit unsupported items, and the solver capability
+report. Call `inspectLayoutSolverCapabilities()` directly when only backend data is needed.
 
 Yoga is not a general replacement for the default solver. These remain intentionally unsupported or solver-specific:
 
@@ -203,11 +207,48 @@ Yoga is not a general replacement for the default solver. These remain intention
 - browser CSS parsing: this project still owns the CSS-like parser and cascade.
 - browser layout units such as `em`, `rem`, `vh`, `vw`, `calc()`, and container queries.
 - full browser intrinsic sizing, text layout, min-content/max-content, and baseline alignment.
-- named grid lines, grid template areas, subgrid, and dense browser Grid packing.
+- Yoga does not support CSS Grid, including named lines or template areas; use the Simple solver for the supported Grid
+  subset. Named lines, subgrid, and dense browser Grid packing are unsupported by every current backend.
 - paint/compositing features such as transforms, shadows, filters, gradients, transitions, and animations.
 - exact browser flex edge cases involving margins, intrinsic basis calculation, and sub-cell rounding.
 
 The contract to depend on is the normalized layout output, not browser pixel parity.
+
+### Solver Capability Contract And Diagnostics
+
+`inspectLayoutSolverCapabilities()` is serializable and exhaustive. Its `normalizedStyleFields` list has one entry for
+every `ComputedLayoutStyle` field, and every solver profile classifies each field as `supported`, `partial`, `metadata`,
+`outside-solver`, `unsupported`, or `unknown`. It also records support for cell rounding, overflow inspection, intrinsic
+measurement, hidden nodes, absolute children, and min/max constraints.
+
+```ts
+import { inspectLayoutSolverCapabilities } from "jsr:@ubernaut/deno-tui";
+
+const report = inspectLayoutSolverCapabilities();
+const yoga = report.solvers.find((solver) => solver.solverId === "yoga");
+
+console.log(yoga?.style.gridTemplateAreas); // "unsupported"
+console.log(yoga?.invariants["intrinsic-measurement"]); // partial, with details
+```
+
+The markup path, and `LayoutEngine` when its optional diagnostic callback is supplied, make these current differences
+explicit rather than silently normalizing them away:
+
+- Input bounds are normalized to integer terminal cells. Simple floors resolved lengths while Yoga rounds its computed
+  child edges and sizes.
+- Simple omits non-root `display:none` subtrees; Yoga retains zero-sized invisible subtrees without hit regions.
+- Simple honors `LayoutNode.intrinsic`; Yoga currently measures text leaves or a supplied callback.
+- Simple may clip a minimum to its allocation; Yoga preserves the minimum and allows overflow.
+- Simple's dual-edge absolute auto sizing remains solver-specific; Yoga follows its Flexbox inset behavior.
+- Taffy is listed as `planned`, with every field unsupported until the L2 adapter spike succeeds.
+
+`createMarkupLayout()` exposes warnings in `result.diagnostics`. Matched unknown properties and values outside the
+documented terminal-cell grammar are reported as `unsupported-declaration`; fields ignored by a selected solver use
+`unsupported-by-solver`; diagnosed partial behavior uses `partial-solver-support`; and Yoga's Block/Grid-to-column-Flex
+behavior uses `solver-fallback`. Solver-specific warnings follow the winning declaration for each normalized field and
+preserve stylesheet/inline provenance. Solving continues for backward compatibility. There is no implicit fallback from
+one solver instance to another: a solver whose `supports()` method returns false still raises
+`LayoutSolverUnsupportedError`.
 
 ## Supported Markup
 
@@ -315,6 +356,7 @@ Properties:
 - `flex-shrink`
 - `flex-basis`
 - `flex`
+- `order`
 - `align-items`
 - `justify-content`
 - `align-self`
@@ -322,11 +364,13 @@ Properties:
 - `place-self`
 - `grid-template-columns`
 - `grid-template-rows`
+- `grid-template-areas`
 - `grid-auto-columns`
 - `grid-auto-rows`
 - `grid-auto-flow`
 - `grid-column`
 - `grid-row`
+- `grid-area`
 - `grid-column-start`, `grid-column-end`
 - `grid-row-start`, `grid-row-end`
 - `width`, `height`
@@ -339,6 +383,7 @@ Properties:
 - `color`, `background`, `background-color`, `border-color`, `border-style`
 - `z-index`
 - `visibility`
+- `white-space`, `overflow-wrap`, `word-wrap`
 - custom variables beginning with `--`
 
 Unsupported for now:
@@ -347,12 +392,12 @@ Unsupported for now:
 - transforms
 - animations/transitions
 - browser layout units such as `em`, `rem`, `vh`, and `vw`
-- named grid lines, `grid-template-areas`, dense packing, subgrid, and full browser Grid behavior
+- named grid lines, dense packing, subgrid, and full browser Grid behavior
 - complex pseudo classes and pseudo elements
 - browser paint effects such as shadows, filters, and gradients
 
-Use `inspectTuiCssSupport()` when documentation, demos, or authoring tools need the canonical supported subset without
-scraping prose.
+Use `inspectTuiCssSupport()` when documentation, demos, or authoring tools need the canonical authoring subset plus the
+per-backend matrix without scraping prose.
 
 ## Layout Output
 
@@ -362,6 +407,7 @@ scraping prose.
 - `styledRoot`: cloned tree after cascade.
 - `layout`: solver result with `root`, flattened `boxes`, `byId`, `contentWidth`, and `contentHeight`.
 - `widgets`: hydrated widget controllers and dispatch helpers.
+- `diagnostics`: deterministic selected-solver and declaration warnings suitable for tools, workers, and tests.
 
 Each `ComputedLayoutBox` includes:
 
