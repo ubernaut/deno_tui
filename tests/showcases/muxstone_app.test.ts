@@ -14,6 +14,7 @@ import {
   muxstoneMetaballsMayAdvance,
   type MuxstonePointerInputSource,
   muxstoneQuitLayout,
+  muxstoneScpLayout,
   projectMuxstoneTerminalBar,
 } from "../../examples/showcases/muxstone/app.ts";
 import {
@@ -2053,7 +2054,7 @@ Deno.test("Muxstone network panel lists hosts and tailnet devices, opens SSH, an
 Deno.test("Muxstone paste of a local file path onto an SSH shell offers and runs scp", async () => {
   const initial = session("scp-shell", "scp shell", 0);
   const client = new FakeMuxstoneClient([initial]);
-  const scpCalls: Array<{ local: string; target: string }> = [];
+  const scpCalls: Array<{ local: string; target: string; password: string }> = [];
   const controller = await createMuxstoneController({
     client,
     initialSessions: [initial],
@@ -2063,8 +2064,8 @@ Deno.test("Muxstone paste of a local file path onto an SSH shell offers and runs
     tailnetPollIntervalMs: 300_000,
     statFile: (path) => Promise.resolve(path === "/tmp/report.pdf"),
     scpCwdTimeoutMs: 60,
-    scpRunner: (local, target) => {
-      scpCalls.push({ local, target });
+    scpRunner: (local, target, password) => {
+      scpCalls.push({ local, target, password });
       return Promise.resolve({ ok: true });
     },
   });
@@ -2085,14 +2086,20 @@ Deno.test("Muxstone paste of a local file path onto an SSH shell offers and runs
     harness.app.tui.emit("paste", { key: "paste", text: "/tmp/report.pdf", buffer: new Uint8Array() });
     await waitForCondition(() => controller.pendingScp.peek() !== undefined, 2_000);
     assertEquals(controller.pendingScp.peek()!.target, "studio.tail.net");
+    // A typed password fills the masked field and reaches the runner.
+    await harness.pilot.press("h");
+    await harness.pilot.press("i");
+    assertEquals(controller.pendingScp.peek()!.password, "hi");
     await harness.pilot.press("return");
     await waitForCondition(() => scpCalls.length === 1, 2_000);
-    assertEquals(scpCalls[0], { local: "/tmp/report.pdf", target: "studio.tail.net:" });
+    assertEquals(scpCalls[0], { local: "/tmp/report.pdf", target: "studio.tail.net:", password: "hi" });
     assertEquals(controller.pendingScp.peek(), undefined);
 
+    // The "Paste path" button forwards the literal text and skips scp.
     harness.app.tui.emit("paste", { key: "paste", text: "/tmp/report.pdf", buffer: new Uint8Array() });
     await waitForCondition(() => controller.pendingScp.peek() !== undefined, 2_000);
-    await harness.pilot.press("p");
+    const pasteRect = muxstoneScpLayout(mounted.windowProjection.peek().bounds).pasteRect;
+    await harness.pilot.click(pasteRect.column + 1, pasteRect.row);
     await mounted.whenIdle();
     assertEquals(controller.pendingScp.peek(), undefined);
     assertEquals(client.inputs.at(-1), { sessionId: initial.id, data: "/tmp/report.pdf" });
@@ -2115,7 +2122,7 @@ Deno.test("Muxstone paste of a local file path onto an SSH shell offers and runs
 Deno.test("Muxstone scp capture runs pwd in the shell and targets the captured directory", async () => {
   const initial = session("cwd-shell", "cwd shell", 0, "ssh studio.tail.net");
   const client = new FakeMuxstoneClient([initial]);
-  const scpCalls: Array<{ local: string; target: string }> = [];
+  const scpCalls: Array<{ local: string; target: string; password: string }> = [];
   const controller = await createMuxstoneController({
     client,
     initialSessions: [initial],
@@ -2125,8 +2132,8 @@ Deno.test("Muxstone scp capture runs pwd in the shell and targets the captured d
     tailnetPollIntervalMs: 300_000,
     statFile: () => Promise.resolve(true),
     scpCwdTimeoutMs: 2_000,
-    scpRunner: (local, target) => {
-      scpCalls.push({ local, target });
+    scpRunner: (local, target, password) => {
+      scpCalls.push({ local, target, password });
       return Promise.resolve({ ok: true });
     },
   });
@@ -2164,7 +2171,11 @@ Deno.test("Muxstone scp capture runs pwd in the shell and targets the captured d
 
     await harness.pilot.press("return");
     await waitForCondition(() => scpCalls.length === 1, 2_000);
-    assertEquals(scpCalls[0], { local: "/tmp/report.pdf", target: "studio.tail.net:/home/cos/projects/" });
+    assertEquals(scpCalls[0], {
+      local: "/tmp/report.pdf",
+      target: "studio.tail.net:/home/cos/projects/",
+      password: "",
+    });
   } finally {
     harness.destroy();
     await controller.dispose();

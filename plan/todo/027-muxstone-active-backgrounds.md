@@ -60,3 +60,4 @@ Cross-cutting rules:
 | BG-006 | Selection UI and docs/changelog sync | done for prefix `b` cycle + status feedback + changelog; a Theme-menu background picker remains open |
 | BG-007 | Vaporwave/outrun background (scanline sun rise/set cycle, driving grid, pointer parallax, block-glyph style) | done (`vaporwave_background.ts`, tested) |
 | BG-008 | Circuit window integration: keep-out routing around windows, staggered re-route on window move, border taps with vias, active-window emphasis (brighter + 2× pulses) | done (`circuit_background.ts`, tested) |
+| BG-009 | Skull machine background (comic biomech skull recreation: amber mouse-tracking eyes with seeded blinks, pulsating tube tangle, breathing shading) | in progress (`skull_background.ts`) |

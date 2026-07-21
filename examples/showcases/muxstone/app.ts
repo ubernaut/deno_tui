@@ -62,6 +62,7 @@ import { MuxstoneBiomechField } from "./biomech_background.ts";
 import { MuxstoneCircuitField } from "./circuit_background.ts";
 import { MuxstoneJungleField } from "./jungle_background.ts";
 import { MuxstoneMatrixRainField } from "./matrix_background.ts";
+import { MuxstoneSkullField } from "./skull_background.ts";
 import { MuxstoneVaporwaveField } from "./vaporwave_background.ts";
 import {
   MUXSTONE_METABALL_FRAME_INTERVAL_MS,
@@ -398,6 +399,8 @@ export function mountMuxstoneDesktop(
         ? new MuxstoneBiomechField()
         : id === "vaporwave"
         ? new MuxstoneVaporwaveField()
+        : id === "skull"
+        ? new MuxstoneSkullField()
         : new MuxstoneJungleField();
       backgroundFields.set(id, field);
     }
@@ -1447,13 +1450,18 @@ export function mountMuxstoneDesktop(
       return;
     }
     if (controller.pendingScp.peek()) {
-      if (event.key === "return" || event.key.toLowerCase() === "s") {
+      // The modal hosts a password field, so printable keys type into it;
+      // only Enter/Escape/Backspace act. "Paste path" stays on its button.
+      if (event.key === "return") {
         void controller.confirmScpTransfer();
-      } else if (event.key.toLowerCase() === "p") {
-        const text = controller.cancelScpTransfer(true);
-        if (text) await forwardTerminalInput(new TextEncoder().encode(text));
-      } else if (event.key === "escape" || event.key.toLowerCase() === "c") {
+      } else if (event.key === "escape") {
         controller.cancelScpTransfer(false);
+      } else if (event.key === "backspace") {
+        controller.backspaceScpPassword();
+      } else if (event.key === "space") {
+        controller.appendScpPassword(" ");
+      } else if (!event.ctrl && !event.meta && event.key.length === 1) {
+        controller.appendScpPassword(event.shift ? event.key.toUpperCase() : event.key);
       }
       return;
     }
@@ -2536,7 +2544,7 @@ interface MuxstoneScpLayout {
 /** Layout for the paste-to-scp modal; exported for deterministic pointer tests. */
 export function muxstoneScpLayout(bounds: Rectangle): MuxstoneScpLayout {
   const width = Math.min(84, Math.max(44, bounds.width - 6));
-  const rect = centeredRect(bounds, width, Math.min(8, Math.max(5, bounds.height - 2)));
+  const rect = centeredRect(bounds, width, Math.min(9, Math.max(6, bounds.height - 2)));
   const buttonRow = rect.row + Math.max(1, rect.height - 2);
   return {
     rect,
@@ -2572,13 +2580,20 @@ function paintScpModal(
   });
   painter.write(
     rect.column + 2,
-    rect.row + Math.min(3, Math.max(1, rect.height - 2)),
+    rect.row + 2,
     fitText(`${request.localPath} → ${muxstoneScpDestinationLabel(request)}`, rect.width - 4),
     {
       foreground: theme.text,
       background: theme.surfaceStrong,
     },
   );
+  const passwordRow = rect.row + Math.max(3, rect.height - 3);
+  const masked = request.password.length > 0 ? "•".repeat(Math.min(request.password.length, rect.width - 16)) : "";
+  const passwordHint = masked || "(key/agent auth)";
+  painter.write(rect.column + 2, passwordRow, fitText(`Password: ${passwordHint}`, rect.width - 4), {
+    foreground: request.password.length > 0 ? theme.text : theme.muted,
+    background: theme.surfaceStrong,
+  });
   painter.write(cancelRect.column, cancelRect.row, "[ Cancel ]", {
     foreground: theme.text,
     background: theme.surface,

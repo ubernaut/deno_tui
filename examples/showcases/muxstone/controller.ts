@@ -134,12 +134,53 @@ async function defaultMuxstoneStatFile(path: string): Promise<boolean> {
 async function defaultMuxstoneScpRunner(
   localPath: string,
   remoteSpec: string,
+  password: string,
 ): Promise<{ ok: boolean; detail?: string }> {
+  const baseArgs = ["-q", "-o", "StrictHostKeyChecking=accept-new"];
+  // Without a password, let ssh use the agent/keys and never prompt.
+  if (!password) {
+    return await runScp([...baseArgs, "-o", "BatchMode=yes", "--", localPath, remoteSpec], {});
+  }
+  // scp reads passwords from a tty or SSH_ASKPASS, never stdin. Provide a
+  // one-shot askpass helper that echoes the password from an env var passed
+  // only to this child; the temp script is 0700 and removed immediately.
+  const askpass = await Deno.makeTempFile({ prefix: "muxstone-askpass-" });
+  try {
+    await Deno.writeTextFile(askpass, '#!/bin/sh\nprintf "%s\\n" "$MUXSTONE_SCP_PASSWORD"\n');
+    await Deno.chmod(askpass, 0o700);
+    return await runScp(
+      [
+        ...baseArgs,
+        "-o",
+        "NumberOfPasswordPrompts=1",
+        "-o",
+        "PreferredAuthentications=password,keyboard-interactive",
+        "--",
+        localPath,
+        remoteSpec,
+      ],
+      {
+        MUXSTONE_SCP_PASSWORD: password,
+        SSH_ASKPASS: askpass,
+        SSH_ASKPASS_REQUIRE: "force",
+        DISPLAY: Deno.env.get("DISPLAY") ?? ":0",
+      },
+    );
+  } finally {
+    await Deno.remove(askpass).catch(() => undefined);
+  }
+}
+
+async function runScp(args: string[], env: Record<string, string>): Promise<{ ok: boolean; detail?: string }> {
   const command = new Deno.Command("scp", {
-    args: ["-q", "--", localPath, remoteSpec],
+    args,
+    env,
     stdin: "null",
     stdout: "null",
     stderr: "piped",
+    // A detached session keeps ssh from finding a controlling tty and forces
+    // the SSH_ASKPASS path when a password was supplied.
+    ...(Deno.build.os !== "windows" ? { detached: true } : {}),
   });
   const output = await command.output();
   if (output.code === 0) return { ok: true };
@@ -271,8 +312,15 @@ export interface MuxstoneControllerOptions {
   readonly tailnetPollIntervalMs?: number;
   /** Injectable local-file existence probe for paste-to-scp interception. */
   readonly statFile?: (path: string) => Promise<boolean>;
-  /** Injectable scp executor receiving the full `host:dir/` remote spec; defaults to the real `scp` binary. */
-  readonly scpRunner?: (localPath: string, remoteSpec: string) => Promise<{ ok: boolean; detail?: string }>;
+  /**
+   * Injectable scp executor receiving the full `host:dir/` remote spec and an
+   * optional password (empty string means "use key/agent auth"); defaults to
+   * the real `scp` binary with an askpass helper.
+   */
+  readonly scpRunner?: (localPath: string, remoteSpec: string, password: string) => Promise<{
+    ok: boolean;
+    detail?: string;
+  }>;
   /** How long the remote `pwd` capture may wait before falling back to the remote home. */
   readonly scpCwdTimeoutMs?: number;
 }
@@ -286,6 +334,8 @@ export interface MuxstoneScpRequest {
   readonly remoteDir?: string;
   /** Original pasted text, forwarded verbatim when the user picks "Paste path". */
   readonly pasteText: string;
+  /** Optional password typed into the modal; empty means key/agent auth. */
+  readonly password: string;
 }
 
 /** Human-readable destination for one pending transfer. */
@@ -356,7 +406,10 @@ export class MuxstoneController {
   readonly #tailnetSource: Pick<TailnetStatusSource, "fetchStatus">;
   readonly #tailnetPollIntervalMs?: number;
   readonly #statFile: (path: string) => Promise<boolean>;
-  readonly #scpRunner: (localPath: string, remoteSpec: string) => Promise<{ ok: boolean; detail?: string }>;
+  readonly #scpRunner: (localPath: string, remoteSpec: string, password: string) => Promise<{
+    ok: boolean;
+    detail?: string;
+  }>;
   readonly #scpCwdTimeoutMs: number;
   #scpCwdCapture?: Promise<string | undefined>;
 
@@ -726,11 +779,17 @@ export class MuxstoneController {
     const exists = await this.#statFile(localPath).catch(() => false);
     if (!exists || this.#disposed) return false;
     this.prefixPending.value = false;
-    const request: MuxstoneScpRequest = { sessionId: runtime.sessionId, target, localPath, pasteText: text };
+    const request: MuxstoneScpRequest = {
+      sessionId: runtime.sessionId,
+      target,
+      localPath,
+      pasteText: text,
+      password: "",
+    };
     this.pendingScp.value = request;
     this.status.value = `Send ${localPath} → ${
       muxstoneScpDestinationLabel(request)
-    } ? Enter sends, p pastes the path, Escape cancels.`;
+    } ? Type a password if needed · Enter sends · Escape cancels.`;
     this.#scpCwdCapture = this.captureRemoteCwd(runtime.sessionId).then((remoteDir) => {
       if (remoteDir && !this.#disposed && this.pendingScp.peek() === request) {
         this.pendingScp.value = { ...request, remoteDir };
@@ -775,6 +834,20 @@ export class MuxstoneController {
     }
   }
 
+  /** Appends one typed character to the pending transfer's password field. */
+  appendScpPassword(char: string): void {
+    const request = this.pendingScp.peek();
+    if (this.#disposed || !request || char.length === 0 || request.password.length >= 256) return;
+    this.pendingScp.value = { ...request, password: request.password + char };
+  }
+
+  /** Removes the last character from the pending transfer's password field. */
+  backspaceScpPassword(): void {
+    const request = this.pendingScp.peek();
+    if (this.#disposed || !request || request.password.length === 0) return;
+    this.pendingScp.value = { ...request, password: request.password.slice(0, -1) };
+  }
+
   /** Runs the pending transfer in the background; resolves when scp finishes. */
   async confirmScpTransfer(): Promise<boolean> {
     this.#assertActive();
@@ -789,7 +862,7 @@ export class MuxstoneController {
     const remoteSpec = `${resolved.target}:${resolved.remoteDir ? `${resolved.remoteDir}/` : ""}`;
     this.status.value = `scp ${resolved.localPath} → ${destination} …`;
     try {
-      const result = await this.#scpRunner(resolved.localPath, remoteSpec);
+      const result = await this.#scpRunner(resolved.localPath, remoteSpec, resolved.password);
       if (this.#disposed) return result.ok;
       this.status.value = result.ok
         ? `Sent ${request.localPath} → ${destination}`

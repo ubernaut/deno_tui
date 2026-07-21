@@ -235,7 +235,15 @@ export interface MuxstoneClientPort {
 
 /** JSON-safe metadata stored alongside the exact window-host snapshot. */
 /** Selectable animated desktop backgrounds in stable cycle order. */
-export const MUXSTONE_BACKGROUND_IDS = ["metaballs", "matrix", "circuit", "biomech", "jungle", "vaporwave"] as const;
+export const MUXSTONE_BACKGROUND_IDS = [
+  "metaballs",
+  "matrix",
+  "circuit",
+  "biomech",
+  "jungle",
+  "vaporwave",
+  "skull",
+] as const;
 export type MuxstoneBackgroundId = (typeof MUXSTONE_BACKGROUND_IDS)[number];
 
 /** Normalizes any persisted value to a known background id. */
