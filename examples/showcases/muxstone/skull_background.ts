@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 
 import type { Rectangle } from "../../../src/types.ts";
-import type { MuxstoneThemeSpec } from "./model.ts";
+import type { MuxstoneRgb, MuxstoneThemeSpec } from "./model.ts";
 import {
   mixMuxstoneRgb,
   type MuxstoneAnimatedBackground,
@@ -26,19 +26,43 @@ const BREATH_DEPTH = 0.08;
 const WAVE_CELLS_PER_SECOND = 4;
 const WAVE_RADIUS_CELLS = 2;
 const MACHINERY_BLANK = 255;
+const MACHINERY_BLANK_RATE = 0.09;
 
 const REGION_MACHINERY = 0;
 const REGION_FILL = 1;
-const REGION_SHADE = 2;
-const REGION_OUTLINE = 3;
-const REGION_SOCKET = 4;
+const REGION_OUTLINE = 2;
+const REGION_SOCKET = 3;
+const REGION_SOCKETRIM = 4;
 const REGION_IRIS = 5;
 const REGION_NASAL = 6;
 const REGION_TEETH = 7;
+const REGION_BROW = 8;
 
-const TOOTH_PATTERN = ["█", "▌", "█", "▐"] as const;
-const CONNECTOR_GLYPHS = ["o", "▣", "◙", "╦"] as const;
-const CLUSTER_GLYPHS = ["▓", "▒", "▣", "o"] as const;
+/**
+ * Skull silhouette half-width as a fraction of the skull scale, keyed by the
+ * vertical fraction (negative = crown, positive = chin). The control points
+ * compose a domed cranium, pinched temporal hollows, flaring zygomatic
+ * cheekbones at eye level, and a tapered jaw/chin.
+ */
+const SKULL_PROFILE = [
+  [-0.54, 0.00],
+  [-0.47, 0.25],
+  [-0.36, 0.37],
+  [-0.26, 0.40], // upper temple
+  [-0.15, 0.34], // temporal hollow (pinch)
+  [-0.05, 0.43], // zygomatic cheekbone (widest)
+  [0.07, 0.39],
+  [0.19, 0.33], // maxilla / nose base
+  [0.31, 0.30], // jaw
+  [0.45, 0.22], // lower jaw
+  [0.56, 0.00], // chin
+] as const;
+
+const CONNECTOR_GLYPHS = ["◙", "▣", "⊟", "o"] as const;
+const BOLT_GLYPHS = ["╪", "╧", "◙", "▣", "⊟"] as const;
+const CLUSTER_GLYPHS = ["▓", "▒", "▣", "▤"] as const;
+const PIT_GLYPHS = ["∙", "˚", "·"] as const;
+const CRACK_GLYPHS = ["╱", "╲", "⟋"] as const;
 /** Index order east, south, west, north; even indices are horizontal. */
 const TUBE_DIRECTIONS = [[1, 0], [0, 1], [-1, 0], [0, -1]] as const;
 
@@ -47,6 +71,18 @@ export interface MuxstoneSkullFieldOptions {
   readonly seed?: number;
   /** Pointer-idle time before the pupils ease back to center. */
   readonly pointerIdleMs?: number;
+}
+
+/** One deep-set eye socket, exposed for diagnostics and layout tests. */
+export interface MuxstoneSkullEyeInspection {
+  /** Socket/iris center column relative to the bounds origin. */
+  readonly column: number;
+  /** Socket/iris center row relative to the bounds origin. */
+  readonly row: number;
+  /** Socket half-width in cell columns. */
+  readonly socketRadius: number;
+  /** Iris half-width in cell columns. */
+  readonly irisRadius: number;
 }
 
 /** Terse deterministic state snapshot for tests and diagnostics. */
@@ -58,6 +94,8 @@ export interface MuxstoneSkullInspection {
   readonly blinkActive: boolean;
   readonly breathPhase: number;
   readonly tubeCount: number;
+  /** Deep-set eye sockets in layout-local cell coordinates. */
+  readonly eyes: readonly MuxstoneSkullEyeInspection[];
 }
 
 interface SkullPointer extends MuxstoneBackgroundPoint {
@@ -73,6 +111,7 @@ interface SkullTube {
 interface SkullEye {
   readonly cx: number;
   readonly cy: number;
+  readonly socketRadius: number;
   readonly irisRadius: number;
 }
 
@@ -80,10 +119,10 @@ interface SkullLayout {
   readonly width: number;
   readonly height: number;
   readonly mask: Uint8Array;
-  /** Region-specific level byte: shade depth, or machinery texture depth (255 = blank). */
+  /** Region-specific level byte: bone depth, tooth brightness, or machinery texture depth (255 = blank). */
   readonly level: Uint8Array;
   readonly overlayChar: (string | undefined)[];
-  /** Tube index + 1 for hose cells, 0 for clusters and empty cells. */
+  /** Tube index + 1 for hose cells, 0 for clusters, bolts, bone pits and empty cells. */
   readonly overlayTube: Int32Array;
   readonly overlayPos: Uint16Array;
   readonly overlayDepth: Uint8Array;
@@ -94,12 +133,14 @@ interface SkullLayout {
 }
 
 /**
- * Comic-linework biomech skull: a bright cell-aspect-corrected skull with
- * glowing amber eyes stares out of a wall of dark machine tubing plugged into
- * its cranium. Pupils ease toward the pointer, eyelids blink on a seeded
- * 6-15 s cadence, and brightness waves crawl along every hose over a slow
- * whole-field breath. Owns deterministic simulation state only; palette
- * selection stays inside `rasterizeCells`.
+ * Grim biomech skull: an anatomically composed cranium — domed crown, pinched
+ * temples, flaring cheekbones and a tapered jaw — stares out of a wall of dark
+ * armored cabling bolted into its bone. A heavy brow ridge sinks the deep
+ * angular sockets into shadow, where a small amber iris burns. Pupils ease
+ * toward the pointer, eyelids blink on a seeded 6-15 s cadence, brightness
+ * waves crawl along every braided hose, and a slow breath modulates the
+ * machinery and the skull's edge shading. Owns deterministic simulation state
+ * only; palette selection stays inside `rasterizeCells`.
  */
 export class MuxstoneSkullField implements MuxstoneAnimatedBackground {
   readonly #seed: number;
@@ -167,47 +208,65 @@ export class MuxstoneSkullField implements MuxstoneAnimatedBackground {
     const breathWave = Math.sin((TAU * this.#timeMs) / BREATH_PERIOD_MS);
     const breath = 1 + BREATH_DEPTH * breathWave;
     const blinking = this.#blinkUntil !== undefined;
-    const bone = mixMuxstoneRgb(theme.text, theme.accent, 0.12);
-    const fill: MuxstoneBackgroundCell = { char: "█", foreground: bone };
+
+    const boneCore = mixMuxstoneRgb(theme.text, theme.accent, 0.1);
+    const boneMid = mixMuxstoneRgb(theme.muted, theme.border, 0.35);
+    const boneEdge = mixMuxstoneRgb(theme.border, theme.background, 0.45);
     const outline: MuxstoneBackgroundCell = {
       char: "█",
-      foreground: mixMuxstoneRgb(theme.background, theme.border, 0.18),
+      foreground: mixMuxstoneRgb(theme.background, theme.border, 0.22),
     };
     const socket: MuxstoneBackgroundCell = {
       char: "█",
-      foreground: mixMuxstoneRgb(theme.background, theme.muted, 0.12),
+      foreground: mixMuxstoneRgb(theme.background, theme.muted, 0.05),
+    };
+    const socketRim: MuxstoneBackgroundCell = {
+      char: "█",
+      foreground: mixMuxstoneRgb(theme.background, theme.border, 0.11),
     };
     const iris: MuxstoneBackgroundCell = {
       char: "█",
-      foreground: mixMuxstoneRgb(theme.warning, theme.text, 0.22),
+      foreground: mixMuxstoneRgb(theme.warning, theme.text, 0.2),
       bold: true,
     };
     const nasal: MuxstoneBackgroundCell = {
       char: "▓",
-      foreground: mixMuxstoneRgb(theme.background, theme.muted, 0.16),
+      foreground: mixMuxstoneRgb(theme.background, theme.muted, 0.08),
     };
-    const eyelid: MuxstoneBackgroundCell = { char: "▓", foreground: mixMuxstoneRgb(bone, theme.background, 0.2) };
-    const toothBright: MuxstoneBackgroundCell["foreground"] = mixMuxstoneRgb(theme.text, theme.accent, 0.05);
-    const toothDark: MuxstoneBackgroundCell["foreground"] = mixMuxstoneRgb(theme.background, theme.muted, 0.35);
+    const eyelid: MuxstoneBackgroundCell = {
+      char: "▓",
+      foreground: mixMuxstoneRgb(boneEdge, theme.background, 0.25),
+    };
+    const toothLit = mixMuxstoneRgb(theme.text, theme.muted, 0.28);
+    const toothGap = mixMuxstoneRgb(theme.background, theme.muted, 0.22);
+    const browShade = 0.06 + 0.05 * (0.5 + 0.5 * breathWave);
+
     for (let y = 0; y < layout.height; y += 1) {
       const row = this.#cells[y]!;
       for (let x = 0; x < layout.width; x += 1) {
         const index = y * layout.width + x;
         switch (layout.mask[index]) {
-          case REGION_FILL:
-            row[x] = fill;
+          case REGION_FILL: {
+            const depth = layout.level[index]! / 250;
+            const base = depth < 0.5
+              ? mixMuxstoneRgb(boneEdge, boneMid, depth / 0.5)
+              : mixMuxstoneRgb(boneMid, boneCore, (depth - 0.5) / 0.5);
+            const edgeShade = Math.max(0, 0.5 - depth) * (0.32 + 0.14 * breathWave);
+            const color = edgeShade > 0 ? mixMuxstoneRgb(base, theme.background, edgeShade) : base;
+            const detail = layout.overlayChar[index];
+            row[x] = detail !== undefined
+              ? { char: detail, foreground: mixMuxstoneRgb(color, theme.background, 0.5) }
+              : { char: boneRampChar(depth), foreground: color };
             break;
+          }
           case REGION_OUTLINE:
             row[x] = outline;
             break;
-          case REGION_SHADE: {
-            const depth = layout.level[index]! / 250;
-            const toward = Math.min(1, (0.25 + 0.55 * depth) * (1 + 0.12 * breathWave));
-            row[x] = { char: depth < 0.5 ? "▒" : "░", foreground: mixMuxstoneRgb(bone, theme.background, toward) };
-            break;
-          }
           case REGION_SOCKET:
             row[x] = blinking ? eyelid : socket;
+            break;
+          case REGION_SOCKETRIM:
+            row[x] = blinking ? eyelid : socketRim;
             break;
           case REGION_IRIS:
             row[x] = blinking ? eyelid : iris;
@@ -215,9 +274,12 @@ export class MuxstoneSkullField implements MuxstoneAnimatedBackground {
           case REGION_NASAL:
             row[x] = nasal;
             break;
+          case REGION_BROW:
+            row[x] = { char: "▓", foreground: mixMuxstoneRgb(theme.background, theme.muted, browShade) };
+            break;
           case REGION_TEETH: {
-            const glyph = TOOTH_PATTERN[x & 3]!;
-            row[x] = { char: glyph, foreground: glyph === "█" ? toothBright : toothDark };
+            const d = layout.level[index]! / 250;
+            row[x] = { char: d > 0.5 ? "█" : d > 0.24 ? "▓" : "▒", foreground: mixMuxstoneRgb(toothGap, toothLit, d) };
             break;
           }
           default:
@@ -237,6 +299,12 @@ export class MuxstoneSkullField implements MuxstoneAnimatedBackground {
       blinkActive: this.#blinkUntil !== undefined,
       breathPhase: (this.#timeMs % BREATH_PERIOD_MS) / BREATH_PERIOD_MS,
       tubeCount: this.#layout?.tubes.length ?? 0,
+      eyes: (this.#layout?.eyes ?? []).map((eye) => ({
+        column: eye.cx,
+        row: eye.cy,
+        socketRadius: eye.socketRadius,
+        irisRadius: eye.irisRadius,
+      })),
     };
   }
 
@@ -292,12 +360,12 @@ export class MuxstoneSkullField implements MuxstoneAnimatedBackground {
       const tubeRef = layout.overlayTube[index]!;
       if (tubeRef > 0) {
         const pulse = tubePulse(layout.tubes[tubeRef - 1]!, layout.overlayPos[index]!, seconds);
-        let color = mixMuxstoneRgb(theme.background, structure, Math.min(1, (0.3 + 0.4 * depth) * breath));
+        let color = mixMuxstoneRgb(theme.background, structure, Math.min(1, (0.26 + 0.4 * depth) * breath));
         if (pulse > 0) color = mixMuxstoneRgb(color, theme.accent, 0.65 * pulse);
         return pulse > 0.75 ? { char: glyph, foreground: color, bold: true } : { char: glyph, foreground: color };
       }
-      let color = mixMuxstoneRgb(theme.background, structure, Math.min(1, (0.28 + 0.42 * depth) * breath));
-      if (depth > 0.88) color = mixMuxstoneRgb(color, theme.accent, 0.3);
+      let color = mixMuxstoneRgb(theme.background, structure, Math.min(1, (0.24 + 0.42 * depth) * breath));
+      if (depth > 0.85) color = mixMuxstoneRgb(color, theme.accent, 0.3);
       return { char: glyph, foreground: color };
     }
     const levelByte = layout.level[index]!;
@@ -306,7 +374,7 @@ export class MuxstoneSkullField implements MuxstoneAnimatedBackground {
     const structure = mixMuxstoneRgb(theme.border, theme.muted, depth);
     return {
       char: depth < 0.55 ? "░" : "▒",
-      foreground: mixMuxstoneRgb(theme.background, structure, Math.min(1, (0.16 + 0.4 * depth) * breath)),
+      foreground: mixMuxstoneRgb(theme.background, structure, Math.min(1, (0.14 + 0.38 * depth) * breath)),
     };
   }
 
@@ -322,9 +390,8 @@ export class MuxstoneSkullField implements MuxstoneAnimatedBackground {
     };
     for (const eye of layout.eyes) {
       const py = Math.round(eye.cy + this.#pupilY);
-      const px = Math.round(eye.cx + this.#pupilX - 0.5);
+      const px = Math.round(eye.cx + this.#pupilX);
       this.#paintIrisCell(layout, px, py, pupil);
-      this.#paintIrisCell(layout, px + 1, py, pupil);
       if (!this.#paintIrisCell(layout, px - 1, py - 1, glint)) this.#paintIrisCell(layout, px - 1, py, glint);
     }
   }
@@ -357,7 +424,7 @@ export class MuxstoneSkullField implements MuxstoneAnimatedBackground {
     if (sizeChanged || !this.#layout) this.#layout = this.#buildLayout(bounds.width, bounds.height);
   }
 
-  /** Rebuilds masks, tubes, and clusters; keyed by seed and dimensions so resizes are deterministic. */
+  /** Rebuilds skull masks, braided tubes, bolts and clusters; keyed by seed and dimensions so resizes are deterministic. */
   #buildLayout(width: number, height: number): SkullLayout {
     const hashSeed = hashPair(this.#seed, width, height);
     let state = hashSeed === 0 ? 0x9e_37_79_b9 : hashSeed;
@@ -375,94 +442,115 @@ export class MuxstoneSkullField implements MuxstoneAnimatedBackground {
 
     const cx = (width - 1) / 2;
     const cy = (height - 1) / 2;
-    const span = 0.6 * Math.min(width, height * CELL_ROW_ASPECT);
-    const craniumRx = Math.max(2, span * 0.4);
-    const craniumRy = Math.max(2, span * 0.34);
-    const craniumCy = -span * 0.18;
-    const jawRx = craniumRx * 0.6;
-    const jawTop = craniumCy + craniumRy * 0.55;
-    const chin = span * 0.52;
-    const jawCy = (jawTop + chin) / 2;
-    const jawRy = Math.max(0.5, (chin - jawTop) / 2);
-    const notchX = craniumRx * 0.95;
-    const notchY = craniumCy + craniumRy * 0.8;
-    const notchRx = Math.max(0.5, craniumRx * 0.28);
-    const notchRy = Math.max(0.5, craniumRy * 0.3);
-    const eyeOffset = craniumRx * 0.42;
-    const eyeY = craniumCy + craniumRy * 0.3;
-    const socketRadius = craniumRx * 0.3;
-    const irisRadius = socketRadius * 0.62;
-    const noseTop = eyeY + craniumRy * 0.5;
-    const noseBottom = noseTop + craniumRy * 0.45;
-    const noseHalfWidth = Math.max(1, craniumRx * 0.16);
-    const teethTop = chin - 6.5;
+    const scale = 0.62 * Math.min(width, height * CELL_ROW_ASPECT);
+    const apex = SKULL_PROFILE[0]![0] * scale;
+    const chin = SKULL_PROFILE[SKULL_PROFILE.length - 1]![0] * scale;
+    const eyeOffsetX = 0.205 * scale;
+    const eyeCy = -0.06 * scale;
+    const socketRx = Math.max(2, 0.15 * scale);
+    const socketRy = Math.max(2, 0.135 * scale);
+    const socketN = 2.6;
+    const socketTilt = 0.2;
+    const cosTilt = Math.cos(socketTilt);
+    const sinTilt = Math.sin(socketTilt);
+    const irisRadius = Math.max(1.3, socketRx * 0.34);
+    const browTop = -0.3 * scale;
+    const browBot = -0.205 * scale;
+    const noseTop = 0.05 * scale;
+    const noseBot = 0.24 * scale;
+    const noseHalfMax = Math.max(1.2, 0.09 * scale);
+    const teethTop = 0.29 * scale;
+    const teethBot = 0.45 * scale;
+    const mouthCy = 0.37 * scale;
+    const teethHalfW = Math.max(3, 0.24 * scale);
+    const toothWidth = Math.max(2.2, 0.052 * scale);
+    const boneCoreDist = Math.max(3, 0.16 * scale);
 
     for (let y = 0; y < height; y += 1) {
       const vy = (y - cy) * CELL_ROW_ASPECT;
+      const halfWidth = profileWidthFraction(vy / scale) * scale;
       for (let x = 0; x < width; x += 1) {
         const index = y * width + x;
         const vx = x - cx;
-        const cranium = Math.hypot(vx / craniumRx, (vy - craniumCy) / craniumRy);
-        const jaw = Math.cbrt(Math.abs(vx / jawRx) ** 3 + Math.abs((vy - jawCy) / jawRy) ** 3);
-        let d = Math.min(cranium, jaw);
-        const notch = Math.hypot((Math.abs(vx) - notchX) / notchRx, (vy - notchY) / notchRy);
-        if (notch < 1) d = Math.max(d, 1.02 + (1 - notch) * 0.25);
-        if (d > 1.14) {
+        const edge = halfWidth - Math.abs(vx);
+        if (edge <= 0) {
           mask[index] = REGION_MACHINERY;
-          level[index] = hash01(hashSeed, x, y) < 0.08
+          level[index] = hash01(hashSeed, x, y) < MACHINERY_BLANK_RATE
             ? MACHINERY_BLANK
             : Math.floor(hash01(hashSeed, x + 7_919, y + 104_729) * 251);
           continue;
         }
-        if (d > 1) {
+        const dist = Math.min(edge, vy - apex, chin - vy);
+        if (dist < 1) {
           mask[index] = REGION_OUTLINE;
           continue;
         }
-        if (d > 0.8) {
-          mask[index] = REGION_SHADE;
-          level[index] = Math.round(((d - 0.8) / 0.2) * 250);
+        const side = vx < 0 ? -1 : 1;
+        const ex = vx - side * eyeOffsetX;
+        const ey = vy - eyeCy;
+        const rrx = ex * cosTilt - ey * (side * sinTilt);
+        const rry = ex * (side * sinTilt) + ey * cosTilt;
+        const socket = superellipse(rrx / socketRx, rry / socketRy, socketN);
+        if (socket <= 1) {
+          const irisDist = Math.hypot(vx - side * eyeOffsetX, vy - eyeCy);
+          mask[index] = irisDist <= irisRadius ? REGION_IRIS : REGION_SOCKET;
           continue;
         }
-        const eyeDistance = Math.min(
-          Math.hypot(vx + eyeOffset, vy - eyeY),
-          Math.hypot(vx - eyeOffset, vy - eyeY),
-        );
-        if (eyeDistance <= irisRadius) {
-          mask[index] = REGION_IRIS;
+        if (socket <= 1.18) {
+          mask[index] = REGION_SOCKETRIM;
           continue;
         }
-        if (eyeDistance <= socketRadius) {
-          mask[index] = REGION_SOCKET;
+        if (vy >= browTop && vy <= browBot) {
+          mask[index] = REGION_BROW;
           continue;
         }
-        if (vy >= noseTop && vy <= noseBottom) {
-          const half = (noseHalfWidth * (vy - noseTop)) / Math.max(0.001, noseBottom - noseTop);
-          const septum = Math.abs(vx) < 0.8 && vy > noseBottom - 1.6;
+        if (vy >= noseTop && vy <= noseBot) {
+          const frac = (vy - noseTop) / (noseBot - noseTop);
+          const half = noseHalfMax * smoothstep(frac);
+          const septum = Math.abs(vx) < 0.7 && frac > 0.55;
           if (Math.abs(vx) <= half && !septum) {
             mask[index] = REGION_NASAL;
             continue;
           }
         }
-        if (vy >= teethTop && vy < teethTop + 4 && jaw <= 0.8) {
+        if (vy >= teethTop && vy <= teethBot && Math.abs(vx) <= teethHalfW) {
           mask[index] = REGION_TEETH;
+          const taper = 1 - 0.45 * (Math.abs(vx) / teethHalfW);
+          if (Math.abs(vy - mouthCy) < 0.6) {
+            level[index] = 6;
+          } else {
+            const local = mod(vx + teethHalfW, toothWidth);
+            const gapLine = local < 0.85 || local > toothWidth - 0.85;
+            level[index] = Math.round(gapLine ? 28 * taper : 150 * taper + 55);
+          }
           continue;
         }
         mask[index] = REGION_FILL;
+        const depth = clamp01(dist / boneCoreDist);
+        level[index] = Math.round(depth * 250);
+        if (depth > 0.35) {
+          const noise = hash01(hashSeed, x + 3_301, y + 61_003);
+          if (noise < 0.045) {
+            overlayChar[index] = PIT_GLYPHS[Math.floor(hash01(hashSeed, x + 811, y + 907) * PIT_GLYPHS.length)]!;
+          } else if (noise < 0.062) {
+            overlayChar[index] = CRACK_GLYPHS[Math.floor(hash01(hashSeed, x + 211, y + 509) * CRACK_GLYPHS.length)]!;
+          }
+        }
       }
     }
 
-    const machineryFree = (x: number, y: number): boolean =>
-      x >= 0 && x < width && y >= 0 && y < height && mask[y * width + x] === REGION_MACHINERY;
-    const paintTube = (x: number, y: number, glyph: string, tubeIndex: number, pos: number, depth: number): void => {
-      const index = y * width + x;
-      overlayChar[index] = overlayChar[index] !== undefined && overlayTube[index]! > 0 ? "╬" : glyph;
-      overlayTube[index] = tubeIndex + 1;
-      overlayPos[index] = Math.min(0xffff, pos);
-      overlayDepth[index] = depth;
+    const machineryFree = (px: number, py: number): boolean =>
+      px >= 0 && px < width && py >= 0 && py < height && mask[py * width + px] === REGION_MACHINERY;
+    const paintTube = (px: number, py: number, glyph: string, tubeIndex: number, pos: number, depth: number): void => {
+      const idx = py * width + px;
+      overlayChar[idx] = overlayChar[idx] !== undefined && overlayTube[idx]! > 0 ? "╬" : glyph;
+      overlayTube[idx] = tubeIndex + 1;
+      overlayPos[idx] = Math.min(0xffff, pos);
+      overlayDepth[idx] = depth;
     };
 
     const tubes: SkullTube[] = [];
-    const tubeTarget = clampInteger(Math.round(size / 130), 6, 48);
+    const tubeTarget = clampInteger(Math.round(size / 110), 8, 64);
     for (let attempt = 0; attempt < tubeTarget; attempt += 1) {
       let x = -1;
       let y = -1;
@@ -476,7 +564,8 @@ export class MuxstoneSkullField implements MuxstoneAnimatedBackground {
         }
       }
       if (x < 0) continue;
-      const thick = random() < 0.4;
+      const thick = random() < 0.55;
+      const braid = thick && random() < 0.5;
       const stair = random() < 0.2;
       const stairHorizontal = random() < 0.5 ? 0 : 2;
       const stairVertical = random() < 0.5 ? 1 : 3;
@@ -489,10 +578,16 @@ export class MuxstoneSkullField implements MuxstoneAnimatedBackground {
       const paintStep = (px: number, py: number, dir: number): void => {
         paintTube(px, py, straightGlyph(dir, thick), tubeIndex, pos, depth);
         if (!thick) return;
-        const ox = dir % 2 === 0 ? px : px + 1;
-        const oy = dir % 2 === 0 ? py + 1 : py;
-        if (machineryFree(ox, oy) && overlayChar[oy * width + ox] === undefined) {
-          paintTube(ox, oy, dir % 2 === 0 ? "─" : "│", tubeIndex, pos, depth);
+        const perpX = dir % 2 === 0 ? 0 : 1;
+        const perpY = dir % 2 === 0 ? 1 : 0;
+        const parallel = dir % 2 === 0 ? "═" : "║";
+        const runs = braid ? 2 : 1;
+        for (let k = 1; k <= runs; k += 1) {
+          const ox = px + perpX * k;
+          const oy = py + perpY * k;
+          if (machineryFree(ox, oy) && overlayChar[oy * width + ox] === undefined) {
+            paintTube(ox, oy, parallel, tubeIndex, pos, depth);
+          }
         }
       };
       paintStep(x, y, direction);
@@ -528,7 +623,7 @@ export class MuxstoneSkullField implements MuxstoneAnimatedBackground {
       tubes.push({ length: total, speed: (0.7 + random() * 0.6) * (random() < 0.5 ? -1 : 1), waves });
     }
 
-    const clusterTarget = clampInteger(Math.round(size / 90), 4, 80);
+    const clusterTarget = clampInteger(Math.round(size / 80), 5, 96);
     for (let cluster = 0; cluster < clusterTarget; cluster += 1) {
       const baseX = Math.floor(random() * Math.max(1, width - 3));
       const baseY = Math.floor(random() * Math.max(1, height - 2));
@@ -536,15 +631,30 @@ export class MuxstoneSkullField implements MuxstoneAnimatedBackground {
       for (let by = baseY; by < baseY + 2; by += 1) {
         for (let bx = baseX; bx < baseX + blockWidth; bx += 1) {
           if (!machineryFree(bx, by)) continue;
-          const index = by * width + bx;
-          if (overlayChar[index] !== undefined) continue;
-          overlayChar[index] = CLUSTER_GLYPHS[Math.floor(random() * CLUSTER_GLYPHS.length)]!;
-          overlayDepth[index] = Math.floor(60 + random() * 195);
+          const idx = by * width + bx;
+          if (overlayChar[idx] !== undefined) continue;
+          overlayChar[idx] = CLUSTER_GLYPHS[Math.floor(random() * CLUSTER_GLYPHS.length)]!;
+          overlayDepth[idx] = Math.floor(60 + random() * 195);
         }
       }
     }
 
-    const eyeRow = cy + eyeY / CELL_ROW_ASPECT;
+    // Bolt heavy connectors into the bone: machinery cells that touch the skull outline.
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const idx = y * width + x;
+        if (mask[idx] !== REGION_MACHINERY || overlayChar[idx] !== undefined) continue;
+        const touchesBone = isOutline(mask, width, height, x + 1, y) || isOutline(mask, width, height, x - 1, y) ||
+          isOutline(mask, width, height, x, y + 1) || isOutline(mask, width, height, x, y - 1);
+        if (!touchesBone) continue;
+        if (hash01(hashSeed, x + 5_003, y + 2_011) < 0.34) {
+          overlayChar[idx] = BOLT_GLYPHS[Math.floor(hash01(hashSeed, x + 17, y + 29) * BOLT_GLYPHS.length)]!;
+          overlayDepth[idx] = 230;
+        }
+      }
+    }
+
+    const eyeRow = cy + eyeCy / CELL_ROW_ASPECT;
     return {
       width,
       height,
@@ -556,8 +666,8 @@ export class MuxstoneSkullField implements MuxstoneAnimatedBackground {
       overlayDepth,
       tubes,
       eyes: [
-        { cx: cx - eyeOffset, cy: eyeRow, irisRadius },
-        { cx: cx + eyeOffset, cy: eyeRow, irisRadius },
+        { cx: cx - eyeOffsetX, cy: eyeRow, socketRadius: socketRx, irisRadius },
+        { cx: cx + eyeOffsetX, cy: eyeRow, socketRadius: socketRx, irisRadius },
       ],
       gazeReach: Math.max(4, width * 0.3),
       maxPupilX: Math.max(0.8, irisRadius - 1.4),
@@ -582,6 +692,49 @@ function tubePulse(tube: SkullTube, position: number, seconds: number): number {
     if (distance <= WAVE_RADIUS_CELLS) best = Math.max(best, 1 - distance / (WAVE_RADIUS_CELLS + 0.5));
   }
   return best;
+}
+
+/** Skull half-width (fraction of skull scale) at a vertical fraction; 0 past crown/chin. */
+function profileWidthFraction(tFrac: number): number {
+  const profile = SKULL_PROFILE;
+  if (tFrac <= profile[0]![0] || tFrac >= profile[profile.length - 1]![0]) return 0;
+  for (let i = 0; i < profile.length - 1; i += 1) {
+    const a = profile[i]!;
+    const b = profile[i + 1]!;
+    if (tFrac >= a[0] && tFrac <= b[0]) {
+      return a[1] + (b[1] - a[1]) * smoothstep((tFrac - a[0]) / (b[0] - a[0]));
+    }
+  }
+  return 0;
+}
+
+/** ` ░▒▓█` bone ramp keyed by normalized distance from the silhouette edge. */
+function boneRampChar(depth: number): string {
+  if (depth < 0.38) return "░";
+  if (depth < 0.6) return "▒";
+  if (depth < 0.82) return "▓";
+  return "█";
+}
+
+function isOutline(mask: Uint8Array, width: number, height: number, x: number, y: number): boolean {
+  return x >= 0 && x < width && y >= 0 && y < height && mask[y * width + x] === REGION_OUTLINE;
+}
+
+function superellipse(a: number, b: number, n: number): number {
+  return Math.pow(Math.pow(Math.abs(a), n) + Math.pow(Math.abs(b), n), 1 / n);
+}
+
+function smoothstep(t: number): number {
+  const p = Math.min(1, Math.max(0, t));
+  return p * p * (3 - 2 * p);
+}
+
+function mod(value: number, modulus: number): number {
+  return ((value % modulus) + modulus) % modulus;
+}
+
+function clamp01(value: number): number {
+  return Math.min(1, Math.max(0, value));
 }
 
 function straightGlyph(direction: number, thick: boolean): string {

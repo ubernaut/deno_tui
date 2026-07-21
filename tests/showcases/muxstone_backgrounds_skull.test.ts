@@ -143,6 +143,28 @@ Deno.test("muxstone skull background: dense coverage with a bright skull at the 
   );
 });
 
+Deno.test("muxstone skull background: eye sockets sit in shadow deeper than the surrounding cheekbone", () => {
+  const field = new MuxstoneSkullField({ seed: 21 });
+  let now = advanceFor(field, COVERAGE, 200, 600);
+  while (field.inspect().blinkActive) now = advanceFor(field, COVERAGE, now, STEP_MS);
+  const grid = field.rasterizeCells(COVERAGE, MIDNIGHT);
+  const eye = field.inspect().eyes[0];
+  assert(eye, "layout must expose eye sockets");
+  const row = Math.round(eye.row);
+  const col = Math.round(eye.column);
+  // Sample inside the socket but clear of the bright iris at its center.
+  const socketCell = grid[row]?.[col - Math.round(eye.socketRadius * 0.55)];
+  // Sample the bright cheekbone bone just below the socket.
+  const cheekRow = row + Math.max(2, Math.round(eye.socketRadius * 0.6));
+  const cheekCell = grid[cheekRow]?.[col];
+  assert(socketCell, "socket-interior cell must be painted");
+  assert(cheekCell, "cheek cell must be painted");
+  assert(
+    brightness(socketCell) < brightness(cheekCell),
+    `deep-set socket must be darker than cheek: ${brightness(socketCell)} vs ${brightness(cheekCell)}`,
+  );
+});
+
 Deno.test("muxstone skull background: cell colors are valid RGB and theme-dependent", () => {
   const field = new MuxstoneSkullField({ seed: 5 });
   advanceFor(field, BOUNDS, 900, 1_200);
