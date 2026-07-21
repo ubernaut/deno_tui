@@ -1034,7 +1034,12 @@ Deno.test("Muxstone mouse menus, modal buttons, floating chrome, shelf, and tile
     assertEquals(controller.sessions.peek().length, 2);
     const spawned = controller.sessions.peek().find((entry) => entry.id !== initial.id)!;
 
+    const backgroundBefore = controller.backgroundId.peek();
     assertEquals((await harness.pilot.click(64, 0)).press.handled, true);
+    await mounted.whenIdle();
+    assertNotEquals(controller.backgroundId.peek(), backgroundBefore);
+
+    assertEquals((await harness.pilot.click(73, 0)).press.handled, true);
     await mounted.whenIdle();
     assertEquals(controller.helpVisible.peek(), true);
     const blockedTheme = controller.themeId.peek();
@@ -1537,9 +1542,9 @@ Deno.test("Muxstone wheel and touch input scroll styled history and manipulate w
     await mounted.handlePointer(touchPointer("up", 18, 0, 18));
     assertEquals(controller.sessions.peek().length, beforeCancelledNew);
 
-    await mounted.handlePointer(touchPointer("down", 64, 0, 19));
+    await mounted.handlePointer(touchPointer("down", 73, 0, 19));
     assertEquals(controller.helpVisible.peek(), false);
-    await mounted.handlePointer(touchPointer("up", 64, 0, 20));
+    await mounted.handlePointer(touchPointer("up", 73, 0, 20));
     assertEquals(controller.helpVisible.peek(), true);
     const close = helpClosePoint(mounted.windowProjection.peek().bounds);
     await mounted.handlePointer(touchPointer("down", close.column, close.row, 21));

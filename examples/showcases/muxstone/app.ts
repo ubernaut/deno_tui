@@ -136,7 +136,8 @@ const MENU_NEW = Object.freeze({ column: 12, row: 0, width: 7, height: 1 });
 const MENU_NETWORK = Object.freeze({ column: 22, row: 0, width: 11, height: 1 });
 const MENU_SESSIONS = Object.freeze({ column: 36, row: 0, width: 12, height: 1 });
 const MENU_THEME = Object.freeze({ column: 51, row: 0, width: 9, height: 1 });
-const MENU_HELP = Object.freeze({ column: 63, row: 0, width: 8, height: 1 });
+const MENU_BACKGROUND = Object.freeze({ column: 63, row: 0, width: 6, height: 1 });
+const MENU_HELP = Object.freeze({ column: 72, row: 0, width: 8, height: 1 });
 const MENU_QUIT_WIDTH = 5;
 const NETWORK_LIST_START = 1;
 const MAX_TOUCH_GESTURES = 8;
@@ -154,7 +155,7 @@ export function muxstoneMetaballsMayAdvance(
   return !hasPendingBarrier && now - lastInputActivityAt >= MUXSTONE_METABALL_FRAME_INTERVAL_MS;
 }
 
-type MuxstoneMenuId = "new" | "network" | "sessions" | "theme" | "help" | "quit";
+type MuxstoneMenuId = "new" | "network" | "sessions" | "theme" | "background" | "help" | "quit";
 
 function menuQuitRect(bounds: Rectangle): Rectangle {
   return {
@@ -648,6 +649,9 @@ export function mountMuxstoneDesktop(
         break;
       case "theme":
         controller.cycleTheme();
+        break;
+      case "background":
+        controller.cycleBackground();
         break;
       case "help":
         controller.openHelp();
@@ -1327,6 +1331,9 @@ export function mountMuxstoneDesktop(
     registerMenuTarget(app, "sessions", MENU_SESSIONS, () => activateMenu("sessions"), modalOpen),
   );
   unsubscribers.push(registerMenuTarget(app, "theme", MENU_THEME, () => activateMenu("theme"), modalOpen));
+  unsubscribers.push(
+    registerMenuTarget(app, "background", MENU_BACKGROUND, () => activateMenu("background"), modalOpen),
+  );
   unsubscribers.push(registerMenuTarget(app, "help", MENU_HELP, () => activateMenu("help"), modalOpen));
   unsubscribers.push(
     registerMenuTarget(
@@ -1825,6 +1832,11 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
     bold: true,
   });
   painter.write(MENU_THEME.column, 0, "[ Theme ]", {
+    foreground: theme.text,
+    background: theme.surfaceStrong,
+    bold: true,
+  });
+  painter.write(MENU_BACKGROUND.column, 0, "[ BG ]", {
     foreground: theme.text,
     background: theme.surfaceStrong,
     bold: true,
@@ -2685,6 +2697,7 @@ function menuAt(column: number, row: number, coarse: boolean, bounds: Rectangle)
     ["network", MENU_NETWORK],
     ["sessions", MENU_SESSIONS],
     ["theme", MENU_THEME],
+    ["background", MENU_BACKGROUND],
     ["help", MENU_HELP],
     ["quit", menuQuitRect(bounds)],
   ] as const;
@@ -2704,6 +2717,8 @@ function menuRect(id: MuxstoneMenuId, bounds: Rectangle): Rectangle {
       return MENU_SESSIONS;
     case "theme":
       return MENU_THEME;
+    case "background":
+      return MENU_BACKGROUND;
     case "help":
       return MENU_HELP;
     case "quit":
