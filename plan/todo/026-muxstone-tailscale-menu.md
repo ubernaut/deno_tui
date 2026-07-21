@@ -18,9 +18,13 @@ Status: MVP implementation in progress as of July 21, 2026. Fleshes out the orig
   per-machine `Sessions` and further `Actions` children slot into this tree as they land.
 - Spawned SSH/terminal windows now open centered (with a slight cascade) and focused above the panel; the network
   window stacks in the normal tier so new terminals always land on top of it.
+- Landed July 21: paste-to-scp (TSM-014 core) — pasting one existing local file path onto a network-panel SSH
+  shell opens a Send / Paste path / Cancel modal; Send runs argv-only `scp -q -- <file> <target>:` in the
+  background with status-line progress, Paste path forwards the literal text, and every other paste flows through
+  untouched. Destination is the remote home directory; OSC 7 remote-cwd tracking (D4) remains open.
 - Still tracked below (unchanged): per-machine actions submenu (system monitor, ping, copy, details), remote
-  tmux/muxstone session listing with attach/focus-if-open, scp paste/drop transfer, capability/provider manifest
-  integration, fuzzy filter.
+  tmux/muxstone session listing with attach/focus-if-open, OSC 7 cwd targeting for scp, capability/provider
+  manifest integration, fuzzy filter.
 
 This roadmap adds first-class Tailscale awareness to the Muxstone terminal-multiplexer showcase: a `[ Tailnet ]`
 menu-bar entry beside `[ New ]` that opens a floating, TOC-style tree panel on the left edge of the desktop, from

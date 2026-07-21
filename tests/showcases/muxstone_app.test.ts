@@ -2050,6 +2050,67 @@ Deno.test("Muxstone network panel lists hosts and tailnet devices, opens SSH, an
   }
 });
 
+Deno.test("Muxstone paste of a local file path onto an SSH shell offers and runs scp", async () => {
+  const initial = session("scp-shell", "scp shell", 0);
+  const client = new FakeMuxstoneClient([initial]);
+  const scpCalls: Array<{ local: string; target: string }> = [];
+  const controller = await createMuxstoneController({
+    client,
+    initialSessions: [initial],
+    tailnetSource: {
+      fetchStatus: () => Promise.resolve({ availability: "unavailable", detail: "off" } as TailnetStatusResult),
+    },
+    tailnetPollIntervalMs: 300_000,
+    statFile: (path) => Promise.resolve(path === "/tmp/report.pdf"),
+    scpRunner: (local, target) => {
+      scpCalls.push({ local, target });
+      return Promise.resolve({ ok: true });
+    },
+  });
+  const mount: MuxstoneAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 100, rows: 28 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+    controller.sessionHosts.value = Object.freeze({ [initial.id]: "studio.tail.net" });
+    controller.windowHost.execute(
+      { kind: "focus", id: muxstoneWindowId(initial.id) },
+      mounted.bodyRect.peek(),
+    );
+
+    harness.app.tui.emit("paste", { key: "paste", text: "/tmp/report.pdf", buffer: new Uint8Array() });
+    await waitForCondition(() => controller.pendingScp.peek() !== undefined, 2_000);
+    assertEquals(controller.pendingScp.peek()!.target, "studio.tail.net");
+    await harness.pilot.press("return");
+    await waitForCondition(() => scpCalls.length === 1, 2_000);
+    assertEquals(scpCalls[0], { local: "/tmp/report.pdf", target: "studio.tail.net" });
+    assertEquals(controller.pendingScp.peek(), undefined);
+
+    harness.app.tui.emit("paste", { key: "paste", text: "/tmp/report.pdf", buffer: new Uint8Array() });
+    await waitForCondition(() => controller.pendingScp.peek() !== undefined, 2_000);
+    await harness.pilot.press("p");
+    await mounted.whenIdle();
+    assertEquals(controller.pendingScp.peek(), undefined);
+    assertEquals(client.inputs.at(-1), { sessionId: initial.id, data: "/tmp/report.pdf" });
+
+    harness.app.tui.emit("paste", { key: "paste", text: "plain text, not a path", buffer: new Uint8Array() });
+    await mounted.whenIdle();
+    assertEquals(controller.pendingScp.peek(), undefined);
+    assertEquals(client.inputs.at(-1), { sessionId: initial.id, data: "plain text, not a path" });
+
+    harness.app.tui.emit("paste", { key: "paste", text: "/tmp/missing.pdf", buffer: new Uint8Array() });
+    await mounted.whenIdle();
+    assertEquals(controller.pendingScp.peek(), undefined);
+    assertEquals(client.inputs.at(-1), { sessionId: initial.id, data: "/tmp/missing.pdf" });
+  } finally {
+    harness.destroy();
+    await controller.dispose();
+  }
+});
+
 Deno.test("Muxstone workspace state round-trips saved hosts and rejects hostile entries", () => {
   const normalized = normalizeMuxstoneWorkspaceState({
     schemaVersion: 1,

@@ -89,6 +89,68 @@ export function muxstoneNetworkDeviceLabel(device: TailnetDevice): string {
   return `${glyph} ${device.shortName} · ${device.os}${relay}${suffix}`;
 }
 
+/**
+ * Extracts one plausible local file path from pasted text: single line, an
+ * absolute or `~/` path, optionally quoted or a `file://` URI. Anything else —
+ * including multi-line pastes and control characters — is left untouched.
+ */
+export function muxstoneScpCandidatePath(text: string): string | undefined {
+  const trimmed = text.trim();
+  if (!trimmed || trimmed.length > 1024) return undefined;
+  // deno-lint-ignore no-control-regex
+  if (/[\r\n\x00-\x1f]/.test(trimmed)) return undefined;
+  let path = trimmed;
+  if (path.startsWith("file://")) {
+    try {
+      path = decodeURIComponent(new URL(path).pathname);
+    } catch {
+      return undefined;
+    }
+  }
+  if ((path.startsWith("'") && path.endsWith("'")) || (path.startsWith('"') && path.endsWith('"'))) {
+    path = path.slice(1, -1);
+  }
+  path = path.replace(/\\ /g, " ");
+  if (path.startsWith("~/")) {
+    try {
+      const home = Deno.env.get("HOME");
+      if (!home) return undefined;
+      path = `${home}${path.slice(1)}`;
+    } catch {
+      return undefined;
+    }
+  }
+  return path.startsWith("/") ? path : undefined;
+}
+
+async function defaultMuxstoneStatFile(path: string): Promise<boolean> {
+  try {
+    return (await Deno.stat(path)).isFile;
+  } catch {
+    return false;
+  }
+}
+
+async function defaultMuxstoneScpRunner(
+  localPath: string,
+  target: string,
+): Promise<{ ok: boolean; detail?: string }> {
+  const command = new Deno.Command("scp", {
+    args: ["-q", "--", localPath, `${target}:`],
+    stdin: "null",
+    stdout: "null",
+    stderr: "piped",
+  });
+  const output = await command.output();
+  if (output.code === 0) return { ok: true };
+  const detail = new TextDecoder().decode(output.stderr).trim().slice(0, 160);
+  return { ok: false, detail: detail || `scp exited with code ${output.code}` };
+}
+
+function safeScpErrorMessage(error: unknown): string {
+  return (error instanceof Error ? error.message : String(error)).slice(0, 160);
+}
+
 /** Builds the Hosts/Tailscale hierarchy consumed by the shared workbench tree widget. */
 export function buildMuxstoneNetworkNodes(
   savedHosts: readonly string[],
@@ -188,6 +250,19 @@ export interface MuxstoneControllerOptions {
   readonly persistenceDebounceMs?: number;
   readonly tailnetSource?: Pick<TailnetStatusSource, "fetchStatus">;
   readonly tailnetPollIntervalMs?: number;
+  /** Injectable local-file existence probe for paste-to-scp interception. */
+  readonly statFile?: (path: string) => Promise<boolean>;
+  /** Injectable scp executor; the default runs the real `scp` binary. */
+  readonly scpRunner?: (localPath: string, target: string) => Promise<{ ok: boolean; detail?: string }>;
+}
+
+/** One intercepted paste awaiting a Send / Paste path / Cancel decision. */
+export interface MuxstoneScpRequest {
+  readonly sessionId: string;
+  readonly target: string;
+  readonly localPath: string;
+  /** Original pasted text, forwarded verbatim when the user picks "Paste path". */
+  readonly pasteText: string;
 }
 
 /** Options for launching and positioning one terminal window. */
@@ -231,6 +306,8 @@ export class MuxstoneController {
   readonly savedHosts = new Signal<readonly string[]>([]);
   readonly sessionHosts = new Signal<Readonly<Record<string, string>>>({});
   readonly backgroundId = new Signal<MuxstoneBackgroundId>("metaballs");
+  /** Pending paste-to-scp confirmation; non-undefined opens the transfer modal. */
+  readonly pendingScp = new Signal<MuxstoneScpRequest | undefined>(undefined);
   /** Hierarchical Hosts/Tailscale browser state, driven by the shared workbench tree widget. */
   readonly networkTree: TreeController;
 
@@ -250,6 +327,8 @@ export class MuxstoneController {
   #tailnetPoller?: TailnetPoller;
   readonly #tailnetSource: Pick<TailnetStatusSource, "fetchStatus">;
   readonly #tailnetPollIntervalMs?: number;
+  readonly #statFile: (path: string) => Promise<boolean>;
+  readonly #scpRunner: (localPath: string, target: string) => Promise<{ ok: boolean; detail?: string }>;
 
   constructor(options: MuxstoneControllerOptions) {
     this.client = options.client;
@@ -287,6 +366,8 @@ export class MuxstoneController {
     this.theme = new Computed(() => muxstoneTheme(this.themeId.value));
     this.#tailnetSource = options.tailnetSource ?? createTailscaleStatusSource();
     this.#tailnetPollIntervalMs = options.tailnetPollIntervalMs;
+    this.#statFile = options.statFile ?? defaultMuxstoneStatFile;
+    this.#scpRunner = options.scpRunner ?? defaultMuxstoneScpRunner;
     this.networkTree = new TreeController({
       nodes: buildMuxstoneNetworkNodes([], undefined, this.#networkExpansion),
       onToggle: (row, expanded) => {
@@ -574,6 +655,56 @@ export class MuxstoneController {
       width,
       height,
     };
+  }
+
+  /**
+   * Intercepts a paste that names one existing local file while an SSH shell
+   * opened from the network panel is focused. Returns true when the transfer
+   * modal was opened; false means the caller must forward the paste verbatim.
+   */
+  async maybeInterceptScpPaste(text: string): Promise<boolean> {
+    if (this.#disposed || this.pendingScp.peek()) return false;
+    const runtime = this.activeRuntime();
+    if (!runtime) return false;
+    const target = this.sessionHosts.peek()[runtime.sessionId];
+    if (!target) return false;
+    const localPath = muxstoneScpCandidatePath(text);
+    if (!localPath) return false;
+    const exists = await this.#statFile(localPath).catch(() => false);
+    if (!exists || this.#disposed) return false;
+    this.prefixPending.value = false;
+    this.pendingScp.value = { sessionId: runtime.sessionId, target, localPath, pasteText: text };
+    this.status.value = `Send ${localPath} → ${target}:~ ? Enter sends, p pastes the path, Escape cancels.`;
+    return true;
+  }
+
+  /** Runs the pending transfer in the background; resolves when scp finishes. */
+  async confirmScpTransfer(): Promise<boolean> {
+    this.#assertActive();
+    const request = this.pendingScp.peek();
+    if (!request) return false;
+    this.pendingScp.value = undefined;
+    this.status.value = `scp ${request.localPath} → ${request.target}:~ …`;
+    try {
+      const result = await this.#scpRunner(request.localPath, request.target);
+      if (this.#disposed) return result.ok;
+      this.status.value = result.ok
+        ? `Sent ${request.localPath} → ${request.target}:~`
+        : `scp failed: ${result.detail ?? "unknown error"}`;
+      return result.ok;
+    } catch (error) {
+      if (!this.#disposed) this.status.value = `scp failed: ${safeScpErrorMessage(error)}`;
+      return false;
+    }
+  }
+
+  /** Dismisses the modal; returns the original paste text when it should be forwarded. */
+  cancelScpTransfer(pastePathInstead: boolean): string | undefined {
+    if (this.#disposed) return undefined;
+    const request = this.pendingScp.peek();
+    this.pendingScp.value = undefined;
+    this.status.value = this.#statusSummary();
+    return pastePathInstead ? request?.pasteText : undefined;
   }
 
   #ensureTailnetPoller(): TailnetPoller {
@@ -1214,6 +1345,7 @@ export class MuxstoneController {
     this.savedHosts.dispose();
     this.sessionHosts.dispose();
     this.backgroundId.dispose();
+    this.pendingScp.dispose();
     this.status.value = "disposed";
     this.status.dispose();
   }

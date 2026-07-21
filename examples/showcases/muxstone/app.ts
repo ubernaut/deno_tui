@@ -37,6 +37,8 @@ import {
   muxstoneNetworkNodeHostShellTarget,
   muxstoneNetworkNodeHostTarget,
   muxstoneNetworkNodeSessionId,
+  muxstoneScpCandidatePath,
+  type MuxstoneScpRequest,
   type MuxstoneTerminalRuntime,
 } from "./controller.ts";
 import {
@@ -229,7 +231,16 @@ type MuxstoneTouchTarget =
   | Readonly<{ kind: "menu"; id: MuxstoneMenuId; hitRect: Rectangle }>
   | Readonly<{
     kind: "modal";
-    action: "close-help" | "cancel-kill" | "confirm-kill" | "cancel-quit" | "detach-quit" | "terminate-quit";
+    action:
+      | "close-help"
+      | "cancel-kill"
+      | "confirm-kill"
+      | "cancel-quit"
+      | "detach-quit"
+      | "terminate-quit"
+      | "cancel-scp"
+      | "paste-scp"
+      | "send-scp";
     sessionId?: string;
     hitRect: Rectangle;
   }>
@@ -613,7 +624,7 @@ export function mountMuxstoneDesktop(
   let pendingPointerMove: MuxstonePointerMoveSlot | undefined;
   const modalOpen = (): boolean =>
     controller.helpVisible.peek() || controller.pendingKillSessionId.peek() !== undefined ||
-    controller.quitModalVisible.peek();
+    controller.quitModalVisible.peek() || controller.pendingScp.peek() !== undefined;
 
   let exitRequested = false;
   const requestClientExit = (terminateHost: boolean): void => {
@@ -818,6 +829,19 @@ export function mountMuxstoneDesktop(
       else if (contains(layout.cancelRect, column, row)) controller.cancelQuitModal();
       return true;
     }
+    const scpRequest = controller.pendingScp.peek();
+    if (scpRequest) {
+      const layout = muxstoneScpLayout(windowProjection.peek().bounds);
+      if (contains(layout.sendRect, column, row)) {
+        void controller.confirmScpTransfer();
+      } else if (contains(layout.pasteRect, column, row)) {
+        const text = controller.cancelScpTransfer(true);
+        if (text) void controller.writeSession(scpRequest.sessionId, new TextEncoder().encode(text));
+      } else if (contains(layout.cancelRect, column, row)) {
+        controller.cancelScpTransfer(false);
+      }
+      return true;
+    }
     return false;
   };
 
@@ -1019,6 +1043,19 @@ export function mountMuxstoneDesktop(
       if (contains(layout.cancelRect, column, row)) {
         return { kind: "modal", action: "cancel-quit", hitRect: layout.cancelRect };
       }
+      return undefined;
+    }
+    if (controller.pendingScp.peek()) {
+      const layout = muxstoneScpLayout(windowProjection.peek().bounds);
+      if (contains(layout.sendRect, column, row)) {
+        return { kind: "modal", action: "send-scp", hitRect: layout.sendRect };
+      }
+      if (contains(layout.pasteRect, column, row)) {
+        return { kind: "modal", action: "paste-scp", hitRect: layout.pasteRect };
+      }
+      if (contains(layout.cancelRect, column, row)) {
+        return { kind: "modal", action: "cancel-scp", hitRect: layout.cancelRect };
+      }
     }
     return undefined;
   };
@@ -1052,6 +1089,14 @@ export function mountMuxstoneDesktop(
           requestClientExit(false);
         } else if (target.action === "terminate-quit" && controller.quitModalVisible.peek()) {
           requestClientExit(true);
+        } else if (target.action === "send-scp" && controller.pendingScp.peek()) {
+          void controller.confirmScpTransfer();
+        } else if (target.action === "paste-scp" && controller.pendingScp.peek()) {
+          const scpRequest = controller.pendingScp.peek()!;
+          const text = controller.cancelScpTransfer(true);
+          if (text) void controller.writeSession(scpRequest.sessionId, new TextEncoder().encode(text));
+        } else if (target.action === "cancel-scp" && controller.pendingScp.peek()) {
+          controller.cancelScpTransfer(false);
         }
         return true;
       case "window-command":
@@ -1400,6 +1445,17 @@ export function mountMuxstoneDesktop(
       }
       return;
     }
+    if (controller.pendingScp.peek()) {
+      if (event.key === "return" || event.key.toLowerCase() === "s") {
+        void controller.confirmScpTransfer();
+      } else if (event.key.toLowerCase() === "p") {
+        const text = controller.cancelScpTransfer(true);
+        if (text) await forwardTerminalInput(new TextEncoder().encode(text));
+      } else if (event.key === "escape" || event.key.toLowerCase() === "c") {
+        controller.cancelScpTransfer(false);
+      }
+      return;
+    }
     if (event.ctrl && !event.meta && event.key.toLowerCase() === "n") {
       if (controller.prefixPending.peek()) {
         controller.cancelPrefix();
@@ -1607,6 +1663,23 @@ export function mountMuxstoneDesktop(
     // Preserve the reader's raw bytes when available and let the operation
     // queue perform the sole bounded copy/encoding step at ingress.
     const paste = event.buffer.byteLength > 0 ? event.buffer : event.text;
+    // A pasted local file path aimed at a network-panel SSH shell becomes a
+    // transfer offer instead of literal input; every other paste flows through.
+    const activeSessionId = controller.activeRuntime()?.sessionId;
+    const scpCandidate = event.text.length > 0 && !modalOpen() &&
+      activeSessionId !== undefined && controller.sessionHosts.peek()[activeSessionId] !== undefined &&
+      muxstoneScpCandidatePath(event.text) !== undefined;
+    if (scpCandidate) {
+      const text = event.text;
+      prefixIngressPending = false;
+      void enqueue(async () => {
+        if (modalOpen()) return;
+        if (controller.prefixPending.peek()) controller.cancelPrefix();
+        const intercepted = await controller.maybeInterceptScpPaste(text);
+        if (!intercepted) void enqueueRaw(paste);
+      });
+      return;
+    }
     if (
       !prefixIngressPending && !operationQueue.hasPendingBarrier() && !modalOpen() &&
       !controller.prefixPending.peek()
@@ -1912,6 +1985,8 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
   if (projection.switcher) paintSwitcher(painter, projection, theme);
   if (controller.helpVisible.peek()) paintHelp(painter, projection, theme);
   if (controller.quitModalVisible.peek()) paintQuitModal(painter, projection, theme);
+  const scpRequest = controller.pendingScp.peek();
+  if (scpRequest) paintScpModal(painter, projection, theme, scpRequest);
   const pendingKillSessionId = controller.pendingKillSessionId.peek();
   if (pendingKillSessionId) paintKillConfirmation(painter, projection, controller, pendingKillSessionId);
 
@@ -2448,6 +2523,76 @@ export function muxstoneQuitLayout(bounds: Rectangle): MuxstoneQuitLayout {
       height: 1,
     },
   };
+}
+
+interface MuxstoneScpLayout {
+  readonly rect: Rectangle;
+  readonly cancelRect: Rectangle;
+  readonly pasteRect: Rectangle;
+  readonly sendRect: Rectangle;
+}
+
+/** Layout for the paste-to-scp modal; exported for deterministic pointer tests. */
+export function muxstoneScpLayout(bounds: Rectangle): MuxstoneScpLayout {
+  const width = Math.min(84, Math.max(44, bounds.width - 6));
+  const rect = centeredRect(bounds, width, Math.min(8, Math.max(5, bounds.height - 2)));
+  const buttonRow = rect.row + Math.max(1, rect.height - 2);
+  return {
+    rect,
+    cancelRect: { column: rect.column + 2, row: buttonRow, width: 10, height: 1 },
+    pasteRect: {
+      column: rect.column + Math.max(13, Math.floor((rect.width - 14) / 2)),
+      row: buttonRow,
+      width: 14,
+      height: 1,
+    },
+    sendRect: {
+      column: rect.column + Math.max(29, rect.width - 10),
+      row: buttonRow,
+      width: 8,
+      height: 1,
+    },
+  };
+}
+
+function paintScpModal(
+  painter: DesktopPainter,
+  projection: WorkbenchWindowHostProjection,
+  theme: MuxstoneThemeSpec,
+  request: MuxstoneScpRequest,
+): void {
+  const { rect, cancelRect, pasteRect, sendRect } = muxstoneScpLayout(projection.bounds);
+  painter.fill(rect, " ", { foreground: theme.text, background: theme.surfaceStrong });
+  painter.frame(rect, "=", { foreground: theme.accent, background: theme.surfaceStrong, bold: true });
+  painter.write(rect.column + 2, rect.row + 1, fitText("SEND FILE OVER SCP?", rect.width - 4), {
+    foreground: theme.accent,
+    background: theme.surfaceStrong,
+    bold: true,
+  });
+  painter.write(
+    rect.column + 2,
+    rect.row + Math.min(3, Math.max(1, rect.height - 2)),
+    fitText(`${request.localPath} → ${request.target}:~`, rect.width - 4),
+    {
+      foreground: theme.text,
+      background: theme.surfaceStrong,
+    },
+  );
+  painter.write(cancelRect.column, cancelRect.row, "[ Cancel ]", {
+    foreground: theme.text,
+    background: theme.surface,
+    bold: true,
+  });
+  painter.write(pasteRect.column, pasteRect.row, "[ Paste path ]", {
+    foreground: theme.text,
+    background: theme.surface,
+    bold: true,
+  });
+  painter.write(sendRect.column, sendRect.row, "[ Send ]", {
+    foreground: theme.background,
+    background: theme.accent,
+    bold: true,
+  });
 }
 
 function centeredRect(bounds: Rectangle, width: number, height: number): Rectangle {
