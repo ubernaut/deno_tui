@@ -1,4 +1,4 @@
-import { assertEquals } from "./deps.ts";
+import { assertEquals, assertThrows } from "./deps.ts";
 import { commandDisabled } from "./test_commands.ts";
 import { bindInputCommands, inputCommands } from "../src/app/input_commands.ts";
 import { bindListCommands, listCommands } from "../src/app/list_commands.ts";
@@ -101,6 +101,8 @@ import {
 } from "../src/components/table.ts";
 import { clampTabIndex, renderTabs, shiftTabIndex, tabForIndex, TabsController } from "../src/components/tabs.ts";
 import {
+  type CursorPosition,
+  TextBox,
   TextBoxController,
   textBoxVisualCursor,
   TextLineCache,
@@ -118,6 +120,8 @@ import type { Key, KeyPressEvent } from "../src/input_reader/types.ts";
 import { Signal } from "../src/signals/mod.ts";
 import type { Component } from "../src/component.ts";
 import type { Tui } from "../src/tui.ts";
+import { graphemeBoundaries } from "../src/unicode/grapheme.ts";
+import { createTestTerminalApp } from "../mod.testing.ts";
 
 Deno.test("visibleListRows centers the selected item when space allows", () => {
   assertEquals(visibleListRows(["alpha", "beta", "gamma", "delta"], 2, 3), [
@@ -330,6 +334,53 @@ Deno.test("InputController edits text validates characters and inspects state", 
   assertEquals(submissions, ["abc"]);
   assertEquals(changes, ["a b", "a ", "abc"]);
   controller.dispose();
+});
+
+Deno.test("InputController keeps UTF-16 cursor offsets on extended-grapheme boundaries", () => {
+  const value = "A😀e\u0301Z";
+  const controller = new InputController({
+    text: value,
+    cursorPosition: 2,
+    multiCodePointSupport: true,
+  });
+
+  assertEquals(controller.cursorPosition.peek(), 1);
+  assertEquals(controller.moveCursor(1), 3);
+  assertEquals(controller.moveCursor(1), 5);
+  assertEquals(controller.moveCursor(-1), 3);
+  assertEquals(controller.delete(), true);
+  assertEquals(controller.text.peek(), "A😀Z");
+  assertEquals(controller.cursorPosition.peek(), 3);
+
+  controller.setText(value, 5);
+  assertEquals(controller.backspace(), true);
+  assertEquals(controller.text.peek(), "A😀Z");
+  assertEquals(controller.cursorPosition.peek(), 3);
+  assertEquals(controller.accepts("e\u0301"), true);
+  assertEquals(controller.accepts("👩‍👩"), true);
+  assertEquals(controller.accepts("ab"), false);
+  controller.dispose();
+
+  const cursor = new Signal(2);
+  const external = new InputController({ text: value, cursorPosition: cursor, multiCodePointSupport: true });
+  assertEquals(cursor.peek(), 1);
+  cursor.value = 4;
+  assertEquals(cursor.peek(), 3);
+  external.dispose();
+
+  const singleCodePoint = new InputController();
+  assertEquals(singleCodePoint.accepts("é"), true);
+  assertEquals(singleCodePoint.accepts("e\u0301"), false);
+  assertEquals(singleCodePoint.accepts("😀"), false);
+  singleCodePoint.dispose();
+
+  const validated = new InputController({
+    text: "e\u0301e\u0301",
+    validator: /^e\u0301$/,
+    multiCodePointSupport: true,
+  });
+  assertEquals(validated.inspect().valid, true);
+  validated.dispose();
 });
 
 Deno.test("inputCommands submit clear move cursor and set preset values", async () => {
@@ -2089,6 +2140,311 @@ Deno.test("TextBoxController edits multiline text and inspects cursor state", ()
   controller.dispose();
 });
 
+Deno.test("TextBoxController edits and validates whole graphemes on each logical line", () => {
+  const value = "A😀e\u0301Z\ne\u0301";
+  const cursor = new Signal({ x: 2, y: 0 }, { deepObserve: true });
+  const controller = new TextBoxController({
+    text: value,
+    cursorPosition: cursor,
+    multiCodePointSupport: true,
+  });
+
+  assertEquals(cursor.peek(), { x: 1, y: 0 });
+  assertEquals(controller.moveCursor({ x: 1 }), { x: 3, y: 0 });
+  assertEquals(controller.moveCursor({ x: 1 }), { x: 5, y: 0 });
+  assertEquals(controller.backspace(), true);
+  assertEquals(controller.text.peek(), "A😀Z\ne\u0301");
+  assertEquals(controller.cursorPosition.peek(), { x: 3, y: 0 });
+  assertEquals(controller.delete(), true);
+  assertEquals(controller.text.peek(), "A😀\ne\u0301");
+
+  cursor.value = { x: 1, y: 1 };
+  assertEquals(cursor.peek(), { x: 0, y: 1 });
+  assertEquals(controller.accepts("e\u0301"), true);
+  assertEquals(controller.accepts("👩‍👩"), true);
+  assertEquals(controller.accepts("ab"), false);
+  controller.dispose();
+
+  const singleCodePoint = new TextBoxController();
+  assertEquals(singleCodePoint.accepts("é"), true);
+  assertEquals(singleCodePoint.accepts("e\u0301"), false);
+  assertEquals(singleCodePoint.accepts("😀"), false);
+  singleCodePoint.dispose();
+
+  const validated = new TextBoxController({
+    text: "e\u0301e\u0301\ne\u0301",
+    validator: /^e\u0301$/,
+    multiCodePointSupport: true,
+  });
+  assertEquals(validated.inspect().valid, true);
+  validated.dispose();
+
+  const reactiveCursor = new Signal({ x: 0, y: 0 }, { deepObserve: true });
+  const reactive = new TextBoxController({
+    text: "A😀Z",
+    cursorPosition: reactiveCursor,
+    multiCodePointSupport: true,
+  });
+  const retainedRoot = reactiveCursor.peek();
+  reactive.moveCursor({ x: 1 });
+  reactive.moveCursor({ x: 1 });
+  assertEquals(reactiveCursor.peek(), { x: 3, y: 0 });
+  assertEquals(reactiveCursor.peek() === retainedRoot, true);
+  const emitted: CursorPosition[] = [];
+  reactiveCursor.subscribe((position) => emitted.push({ ...position }));
+  reactiveCursor.value.x = 2;
+  assertEquals(reactiveCursor.peek(), { x: 1, y: 0 });
+  assertEquals(reactiveCursor.peek() === retainedRoot, true);
+  assertEquals(emitted.at(-1), { x: 1, y: 0 });
+  reactive.dispose();
+});
+
+Deno.test("TextBoxController exposes canonical directional multiline selection", () => {
+  const controller = new TextBoxController({
+    text: "A😀e\u0301Z\nsecond",
+    multiCodePointSupport: true,
+  });
+
+  assertEquals(controller.setSelection({ x: 2, y: 0 }, { x: 3, y: 1 }), {
+    anchor: { x: 1, y: 0 },
+    focus: { x: 3, y: 1 },
+  });
+  assertEquals(controller.cursorPosition.peek(), { x: 3, y: 1 });
+  assertEquals(controller.selectionRange(), {
+    start: { x: 1, y: 0 },
+    end: { x: 3, y: 1 },
+  });
+  assertEquals(controller.selectedText(), "😀e\u0301Z\nsec");
+  assertEquals(controller.inspect().selection, {
+    anchor: { x: 1, y: 0 },
+    focus: { x: 3, y: 1 },
+  });
+  assertEquals(controller.inspect().selectedText, "😀e\u0301Z\nsec");
+
+  assertEquals(controller.collapseSelection("start"), { x: 1, y: 0 });
+  assertEquals(controller.selection.peek(), undefined);
+  assertEquals(controller.inspect().selection, undefined);
+  controller.selectAll();
+  assertEquals(controller.selectedText(), controller.text.peek());
+  controller.clearSelection();
+  assertEquals(controller.selectionRange(), undefined);
+
+  controller.selection.value = {
+    anchor: { x: 4, y: 0 },
+    focus: { x: 99, y: 1 },
+  };
+  assertEquals(controller.selection.peek(), {
+    anchor: { x: 3, y: 0 },
+    focus: { x: 6, y: 1 },
+  });
+  assertEquals(controller.cursorPosition.peek(), { x: 6, y: 1 });
+  controller.dispose();
+});
+
+Deno.test("TextBoxController keyboard selection and editing replace one range", () => {
+  const changes: string[] = [];
+  const controller = new TextBoxController({
+    text: "a😀b\ncd",
+    multiCodePointSupport: true,
+    onChange: (value) => void changes.push(value),
+  });
+
+  assertEquals(controller.handleKeyPress(keyPress("right", { shift: true })), "moved");
+  assertEquals(controller.selectedText(), "a");
+  controller.handleKeyPress(keyPress("right", { shift: true }));
+  assertEquals(controller.selectedText(), "a😀");
+  assertEquals(controller.cursorPosition.peek(), { x: 3, y: 0 });
+  controller.handleKeyPress(keyPress("end", { shift: true }));
+  assertEquals(controller.selectedText(), "a😀b");
+  assertEquals(controller.handleKeyPress(keyPress("a", { ctrl: true })), "moved");
+  assertEquals(controller.selectedText(), "a😀b\ncd");
+
+  assertEquals(controller.handleKeyPress(keyPress("x")), "changed");
+  assertEquals(controller.text.peek(), "x");
+  assertEquals(controller.cursorPosition.peek(), { x: 1, y: 0 });
+  assertEquals(controller.selection.peek(), undefined);
+  assertEquals(changes, ["x"]);
+
+  controller.setText("abcd", { x: 4, y: 0 });
+  controller.handleKeyPress(keyPress("left", { shift: true }));
+  controller.handleKeyPress(keyPress("left"));
+  assertEquals(controller.cursorPosition.peek(), { x: 3, y: 0 });
+  assertEquals(controller.selection.peek(), undefined);
+  controller.dispose();
+});
+
+Deno.test("TextBoxController insertText atomically replaces multiline selections", () => {
+  const changes: string[] = [];
+  const controller = new TextBoxController({
+    text: "one two three",
+    multiCodePointSupport: true,
+    onChange: (value) => void changes.push(value),
+  });
+  controller.setSelection({ x: 4, y: 0 }, { x: 7, y: 0 });
+
+  assertEquals(controller.insertText("2\r\nβ"), true);
+  assertEquals(controller.text.peek(), "one 2\nβ three");
+  assertEquals(controller.cursorPosition.peek(), { x: 1, y: 1 });
+  assertEquals(controller.selection.peek(), undefined);
+  assertEquals(changes, ["one 2\nβ three"]);
+
+  const validated = new TextBoxController({
+    text: "A",
+    cursorPosition: { x: 1, y: 0 },
+    validator: /^[A-Z]$/,
+  });
+  assertEquals(validated.insertText("BC\nD"), true);
+  assertEquals(validated.text.peek(), "ABC\nD");
+  assertEquals(validated.insertText("β"), false);
+  assertEquals(validated.text.peek(), "ABC\nD");
+  validated.dispose();
+  controller.dispose();
+});
+
+Deno.test("TextBoxController literal find counts boundary-aligned matches and wraps", () => {
+  const controller = new TextBoxController({
+    text: "e\u0301 x e\u0301",
+    multiCodePointSupport: true,
+  });
+  const matches = controller.findAll("e\u0301");
+
+  assertEquals(matches, [
+    { start: { x: 0, y: 0 }, end: { x: 2, y: 0 } },
+    { start: { x: 5, y: 0 }, end: { x: 7, y: 0 } },
+  ]);
+  assertEquals(structuredClone(matches), matches);
+  assertEquals(controller.findAll("\u0301"), []);
+  assertEquals(controller.findAll("E\u0301"), []);
+
+  const first = controller.findNext("e\u0301");
+  assertEquals(first, {
+    query: "e\u0301",
+    range: matches[0],
+    index: 0,
+    total: 2,
+    wrapped: false,
+  });
+  assertEquals(controller.selectedText(), "e\u0301");
+  assertEquals(controller.findNext("e\u0301")?.index, 1);
+  const wrapped = controller.findNext("e\u0301");
+  assertEquals({ index: wrapped?.index, total: wrapped?.total, wrapped: wrapped?.wrapped }, {
+    index: 0,
+    total: 2,
+    wrapped: true,
+  });
+  const previous = controller.findNext("e\u0301", { direction: "backward" });
+  assertEquals({ index: previous?.index, wrapped: previous?.wrapped }, { index: 1, wrapped: true });
+  assertEquals(
+    controller.find("e\u0301", { direction: "forward", from: { x: 7, y: 0 }, wrap: false }),
+    undefined,
+  );
+  controller.dispose();
+});
+
+Deno.test("TextBoxController replaceSelection and replaceAll emit one change", () => {
+  const selectionChanges: string[] = [];
+  const selected = new TextBoxController({
+    text: "A😀Z",
+    multiCodePointSupport: true,
+    onChange: (value) => void selectionChanges.push(value),
+  });
+  selected.setSelection({ x: 1, y: 0 }, { x: 3, y: 0 });
+  assertEquals(selected.replaceSelection("e\u0301"), true);
+  assertEquals(selected.text.peek(), "Ae\u0301Z");
+  assertEquals(selectionChanges, ["Ae\u0301Z"]);
+  selected.dispose();
+
+  const changes: string[] = [];
+  const controller = new TextBoxController({
+    text: "😀x 😀x",
+    multiCodePointSupport: true,
+    onChange: (value) => void changes.push(value),
+  });
+  const result = controller.replaceAll("😀", "e\u0301");
+  assertEquals(result, {
+    matchCount: 2,
+    replacements: 2,
+    changed: true,
+    limited: false,
+    text: "e\u0301x e\u0301x",
+    cursorPosition: { x: 6, y: 0 },
+  });
+  assertEquals(structuredClone(result), result);
+  assertEquals(changes, ["e\u0301x e\u0301x"]);
+  assertEquals(controller.replaceAll("\u0301", "x").replacements, 0);
+  assertEquals(controller.replaceAll("e\u0301", "e\u0301"), {
+    matchCount: 2,
+    replacements: 2,
+    changed: false,
+    limited: false,
+    text: "e\u0301x e\u0301x",
+    cursorPosition: { x: 6, y: 0 },
+  });
+  assertEquals(changes, ["e\u0301x e\u0301x"]);
+  controller.dispose();
+});
+
+Deno.test("TextBoxController rejects oversized edits and replace-all expansion without partial mutation", () => {
+  const controller = new TextBoxController({ text: "aaaa", maxLength: 8 });
+
+  assertEquals(controller.insertText("12345"), false);
+  assertEquals(controller.text.peek(), "aaaa");
+  assertEquals(controller.replaceAll("a", "123", { maxTextLength: 8 }), {
+    matchCount: 4,
+    replacements: 0,
+    changed: false,
+    limited: true,
+    text: "aaaa",
+    cursorPosition: { x: 0, y: 0 },
+  });
+  assertEquals(controller.replaceAll("a", "b", { maxReplacements: 3 }).limited, true);
+  assertEquals(controller.text.peek(), "aaaa");
+  assertEquals(controller.inspect().maxLength, 8);
+  assertEquals(controller.inspect().valid, true);
+  assertThrows(() => controller.setText("123456789"), RangeError);
+  controller.dispose();
+});
+
+Deno.test("TextBox renders selection overlays across wrapped and unwrapped rows", async () => {
+  const upper = (value: string) => value.toLocaleUpperCase("en-US");
+  const wrapped = new TextBoxController({ text: "abcdefgh", wordWrap: true });
+  const unwrapped = new TextBoxController({ text: "abcdef" });
+  wrapped.setSelection({ x: 1, y: 0 }, { x: 7, y: 0 });
+  unwrapped.setSelection({ x: 2, y: 0 }, { x: 4, y: 0 });
+  const harness = await createTestTerminalApp({
+    size: { columns: 8, rows: 5 },
+    setup(app) {
+      for (
+        const [controller, rectangle] of [
+          [wrapped, { column: 0, row: 0, width: 4, height: 2 }],
+          [unwrapped, { column: 0, row: 3, width: 5, height: 1 }],
+        ] as const
+      ) {
+        const textBox = new TextBox({
+          parent: app.tui,
+          controller,
+          theme: {
+            base: (value) => value,
+            cursor: { base: (value) => value },
+            selection: { base: upper },
+          },
+          zIndex: 1,
+          rectangle,
+        });
+        app.registerComponent(textBox);
+      }
+    },
+  });
+
+  try {
+    assertEquals(harness.pilot.snapshot(), "aBCD\nEFGh\n\nabCDe");
+  } finally {
+    harness.destroy();
+    wrapped.dispose();
+    unwrapped.dispose();
+  }
+});
+
 Deno.test("TextBoxController exposes wrapped visual lines and cursor projection", () => {
   const lines = ["alpha beta gamma", "", "delta"];
   assertEquals(wrapTextBoxLines(lines, 7, { wordWrap: true }), [
@@ -2107,6 +2463,13 @@ Deno.test("TextBoxController exposes wrapped visual lines and cursor projection"
     { lineIndex: 0, startColumn: 0, endColumn: 10, text: "alpha beta", continuation: false },
   ]);
 
+  const unicodeLine = "e\u0301界x";
+  assertEquals(wrapTextBoxLines([unicodeLine], 3, { wordWrap: true }), [
+    { lineIndex: 0, startColumn: 0, endColumn: 3, text: "e\u0301界", continuation: false },
+    { lineIndex: 0, startColumn: 3, endColumn: 4, text: "x", continuation: true },
+  ]);
+  assertEquals(textBoxVisualCursor([unicodeLine], { x: 2, y: 0 }, 3, { wordWrap: true }).column, 1);
+
   const reusable = wrapTextBoxLines(lines, 7, { wordWrap: true });
   const first = reusable[0];
   const secondPass = wrapTextBoxLinesInto(reusable, ["short"], 20, { wordWrap: false });
@@ -2118,6 +2481,26 @@ Deno.test("TextBoxController exposes wrapped visual lines and cursor projection"
   assertEquals(wrapTextBoxLinesInto(reusable, [], 10), [
     { lineIndex: 0, startColumn: 0, endColumn: 0, text: "", continuation: false },
   ]);
+
+  assertEquals(wrapTextBoxLines(["😀e\u0301Z"], 1, { wordWrap: true }), [
+    { lineIndex: 0, startColumn: 0, endColumn: 2, text: " ", continuation: false },
+    { lineIndex: 0, startColumn: 2, endColumn: 4, text: "e\u0301", continuation: true },
+    { lineIndex: 0, startColumn: 4, endColumn: 5, text: "Z", continuation: true },
+  ]);
+
+  const spaceWithCombiningMark = "a \u0301b";
+  const spaceBoundaries = graphemeBoundaries(spaceWithCombiningMark);
+  const spaceWrapped = wrapTextBoxLines([spaceWithCombiningMark], 2, { wordWrap: true });
+  assertEquals(spaceWrapped, [
+    { lineIndex: 0, startColumn: 0, endColumn: 3, text: "a \u0301", continuation: false },
+    { lineIndex: 0, startColumn: 3, endColumn: 4, text: "b", continuation: true },
+  ]);
+  assertEquals(
+    spaceWrapped.every((line) =>
+      spaceBoundaries.includes(line.startColumn) && spaceBoundaries.includes(line.endColumn)
+    ),
+    true,
+  );
 });
 
 Deno.test("textBoxCommands clear move cursor and set preset values", async () => {

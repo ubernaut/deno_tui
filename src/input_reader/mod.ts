@@ -36,7 +36,7 @@ const BRACKETED_PASTE_END = new TextEncoder().encode(BRACKETED_PASTE_END_TEXT);
 export async function emitInputEvents(
   stdin: Stdin,
   emitter: EventEmitter<InputEventRecord>,
-  minReadInterval = 1000 / 60,
+  minReadInterval = 0,
   options: { signal?: AbortSignal } = {},
 ): Promise<void> {
   try {
@@ -51,6 +51,13 @@ export async function emitInputEvents(
   while (!options.signal?.aborted) {
     const size = await stdin.read(maxbuffer);
     if (size == null || options.signal?.aborted) return;
+    // A conforming blocking terminal reader normally returns data or EOF, but
+    // custom adapters may transiently report zero bytes. Yield in that case so
+    // the unthrottled default cannot become a hot spin.
+    if (size === 0) {
+      await waitForInputInterval(interval, options.signal);
+      continue;
+    }
 
     const buffer = maxbuffer.subarray(0, size);
     const combined = pending.length > 0 ? concatBuffers(pending, buffer) : buffer;

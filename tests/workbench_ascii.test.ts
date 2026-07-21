@@ -36,6 +36,7 @@ import {
 } from "../src/three_ascii/demo_presets.ts";
 import {
   asciiControlValues,
+  buildAsciiOptionsFromPreset,
   clampAsciiControlValue,
   createDefaultAsciiOptions,
   normalizeAsciiOptions,
@@ -82,12 +83,12 @@ Deno.test("workbench ascii option helpers step presets glyphs toggles and numeri
   const initial = createDefaultWorkbenchAsciiOptions();
 
   const preset = stepWorkbenchAsciiPreset(initial, ["opentui-blocks", "glyph-atlas"], 1);
-  assertEquals(preset.presetId, "opentui-blocks");
-  assertEquals(preset.options.terminalGlyphStyle, "blocks");
+  assertEquals(preset.presetId, "glyph-atlas");
+  assertEquals(preset.options.terminalGlyphStyle, "glyphs");
   assertEquals(preset.options.renderMaxCells, initial.renderMaxCells);
 
   const glyph = stepWorkbenchAsciiGlyphStyle(initial, 1);
-  assertEquals(glyph.terminalGlyphStyle, "mixed");
+  assertEquals(glyph.terminalGlyphStyle, "glyphs");
   assertEquals(glyph.preset, "custom");
 
   const toggled = toggleWorkbenchAsciiOption(initial, "edges");
@@ -161,12 +162,25 @@ Deno.test("workbench ascii defaults favor terminal-visible wire thickness", () =
   assertEquals(asciiControlValues("deferredReadbackSlots"), [2, 4, 6, 8, 12]);
 });
 
-Deno.test("API workbench defaults to the repaired semantic glyph preset", () => {
+Deno.test("API workbench defaults to color-preserving full-cell blocks", () => {
   const options = createDefaultWorkbenchAsciiOptions();
-  assertEquals(options.preset, "glyph-atlas");
-  assertEquals(options.terminalGlyphStyle, "glyphs");
+  assertEquals(options.preset, "opentui-blocks");
+  assertEquals(options.terminalGlyphStyle, "blocks");
+  assertEquals(options.blendWithBase, 1);
+  assertEquals(options.depthFalloff, 0);
+  assertEquals(options.edges, false);
   assertEquals(options.renderMaxCells, 960);
   assertEquals(options.deferredReadbackSlots, 2);
+});
+
+Deno.test("switching a pale glyph preset to blocks restores source-color blending", () => {
+  const glyphs = buildAsciiOptionsFromPreset("glyph-atlas", "sharp");
+  const blocks = stepWorkbenchAsciiGlyphStyle(glyphs, -1);
+
+  assertEquals(blocks.terminalGlyphStyle, "blocks");
+  assertEquals(blocks.blendWithBase, 1);
+  assertEquals(blocks.depthFalloff, glyphs.depthFalloff);
+  assertEquals(blocks.preset, "custom");
 });
 
 Deno.test("ascii option normalization defaults to blocks but preserves saved glyph overrides", () => {
@@ -207,8 +221,8 @@ Deno.test("workbench ascii config action helper applies rows and formats message
     "next",
     ["opentui-blocks", "glyph-atlas"],
   );
-  assertEquals(preset.options.terminalGlyphStyle, "blocks");
-  assertEquals(preset.message, "preset OpenTUI Blocks");
+  assertEquals(preset.options.terminalGlyphStyle, "glyphs");
+  assertEquals(preset.message, "preset Glyph Atlas");
 
   const glyph = applyWorkbenchAsciiConfigRowAction(
     initial,
@@ -216,8 +230,8 @@ Deno.test("workbench ascii config action helper applies rows and formats message
     "next",
     [],
   );
-  assertEquals(glyph.options.terminalGlyphStyle, "mixed");
-  assertEquals(glyph.message, "glyph style Mixed");
+  assertEquals(glyph.options.terminalGlyphStyle, "glyphs");
+  assertEquals(glyph.message, "glyph style Glyphs");
 
   const toggle = applyWorkbenchAsciiConfigRowAction(
     initial,
@@ -291,11 +305,11 @@ Deno.test("workbench ascii helpers report ratios closest values and renderer mod
   const options = { ...createDefaultWorkbenchAsciiOptions(), kittyGraphics: true, kittyDisableAscii: false };
   assertEquals(
     workbenchAsciiRendererModeLabel(options, (style) => style.toUpperCase()),
-    "GLYPHS · Kitty + ASCII",
+    "BLOCKS · Kitty + ASCII",
   );
   assertEquals(
     workbenchAsciiRendererModeLabel({ ...options, kittyDisableAscii: true }, (style) => style.toUpperCase()),
-    "GLYPHS · Kitty only",
+    "BLOCKS · Kitty only",
   );
 });
 
@@ -330,7 +344,7 @@ Deno.test("workbench ascii config rows expose reusable modal text", () => {
   ]);
   assertEquals(
     formatWorkbenchAsciiConfigRowText({ kind: "preset", label: "Preset" }, options),
-    "Preset             [<] Glyph Atlas [>]",
+    "Preset             [<] OpenTUI Blocks [>]",
   );
   assertEquals(
     formatWorkbenchAsciiConfigRowText({ kind: "toggle", key: "edges", label: "Edge pass" }, options),

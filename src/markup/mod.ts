@@ -7,3 +7,6 @@ export * from "./hydrate.ts";
 export * from "./layout_worker.ts";
 export * from "./support.ts";
 export * from "./widgets.ts";
+export * from "./window_history.ts";
+export * from "./window_interactions.ts";
+export * from "./windows.ts";

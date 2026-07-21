@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Signal } from "../signals/mod.ts";
+import { makeObjectPropertiesReactive } from "../signals/reactivity.ts";
 import type { Rectangle } from "../types.ts";
 import { normalizeRectangle } from "../utils/rectangles.ts";
 
@@ -135,15 +136,23 @@ export interface TiledWorkspaceSnapshot {
 export class TiledWorkspaceController {
   readonly state: Signal<TiledWorkspaceLayoutState>;
   readonly gap: Signal<number>;
+  readonly #stateSignal: TiledWorkspaceStateSignal;
+  readonly #gapSignal: TiledWorkspaceGapSignal;
+  #nextWindowRegistrationGeneration = 1;
+  #windowRegistrationGenerations = new Map<string, number>();
 
   constructor(options: TiledWorkspaceControllerOptions = {}) {
     const layout = normalizeTiledWorkspaceLayout(options.layout ?? {});
-    this.gap = new Signal(normalizeGap(options.gap));
-    this.state = new Signal(
-      options.windows === undefined
-        ? activateTiledWorkspaceWindow(layout, options.activeWindowId)
-        : reconcileTiledWorkspaceLayout(layout, options.windows, { activeWindowId: options.activeWindowId }),
-    );
+    this.#gapSignal = new TiledWorkspaceGapSignal(normalizeGap(options.gap));
+    this.gap = this.#gapSignal;
+    const initialState = options.windows === undefined
+      ? activateTiledWorkspaceWindow(layout, options.activeWindowId)
+      : reconcileTiledWorkspaceLayout(layout, options.windows, { activeWindowId: options.activeWindowId });
+    this.#stateSignal = new TiledWorkspaceStateSignal(initialState, (current, next) => {
+      this.#syncExternalWindowRegistrationGenerations(current, next);
+    });
+    this.state = this.#stateSignal;
+    this.#syncWindowRegistrationGenerations(this.state.peek());
   }
 
   /** Returns window ids in their current visual traversal order. */
@@ -151,12 +160,19 @@ export class TiledWorkspaceController {
     return collectPaneRefs(this.state.peek().root).map((pane) => pane.windowId);
   }
 
+  /** Opaque generation that changes when a window id leaves and re-enters the workspace. */
+  windowRegistrationGeneration(windowId: string): number | undefined {
+    return this.#windowRegistrationGenerations.get(windowId);
+  }
+
   /** Reconciles the tree with current visible windows while preserving surviving geometry. */
   reconcile(
     windows: readonly TiledWorkspaceWindow[],
     options: ReconcileTiledWorkspaceOptions = {},
   ): TiledWorkspaceInspection {
-    this.state.value = reconcileTiledWorkspaceLayout(this.state.peek(), windows, options);
+    const next = reconcileTiledWorkspaceLayout(this.state.peek(), windows, options);
+    this.#syncWindowRegistrationGenerations(next);
+    this.#publishState(next);
     return this.inspect();
   }
 
@@ -164,7 +180,7 @@ export class TiledWorkspaceController {
   focus(windowId: string): boolean {
     const pane = findPaneByWindowRef(this.state.peek().root, windowId);
     if (!pane || this.state.peek().activePaneId === pane.id) return pane !== undefined;
-    this.state.value = { ...this.state.peek(), activePaneId: pane.id };
+    this.#publishState({ ...this.state.peek(), activePaneId: pane.id });
     return true;
   }
 
@@ -172,7 +188,7 @@ export class TiledWorkspaceController {
   activatePane(paneId: string): boolean {
     const pane = findPaneByIdRef(this.state.peek().root, paneId);
     if (!pane || this.state.peek().activePaneId === pane.id) return pane !== undefined;
-    this.state.value = { ...this.state.peek(), activePaneId: pane.id };
+    this.#publishState({ ...this.state.peek(), activePaneId: pane.id });
     return true;
   }
 
@@ -183,10 +199,12 @@ export class TiledWorkspaceController {
     if (!pane) return false;
     const root = removePaneById(current.root, pane.id);
     const activePane = current.activePaneId ? findPaneByIdRef(root, current.activePaneId) : undefined;
-    this.state.value = {
+    const next = {
       root,
       activePaneId: activePane?.id ?? firstPaneRef(root)?.id,
     };
+    this.#syncWindowRegistrationGenerations(next);
+    this.#publishState(next);
     return true;
   }
 
@@ -203,10 +221,10 @@ export class TiledWorkspaceController {
     const reordered = [...panes];
     reordered.splice(index, 1);
     reordered.splice(targetIndex, 0, source);
-    this.state.value = {
+    this.#publishState({
       root: reorderPaneLocations(current.root, reordered, { value: 0 }),
       activePaneId: source.id,
-    };
+    });
     return true;
   }
 
@@ -217,10 +235,10 @@ export class TiledWorkspaceController {
     const first = findPaneByWindowRef(current.root, firstWindowId);
     const second = findPaneByWindowRef(current.root, secondWindowId);
     if (!first || !second) return false;
-    this.state.value = {
+    this.#publishState({
       root: swapPaneLocations(current.root, first.id, second.id),
       activePaneId: first.id,
-    };
+    });
     return true;
   }
 
@@ -250,10 +268,10 @@ export class TiledWorkspaceController {
       first: sourceFirst ? clonePane(source) : clonePane(survivingTarget),
       second: sourceFirst ? clonePane(survivingTarget) : clonePane(source),
     };
-    this.state.value = {
+    this.#publishState({
       root: replacePaneById(withoutSource, survivingTarget.id, split),
       activePaneId: source.id,
-    };
+    });
     return true;
   }
 
@@ -263,7 +281,7 @@ export class TiledWorkspaceController {
     const nextRatio = clampRatio(ratio);
     const updated = updateSplitRatio(current.root, splitId, nextRatio);
     if (!updated.changed) return false;
-    this.state.value = { ...current, root: updated.node };
+    this.#publishState({ ...current, root: updated.node });
     return true;
   }
 
@@ -338,17 +356,238 @@ export class TiledWorkspaceController {
   /** Replaces controller state from a persisted snapshot. */
   restore(snapshot: TiledWorkspaceSnapshot, windows?: readonly TiledWorkspaceWindow[]): TiledWorkspaceInspection {
     const restored = normalizeTiledWorkspaceSnapshot(snapshot);
-    this.gap.value = restored.gap;
-    this.state.value = windows === undefined
-      ? restored.layout
-      : reconcileTiledWorkspaceLayout(restored.layout, windows);
+    const next = windows === undefined ? restored.layout : reconcileTiledWorkspaceLayout(restored.layout, windows);
+    this.#syncWindowRegistrationGenerations(next);
+    const previousGap = this.gap.peek();
+    const gapMutationRevision = this.#gapSignal.externalMutationRevision;
+    this.#gapSignal.jinkOwned(restored.gap);
+    try {
+      this.#publishState(next);
+    } finally {
+      if (
+        previousGap !== restored.gap &&
+        this.#gapSignal.externalMutationRevision === gapMutationRevision &&
+        this.gap.peek() === restored.gap
+      ) {
+        this.gap.propagate();
+      }
+    }
     return this.inspect();
   }
 
   dispose(): void {
+    this.#windowRegistrationGenerations.clear();
     this.state.dispose();
     this.gap.dispose();
   }
+
+  #syncWindowRegistrationGenerations(layout: TiledWorkspaceLayoutState): void {
+    const ids = new Set(collectPaneRefs(layout.root).map((pane) => pane.windowId));
+    for (const id of [...this.#windowRegistrationGenerations.keys()]) {
+      if (!ids.has(id)) this.#windowRegistrationGenerations.delete(id);
+    }
+    for (const id of ids) {
+      if (this.#windowRegistrationGenerations.has(id)) continue;
+      if (!Number.isSafeInteger(this.#nextWindowRegistrationGeneration)) {
+        throw new RangeError("Tiled workspace registration generation space exhausted.");
+      }
+      this.#windowRegistrationGenerations.set(id, this.#nextWindowRegistrationGeneration++);
+    }
+  }
+
+  #syncExternalWindowRegistrationGenerations(
+    current: TiledWorkspaceRegistrationObservation,
+    next: TiledWorkspaceRegistrationObservation,
+  ): void {
+    const generations = new Map(this.#windowRegistrationGenerations);
+    let nextGeneration = this.#nextWindowRegistrationGeneration;
+    for (const id of [...generations.keys()]) {
+      if (!next.byId.has(id)) generations.delete(id);
+    }
+    for (const [id, pane] of next.byId) {
+      if (
+        current.byId.get(id) === pane &&
+        generations.has(id)
+      ) continue;
+      if (!Number.isSafeInteger(nextGeneration)) {
+        throw new RangeError("Tiled workspace registration generation space exhausted.");
+      }
+      generations.set(id, nextGeneration++);
+    }
+    this.#windowRegistrationGenerations = generations;
+    this.#nextWindowRegistrationGeneration = nextGeneration;
+  }
+
+  #publishState(next: TiledWorkspaceLayoutState): void {
+    this.#stateSignal.publishOwned(next);
+  }
+}
+
+interface TiledWorkspaceRegistrationObservation {
+  readonly byId: ReadonlyMap<string, TiledWorkspacePaneNode>;
+  readonly rollback: TiledWorkspaceLayoutState;
+}
+
+class TiledWorkspaceGapSignal extends Signal<number> {
+  #externalMutationRevision = 0;
+
+  override get value(): number {
+    return super.value;
+  }
+
+  override set value(value: number) {
+    this.#recordExternalAssignment();
+    super.value = value;
+  }
+
+  override jink(value: number): void {
+    this.#recordExternalAssignment();
+    super.jink(value);
+  }
+
+  get externalMutationRevision(): number {
+    return this.#externalMutationRevision;
+  }
+
+  jinkOwned(value: number): void {
+    super.jink(value);
+  }
+
+  #recordExternalAssignment(): void {
+    this.#externalMutationRevision = this.#externalMutationRevision === Number.MAX_SAFE_INTEGER
+      ? 0
+      : this.#externalMutationRevision + 1;
+  }
+}
+
+class TiledWorkspaceStateSignal extends Signal<TiledWorkspaceLayoutState> {
+  readonly #beforeReplace: (
+    current: TiledWorkspaceRegistrationObservation,
+    next: TiledWorkspaceRegistrationObservation,
+  ) => void;
+  readonly #reactiveTargets = new WeakMap<object, object>();
+  #observed: TiledWorkspaceRegistrationObservation;
+
+  constructor(
+    value: TiledWorkspaceLayoutState,
+    beforeReplace: (
+      current: TiledWorkspaceRegistrationObservation,
+      next: TiledWorkspaceRegistrationObservation,
+    ) => void,
+  ) {
+    super(value);
+    this.#beforeReplace = beforeReplace;
+    this.$value = this.#prepareState(value);
+    this.#observed = captureTiledWorkspaceRegistrationInventory(this.peek());
+  }
+
+  override get value(): TiledWorkspaceLayoutState {
+    return super.value;
+  }
+
+  override set value(value: TiledWorkspaceLayoutState) {
+    const next = this.#prepareState(value);
+    const nextObserved = captureTiledWorkspaceRegistrationInventory(next);
+    this.#beforeReplace(this.#observed, nextObserved);
+    this.#observed = nextObserved;
+    try {
+      super.value = next;
+    } finally {
+      this.#observed = captureTiledWorkspaceRegistrationInventory(this.peek());
+    }
+  }
+
+  override jink(value: TiledWorkspaceLayoutState): void {
+    const next = this.#prepareState(value);
+    const nextObserved = captureTiledWorkspaceRegistrationInventory(next);
+    this.#beforeReplace(this.#observed, nextObserved);
+    this.#observed = nextObserved;
+    super.jink(next);
+  }
+
+  override propagate(): void {
+    try {
+      this.#prepareNestedNodes(this.peek());
+      const nextObserved = captureTiledWorkspaceRegistrationInventory(this.peek());
+      this.#beforeReplace(this.#observed, nextObserved);
+      this.#observed = nextObserved;
+    } catch (error) {
+      const restored = this.#prepareState(this.#observed.rollback);
+      super.jink(restored);
+      this.#observed = captureTiledWorkspaceRegistrationInventory(restored);
+      throw error;
+    }
+    super.propagate();
+  }
+
+  publishOwned(value: TiledWorkspaceLayoutState): void {
+    const next = this.#prepareState(value);
+    this.#observed = captureTiledWorkspaceRegistrationInventory(next);
+    try {
+      super.value = next;
+    } finally {
+      this.#observed = captureTiledWorkspaceRegistrationInventory(this.peek());
+    }
+  }
+
+  #prepareState(value: TiledWorkspaceLayoutState): TiledWorkspaceLayoutState {
+    const knownTarget = this.#reactiveTargets.get(value);
+    if (knownTarget) {
+      this.#prepareNestedNodes(value);
+      return value;
+    }
+
+    const raw = { ...value };
+    if (raw.root) raw.root = this.#prepareNode(raw.root);
+    const reactive = makeObjectPropertiesReactive(raw, this, true);
+    this.#reactiveTargets.set(reactive, raw);
+    return reactive;
+  }
+
+  #prepareNestedNodes(state: TiledWorkspaceLayoutState): void {
+    if (!state.root) return;
+    const raw = (this.#reactiveTargets.get(state) ?? state) as TiledWorkspaceLayoutState;
+    raw.root = this.#prepareNode(state.root);
+  }
+
+  #prepareNode(node: TiledWorkspaceLayoutNode): TiledWorkspaceLayoutNode {
+    const knownTarget = this.#reactiveTargets.get(node) as TiledWorkspaceLayoutNode | undefined;
+    if (knownTarget) {
+      if (node.kind === "split") {
+        const split = knownTarget as TiledWorkspaceSplitNode;
+        split.first = this.#prepareNode(node.first);
+        split.second = this.#prepareNode(node.second);
+      }
+      return node;
+    }
+
+    const raw = { ...node } as TiledWorkspaceLayoutNode;
+    if (raw.kind === "split") {
+      raw.first = this.#prepareNode(raw.first);
+      raw.second = this.#prepareNode(raw.second);
+    }
+    const reactive = makeObjectPropertiesReactive(raw, this);
+    this.#reactiveTargets.set(reactive, raw);
+    return reactive;
+  }
+}
+
+function captureTiledWorkspaceRegistrationInventory(
+  state: TiledWorkspaceLayoutState,
+): TiledWorkspaceRegistrationObservation {
+  const panes = collectPaneRefs(state.root);
+  const byId = new Map<string, TiledWorkspacePaneNode>();
+  for (const pane of panes) {
+    const id = normalizeId(pane.windowId);
+    if (!id || id !== pane.windowId) {
+      throw new TypeError("Tiled workspace pane window ids must be non-empty normalized strings.");
+    }
+    if (byId.has(id)) {
+      throw new TypeError(`Tiled workspace contains duplicate window id ${JSON.stringify(id)}.`);
+    }
+    byId.set(id, pane);
+  }
+  return { byId, rollback: cloneLayoutState(state) };
 }
 
 /** Creates a tiled workspace controller. */

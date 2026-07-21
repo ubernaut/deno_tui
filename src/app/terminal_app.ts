@@ -31,6 +31,7 @@ export interface TerminalAppComponentOptions {
 
 /** Input-loop behavior owned by an opinionated terminal app. */
 export interface TerminalAppInputOptions {
+  /** Optional delay after a successful read; blocking terminal input defaults to no throttle. */
   minReadInterval?: number;
   restoreRawMode?: boolean;
   onError?: (error: unknown) => void;
@@ -123,7 +124,7 @@ export class TerminalApp<TAction extends Action = Action, TRoute extends Route =
       disposers.push(this.mouse.register({
         id: options.id ?? `component-${this.#componentSequence++}`,
         bounds: () => component.rectangle.peek(),
-        zIndex: component.zIndex.peek(),
+        zIndex: () => component.zIndex.peek(),
         disabled: () => !component.visible.peek() || component.state.peek() === "disabled",
         onPress: () => {
           this.focus.focus(component);
@@ -216,7 +217,7 @@ function bindTerminalInput(tui: Tui, options: TerminalAppInputOptions): () => vo
   void emitInputEvents(
     tui.stdin,
     tui,
-    options.minReadInterval ?? Math.min(tui.refreshRate, 1000 / 60),
+    options.minReadInterval ?? 0,
     { signal: controller.signal },
   ).catch((error) => {
     if (!controller.signal.aborted) options.onError?.(error);

@@ -10,6 +10,7 @@ import type {
   PasteEvent,
   TerminalFocusEvent,
 } from "../input_reader/types.ts";
+import type { PointerInputEvent } from "../pointer_input.ts";
 import { BrowserCellCanvasSink, type BrowserCellCanvasSinkOptions } from "./cell_canvas_sink.ts";
 import { BrowserPlatform, type BrowserPlatformOptions } from "./platform.ts";
 
@@ -40,6 +41,7 @@ export type WebTuiHostEvents = {
   mouseScroll: { args: [MouseScrollEvent] };
   paste: { args: [PasteEvent] };
   terminalFocus: { args: [TerminalFocusEvent] };
+  pointerInput: { args: [PointerInputEvent] };
   render: { args: [] };
   destroy: { args: [] };
 };

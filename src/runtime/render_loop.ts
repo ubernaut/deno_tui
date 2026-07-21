@@ -306,7 +306,8 @@ export class RenderLoop {
     this.#handle = undefined;
     try {
       this.#invokeTick();
-      this.#schedule();
+      const frameStartedAt = this.#lastStartedAt ?? this.#timer.now();
+      this.#schedule(nextFrameDelay(this.#intervalMs, frameStartedAt, this.#timer.now()));
     } catch (error) {
       this.#lastError = error;
       this.#onError?.(error);
@@ -327,9 +328,9 @@ export class RenderLoop {
     if (duration > this.#intervalMs) this.#overBudgetFrames += 1;
   }
 
-  #schedule(): void {
+  #schedule(delay = this.#intervalMs): void {
     if (!this.#running) return;
-    this.#handle = this.#timer.setTimeout(() => this.#run(), this.#intervalMs);
+    this.#handle = this.#timer.setTimeout(() => this.#run(), delay);
   }
 }
 

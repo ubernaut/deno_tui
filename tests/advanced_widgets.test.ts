@@ -435,6 +435,23 @@ Deno.test("CommandPaletteController handles typed query movement and inspection"
   controller.dispose();
 });
 
+Deno.test("CommandPaletteController accepts and deletes one whole grapheme at a time", () => {
+  const controller = new CommandPaletteController({
+    items: [{ id: "unicode", label: "A😀e\u0301" }],
+    query: "A😀e\u0301",
+  });
+
+  controller.backspace();
+  assertEquals(controller.query.peek(), "A😀");
+  controller.backspace();
+  assertEquals(controller.query.peek(), "A");
+  controller.handleKeyPress(keyPress("e\u0301" as Key));
+  assertEquals(controller.query.peek(), "Ae\u0301");
+  controller.handleKeyPress(keyPress("ab" as Key));
+  assertEquals(controller.query.peek(), "Ae\u0301");
+  controller.dispose();
+});
+
 Deno.test("context menu renders separators and skips disabled entries", () => {
   const items = [
     { id: "open", label: "Open" },

@@ -28,6 +28,32 @@
         "app/api_workbench_window_view.ts",
         "src/app/workbench_titlebar.ts"
       ]
+    },
+    {
+      "path": "src/markup/windows.ts",
+      "status": "accepted_cohesive_compatibility_boundary",
+      "task_id": "advanced-windowing-v1-20260718",
+      "reason": "This module remains the cohesive compatibility boundary for the public markup window model, serialized snapshot migrations, commands, constraints, and deterministic restore semantics.",
+      "mitigation": "Renderer input, gesture history, ownership, and showcase chrome must stay extracted into focused modules so this boundary contains only the shared model and compatibility facade.",
+      "migration_evidence": [
+        "src/markup/window_history.ts",
+        "src/markup/window_interactions.ts",
+        "src/app/workbench_window_host.ts",
+        "src/pointer_input.ts"
+      ]
+    },
+    {
+      "path": "examples/showcases/muxstone/app.ts",
+      "status": "accepted",
+      "task_id": "muxstone-close-terminates-pane",
+      "reason": "This runnable showcase file is the terminal-host compatibility facade where retained painting, the ordered PTY input barrier, and mouse/touch/workbench routing must share one mount lifecycle.",
+      "mitigation": "Daemon lifecycle, controller state, terminal mouse encoding, operation scheduling, protocol handling, palette mapping, and metaball simulation stay in focused modules; new domain logic must continue to be extracted rather than expanding the facade.",
+      "migration_evidence": [
+        "examples/showcases/muxstone/controller.ts",
+        "examples/showcases/muxstone/terminal_mouse.ts",
+        "examples/showcases/muxstone/operation_queue.ts",
+        "examples/showcases/muxstone/metaball_background.ts"
+      ]
     }
   ]
 }

@@ -5,8 +5,8 @@ import {
   applyAsciiPreset,
   asciiControlValues,
   asciiPresetLabel,
-  buildAsciiOptionsFromPreset,
   cloneAsciiOptions,
+  createDefaultAsciiOptions,
   formatAsciiControlValue,
   terminalGlyphStyleLabel,
   type ThreeAsciiConfigOptions,
@@ -91,7 +91,7 @@ export const defaultWorkbenchAsciiConfigRows: readonly WorkbenchAsciiConfigRow[]
 /** Create the default workbench Three ASCII configuration. */
 export function createDefaultWorkbenchAsciiOptions(): ThreeAsciiConfigOptions {
   return {
-    ...buildAsciiOptionsFromPreset("glyph-atlas", "sharp"),
+    ...createDefaultAsciiOptions("sharp"),
     renderMaxCells: 960,
     deferredReadbackSlots: 2,
   };
@@ -254,7 +254,14 @@ export function stepWorkbenchAsciiGlyphStyle(
 ): ThreeAsciiConfigOptions {
   const index = TERMINAL_GLYPH_STYLES.indexOf(options.terminalGlyphStyle);
   const next = TERMINAL_GLYPH_STYLES[(index + delta + TERMINAL_GLYPH_STYLES.length) % TERMINAL_GLYPH_STYLES.length]!;
-  return { ...options, terminalGlyphStyle: next, preset: "custom" };
+  return {
+    ...options,
+    terminalGlyphStyle: next,
+    // Full-cell blocks make the configured color mix especially visible. Do
+    // not carry a pale glyph-atlas blend into block mode.
+    blendWithBase: next === "blocks" ? 1 : options.blendWithBase,
+    preset: "custom",
+  };
 }
 
 /** Toggle a boolean renderer option and mark the configuration as custom. */

@@ -1697,7 +1697,7 @@ Deno.test("renderApiWorkbenchVisualizationThreeChrome paints chrome and returns 
   assertEquals(sceneRect, { column: 2, row: 6, width: 40, height: 6 });
   assertEquals(rows[0], { text: " MONITOR · Load ", fg: "#000", bg: "#0f0", bold: true });
   assertEquals(rows[1], { text: "CPU monitor", fg: "#ccc", bg: "#111", bold: false });
-  assertEquals(rows[2]?.text, "ACEROLA LATTICE · GLYPHS · CPU");
+  assertEquals(rows[2]?.text, "ACEROLA LATTICE · BLOCKS · CPU");
   assertEquals(writes, ["12:2:#222:#aaa:footer detail"]);
 });
 

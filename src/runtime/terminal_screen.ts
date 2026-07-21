@@ -7,6 +7,7 @@ import {
 import { clamp } from "../utils/numbers.ts";
 import { textWidth, UNICODE_CHAR_REGEXP } from "../utils/strings.ts";
 import { normalizeTerminalDimension } from "./terminal_values.ts";
+import { encodeTerminalIndexedColor, encodeTerminalRgbColor } from "./terminal_color.ts";
 
 /** Styled terminal cell tracked by TerminalScreenController. */
 export interface TerminalScreenCell {
@@ -57,6 +58,7 @@ interface TerminalScreenState {
 const DEFAULT_COLUMNS = 80;
 const DEFAULT_ROWS = 24;
 const DEFAULT_SCROLLBACK_LIMIT = 1000;
+const MAX_PENDING_CONTROL_LENGTH = 64 * 1024;
 const BLANK_CELL: TerminalScreenCell = Object.freeze({ char: " " });
 
 /** Lightweight ANSI terminal screen model for process and PTY output renderers. */
@@ -81,6 +83,7 @@ export class TerminalScreenController {
   #lastPrintableCell?: TerminalScreenCell;
   #lastPrintableWidth = 1;
   #tabStops: Set<number>;
+  #pendingControl = "";
   readonly #decoder = new TextDecoder();
 
   constructor(options: TerminalScreenControllerOptions = {}) {
@@ -111,8 +114,16 @@ export class TerminalScreenController {
     return this.#mainState !== undefined;
   }
 
+  get scrollbackRows(): number {
+    return this.#scrollback.length;
+  }
+
   write(data: string | Uint8Array): void {
-    const text = typeof data === "string" ? data : this.#decoder.decode(data);
+    const decoded = typeof data === "string"
+      ? this.#decoder.decode() + data
+      : this.#decoder.decode(data, { stream: true });
+    const text = this.#pendingControl + decoded;
+    this.#pendingControl = "";
     for (let index = 0; index < text.length;) {
       const char = readTerminalGraphic(text, index);
       if (char === "\x1b") {
@@ -121,6 +132,11 @@ export class TerminalScreenController {
           this.#applyControl(parsed);
           index += parsed.length;
           continue;
+        }
+        const suffix = text.slice(index);
+        if (incompleteTerminalControl(suffix)) {
+          if (suffix.length < MAX_PENDING_CONTROL_LENGTH) this.#pendingControl = suffix;
+          break;
         }
       }
       this.#writeChar(char);
@@ -141,6 +157,8 @@ export class TerminalScreenController {
   }
 
   clear(): void {
+    this.#decoder.decode();
+    this.#pendingControl = "";
     this.#state.cells = createRows(this.#columns, this.#rows);
     this.#state.cursor = { column: 0, row: 0 };
     this.#scrollRegion = fullScrollRegion(this.#rows);
@@ -157,6 +175,27 @@ export class TerminalScreenController {
 
   scrollbackTextRows(): string[] {
     return terminalCellRowsToText(this.#scrollback);
+  }
+
+  /** Styled scrollback rows for renderers that need color-preserving history. */
+  scrollbackCellRows(): TerminalScreenCell[][] {
+    return cloneTerminalCellRows(this.#scrollback);
+  }
+
+  /** Clones only one combined scrollback/live row range for viewport renderers. */
+  cellRowsRange(offset: number, count: number): TerminalScreenCell[][] {
+    const totalRows = this.#scrollback.length + this.#state.cells.length;
+    const start = clamp(Math.floor(Number.isFinite(offset) ? offset : 0), 0, totalRows);
+    const length = Math.max(0, Math.floor(Number.isFinite(count) ? count : 0));
+    const end = Math.min(totalRows, start + length);
+    const rows = new Array<TerminalScreenCell[]>(end - start);
+    for (let index = start; index < end; index += 1) {
+      const source = index < this.#scrollback.length
+        ? this.#scrollback[index]!
+        : this.#state.cells[index - this.#scrollback.length]!;
+      rows[index - start] = cloneTerminalCellRow(source);
+    }
+    return rows;
   }
 
   inspect(): TerminalScreenInspection {
@@ -697,7 +736,7 @@ function parseExtendedSgrColor(
   if (mode === 5) {
     const color = values[index + 2];
     if (color === undefined) return undefined;
-    return { color: clampByte(color), nextIndex: index + 2 };
+    return { color: encodeTerminalIndexedColor(color), nextIndex: index + 2 };
   }
   if (mode === 2) {
     const red = values[index + 2];
@@ -705,7 +744,7 @@ function parseExtendedSgrColor(
     const blue = values[index + 4];
     if (red === undefined || green === undefined || blue === undefined) return undefined;
     return {
-      color: (clampByte(red) << 16) | (clampByte(green) << 8) | clampByte(blue),
+      color: encodeTerminalRgbColor(red, green, blue),
       nextIndex: index + 4,
     };
   }
@@ -744,6 +783,11 @@ function readTerminalGraphic(text: string, index: number): string {
 
   const codePoint = text.codePointAt(index);
   return codePoint === undefined ? text[index] ?? "" : String.fromCodePoint(codePoint);
+}
+
+function incompleteTerminalControl(suffix: string): boolean {
+  if (suffix === "\x1b") return true;
+  return suffix.startsWith("\x1b[") || suffix.startsWith("\x1b]");
 }
 
 function terminalGraphicWidth(char: string): number {
@@ -799,14 +843,15 @@ function terminalCellRowsToText(rows: readonly TerminalScreenCell[][]): string[]
 function cloneTerminalCellRows(rows: readonly TerminalScreenCell[][]): TerminalScreenCell[][] {
   const output = new Array<TerminalScreenCell[]>(rows.length);
   for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
-    const row = rows[rowIndex]!;
-    const cloned = new Array<TerminalScreenCell>(row.length);
-    for (let column = 0; column < row.length; column++) {
-      cloned[column] = { ...row[column]! };
-    }
-    output[rowIndex] = cloned;
+    output[rowIndex] = cloneTerminalCellRow(rows[rowIndex]!);
   }
   return output;
+}
+
+function cloneTerminalCellRow(row: readonly TerminalScreenCell[]): TerminalScreenCell[] {
+  const cloned = new Array<TerminalScreenCell>(row.length);
+  for (let column = 0; column < row.length; column++) cloned[column] = { ...row[column]! };
+  return cloned;
 }
 
 function fullScrollRegion(rows: number): TerminalScreenScrollRegion {
@@ -867,8 +912,4 @@ function cloneState(state: TerminalScreenState): TerminalScreenState {
     cells: cloneTerminalCellRows(state.cells),
     cursor: { ...state.cursor },
   };
-}
-
-function clampByte(value: number): number {
-  return clamp(Math.floor(value), 0, 255);
 }

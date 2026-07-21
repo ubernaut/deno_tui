@@ -1,5 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { stripStyles, textWidth } from "../utils/strings.ts";
+import { graphemeBoundaries, previousGraphemeBoundary, truncateGraphemeUtf16 } from "../unicode/grapheme.ts";
 
 /** Mutable visible menu projection used by render adapters that redraw often. */
 export interface VisibleMenuSlice {
@@ -163,12 +164,20 @@ export function applyWorkbenchTextPromptInput(
   const value = options.value;
   if (event.ctrl || event.meta) return { action: "ignore", value };
   if (event.key === "escape") return { action: "cancel", value };
-  if (event.key === "backspace") return { action: "update", value: value.slice(0, -1) };
+  if (event.key === "backspace") {
+    return { action: "update", value: value.slice(0, previousGraphemeBoundary(value, value.length)) };
+  }
   if (event.key === "return") return { action: "submit", value };
-  if (event.key.length === 1 && (options.measureText ?? textWidth)(event.key) === 1) {
+  if (graphemeBoundaries(event.key).length === 2 && (options.measureText ?? textWidth)(event.key) === 1) {
+    const requestedMaximum = options.maxLength ?? 80;
+    const maximum = requestedMaximum === Number.POSITIVE_INFINITY
+      ? Number.MAX_SAFE_INTEGER
+      : Number.isFinite(requestedMaximum)
+      ? Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Math.floor(requestedMaximum)))
+      : 0;
     return {
       action: "update",
-      value: `${value}${event.key}`.slice(0, Math.max(0, Math.floor(options.maxLength ?? 80))),
+      value: truncateGraphemeUtf16(`${value}${event.key}`, maximum),
     };
   }
   return { action: "ignore", value };

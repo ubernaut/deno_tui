@@ -13,3 +13,4 @@ export * from "./src/runtime/terminal_shell.ts";
 export * from "./src/runtime/terminal_status.ts";
 export * from "./src/runtime/terminal_templates.ts";
 export * from "./src/runtime/terminal_workspace.ts";
+export * from "./src/unicode/width.ts";

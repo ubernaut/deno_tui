@@ -1,5 +1,6 @@
-import { assertEquals } from "./deps.ts";
+import { assertEquals, assertThrows } from "./deps.ts";
 import {
+  batchSignalUpdates,
   bindWindowManagerCommands,
   CommandRegistry,
   createFileExplorerTree,
@@ -302,14 +303,258 @@ Deno.test("overlay stack places popovers and blocks background hits behind modal
         layer: "modal",
         rect: { column: 43, row: 13, width: 8, height: 1 },
       },
+      {
+        id: "confirm-menu",
+        kind: "popover",
+        ownerId: "confirm",
+        layer: "modal",
+        rect: { column: 62, row: 3, width: 12, height: 4 },
+      },
+      {
+        id: "confirm-tip",
+        kind: "tooltip",
+        ownerId: "confirm-menu",
+        layer: "modal",
+        rect: { column: 70, row: 2, width: 8, height: 2 },
+      },
     ],
   });
 
   assertEquals(overlays.hitTest({ column: 44, row: 13 })?.surface.id, "confirm-ok");
   assertEquals(overlays.hitTest({ column: 61, row: 12 })?.surface.id, undefined);
-  assertEquals(overlays.handlePointerDown({ column: 61, row: 12 }).closedIds, ["confirm", "confirm-ok"]);
+  assertEquals(overlays.hitTest({ column: 72, row: 2 })?.surface.id, "confirm-tip");
+  assertEquals(overlays.handlePointerDown({ column: 72, row: 2 }).closedIds, []);
+  assertEquals(overlays.handlePointerDown({ column: 61, row: 12 }).closedIds, [
+    "confirm",
+    "confirm-ok",
+    "confirm-menu",
+    "confirm-tip",
+  ]);
+  assertEquals(
+    overlays.inspect().surfaces.filter((surface) => surface.id.startsWith("confirm")).every((surface) =>
+      !surface.visible
+    ),
+    true,
+  );
   assertEquals(overlays.hitTest({ column: 61, row: 12 })?.surface.id, "theme-menu");
   assertEquals(overlays.inspect().top?.id, "theme-menu");
+  overlays.dispose();
+});
+
+Deno.test("overlay stack remains snapshot-safe after throwing surface subscribers", () => {
+  const overlays = new OverlayStackController({
+    surfaces: [{ id: "a", rect: { column: 0, row: 0, width: 3, height: 2 } }],
+    activeId: "a",
+  });
+  const listener = () => {
+    throw new Error("surface-publication-failed");
+  };
+  try {
+    overlays.surfaces.subscribe(listener);
+    assertThrows(() => overlays.remove("a"), Error, "surface-publication-failed");
+    overlays.surfaces.unsubscribe(listener);
+    assertEquals(overlays.snapshot().activeId, undefined);
+    overlays.restoreSnapshot(overlays.snapshot());
+
+    overlays.surfaces.subscribe(listener);
+    assertThrows(
+      () =>
+        overlays.register({
+          id: "b",
+          rect: { column: 4, row: 1, width: 4, height: 2 },
+        }),
+      Error,
+      "surface-publication-failed",
+    );
+    overlays.surfaces.unsubscribe(listener);
+    assertEquals(overlays.snapshot().activeId, "b");
+    overlays.restoreSnapshot(overlays.snapshot());
+
+    const targetOverlays = new OverlayStackController({
+      surfaces: [{ id: "c", rect: { column: 8, row: 2, width: 5, height: 2 } }],
+      activeId: "c",
+    });
+    const target = targetOverlays.snapshot();
+    targetOverlays.dispose();
+    overlays.surfaces.subscribe(listener);
+    assertThrows(() => overlays.restoreSnapshot(target), Error, "surface-publication-failed");
+    overlays.surfaces.unsubscribe(listener);
+    assertEquals(overlays.snapshot().activeId, "c");
+    overlays.restoreSnapshot(overlays.snapshot());
+  } finally {
+    overlays.surfaces.unsubscribe(listener);
+    overlays.dispose();
+  }
+});
+
+Deno.test("overlay stack rejects non-restorable ingress and canonicalizes active ids", () => {
+  assertThrows(
+    () =>
+      new OverlayStackController({
+        surfaces: [
+          { id: "duplicate", rect: { column: 0, row: 0, width: 1, height: 1 } },
+          { id: "duplicate", rect: { column: 1, row: 0, width: 1, height: 1 } },
+        ],
+      }),
+    TypeError,
+    "duplicate surface id",
+  );
+
+  const overlays = new OverlayStackController({ activeId: "missing" });
+  try {
+    assertEquals(overlays.snapshot().activeId, undefined);
+    overlays.restoreSnapshot(overlays.snapshot());
+    const before = overlays.snapshot();
+    assertThrows(
+      () =>
+        overlays.register({
+          id: "invalid",
+          rect: { column: Number.NaN, row: 0, width: 1, height: 1 },
+          zIndex: Number.NaN,
+        }),
+      TypeError,
+      "must be a safe integer",
+    );
+    assertEquals(overlays.snapshot(), before);
+
+    overlays.register({ id: "valid", rect: { column: 0, row: 0, width: 2, height: 1 } });
+    const valid = overlays.snapshot();
+    assertThrows(
+      () =>
+        overlays.surfaces.value.push({
+          ...overlays.surface("valid")!,
+          id: "deep-invalid",
+          rect: { column: 0, row: Number.NaN, width: 1, height: 1 },
+        }),
+      TypeError,
+      "must be finite",
+    );
+    assertEquals(overlays.snapshot(), valid);
+    overlays.activeId.value = "missing";
+    assertEquals(overlays.snapshot().activeId, undefined);
+    overlays.restoreSnapshot(overlays.snapshot());
+  } finally {
+    overlays.dispose();
+  }
+});
+
+Deno.test("overlay stack tracks nested identity ABA and isolates retained ingress aliases", () => {
+  const overlays = new OverlayStackController({
+    activeId: "managed",
+    surfaces: [{ id: "managed", rect: { column: 0, row: 0, width: 2, height: 1 } }],
+  });
+  const external = structuredClone(overlays.surface("managed")!);
+  overlays.surfaces.value = [external];
+  const assignedGeneration = overlays.registrationGeneration("managed");
+
+  external.id = "raw-alias";
+  assertEquals(overlays.surface("managed")?.id, "managed");
+  assertEquals(overlays.registrationGeneration("managed"), assignedGeneration);
+  assertEquals(overlays.registrationGeneration("raw-alias"), undefined);
+
+  const live = overlays.surface("managed")!;
+  batchSignalUpdates(() => {
+    live.id = "temporary";
+    live.id = "managed";
+  });
+  assertEquals(overlays.registrationGeneration("temporary"), undefined);
+  assertEquals(overlays.registrationGeneration("managed") === assignedGeneration, false);
+  assertEquals(overlays.activeId.peek(), "managed");
+  overlays.dispose();
+});
+
+Deno.test("overlay stack tracks identity mutation reentered from an owned publication", () => {
+  const overlays = new OverlayStackController();
+  let mutated = false;
+  const listener = (surfaces: ReturnType<OverlayStackController["zOrder"]>) => {
+    const surface = surfaces.find((entry) => entry.id === "registered");
+    if (mutated || !surface) return;
+    mutated = true;
+    surface.id = "reentered";
+  };
+  overlays.surfaces.subscribe(listener);
+
+  try {
+    overlays.register({ id: "registered", rect: { column: 0, row: 0, width: 2, height: 1 } });
+    assertEquals(mutated, true);
+    assertEquals(overlays.surface("registered"), undefined);
+    assertEquals(overlays.registrationGeneration("registered"), undefined);
+    assertEquals(typeof overlays.registrationGeneration("reentered"), "number");
+    assertEquals(overlays.activeId.peek(), "reentered");
+  } finally {
+    overlays.surfaces.unsubscribe(listener);
+    overlays.dispose();
+  }
+});
+
+Deno.test("overlay insertion-only splice publishes registration provenance", () => {
+  const overlays = new OverlayStackController();
+  const inserted = {
+    id: "inserted",
+    rect: { column: 0, row: 0, width: 2, height: 1 },
+    layer: "window" as const,
+    kind: "custom" as const,
+    zIndex: 1_000,
+    order: 0,
+    visible: true,
+    modal: false,
+    closeOnOutsideClick: false,
+  };
+  overlays.surfaces.value.splice(0, 0, inserted);
+  assertEquals(typeof overlays.registrationGeneration("inserted"), "number");
+  assertEquals(overlays.surface("inserted")?.id, "inserted");
+  overlays.dispose();
+});
+
+Deno.test("overlay deep order changes keep snapshots restorable and allocator failure atomic", () => {
+  const overlays = new OverlayStackController({
+    surfaces: [
+      { id: "managed", rect: { column: 0, row: 0, width: 2, height: 1 } },
+      { id: "other", rect: { column: 3, row: 0, width: 2, height: 1 } },
+    ],
+  });
+  assertEquals(overlays.zOrder().map((surface) => surface.id), ["managed", "other"]);
+  const surface = overlays.surface("managed")!;
+  surface.order = 99;
+  surface.zIndex = 9_999;
+  assertEquals(overlays.zOrder().map((surface) => surface.id), ["other", "managed"]);
+  const advanced = overlays.snapshot();
+  assertEquals(advanced.nextOrder, 100);
+  overlays.restoreSnapshot(advanced);
+
+  const beforeFailure = overlays.snapshot();
+  assertThrows(
+    () => {
+      overlays.surfaces.value.push({
+        ...surface,
+        id: "unallocatable",
+        rect: { ...surface.rect },
+        order: Number.MAX_SAFE_INTEGER,
+      });
+    },
+    TypeError,
+    "bounded non-negative safe integer",
+  );
+  assertEquals(overlays.snapshot(), beforeFailure);
+  assertEquals(overlays.registrationGeneration("unallocatable"), undefined);
+  overlays.restoreSnapshot(overlays.snapshot());
+  overlays.dispose();
+});
+
+Deno.test("overlay snapshots preserve an explicit absence of active focus", () => {
+  const overlays = new OverlayStackController({
+    surfaces: [{ id: "visible", rect: { column: 0, row: 0, width: 2, height: 1 } }],
+  });
+  const inactive = overlays.snapshot();
+  assertEquals(inactive.activeId, undefined);
+  overlays.restoreSnapshot(inactive);
+  assertEquals(overlays.snapshot(), inactive);
+
+  overlays.activeId.value = "missing";
+  const canonical = overlays.snapshot();
+  assertEquals(canonical.activeId, undefined);
+  overlays.restoreSnapshot(canonical);
+  assertEquals(overlays.activeId.peek(), undefined);
   overlays.dispose();
 });
 

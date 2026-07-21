@@ -247,7 +247,12 @@ Deno.test("BrowserInputSource reports pointer positions in terminal cells", () =
     }),
   };
   const events: unknown[] = [];
-  const input = new BrowserInputSource(target as unknown as HTMLElement, { cellWidth: 8, cellHeight: 16 });
+  let now = 0;
+  const input = new BrowserInputSource(target as unknown as HTMLElement, {
+    cellWidth: 8,
+    cellHeight: 16,
+    now: () => ++now,
+  });
 
   input.attach({
     emit: (type: string, event: unknown) => void events.push([type, event]),
@@ -256,6 +261,8 @@ Deno.test("BrowserInputSource reports pointer positions in terminal cells", () =
 
   listeners.get("pointerdown")?.({
     pointerId: 7,
+    screenX: 131,
+    screenY: 151,
     clientX: 31,
     clientY: 51,
     movementX: 0,
@@ -271,6 +278,8 @@ Deno.test("BrowserInputSource reports pointer positions in terminal cells", () =
 
   listeners.get("pointermove")?.({
     pointerId: 7,
+    screenX: 147,
+    screenY: 183,
     clientX: 47,
     clientY: 83,
     movementX: 16,
@@ -286,6 +295,8 @@ Deno.test("BrowserInputSource reports pointer positions in terminal cells", () =
 
   listeners.get("pointerup")?.({
     pointerId: 7,
+    screenX: 147,
+    screenY: 183,
     clientX: 47,
     clientY: 83,
     movementX: 0,
@@ -304,7 +315,55 @@ Deno.test("BrowserInputSource reports pointer positions in terminal cells", () =
     ["capture", 7],
     ["release", 7],
   ]);
-  assertEquals(events[0], [
+  const pointerEvents = events.filter((entry) => (entry as unknown[])[0] === "pointerInput") as Array<
+    [string, { kind: string; pointerId: number; device: string; coordinates: unknown; sequence: number }]
+  >;
+  const mouseEvents = events.filter((entry) => (entry as unknown[])[0] === "mousePress");
+  assertEquals(
+    pointerEvents.map(([, event]) => ({
+      kind: event.kind,
+      pointerId: event.pointerId,
+      device: event.device,
+      coordinates: event.coordinates,
+      sequence: event.sequence,
+    })),
+    [
+      {
+        kind: "down",
+        pointerId: 7,
+        device: "mouse",
+        coordinates: {
+          screen: { space: "screen", x: 131, y: 151 },
+          cell: { space: "cell", x: 2, y: 2 },
+          local: { space: "local", x: 23, y: 35 },
+        },
+        sequence: 1,
+      },
+      {
+        kind: "move",
+        pointerId: 7,
+        device: "mouse",
+        coordinates: {
+          screen: { space: "screen", x: 147, y: 183 },
+          cell: { space: "cell", x: 4, y: 4 },
+          local: { space: "local", x: 39, y: 67 },
+        },
+        sequence: 2,
+      },
+      {
+        kind: "up",
+        pointerId: 7,
+        device: "mouse",
+        coordinates: {
+          screen: { space: "screen", x: 147, y: 183 },
+          cell: { space: "cell", x: 4, y: 4 },
+          local: { space: "local", x: 39, y: 67 },
+        },
+        sequence: 3,
+      },
+    ],
+  );
+  assertEquals(mouseEvents[0], [
     "mousePress",
     {
       key: "mouse",
@@ -316,12 +375,12 @@ Deno.test("BrowserInputSource reports pointer positions in terminal cells", () =
       ctrl: false,
       shift: false,
       buffer: new Uint8Array(),
-      drag: true,
+      drag: false,
       release: false,
       button: 0,
     },
   ]);
-  assertEquals(events[1], [
+  assertEquals(mouseEvents[1], [
     "mousePress",
     {
       key: "mouse",
@@ -338,7 +397,7 @@ Deno.test("BrowserInputSource reports pointer positions in terminal cells", () =
       button: 0,
     },
   ]);
-  assertEquals(events[2], [
+  assertEquals(mouseEvents[2], [
     "mousePress",
     {
       key: "mouse",
@@ -385,7 +444,12 @@ Deno.test("BrowserInputSource maps touch cancellation and wheel scrolling", () =
     }),
   };
   const events: unknown[] = [];
-  const input = new BrowserInputSource(target as unknown as HTMLElement, { cellWidth: 10, cellHeight: 20 });
+  let now = 0;
+  const input = new BrowserInputSource(target as unknown as HTMLElement, {
+    cellWidth: 10,
+    cellHeight: 20,
+    now: () => ++now,
+  });
 
   input.attach({
     emit: (type: string, event: unknown) => void events.push([type, event]),
@@ -437,7 +501,23 @@ Deno.test("BrowserInputSource maps touch cancellation and wheel scrolling", () =
     ["capture", 3],
     ["release", 3],
   ]);
-  assertEquals(events[1], [
+  const touchPointers = events.filter((entry) => (entry as unknown[])[0] === "pointerInput") as Array<
+    [string, { kind: string; device: string; pointerId: number; sequence: number }]
+  >;
+  assertEquals(
+    touchPointers.map(([, event]) => ({
+      kind: event.kind,
+      device: event.device,
+      pointerId: event.pointerId,
+      sequence: event.sequence,
+    })),
+    [
+      { kind: "down", device: "touch", pointerId: 3, sequence: 1 },
+      { kind: "cancel", device: "touch", pointerId: 3, sequence: 2 },
+    ],
+  );
+  const mouseEvents = events.filter((entry) => (entry as unknown[])[0] === "mousePress");
+  assertEquals(mouseEvents[1], [
     "mousePress",
     {
       key: "mouse",
@@ -454,7 +534,7 @@ Deno.test("BrowserInputSource maps touch cancellation and wheel scrolling", () =
       button: undefined,
     },
   ]);
-  assertEquals(events[2], [
+  assertEquals(events.find((entry) => (entry as unknown[])[0] === "mouseScroll"), [
     "mouseScroll",
     {
       key: "mouse",

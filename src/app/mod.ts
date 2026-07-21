@@ -1,5 +1,8 @@
 // Copyright 2023 Im-Beast. MIT license.
 export * from "./actions.ts";
+export * from "./action_journal.ts";
+export * from "./action_journal_checkpoints.ts";
+export * from "./action_journal_retention.ts";
 export * from "./app.ts";
 export * from "./component_commands.ts";
 export * from "./command_bindings.ts";
@@ -10,6 +13,33 @@ export * from "./data_table_commands.ts";
 export * from "./disposables.ts";
 export * from "./form_commands.ts";
 export * from "./focus_commands.ts";
+export {
+  deleteFormPath,
+  FORM_PATH_LIMITS,
+  formatFormPath,
+  formPath,
+  FormPathError,
+  formPathFor,
+  formPathSegments,
+  getFormPath,
+  hasFormPath,
+  isFormPath,
+  parseFormPath,
+  setFormPath,
+} from "./form_paths.ts";
+export type {
+  DeleteFormPathOptions,
+  FormFieldReference,
+  FormFieldValue,
+  FormPath,
+  FormPathBuilder,
+  FormPathErrorCode,
+  FormPathName,
+  FormPathSegment,
+  FormPathSegments,
+  FormPathValue,
+  FormValuesPatch,
+} from "./form_paths.ts";
 export * from "./forms.ts";
 export * from "./history.ts";
 export * from "./input_commands.ts";
@@ -20,8 +50,14 @@ export * from "./metric_series_commands.ts";
 export * from "./mouse_bindings.ts";
 export * from "./pad_commands.ts";
 export * from "./plugins.ts";
+export * from "./plugin_slot_adapters.ts";
+export * from "./plugin_slots.ts";
 export * from "./router.ts";
+export * from "./route_patterns.ts";
 export * from "./runtime_commands.ts";
+export * from "./screen_persistence.ts";
+export * from "./screen_router.ts";
+export * from "./screens.ts";
 export * from "./scroll_area_commands.ts";
 export * from "./selection_bindings.ts";
 export * from "./settings_bindings.ts";

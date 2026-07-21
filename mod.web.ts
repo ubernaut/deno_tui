@@ -20,8 +20,36 @@ export * from "./src/layout/mod.ts";
 export * from "./src/markup/mod.ts";
 export * from "./src/components/mod.ts";
 export * from "./src/platform/types.ts";
+export * from "./src/input_envelope.ts";
+export * from "./src/pointer_input.ts";
 export * from "./src/web/mod.ts";
+export * from "./src/remote/handshake.ts";
 export * from "./src/perf/benchmark.ts";
+export {
+  CJK_WIDE_WIDTH_PROFILE,
+  DEFAULT_TERMINAL_WIDTH_PROFILE_REGISTRY,
+  TERMINAL_WIDTH_PROFILE_LIMITS,
+  terminalCodePointWidth,
+  terminalTextWidth,
+  TerminalWidthError,
+  TerminalWidthProfileRegistry,
+  UNICODE_NARROW_WIDTH_PROFILE,
+  UnicodeTerminalWidthProfile,
+  VISIBLE_COMBINING_WIDTH_PROFILE,
+} from "./src/unicode/width.ts";
+export type {
+  EastAsianWidthProperty,
+  TerminalCellWidth,
+  TerminalCodePointWidthInspection,
+  TerminalTextWidthInspection,
+  TerminalWidthCategory,
+  TerminalWidthErrorCode,
+  TerminalWidthPolicy,
+  TerminalWidthProfileDefinition,
+  TerminalWidthProfileInspection,
+  TerminalWidthProfileRegistryInspection,
+  TerminalWidthProfileRegistryOptions,
+} from "./src/unicode/width.ts";
 
 export * from "./src/canvas/box.ts";
 export * from "./src/canvas/canvas.ts";
@@ -33,6 +61,8 @@ export * from "./src/canvas/three_ascii.ts";
 export * from "./src/app/mod.ts";
 
 export * from "./src/runtime/capabilities.ts";
+export * from "./src/runtime/async_iterable.ts";
+export * from "./src/runtime/clock.ts";
 export * from "./src/runtime/data_pipeline.ts";
 export * from "./src/runtime/data_pipeline_bindings.ts";
 export * from "./src/runtime/data_query.ts";
@@ -42,6 +72,8 @@ export * from "./src/runtime/profiles.ts";
 export * from "./src/runtime/renderer_backends.ts";
 export * from "./src/runtime/resource.ts";
 export * from "./src/runtime/resource_bindings.ts";
+export * from "./src/runtime/resource_cache.ts";
+export * from "./src/runtime/resource_loads.ts";
 export * from "./src/runtime/render_loop.ts";
 export * from "./src/runtime/scheduler.ts";
 export * from "./src/runtime/storage.ts";

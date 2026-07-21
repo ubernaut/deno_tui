@@ -15,7 +15,14 @@ import {
   resolveVisualizationTask,
   visualizationLaunchTargets,
 } from "../scripts/visualization_launcher.ts";
-import { defaultVisualizationForSlot, orderVisualizationsForSlot, visualizations } from "../app/visualizations.ts";
+import {
+  defaultVisualizationForSlot,
+  monitorVisualizations,
+  orderVisualizationsForSlot,
+  visualizations,
+  visualizationUsesThreeRenderer,
+} from "../app/visualizations.ts";
+import { slotIds } from "../app/types.ts";
 import {
   createWorkspaceDemoState,
   decodeWorkspaceKeys,
@@ -176,15 +183,41 @@ Deno.test("visualization launcher exposes unique primary aliases", () => {
 });
 
 Deno.test("visualization panel defaults pick the curated monitor wall demos", () => {
-  assertEquals(defaultVisualizationForSlot("cpu"), "three-lattice");
-  assertEquals(defaultVisualizationForSlot("gpu"), "gpu-combined-monitor");
-  assertEquals(defaultVisualizationForSlot("gpuChip"), "gpu-chip-monitor");
-  assertEquals(defaultVisualizationForSlot("gpuMemory"), "gpu-memory-monitor");
-  assertEquals(defaultVisualizationForSlot("memory"), "three-hexshell");
-  assertEquals(defaultVisualizationForSlot("temperature"), "three-capture");
-  assertEquals(defaultVisualizationForSlot("disk"), "three-mapslab");
-  assertEquals(defaultVisualizationForSlot("network"), "three-solenoid");
-  assertEquals(defaultVisualizationForSlot("processes"), "process-monitor");
+  const expected = {
+    cpu: "cpu-monitor",
+    cpuLegend: "cpu-legend",
+    gpu: "gpu-combined-monitor",
+    gpuChip: "gpu-chip-monitor",
+    gpuMemory: "gpu-memory-monitor",
+    memory: "memory-monitor",
+    temperature: "temperature-monitor",
+    disk: "disk-monitor",
+    network: "network-monitor",
+    processes: "process-monitor",
+  } as const;
+
+  for (const slotId of slotIds) {
+    const visualizationId = defaultVisualizationForSlot(slotId);
+    assertEquals(visualizationId, expected[slotId]);
+    assertEquals(visualizationUsesThreeRenderer(visualizationId), false);
+  }
+});
+
+Deno.test("system monitor catalog contains only regular metric visualizations", () => {
+  assertEquals(monitorVisualizations.map((entry) => entry.id), [
+    "cpu-monitor",
+    "cpu-legend",
+    "cpu-hex-grid",
+    "gpu-combined-monitor",
+    "gpu-chip-monitor",
+    "gpu-memory-monitor",
+    "memory-monitor",
+    "temperature-monitor",
+    "disk-monitor",
+    "network-monitor",
+    "process-monitor",
+  ]);
+  assertEquals(monitorVisualizations.some((entry) => visualizationUsesThreeRenderer(entry.id)), false);
 });
 
 Deno.test("visualization panel defaults sort slot-specific recommendations first", () => {
@@ -196,17 +229,17 @@ Deno.test("visualization panel defaults sort slot-specific recommendations first
     "warning-stack",
   ]);
   assertEquals(orderVisualizationsForSlot("cpu", visualizations).slice(0, 4).map((entry) => entry.id), [
-    "three-lattice",
+    "cpu-monitor",
+    "cpu-hex-grid",
     "harmonic-graph",
     "biosignal-strip",
-    "telemetry-rack",
   ]);
   assertEquals(orderVisualizationsForSlot("memory", visualizations).slice(0, 5).map((entry) => entry.id), [
-    "three-hexshell",
+    "memory-monitor",
     "hex-heatmap",
     "field-ring",
     "telemetry-rack",
-    "memory-monitor",
+    "three-hexshell",
   ]);
 });
 

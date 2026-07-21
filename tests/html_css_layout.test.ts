@@ -680,7 +680,7 @@ Deno.test("layout solver capability report exhaustively classifies normalized fi
   ].sort();
 
   assertEquals([...report.normalizedStyleFields].sort(), expectedFields);
-  assertEquals(report.normalizedStyleFields.length, 45);
+  assertEquals(report.normalizedStyleFields.length, 48);
   assertEquals(report.invariantIds, [
     "cell-rounding",
     "overflow-inspection",
@@ -737,8 +737,8 @@ Deno.test("layout diagnostics validate values and only report winning solver dec
     css: `
       #main {
         display: inline;
-        flex-direction: row-reverse;
-        justify-content: space-evenly;
+        flex-direction: sideways;
+        justify-content: stretch;
         grid-auto-flow: dense;
         grid-template-areas: "a a" "a b";
         width: 10px;
@@ -758,8 +758,8 @@ Deno.test("layout diagnostics validate values and only report winning solver dec
       ["unsupported-declaration", "grid-auto-flow"],
       ["unsupported-declaration", "grid-template-areas"],
       ["unsupported-declaration", "width"],
-      ["unsupported-declaration", "margin"],
       ["unsupported-declaration", "border"],
+      ["unsupported-by-solver", undefined],
     ],
   );
 
@@ -811,11 +811,6 @@ Deno.test("layout diagnostics expose contextual Simple solver limitations", () =
     widgets: false,
   });
   const flexFields = flex.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.nodeId, diagnostic.field]);
-  assert(
-    flexFields.some(([code, nodeId, field]) =>
-      code === "partial-solver-support" && nodeId === "main" && field === "rowGap"
-    ),
-  );
   assert(
     flexFields.some(([code, nodeId, field]) =>
       code === "partial-solver-support" && nodeId === "child" && field === "flexShrink"
@@ -905,10 +900,8 @@ Deno.test("layout diagnostics preserve shorthand provenance and distinct same-fi
   });
   assertEquals(simple.diagnostics.map(({ code, property, field }) => ({ code, property, field })), [
     { code: "unsupported-by-solver", property: "top", field: "inset" },
-    { code: "unsupported-by-solver", property: undefined, field: "inset" },
   ]);
   assert(simple.diagnostics[0]!.message.includes("fr unit"));
-  assert(simple.diagnostics[1]!.message.includes("relative-position insets"));
 });
 
 Deno.test("markup layout worker preserves serializable layout diagnostics", () => {

@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Signal } from "./signal.ts";
+import type { Signal } from "./signal.ts";
 
 /** Public type alias for a reactive. */
 export type Reactive<T> = T & {
@@ -236,7 +236,7 @@ export function makeArrayMethodsReactive<T extends Array<unknown>, S>(
   const splice = array.splice.bind(array);
   function $splice(start: number, deleteCount: number, ...items: unknown[]) {
     const output = splice(start, deleteCount, ...items);
-    if (output.length > 0) {
+    if (output.length > 0 || items.length > 0) {
       signal.propagate();
     }
     return output;

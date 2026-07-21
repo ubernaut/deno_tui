@@ -34,6 +34,7 @@ Deno.test("package entrypoint manifest separates terminal web and remote surface
     "./terminal",
     "./testing",
     "./layout/yoga",
+    "./layout/taffy",
   ]);
   assertEquals(packageEntrypointFor(".")?.path, "./mod.ts");
   assertEquals(packageEntrypointFor("./mod.web.ts")?.specifier, "./web");
@@ -50,6 +51,7 @@ Deno.test("package entrypoint manifest separates terminal web and remote surface
     "./remote",
     "./three-ascii",
     "./layout/yoga",
+    "./layout/taffy",
   ]);
   assertEquals(filterPackageEntrypoints({ stability: "beta" }).map((entrypoint) => entrypoint.specifier), [
     "./app",
@@ -76,6 +78,7 @@ Deno.test("api surface policies mark public experimental and demo-only code", ()
     "mod.terminal.ts",
     "mod.testing.ts",
     "src/layout/solvers/yoga.ts",
+    "src/layout/taffy.ts",
     "src/three_ascii/*",
     "src/runtime/kitty_graphics.ts",
     "src/runtime/graphics_surface.ts",
@@ -91,7 +94,12 @@ Deno.test("api surface policies mark public experimental and demo-only code", ()
 Deno.test("package release policy lists the package quality gate", () => {
   assertEquals(packageReleasePolicy.changelogFile, "CHANGELOG.md");
   assertEquals(packageReleasePolicy.releaseChecklist.includes("deno task package-check -- --quiet"), true);
+  assertEquals(packageReleasePolicy.releaseChecklist.includes("deno task unicode-data:check"), true);
   assertEquals(packageReleasePolicy.releaseChecklist.includes("deno task release-check -- --clean"), true);
+  assertEquals(
+    packageReleasePolicy.releaseChecklist.some((command) => command.includes("src/layout/taffy.ts")),
+    true,
+  );
   assertEquals(
     packageReleasePolicy.releaseChecklist.includes(
       "deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1",
@@ -142,6 +150,7 @@ Deno.test("package export validation compares deno export maps with the stabilit
         "./terminal": "./mod.terminal.ts",
         "./testing": "./mod.testing.ts",
         "./layout/yoga": "./src/layout/solvers/yoga.ts",
+        "./layout/taffy": "./src/layout/taffy.ts",
       },
     },
     packageEntrypoints,
@@ -172,7 +181,7 @@ Deno.test("package export validation compares deno export maps with the stabilit
       exists: (path) =>
         path !== "mod.app.ts" && path !== "mod.remote.ts" && path !== "mod.three_ascii.ts" && path !== "mod.theme.ts" &&
         path !== "mod.runtime.ts" && path !== "mod.terminal.ts" && path !== "mod.testing.ts" &&
-        path !== "src/layout/solvers/yoga.ts",
+        path !== "src/layout/solvers/yoga.ts" && path !== "src/layout/taffy.ts",
     },
   );
   assertEquals(invalid.ok, false);
@@ -185,6 +194,7 @@ Deno.test("package export validation compares deno export maps with the stabilit
     "./terminal",
     "./testing",
     "./layout/yoga",
+    "./layout/taffy",
   ]);
   assertEquals(invalid.mismatchedExports, [{ specifier: "./web", expected: "./mod.web.ts", actual: "./wrong.ts" }]);
   assertEquals(invalid.unexpectedExports, ["./extra"]);
@@ -197,6 +207,7 @@ Deno.test("package export validation compares deno export maps with the stabilit
     "./mod.terminal.ts",
     "./mod.testing.ts",
     "./src/layout/solvers/yoga.ts",
+    "./src/layout/taffy.ts",
   ]);
   assertEquals(invalid.byStability.stable.ok, true);
   assertEquals(invalid.byStability.beta.ok, false);
@@ -204,7 +215,12 @@ Deno.test("package export validation compares deno export maps with the stabilit
   assertEquals(invalid.byStability.beta.mismatchedExports, [
     { specifier: "./web", expected: "./mod.web.ts", actual: "./wrong.ts" },
   ]);
-  assertEquals(invalid.byStability.experimental.missingExports, ["./remote", "./three-ascii", "./layout/yoga"]);
+  assertEquals(invalid.byStability.experimental.missingExports, [
+    "./remote",
+    "./three-ascii",
+    "./layout/yoga",
+    "./layout/taffy",
+  ]);
 });
 
 Deno.test("package check guards stable entrypoint against new demo-only modules", () => {

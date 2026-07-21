@@ -6,7 +6,9 @@ import {
   type ProcessSessionStatus,
   routeTerminalKeyPress,
   type TerminalBackend,
+  type TerminalBackendAttachOptions,
   type TerminalBackendSpawnOptions,
+  type TerminalDetachedSession,
   TerminalOutputController,
   type TerminalSessionHandle,
   TerminalShellController,
@@ -34,6 +36,71 @@ Deno.test("TerminalShellController streams raw backend data into a screen", asyn
   assertEquals(backend.spawned[0]?.args, ["-l"]);
 
   await shell.dispose();
+});
+
+Deno.test("TerminalShellController awaits async-capable backend spawning", async () => {
+  const backend = new AsyncSpawnShellBackend();
+  const shell = new TerminalShellController({ backend, shell: "bash" });
+
+  assertEquals(await shell.start(), true);
+  assertEquals(backend.asyncSpawnCalls, 1);
+  assertEquals(backend.spawned[0]?.command, "bash");
+  assertEquals(shell.inspect().status, "running");
+
+  await shell.dispose();
+});
+
+Deno.test("TerminalShellController attaches raw output and disposes by detaching without killing", async () => {
+  const backend = new FakeRetainingShellBackend();
+  const shell = new TerminalShellController({
+    backend,
+    attachSessionId: "retained-7",
+    columns: 24,
+    rows: 5,
+  });
+
+  assertEquals(shell.inspect().detached, true);
+  assertEquals(await shell.start(), true);
+  assertEquals(backend.attached.map((entry) => entry.sessionId), ["retained-7"]);
+  assertEquals(backend.attached[0]?.options.columns, 24);
+  assertEquals(backend.attached[0]?.options.rows, 5);
+  assertEquals(Object.keys(backend.attached[0]!.options).sort(), ["columns", "onData", "output", "rows"]);
+
+  backend.emitAttached("\x1b]0;retained shell\x07ready$ ");
+  assertEquals(shell.screen.textRows()[0], "ready$");
+  assertEquals(shell.inspect().title, "retained shell");
+  assertEquals(shell.inspect().sessionId, "retained-7");
+  assertEquals(shell.inspect().detached, undefined);
+  assertEquals(shell.inspect().reconnectable, true);
+
+  const handle = backend.handle!;
+  await shell.dispose();
+  assertEquals(backend.detached.map((entry) => entry.id), ["retained-7"]);
+  assertEquals(handle.killCalls, 0);
+  assertEquals(handle.disposeCalls, 0);
+});
+
+Deno.test("TerminalShellController detaches, reattaches, and terminates through distinct operations", async () => {
+  const backend = new FakeRetainingShellBackend();
+  const shell = new TerminalShellController({ backend, attachSessionId: "retained-9" });
+
+  assertEquals(await shell.start(), true);
+  const first = backend.handle!;
+  assertEquals(await shell.detach(), true);
+  assertEquals(shell.inspect().status, "idle");
+  assertEquals(shell.inspect().detached, true);
+  assertEquals(first.killCalls, 0);
+  assertEquals(first.disposeCalls, 0);
+
+  assertEquals(await shell.attach(), true);
+  assertEquals(backend.attached.length, 2);
+  const second = backend.handle!;
+  assertEquals(await shell.terminate("SIGTERM"), true);
+  assertEquals(second.killCalls, 1);
+  assertEquals(backend.detached.length, 1);
+
+  await shell.dispose();
+  assertEquals(backend.detached.length, 1);
 });
 
 Deno.test("TerminalShellController exposes copy-mode scrollback inspection", async () => {
@@ -206,12 +273,72 @@ class FakeShellBackend implements TerminalBackend {
   }
 }
 
+class AsyncSpawnShellBackend extends FakeShellBackend {
+  asyncSpawnCalls = 0;
+
+  spawnAsync(options: TerminalBackendSpawnOptions): Promise<TerminalSessionHandle> {
+    this.asyncSpawnCalls += 1;
+    return Promise.resolve(super.spawn(options));
+  }
+
+  override spawn(_options: TerminalBackendSpawnOptions): TerminalSessionHandle {
+    throw new Error("legacy spawn must not be used when spawnAsync is available");
+  }
+}
+
+class FakeRetainingShellBackend implements TerminalBackend {
+  readonly id = "fake-retaining-pty";
+  readonly label = "Fake Retaining PTY";
+  readonly pty = true;
+  readonly detachable = true;
+  readonly reconnectable = true;
+  readonly attached: Array<{ sessionId: string; options: TerminalBackendAttachOptions }> = [];
+  readonly detached: TerminalDetachedSession[] = [];
+  handle?: FakeShellHandle;
+
+  spawn(options: TerminalBackendSpawnOptions): TerminalSessionHandle {
+    this.handle = new FakeShellHandle(this.id, options);
+    return this.handle;
+  }
+
+  attach(sessionId: string, options: TerminalBackendAttachOptions = {}): Promise<TerminalSessionHandle> {
+    this.attached.push({ sessionId, options: { ...options } });
+    this.handle = new FakeShellHandle(this.id, {
+      command: "bash",
+      columns: options.columns,
+      rows: options.rows,
+      output: options.output,
+      onData: options.onData,
+    }, sessionId);
+    return Promise.resolve(this.handle);
+  }
+
+  detach(session: TerminalSessionHandle): Promise<TerminalDetachedSession | undefined> {
+    const inspection = session.inspect();
+    const detached: TerminalDetachedSession = {
+      id: session.id,
+      backendId: this.id,
+      commandLine: inspection.commandLine,
+      columns: inspection.columns,
+      rows: inspection.rows,
+    };
+    this.detached.push(detached);
+    return Promise.resolve(detached);
+  }
+
+  emitAttached(data: string): void {
+    this.attached.at(-1)?.options.onData?.(data, "stdout");
+  }
+}
+
 class FakeShellHandle implements TerminalSessionHandle {
-  readonly id = "fake-shell";
+  readonly id: string;
   readonly command: ProcessSessionCommand;
   readonly output: TerminalOutputController;
   readonly writes: string[] = [];
   readonly resizes: Array<{ columns: number; rows: number }> = [];
+  killCalls = 0;
+  disposeCalls = 0;
   readonly closed: Promise<ProcessSessionInspection>;
   readonly #resolveClosed: (inspection: ProcessSessionInspection) => void;
   readonly #backendId: string;
@@ -219,7 +346,8 @@ class FakeShellHandle implements TerminalSessionHandle {
   #columns: number;
   #rows: number;
 
-  constructor(backendId: string, options: TerminalBackendSpawnOptions) {
+  constructor(backendId: string, options: TerminalBackendSpawnOptions, id = "fake-shell") {
+    this.id = id;
     this.#backendId = backendId;
     this.command = {
       command: options.command,
@@ -254,6 +382,7 @@ class FakeShellHandle implements TerminalSessionHandle {
   }
 
   kill(): Promise<boolean> {
+    this.killCalls += 1;
     this.#status = "cancelled";
     this.finish(130);
     return Promise.resolve(true);
@@ -274,6 +403,7 @@ class FakeShellHandle implements TerminalSessionHandle {
   }
 
   dispose(): Promise<void> {
+    this.disposeCalls += 1;
     if (this.#status === "running") this.finish(0);
     return Promise.resolve();
   }

@@ -1,19 +1,31 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Box } from "./box.ts";
 
-import { Theme } from "../theme.ts";
-import { DeepPartial } from "../types.ts";
-import { ComponentOptions } from "../component.ts";
+import type { Theme } from "../theme.ts";
+import type { DeepPartial } from "../types.ts";
+import type { ComponentOptions } from "../component.ts";
 
-import { Computed, Signal, SignalOfObject } from "../signals/mod.ts";
+import { Computed, Signal, type SignalOfObject } from "../signals/mod.ts";
 
-import { BoxObject } from "../canvas/box.ts";
-import { TextObject, TextRectangle } from "../canvas/text.ts";
+import type { BoxObject } from "../canvas/box.ts";
+import { TextObject, type TextRectangle } from "../canvas/text.ts";
 
 import { clamp } from "../utils/numbers.ts";
 import { signalify } from "../utils/signals.ts";
 import { cropToWidth, insertAt } from "../utils/strings.ts";
 import type { KeyPressEvent } from "../input_reader/types.ts";
+import {
+  graphemeBoundaries,
+  nextGraphemeBoundary,
+  previousGraphemeBoundary,
+  resolveGraphemeBoundary,
+} from "../unicode/grapheme.ts";
+
+function canonicalInputOffset(text: string, position: number): number {
+  const clamped = clamp(position, 0, text.length);
+  const integer = Number.isFinite(clamped) ? Math.trunc(clamped) : 0;
+  return resolveGraphemeBoundary(text, integer, "nearest");
+}
 
 /** Public interface describing an input Theme. */
 export interface InputTheme extends Theme {
@@ -83,8 +95,18 @@ export class InputController {
   readonly #ownsMultiCodePointSupport: boolean;
   readonly #onChange?: (value: string) => void | Promise<void>;
   readonly #onSubmit?: (value: string) => void | Promise<void>;
+  #syncingCursor = false;
   readonly #syncCursor = () => {
-    this.cursorPosition.value = clamp(this.cursorPosition.peek(), 0, this.text.peek().length);
+    if (this.#syncingCursor) return;
+    const current = this.cursorPosition.peek();
+    const canonical = canonicalInputOffset(this.text.peek(), current);
+    if (canonical === current) return;
+    this.#syncingCursor = true;
+    try {
+      this.cursorPosition.value = canonical;
+    } finally {
+      this.#syncingCursor = false;
+    }
   };
 
   constructor(options: InputControllerOptions = {}) {
@@ -109,7 +131,7 @@ export class InputController {
 
   setText(value: string, cursorPosition = value.length): string {
     this.text.value = value;
-    this.cursorPosition.value = clamp(cursorPosition, 0, value.length);
+    this.cursorPosition.value = canonicalInputOffset(value, cursorPosition);
     void this.#onChange?.(this.text.peek());
     return this.text.peek();
   }
@@ -119,11 +141,15 @@ export class InputController {
   }
 
   moveCursor(offset: number): number {
+    const text = this.text.peek();
+    const cursor = this.cursorPosition.peek();
+    if (offset === -1) return this.setCursorPosition(previousGraphemeBoundary(text, cursor));
+    if (offset === 1) return this.setCursorPosition(nextGraphemeBoundary(text, cursor));
     return this.setCursorPosition(this.cursorPosition.peek() + offset);
   }
 
   setCursorPosition(position: number): number {
-    this.cursorPosition.value = clamp(position, 0, this.text.peek().length);
+    this.cursorPosition.value = canonicalInputOffset(this.text.peek(), position);
     return this.cursorPosition.peek();
   }
 
@@ -147,7 +173,8 @@ export class InputController {
     const cursorPosition = this.cursorPosition.peek();
     if (cursorPosition === 0) return false;
     const value = this.text.peek();
-    this.setText(value.slice(0, cursorPosition - 1) + value.slice(cursorPosition), cursorPosition - 1);
+    const previous = previousGraphemeBoundary(value, cursorPosition);
+    this.setText(value.slice(0, previous) + value.slice(cursorPosition), previous);
     return true;
   }
 
@@ -155,7 +182,8 @@ export class InputController {
     const cursorPosition = this.cursorPosition.peek();
     const value = this.text.peek();
     if (cursorPosition >= value.length) return false;
-    this.setText(value.slice(0, cursorPosition) + value.slice(cursorPosition + 1), cursorPosition);
+    const next = nextGraphemeBoundary(value, cursorPosition);
+    this.setText(value.slice(0, cursorPosition) + value.slice(next), cursorPosition);
     return true;
   }
 
@@ -193,12 +221,13 @@ export class InputController {
       case "tab":
         return this.insert("\t") ? "changed" : "ignored";
       default:
-        if (key.length > 1) return "ignored";
         return this.insert(key) ? "changed" : "ignored";
     }
   }
 
   accepts(character: string): boolean {
+    if (typeof character !== "string" || graphemeBoundaries(character).length !== 2) return false;
+    if (!this.multiCodePointSupport.peek() && character.length > 1) return false;
     const validator = this.validator.peek();
     if (!validator) return true;
     validator.lastIndex = 0;
@@ -208,6 +237,7 @@ export class InputController {
   inspect(): InputInspection {
     const text = this.text.peek();
     const validator = this.validator.peek();
+    const boundaries = validator ? graphemeBoundaries(text) : [0];
     if (validator) validator.lastIndex = 0;
     return {
       text,
@@ -217,7 +247,9 @@ export class InputController {
       password: this.password.peek(),
       placeholder: this.placeholder.peek(),
       valid: validator
-        ? [...text].every((character) => {
+        ? Array.from({ length: boundaries.length - 1 }, (_, index) => {
+          return text.slice(boundaries[index], boundaries[index + 1]);
+        }).every((character) => {
           validator.lastIndex = 0;
           return validator.test(character);
         })

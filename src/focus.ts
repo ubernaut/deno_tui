@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Component } from "./component.ts";
 import { DisposableStack } from "./app/disposables.ts";
+import { markFocusNavigationEvent } from "./focus_navigation_events.ts";
 import type { KeyPressEvent } from "./input_reader/types.ts";
 import type { Signal } from "./signals/mod.ts";
 
@@ -139,6 +140,7 @@ export function bindFocusNavigation(
   const reverseWithShift = options.reverseWithShift ?? true;
   return target.on("keyPress", (event) => {
     if (event.ctrl || event.meta || event.key !== key) return;
+    markFocusNavigationEvent(event);
     if (reverseWithShift && event.shift) {
       manager.previous();
     } else {

@@ -1,7 +1,14 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { TerminalOutputController } from "../components/terminal_output.ts";
 import { Signal } from "../signals/mod.ts";
-import { createProcessTerminalBackend, type TerminalBackend, type TerminalSessionHandle } from "./terminal_backend.ts";
+import {
+  createProcessTerminalBackend,
+  type TerminalBackend,
+  type TerminalBackendAttachOptions,
+  type TerminalBackendSpawnOptions,
+  type TerminalDetachedSession,
+  type TerminalSessionHandle,
+} from "./terminal_backend.ts";
 import {
   formatProcessCommandLine,
   type ProcessSessionCommand,
@@ -18,6 +25,8 @@ import { cloneTerminalCommand, normalizeTerminalDimension } from "./terminal_val
 export interface TerminalShellControllerOptions {
   backend?: TerminalBackend;
   backendFactory?: () => TerminalBackend | Promise<TerminalBackend>;
+  /** Existing backend-owned session to attach instead of spawning a new shell. */
+  attachSessionId?: string;
   shell?: string;
   args?: readonly string[];
   cwd?: string;
@@ -40,7 +49,10 @@ export interface TerminalShellInspection {
   running: boolean;
   backendId?: string;
   backendLabel?: string;
+  sessionId?: string;
   pty: boolean;
+  detached?: boolean;
+  reconnectable?: boolean;
   command: ProcessSessionCommand;
   commandLine: string;
   columns: number;
@@ -60,6 +72,7 @@ export class TerminalShellController {
   readonly scrollback: TerminalScrollbackController;
   readonly #backend?: TerminalBackend;
   readonly #backendFactory?: () => TerminalBackend | Promise<TerminalBackend>;
+  readonly #attachOnly: boolean;
   readonly #shell?: string;
   readonly #args?: readonly string[];
   readonly #cwd?: string;
@@ -68,6 +81,11 @@ export class TerminalShellController {
   readonly #now: () => number;
   readonly #onUpdate?: () => void;
   #session?: TerminalSessionHandle;
+  #sessionBackend?: TerminalBackend;
+  #attachSessionId?: string;
+  #sessionId?: string;
+  #detached: boolean;
+  #reconnectable: boolean;
   #backendLabel?: string;
   #pty = false;
   #columns: number;
@@ -78,6 +96,10 @@ export class TerminalShellController {
   constructor(options: TerminalShellControllerOptions = {}) {
     this.#backend = options.backend;
     this.#backendFactory = options.backendFactory;
+    this.#attachSessionId = normalizeAttachSessionId(options.attachSessionId);
+    this.#attachOnly = this.#attachSessionId !== undefined;
+    this.#detached = this.#attachSessionId !== undefined;
+    this.#reconnectable = this.#detached;
     this.#shell = options.shell;
     this.#args = options.args ? [...options.args] : undefined;
     this.#cwd = options.cwd;
@@ -133,7 +155,7 @@ export class TerminalShellController {
       this.#backendLabel = backend.label;
       this.#pty = backend.pty;
       this.screen.resize(this.#columns, this.#rows);
-      const handle = backend.spawn({
+      const sessionOptions: TerminalBackendSpawnOptions = {
         ...terminalTemplateToSpawnOptions(template, {
           columns: this.#columns,
           rows: this.#rows,
@@ -143,9 +165,25 @@ export class TerminalShellController {
           this.screen.write(data);
           this.#onUpdate?.();
         },
-      });
+      };
+      const attachSessionId = this.#attachSessionId;
+      const handle = attachSessionId
+        ? await attachTerminalSession(backend, attachSessionId, {
+          columns: this.#columns,
+          rows: this.#rows,
+          output: this.output,
+          onData: sessionOptions.onData,
+        })
+        : await (backend.spawnAsync?.(sessionOptions) ?? backend.spawn(sessionOptions));
+      const inspection = handle.inspect();
+      this.#sessionBackend = backend;
       this.#session = handle;
-      this.status.value = "running";
+      this.#sessionId = handle.id;
+      this.#command = cloneTerminalCommand(handle.command);
+      this.#detached = false;
+      this.#reconnectable = inspection.reconnectable ?? backend.reconnectable ?? backend.detachable ??
+        (backend.detach !== undefined || attachSessionId !== undefined);
+      this.status.value = inspection.running ? "running" : inspection.status;
       this.#onUpdate?.();
       void handle.closed.then((inspection) => {
         if (this.#session !== handle) return;
@@ -177,12 +215,58 @@ export class TerminalShellController {
   }
 
   async stop(signal: Deno.Signal = "SIGTERM"): Promise<boolean> {
+    return await this.terminate(signal);
+  }
+
+  /** Explicitly terminates the active backend session. */
+  async terminate(signal: Deno.Signal = "SIGTERM"): Promise<boolean> {
     const session = this.#session;
     if (!session) return false;
     const stopped = await session.kill(signal);
-    if (stopped) this.status.value = "cancelled";
+    if (stopped) {
+      this.status.value = "cancelled";
+      this.#detached = false;
+      this.#reconnectable = false;
+      if (!this.#attachOnly) this.#attachSessionId = undefined;
+    }
     this.#onUpdate?.();
     return stopped;
+  }
+
+  /** Releases the active client handle while retaining a backend-owned session. */
+  async detach(): Promise<boolean> {
+    const session = this.#session;
+    const backend = this.#sessionBackend;
+    if (!session || !backend?.detach) return false;
+    let detached: TerminalDetachedSession | undefined;
+    try {
+      detached = await backend.detach(session);
+    } catch (error) {
+      this.#error = error instanceof Error ? error.message : String(error);
+      this.#reportDiagnostic("shell-detach-failed", "Shell session failed to detach", error);
+      this.#onUpdate?.();
+      return false;
+    }
+    if (!detached) return false;
+    if (this.#session === session) this.#session = undefined;
+    this.#sessionId = detached.id;
+    this.#attachSessionId = detached.id;
+    this.#detached = true;
+    this.#reconnectable = true;
+    this.status.value = "idle";
+    this.#onUpdate?.();
+    return true;
+  }
+
+  /** Attaches this controller to a retained backend session. */
+  async attach(sessionId: string | undefined = this.#attachSessionId): Promise<boolean> {
+    const normalized = normalizeAttachSessionId(sessionId);
+    if (!normalized || this.status.peek() === "starting" || this.running) return false;
+    this.#attachSessionId = normalized;
+    this.#sessionId = normalized;
+    this.#detached = true;
+    this.#reconnectable = true;
+    return await this.start();
   }
 
   async write(data: string | Uint8Array): Promise<boolean> {
@@ -216,7 +300,7 @@ export class TerminalShellController {
       title: screen.title,
       status,
       running: status === "running",
-      backendId: session?.backendId,
+      backendId: session?.backendId ?? this.#sessionBackend?.id,
       backendLabel: this.#backendLabel,
       pty: this.#pty,
       command,
@@ -227,13 +311,21 @@ export class TerminalShellController {
       screen,
       scrollback: this.scrollback.inspect(),
     };
+    if (this.#sessionId) result.sessionId = this.#sessionId;
+    if (this.#detached) result.detached = true;
+    if (this.#reconnectable) result.reconnectable = true;
     if (session?.exit) result.exit = { ...session.exit };
     if (this.#error) result.error = this.#error;
     return result;
   }
 
   async dispose(): Promise<void> {
-    await this.#session?.dispose();
+    const session = this.#session;
+    const detached = session && this.#reconnectable && this.#sessionBackend?.detach ? await this.detach() : false;
+    if (session && !detached) {
+      if (this.#session === session) this.#session = undefined;
+      await session.dispose();
+    }
     this.output.dispose();
     this.status.dispose();
   }
@@ -257,4 +349,20 @@ export class TerminalShellController {
       },
     });
   }
+}
+
+async function attachTerminalSession(
+  backend: TerminalBackend,
+  sessionId: string,
+  options: TerminalBackendAttachOptions,
+): Promise<TerminalSessionHandle> {
+  if (!backend.attach) {
+    throw new Error(`Terminal backend ${backend.id} does not support session attachment`);
+  }
+  return await backend.attach(sessionId, options);
+}
+
+function normalizeAttachSessionId(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized || undefined;
 }

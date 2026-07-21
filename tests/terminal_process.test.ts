@@ -37,7 +37,24 @@ import {
 } from "../src/runtime/terminal_status.ts";
 import { denoTaskTerminalTemplate, type TerminalSessionDescriptor } from "../src/runtime/terminal_templates.ts";
 import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
+import { BoundedOutputLineBuffer, MAX_PENDING_OUTPUT_LINE_LENGTH } from "../src/runtime/output_line_buffer.ts";
 import type { Key, KeyPressEvent, MousePressEvent, MouseScrollEvent, PasteEvent } from "../src/input_reader/types.ts";
+
+Deno.test("BoundedOutputLineBuffer incrementally splits lines and caps unterminated tails", () => {
+  const buffer = new BoundedOutputLineBuffer();
+  const lines: string[] = [];
+
+  assertEquals(buffer.append("first\r", (line) => lines.push(line)), false);
+  assertEquals(buffer.append("\nsecond\n", (line) => lines.push(line)), false);
+  assertEquals(lines, ["first", "second"]);
+  assertEquals(buffer.append("a".repeat(MAX_PENDING_OUTPUT_LINE_LENGTH + 8), (line) => lines.push(line)), true);
+  assertEquals(buffer.pendingLength, MAX_PENDING_OUTPUT_LINE_LENGTH);
+  assertEquals(buffer.append("tail", (line) => lines.push(line)), false);
+  assertEquals(buffer.pendingLength, MAX_PENDING_OUTPUT_LINE_LENGTH);
+  buffer.finish((line) => lines.push(line));
+  assertEquals(lines.at(-1)?.length, MAX_PENDING_OUTPUT_LINE_LENGTH);
+  assertEquals(lines.at(-1)?.endsWith("tail"), true);
+});
 
 Deno.test("TerminalOutputController bounds stream-tagged scrollback and follow mode", () => {
   const output = new TerminalOutputController({ limit: 3 });
@@ -647,6 +664,22 @@ Deno.test("terminal mouse routing encodes negotiated SGR mouse packets", async (
     encoder.encode("\x1b[<3;3;2m"),
   );
   assertEquals(
+    encodeTerminalMouse(mousePress(12, 6, { release: true, button: 0 }), {
+      mouseTracking: "button",
+      sgrMouse: true,
+      mouseOrigin: { column: 10, row: 5 },
+    }),
+    encoder.encode("\x1b[<0;3;2m"),
+  );
+  assertEquals(
+    encodeTerminalMouse({ ...mousePress(12, 6, { button: 0, drag: true }), button: undefined }, {
+      mouseTracking: "any",
+      sgrMouse: true,
+      mouseOrigin: { column: 10, row: 5 },
+    }),
+    encoder.encode("\x1b[<35;3;2M"),
+  );
+  assertEquals(
     encodeTerminalMouse(mouseScroll(12, 6, -1), {
       mouseTracking: "press",
       sgrMouse: true,
@@ -793,7 +826,7 @@ function mousePress(
     shift: options.shift ?? false,
     drag: options.drag ?? false,
     release: options.release ?? false,
-    button: options.release ? undefined : options.button ?? 0,
+    button: options.release ? options.button : options.button ?? 0,
   };
 }
 

@@ -38,6 +38,17 @@ export interface TerminalScrollbackInspection {
   selectedText?: string;
 }
 
+/** Allocation-light viewport state for render and input hot paths. */
+export interface TerminalScrollbackViewportInspection {
+  mode: TerminalScrollbackMode;
+  offset: number;
+  maxOffset: number;
+  viewportRows: number;
+  totalRows: number;
+  scrollbackRows: number;
+  liveRows: number;
+}
+
 /** Renderer-neutral scrollback and copy-mode controller for terminal screen models. */
 export class TerminalScrollbackController {
   readonly screen: TerminalScreenController;
@@ -55,7 +66,7 @@ export class TerminalScrollbackController {
     this.#mode = options.mode ?? "live";
     this.#offset = Math.max(0, Math.floor(options.offset ?? this.#maxOffset()));
     this.#query = normalizeQuery(options.query);
-    this.#selection = normalizeSelection(options.selection, this.#rows().length);
+    this.#selection = normalizeSelection(options.selection, this.#rowCount());
     this.#refreshSearch();
     this.#clampOffset();
   }
@@ -134,8 +145,8 @@ export class TerminalScrollbackController {
   }
 
   setSelection(anchor: number, focus = anchor): TerminalScrollbackSelection | undefined {
-    const rows = this.#rows();
-    this.#selection = normalizeSelection({ anchor, focus }, rows.length);
+    const rowCount = this.#rowCount();
+    this.#selection = normalizeSelection({ anchor, focus }, rowCount);
     if (this.#selection) {
       this.enterCopyMode();
       this.#offset = clamp(Math.min(this.#selection.anchor, this.#selection.focus), 0, this.#maxOffset());
@@ -144,20 +155,20 @@ export class TerminalScrollbackController {
   }
 
   selectVisibleRow(row: number, extend = false): TerminalScrollbackSelection | undefined {
-    const rows = this.#rows();
-    if (rows.length === 0) return undefined;
-    const focus = clamp(this.offset + Math.trunc(row), 0, rows.length - 1);
+    const rowCount = this.#rowCount();
+    if (rowCount === 0) return undefined;
+    const focus = clamp(this.offset + Math.trunc(row), 0, rowCount - 1);
     const anchor = extend && this.#selection ? this.#selection.anchor : focus;
-    return this.#setSelectionAndReveal(anchor, focus, rows.length);
+    return this.#setSelectionAndReveal(anchor, focus, rowCount);
   }
 
   moveSelection(delta: number, extend = true): TerminalScrollbackSelection | undefined {
-    const rows = this.#rows();
-    if (rows.length === 0) return undefined;
+    const rowCount = this.#rowCount();
+    if (rowCount === 0) return undefined;
     const current = this.#selection?.focus ?? this.offset;
-    const focus = clamp(current + Math.trunc(delta), 0, rows.length - 1);
+    const focus = clamp(current + Math.trunc(delta), 0, rowCount - 1);
     const anchor = extend ? this.#selection?.anchor ?? current : focus;
-    return this.#setSelectionAndReveal(anchor, focus, rows.length);
+    return this.#setSelectionAndReveal(anchor, focus, rowCount);
   }
 
   clearSelection(): void {
@@ -170,20 +181,13 @@ export class TerminalScrollbackController {
   }
 
   inspect(): TerminalScrollbackInspection {
-    this.#refreshSearch();
-    this.#clampOffset();
     const rows = this.#rows();
-    const offset = this.offset;
+    this.#refreshSearch(rows);
+    const viewport = this.#viewportInspection(rows.length);
     const selection = this.#selection ? { ...this.#selection } : undefined;
     const inspection: TerminalScrollbackInspection = {
-      mode: this.#mode,
-      offset,
-      maxOffset: this.#maxOffset(rows.length),
-      viewportRows: this.#viewportRows,
-      totalRows: rows.length,
-      scrollbackRows: this.screen.inspect().scrollbackRows,
-      liveRows: this.screen.rows,
-      visibleRows: visibleRows(rows, offset, this.#viewportRows),
+      ...viewport,
+      visibleRows: visibleRows(rows, viewport.offset, viewport.viewportRows),
       matches: Array.from(this.#matches),
     };
     if (this.#query) inspection.query = this.#query;
@@ -193,6 +197,25 @@ export class TerminalScrollbackController {
       inspection.selectedText = selectedRowsText(rows, selection);
     }
     return inspection;
+  }
+
+  /** Returns viewport metrics without cloning or converting terminal rows. */
+  inspectViewport(): TerminalScrollbackViewportInspection {
+    return this.#viewportInspection(this.#rowCount());
+  }
+
+  #viewportInspection(totalRows: number): TerminalScrollbackViewportInspection {
+    this.#clampOffset(totalRows);
+    const maxOffset = this.#maxOffset(totalRows);
+    return {
+      mode: this.#mode,
+      offset: this.#mode === "live" ? maxOffset : this.#offset,
+      maxOffset,
+      viewportRows: this.#viewportRows,
+      totalRows,
+      scrollbackRows: this.screen.scrollbackRows,
+      liveRows: this.screen.rows,
+    };
   }
 
   #rows(): string[] {
@@ -205,20 +228,25 @@ export class TerminalScrollbackController {
     return rows;
   }
 
-  #maxOffset(rowCount = this.#rows().length): number {
+  #maxOffset(rowCount = this.#rowCount()): number {
     return Math.max(0, rowCount - this.#viewportRows);
   }
 
-  #clampOffset(): void {
-    this.#offset = this.#mode === "live" ? this.#maxOffset() : clamp(this.#offset, 0, this.#maxOffset());
+  #rowCount(): number {
+    return this.screen.scrollbackRows + this.screen.rows;
   }
 
-  #refreshSearch(): void {
+  #clampOffset(rowCount = this.#rowCount()): void {
+    const maxOffset = this.#maxOffset(rowCount);
+    this.#offset = this.#mode === "live" ? maxOffset : clamp(this.#offset, 0, maxOffset);
+  }
+
+  #refreshSearch(rowSnapshot?: readonly string[]): void {
     const query = this.#query;
     if (!query) {
       this.#matches = [];
     } else {
-      const rows = this.#rows();
+      const rows = rowSnapshot ?? this.#rows();
       const matches: number[] = [];
       for (let index = 0; index < rows.length; index += 1) {
         if (rows[index]!.toLowerCase().includes(query)) matches.push(index);
@@ -242,7 +270,7 @@ export class TerminalScrollbackController {
   }
 
   #revealRow(row: number): void {
-    const target = clamp(Math.trunc(row), 0, Math.max(0, this.#rows().length - 1));
+    const target = clamp(Math.trunc(row), 0, Math.max(0, this.#rowCount() - 1));
     if (target < this.#offset) {
       this.#offset = target;
     } else if (target >= this.#offset + this.#viewportRows) {

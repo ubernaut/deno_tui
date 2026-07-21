@@ -6,6 +6,7 @@ import { List, visibleListRows } from "./list.ts";
 import { drawTextChild } from "./text_children.ts";
 import type { KeyPressEvent } from "../input_reader/types.ts";
 import { compareRankedSearchMatches, scoreWeightedSearchItem, searchTerms } from "../utils/search.ts";
+import { graphemeBoundaries, previousGraphemeBoundary } from "../unicode/grapheme.ts";
 
 /** Public interface describing a command Palette Item. */
 export interface CommandPaletteItem {
@@ -155,7 +156,8 @@ export class CommandPaletteController {
   }
 
   backspace(): void {
-    this.setQuery(this.query.peek().slice(0, -1));
+    const query = this.query.peek();
+    this.setQuery(query.slice(0, previousGraphemeBoundary(query, query.length)));
   }
 
   move(delta: number): void {
@@ -183,8 +185,9 @@ export class CommandPaletteController {
       this.move(-1);
     } else if (event.key === "down") {
       this.move(1);
-    } else if (event.key.length === 1) {
-      this.append(event.shift ? event.key.toUpperCase() : event.key);
+    } else if (graphemeBoundaries(event.key).length === 2) {
+      const value = event.shift ? event.key.toUpperCase() : event.key;
+      if (graphemeBoundaries(value).length === 2) this.append(value);
     }
 
     this.clamp();

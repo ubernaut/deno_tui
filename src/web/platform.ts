@@ -11,6 +11,15 @@ import {
   type TuiPlatform,
 } from "../platform/types.ts";
 import type { Key, MousePressEvent } from "../input_reader/types.ts";
+import { InputEnvelopeFactory } from "../input_envelope.ts";
+import {
+  adaptMousePointer,
+  adaptPenPointer,
+  adaptTouchPointer,
+  type PointerInputDevice,
+  type PointerInputEvent,
+  type PointerInputKind,
+} from "../pointer_input.ts";
 
 /** Options for the browser platform adapter. */
 export interface BrowserPlatformOptions {
@@ -43,6 +52,8 @@ export interface BrowserInputSourceOptions {
    * mobile browsers can show the software keyboard.
    */
   textInput?: BrowserTextInputMode;
+  /** Caller-owned clock used for normalized pointer provenance. Defaults to performance.now. */
+  now?: () => number;
 }
 
 /** Adapter around requestAnimationFrame-style frame scheduling. */
@@ -118,6 +129,7 @@ export class BrowserInputSource implements InputSource {
   readonly #touchAction: string;
   readonly #userSelect: string;
   readonly #textInputMode: BrowserTextInputMode;
+  readonly #inputFactory: InputEnvelopeFactory;
   #emitter?: PlatformInputEmitter;
   #attached = false;
   #removeListeners: Array<() => void> = [];
@@ -132,6 +144,7 @@ export class BrowserInputSource implements InputSource {
     this.#touchAction = options.touchAction ?? "none";
     this.#userSelect = options.userSelect ?? "none";
     this.#textInputMode = options.textInput ?? "auto";
+    this.#inputFactory = new InputEnvelopeFactory({ now: options.now ?? (() => performance.now()) });
   }
 
   attach(emitter: PlatformInputEmitter): void {
@@ -145,16 +158,16 @@ export class BrowserInputSource implements InputSource {
       addListener(
         this.#target,
         "pointerdown",
-        (event) => this.#handlePointer(event as PointerEvent, false),
+        (event) => this.#handlePointer(event as PointerEvent, "down"),
         { passive: false },
       ),
       addListener(this.#target, "pointermove", (event) => this.#handlePointerMove(event as PointerEvent), {
         passive: false,
       }),
-      addListener(this.#target, "pointerup", (event) => this.#handlePointer(event as PointerEvent, true), {
+      addListener(this.#target, "pointerup", (event) => this.#handlePointer(event as PointerEvent, "up"), {
         passive: false,
       }),
-      addListener(this.#target, "pointercancel", (event) => this.#handlePointer(event as PointerEvent, true), {
+      addListener(this.#target, "pointercancel", (event) => this.#handlePointer(event as PointerEvent, "cancel"), {
         passive: false,
       }),
       addListener(this.#target, "wheel", (event) => this.#handleWheel(event as WheelEvent), { passive: false }),
@@ -199,14 +212,16 @@ export class BrowserInputSource implements InputSource {
     event.preventDefault();
   }
 
-  #handlePointer(event: PointerEvent, release: boolean): void {
-    if (!release) {
+  #handlePointer(event: PointerEvent, kind: "down" | "up" | "cancel"): void {
+    const release = kind !== "down";
+    if (kind === "down") {
       (this.#keyboardTarget ?? this.#target).focus({ preventScroll: true });
       this.#target.setPointerCapture?.(event.pointerId);
     } else if (this.#target.hasPointerCapture?.(event.pointerId)) {
       this.#target.releasePointerCapture?.(event.pointerId);
     }
     const position = this.#cellPosition(event);
+    this.#emitPointerInput(event, kind, position);
     this.#emitter?.emit("mousePress", {
       key: "mouse",
       x: position.x,
@@ -217,7 +232,8 @@ export class BrowserInputSource implements InputSource {
       ctrl: event.ctrlKey,
       shift: event.shiftKey,
       buffer: new Uint8Array(),
-      drag: !release && event.buttons !== 0,
+      // A down event starts capture; only pointermove is a drag update.
+      drag: false,
       release,
       button: release ? undefined : browserButton(event.button),
     });
@@ -227,6 +243,7 @@ export class BrowserInputSource implements InputSource {
   #handlePointerMove(event: PointerEvent): void {
     if (event.buttons === 0) return;
     const position = this.#cellPosition(event);
+    this.#emitPointerInput(event, "move", position);
     this.#emitter?.emit("mousePress", {
       key: "mouse",
       x: position.x,
@@ -242,6 +259,48 @@ export class BrowserInputSource implements InputSource {
       button: browserButton(event.button),
     });
     event.preventDefault();
+  }
+
+  #emitPointerInput(
+    event: PointerEvent,
+    kind: Extract<PointerInputKind, "down" | "move" | "up" | "cancel">,
+    position: { x: number; y: number },
+  ): void {
+    const device = browserPointerDevice(event.pointerType);
+    const targetRect = this.#target.getBoundingClientRect();
+    const envelope = this.#inputFactory.create("browser", {
+      kind: "pointer",
+      device,
+      modifiers: {
+        alt: event.altKey === true,
+        ctrl: event.ctrlKey === true,
+        meta: event.metaKey === true,
+        shift: event.shiftKey === true,
+      },
+      data: { phase: kind, pointerId: safePointerId(event.pointerId) },
+    });
+    const input = {
+      pointerId: safePointerId(event.pointerId),
+      kind,
+      coordinates: {
+        screen: { space: "screen" as const, x: finiteCoordinate(event.screenX), y: finiteCoordinate(event.screenY) },
+        cell: { space: "cell" as const, x: position.x, y: position.y },
+        local: {
+          space: "local" as const,
+          x: finiteCoordinate(event.clientX - targetRect.left),
+          y: finiteCoordinate(event.clientY - targetRect.top),
+        },
+      },
+      primary: event.isPrimary !== false,
+      button: kind === "down" || kind === "up" ? browserButton(event.button) ?? null : null,
+      buttons: kind === "up" || kind === "cancel" ? 0 : safeButtons(event.buttons, kind),
+      ...pointerAnalogFields(event, device),
+    };
+    let pointer: PointerInputEvent;
+    if (device === "touch") pointer = adaptTouchPointer(envelope, input);
+    else if (device === "pen") pointer = adaptPenPointer(envelope, input);
+    else pointer = adaptMousePointer(envelope, input);
+    this.#emitter?.emit("pointerInput", pointer);
   }
 
   #handleWheel(event: WheelEvent): void {
@@ -395,6 +454,60 @@ function createHiddenTextInput(target: HTMLElement): { element: HTMLElement; dis
 
 function browserButton(button: number): MousePressEvent["button"] {
   return button === 0 || button === 1 || button === 2 ? button : 0;
+}
+
+function browserPointerDevice(value: string | undefined): PointerInputDevice {
+  return value === "touch" || value === "pen" ? value : "mouse";
+}
+
+function safePointerId(value: number): number {
+  return Number.isSafeInteger(value) && value >= 0 ? value : 0;
+}
+
+function safeButtons(value: number, kind: PointerInputKind): number {
+  if (Number.isSafeInteger(value) && value >= 0 && value <= 63) return value;
+  return kind === "down" || kind === "move" ? 1 : 0;
+}
+
+function finiteCoordinate(value: number): number {
+  return Number.isFinite(value) ? value : 0;
+}
+
+function pointerAnalogFields(event: PointerEvent, device: PointerInputDevice): {
+  pressure?: number;
+  tangentialPressure?: number;
+  tiltX?: number;
+  tiltY?: number;
+  twist?: number;
+  contact?: { width: number; height: number };
+} {
+  const output: {
+    pressure?: number;
+    tangentialPressure?: number;
+    tiltX?: number;
+    tiltY?: number;
+    twist?: number;
+    contact?: { width: number; height: number };
+  } = {};
+  if (Number.isFinite(event.pressure) && event.pressure >= 0 && event.pressure <= 1) {
+    output.pressure = event.pressure;
+  }
+  if (
+    (device === "touch" || device === "pen") && Number.isFinite(event.width) && event.width >= 0 &&
+    Number.isFinite(event.height) && event.height >= 0
+  ) {
+    output.contact = { width: event.width, height: event.height };
+  }
+  if (device === "pen") {
+    if (
+      Number.isFinite(event.tangentialPressure) && event.tangentialPressure >= -1 &&
+      event.tangentialPressure <= 1
+    ) output.tangentialPressure = event.tangentialPressure;
+    if (Number.isFinite(event.tiltX) && event.tiltX >= -90 && event.tiltX <= 90) output.tiltX = event.tiltX;
+    if (Number.isFinite(event.tiltY) && event.tiltY >= -90 && event.tiltY <= 90) output.tiltY = event.tiltY;
+    if (Number.isSafeInteger(event.twist) && event.twist >= 0 && event.twist <= 359) output.twist = event.twist;
+  }
+  return output;
 }
 
 function browserKey(event: KeyboardEvent): Key | undefined {

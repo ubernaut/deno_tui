@@ -207,6 +207,12 @@ export class Markdown extends Component {
     const styles = { ...defaultMarkdownStyles, ...options.styles };
     this.#rows = new Computed(() => {
       const rectangle = this.rectangle.value;
+      const visible = this.visible.value;
+      // Computed dependencies are captured on construction, so retain the
+      // document and viewport dependencies even while this surface is hidden.
+      this.controller.document.value;
+      this.controller.offset.value;
+      if (!visible || rectangle.width <= 0 || rectangle.height <= 0) return [];
       return this.controller.visible(rectangle.width, rectangle.height).map((line) =>
         formatMarkdownRenderLine(line, styles)
       );

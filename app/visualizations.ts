@@ -746,13 +746,13 @@ const monitorVisualizationCatalog: readonly VisualizationCatalogEntry[] = [
 
 const preferredVisualizationIdsBySlot: Record<SlotId, string[]> = {
   cpu: [
-    "three-lattice",
+    "cpu-monitor",
+    "cpu-hex-grid",
     "harmonic-graph",
     "biosignal-strip",
     "telemetry-rack",
-    "cpu-monitor",
-    "cpu-hex-grid",
     "field-ring",
+    "three-lattice",
     "three-solenoid",
   ],
   cpuLegend: [
@@ -787,35 +787,35 @@ const preferredVisualizationIdsBySlot: Record<SlotId, string[]> = {
     "counter-board",
   ],
   memory: [
-    "three-hexshell",
+    "memory-monitor",
     "hex-heatmap",
     "field-ring",
     "telemetry-rack",
-    "memory-monitor",
+    "three-hexshell",
     "three-atfield",
   ],
   temperature: [
-    "three-capture",
+    "temperature-monitor",
     "warning-stack",
     "field-ring",
-    "temperature-monitor",
+    "three-capture",
     "three-atfield",
     "psychograph",
   ],
   disk: [
-    "three-mapslab",
+    "disk-monitor",
     "tactical-map",
     "route-board",
     "hex-heatmap",
-    "disk-monitor",
+    "three-mapslab",
   ],
   network: [
-    "three-solenoid",
+    "network-monitor",
     "network-topology",
     "route-board",
     "channel-matrix",
     "biosignal-strip",
-    "network-monitor",
+    "three-solenoid",
     "three-atfield",
   ],
   processes: [
@@ -925,6 +925,13 @@ const visualizationCatalog: readonly VisualizationCatalogEntry[] = [
 ];
 
 const visualizationCatalogById = new Map(visualizationCatalog.map((entry) => [entry.id, entry]));
+
+/** Graph and table visualizations allowed on the live system-monitor surface. */
+export const monitorVisualizations: VisualizationDescriptor[] = monitorVisualizationCatalog.map((entry) => ({
+  ...entry,
+}));
+
+const monitorVisualizationIdSet = new Set(monitorVisualizationCatalog.map((entry) => entry.id));
 
 export const visualizations: VisualizationDescriptor[] = visualizationCatalog.map((entry) => ({ ...entry }));
 
@@ -1180,6 +1187,23 @@ export function renderVisualization(context: RenderContext): PanelRender {
     footer: footerBase,
     three: enhancedPanel.three,
   };
+}
+
+/**
+ * Renders the live system-monitor surface without activating a Three scene.
+ * Requests outside the monitor catalog fall back to the slot's metric view so
+ * stale state and future routing changes cannot reintroduce mixed layers.
+ */
+export function renderMonitorVisualization(context: RenderContext): PanelRender {
+  const visualizationId = monitorVisualizationIdSet.has(context.slot.visualizationId)
+    ? context.slot.visualizationId
+    : defaultVisualizationForSlot(context.slot.id);
+  const renderContext = visualizationId === context.slot.visualizationId ? context : {
+    ...context,
+    slot: { ...context.slot, visualizationId },
+  };
+  const rendered = renderVisualization(renderContext);
+  return rendered.three ? { ...rendered, three: undefined } : rendered;
 }
 
 export function visualizationUsesThreeRenderer(visualizationId: string): boolean {

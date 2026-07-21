@@ -1,14 +1,15 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Tui } from "./tui.ts";
-import { hierarchizeTheme, Style, Theme } from "./theme.ts";
-import { EmitterEvent, EventEmitter } from "./event_emitter.ts";
+import type { Tui } from "./tui.ts";
+import { hierarchizeTheme, type Style, type Theme } from "./theme.ts";
+import { type EmitterEvent, EventEmitter } from "./event_emitter.ts";
 
 import type { Rectangle } from "./types.ts";
 import { SortedArray } from "./utils/sorted_array.ts";
-import { DrawObject } from "./canvas/draw_object.ts";
-import { View } from "./view.ts";
-import { InputEventRecord } from "./input_reader/mod.ts";
-import { Computed, Signal, SignalOfObject } from "./signals/mod.ts";
+import type { DrawObject } from "./canvas/draw_object.ts";
+import type { View } from "./view.ts";
+import type { InputEventRecord } from "./input_reader/mod.ts";
+import { isFocusNavigationEvent } from "./focus_navigation_events.ts";
+import { Computed, Signal, type SignalOfObject } from "./signals/mod.ts";
 import { signalify } from "./utils/signals.ts";
 
 /** Options for configuring component. */
@@ -91,6 +92,10 @@ export class Component extends EventEmitter<
       }
 
       for (const child of this.children) {
+        // Read-only child visibility commonly derives from this parent (for
+        // example ScrollArea scrollbar rows). Assigning through Computed
+        // throws and is unnecessary because its dependency will propagate.
+        if (child.visible instanceof Computed) continue;
         child.visible.value = visible;
       }
     });
@@ -103,6 +108,7 @@ export class Component extends EventEmitter<
     });
 
     tui.on("keyPress", (event) => {
+      if (isFocusNavigationEvent(event)) return;
       const state = this.state.peek();
       if (state === "focused" || state === "active") {
         this.emit("keyPress", event);
@@ -178,6 +184,9 @@ export class Component extends EventEmitter<
 
       if (Array.isArray(value)) {
         for (const object of value) {
+          // Components may delete indexed draw objects as their viewport or
+          // optional chrome changes, leaving sparse arrays behind.
+          if (!object) continue;
           if (visible) object.draw();
           else object.erase();
         }

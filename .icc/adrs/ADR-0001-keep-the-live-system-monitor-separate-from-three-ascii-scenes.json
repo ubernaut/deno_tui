@@ -1,0 +1,28 @@
+{
+  "consequences": "Monitor graphs paint opaque full-width rows, startup avoids WebGPU probing, routing and cycling stay metrics-only, and Three rendering remains available on surfaces designed to showcase it. The intentional code deletion exceeds the generic guard's 200-line deletion cap but has zero blocking rollback risks and focused regression/runtime evidence.",
+  "context": "The live monitor intentionally composited Three ASCII scenes beneath fallback text graphs. Five default panes selected Three scenes, producing mixed layers and unnecessary WebGPU startup for a metrics dashboard.",
+  "created_at": "2026-07-21T04:13:58Z",
+  "decision": "The live monitor uses only the metric visualization catalog, renders through a monitor policy that rejects stale Three selections, and no longer constructs ThreePanelView or exposes Three-only controls. Dedicated Three demos, Neon, and the API workbench retain the renderer.",
+  "id": "ADR-0001",
+  "links": {
+    "audit_policy_refs": [],
+    "graph_nodes": [
+      "app/main.ts",
+      "app/visualizations.ts"
+    ],
+    "release_streams": [],
+    "tasks": [
+      "monitor-2d-graphs-only"
+    ]
+  },
+  "schema_version": "1.0",
+  "status": "accepted",
+  "tags": [
+    "system-monitor",
+    "three-ascii",
+    "ui",
+    "visualization"
+  ],
+  "title": "Keep the live system monitor separate from Three ASCII scenes",
+  "updated_at": "2026-07-21T04:13:58Z"
+}

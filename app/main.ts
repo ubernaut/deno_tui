@@ -2,21 +2,10 @@ import { BoxObject } from "../src/canvas/box.ts";
 import { TextObject, type TextRectangle } from "../src/canvas/text.ts";
 import { ScrollAreaController, scrollbarGlyph, scrollbarThumb } from "../src/components/scroll_area.ts";
 import { handleInput } from "../src/input.ts";
-import type { MousePressEvent, MouseScrollEvent } from "../src/input_reader/types.ts";
 import { WindowManagerController, type WindowManagerWindowInspection } from "../src/layout/mod.ts";
 import { Computed, Effect, Signal } from "../src/signals/mod.ts";
-import { probeCompatibleWebGPUDevice } from "../src/three_ascii/webgpu_compat.ts";
 import { Tui } from "../src/tui.ts";
-import { ASCII_DEMO_PRESETS } from "../src/three_ascii/demo_presets.ts";
-import { TERMINAL_GLYPH_STYLES } from "../src/three_ascii/glyphs.ts";
-import {
-  applyAsciiPreset,
-  asciiControlValues,
-  asciiPresetLabel,
-  createDefaultAsciiOptions,
-  formatAsciiControlValue,
-  terminalGlyphStyleLabel,
-} from "../src/three_ascii/options.ts";
+import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import { textWidth } from "../src/utils/strings.ts";
 import { AudioRegistry, buildSourceCatalog, discoverAudioSources, resolveSourceFramesInto } from "./sources.ts";
 import {
@@ -28,7 +17,6 @@ import {
   severityAccent,
 } from "./styles.ts";
 import { SystemMonitor } from "./system_metrics.ts";
-import { ThreePanelView } from "./three_panel.ts";
 import { FrameView, ListView, MultilineTextView, PanelView } from "./ui.ts";
 import {
   type BorderMode,
@@ -37,7 +25,6 @@ import {
   layoutIds,
   type MenuLine,
   type MenuState,
-  type PanelRender,
   type Rect,
   type SlotConfig,
   type SlotId,
@@ -47,9 +34,9 @@ import {
 } from "./types.ts";
 import {
   defaultVisualizationForSlot,
+  monitorVisualizations,
   orderVisualizationsForSlot,
-  renderVisualization,
-  visualizations,
+  renderMonitorVisualization,
 } from "./visualizations.ts";
 import { crop } from "./visualization_primitives.ts";
 
@@ -102,7 +89,6 @@ const audioCatalog = await discoverAudioSources();
 const audioRegistry = new AudioRegistry(audioCatalog);
 const systemMonitor = new SystemMonitor(60);
 await systemMonitor.start(1000);
-const threeAsciiAvailable = new Signal(await probeCompatibleWebGPUDevice());
 
 const slots = new Signal<Record<SlotId, SlotConfig>>(createDefaultSlots(), { deepObserve: true });
 const layout = new Signal<LayoutId>("monitor");
@@ -413,12 +399,9 @@ const footerText = new TextObject({
 shellObjects.push(footerText);
 
 const slotPanels = new Map<SlotId, PanelView>();
-const slotScenes = new Map<SlotId, ThreePanelView>();
-const slotRenders = new Map<SlotId, Computed<PanelRender>>();
 const slotScrolls = new Map<SlotId, ScrollAreaController>();
 const slotSourceFrameBuffers = new Map<SlotId, SourceFrame[]>();
 const scrollTeardowns: Array<() => void> = [];
-let sceneDragSlot: SlotId | null = null;
 
 for (const slotId of slotIds) {
   const scroll = new ScrollAreaController({ showScrollbar: true });
@@ -449,7 +432,7 @@ for (const slotId of slotIds) {
       audioRegistry,
       phase.value,
     );
-    return renderVisualization({
+    return renderMonitorVisualization({
       slot,
       system: systemMonitor.snapshot.value,
       sources,
@@ -458,7 +441,6 @@ for (const slotId of slotIds) {
       height: Math.max(4, rect.value.height - 4),
     });
   });
-  slotRenders.set(slotId, render);
   const selected = new Computed(() => windowManager.activeId.value === slotId);
 
   const panel = new PanelView({
@@ -472,7 +454,6 @@ for (const slotId of slotIds) {
     }),
     alert: new Computed(() => render.value.alert),
     body: new Computed(() => render.value.body),
-    bodyPadToWidth: new Computed(() => !(render.value.three && threeAsciiAvailable.value)),
     bodyLineOffset: new Computed(() => scroll.offset.value.rows),
     footer: new Computed(() => {
       const renderValue = render.value;
@@ -510,17 +491,6 @@ for (const slotId of slotIds) {
     panel.bodyRect.unsubscribe(syncPanelScroll);
     render.unsubscribe(syncPanelScroll);
   });
-  slotScenes.set(
-    slotId,
-    new ThreePanelView({
-      canvas: tui.canvas,
-      rectangle: panel.bodyRect,
-      scene: new Computed(() => render.value.three ?? null),
-      ascii: new Computed(() => slots.value[slotId].ascii),
-      enabled: threeAsciiAvailable,
-      zIndex: 11,
-    }),
-  );
 }
 
 const panelScrollbarText: TextObject[] = slotIds.flatMap((slotId) =>
@@ -822,23 +792,8 @@ tui.on("keyPress", (event) => {
 });
 
 tui.on("mousePress", (event) => {
-  if (event.release) {
-    sceneDragSlot = null;
-    return;
-  }
+  if (event.release) return;
   if (menu.peek()) return;
-  if (event.drag && sceneDragSlot) {
-    if (rotateSlotScene(sceneDragSlot, event)) return;
-    sceneDragSlot = null;
-  }
-  const sceneSlot = sceneSlotAt(event.x, event.y);
-  if (sceneSlot) {
-    sceneDragSlot = sceneSlot;
-    focusSlot(sceneSlot);
-    if (event.drag) rotateSlotScene(sceneSlot, event);
-    return;
-  }
-  sceneDragSlot = null;
   rebuildHitTargets();
   const target = findHit(event.x, event.y);
   if (!target) return;
@@ -847,7 +802,6 @@ tui.on("mousePress", (event) => {
 
 tui.on("mouseScroll", (event) => {
   if (menu.peek()) return;
-  if (zoomSlotSceneAt(event)) return;
   const hovered = slotAt(event.x, event.y);
   scrollSlot(hovered ?? selectedSlotId.peek(), event.scroll);
 });
@@ -974,74 +928,15 @@ function applyMenuSelection(currentMenu: MenuState, itemId: string) {
       const slot = slots.value[currentMenu.targetSlotId];
       switch (currentMenu.column) {
         case 0:
-          if (ASCII_DEMO_PRESETS.some((preset) => preset.id === itemId)) {
-            applyAsciiPreset(slot.ascii, itemId);
-          }
-          return;
-        case 1:
-          if (TERMINAL_GLYPH_STYLES.includes(itemId as typeof TERMINAL_GLYPH_STYLES[number])) {
-            slot.ascii.preset = "custom";
-            slot.ascii.terminalGlyphStyle = itemId as typeof TERMINAL_GLYPH_STYLES[number];
-          }
-          return;
-        case 2:
           if (borderModes.includes(itemId as BorderMode)) {
             slot.ascii.border = itemId as BorderMode;
           }
           return;
-        case 3:
-          slot.ascii.preset = "custom";
-          slot.ascii.edges = itemId === "on";
-          return;
-        case 4:
-          slot.ascii.preset = "custom";
-          slot.ascii.fill = itemId === "on";
-          return;
-        case 5:
-          slot.ascii.preset = "custom";
-          slot.ascii.invertLuminance = itemId === "on";
-          return;
-        case 6:
-          slot.ascii.preset = "custom";
-          slot.ascii.edgeThreshold = Number(itemId);
-          return;
-        case 7:
-          slot.ascii.preset = "custom";
-          slot.ascii.normalThreshold = Number(itemId);
-          return;
-        case 8:
-          slot.ascii.preset = "custom";
-          slot.ascii.depthThreshold = Number(itemId);
-          return;
-        case 9:
-          slot.ascii.preset = "custom";
-          slot.ascii.exposure = Number(itemId);
-          return;
-        case 10:
-          slot.ascii.preset = "custom";
-          slot.ascii.attenuation = Number(itemId);
-          return;
-        case 11:
-          slot.ascii.preset = "custom";
-          slot.ascii.blendWithBase = Number(itemId);
-          return;
-        case 12:
-          slot.ascii.preset = "custom";
-          slot.ascii.depthFalloff = Number(itemId);
-          return;
-        case 13:
-          slot.ascii.preset = "custom";
-          slot.ascii.depthOffset = Number(itemId);
-          return;
-        case 14:
-          slot.ascii.preset = "custom";
-          slot.ascii.terminalEdgeBias = Number(itemId);
-          return;
-        case 15:
+        case 1:
           slot.cycleEnabled = itemId === "on";
           cycleClock.set(slot.id, Date.now());
           return;
-        case 16:
+        case 2:
           slot.cycleIntervalMs = Number(itemId);
           cycleClock.set(slot.id, Date.now());
           return;
@@ -1121,7 +1016,7 @@ function selectNextSlot(step: number) {
 
 function shiftSelectedVisualization(step: number) {
   const slot = slots.value[selectedSlotId.peek()];
-  slot.visualizationId = shiftVisualizationForSlot(slot.id, slot.visualizationId, step, visualizations);
+  slot.visualizationId = shiftVisualizationForSlot(slot.id, slot.visualizationId, step, monitorVisualizations);
   cycleClock.set(slot.id, Date.now());
 }
 
@@ -1133,31 +1028,6 @@ function scrollSlot(slotId: SlotId, rows: number): void {
   if (rows === 0) return;
   const scroll = slotScrolls.get(slotId);
   scroll?.scrollBy(0, rows);
-}
-
-function zoomSlotSceneAt(event: MouseScrollEvent): boolean {
-  const slotId = sceneSlotAt(event.x, event.y);
-  if (!slotId) return false;
-  slotScenes.get(slotId)?.zoomBy(event.scroll);
-  focusSlot(slotId);
-  return true;
-}
-
-function rotateSlotScene(slotId: SlotId, event: MousePressEvent): boolean {
-  const scene = slotScenes.get(slotId);
-  if (!scene) return false;
-  scene.rotateBy(event.movementX, event.movementY);
-  focusSlot(slotId);
-  return true;
-}
-
-function sceneSlotAt(x: number, y: number): SlotId | undefined {
-  const slotId = slotAt(x, y);
-  if (!slotId || !threeAsciiAvailable.peek()) return undefined;
-  const panel = slotPanels.get(slotId);
-  const render = slotRenders.get(slotId);
-  if (!panel || !render?.peek().three) return undefined;
-  return contains(panel.bodyRect.peek(), x, y) ? slotId : undefined;
 }
 
 function panelBodyHeight(slotId: SlotId): number {
@@ -1315,7 +1185,7 @@ function buildMenuModel(
       "< AND > STEP THE FOCUSED PANE THROUGH ITS CURATED VISUALIZATION ORDER.",
       "F2 ROUTES INPUTS AND VISUALIZATIONS TO OUTPUT TARGETS.",
       "F3 SWITCHES BETWEEN THE BOTTOM-STYLE MONITOR AND SPLIT LAYOUTS.",
-      "F4 DRIVES THE THREE ASCII PRESET, GLYPH TOGGLES, THRESHOLDS, BLEND, AND EDGE BIAS.",
+      "F4 CONFIGURES PANEL BORDERS AND METRIC-VIEW CYCLING.",
       "SYSTEM AUDIO MONITORS AND LIVE MICROPHONE INPUTS APPEAR IN ROUTING.",
       "F5 OR C TOGGLES CYCLE MODE ON THE SELECTED PANE.",
       "Q OR ESC CLOSES WINDOWS OR EXITS THE APP.",
@@ -1373,7 +1243,7 @@ function buildMenuModel(
       },
       {
         title: "Visualization",
-        items: orderVisualizationsForSlot(targetSlot.id, visualizations).map((entry) => ({
+        items: orderVisualizationsForSlot(targetSlot.id, monitorVisualizations).map((entry) => ({
           id: entry.id,
           label: entry.name,
           selected: targetSlot.visualizationId === entry.id,
@@ -1404,120 +1274,11 @@ function buildMenuModel(
   const targetSlot = slotMap[currentMenu.targetSlotId];
   const sections = [
     {
-      title: "ASCII Preset",
-      items: ASCII_DEMO_PRESETS.map((preset) => ({
-        id: preset.id,
-        label: preset.label,
-        selected: targetSlot.ascii.preset === preset.id,
-      })),
-    },
-    {
-      title: "ASCII Style",
-      items: TERMINAL_GLYPH_STYLES.map((style) => ({
-        id: style,
-        label: terminalGlyphStyleLabel(style),
-        selected: targetSlot.ascii.terminalGlyphStyle === style,
-      })),
-    },
-    {
       title: "Border",
       items: borderModes.map((mode) => ({
         id: mode,
         label: mode.toUpperCase(),
         selected: targetSlot.ascii.border === mode,
-      })),
-    },
-    {
-      title: "Edge Glyphs",
-      items: [
-        { id: "on", label: "ON", selected: targetSlot.ascii.edges },
-        { id: "off", label: "OFF", selected: !targetSlot.ascii.edges },
-      ],
-    },
-    {
-      title: "Fill Glyphs",
-      items: [
-        { id: "on", label: "ON", selected: targetSlot.ascii.fill },
-        { id: "off", label: "OFF", selected: !targetSlot.ascii.fill },
-      ],
-    },
-    {
-      title: "Invert Fill",
-      items: [
-        { id: "off", label: "OFF", selected: !targetSlot.ascii.invertLuminance },
-        { id: "on", label: "ON", selected: targetSlot.ascii.invertLuminance },
-      ],
-    },
-    {
-      title: "Edge Threshold",
-      items: asciiControlValues("edgeThreshold").map((value) => ({
-        id: String(value),
-        label: formatAsciiControlValue("edgeThreshold", value),
-        selected: targetSlot.ascii.edgeThreshold === value,
-      })),
-    },
-    {
-      title: "Normal Edge",
-      items: asciiControlValues("normalThreshold").map((value) => ({
-        id: String(value),
-        label: formatAsciiControlValue("normalThreshold", value),
-        selected: targetSlot.ascii.normalThreshold === value,
-      })),
-    },
-    {
-      title: "Depth Edge",
-      items: asciiControlValues("depthThreshold").map((value) => ({
-        id: String(value),
-        label: formatAsciiControlValue("depthThreshold", value),
-        selected: targetSlot.ascii.depthThreshold === value,
-      })),
-    },
-    {
-      title: "Exposure",
-      items: asciiControlValues("exposure").map((value) => ({
-        id: String(value),
-        label: formatAsciiControlValue("exposure", value),
-        selected: targetSlot.ascii.exposure === value,
-      })),
-    },
-    {
-      title: "Attenuation",
-      items: asciiControlValues("attenuation").map((value) => ({
-        id: String(value),
-        label: formatAsciiControlValue("attenuation", value),
-        selected: targetSlot.ascii.attenuation === value,
-      })),
-    },
-    {
-      title: "Base Blend",
-      items: asciiControlValues("blendWithBase").map((value) => ({
-        id: String(value),
-        label: formatAsciiControlValue("blendWithBase", value),
-        selected: targetSlot.ascii.blendWithBase === value,
-      })),
-    },
-    {
-      title: "Fog Falloff",
-      items: asciiControlValues("depthFalloff").map((value) => ({
-        id: String(value),
-        label: formatAsciiControlValue("depthFalloff", value),
-        selected: targetSlot.ascii.depthFalloff === value,
-      })),
-    },
-    {
-      title: "Fog Offset",
-      items: asciiControlValues("depthOffset").map((value) => ({
-        id: String(value),
-        label: formatAsciiControlValue("depthOffset", value),
-        selected: targetSlot.ascii.depthOffset === value,
-      })),
-    },
-    {
-      title: "Edge Bias",
-      items: asciiControlValues("terminalEdgeBias").map((value) => ({
-        id: String(value),
-        label: formatAsciiControlValue("terminalEdgeBias", value),
-        selected: targetSlot.ascii.terminalEdgeBias === value,
       })),
     },
     {
@@ -1542,12 +1303,8 @@ function buildMenuModel(
     accent: "violet",
     descriptionLines: [
       `TARGET ${slotLabel(currentMenu.targetSlotId).toUpperCase()}`,
-      `ASCII ${
-        asciiPresetLabel(targetSlot.ascii.preset).toUpperCase()
-      } / BORDER ${targetSlot.ascii.border.toUpperCase()}`,
-      `EDGE ${targetSlot.ascii.edgeThreshold.toFixed(1)} / EXP ${targetSlot.ascii.exposure.toFixed(2)} / BLEND ${
-        targetSlot.ascii.blendWithBase.toFixed(2)
-      }`,
+      `VIEW ${targetSlot.visualizationId.toUpperCase()} / BORDER ${targetSlot.ascii.border.toUpperCase()}`,
+      `CYCLE ${targetSlot.cycleEnabled ? "ON" : "OFF"} / INTERVAL ${Math.round(targetSlot.cycleIntervalMs / 1000)}S`,
     ],
     footer: "OPTIONS MENU  /  F5 ALSO TOGGLES CYCLE",
     sections,
@@ -1595,7 +1352,7 @@ function decorateMenu(
 }
 
 function nextVisualization(currentId: string, slotId: SlotId) {
-  return shiftVisualizationForSlot(slotId, currentId, 1, visualizations);
+  return shiftVisualizationForSlot(slotId, currentId, 1, monitorVisualizations);
 }
 
 function shiftVisualizationForSlot<T extends { id: string }>(

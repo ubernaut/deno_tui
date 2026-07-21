@@ -5,6 +5,14 @@ import {
   type TerminalBackend,
 } from "./terminal_backend.ts";
 import type { DiagnosticsCollector } from "./diagnostics.ts";
+import {
+  createRuntimePermissionActivationReportFromReporters,
+  createRuntimePermissionManifest,
+  normalizeRuntimePermissionManifest,
+  type RuntimePermissionActivationReport,
+  type RuntimePermissionManifestLimits,
+  type RuntimePermissionReporter,
+} from "../permissions.ts";
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -20,7 +28,7 @@ export interface TerminalBackendAvailability {
 }
 
 /** Lazy terminal backend provider registered with a TerminalBackendRegistry. */
-export interface TerminalBackendProvider {
+export interface TerminalBackendProvider extends RuntimePermissionReporter {
   id: string;
   label: string;
   pty: boolean;
@@ -110,6 +118,11 @@ export class TerminalBackendRegistry {
     return cloneTerminalBackendProviders(this.#providersSnapshot);
   }
 
+  /** Aggregates every provider grant before probe, module load, or backend creation. */
+  permissionReport(limits?: RuntimePermissionManifestLimits): RuntimePermissionActivationReport {
+    return createRuntimePermissionActivationReportFromReporters(this.sortedProviders(), limits);
+  }
+
   async inspect(): Promise<TerminalBackendProviderInspection[]> {
     const inspected: TerminalBackendProviderInspection[] = [];
     for (const provider of this.sortedProviders()) {
@@ -188,6 +201,10 @@ export function createProcessTerminalBackendProvider(
     id: backendId,
     label,
     pty: false,
+    permissionManifest: createRuntimePermissionManifest({
+      adapterId: `terminal-backend:${backendId}`,
+      required: [{ kind: "subprocess", operation: "spawn", target: "*" }],
+    }),
     priority: 0,
     detachable: false,
     reconnectable: false,
@@ -237,6 +254,7 @@ export async function probeTerminalBackendProvider(
 function normalizeTerminalBackendProvider(provider: TerminalBackendProvider): TerminalBackendProvider {
   return {
     ...provider,
+    permissionManifest: normalizeRuntimePermissionManifest(provider.permissionManifest),
     priority: provider.priority ?? 0,
     detachable: provider.detachable ?? false,
     reconnectable: provider.reconnectable ?? false,

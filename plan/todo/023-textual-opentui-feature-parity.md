@@ -1,13 +1,14 @@
 # Textual And OpenTUI Feature-Parity Roadmap
 
-Status: L0 completed on July 16, 2026; later milestones await separate approval. Core imperative advanced windowing is
-already implemented; W1 and W2 track the remaining screen/modal lifecycle and declarative-markup integration.
+Status: active implementation program. The user approved the remaining milestones on July 16, 2026. L0 is complete; L1,
+L2, W1, W2, R1, and K1 now have verified or active slices. Core imperative advanced windowing is already implemented; W1
+and W2 track the remaining screen/modal lifecycle and declarative-markup integration.
 
-## Decision Gate
+## Execution Discipline
 
-This file is the durable research-backed backlog. Completed L0 items are checked below; every other checkbox remains
-open and is not authorization to implement that feature. Each accepted milestone should become its own ICC task and
-reviewable commit.
+This file is the durable research-backed backlog. Authorization is active, but a checkbox is checked only after its
+specific contract and tests pass. Each milestone remains its own ICC task and reviewable batch so a large program does
+not erase failure evidence or blur partially completed work.
 
 The recommended first implementation milestone is L0, followed by the bounded L2 Taffy spike. L1 and L3 should be
 approved only after that adoption decision, so advanced Flexbox, intrinsic-sizing, and Grid work targets the chosen
@@ -23,8 +24,8 @@ The comparison uses current first-party sources only:
 - [OpenTUI v0.4.4](https://github.com/anomalyco/opentui/releases/tag/v0.4.4), released July 16, 2026, is the
   TypeScript/Zig reference. `anomalyco/opentui` is the canonical repository; the former `sst/opentui` location redirects
   there.
-- [Taffy 0.12.1](https://docs.rs/taffy/0.12.1/taffy/), current at the time of research, is the candidate advanced layout
-  solver. It implements CSS-inspired Block, Flexbox, and Grid algorithms.
+- [Taffy 0.12.2](https://docs.rs/taffy/0.12.2/taffy/), current at the time of the spike, is the candidate advanced
+  layout solver. It implements CSS-inspired Block, Flexbox, and Grid algorithms.
 
 Important distinctions:
 
@@ -256,7 +257,7 @@ Sources: [crate overview](https://docs.rs/taffy/0.12.1/taffy/),
 - [x] Require diagnostics for unsupported declarations and solver fallback; never silently accept a property and ignore
       it in the selected backend.
 
-Completed July 16, 2026: the dependency-free capability profiles cover all 45 normalized fields and six invariants;
+Completed July 16, 2026: the dependency-free capability profiles cover all 46 normalized fields and six invariants;
 matched declaration diagnostics validate winning-field provenance and supported value grammar; Simple/Yoga share one
 conformance table with exact solver-specific output and diagnostics; worker results preserve diagnostics without putting
 callbacks in structured-clone payloads.
@@ -269,9 +270,9 @@ Acceptance:
 
 ### L1 - Complete Advanced Flexbox And Sizing (P0, Large)
 
-- [ ] Add `row-reverse` and `column-reverse` without conflating them with wrap reversal.
-- [ ] Add `align-content`, `justify-content: space-evenly`, and baseline alignment where text metrics exist.
-- [ ] Add `aspect-ratio`, `box-sizing`, auto margins, percentage padding/margins/gaps, and correct relative-position
+- [x] Add `row-reverse` and `column-reverse` without conflating them with wrap reversal.
+- [x] Add `align-content`, `justify-content: space-evenly`, and baseline alignment where text metrics exist.
+- [x] Add `aspect-ratio`, `box-sizing`, auto margins, percentage padding/margins/gaps, and correct relative-position
       offsets.
 - [ ] Add logical start/end edges and direction/RTL only if terminal ordering and hit testing can share one clear model.
 - [ ] Add parent-axis and viewport-axis units, plus a bounded `calc()` expression model.
@@ -279,6 +280,18 @@ Acceptance:
       measured widgets.
 - [ ] Verify grow/shrink/basis, wrapping, gaps, min/max constraints, intrinsic basis, and one-cell remainder allocation
       across nested and overflowing containers.
+
+Completed slice July 16, 2026: the Simple solver now has independent reverse main-axis handling, wrapped-line
+`align-content`, `space-evenly`, and deterministic integer-cell remainder distribution. The capability report keeps Yoga
+gaps explicit. Baseline remains deliberately gated because the shared intrinsic-measurement contract does not yet expose
+ascent/baseline metrics; it is not silently approximated.
+
+Completed sizing slice July 16, 2026: the Simple solver preserves legacy numeric spacing fields while carrying strict,
+serializable authored percentage/auto metadata; resolves percentage margins and padding against the containing inline
+dimension and gaps per axis; supports Flex main/cross auto margins and Block inline centering; distinguishes explicit
+content-box from the compatibility border-box default; derives aspect-ratio axes before cell projection; and applies
+relative insets to the visual subtree and hit regions without moving normal-flow siblings. Capability diagnostics keep
+Yoga limitations explicit.
 
 Acceptance:
 
@@ -289,11 +302,17 @@ Acceptance:
 ### L2 - Evaluate A Taffy WASM Backend (P0, Medium Spike)
 
 - [ ] Identify a maintained WASM distribution or build a minimal pinned bridge from Taffy 0.12.x.
-- [ ] Implement an experimental `LayoutSolver` adapter without exposing Taffy handles in public APIs.
+- [x] Implement an experimental `LayoutSolver` adapter without exposing Taffy handles in public APIs.
 - [ ] Prove Deno terminal import, browser import, GitHub Pages bundling, worker execution, disposal, and cache behavior.
 - [ ] Compare simple, Yoga, and Taffy output over the L0 corpus and large nested trees.
 - [ ] Measure cold-load size/time, steady layout time, memory, and cross-boundary overhead.
-- [ ] Write an adoption decision: replace Yoga, complement Yoga for Grid/Block, or reject/defer Taffy.
+- [x] Write an adoption decision: replace Yoga, complement Yoga for Grid/Block, or reject/defer Taffy.
+
+Completed spike July 16, 2026: `./layout/taffy` is an explicitly experimental, caller-loaded 0.12.x bridge protocol with
+strict manifest/result validation, intrinsic-measurement callbacks, deterministic cell projection, lifecycle isolation,
+and a candidate probe. Adoption is deferred because no maintained published 0.12.x JS/WASM distribution currently
+satisfies the measurement, browser/worker packaging, and lifecycle gates. The remaining unchecked items require a real
+candidate; protocol fixtures are not misreported as Taffy algorithm evidence.
 
 Acceptance:
 
@@ -360,12 +379,21 @@ The persistent tiled workspace baseline already provides docking/swapping, split
 minimize, maximize/restore, compact focus behavior, serialization, and terminal/web parity. W1 and W2 extend that one
 window manager; they do not replace or reimplement the landed core.
 
-- [ ] Add named screen stacks with push/pop/switch and independent named modes on top of the existing router.
-- [ ] Add typed modal results that can be awaited or delivered to a callback, plus suspend/resume lifecycle events.
-- [ ] Define screen/mode mount, focus, suspend, resume, close, and restoration ordering without duplicating router or
+- [x] Add named screen stacks with push/pop/switch.
+- [x] Bind independent named modes to the existing router without duplicating route ownership.
+- [x] Add typed modal results that can be awaited or delivered to a callback, plus suspend/resume lifecycle events.
+- [x] Define screen/mode mount, focus, suspend, resume, close, and restoration ordering without duplicating router or
       focus-scope ownership.
-- [ ] Persist named screen/mode state with versioned migrations and safe restore only where restoring application state
+- [x] Persist named screen/mode state with versioned migrations and safe restore only where restoring application state
       is semantically valid.
+
+Completed slice July 16, 2026: `ScreenStack` provides deterministic push/pop/replace/switch/dismiss transitions, typed
+once-only modal settlement, suspend/resume lifecycle, focus-token restoration hooks, immutable inspection, bounded
+diagnostics, and top-down disposal. `ScreenPersistence` adds default-deny, versioned, migration-aware snapshots and
+preflighted public-transition restore without serializing modal callbacks, focus tokens, or disposed resources.
+`ScreenRouterModeBinding` keeps `RouteManager` as the sole navigation owner while projecting current, push, replace, and
+back transitions into independent named stacks; direct stack drift reconciles to the active route without writing the
+router, lifecycle-triggered navigation is queued and bounded, and injected routers/stacks remain host-owned.
 
 Acceptance:
 
@@ -375,21 +403,31 @@ Acceptance:
 
 ### W2 - Declarative Window Integration (P1, Medium)
 
-- [ ] Connect `<window>` and `<modal>` layout nodes to the existing tiled workspace and overlay stack without creating a
+- [x] Connect `<window>` and `<modal>` layout nodes to the existing tiled workspace and overlay stack without creating a
       second window manager.
-- [ ] Expose controller-backed focus, move/dock/swap, splitter resize, minimize, maximize/restore, and close actions to
+- [x] Expose controller-backed focus, move/dock/swap, splitter resize, minimize, maximize/restore, and close actions to
       declarative markup while preserving keyboard and pointer parity.
-- [ ] Persist declarative window identity and tiled geometry through the existing versioned workspace schema and safe
-      migrations.
-- [ ] Add layout-operation undo/redo only after state ownership is shared by terminal and web hosts.
-- [ ] Define compact-viewport and minimum-size behavior for declarative windows without allowing hidden panes to steal
+- [x] Persist declarative identity through a strict V2 integration snapshot composed with the existing V1 tiled
+      workspace schema, rejecting unknown versions and intersecting identities safely.
+- [x] Migrate supported V1 declarative snapshots forward to V2 while rejecting V2-only fields in legacy payloads.
+- [x] Add layout-operation undo/redo only after state ownership is shared by terminal and web hosts.
+- [x] Define compact-viewport and minimum-size behavior for declarative windows without allowing hidden panes to steal
       focus or hit regions.
+
+Completed core slice July 17, 2026: `MarkupWindowController` discovers bounded declarative windows and modals while
+preserving unrelated imperative panes. Tiled-tree geometry remains owned by the shared tiled workspace; the integration
+owns durable floating rectangles, restore/snap metadata, groups, focus tiers, declaration lifecycle, and only the
+workspace/overlay identities it registered. It exposes focus, move, swap, dock, separator and eight-edge resize,
+minimize/maximize/restore/close, compact projection, bounds recovery, and strict V1-to-V2 persistence.
+`MarkupWindowHistoryAdapter` records exact before/after shared-controller snapshots and batches capture-driven pointer
+gestures into one entry with failure compensation. Automatic live-tree invalidation remains part of D1; shared host
+chrome and flagship adoption remain tracked in 025:SHR-006 / SHOW-WIN-001.
 
 Acceptance:
 
 - Hiding or minimizing a window never destroys its durable split geometry.
 - Declarative and imperative operations produce one shared workspace state and command history.
-- Tiled workspace restoration is lossless across supported schema versions.
+- Tiled and floating restoration is lossless across supported schema versions.
 
 ### R1 - OpenTUI-Inspired Renderer And Terminal Services (P2, Large)
 
@@ -398,7 +436,7 @@ Acceptance:
       concrete host use case requires it.
 - [ ] Add styled scrollback snapshots and reusable streaming off-screen surfaces for Markdown, code, and process output.
 - [ ] Complete structured Kitty keyboard press/repeat/release and base-layout metadata while keeping legacy input paths.
-- [ ] Add terminal theme/palette detection, title/background control, OSC 52 clipboard, desktop notifications, raw OSC
+- [x] Add terminal theme/palette detection, title/background control, OSC 52 clipboard, desktop notifications, raw OSC
       subscriptions, and capability diagnostics with conservative fallbacks.
 - [ ] Audit Unicode-width mode, truecolor/ANSI-256 depth, synchronized updates, hyperlinks, focus and bracketed-paste
       support, Kitty/Sixel protocol support, and terminal/multiplexer identity. Keep capability detection distinct from
@@ -406,6 +444,10 @@ Acceptance:
 - [ ] Add renderer idle/live-request accounting, frame statistics, scheduler diagnostics, and a reusable debug/console
       overlay rather than demo-local instrumentation.
 - [ ] Audit custom stream ownership for PTY, SSH, WebSocket, xterm.js, and browser remote sessions.
+
+Completed slice July 16, 2026: renderer-neutral OSC services now sanitize control injection, default every side effect
+to disabled, bound clipboard/text/pending input, parse chunked color replies, isolate subscriber failures, expose
+capability diagnostics, and provide an explicit theme/palette probe whose host owns the response deadline.
 
 Acceptance:
 
@@ -444,6 +486,9 @@ Acceptance:
 - [ ] Build line-number/sign gutters and unified/split diff views with synchronized scrolling on that code-view core.
 - [ ] Extend `TextBox` into a full text-area surface with selection-edge auto-scroll, soft/character/no-wrap modes,
       configurable editing aliases, and optional syntax highlighting.
+- [x] Deliver the bounded editor v2 foundation: visible grapheme-safe directional ranges, Shift/Ctrl-A selection,
+      selection-aware atomic edits/paste, cell-width-aware Unicode projection, and failure-atomic bounded literal
+      current-document find/replace with focused terminal tests.
 - [ ] Add cross-container selectable text and a clipboard abstraction shared by terminal OSC 52 and browser clipboard.
 - [ ] Add only genuinely missing general widgets: masked input, selection list, content switcher/collapsible, and richer
       loading/digits surfaces. Reuse DataTable, Tree/FileExplorer, Markdown, logs, and existing controls.
@@ -458,14 +503,29 @@ Acceptance:
 
 ### K1 - Layered Keymaps And Typed Plugin Slots (P2, Medium)
 
-- [ ] Extend the simple key registry with ordered global, focus-within, and exact-focus layers.
-- [ ] Add named command metadata, runtime conditions/modes, multi-stroke sequences, leader keys, pending-sequence
+- [x] Extend the simple key registry with ordered global, focus-within, and exact-focus layers.
+- [x] Add named command metadata, runtime conditions/modes, multi-stroke sequences, leader keys, pending-sequence
       inspection, conflict analysis, and live remapping.
-- [ ] Define typed host-owned UI slots with append, replace, and single-winner policies plus deterministic ordering and
+- [x] Define typed host-owned UI slots with append, replace, and single-winner policies plus deterministic ordering and
       disposal.
-- [ ] Let core, markup, and optional JSX adapters contribute to slots without granting plugins layout ownership.
+- [x] Let core, markup, and optional JSX adapters contribute to slots without granting plugins layout ownership.
 - [ ] Evaluate a Deno-native JSX reconciler after the live markup tree is stable; do not require React, Solid, Bun, or a
       native Zig runtime.
+
+Completed slice July 16, 2026: the framework-neutral plugin-slot registry preserves host fallback UI, orders by priority
+then registration sequence, isolates setup/render/dispose failures, exposes bounded diagnostics, and releases
+contributions in deterministic reverse lifecycle order.
+
+The layered registry resolves modal capture, exact focus, deepest focus-within, then global bindings; runtime
+conditions, active/inactive reasons, winner/shadow conflict reports, safe dispatch, atomic focus-path changes, and
+disposal are inspectable. `KeySequenceCoordinator` composes over that resolver with named command metadata, configurable
+leaders, bounded multi-stroke prefixes, caller-advanced deadlines, runtime modes and conditions, defensive conflict
+inspection, and atomic live-remap rollback without hidden timers.
+
+`PluginSlotSourceAdapter` accepts core, markup, and optional view/JSX-style value sources through cloned, frozen,
+data-only context. It preflights multi-registration sources, rolls partial contribution setup back in reverse order,
+isolates conversion/render/disposal failures, preserves unrelated registrations and host fallback UI, and never exposes
+layout controllers or ownership to plugins.
 
 Acceptance:
 

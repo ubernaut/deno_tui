@@ -1,4 +1,5 @@
-import { assertEquals, assertNotStrictEquals } from "./deps.ts";
+import { assertEquals, assertNotStrictEquals, assertThrows } from "./deps.ts";
+import { batchSignalUpdates } from "../src/signals/mod.ts";
 import {
   createTiledWorkspaceController,
   createTiledWorkspaceControllerFromSnapshot,
@@ -307,6 +308,104 @@ Deno.test("tiled workspace snapshots and hydration are clone-safe and reconcile 
   assertEquals(restored.inspect().activeWindowId, "terminal");
   assertEquals(restored.snapshot().gap, 2);
   restored.dispose();
+  controller.dispose();
+});
+
+Deno.test("tiled workspace restore remains provenance-consistent after a throwing gap subscriber", () => {
+  const controller = new TiledWorkspaceController({ windows: [{ id: "a" }] });
+  const listener = () => {
+    throw new Error("gap-publication-failed");
+  };
+  controller.gap.subscribe(listener);
+
+  try {
+    assertThrows(
+      () =>
+        controller.restore({
+          version: TILED_WORKSPACE_SNAPSHOT_VERSION,
+          gap: 7,
+          layout: {
+            root: { kind: "pane", id: "pane-b", windowId: "b" },
+            activePaneId: "pane-b",
+          },
+        }),
+      Error,
+      "gap-publication-failed",
+    );
+
+    controller.gap.unsubscribe(listener);
+    assertEquals(controller.windowIds(), ["b"]);
+    assertEquals(controller.windowRegistrationGeneration("a"), undefined);
+    assertEquals(typeof controller.windowRegistrationGeneration("b"), "number");
+    controller.restore(controller.snapshot());
+  } finally {
+    controller.gap.unsubscribe(listener);
+    controller.dispose();
+  }
+});
+
+Deno.test("tiled workspace tracks nested identity ABA and isolates retained ingress aliases", () => {
+  const controller = new TiledWorkspaceController({ windows: [{ id: "a" }] });
+  const root = controller.state.value.root;
+  if (!root || root.kind !== "pane") throw new Error("Expected one tiled pane.");
+  const originalGeneration = controller.windowRegistrationGeneration("a");
+
+  batchSignalUpdates(() => {
+    root.windowId = "temporary";
+    root.windowId = "a";
+  });
+
+  assertEquals(controller.windowRegistrationGeneration("temporary"), undefined);
+  assertEquals(controller.windowRegistrationGeneration("a") === originalGeneration, false);
+
+  const retainedPane = { kind: "pane", id: "pane-external", windowId: "external" } as const;
+  controller.state.value = { root: retainedPane, activePaneId: retainedPane.id };
+  const assignedGeneration = controller.windowRegistrationGeneration("external");
+  (retainedPane as { windowId: string }).windowId = "raw-alias";
+  assertEquals(controller.windowIds(), ["external"]);
+  assertEquals(controller.windowRegistrationGeneration("external"), assignedGeneration);
+  assertEquals(controller.windowRegistrationGeneration("raw-alias"), undefined);
+  controller.dispose();
+});
+
+Deno.test("tiled workspace tracks identity mutation reentered from an owned publication", () => {
+  const controller = new TiledWorkspaceController({ windows: [{ id: "a" }] });
+  let mutated = false;
+  const listener = (state: TiledWorkspaceLayoutState) => {
+    const root = state.root;
+    if (mutated || !root || root.kind !== "pane" || root.windowId !== "b") return;
+    mutated = true;
+    root.windowId = "c";
+  };
+  controller.state.subscribe(listener);
+
+  try {
+    controller.reconcile([{ id: "b" }]);
+    assertEquals(mutated, true);
+    assertEquals(controller.windowIds(), ["c"]);
+    assertEquals(controller.windowRegistrationGeneration("b"), undefined);
+    assertEquals(typeof controller.windowRegistrationGeneration("c"), "number");
+  } finally {
+    controller.state.unsubscribe(listener);
+    controller.dispose();
+  }
+});
+
+Deno.test("tiled workspace rejects duplicate nested window identities atomically", () => {
+  const controller = new TiledWorkspaceController({ windows: [{ id: "a" }, { id: "b" }] });
+  const before = controller.snapshot();
+  const panes = collectPanes(controller.state.value.root);
+
+  assertThrows(
+    () => {
+      panes[1]!.windowId = "a";
+    },
+    TypeError,
+    "duplicate window id",
+  );
+  assertEquals(controller.snapshot(), before);
+  assertEquals(typeof controller.windowRegistrationGeneration("a"), "number");
+  assertEquals(typeof controller.windowRegistrationGeneration("b"), "number");
   controller.dispose();
 });
 

@@ -7,6 +7,7 @@ import {
   shellTerminalTemplate,
   type SpawnTerminalTemplate,
   type TerminalSessionDescriptor,
+  type TerminalTemplate,
 } from "./terminal_templates.ts";
 import {
   createTerminalWorkspaceController,
@@ -79,7 +80,7 @@ export class TerminalShellWorkspaceController {
     const workspace = this.workspace.inspect();
     for (let index = 0; index < workspace.sessions.length; index += 1) {
       const descriptor = workspace.sessions[index]!;
-      if (isSpawnTerminalTemplate(descriptor.template)) this.#ensureShell(descriptor.template, descriptor.id);
+      this.#ensureShell(descriptor.template, descriptor.id, descriptor);
     }
   }
 
@@ -89,7 +90,7 @@ export class TerminalShellWorkspaceController {
   }
 
   add(
-    template: SpawnTerminalTemplate = shellTerminalTemplate(),
+    template: TerminalTemplate = shellTerminalTemplate(),
     options: AddTerminalShellWorkspaceSessionOptions = {},
   ): TerminalSessionDescriptor {
     const descriptor = this.workspace.add(template, { activate: options.activate });
@@ -124,6 +125,36 @@ export class TerminalShellWorkspaceController {
     const stopped = await shell.stop();
     this.#syncShell(id!, shell);
     return stopped;
+  }
+
+  /** Detaches a live shell without terminating a retaining backend session. */
+  async detach(id: string | undefined = this.workspace.activeId.peek()): Promise<boolean> {
+    const shell = this.shell(id);
+    if (!shell) return false;
+    const detached = await shell.detach();
+    this.#syncShell(id!, shell);
+    return detached;
+  }
+
+  /** Reattaches a detached or attach-template shell session. */
+  async attach(id: string | undefined = this.workspace.activeId.peek()): Promise<boolean> {
+    const shell = this.shell(id);
+    if (!shell) return false;
+    const attached = await shell.attach();
+    this.#syncShell(id!, shell);
+    return attached;
+  }
+
+  /** Explicitly terminates a shell session instead of detaching it. */
+  async terminate(
+    id: string | undefined = this.workspace.activeId.peek(),
+    signal: Deno.Signal = "SIGTERM",
+  ): Promise<boolean> {
+    const shell = this.shell(id);
+    if (!shell) return false;
+    const terminated = await shell.terminate(signal);
+    this.#syncShell(id!, shell);
+    return terminated;
   }
 
   async restart(id: string | undefined = this.workspace.activeId.peek()): Promise<boolean> {
@@ -200,20 +231,25 @@ export class TerminalShellWorkspaceController {
     this.workspace.dispose();
   }
 
-  #ensureShell(template: SpawnTerminalTemplate, id: string): TerminalShellController {
+  #ensureShell(
+    template: TerminalTemplate,
+    id: string,
+    descriptor?: TerminalSessionDescriptor,
+  ): TerminalShellController {
     const existing = this.#shells.get(id);
     if (existing) return existing;
-    const source = cloneSpawnTerminalTemplate(template);
+    const source = isSpawnTerminalTemplate(template) ? cloneSpawnTerminalTemplate(template) : undefined;
     const shell = new TerminalShellController({
       backend: this.#backend,
       backendFactory: this.#backendFactory,
-      shell: source.command,
-      args: source.args,
-      cwd: source.cwd,
-      env: source.env,
-      columns: source.columns ?? this.#columns,
-      rows: source.rows ?? this.#rows,
-      scrollbackLimit: source.scrollbackLimit ?? this.#scrollbackLimit,
+      attachSessionId: isSpawnTerminalTemplate(template) ? undefined : template.sessionId,
+      shell: source?.command,
+      args: source?.args,
+      cwd: source?.cwd,
+      env: source?.env,
+      columns: source?.columns ?? descriptor?.columns ?? this.#columns,
+      rows: source?.rows ?? descriptor?.rows ?? this.#rows,
+      scrollbackLimit: source?.scrollbackLimit ?? this.#scrollbackLimit,
       diagnostics: this.#diagnostics,
       onUpdate: () => {
         this.#syncShell(id, shell);
@@ -244,6 +280,8 @@ export class TerminalShellWorkspaceController {
     descriptor.commandLine = inspection.commandLine;
     descriptor.status = inspection.status === "starting" ? "running" : inspection.status;
     descriptor.running = inspection.running;
+    descriptor.detached = inspection.detached ?? false;
+    descriptor.reconnectable = inspection.reconnectable ?? descriptor.reconnectable;
     descriptor.columns = inspection.columns;
     descriptor.rows = inspection.rows;
     this.workspace.upsert(descriptor, { activate: false });
@@ -259,6 +297,9 @@ function terminalShellWorkspaceSyncKey(inspection: TerminalShellInspection): str
     inspection.commandLine,
     inspection.status,
     inspection.running ? "1" : "0",
+    inspection.sessionId ?? "",
+    inspection.detached ? "1" : "0",
+    inspection.reconnectable ? "1" : "0",
     String(inspection.columns),
     String(inspection.rows),
   ].join("\x1f");

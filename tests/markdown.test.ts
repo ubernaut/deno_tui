@@ -133,3 +133,41 @@ Deno.test("Markdown component renders reflows and scrolls through TerminalAppPil
     harness.destroy();
   }
 });
+
+Deno.test("Markdown component skips line rendering while hidden or zero-sized", async () => {
+  const controller = new MarkdownController({ source: "# Hidden" });
+  const originalVisible = controller.visible.bind(controller);
+  let visibleCalls = 0;
+  controller.visible = (width, height) => {
+    visibleCalls += 1;
+    return originalVisible(width, height);
+  };
+  let markdown: Markdown | undefined;
+  const harness = await createTestTerminalApp({
+    size: { columns: 20, rows: 4 },
+    setup(app) {
+      markdown = new Markdown({
+        parent: app.tui,
+        controller,
+        visible: false,
+        rectangle: { column: 0, row: 0, width: 20, height: 4 },
+        zIndex: 1,
+        theme: { base: crayon.white },
+      });
+    },
+  });
+
+  try {
+    assertEquals(visibleCalls, 0);
+    controller.setSource("# Still hidden");
+    assertEquals(visibleCalls, 0);
+    markdown!.visible.value = true;
+    assertEquals(visibleCalls, 1);
+    markdown!.rectangle.value = { column: 0, row: 0, width: 0, height: 0 };
+    controller.setSource("# Zero sized");
+    assertEquals(visibleCalls, 1);
+  } finally {
+    harness.destroy();
+    controller.dispose();
+  }
+});

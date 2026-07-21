@@ -10,7 +10,7 @@ export type LayoutPosition = "relative" | "absolute";
 export type LayoutOverflow = "visible" | "hidden" | "auto" | "scroll";
 
 /** Public type alias for flex layout direction. */
-export type LayoutFlexDirection = "row" | "column";
+export type LayoutFlexDirection = "row" | "row-reverse" | "column" | "column-reverse";
 
 /** Public type alias for flex wrapping behavior. */
 export type LayoutFlexWrap = "nowrap" | "wrap" | "wrap-reverse";
@@ -18,11 +18,27 @@ export type LayoutFlexWrap = "nowrap" | "wrap" | "wrap-reverse";
 /** Public type alias for cross-axis alignment. */
 export type LayoutAlignItems = "start" | "end" | "center" | "stretch";
 
+/** Public type alias for wrapped flex-line distribution. */
+export type LayoutAlignContent =
+  | "start"
+  | "end"
+  | "center"
+  | "stretch"
+  | "space-between"
+  | "space-around"
+  | "space-evenly";
+
 /** Public type alias for per-item box alignment. */
 export type LayoutSelfAlignment = "start" | "end" | "center" | "stretch";
 
 /** Public type alias for main-axis distribution. */
-export type LayoutJustifyContent = "start" | "end" | "center" | "space-between" | "space-around";
+export type LayoutJustifyContent =
+  | "start"
+  | "end"
+  | "center"
+  | "space-between"
+  | "space-around"
+  | "space-evenly";
 
 /** Public type alias for CSS-grid auto-placement direction. */
 export type LayoutGridAutoFlow = "row" | "column";
@@ -35,6 +51,9 @@ export type LayoutWhiteSpace = "normal" | "nowrap" | "pre" | "pre-wrap";
 
 /** Public type alias for CSS-inspired long-word wrapping. */
 export type LayoutOverflowWrap = "normal" | "anywhere" | "break-word";
+
+/** Public type alias selecting which box an authored size describes. */
+export type LayoutBoxSizing = "content-box" | "border-box";
 
 /** Public interface describing a terminal-cell layout length. */
 export interface LayoutLengthValue {
@@ -68,6 +87,7 @@ export interface ComputedLayoutStyle {
   flexBasis: LayoutLengthValue;
   order: number;
   alignItems: LayoutAlignItems;
+  alignContent: LayoutAlignContent;
   justifyContent: LayoutJustifyContent;
   alignSelf: LayoutSelfAlignment;
   justifySelf: LayoutSelfAlignment;
@@ -86,6 +106,10 @@ export interface ComputedLayoutStyle {
   minHeight: LayoutLengthValue;
   maxWidth: LayoutLengthValue;
   maxHeight: LayoutLengthValue;
+  /** Preferred inline/block ratio. Undefined represents CSS `auto`. */
+  aspectRatio?: number;
+  /** Box used by width, height, and aspect-ratio calculations. */
+  boxSizing?: LayoutBoxSizing;
   inset: BoxEdges<LayoutLengthValue>;
   margin: BoxEdges<number>;
   padding: BoxEdges<number>;
@@ -105,6 +129,17 @@ export interface ComputedLayoutStyle {
   overflowWrap: LayoutOverflowWrap;
   variables: Record<string, string>;
 }
+
+interface AuthoredLayoutLengths {
+  margin?: BoxEdges<LayoutLengthValue>;
+  padding?: BoxEdges<LayoutLengthValue>;
+  rowGap?: LayoutLengthValue;
+  columnGap?: LayoutLengthValue;
+}
+
+type StyleWithAuthoredLayoutLengths = ComputedLayoutStyle & {
+  __layoutLengths?: AuthoredLayoutLengths;
+};
 
 /** Public constant for an automatic layout length. */
 export const AUTO_LAYOUT_LENGTH: LayoutLengthValue = { unit: "auto", value: 0 };
@@ -144,6 +179,7 @@ export function defaultComputedLayoutStyle(): ComputedLayoutStyle {
     flexBasis: autoLength(),
     order: 0,
     alignItems: "stretch",
+    alignContent: "start",
     justifyContent: "start",
     alignSelf: "stretch",
     justifySelf: "stretch",
@@ -161,6 +197,8 @@ export function defaultComputedLayoutStyle(): ComputedLayoutStyle {
     minHeight: cellLength(0),
     maxWidth: autoLength(),
     maxHeight: autoLength(),
+    aspectRatio: undefined,
+    boxSizing: "border-box",
     inset: {
       top: autoLength(),
       right: autoLength(),
@@ -185,7 +223,7 @@ export function defaultComputedLayoutStyle(): ComputedLayoutStyle {
 
 /** Clones a computed layout style without preserving object identity. */
 export function cloneComputedLayoutStyle(style: ComputedLayoutStyle): ComputedLayoutStyle {
-  return {
+  const clone: ComputedLayoutStyle = {
     ...style,
     flexBasis: { ...style.flexBasis },
     gridTemplateColumns: cloneLayoutLengths(style.gridTemplateColumns),
@@ -212,6 +250,16 @@ export function cloneComputedLayoutStyle(style: ComputedLayoutStyle): ComputedLa
     border: { ...style.border },
     variables: { ...style.variables },
   };
+  const authored = authoredLayoutLengths(style);
+  if (authored) {
+    (clone as StyleWithAuthoredLayoutLengths).__layoutLengths = {
+      margin: authored.margin ? cloneBoxEdgeLengths(authored.margin) : undefined,
+      padding: authored.padding ? cloneBoxEdgeLengths(authored.padding) : undefined,
+      rowGap: authored.rowGap ? { ...authored.rowGap } : undefined,
+      columnGap: authored.columnGap ? { ...authored.columnGap } : undefined,
+    };
+  }
+  return clone;
 }
 
 /** Resolves a layout length against an available terminal-cell size. */
@@ -247,15 +295,35 @@ export function parseLayoutLength(
   fallback: LayoutLengthValue = autoLength(),
 ): LayoutLengthValue {
   if (value === undefined) return { ...fallback };
+  return tryParseLayoutLength(value) ?? { ...fallback };
+}
+
+function tryParseLayoutLength(value: string): LayoutLengthValue | undefined {
   const trimmed = value.trim().toLowerCase();
-  if (!trimmed || trimmed === "auto") return autoLength();
-  if (trimmed.endsWith("%")) return percentLength(Number.parseFloat(trimmed.slice(0, -1)));
-  if (trimmed.endsWith("fr")) return frLength(Number.parseFloat(trimmed.slice(0, -2)));
-  if (trimmed.endsWith("ch") || trimmed.endsWith("cell") || trimmed.endsWith("cells")) {
-    return cellLength(Number.parseFloat(trimmed));
+  if (trimmed === "auto") return autoLength();
+  const match = trimmed.match(/^(\d+(?:\.\d+)?|\.\d+)(%|fr|ch|cells?)?$/);
+  if (!match) return undefined;
+  const number = Number.parseFloat(match[1]!);
+  if (!Number.isFinite(number)) return undefined;
+  const unit = match[2];
+  if (unit === "%") return percentLength(number);
+  if (unit === "fr") return frLength(number);
+  return cellLength(number);
+}
+
+function parseAspectRatio(value: string): { valid: boolean; value?: number } {
+  const trimmed = value.trim().toLowerCase();
+  if (trimmed === "auto") return { valid: true, value: undefined };
+  const parts = trimmed.split("/").map((part) => part.trim());
+  if (parts.length < 1 || parts.length > 2 || parts.some((part) => !/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(part))) {
+    return { valid: false };
   }
-  if (/^-?\d+(\.\d+)?$/.test(trimmed)) return cellLength(Number.parseFloat(trimmed));
-  return { ...fallback };
+  const numerator = Number.parseFloat(parts[0]!);
+  const denominator = parts.length === 2 ? Number.parseFloat(parts[1]!) : 1;
+  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || numerator <= 0 || denominator <= 0) {
+    return { valid: false };
+  }
+  return { valid: true, value: numerator / denominator };
 }
 
 /** Parses a CSS-grid track list into terminal-cell layout lengths. */
@@ -399,7 +467,11 @@ export function applyLayoutDeclaration(
       next.position = parseOneOf(resolved, ["relative", "absolute"], next.position);
       break;
     case "flex-direction":
-      next.flexDirection = parseOneOf(resolved, ["row", "column"], next.flexDirection);
+      next.flexDirection = parseOneOf(
+        resolved,
+        ["row", "row-reverse", "column", "column-reverse"],
+        next.flexDirection,
+      );
       break;
     case "flex-wrap":
       next.flexWrap = parseOneOf(resolved, ["nowrap", "wrap", "wrap-reverse"], next.flexWrap);
@@ -424,6 +496,9 @@ export function applyLayoutDeclaration(
       break;
     case "align-items":
       next.alignItems = normalizeAlignItems(resolved, next.alignItems);
+      break;
+    case "align-content":
+      next.alignContent = normalizeAlignContent(resolved, next.alignContent);
       break;
     case "justify-content":
       next.justifyContent = normalizeJustifyContent(resolved, next.justifyContent);
@@ -494,6 +569,19 @@ export function applyLayoutDeclaration(
     case "max-height":
       next.maxHeight = parseLayoutLength(resolved, next.maxHeight);
       break;
+    case "aspect-ratio":
+      {
+        const ratio = parseAspectRatio(resolved);
+        if (ratio.valid) next.aspectRatio = ratio.value;
+      }
+      break;
+    case "box-sizing":
+      next.boxSizing = parseOneOf(
+        resolved,
+        ["content-box", "border-box"] as const,
+        next.boxSizing ?? "border-box",
+      );
+      break;
     case "inset":
       next.inset = parseBoxEdgeLengths(resolved, next.inset);
       break;
@@ -507,22 +595,22 @@ export function applyLayoutDeclaration(
       }
       break;
     case "margin":
-      next.margin = parseBoxEdges(resolved, next.margin);
+      applyLengthBoxShorthand(next, "margin", resolved, true);
       break;
     case "margin-top":
     case "margin-right":
     case "margin-bottom":
     case "margin-left":
-      next.margin = applyBoxEdge(next.margin, normalized.slice("margin-".length), parseLayoutInteger(resolved, 0));
+      applyLengthBoxLonghand(next, "margin", normalized.slice("margin-".length), resolved, true);
       break;
     case "padding":
-      next.padding = parseBoxEdges(resolved, next.padding);
+      applyLengthBoxShorthand(next, "padding", resolved, false);
       break;
     case "padding-top":
     case "padding-right":
     case "padding-bottom":
     case "padding-left":
-      next.padding = applyBoxEdge(next.padding, normalized.slice("padding-".length), parseLayoutInteger(resolved, 0));
+      applyLengthBoxLonghand(next, "padding", normalized.slice("padding-".length), resolved, false);
       break;
     case "border":
       applyBorderShorthand(next, resolved);
@@ -543,15 +631,13 @@ export function applyLayoutDeclaration(
       next.borderColor = resolved || next.borderColor;
       break;
     case "gap":
-      next.gap = parseLayoutInteger(resolved, next.gap);
-      next.rowGap = next.gap;
-      next.columnGap = next.gap;
+      applyGapShorthand(next, resolved);
       break;
     case "row-gap":
-      next.rowGap = parseLayoutInteger(resolved, next.rowGap);
+      applyGapLonghand(next, "row", resolved);
       break;
     case "column-gap":
-      next.columnGap = parseLayoutInteger(resolved, next.columnGap);
+      applyGapLonghand(next, "column", resolved);
       break;
     case "overflow":
       next.overflowX = parseOneOf(resolved, ["visible", "hidden", "auto", "scroll"], next.overflowX);
@@ -625,7 +711,11 @@ function applyFlexShorthand(style: ComputedLayoutStyle, value: string): void {
 
 function applyFlexFlowShorthand(style: ComputedLayoutStyle, value: string): void {
   for (const part of splitCssWords(value)) {
-    style.flexDirection = parseOneOf(part, ["row", "column"], style.flexDirection);
+    style.flexDirection = parseOneOf(
+      part,
+      ["row", "row-reverse", "column", "column-reverse"],
+      style.flexDirection,
+    );
     style.flexWrap = parseOneOf(part, ["nowrap", "wrap", "wrap-reverse"], style.flexWrap);
   }
 }
@@ -714,17 +804,142 @@ function applyBoxEdge(edges: BoxEdges<number>, edge: string, value: number): Box
   return next;
 }
 
+function authoredLayoutLengths(style: ComputedLayoutStyle): AuthoredLayoutLengths | undefined {
+  return (style as StyleWithAuthoredLayoutLengths).__layoutLengths;
+}
+
+function mutableAuthoredLayoutLengths(style: ComputedLayoutStyle): AuthoredLayoutLengths {
+  const internal = style as StyleWithAuthoredLayoutLengths;
+  return internal.__layoutLengths ??= {};
+}
+
+function applyLengthBoxShorthand(
+  style: ComputedLayoutStyle,
+  property: "margin" | "padding",
+  value: string,
+  allowAuto: boolean,
+): void {
+  const parsed = parseLengthBox(value, allowAuto);
+  if (!parsed) return;
+  const authored = mutableAuthoredLayoutLengths(style);
+  if (property === "margin") {
+    authored.margin = parsed;
+    style.margin = legacyCellEdges(parsed);
+  } else {
+    authored.padding = parsed;
+    style.padding = legacyCellEdges(parsed);
+  }
+}
+
+function applyLengthBoxLonghand(
+  style: ComputedLayoutStyle,
+  property: "margin" | "padding",
+  edgeName: string,
+  value: string,
+  allowAuto: boolean,
+): void {
+  if (edgeName !== "top" && edgeName !== "right" && edgeName !== "bottom" && edgeName !== "left") return;
+  const parsed = tryParseLayoutLength(value);
+  if (!parsed || parsed.unit === "fr" || !allowAuto && parsed.unit === "auto") return;
+  const edge = edgeName as keyof BoxEdges<LayoutLengthValue>;
+  const authored = mutableAuthoredLayoutLengths(style);
+  if (property === "margin") {
+    const lengths = authored.margin ?? lengthEdgesFromCells(style.margin);
+    authored.margin = applyBoxEdgeLength(lengths, edge, parsed);
+    style.margin = applyBoxEdge(style.margin, edge, legacyCellValue(parsed));
+  } else {
+    const lengths = authored.padding ?? lengthEdgesFromCells(style.padding);
+    authored.padding = applyBoxEdgeLength(lengths, edge, parsed);
+    style.padding = applyBoxEdge(style.padding, edge, legacyCellValue(parsed));
+  }
+}
+
+function parseLengthBox(value: string, allowAuto: boolean): BoxEdges<LayoutLengthValue> | undefined {
+  const words = splitCssWords(value.trim());
+  if (words.length < 1 || words.length > 4) return undefined;
+  const parts: LayoutLengthValue[] = [];
+  for (const word of words) {
+    const parsed = tryParseLayoutLength(word);
+    if (!parsed || parsed.unit === "fr" || !allowAuto && parsed.unit === "auto") return undefined;
+    parts.push(parsed);
+  }
+  const [top, right = top, bottom = top, left = right] = parts;
+  if (!top || !right || !bottom || !left) return undefined;
+  return {
+    top: { ...top },
+    right: { ...right },
+    bottom: { ...bottom },
+    left: { ...left },
+  };
+}
+
+function applyGapShorthand(style: ComputedLayoutStyle, value: string): void {
+  const words = splitCssWords(value.trim());
+  if (words.length < 1 || words.length > 2) return;
+  const row = tryParseGap(words[0]!);
+  const column = words.length === 2 ? tryParseGap(words[1]!) : row;
+  if (!row || !column) return;
+  const authored = mutableAuthoredLayoutLengths(style);
+  authored.rowGap = { ...row };
+  authored.columnGap = { ...column };
+  style.rowGap = legacyCellValue(row);
+  style.columnGap = legacyCellValue(column);
+  style.gap = words.length === 1 ? legacyCellValue(row) : 0;
+}
+
+function applyGapLonghand(style: ComputedLayoutStyle, axis: "row" | "column", value: string): void {
+  const parsed = tryParseGap(value);
+  if (!parsed) return;
+  const authored = mutableAuthoredLayoutLengths(style);
+  if (axis === "row") {
+    authored.rowGap = parsed;
+    style.rowGap = legacyCellValue(parsed);
+  } else {
+    authored.columnGap = parsed;
+    style.columnGap = legacyCellValue(parsed);
+  }
+}
+
+function tryParseGap(value: string): LayoutLengthValue | undefined {
+  const parsed = tryParseLayoutLength(value);
+  return parsed && (parsed.unit === "cell" || parsed.unit === "percent") ? parsed : undefined;
+}
+
+function legacyCellEdges(edges: BoxEdges<LayoutLengthValue>): BoxEdges<number> {
+  return {
+    top: legacyCellValue(edges.top),
+    right: legacyCellValue(edges.right),
+    bottom: legacyCellValue(edges.bottom),
+    left: legacyCellValue(edges.left),
+  };
+}
+
+function legacyCellValue(value: LayoutLengthValue): number {
+  return value.unit === "cell" ? value.value : 0;
+}
+
+function lengthEdgesFromCells(edges: BoxEdges<number>): BoxEdges<LayoutLengthValue> {
+  return {
+    top: cellLength(edges.top),
+    right: cellLength(edges.right),
+    bottom: cellLength(edges.bottom),
+    left: cellLength(edges.left),
+  };
+}
+
 function parseBoxEdgeLengths(
   value: string | undefined,
   fallback: BoxEdges<LayoutLengthValue>,
 ): BoxEdges<LayoutLengthValue> {
   if (value === undefined) return cloneBoxEdgeLengths(fallback);
   const words = splitCssWords(value.trim());
+  if (words.length < 1 || words.length > 4) return cloneBoxEdgeLengths(fallback);
   const parts = new Array<LayoutLengthValue>(words.length);
   for (let index = 0; index < words.length; index += 1) {
-    parts[index] = parseLayoutLength(words[index]);
+    const parsed = tryParseLayoutLength(words[index]!);
+    if (!parsed) return cloneBoxEdgeLengths(fallback);
+    parts[index] = parsed;
   }
-  if (parts.length === 0) return cloneBoxEdgeLengths(fallback);
   const [top, right = top, bottom = top, left = right] = parts;
   return {
     top: top ? { ...top } : autoLength(),
@@ -761,9 +976,22 @@ function normalizeAlignItems(value: string, fallback: LayoutAlignItems): LayoutA
   return parseOneOf(normalized, ["start", "end", "center", "stretch"], fallback);
 }
 
+function normalizeAlignContent(value: string, fallback: LayoutAlignContent): LayoutAlignContent {
+  const normalized = value === "flex-start" ? "start" : value === "flex-end" ? "end" : value;
+  return parseOneOf(
+    normalized,
+    ["start", "end", "center", "stretch", "space-between", "space-around", "space-evenly"],
+    fallback,
+  );
+}
+
 function normalizeJustifyContent(value: string, fallback: LayoutJustifyContent): LayoutJustifyContent {
   const normalized = value === "flex-start" ? "start" : value === "flex-end" ? "end" : value;
-  return parseOneOf(normalized, ["start", "end", "center", "space-between", "space-around"], fallback);
+  return parseOneOf(
+    normalized,
+    ["start", "end", "center", "space-between", "space-around", "space-evenly"],
+    fallback,
+  );
 }
 
 function normalizeSelfAlignment(value: string, fallback: LayoutSelfAlignment): LayoutSelfAlignment {

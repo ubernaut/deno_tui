@@ -9,6 +9,11 @@ import {
 import { TerminalScreenController } from "../src/runtime/terminal_screen.ts";
 import { TerminalScrollbackController } from "../src/runtime/terminal_scrollback.ts";
 import { parseTerminalControlSequence, parseTerminalParams } from "../src/runtime/terminal_sequences.ts";
+import {
+  decodeTerminalColor,
+  encodeTerminalIndexedColor,
+  encodeTerminalRgbColor,
+} from "../src/runtime/terminal_color.ts";
 
 Deno.test("terminal sequence parser parses private CSI sequences", () => {
   assertEquals(parseTerminalControlSequence("\x1b[?1000;1006hrest"), {
@@ -97,12 +102,22 @@ Deno.test("terminal parameter parser handles semicolon colon and empty slots", (
   assertEquals(parseTerminalParams(""), []);
 });
 
-Deno.test("TerminalScreenController writes text and keeps scrollback", () => {
+Deno.test("TerminalScreenController writes text and keeps clone-safe styled scrollback", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 2, scrollbackLimit: 2 });
 
-  screen.write("hello\nworld\nagain");
+  screen.write("\x1b[31mhello\x1b[0m\nworld\nagain");
 
   assertEquals(screen.scrollbackTextRows(), ["hello"]);
+  const styled = screen.scrollbackCellRows();
+  assertEquals(styled[0]?.[0], { char: "h", foreground: 31 });
+  styled[0]![0]!.char = "x";
+  assertEquals(screen.scrollbackCellRows()[0]?.[0], { char: "h", foreground: 31 });
+  const range = screen.cellRowsRange(0, 2);
+  assertEquals(range.map((row) => row[0]?.char), ["h", "w"]);
+  range[1]![0]!.char = "x";
+  assertEquals(screen.cellRowsRange(1, 1)[0]?.[0], { char: "w" });
+  assertEquals(screen.cellRowsRange(99, 4), []);
+  assertEquals(screen.cellRowsRange(0, 0), []);
   assertEquals(screen.textRows(), ["world", "again"]);
   assertEquals(screen.inspect().cursor, { column: 5, row: 1 });
 });
@@ -130,6 +145,24 @@ Deno.test("TerminalScreenController writes unicode graphics without splitting su
   assertEquals(screen.inspect().cursor, { column: 5, row: 0 });
 });
 
+Deno.test("TerminalScreenController preserves split UTF-8 and control sequences across writes", () => {
+  const screen = new TerminalScreenController({ columns: 12, rows: 2 });
+  const emoji = new TextEncoder().encode("🙂");
+
+  screen.write(emoji.slice(0, 2));
+  assertEquals(screen.textRows()[0], "");
+  screen.write(emoji.slice(2));
+  screen.write("\x1b[38;2;12");
+  assertEquals(screen.textRows()[0], "🙂");
+  screen.write(";34;56mX\x1b]2;split");
+  assertEquals(screen.inspect().title, undefined);
+  screen.write(" title\x1b\\");
+
+  assertEquals(screen.cellRows()[0]![0], { char: "🙂" });
+  assertEquals(screen.cellRows()[0]![2], { char: "X", foreground: encodeTerminalRgbColor(12, 34, 56) });
+  assertEquals(screen.inspect().title, "split title");
+});
+
 Deno.test("TerminalScreenController tracks 256-color truecolor and bright SGR styles", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 2 });
 
@@ -137,12 +170,43 @@ Deno.test("TerminalScreenController tracks 256-color truecolor and bright SGR st
   screen.write("\x1b[93;104mE\x1b[39;49mF");
 
   const [row] = screen.cellRows();
-  assertEquals(row![0], { char: "A", foreground: 196 });
-  assertEquals(row![1], { char: "B", foreground: 196, background: 17 });
-  assertEquals(row![2], { char: "C", foreground: 0x0c2238, background: 17 });
-  assertEquals(row![3], { char: "D", foreground: 0x0c2238, background: 0xc8d2dc });
+  assertEquals(row![0], { char: "A", foreground: encodeTerminalIndexedColor(196) });
+  assertEquals(row![1], {
+    char: "B",
+    foreground: encodeTerminalIndexedColor(196),
+    background: encodeTerminalIndexedColor(17),
+  });
+  assertEquals(row![2], {
+    char: "C",
+    foreground: encodeTerminalRgbColor(12, 34, 56),
+    background: encodeTerminalIndexedColor(17),
+  });
+  assertEquals(row![3], {
+    char: "D",
+    foreground: encodeTerminalRgbColor(12, 34, 56),
+    background: encodeTerminalRgbColor(200, 210, 220),
+  });
   assertEquals(row![4], { char: "E", foreground: 93, background: 104 });
   assertEquals(row![5], { char: "F" });
+});
+
+Deno.test("TerminalScreenController keeps basic indexed and truecolor numeric collisions distinct", () => {
+  const screen = new TerminalScreenController({ columns: 6, rows: 1 });
+
+  screen.write("\x1b[30mB\x1b[38;5;30mI\x1b[38;2;0;0;30mT");
+
+  const [row] = screen.cellRows();
+  assertEquals(row![0], { char: "B", foreground: 30 });
+  assertEquals(row![1], { char: "I", foreground: encodeTerminalIndexedColor(30) });
+  assertEquals(row![2], { char: "T", foreground: encodeTerminalRgbColor(0, 0, 30) });
+  assertEquals(decodeTerminalColor(row![0]!.foreground!, false), { kind: "ansi", code: 30, index: 0 });
+  assertEquals(decodeTerminalColor(row![1]!.foreground!, false), { kind: "indexed", index: 30 });
+  assertEquals(decodeTerminalColor(row![2]!.foreground!, false), {
+    kind: "rgb",
+    red: 0,
+    green: 0,
+    blue: 30,
+  });
 });
 
 Deno.test("TerminalScreenController applies cursor movement and erase sequences", () => {
@@ -399,9 +463,9 @@ Deno.test("TerminalScreenController replays a realistic colored shell transcript
   ]);
 
   const rows = screen.cellRows();
-  assertEquals(rows[1]![0], { char: "T", foreground: 34 });
+  assertEquals(rows[1]![0], { char: "T", foreground: encodeTerminalIndexedColor(34) });
   assertEquals(rows[3]![28], { char: "o", foreground: 32 });
-  assertEquals(rows[4]![0], { char: "o", foreground: 0x78c8ff });
+  assertEquals(rows[4]![0], { char: "o", foreground: encodeTerminalRgbColor(120, 200, 255) });
 });
 
 Deno.test("TerminalScreenController inserts and deletes characters", () => {
@@ -621,9 +685,19 @@ Deno.test("TerminalScrollbackController follows live output and enters copy mode
     visibleRows: ["three", "four", "five"],
     matches: [],
   });
+  assertEquals(scrollback.inspectViewport(), {
+    mode: "live",
+    offset: 2,
+    maxOffset: 2,
+    viewportRows: 3,
+    totalRows: 5,
+    scrollbackRows: 2,
+    liveRows: 3,
+  });
 
   assertEquals(scrollback.scrollLines(-1), 1);
   assertEquals(scrollback.inspect().mode, "copy");
+  assertEquals(scrollback.inspectViewport().offset, 1);
   assertEquals(scrollback.inspect().visibleRows, ["two", "three", "four"]);
 
   screen.write("\nsix");

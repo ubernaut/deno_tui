@@ -5,32 +5,33 @@ separate while shared module declarations are listed once with explicit entrypoi
 
 ## Summary
 
-- Entrypoints: 10
-- Unique modules: 243
-- Module visits: 546
-- Unique re-export declarations: 353
-- Re-export declaration visits: 542
-- Unique symbol declarations: 2452
-- Symbol declaration visits: 5514
-- Documented symbol declarations: 2452
+- Entrypoints: 11
+- Unique modules: 281
+- Module visits: 619
+- Unique re-export declarations: 405
+- Re-export declaration visits: 619
+- Unique symbol declarations: 3318
+- Symbol declaration visits: 7209
+- Documented symbol declarations: 3318
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
 
 ## Entrypoints
 
-| Specifier       | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
-| --------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`             | `./mod.ts`                     | terminal | stable       |     221 |    2349 | 100.00% |
-| `./app`         | `./mod.app.ts`                 | terminal | beta         |      49 |      73 | 100.00% |
-| `./web`         | `./mod.web.ts`                 | browser  | beta         |     200 |    2200 | 100.00% |
-| `./remote`      | `./mod.remote.ts`              | remote   | experimental |       4 |      25 | 100.00% |
-| `./three-ascii` | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      75 | 100.00% |
-| `./theme`       | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
-| `./runtime`     | `./mod.runtime.ts`             | shared   | beta         |      31 |     402 | 100.00% |
-| `./terminal`    | `./mod.terminal.ts`            | terminal | beta         |      15 |     157 | 100.00% |
-| `./testing`     | `./mod.testing.ts`             | terminal | beta         |       4 |      31 | 100.00% |
-| `./layout/yoga` | `./src/layout/solvers/yoga.ts` | shared   | experimental |       1 |       4 | 100.00% |
+| Specifier        | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
+| ---------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
+| `.`              | `./mod.ts`                     | terminal | stable       |     256 |    3149 | 100.00% |
+| `./app`          | `./mod.app.ts`                 | terminal | beta         |      51 |      93 | 100.00% |
+| `./web`          | `./mod.web.ts`                 | browser  | beta         |     223 |    2776 | 100.00% |
+| `./remote`       | `./mod.remote.ts`              | remote   | experimental |       5 |      67 | 100.00% |
+| `./three-ascii`  | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      75 | 100.00% |
+| `./theme`        | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
+| `./runtime`      | `./mod.runtime.ts`             | shared   | beta         |      40 |     614 | 100.00% |
+| `./terminal`     | `./mod.terminal.ts`            | terminal | beta         |      16 |     178 | 100.00% |
+| `./testing`      | `./mod.testing.ts`             | terminal | beta         |       4 |      31 | 100.00% |
+| `./layout/yoga`  | `./src/layout/solvers/yoga.ts` | shared   | experimental |       1 |       4 | 100.00% |
+| `./layout/taffy` | `./src/layout/taffy.ts`        | shared   | experimental |       2 |      24 | 100.00% |
 
 ## Entrypoint .
 
@@ -39,10 +40,10 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Path: `./mod.ts`
 - Runtime: terminal
 - Stability: stable
-- Modules: 221
-- Re-export declarations: 220
-- Exported symbols: 2349
-- Documented symbols: 2349
+- Modules: 256
+- Re-export declarations: 256
+- Exported symbols: 3149
+- Documented symbols: 3149
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -54,10 +55,10 @@ Focused terminal application package with opinionated lifecycle wiring and curat
 - Path: `./mod.app.ts`
 - Runtime: terminal
 - Stability: beta
-- Modules: 49
-- Re-export declarations: 54
-- Exported symbols: 73
-- Documented symbols: 73
+- Modules: 51
+- Re-export declarations: 58
+- Exported symbols: 93
+- Documented symbols: 93
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -69,10 +70,10 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Path: `./mod.web.ts`
 - Runtime: browser
 - Stability: beta
-- Modules: 200
-- Re-export declarations: 199
-- Exported symbols: 2200
-- Documented symbols: 2200
+- Modules: 223
+- Re-export declarations: 224
+- Exported symbols: 2776
+- Documented symbols: 2776
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -84,10 +85,10 @@ Hosted terminal/client bridge protocol and browser WebSocket transport.
 - Path: `./mod.remote.ts`
 - Runtime: remote
 - Stability: experimental
-- Modules: 4
-- Re-export declarations: 3
-- Exported symbols: 25
-- Documented symbols: 25
+- Modules: 5
+- Re-export declarations: 4
+- Exported symbols: 67
+- Documented symbols: 67
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -129,10 +130,10 @@ Shared runtime primitives for scheduling, storage, workers, resources, diagnosti
 - Path: `./mod.runtime.ts`
 - Runtime: shared
 - Stability: beta
-- Modules: 31
-- Re-export declarations: 30
-- Exported symbols: 402
-- Documented symbols: 402
+- Modules: 40
+- Re-export declarations: 39
+- Exported symbols: 614
+- Documented symbols: 614
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -144,10 +145,10 @@ Terminal parser, screen, shell, backend, PTY, workspace, and input-reader primit
 - Path: `./mod.terminal.ts`
 - Runtime: terminal
 - Stability: beta
-- Modules: 15
-- Re-export declarations: 14
-- Exported symbols: 157
-- Documented symbols: 157
+- Modules: 16
+- Re-export declarations: 15
+- Exported symbols: 178
+- Documented symbols: 178
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -182,20 +183,38 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 - Duplicate symbols: 0
 - Missing targets: 0
 
+## Entrypoint ./layout/taffy
+
+Validated opt-in adapter boundary for caller-supplied Taffy 0.12.x WASM bridges.
+
+- Path: `./src/layout/taffy.ts`
+- Runtime: shared
+- Stability: experimental
+- Modules: 2
+- Re-export declarations: 1
+- Exported symbols: 24
+- Documented symbols: 24
+- Documentation coverage: 100.00%
+- Duplicate symbols: 0
+- Missing targets: 0
+
 ## Module Catalog
 
 | Module                                                                                          | Entrypoints                             | Re-exports | Symbols | Documented |
 | ----------------------------------------------------------------------------------------------- | --------------------------------------- | ---------: | ------: | ---------: |
-| [`mod.app.ts`](#mod-app-ts)                                                                     | `./app`                                 |         45 |       0 |          0 |
-| [`mod.remote.ts`](#mod-remote-ts)                                                               | `./remote`                              |          3 |       0 |          0 |
+| [`mod.app.ts`](#mod-app-ts)                                                                     | `./app`                                 |         49 |       0 |          0 |
+| [`mod.remote.ts`](#mod-remote-ts)                                                               | `./remote`                              |          4 |       0 |          0 |
 | [`mod.runtime.ts`](#mod-runtime-ts)                                                             | `./runtime`                             |          1 |       0 |          0 |
-| [`mod.terminal.ts`](#mod-terminal-ts)                                                           | `./terminal`                            |         14 |       0 |          0 |
+| [`mod.terminal.ts`](#mod-terminal-ts)                                                           | `./terminal`                            |         15 |       0 |          0 |
 | [`mod.testing.ts`](#mod-testing-ts)                                                             | `./testing`                             |          3 |       0 |          0 |
 | [`mod.theme.ts`](#mod-theme-ts)                                                                 | `./theme`                               |          9 |       0 |          0 |
 | [`mod.three_ascii.ts`](#mod-three-ascii-ts)                                                     | `./three-ascii`                         |          1 |       0 |          0 |
-| [`mod.ts`](#mod-ts)                                                                             | `.`                                     |         34 |       0 |          0 |
-| [`mod.web.ts`](#mod-web-ts)                                                                     | `./web`                                 |         52 |       0 |          0 |
+| [`mod.ts`](#mod-ts)                                                                             | `.`                                     |         42 |       0 |          0 |
+| [`mod.web.ts`](#mod-web-ts)                                                                     | `./web`                                 |         61 |       0 |          0 |
 | [`src/api_stability.ts`](#src-api-stability-ts)                                                 | `.`, `./web`                            |          0 |      14 |         14 |
+| [`src/app/action_journal_checkpoints.ts`](#src-app-action-journal-checkpoints-ts)               | `.`, `./web`                            |          0 |      24 |         24 |
+| [`src/app/action_journal_retention.ts`](#src-app-action-journal-retention-ts)                   | `.`, `./web`                            |          0 |      21 |         21 |
+| [`src/app/action_journal.ts`](#src-app-action-journal-ts)                                       | `.`, `./web`                            |          0 |      17 |         17 |
 | [`src/app/actions.ts`](#src-app-actions-ts)                                                     | `.`, `./app`, `./web`                   |          0 |       7 |          7 |
 | [`src/app/app.ts`](#src-app-app-ts)                                                             | `.`, `./web`                            |          0 |      13 |         13 |
 | [`src/app/command_bindings.ts`](#src-app-command-bindings-ts)                                   | `.`, `./web`                            |          0 |      26 |         26 |
@@ -207,20 +226,27 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/app/disposables.ts`](#src-app-disposables-ts)                                             | `.`, `./web`                            |          0 |       6 |          6 |
 | [`src/app/focus_commands.ts`](#src-app-focus-commands-ts)                                       | `.`, `./web`                            |          0 |       7 |          7 |
 | [`src/app/form_commands.ts`](#src-app-form-commands-ts)                                         | `.`, `./web`                            |          0 |       7 |          7 |
-| [`src/app/forms.ts`](#src-app-forms-ts)                                                         | `.`, `./web`                            |          0 |      19 |         19 |
-| [`src/app/history.ts`](#src-app-history-ts)                                                     | `.`, `./web`                            |          0 |      11 |         11 |
+| [`src/app/form_paths.ts`](#src-app-form-paths-ts)                                               | `.`, `./web`                            |          0 |      23 |         23 |
+| [`src/app/forms.ts`](#src-app-forms-ts)                                                         | `.`, `./web`                            |          0 |      35 |         35 |
+| [`src/app/history.ts`](#src-app-history-ts)                                                     | `.`, `./web`                            |          0 |      37 |         37 |
 | [`src/app/hit_targets.ts`](#src-app-hit-targets-ts)                                             | `.`, `./web`                            |          0 |       8 |          8 |
 | [`src/app/input_commands.ts`](#src-app-input-commands-ts)                                       | `.`, `./web`                            |          0 |       6 |          6 |
 | [`src/app/list_commands.ts`](#src-app-list-commands-ts)                                         | `.`, `./web`                            |          0 |       6 |          6 |
 | [`src/app/log_viewer_commands.ts`](#src-app-log-viewer-commands-ts)                             | `.`, `./web`                            |          0 |       6 |          6 |
 | [`src/app/menu_bar_commands.ts`](#src-app-menu-bar-commands-ts)                                 | `.`, `./web`                            |          0 |       6 |          6 |
 | [`src/app/metric_series_commands.ts`](#src-app-metric-series-commands-ts)                       | `.`, `./web`                            |          0 |       6 |          6 |
-| [`src/app/mod.ts`](#src-app-mod-ts)                                                             | `.`, `./web`                            |         39 |       0 |          0 |
+| [`src/app/mod.ts`](#src-app-mod-ts)                                                             | `.`, `./web`                            |         50 |       0 |          0 |
 | [`src/app/mouse_bindings.ts`](#src-app-mouse-bindings-ts)                                       | `.`, `./web`                            |          0 |      10 |         10 |
 | [`src/app/pad_commands.ts`](#src-app-pad-commands-ts)                                           | `.`, `./web`                            |          0 |       6 |          6 |
+| [`src/app/plugin_slot_adapters.ts`](#src-app-plugin-slot-adapters-ts)                           | `.`, `./web`                            |          0 |      20 |         20 |
+| [`src/app/plugin_slots.ts`](#src-app-plugin-slots-ts)                                           | `.`, `./web`                            |          0 |      17 |         17 |
 | [`src/app/plugins.ts`](#src-app-plugins-ts)                                                     | `.`, `./app`, `./web`                   |          0 |      17 |         17 |
-| [`src/app/router.ts`](#src-app-router-ts)                                                       | `.`, `./app`, `./web`                   |          0 |      14 |         14 |
+| [`src/app/route_patterns.ts`](#src-app-route-patterns-ts)                                       | `.`, `./web`                            |          0 |      23 |         23 |
+| [`src/app/router.ts`](#src-app-router-ts)                                                       | `.`, `./app`, `./web`                   |          0 |      27 |         27 |
 | [`src/app/runtime_commands.ts`](#src-app-runtime-commands-ts)                                   | `.`, `./web`                            |          0 |      25 |         25 |
+| [`src/app/screen_persistence.ts`](#src-app-screen-persistence-ts)                               | `.`, `./web`                            |          0 |      19 |         19 |
+| [`src/app/screen_router.ts`](#src-app-screen-router-ts)                                         | `.`, `./web`                            |          0 |      16 |         16 |
+| [`src/app/screens.ts`](#src-app-screens-ts)                                                     | `.`, `./web`                            |          0 |      13 |         13 |
 | [`src/app/scroll_area_commands.ts`](#src-app-scroll-area-commands-ts)                           | `.`, `./web`                            |          0 |       6 |          6 |
 | [`src/app/selection_bindings.ts`](#src-app-selection-bindings-ts)                               | `.`, `./web`                            |          0 |       8 |          8 |
 | [`src/app/settings_bindings.ts`](#src-app-settings-bindings-ts)                                 | `.`, `./web`                            |          0 |      21 |         21 |
@@ -251,10 +277,11 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/app/workbench_text.ts`](#src-app-workbench-text-ts)                                       | `.`, `./web`                            |          0 |      17 |         17 |
 | [`src/app/workbench_three_terminal_pressure.ts`](#src-app-workbench-three-terminal-pressure-ts) | `.`, `./web`                            |          0 |      25 |         25 |
 | [`src/app/workbench_titlebar.ts`](#src-app-workbench-titlebar-ts)                               | `.`, `./web`                            |          0 |      10 |         10 |
+| [`src/app/workbench_window_host.ts`](#src-app-workbench-window-host-ts)                         | `.`, `./app`, `./web`                   |          0 |      17 |         17 |
 | [`src/app/workbench_window_registry.ts`](#src-app-workbench-window-registry-ts)                 | `.`, `./web`                            |          0 |      27 |         27 |
 | [`src/app/workbench_workspace_store.ts`](#src-app-workbench-workspace-store-ts)                 | `.`, `./web`                            |          0 |       6 |          6 |
 | [`src/app/workbench_workspace.ts`](#src-app-workbench-workspace-ts)                             | `.`, `./web`                            |          0 |      19 |         19 |
-| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                         | `.`, `./web`                            |         18 |       0 |          0 |
+| [`src/app/workbench/mod.ts`](#src-app-workbench-mod-ts)                                         | `.`, `./web`                            |         19 |       0 |          0 |
 | [`src/canvas/box.ts`](#src-canvas-box-ts)                                                       | `.`, `./web`                            |          0 |       2 |          2 |
 | [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                                 | `.`, `./web`                            |          0 |       4 |          4 |
 | [`src/canvas/dirty_region.ts`](#src-canvas-dirty-region-ts)                                     | `.`                                     |          0 |       3 |          3 |
@@ -303,7 +330,7 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/components/tabs.ts`](#src-components-tabs-ts)                                             | `.`, `./app`, `./web`                   |          0 |      10 |         10 |
 | [`src/components/terminal_output.ts`](#src-components-terminal-output-ts)                       | `.`, `./web`                            |          0 |       7 |          7 |
 | [`src/components/text.ts`](#src-components-text-ts)                                             | `.`, `./app`, `./web`                   |          0 |       2 |          2 |
-| [`src/components/textbox.ts`](#src-components-textbox-ts)                                       | `.`, `./app`, `./web`                   |          0 |      15 |         15 |
+| [`src/components/textbox.ts`](#src-components-textbox-ts)                                       | `.`, `./app`, `./web`                   |          0 |      23 |         23 |
 | [`src/components/three_ascii.ts`](#src-components-three-ascii-ts)                               | `.`, `./web`                            |          0 |       2 |          2 |
 | [`src/components/toast.ts`](#src-components-toast-ts)                                           | `.`, `./app`, `./web`                   |          0 |       8 |          8 |
 | [`src/components/tree.ts`](#src-components-tree-ts)                                             | `.`, `./app`, `./web`                   |          0 |      11 |         11 |
@@ -313,9 +340,13 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/event_emitter.ts`](#src-event-emitter-ts)                                                 | `.`, `./web`                            |          0 |       5 |          5 |
 | [`src/focus.ts`](#src-focus-ts)                                                                 | `.`, `./web`                            |          0 |       9 |          9 |
 | [`src/grwizard_themes.ts`](#src-grwizard-themes-ts)                                             | `.`, `./web`, `./theme`                 |          0 |       5 |          5 |
+| [`src/input_envelope.ts`](#src-input-envelope-ts)                                               | `.`, `./web`                            |          0 |      28 |         28 |
+| [`src/input_lifecycle.ts`](#src-input-lifecycle-ts)                                             | `.`                                     |          0 |      24 |         24 |
 | [`src/input_reader/mod.ts`](#src-input-reader-mod-ts)                                           | `.`, `./terminal`                       |          0 |       2 |          2 |
 | [`src/input_reader/types.ts`](#src-input-reader-types-ts)                                       | `./remote`                              |          0 |       5 |          5 |
 | [`src/input.ts`](#src-input-ts)                                                                 | `.`                                     |          0 |       1 |          1 |
+| [`src/key_sequences.ts`](#src-key-sequences-ts)                                                 | `.`                                     |          0 |      24 |         24 |
+| [`src/keymap_layers.ts`](#src-keymap-layers-ts)                                                 | `.`                                     |          0 |      20 |         20 |
 | [`src/keymap.ts`](#src-keymap-ts)                                                               | `.`                                     |          0 |       6 |          6 |
 | [`src/layout/capabilities.ts`](#src-layout-capabilities-ts)                                     | `.`, `./web`                            |          0 |      26 |         26 |
 | [`src/layout/engine.ts`](#src-layout-engine-ts)                                                 | `.`, `./web`                            |          0 |       6 |          6 |
@@ -325,15 +356,17 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/layout/horizontal_layout.ts`](#src-layout-horizontal-layout-ts)                           | `.`, `./app`, `./web`                   |          0 |       1 |          1 |
 | [`src/layout/measurement.ts`](#src-layout-measurement-ts)                                       | `.`, `./web`                            |          0 |       6 |          6 |
 | [`src/layout/mod.ts`](#src-layout-mod-ts)                                                       | `.`, `./web`                            |         18 |       0 |          0 |
-| [`src/layout/overlay.ts`](#src-layout-overlay-ts)                                               | `.`, `./web`                            |          0 |      19 |         19 |
+| [`src/layout/overlay.ts`](#src-layout-overlay-ts)                                               | `.`, `./web`                            |          0 |      21 |         21 |
 | [`src/layout/recipe.ts`](#src-layout-recipe-ts)                                                 | `.`, `./web`                            |          0 |      18 |         18 |
 | [`src/layout/responsive.ts`](#src-layout-responsive-ts)                                         | `.`, `./web`                            |          0 |      14 |         14 |
 | [`src/layout/solver.ts`](#src-layout-solver-ts)                                                 | `.`, `./web`                            |          0 |      13 |         13 |
 | [`src/layout/solvers/simple.ts`](#src-layout-solvers-simple-ts)                                 | `.`, `./web`                            |          0 |       3 |          3 |
+| [`src/layout/solvers/taffy.ts`](#src-layout-solvers-taffy-ts)                                   | `./layout/taffy`                        |          0 |      24 |         24 |
 | [`src/layout/solvers/yoga.ts`](#src-layout-solvers-yoga-ts)                                     | `./layout/yoga`                         |          0 |       4 |          4 |
 | [`src/layout/split_pane.ts`](#src-layout-split-pane-ts)                                         | `.`, `./app`, `./web`                   |          0 |      10 |         10 |
-| [`src/layout/style.ts`](#src-layout-style-ts)                                                   | `.`, `./web`                            |          0 |      33 |         33 |
-| [`src/layout/tiled_workspace.ts`](#src-layout-tiled-workspace-ts)                               | `.`, `./web`                            |          0 |      27 |         27 |
+| [`src/layout/style.ts`](#src-layout-style-ts)                                                   | `.`, `./web`                            |          0 |      35 |         35 |
+| [`src/layout/taffy.ts`](#src-layout-taffy-ts)                                                   | `./layout/taffy`                        |          1 |       0 |          0 |
+| [`src/layout/tiled_workspace.ts`](#src-layout-tiled-workspace-ts)                               | `.`, `./app`, `./web`                   |          0 |      27 |         27 |
 | [`src/layout/types.ts`](#src-layout-types-ts)                                                   | `.`, `./web`                            |          0 |       3 |          3 |
 | [`src/layout/vertical_layout.ts`](#src-layout-vertical-layout-ts)                               | `.`, `./app`, `./web`                   |          0 |       1 |          1 |
 | [`src/layout/window_manager.ts`](#src-layout-window-manager-ts)                                 | `.`, `./web`                            |          0 |      10 |         10 |
@@ -343,28 +376,42 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/markup/html.ts`](#src-markup-html-ts)                                                     | `.`, `./web`                            |          0 |       3 |          3 |
 | [`src/markup/hydrate.ts`](#src-markup-hydrate-ts)                                               | `.`, `./web`                            |          0 |       5 |          5 |
 | [`src/markup/layout_worker.ts`](#src-markup-layout-worker-ts)                                   | `.`, `./web`                            |          0 |       7 |          7 |
-| [`src/markup/mod.ts`](#src-markup-mod-ts)                                                       | `.`, `./web`                            |          8 |       0 |          0 |
+| [`src/markup/mod.ts`](#src-markup-mod-ts)                                                       | `.`, `./web`                            |         11 |       0 |          0 |
 | [`src/markup/support.ts`](#src-markup-support-ts)                                               | `.`, `./web`                            |          0 |       2 |          2 |
 | [`src/markup/widgets.ts`](#src-markup-widgets-ts)                                               | `.`, `./web`                            |          0 |      15 |         15 |
+| [`src/markup/window_history.ts`](#src-markup-window-history-ts)                                 | `.`, `./web`                            |          0 |      12 |         12 |
+| [`src/markup/window_interactions.ts`](#src-markup-window-interactions-ts)                       | `.`, `./web`                            |          0 |      13 |         13 |
+| [`src/markup/windows.ts`](#src-markup-windows-ts)                                               | `.`, `./web`                            |          0 |      33 |         33 |
 | [`src/perf/benchmark.ts`](#src-perf-benchmark-ts)                                               | `.`, `./web`                            |          0 |      20 |         20 |
+| [`src/permissions.ts`](#src-permissions-ts)                                                     | `.`                                     |          0 |      23 |         23 |
 | [`src/platform/types.ts`](#src-platform-types-ts)                                               | `./web`                                 |          0 |      10 |         10 |
+| [`src/pointer_input.ts`](#src-pointer-input-ts)                                                 | `.`, `./web`                            |          0 |      40 |         40 |
+| [`src/remote/handshake.ts`](#src-remote-handshake-ts)                                           | `./web`, `./remote`                     |          0 |      28 |         28 |
+| [`src/runtime/async_channel.ts`](#src-runtime-async-channel-ts)                                 | `.`, `./runtime`                        |          0 |      23 |         23 |
+| [`src/runtime/async_iterable.ts`](#src-runtime-async-iterable-ts)                               | `.`, `./web`, `./runtime`               |          0 |      31 |         31 |
 | [`src/runtime/capabilities.ts`](#src-runtime-capabilities-ts)                                   | `.`, `./web`, `./runtime`               |          0 |      16 |         16 |
+| [`src/runtime/clock.ts`](#src-runtime-clock-ts)                                                 | `.`, `./web`, `./runtime`               |          0 |      23 |         23 |
 | [`src/runtime/data_pipeline_bindings.ts`](#src-runtime-data-pipeline-bindings-ts)               | `.`, `./web`, `./runtime`               |          0 |       4 |          4 |
 | [`src/runtime/data_pipeline.ts`](#src-runtime-data-pipeline-ts)                                 | `.`, `./web`, `./runtime`               |          0 |      19 |         19 |
 | [`src/runtime/data_query.ts`](#src-runtime-data-query-ts)                                       | `.`, `./web`, `./runtime`               |          0 |      15 |         15 |
+| [`src/runtime/deadline.ts`](#src-runtime-deadline-ts)                                           | `.`, `./runtime`                        |          0 |      12 |         12 |
 | [`src/runtime/diagnostics.ts`](#src-runtime-diagnostics-ts)                                     | `.`, `./runtime`                        |          0 |      12 |         12 |
 | [`src/runtime/graphics_surface.ts`](#src-runtime-graphics-surface-ts)                           | `.`, `./web`, `./runtime`               |          0 |      24 |         24 |
 | [`src/runtime/kitty_graphics.ts`](#src-runtime-kitty-graphics-ts)                               | `.`, `./web`, `./runtime`               |          0 |      25 |         25 |
-| [`src/runtime/mod.ts`](#src-runtime-mod-ts)                                                     | `.`, `./runtime`                        |         29 |       0 |          0 |
+| [`src/runtime/mod.ts`](#src-runtime-mod-ts)                                                     | `.`, `./runtime`                        |         37 |       0 |          0 |
 | [`src/runtime/process_session.ts`](#src-runtime-process-session-ts)                             | `.`, `./runtime`, `./terminal`          |          0 |       9 |          9 |
 | [`src/runtime/profiles.ts`](#src-runtime-profiles-ts)                                           | `.`, `./web`, `./runtime`               |          0 |      24 |         24 |
 | [`src/runtime/pty_backend.ts`](#src-runtime-pty-backend-ts)                                     | `.`, `./runtime`, `./terminal`          |          0 |      12 |         12 |
 | [`src/runtime/render_loop.ts`](#src-runtime-render-loop-ts)                                     | `.`, `./web`, `./runtime`               |          0 |      14 |         14 |
 | [`src/runtime/renderer_backends.ts`](#src-runtime-renderer-backends-ts)                         | `.`, `./web`, `./runtime`               |          0 |      24 |         24 |
 | [`src/runtime/resource_bindings.ts`](#src-runtime-resource-bindings-ts)                         | `.`, `./web`, `./runtime`               |          0 |       4 |          4 |
+| [`src/runtime/resource_cache_policy.ts`](#src-runtime-resource-cache-policy-ts)                 | `.`, `./web`, `./runtime`               |          0 |       4 |          4 |
+| [`src/runtime/resource_cache.ts`](#src-runtime-resource-cache-ts)                               | `.`, `./web`, `./runtime`               |          1 |      28 |         28 |
+| [`src/runtime/resource_loads.ts`](#src-runtime-resource-loads-ts)                               | `.`, `./web`, `./runtime`               |          0 |      24 |         24 |
 | [`src/runtime/resource.ts`](#src-runtime-resource-ts)                                           | `.`, `./web`, `./runtime`               |          0 |      14 |         14 |
 | [`src/runtime/scheduler.ts`](#src-runtime-scheduler-ts)                                         | `.`, `./web`, `./runtime`               |          0 |      13 |         13 |
 | [`src/runtime/storage.ts`](#src-runtime-storage-ts)                                             | `.`, `./web`, `./runtime`               |          0 |      10 |         10 |
+| [`src/runtime/task_group.ts`](#src-runtime-task-group-ts)                                       | `.`, `./runtime`                        |          0 |      35 |         35 |
 | [`src/runtime/telemetry.ts`](#src-runtime-telemetry-ts)                                         | `.`, `./web`, `./runtime`               |          0 |      15 |         15 |
 | [`src/runtime/terminal_backend_registry.ts`](#src-runtime-terminal-backend-registry-ts)         | `.`, `./runtime`, `./terminal`          |          0 |       9 |          9 |
 | [`src/runtime/terminal_backend.ts`](#src-runtime-terminal-backend-ts)                           | `.`, `./runtime`, `./terminal`          |          0 |       9 |          9 |
@@ -372,6 +419,7 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/runtime/terminal_screen.ts`](#src-runtime-terminal-screen-ts)                             | `.`, `./web`, `./runtime`, `./terminal` |          0 |       6 |          6 |
 | [`src/runtime/terminal_scrollback.ts`](#src-runtime-terminal-scrollback-ts)                     | `.`, `./web`, `./runtime`, `./terminal` |          0 |       5 |          5 |
 | [`src/runtime/terminal_sequences.ts`](#src-runtime-terminal-sequences-ts)                       | `./terminal`                            |          0 |       3 |          3 |
+| [`src/runtime/terminal_services.ts`](#src-runtime-terminal-services-ts)                         | `.`, `./runtime`                        |          0 |      32 |         32 |
 | [`src/runtime/terminal_session.ts`](#src-runtime-terminal-session-ts)                           | `.`, `./runtime`, `./terminal`          |          0 |       8 |          8 |
 | [`src/runtime/terminal_shell_workspace.ts`](#src-runtime-terminal-shell-workspace-ts)           | `.`, `./runtime`                        |          0 |       5 |          5 |
 | [`src/runtime/terminal_shell.ts`](#src-runtime-terminal-shell-ts)                               | `.`, `./runtime`, `./terminal`          |          0 |       3 |          3 |
@@ -379,6 +427,7 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/runtime/terminal_templates.ts`](#src-runtime-terminal-templates-ts)                       | `.`, `./runtime`, `./terminal`          |          0 |      22 |         22 |
 | [`src/runtime/terminal_workspace.ts`](#src-runtime-terminal-workspace-ts)                       | `.`, `./web`, `./runtime`, `./terminal` |          0 |      24 |         24 |
 | [`src/runtime/worker_pool.ts`](#src-runtime-worker-pool-ts)                                     | `.`, `./web`, `./runtime`               |          0 |      12 |         12 |
+| [`src/secrets.ts`](#src-secrets-ts)                                                             | `.`                                     |          0 |      22 |         22 |
 | [`src/selection.ts`](#src-selection-ts)                                                         | `.`, `./web`                            |          0 |      16 |         16 |
 | [`src/signals/computed.ts`](#src-signals-computed-ts)                                           | `.`, `./app`, `./web`                   |          0 |       3 |          3 |
 | [`src/signals/dependency_tracking.ts`](#src-signals-dependency-tracking-ts)                     | `.`, `./app`, `./web`                   |          0 |       3 |          3 |
@@ -413,6 +462,11 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/three_ascii/webgpu_compat.ts`](#src-three-ascii-webgpu-compat-ts)                         | `.`, `./web`, `./three-ascii`           |          0 |       3 |          3 |
 | [`src/tui.ts`](#src-tui-ts)                                                                     | `.`, `./app`                            |          0 |       3 |          3 |
 | [`src/types.ts`](#src-types-ts)                                                                 | `.`, `./app`, `./remote`                |          0 |       8 |          8 |
+| [`src/unicode/builtin.ts`](#src-unicode-builtin-ts)                                             | `.`                                     |          0 |       4 |          4 |
+| [`src/unicode/data_pack.ts`](#src-unicode-data-pack-ts)                                         | `.`                                     |          0 |      26 |         26 |
+| [`src/unicode/grapheme.ts`](#src-unicode-grapheme-ts)                                           | `.`                                     |          0 |      21 |         21 |
+| [`src/unicode/mod.ts`](#src-unicode-mod-ts)                                                     | `.`                                     |          4 |       0 |          0 |
+| [`src/unicode/width.ts`](#src-unicode-width-ts)                                                 | `.`, `./web`, `./terminal`              |          0 |      21 |         21 |
 | [`src/utils/ansi_codes.ts`](#src-utils-ansi-codes-ts)                                           | `.`                                     |          0 |      12 |         12 |
 | [`src/utils/async.ts`](#src-utils-async-ts)                                                     | `.`, `./web`                            |          0 |       1 |          1 |
 | [`src/utils/component.ts`](#src-utils-component-ts)                                             | `.`                                     |          0 |       2 |          2 |
@@ -428,7 +482,7 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 | [`src/web/host.ts`](#src-web-host-ts)                                                           | `./web`                                 |          0 |       5 |          5 |
 | [`src/web/mod.ts`](#src-web-mod-ts)                                                             | `./web`                                 |          5 |       0 |          0 |
 | [`src/web/platform.ts`](#src-web-platform-ts)                                                   | `./web`                                 |          0 |       7 |          7 |
-| [`src/web/remote_terminal.ts`](#src-web-remote-terminal-ts)                                     | `./web`, `./remote`                     |          0 |      19 |         19 |
+| [`src/web/remote_terminal.ts`](#src-web-remote-terminal-ts)                                     | `./web`, `./remote`                     |          0 |      33 |         33 |
 
 ## Module Details
 
@@ -436,53 +490,57 @@ Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.
 
 _Entrypoints: `./app`_
 
-| Re-export Target                    | Kind  | Names                                                                                                                                                                                                                                                                                                  |
-| ----------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `src/app/terminal_app.ts`           | named | `TerminalApp`, `createTerminalApp`                                                                                                                                                                                                                                                                     |
-| `src/app/terminal_app.ts`           | named | `type TerminalAppBindings`, `type TerminalAppComponentOptions`, `type TerminalAppInputOptions`, `type TerminalAppOptions`                                                                                                                                                                              |
-| `src/app/plugins.ts`                | named | `createAppPlugin`                                                                                                                                                                                                                                                                                      |
-| `src/app/plugins.ts`                | named | `type AppPluginDefinition`                                                                                                                                                                                                                                                                             |
-| `src/app/actions.ts`                | named | `type Action`, `type ActionHandler`, `type ActionMiddleware`                                                                                                                                                                                                                                           |
-| `src/app/commands.ts`               | named | `type Command`                                                                                                                                                                                                                                                                                         |
-| `src/app/router.ts`                 | named | `type Route`                                                                                                                                                                                                                                                                                           |
-| `src/signals/mod.ts`                | named | `Computed`, `Effect`, `Signal`                                                                                                                                                                                                                                                                         |
-| `src/signals/mod.ts`                | named | `type SignalOfObject`                                                                                                                                                                                                                                                                                  |
-| `src/theme.ts`                      | named | `ThemeEngine`, `createThemeEngine`                                                                                                                                                                                                                                                                     |
-| `src/tui.ts`                        | named | `Tui`                                                                                                                                                                                                                                                                                                  |
-| `src/tui.ts`                        | named | `type TuiOptions`                                                                                                                                                                                                                                                                                      |
-| `src/types.ts`                      | named | `type Rectangle`                                                                                                                                                                                                                                                                                       |
-| `src/layout/grid_layout.ts`         | named | `GridLayout`                                                                                                                                                                                                                                                                                           |
-| `src/layout/horizontal_layout.ts`   | named | `HorizontalLayout`                                                                                                                                                                                                                                                                                     |
-| `src/layout/split_pane.ts`          | named | `SplitPaneController`                                                                                                                                                                                                                                                                                  |
-| `src/layout/vertical_layout.ts`     | named | `VerticalLayout`                                                                                                                                                                                                                                                                                       |
-| `src/components/box.ts`             | named | `Box`                                                                                                                                                                                                                                                                                                  |
-| `src/components/button.ts`          | named | `Button`                                                                                                                                                                                                                                                                                               |
-| `src/components/checkbox.ts`        | named | `CheckBox`                                                                                                                                                                                                                                                                                             |
-| `src/components/combobox.ts`        | named | `ComboBox`                                                                                                                                                                                                                                                                                             |
-| `src/components/command_palette.ts` | named | `CommandPalette`                                                                                                                                                                                                                                                                                       |
-| `src/components/context_menu.ts`    | named | `ContextMenu`                                                                                                                                                                                                                                                                                          |
-| `src/components/frame.ts`           | named | `Frame`                                                                                                                                                                                                                                                                                                |
-| `src/components/input.ts`           | named | `Input`                                                                                                                                                                                                                                                                                                |
-| `src/components/label.ts`           | named | `Label`                                                                                                                                                                                                                                                                                                |
-| `src/components/list.ts`            | named | `List`                                                                                                                                                                                                                                                                                                 |
-| `src/components/modal.ts`           | named | `Modal`                                                                                                                                                                                                                                                                                                |
-| `src/components/markdown.ts`        | named | `Markdown`, `MarkdownController`, `defaultMarkdownStyles`, `formatMarkdownRenderLine`                                                                                                                                                                                                                  |
-| `src/components/markdown.ts`        | named | `type MarkdownControllerOptions`, `type MarkdownInspection`, `type MarkdownOptions`, `type MarkdownStyleKey`, `type MarkdownStyles`                                                                                                                                                                    |
-| `src/content/markdown.ts`           | named | `markdownRenderText`, `parseMarkdown`, `renderMarkdown`                                                                                                                                                                                                                                                |
-| `src/content/markdown.ts`           | named | `type MarkdownBlock`, `type MarkdownBlockKind`, `type MarkdownDocument`, `type MarkdownInlineMark`, `type MarkdownInlineSpan`, `type MarkdownParseOptions`, `type MarkdownRenderLine`, `type MarkdownRenderOptions`, `type MarkdownRenderRole`, `type MarkdownRenderSegment`, `type MarkdownTableCell` |
-| `src/components/progressbar.ts`     | named | `ProgressBar`                                                                                                                                                                                                                                                                                          |
-| `src/components/radio_group.ts`     | named | `RadioGroup`                                                                                                                                                                                                                                                                                           |
-| `src/components/scroll_area.ts`     | named | `ScrollArea`                                                                                                                                                                                                                                                                                           |
-| `src/components/slider.ts`          | named | `Slider`                                                                                                                                                                                                                                                                                               |
-| `src/components/spinner.ts`         | named | `Spinner`                                                                                                                                                                                                                                                                                              |
-| `src/components/statusbar.ts`       | named | `StatusBar`                                                                                                                                                                                                                                                                                            |
-| `src/components/table.ts`           | named | `Table`                                                                                                                                                                                                                                                                                                |
-| `src/components/tabs.ts`            | named | `Tabs`                                                                                                                                                                                                                                                                                                 |
-| `src/components/text.ts`            | named | `Text`                                                                                                                                                                                                                                                                                                 |
-| `src/components/textbox.ts`         | named | `TextBox`                                                                                                                                                                                                                                                                                              |
-| `src/components/toast.ts`           | named | `ToastStack`                                                                                                                                                                                                                                                                                           |
-| `src/components/tree.ts`            | named | `Tree`                                                                                                                                                                                                                                                                                                 |
-| `src/components/virtual_list.ts`    | named | `VirtualList`                                                                                                                                                                                                                                                                                          |
+| Re-export Target                    | Kind  | Names                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ----------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/app/terminal_app.ts`           | named | `TerminalApp`, `createTerminalApp`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `src/app/terminal_app.ts`           | named | `type TerminalAppBindings`, `type TerminalAppComponentOptions`, `type TerminalAppInputOptions`, `type TerminalAppOptions`                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `src/app/plugins.ts`                | named | `createAppPlugin`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `src/app/plugins.ts`                | named | `type AppPluginDefinition`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `src/app/actions.ts`                | named | `type Action`, `type ActionHandler`, `type ActionMiddleware`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `src/app/commands.ts`               | named | `type Command`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `src/app/router.ts`                 | named | `type Route`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `src/signals/mod.ts`                | named | `Computed`, `Effect`, `Signal`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `src/signals/mod.ts`                | named | `type SignalOfObject`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `src/theme.ts`                      | named | `ThemeEngine`, `createThemeEngine`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `src/tui.ts`                        | named | `Tui`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `src/tui.ts`                        | named | `type TuiOptions`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `src/types.ts`                      | named | `type Rectangle`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `src/layout/grid_layout.ts`         | named | `GridLayout`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `src/layout/horizontal_layout.ts`   | named | `HorizontalLayout`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `src/layout/split_pane.ts`          | named | `SplitPaneController`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `src/layout/tiled_workspace.ts`     | named | `TiledWorkspaceController`, `createTiledWorkspaceController`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `src/layout/tiled_workspace.ts`     | named | `type TiledWorkspaceControllerOptions`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `src/layout/vertical_layout.ts`     | named | `VerticalLayout`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `src/app/workbench_window_host.ts`  | named | `WorkbenchWindowHostController`, `createWorkbenchWindowHostController`, `createWorkbenchWindowHostRoot`                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `src/app/workbench_window_host.ts`  | named | `type WorkbenchWindowChromeControl`, `type WorkbenchWindowChromeProjection`, `type WorkbenchWindowHostCommand`, `type WorkbenchWindowHostControllerOptions`, `type WorkbenchWindowHostDescriptor`, `type WorkbenchWindowHostInspection`, `type WorkbenchWindowHostProjection`, `type WorkbenchWindowHostProjectionOptions`, `type WorkbenchWindowHostResult`, `type WorkbenchWindowSemanticNode`, `type WorkbenchWindowSeparatorProjection`, `type WorkbenchWindowShelfItem`, `type WorkbenchWindowSnapPreview`, `type WorkbenchWindowSwitcherProjection` |
+| `src/components/box.ts`             | named | `Box`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `src/components/button.ts`          | named | `Button`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `src/components/checkbox.ts`        | named | `CheckBox`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `src/components/combobox.ts`        | named | `ComboBox`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `src/components/command_palette.ts` | named | `CommandPalette`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `src/components/context_menu.ts`    | named | `ContextMenu`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `src/components/frame.ts`           | named | `Frame`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `src/components/input.ts`           | named | `Input`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `src/components/label.ts`           | named | `Label`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `src/components/list.ts`            | named | `List`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `src/components/modal.ts`           | named | `Modal`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `src/components/markdown.ts`        | named | `Markdown`, `MarkdownController`, `defaultMarkdownStyles`, `formatMarkdownRenderLine`                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `src/components/markdown.ts`        | named | `type MarkdownControllerOptions`, `type MarkdownInspection`, `type MarkdownOptions`, `type MarkdownStyleKey`, `type MarkdownStyles`                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `src/content/markdown.ts`           | named | `markdownRenderText`, `parseMarkdown`, `renderMarkdown`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `src/content/markdown.ts`           | named | `type MarkdownBlock`, `type MarkdownBlockKind`, `type MarkdownDocument`, `type MarkdownInlineMark`, `type MarkdownInlineSpan`, `type MarkdownParseOptions`, `type MarkdownRenderLine`, `type MarkdownRenderOptions`, `type MarkdownRenderRole`, `type MarkdownRenderSegment`, `type MarkdownTableCell`                                                                                                                                                                                                                                                    |
+| `src/components/progressbar.ts`     | named | `ProgressBar`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `src/components/radio_group.ts`     | named | `RadioGroup`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `src/components/scroll_area.ts`     | named | `ScrollArea`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `src/components/slider.ts`          | named | `Slider`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `src/components/spinner.ts`         | named | `Spinner`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `src/components/statusbar.ts`       | named | `StatusBar`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `src/components/table.ts`           | named | `Table`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `src/components/tabs.ts`            | named | `Tabs`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `src/components/text.ts`            | named | `Text`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `src/components/textbox.ts`         | named | `TextBox`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `src/components/toast.ts`           | named | `ToastStack`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `src/components/tree.ts`            | named | `Tree`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `src/components/virtual_list.ts`    | named | `VirtualList`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 _No direct exported symbols._
 
@@ -493,6 +551,7 @@ _Entrypoints: `./remote`_
 | Re-export Target             | Kind  | Names                                                                                                               |
 | ---------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------- |
 | `src/web/remote_terminal.ts` | star  | -                                                                                                                   |
+| `src/remote/handshake.ts`    | star  | -                                                                                                                   |
 | `src/types.ts`               | named | `type ConsoleSize`                                                                                                  |
 | `src/input_reader/types.ts`  | named | `type KeyPressEvent`, `type MousePressEvent`, `type MouseScrollEvent`, `type PasteEvent`, `type TerminalFocusEvent` |
 
@@ -528,6 +587,7 @@ _Entrypoints: `./terminal`_
 | `src/runtime/terminal_status.ts`           | star | -     |
 | `src/runtime/terminal_templates.ts`        | star | -     |
 | `src/runtime/terminal_workspace.ts`        | star | -     |
+| `src/unicode/width.ts`                     | star | -     |
 
 _No direct exported symbols._
 
@@ -582,8 +642,15 @@ _Entrypoints: `.`_
 | `src/event_emitter.ts`         | star | -     |
 | `src/focus.ts`                 | star | -     |
 | `src/input.ts`                 | star | -     |
+| `src/input_envelope.ts`        | star | -     |
+| `src/input_lifecycle.ts`       | star | -     |
+| `src/pointer_input.ts`         | star | -     |
 | `src/keymap.ts`                | star | -     |
+| `src/keymap_layers.ts`         | star | -     |
+| `src/key_sequences.ts`         | star | -     |
 | `src/selection.ts`             | star | -     |
+| `src/permissions.ts`           | star | -     |
+| `src/secrets.ts`               | star | -     |
 | `src/theme.ts`                 | star | -     |
 | `src/theme_binding.ts`         | star | -     |
 | `src/theme_engine_cache.ts`    | star | -     |
@@ -595,6 +662,7 @@ _Entrypoints: `.`_
 | `src/theme_workspace.ts`       | star | -     |
 | `src/api_stability.ts`         | star | -     |
 | `src/types.ts`                 | star | -     |
+| `src/unicode/mod.ts`           | star | -     |
 | `src/view.ts`                  | star | -     |
 | `src/viewport.ts`              | star | -     |
 | `src/tui.ts`                   | star | -     |
@@ -618,60 +686,69 @@ _No direct exported symbols._
 
 _Entrypoints: `./web`_
 
-| Re-export Target                        | Kind | Names |
-| --------------------------------------- | ---- | ----- |
-| `src/event_emitter.ts`                  | star | -     |
-| `src/focus.ts`                          | star | -     |
-| `src/selection.ts`                      | star | -     |
-| `src/theme.ts`                          | star | -     |
-| `src/theme_binding.ts`                  | star | -     |
-| `src/theme_engine_cache.ts`             | star | -     |
-| `src/theme_engine_factory.ts`           | star | -     |
-| `src/theme_engine_pipeline.ts`          | star | -     |
-| `src/theme_gallery.ts`                  | star | -     |
-| `src/grwizard_themes.ts`                | star | -     |
-| `src/theme_resolver.ts`                 | star | -     |
-| `src/theme_workspace.ts`                | star | -     |
-| `src/api_stability.ts`                  | star | -     |
-| `src/viewport.ts`                       | star | -     |
-| `src/view.ts`                           | star | -     |
-| `src/signals/mod.ts`                    | star | -     |
-| `src/layout/mod.ts`                     | star | -     |
-| `src/markup/mod.ts`                     | star | -     |
-| `src/components/mod.ts`                 | star | -     |
-| `src/platform/types.ts`                 | star | -     |
-| `src/web/mod.ts`                        | star | -     |
-| `src/perf/benchmark.ts`                 | star | -     |
-| `src/canvas/box.ts`                     | star | -     |
-| `src/canvas/canvas.ts`                  | star | -     |
-| `src/canvas/draw_object.ts`             | star | -     |
-| `src/canvas/sink.ts`                    | star | -     |
-| `src/canvas/text.ts`                    | star | -     |
-| `src/canvas/three_ascii.ts`             | star | -     |
-| `src/app/mod.ts`                        | star | -     |
-| `src/runtime/capabilities.ts`           | star | -     |
-| `src/runtime/data_pipeline.ts`          | star | -     |
-| `src/runtime/data_pipeline_bindings.ts` | star | -     |
-| `src/runtime/data_query.ts`             | star | -     |
-| `src/runtime/graphics_surface.ts`       | star | -     |
-| `src/runtime/kitty_graphics.ts`         | star | -     |
-| `src/runtime/profiles.ts`               | star | -     |
-| `src/runtime/renderer_backends.ts`      | star | -     |
-| `src/runtime/resource.ts`               | star | -     |
-| `src/runtime/resource_bindings.ts`      | star | -     |
-| `src/runtime/render_loop.ts`            | star | -     |
-| `src/runtime/scheduler.ts`              | star | -     |
-| `src/runtime/storage.ts`                | star | -     |
-| `src/runtime/telemetry.ts`              | star | -     |
-| `src/runtime/terminal_screen.ts`        | star | -     |
-| `src/runtime/terminal_scrollback.ts`    | star | -     |
-| `src/runtime/terminal_workspace.ts`     | star | -     |
-| `src/runtime/worker_pool.ts`            | star | -     |
-| `src/three_ascii/mod.ts`                | star | -     |
-| `src/utils/async.ts`                    | star | -     |
-| `src/utils/numbers.ts`                  | star | -     |
-| `src/utils/sorted_array.ts`             | star | -     |
-| `src/utils/strings.ts`                  | star | -     |
+| Re-export Target                        | Kind  | Names                                                                                                                                                                                                                                                                                                                                                                                                  |
+| --------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/event_emitter.ts`                  | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/focus.ts`                          | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/selection.ts`                      | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/theme.ts`                          | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/theme_binding.ts`                  | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/theme_engine_cache.ts`             | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/theme_engine_factory.ts`           | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/theme_engine_pipeline.ts`          | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/theme_gallery.ts`                  | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/grwizard_themes.ts`                | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/theme_resolver.ts`                 | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/theme_workspace.ts`                | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/api_stability.ts`                  | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/viewport.ts`                       | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/view.ts`                           | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/signals/mod.ts`                    | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/layout/mod.ts`                     | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/markup/mod.ts`                     | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/components/mod.ts`                 | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/platform/types.ts`                 | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/input_envelope.ts`                 | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/pointer_input.ts`                  | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/web/mod.ts`                        | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/remote/handshake.ts`               | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/perf/benchmark.ts`                 | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/unicode/width.ts`                  | named | `CJK_WIDE_WIDTH_PROFILE`, `DEFAULT_TERMINAL_WIDTH_PROFILE_REGISTRY`, `TERMINAL_WIDTH_PROFILE_LIMITS`, `TerminalWidthError`, `TerminalWidthProfileRegistry`, `UNICODE_NARROW_WIDTH_PROFILE`, `UnicodeTerminalWidthProfile`, `VISIBLE_COMBINING_WIDTH_PROFILE`, `terminalCodePointWidth`, `terminalTextWidth`                                                                                            |
+| `src/unicode/width.ts`                  | named | `type EastAsianWidthProperty`, `type TerminalCellWidth`, `type TerminalCodePointWidthInspection`, `type TerminalTextWidthInspection`, `type TerminalWidthCategory`, `type TerminalWidthErrorCode`, `type TerminalWidthPolicy`, `type TerminalWidthProfileDefinition`, `type TerminalWidthProfileInspection`, `type TerminalWidthProfileRegistryInspection`, `type TerminalWidthProfileRegistryOptions` |
+| `src/canvas/box.ts`                     | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/canvas/canvas.ts`                  | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/canvas/draw_object.ts`             | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/canvas/sink.ts`                    | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/canvas/text.ts`                    | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/canvas/three_ascii.ts`             | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/app/mod.ts`                        | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/capabilities.ts`           | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/async_iterable.ts`         | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/clock.ts`                  | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/data_pipeline.ts`          | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/data_pipeline_bindings.ts` | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/data_query.ts`             | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/graphics_surface.ts`       | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/kitty_graphics.ts`         | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/profiles.ts`               | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/renderer_backends.ts`      | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/resource.ts`               | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/resource_bindings.ts`      | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/resource_cache.ts`         | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/resource_loads.ts`         | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/render_loop.ts`            | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/scheduler.ts`              | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/storage.ts`                | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/telemetry.ts`              | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/terminal_screen.ts`        | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/terminal_scrollback.ts`    | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/terminal_workspace.ts`     | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/runtime/worker_pool.ts`            | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/three_ascii/mod.ts`                | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/utils/async.ts`                    | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/utils/numbers.ts`                  | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/utils/sorted_array.ts`             | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/utils/strings.ts`                  | star  | -                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 _No direct exported symbols._
 
@@ -695,6 +772,89 @@ _Entrypoints: `.`, `./web`_
 | `packageReleasePolicy`            | const     | no        | yes   |
 | `PackageReleasePolicy`            | interface | yes       | yes   |
 | `PackageRuntime`                  | type      | yes       | yes   |
+
+### src/app/action_journal_checkpoints.ts
+
+_Entrypoints: `.`, `./web`_
+
+| Symbol                                         | Kind      | Type Only | JSDoc |
+| ---------------------------------------------- | --------- | --------- | ----- |
+| `ACTION_JOURNAL_CHECKPOINT_HASH_ALGORITHM`     | const     | no        | yes   |
+| `ACTION_JOURNAL_CHECKPOINT_SCHEMA_VERSION`     | const     | no        | yes   |
+| `ActionJournalCheckpointCausalPosition`        | interface | yes       | yes   |
+| `ActionJournalCheckpointComponent`             | interface | yes       | yes   |
+| `ActionJournalCheckpointComponentInspection`   | interface | yes       | yes   |
+| `ActionJournalCheckpointComponentRegistration` | interface | yes       | yes   |
+| `ActionJournalCheckpointComponentState`        | interface | yes       | yes   |
+| `ActionJournalCheckpointDiagnostic`            | interface | yes       | yes   |
+| `ActionJournalCheckpointDiagnosticCode`        | type      | yes       | yes   |
+| `ActionJournalCheckpointError`                 | class     | no        | yes   |
+| `ActionJournalCheckpointErrorCode`             | type      | yes       | yes   |
+| `actionJournalCheckpointHash`                  | function  | no        | yes   |
+| `ActionJournalCheckpointMigration`             | interface | yes       | yes   |
+| `ActionJournalCheckpointOperation`             | type      | yes       | yes   |
+| `ActionJournalCheckpointRecord`                | interface | yes       | yes   |
+| `ActionJournalCheckpointRegistry`              | class     | no        | yes   |
+| `ActionJournalCheckpointRegistryInspection`    | interface | yes       | yes   |
+| `ActionJournalCheckpointRegistryOptions`       | interface | yes       | yes   |
+| `ActionJournalCheckpointReplayResult`          | interface | yes       | yes   |
+| `ActionJournalCheckpointSelection`             | interface | yes       | yes   |
+| `canonicalActionJournalCheckpointJson`         | function  | no        | yes   |
+| `CaptureActionJournalCheckpointOptions`        | interface | yes       | yes   |
+| `normalizeActionJournalCheckpoint`             | function  | no        | yes   |
+| `parseActionJournalCheckpoint`                 | function  | no        | yes   |
+
+### src/app/action_journal_retention.ts
+
+_Entrypoints: `.`, `./web`_
+
+| Symbol                                              | Kind      | Type Only | JSDoc |
+| --------------------------------------------------- | --------- | --------- | ----- |
+| `ACTION_JOURNAL_RETENTION_SCHEMA_VERSION`           | const     | no        | yes   |
+| `ActionJournalRetentionBundle`                      | interface | yes       | yes   |
+| `actionJournalRetentionCheckpointId`                | function  | no        | yes   |
+| `actionJournalRetentionCompatibilityFromInspection` | function  | no        | yes   |
+| `ActionJournalRetentionComponentCompatibility`      | interface | yes       | yes   |
+| `actionJournalRetentionEntryId`                     | function  | no        | yes   |
+| `ActionJournalRetentionError`                       | class     | no        | yes   |
+| `ActionJournalRetentionErrorCode`                   | type      | yes       | yes   |
+| `ActionJournalRetentionInput`                       | interface | yes       | yes   |
+| `ActionJournalRetentionPlan`                        | interface | yes       | yes   |
+| `ActionJournalRetentionPlanStatus`                  | type      | yes       | yes   |
+| `ActionJournalRetentionPolicy`                      | interface | yes       | yes   |
+| `ActionJournalRetentionReason`                      | type      | yes       | yes   |
+| `ActionJournalRetentionResult`                      | interface | yes       | yes   |
+| `ActionJournalRetentionStats`                       | interface | yes       | yes   |
+| `ActionJournalRetentionUnsatisfiedConstraint`       | interface | yes       | yes   |
+| `ActionJournalRetentionUnsatisfiedKind`             | type      | yes       | yes   |
+| `canonicalActionJournalUtf8Bytes`                   | function  | no        | yes   |
+| `executeActionJournalRetention`                     | function  | no        | yes   |
+| `planActionJournalRetention`                        | function  | no        | yes   |
+| `retainActionJournal`                               | function  | no        | yes   |
+
+### src/app/action_journal.ts
+
+_Entrypoints: `.`, `./web`_
+
+| Symbol                           | Kind      | Type Only | JSDoc |
+| -------------------------------- | --------- | --------- | ----- |
+| `ACTION_JOURNAL_SCHEMA_VERSION`  | const     | no        | yes   |
+| `ActionJournal`                  | class     | no        | yes   |
+| `ActionJournalAppendOptions`     | interface | yes       | yes   |
+| `ActionJournalCausality`         | interface | yes       | yes   |
+| `ActionJournalEntry`             | interface | yes       | yes   |
+| `ActionJournalError`             | class     | no        | yes   |
+| `ActionJournalErrorCode`         | type      | yes       | yes   |
+| `ActionJournalInspection`        | interface | yes       | yes   |
+| `ActionJournalJsonValue`         | type      | yes       | yes   |
+| `ActionJournalOptions`           | interface | yes       | yes   |
+| `ActionJournalReducer`           | type      | yes       | yes   |
+| `ActionJournalReplayResult`      | interface | yes       | yes   |
+| `ActionJournalSnapshot`          | interface | yes       | yes   |
+| `canonicalActionJournalJson`     | function  | no        | yes   |
+| `normalizeActionJournalSnapshot` | function  | no        | yes   |
+| `parseActionJournal`             | function  | no        | yes   |
+| `replayActionJournal`            | function  | no        | yes   |
 
 ### src/app/actions.ts
 
@@ -892,49 +1052,121 @@ _Entrypoints: `.`, `./web`_
 | `FormCommandSnapshotPayload` | interface | yes       | yes   |
 | `FormFieldCommandPayload`    | interface | yes       | yes   |
 
+### src/app/form_paths.ts
+
+_Entrypoints: `.`, `./web`_
+
+| Symbol                  | Kind      | Type Only | JSDoc |
+| ----------------------- | --------- | --------- | ----- |
+| `deleteFormPath`        | function  | no        | yes   |
+| `DeleteFormPathOptions` | interface | yes       | yes   |
+| `FORM_PATH_LIMITS`      | const     | no        | yes   |
+| `formatFormPath`        | function  | no        | yes   |
+| `FormFieldReference`    | type      | yes       | yes   |
+| `FormFieldValue`        | type      | yes       | yes   |
+| `formPath`              | function  | no        | yes   |
+| `FormPath`              | interface | yes       | yes   |
+| `FormPathBuilder`       | interface | yes       | yes   |
+| `FormPathError`         | class     | no        | yes   |
+| `FormPathErrorCode`     | type      | yes       | yes   |
+| `formPathFor`           | function  | no        | yes   |
+| `FormPathName`          | type      | yes       | yes   |
+| `FormPathSegment`       | type      | yes       | yes   |
+| `formPathSegments`      | function  | no        | yes   |
+| `FormPathSegments`      | type      | yes       | yes   |
+| `FormPathValue`         | type      | yes       | yes   |
+| `FormValuesPatch`       | type      | yes       | yes   |
+| `getFormPath`           | function  | no        | yes   |
+| `hasFormPath`           | function  | no        | yes   |
+| `isFormPath`            | function  | no        | yes   |
+| `parseFormPath`         | function  | no        | yes   |
+| `setFormPath`           | function  | no        | yes   |
+
 ### src/app/forms.ts
 
 _Entrypoints: `.`, `./web`_
 
-| Symbol                       | Kind      | Type Only | JSDoc |
-| ---------------------------- | --------- | --------- | ----- |
-| `bindFormField`              | function  | no        | yes   |
-| `FieldName`                  | type      | yes       | yes   |
-| `FieldValidator`             | type      | yes       | yes   |
-| `FormController`             | class     | no        | yes   |
-| `FormControllerOptions`      | interface | yes       | yes   |
-| `FormErrorSummaryItem`       | interface | yes       | yes   |
-| `FormField`                  | interface | yes       | yes   |
-| `FormFieldBindingOptions`    | interface | yes       | yes   |
-| `FormFieldInspection`        | interface | yes       | yes   |
-| `FormFieldState`             | type      | yes       | yes   |
-| `FormGroupInspection`        | interface | yes       | yes   |
-| `FormInspection`             | interface | yes       | yes   |
-| `FormSchemaAdapter`          | interface | yes       | yes   |
-| `FormSchemaValidationErrors` | type      | yes       | yes   |
-| `FormSnapshot`               | interface | yes       | yes   |
-| `FormSubmitResult`           | interface | yes       | yes   |
-| `FormValues`                 | type      | yes       | yes   |
-| `minLength`                  | function  | no        | yes   |
-| `required`                   | function  | no        | yes   |
+| Symbol                             | Kind      | Type Only | JSDoc |
+| ---------------------------------- | --------- | --------- | ----- |
+| `bindFormField`                    | function  | no        | yes   |
+| `FieldName`                        | type      | yes       | yes   |
+| `FieldValidator`                   | type      | yes       | yes   |
+| `FORM_FIELD_ARRAY_LIMITS`          | const     | no        | yes   |
+| `FormController`                   | class     | no        | yes   |
+| `FormControllerOptions`            | interface | yes       | yes   |
+| `FormErrorSummaryItem`             | interface | yes       | yes   |
+| `FormField`                        | interface | yes       | yes   |
+| `FormFieldArrayChange`             | interface | yes       | yes   |
+| `FormFieldArrayController`         | class     | no        | yes   |
+| `FormFieldArrayDuplicateOptions`   | interface | yes       | yes   |
+| `FormFieldArrayHistoryOptions`     | interface | yes       | yes   |
+| `FormFieldArrayHistoryTransaction` | interface | yes       | yes   |
+| `FormFieldArrayIdContext`          | interface | yes       | yes   |
+| `FormFieldArrayIdProvider`         | type      | yes       | yes   |
+| `FormFieldArrayIdReason`           | type      | yes       | yes   |
+| `FormFieldArrayInspection`         | interface | yes       | yes   |
+| `FormFieldArrayItemId`             | type      | yes       | yes   |
+| `FormFieldArrayItemInspection`     | interface | yes       | yes   |
+| `FormFieldArrayItemMetadata`       | interface | yes       | yes   |
+| `FormFieldArrayItemMetadataPatch`  | interface | yes       | yes   |
+| `FormFieldArrayOperation`          | type      | yes       | yes   |
+| `FormFieldArrayOptions`            | interface | yes       | yes   |
+| `FormFieldBindingOptions`          | interface | yes       | yes   |
+| `FormFieldInspection`              | interface | yes       | yes   |
+| `FormFieldState`                   | type      | yes       | yes   |
+| `FormGroupInspection`              | interface | yes       | yes   |
+| `FormInspection`                   | interface | yes       | yes   |
+| `FormSchemaAdapter`                | interface | yes       | yes   |
+| `FormSchemaValidationErrors`       | type      | yes       | yes   |
+| `FormSnapshot`                     | interface | yes       | yes   |
+| `FormSubmitResult`                 | interface | yes       | yes   |
+| `FormValues`                       | type      | yes       | yes   |
+| `minLength`                        | function  | no        | yes   |
+| `required`                         | function  | no        | yes   |
 
 ### src/app/history.ts
 
 _Entrypoints: `.`, `./web`_
 
-| Symbol                       | Kind      | Type Only | JSDoc |
-| ---------------------------- | --------- | --------- | ----- |
-| `bindHistoryCommands`        | function  | no        | yes   |
-| `bindRouteHistory`           | function  | no        | yes   |
-| `HistoryCommandKind`         | type      | yes       | yes   |
-| `HistoryCommandOptions`      | interface | yes       | yes   |
-| `historyCommands`            | function  | no        | yes   |
-| `HistoryEntryInspection`     | interface | yes       | yes   |
-| `HistoryInspection`          | interface | yes       | yes   |
-| `HistoryStack`               | class     | no        | yes   |
-| `HistoryStackOptions`        | interface | yes       | yes   |
-| `HistoryTransaction`         | interface | yes       | yes   |
-| `RouteHistoryBindingOptions` | interface | yes       | yes   |
+| Symbol                                 | Kind      | Type Only | JSDoc |
+| -------------------------------------- | --------- | --------- | ----- |
+| `bindHistoryCommands`                  | function  | no        | yes   |
+| `bindRouteHistory`                     | function  | no        | yes   |
+| `HistoryBusyError`                     | class     | no        | yes   |
+| `HistoryCoalescingMetadata`            | interface | yes       | yes   |
+| `HistoryCoalescingOptions`             | interface | yes       | yes   |
+| `HistoryCommandKind`                   | type      | yes       | yes   |
+| `HistoryCommandOptions`                | interface | yes       | yes   |
+| `historyCommands`                      | function  | no        | yes   |
+| `HistoryCompensationFailureInspection` | interface | yes       | yes   |
+| `HistoryEntryInspection`               | interface | yes       | yes   |
+| `HistoryErrorCode`                     | type      | yes       | yes   |
+| `HistoryErrorInspection`               | interface | yes       | yes   |
+| `HistoryFailureInspection`             | interface | yes       | yes   |
+| `HistoryInspection`                    | interface | yes       | yes   |
+| `HistoryOperationDirection`            | type      | yes       | yes   |
+| `HistoryOperationError`                | class     | no        | yes   |
+| `HistoryOperationPhase`                | type      | yes       | yes   |
+| `HistoryPoisonedError`                 | class     | no        | yes   |
+| `HistoryPoisonInspection`              | interface | yes       | yes   |
+| `HistoryPoisonReason`                  | type      | yes       | yes   |
+| `HistoryPoisonRecoveryPolicy`          | type      | yes       | yes   |
+| `HistoryReplayBarrierInspection`       | interface | yes       | yes   |
+| `HistoryReplaySafetyError`             | class     | no        | yes   |
+| `HistoryReplaySafetyMetadata`          | interface | yes       | yes   |
+| `HistoryReplayStrategy`                | type      | yes       | yes   |
+| `HistoryScopeError`                    | class     | no        | yes   |
+| `HistoryStack`                         | class     | no        | yes   |
+| `HistoryStackError`                    | class     | no        | yes   |
+| `HistoryStackOptions`                  | interface | yes       | yes   |
+| `HistoryTransaction`                   | interface | yes       | yes   |
+| `HistoryTransactionAbortedError`       | class     | no        | yes   |
+| `HistoryTransactionOptions`            | interface | yes       | yes   |
+| `HistoryTransactionScope`              | interface | yes       | yes   |
+| `HistoryTransactionScopeInspection`    | interface | yes       | yes   |
+| `RouteHistoryBindingOptions`           | interface | yes       | yes   |
+| `SynchronousHistoryTransaction`        | interface | yes       | yes   |
+| `SynchronousHistoryTransactionScope`   | interface | yes       | yes   |
 
 ### src/app/hit_targets.ts
 
@@ -1020,47 +1252,58 @@ _Entrypoints: `.`, `./web`_
 
 _Entrypoints: `.`, `./web`_
 
-| Re-export Target                     | Kind | Names |
-| ------------------------------------ | ---- | ----- |
-| `src/app/actions.ts`                 | star | -     |
-| `src/app/app.ts`                     | star | -     |
-| `src/app/component_commands.ts`      | star | -     |
-| `src/app/command_bindings.ts`        | star | -     |
-| `src/app/command_search_index.ts`    | star | -     |
-| `src/app/commands.ts`                | star | -     |
-| `src/app/data_query_commands.ts`     | star | -     |
-| `src/app/data_table_commands.ts`     | star | -     |
-| `src/app/disposables.ts`             | star | -     |
-| `src/app/form_commands.ts`           | star | -     |
-| `src/app/focus_commands.ts`          | star | -     |
-| `src/app/forms.ts`                   | star | -     |
-| `src/app/history.ts`                 | star | -     |
-| `src/app/input_commands.ts`          | star | -     |
-| `src/app/list_commands.ts`           | star | -     |
-| `src/app/log_viewer_commands.ts`     | star | -     |
-| `src/app/menu_bar_commands.ts`       | star | -     |
-| `src/app/metric_series_commands.ts`  | star | -     |
-| `src/app/mouse_bindings.ts`          | star | -     |
-| `src/app/pad_commands.ts`            | star | -     |
-| `src/app/plugins.ts`                 | star | -     |
-| `src/app/router.ts`                  | star | -     |
-| `src/app/runtime_commands.ts`        | star | -     |
-| `src/app/scroll_area_commands.ts`    | star | -     |
-| `src/app/selection_bindings.ts`      | star | -     |
-| `src/app/settings_bindings.ts`       | star | -     |
-| `src/app/settings.ts`                | star | -     |
-| `src/app/split_pane_commands.ts`     | star | -     |
-| `src/app/table_commands.ts`          | star | -     |
-| `src/app/tabs_commands.ts`           | star | -     |
-| `src/app/terminal_commands.ts`       | star | -     |
-| `src/app/terminal_input.ts`          | star | -     |
-| `src/app/theme_commands.ts`          | star | -     |
-| `src/app/theme_plugin.ts`            | star | -     |
-| `src/app/toast_commands.ts`          | star | -     |
-| `src/app/tree_commands.ts`           | star | -     |
-| `src/app/window_manager_commands.ts` | star | -     |
-| `src/app/widget_commands.ts`         | star | -     |
-| `src/app/workbench/mod.ts`           | star | -     |
+| Re-export Target                        | Kind  | Names                                                                                                                                                                                                                                                                 |
+| --------------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/app/actions.ts`                    | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/action_journal.ts`             | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/action_journal_checkpoints.ts` | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/action_journal_retention.ts`   | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/app.ts`                        | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/component_commands.ts`         | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/command_bindings.ts`           | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/command_search_index.ts`       | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/commands.ts`                   | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/data_query_commands.ts`        | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/data_table_commands.ts`        | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/disposables.ts`                | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/form_commands.ts`              | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/focus_commands.ts`             | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/form_paths.ts`                 | named | `FORM_PATH_LIMITS`, `FormPathError`, `deleteFormPath`, `formPath`, `formPathFor`, `formPathSegments`, `formatFormPath`, `getFormPath`, `hasFormPath`, `isFormPath`, `parseFormPath`, `setFormPath`                                                                    |
+| `src/app/form_paths.ts`                 | named | `type DeleteFormPathOptions`, `type FormFieldReference`, `type FormFieldValue`, `type FormPath`, `type FormPathBuilder`, `type FormPathErrorCode`, `type FormPathName`, `type FormPathSegment`, `type FormPathSegments`, `type FormPathValue`, `type FormValuesPatch` |
+| `src/app/forms.ts`                      | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/history.ts`                    | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/input_commands.ts`             | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/list_commands.ts`              | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/log_viewer_commands.ts`        | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/menu_bar_commands.ts`          | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/metric_series_commands.ts`     | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/mouse_bindings.ts`             | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/pad_commands.ts`               | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/plugins.ts`                    | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/plugin_slot_adapters.ts`       | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/plugin_slots.ts`               | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/router.ts`                     | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/route_patterns.ts`             | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/runtime_commands.ts`           | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/screen_persistence.ts`         | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/screen_router.ts`              | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/screens.ts`                    | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/scroll_area_commands.ts`       | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/selection_bindings.ts`         | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/settings_bindings.ts`          | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/settings.ts`                   | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/split_pane_commands.ts`        | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/table_commands.ts`             | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/tabs_commands.ts`              | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/terminal_commands.ts`          | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/terminal_input.ts`             | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/theme_commands.ts`             | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/theme_plugin.ts`               | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/toast_commands.ts`             | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/tree_commands.ts`              | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/window_manager_commands.ts`    | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/widget_commands.ts`            | star  | -                                                                                                                                                                                                                                                                     |
+| `src/app/workbench/mod.ts`              | star  | -                                                                                                                                                                                                                                                                     |
 
 _No direct exported symbols._
 
@@ -1094,6 +1337,57 @@ _Entrypoints: `.`, `./web`_
 | `PadCommandPayload` | interface | yes       | yes   |
 | `padCommands`       | function  | no        | yes   |
 
+### src/app/plugin_slot_adapters.ts
+
+_Entrypoints: `.`, `./web`_
+
+| Symbol                                   | Kind      | Type Only | JSDoc |
+| ---------------------------------------- | --------- | --------- | ----- |
+| `CorePluginSlotSource`                   | type      | yes       | yes   |
+| `createPluginSlotSourceAdapter`          | function  | no        | yes   |
+| `MarkupPluginSlotSource`                 | type      | yes       | yes   |
+| `PluginSlotDataValue`                    | type      | yes       | yes   |
+| `PluginSlotPayloadAdapter`               | interface | yes       | yes   |
+| `PluginSlotSource`                       | type      | yes       | yes   |
+| `PluginSlotSourceAdapter`                | class     | no        | yes   |
+| `PluginSlotSourceAdapterInspection`      | interface | yes       | yes   |
+| `PluginSlotSourceAdapterOptions`         | interface | yes       | yes   |
+| `PluginSlotSourceBase`                   | interface | yes       | yes   |
+| `PluginSlotSourceContext`                | interface | yes       | yes   |
+| `PluginSlotSourceDiagnostic`             | interface | yes       | yes   |
+| `PluginSlotSourceInspection`             | interface | yes       | yes   |
+| `PluginSlotSourceKind`                   | type      | yes       | yes   |
+| `PluginSlotSourceRegistration`           | interface | yes       | yes   |
+| `PluginSlotSourceRegistrationInspection` | interface | yes       | yes   |
+| `PluginSlotSourceRenderer`               | type      | yes       | yes   |
+| `PluginSlotSourceRenderers`              | type      | yes       | yes   |
+| `PluginSlotSourceValues`                 | type      | yes       | yes   |
+| `ViewPluginSlotSource`                   | type      | yes       | yes   |
+
+### src/app/plugin_slots.ts
+
+_Entrypoints: `.`, `./web`_
+
+| Symbol                           | Kind      | Type Only | JSDoc |
+| -------------------------------- | --------- | --------- | ----- |
+| `createPluginSlotRegistry`       | function  | no        | yes   |
+| `PluginSlotEntry`                | interface | yes       | yes   |
+| `PluginSlotErrorEvent`           | interface | yes       | yes   |
+| `PluginSlotErrorInspection`      | interface | yes       | yes   |
+| `PluginSlotErrorPhase`           | type      | yes       | yes   |
+| `PluginSlotErrorReport`          | interface | yes       | yes   |
+| `PluginSlotMode`                 | type      | yes       | yes   |
+| `PluginSlotPlugin`               | interface | yes       | yes   |
+| `PluginSlotPluginInspection`     | interface | yes       | yes   |
+| `PluginSlotRegistry`             | class     | no        | yes   |
+| `PluginSlotRegistryInspection`   | interface | yes       | yes   |
+| `PluginSlotRegistryOptions`      | interface | yes       | yes   |
+| `PluginSlotRenderedContribution` | interface | yes       | yes   |
+| `PluginSlotRenderer`             | type      | yes       | yes   |
+| `PluginSlotRenderers`            | type      | yes       | yes   |
+| `PluginSlotRenderResult`         | interface | yes       | yes   |
+| `RenderPluginSlotOptions`        | interface | yes       | yes   |
+
 ### src/app/plugins.ts
 
 _Entrypoints: `.`, `./app`, `./web`_
@@ -1118,6 +1412,36 @@ _Entrypoints: `.`, `./app`, `./web`_
 | `inspectAppPluginDefinition`            | function  | no        | yes   |
 | `queryAppPluginDefinitions`             | function  | no        | yes   |
 
+### src/app/route_patterns.ts
+
+_Entrypoints: `.`, `./web`_
+
+| Symbol                                | Kind      | Type Only | JSDoc |
+| ------------------------------------- | --------- | --------- | ----- |
+| `CompiledRoutePattern`                | interface | yes       | yes   |
+| `compileRoutePattern`                 | function  | no        | yes   |
+| `defineRouteParameterCodec`           | function  | no        | yes   |
+| `ROUTE_PATTERN_LIMITS`                | const     | no        | yes   |
+| `routeBooleanParameterCodec`          | const     | no        | yes   |
+| `routeIntegerParameterCodec`          | const     | no        | yes   |
+| `RouteParameterCodec`                 | interface | yes       | yes   |
+| `RouteParameterCodecMap`              | type      | yes       | yes   |
+| `RouteParameterCodecValue`            | type      | yes       | yes   |
+| `RouteParameterValue`                 | type      | yes       | yes   |
+| `RoutePatternAmbiguityCandidate`      | interface | yes       | yes   |
+| `RoutePatternCompileOptions`          | interface | yes       | yes   |
+| `RoutePatternError`                   | class     | no        | yes   |
+| `RoutePatternErrorCode`               | type      | yes       | yes   |
+| `RoutePatternInspection`              | interface | yes       | yes   |
+| `RoutePatternMatch`                   | interface | yes       | yes   |
+| `RoutePatternParameters`              | type      | yes       | yes   |
+| `RoutePatternRegistry`                | class     | no        | yes   |
+| `RoutePatternRegistryEntryInspection` | interface | yes       | yes   |
+| `RoutePatternRegistryInspection`      | interface | yes       | yes   |
+| `RoutePatternResolution`              | interface | yes       | yes   |
+| `RoutePatternSegmentKind`             | type      | yes       | yes   |
+| `routeStringParameterCodec`           | const     | no        | yes   |
+
 ### src/app/router.ts
 
 _Entrypoints: `.`, `./app`, `./web`_
@@ -1127,14 +1451,27 @@ _Entrypoints: `.`, `./app`, `./web`_
 | `bindRouteCommands`         | function  | no        | yes   |
 | `bindRouteIndex`            | function  | no        | yes   |
 | `bindRouteSignal`           | function  | no        | yes   |
+| `createRouteLocation`       | function  | no        | yes   |
+| `formatRouteLocation`       | function  | no        | yes   |
+| `parseRouteLocation`        | function  | no        | yes   |
 | `Route`                     | interface | yes       | yes   |
+| `ROUTE_LOCATION_LIMITS`     | const     | no        | yes   |
+| `ROUTE_LOCATION_PREFIX`     | const     | no        | yes   |
+| `ROUTE_LOCATION_VERSION`    | const     | no        | yes   |
 | `RouteCommandKind`          | type      | yes       | yes   |
 | `RouteCommandOptions`       | interface | yes       | yes   |
 | `routeCommands`             | function  | no        | yes   |
 | `RouteIdSource`             | type      | yes       | yes   |
 | `RouteIndexBindingOptions`  | interface | yes       | yes   |
 | `RouteInspection`           | interface | yes       | yes   |
+| `RouteLocation`             | interface | yes       | yes   |
+| `RouteLocationError`        | class     | no        | yes   |
+| `RouteLocationErrorCode`    | type      | yes       | yes   |
+| `RouteLocationInput`        | interface | yes       | yes   |
+| `RouteLocationObservable`   | interface | yes       | yes   |
+| `RouteLocationState`        | type      | yes       | yes   |
 | `RouteManager`              | class     | no        | yes   |
+| `RouteQueryValue`           | type      | yes       | yes   |
 | `RouteRegisterOptions`      | interface | yes       | yes   |
 | `RouteSignalBindingOptions` | interface | yes       | yes   |
 | `RouteUnregisterOptions`    | interface | yes       | yes   |
@@ -1170,6 +1507,75 @@ _Entrypoints: `.`, `./web`_
 | `RuntimeWorkloadCommandOptions`              | interface | yes       | yes   |
 | `runtimeWorkloadCommands`                    | function  | no        | yes   |
 | `RuntimeWorkloadReportedPayload`             | interface | yes       | yes   |
+
+### src/app/screen_persistence.ts
+
+_Entrypoints: `.`, `./web`_
+
+| Symbol                            | Kind      | Type Only | JSDoc |
+| --------------------------------- | --------- | --------- | ----- |
+| `dryRunScreenStackRestore`        | function  | no        | yes   |
+| `restoreScreenStackSnapshot`      | function  | no        | yes   |
+| `SCREEN_STACK_SNAPSHOT_SCHEMA`    | const     | no        | yes   |
+| `SCREEN_STACK_SNAPSHOT_VERSION`   | const     | no        | yes   |
+| `ScreenPersistenceDiagnostic`     | interface | yes       | yes   |
+| `ScreenPersistenceDiagnosticCode` | type      | yes       | yes   |
+| `ScreenPersistenceOperation`      | type      | yes       | yes   |
+| `ScreenPersistenceOptions`        | interface | yes       | yes   |
+| `ScreenPersistenceResult`         | interface | yes       | yes   |
+| `screenRegistrySnapshotMetadata`  | function  | no        | yes   |
+| `ScreenRegistrySnapshotMetadata`  | interface | yes       | yes   |
+| `ScreenRestorePolicy`             | interface | yes       | yes   |
+| `ScreenRestoreTransition`         | interface | yes       | yes   |
+| `ScreenStackMigrationContext`     | interface | yes       | yes   |
+| `ScreenStackRestorePlan`          | interface | yes       | yes   |
+| `ScreenStackRestoreResult`        | interface | yes       | yes   |
+| `ScreenStackSnapshot`             | interface | yes       | yes   |
+| `ScreenStackSnapshotMigration`    | interface | yes       | yes   |
+| `snapshotScreenStack`             | function  | no        | yes   |
+
+### src/app/screen_router.ts
+
+_Entrypoints: `.`, `./web`_
+
+| Symbol                              | Kind      | Type Only | JSDoc |
+| ----------------------------------- | --------- | --------- | ----- |
+| `createScreenRouterModeBinding`     | function  | no        | yes   |
+| `ScreenRouteEnterOperation`         | type      | yes       | yes   |
+| `ScreenRouteMappingDefinition`      | interface | yes       | yes   |
+| `ScreenRouteMappingInactiveReason`  | type      | yes       | yes   |
+| `ScreenRouteMappingInspection`      | interface | yes       | yes   |
+| `ScreenRouteProjectionTransition`   | type      | yes       | yes   |
+| `ScreenRouterDiagnostic`            | interface | yes       | yes   |
+| `ScreenRouterDiagnosticCode`        | type      | yes       | yes   |
+| `ScreenRouterModeBinding`           | class     | no        | yes   |
+| `ScreenRouterModeBindingInspection` | interface | yes       | yes   |
+| `ScreenRouterModeBindingOptions`    | interface | yes       | yes   |
+| `ScreenRouterModeDefinition`        | interface | yes       | yes   |
+| `ScreenRouterModeInspection`        | interface | yes       | yes   |
+| `ScreenRouterStackChangeInspection` | interface | yes       | yes   |
+| `ScreenRouterSyncResult`            | interface | yes       | yes   |
+| `ScreenRouterSyncSource`            | type      | yes       | yes   |
+
+### src/app/screens.ts
+
+_Entrypoints: `.`, `./web`_
+
+| Symbol                      | Kind      | Type Only | JSDoc |
+| --------------------------- | --------- | --------- | ----- |
+| `createScreenStack`         | function  | no        | yes   |
+| `ScreenDefinition`          | interface | yes       | yes   |
+| `ScreenEntryInspection`     | interface | yes       | yes   |
+| `ScreenLifecycleEvent`      | interface | yes       | yes   |
+| `ScreenLifecyclePhase`      | type      | yes       | yes   |
+| `ScreenModalResultCallback` | type      | yes       | yes   |
+| `ScreenStack`               | class     | no        | yes   |
+| `ScreenStackChange`         | interface | yes       | yes   |
+| `ScreenStackDiagnostic`     | interface | yes       | yes   |
+| `ScreenStackDiagnosticCode` | type      | yes       | yes   |
+| `ScreenStackInspection`     | interface | yes       | yes   |
+| `ScreenStackOperation`      | type      | yes       | yes   |
+| `ScreenStackOptions`        | interface | yes       | yes   |
 
 ### src/app/scroll_area_commands.ts
 
@@ -1921,6 +2327,30 @@ _Entrypoints: `.`, `./web`_
 | `WorkbenchTitlebarLayout`                   | interface | yes       | yes   |
 | `WorkbenchTitlebarLayoutOptions`            | interface | yes       | yes   |
 
+### src/app/workbench_window_host.ts
+
+_Entrypoints: `.`, `./app`, `./web`_
+
+| Symbol                                 | Kind      | Type Only | JSDoc |
+| -------------------------------------- | --------- | --------- | ----- |
+| `createWorkbenchWindowHostController`  | function  | no        | yes   |
+| `createWorkbenchWindowHostRoot`        | function  | no        | yes   |
+| `WorkbenchWindowChromeControl`         | interface | yes       | yes   |
+| `WorkbenchWindowChromeProjection`      | interface | yes       | yes   |
+| `WorkbenchWindowHostCommand`           | type      | yes       | yes   |
+| `WorkbenchWindowHostController`        | class     | no        | yes   |
+| `WorkbenchWindowHostControllerOptions` | interface | yes       | yes   |
+| `WorkbenchWindowHostDescriptor`        | interface | yes       | yes   |
+| `WorkbenchWindowHostInspection`        | interface | yes       | yes   |
+| `WorkbenchWindowHostProjection`        | interface | yes       | yes   |
+| `WorkbenchWindowHostProjectionOptions` | interface | yes       | yes   |
+| `WorkbenchWindowHostResult`            | interface | yes       | yes   |
+| `WorkbenchWindowSemanticNode`          | interface | yes       | yes   |
+| `WorkbenchWindowSeparatorProjection`   | interface | yes       | yes   |
+| `WorkbenchWindowShelfItem`             | interface | yes       | yes   |
+| `WorkbenchWindowSnapPreview`           | interface | yes       | yes   |
+| `WorkbenchWindowSwitcherProjection`    | interface | yes       | yes   |
+
 ### src/app/workbench_window_registry.ts
 
 _Entrypoints: `.`, `./web`_
@@ -2016,6 +2446,7 @@ _Entrypoints: `.`, `./web`_
 | `src/app/workbench_text.ts`                    | star | -     |
 | `src/app/workbench_three_terminal_pressure.ts` | star | -     |
 | `src/app/workbench_window_registry.ts`         | star | -     |
+| `src/app/workbench_window_host.ts`             | star | -     |
 | `src/app/workbench_workspace.ts`               | star | -     |
 | `src/app/workbench_workspace_store.ts`         | star | -     |
 
@@ -2755,11 +3186,19 @@ _Entrypoints: `.`, `./app`, `./web`_
 | -------------------------- | --------- | --------- | ----- |
 | `CursorPosition`           | interface | yes       | yes   |
 | `TextBox`                  | class     | no        | yes   |
+| `TextBoxChangeContext`     | interface | yes       | yes   |
 | `TextBoxController`        | class     | no        | yes   |
 | `TextBoxControllerOptions` | interface | yes       | yes   |
 | `TextBoxEditResult`        | type      | yes       | yes   |
+| `TextBoxFindDirection`     | type      | yes       | yes   |
+| `TextBoxFindOptions`       | interface | yes       | yes   |
+| `TextBoxFindResult`        | interface | yes       | yes   |
 | `TextBoxInspection`        | interface | yes       | yes   |
 | `TextBoxOptions`           | interface | yes       | yes   |
+| `TextBoxRange`             | interface | yes       | yes   |
+| `TextBoxReplaceAllOptions` | interface | yes       | yes   |
+| `TextBoxReplaceAllResult`  | interface | yes       | yes   |
+| `TextBoxSelection`         | interface | yes       | yes   |
 | `TextBoxTheme`             | interface | yes       | yes   |
 | `textBoxVisualCursor`      | function  | no        | yes   |
 | `TextBoxVisualCursor`      | interface | yes       | yes   |
@@ -2897,6 +3336,72 @@ _Entrypoints: `.`, `./web`, `./theme`_
 | `grWizardThemePaletteDefinition` | function  | no        | yes   |
 | `grWizardThemePalettes`          | const     | no        | yes   |
 
+### src/input_envelope.ts
+
+_Entrypoints: `.`, `./web`_
+
+| Symbol                           | Kind      | Type Only | JSDoc |
+| -------------------------------- | --------- | --------- | ----- |
+| `adaptBrowserInput`              | function  | no        | yes   |
+| `adaptRemoteInput`               | function  | no        | yes   |
+| `adaptTerminalInput`             | function  | no        | yes   |
+| `adaptTestInput`                 | function  | no        | yes   |
+| `INPUT_ENVELOPE_SCHEMA_VERSION`  | const     | no        | yes   |
+| `InputDeviceKind`                | type      | yes       | yes   |
+| `InputEnvelope`                  | interface | yes       | yes   |
+| `InputEnvelopeAdapterOptions`    | interface | yes       | yes   |
+| `InputEnvelopeError`             | class     | no        | yes   |
+| `InputEnvelopeErrorCode`         | type      | yes       | yes   |
+| `InputEnvelopeFactory`           | class     | no        | yes   |
+| `InputEnvelopeFactoryInspection` | interface | yes       | yes   |
+| `InputEnvelopeFactoryOptions`    | interface | yes       | yes   |
+| `InputEnvelopeJsonObject`        | interface | yes       | yes   |
+| `InputEnvelopeJsonValue`         | type      | yes       | yes   |
+| `InputEnvelopeLimits`            | interface | yes       | yes   |
+| `InputEnvelopeRawPayload`        | interface | yes       | yes   |
+| `InputModifierFlags`             | interface | yes       | yes   |
+| `InputSemanticEventInput`        | interface | yes       | yes   |
+| `InputSemanticKind`              | type      | yes       | yes   |
+| `InputSequenceOverflowPolicy`    | type      | yes       | yes   |
+| `InputSourceAdapterOptions`      | interface | yes       | yes   |
+| `InputSourceKind`                | type      | yes       | yes   |
+| `InputTrustLevel`                | type      | yes       | yes   |
+| `normalizeInputEnvelope`         | function  | no        | yes   |
+| `parseInputEnvelope`             | function  | no        | yes   |
+| `ResolvedInputEnvelopeLimits`    | interface | yes       | yes   |
+| `serializeInputEnvelope`         | function  | no        | yes   |
+
+### src/input_lifecycle.ts
+
+_Entrypoints: `.`_
+
+| Symbol                                | Kind      | Type Only | JSDoc |
+| ------------------------------------- | --------- | --------- | ----- |
+| `InputLifecycleDiagnostic`            | interface | yes       | yes   |
+| `InputLifecycleDragCancelEvent`       | interface | yes       | yes   |
+| `InputLifecycleEnvelopeFactory`       | interface | yes       | yes   |
+| `InputLifecycleError`                 | class     | no        | yes   |
+| `InputLifecycleErrorCode`             | type      | yes       | yes   |
+| `InputLifecycleGestureCancelEvent`    | interface | yes       | yes   |
+| `InputLifecycleInspection`            | interface | yes       | yes   |
+| `InputLifecycleInteractionInput`      | interface | yes       | yes   |
+| `InputLifecycleInteractionInspection` | interface | yes       | yes   |
+| `InputLifecycleInteractionPhase`      | type      | yes       | yes   |
+| `InputLifecycleKeyInput`              | interface | yes       | yes   |
+| `InputLifecycleKeyInspection`         | interface | yes       | yes   |
+| `InputLifecycleKeyPhase`              | type      | yes       | yes   |
+| `InputLifecycleKeyUpEvent`            | interface | yes       | yes   |
+| `InputLifecycleListener`              | type      | yes       | yes   |
+| `InputLifecyclePointerCancelEvent`    | interface | yes       | yes   |
+| `InputLifecyclePointerInspection`     | interface | yes       | yes   |
+| `InputLifecyclePointerReleaseEvent`   | interface | yes       | yes   |
+| `InputLifecycleReason`                | type      | yes       | yes   |
+| `InputLifecycleReconciler`            | class     | no        | yes   |
+| `InputLifecycleReconcileResult`       | interface | yes       | yes   |
+| `InputLifecycleReconcilerOptions`     | interface | yes       | yes   |
+| `InputLifecycleScopeInspection`       | interface | yes       | yes   |
+| `InputLifecycleSyntheticEvent`        | type      | yes       | yes   |
+
 ### src/input_reader/mod.ts
 
 _Entrypoints: `.`, `./terminal`_
@@ -2925,6 +3430,64 @@ _Entrypoints: `.`_
 | Symbol        | Kind     | Type Only | JSDoc |
 | ------------- | -------- | --------- | ----- |
 | `handleInput` | function | no        | yes   |
+
+### src/key_sequences.ts
+
+_Entrypoints: `.`_
+
+| Symbol                             | Kind      | Type Only | JSDoc |
+| ---------------------------------- | --------- | --------- | ----- |
+| `createKeySequenceCoordinator`     | function  | no        | yes   |
+| `DEFAULT_KEY_SEQUENCE_LEADER`      | const     | no        | yes   |
+| `KeySequenceBindingDefinition`     | interface | yes       | yes   |
+| `KeySequenceBindingInactiveReason` | type      | yes       | yes   |
+| `KeySequenceBindingInspection`     | interface | yes       | yes   |
+| `keySequenceChord`                 | function  | no        | yes   |
+| `KeySequenceCommandContext`        | interface | yes       | yes   |
+| `KeySequenceCommandDefinition`     | interface | yes       | yes   |
+| `KeySequenceCommandInspection`     | interface | yes       | yes   |
+| `KeySequenceCondition`             | type      | yes       | yes   |
+| `KeySequenceConditionContext`      | interface | yes       | yes   |
+| `KeySequenceConflictInspection`    | interface | yes       | yes   |
+| `KeySequenceCoordinator`           | class     | no        | yes   |
+| `KeySequenceCoordinatorInspection` | interface | yes       | yes   |
+| `KeySequenceCoordinatorOptions`    | interface | yes       | yes   |
+| `KeySequenceDispatchResult`        | interface | yes       | yes   |
+| `KeySequenceErrorInspection`       | interface | yes       | yes   |
+| `KeySequenceErrorPhase`            | type      | yes       | yes   |
+| `KeySequenceMapDefinition`         | interface | yes       | yes   |
+| `KeySequenceMapIssue`              | interface | yes       | yes   |
+| `KeySequenceMapIssueCode`          | type      | yes       | yes   |
+| `KeySequencePendingInspection`     | interface | yes       | yes   |
+| `KeySequenceRemapResult`           | interface | yes       | yes   |
+| `KeySequenceStrokeInput`           | type      | yes       | yes   |
+
+### src/keymap_layers.ts
+
+_Entrypoints: `.`_
+
+| Symbol                                   | Kind      | Type Only | JSDoc |
+| ---------------------------------------- | --------- | --------- | ----- |
+| `KeymapLayerDefinition`                  | interface | yes       | yes   |
+| `KeymapLayerInspection`                  | interface | yes       | yes   |
+| `KeymapLayerKind`                        | type      | yes       | yes   |
+| `LayeredKeyBinding`                      | interface | yes       | yes   |
+| `LayeredKeyBindingInspection`            | interface | yes       | yes   |
+| `LayeredKeymapCondition`                 | type      | yes       | yes   |
+| `LayeredKeymapConditionContext`          | interface | yes       | yes   |
+| `LayeredKeymapConflictBindingInspection` | interface | yes       | yes   |
+| `LayeredKeymapConflictInspection`        | interface | yes       | yes   |
+| `LayeredKeymapDispatchContext`           | interface | yes       | yes   |
+| `LayeredKeymapDispatchResult`            | interface | yes       | yes   |
+| `LayeredKeymapErrorInspection`           | interface | yes       | yes   |
+| `LayeredKeymapErrorPhase`                | type      | yes       | yes   |
+| `LayeredKeymapHandler`                   | type      | yes       | yes   |
+| `LayeredKeymapInactiveReason`            | type      | yes       | yes   |
+| `LayeredKeymapInspection`                | interface | yes       | yes   |
+| `LayeredKeymapKeyEvent`                  | type      | yes       | yes   |
+| `LayeredKeymapRegistry`                  | class     | no        | yes   |
+| `LayeredKeymapRegistryOptions`           | interface | yes       | yes   |
+| `LayeredKeymapTarget`                    | interface | yes       | yes   |
 
 ### src/keymap.ts
 
@@ -3066,27 +3629,29 @@ _No direct exported symbols._
 
 _Entrypoints: `.`, `./web`_
 
-| Symbol                     | Kind      | Type Only | JSDoc |
-| -------------------------- | --------- | --------- | ----- |
-| `clampRectToBounds`        | function  | no        | yes   |
-| `hitTestOverlaySurfaces`   | function  | no        | yes   |
-| `OverlayHit`               | interface | yes       | yes   |
-| `OverlayKind`              | type      | yes       | yes   |
-| `OverlayLayer`             | type      | yes       | yes   |
-| `overlayLayerZIndex`       | function  | no        | yes   |
-| `OverlayPoint`             | interface | yes       | yes   |
-| `OverlayPointerResult`     | interface | yes       | yes   |
-| `OverlaySize`              | interface | yes       | yes   |
-| `OverlayStackController`   | class     | no        | yes   |
-| `OverlayStackInspection`   | interface | yes       | yes   |
-| `OverlayStackOptions`      | interface | yes       | yes   |
-| `OverlaySurface`           | interface | yes       | yes   |
-| `OverlaySurfaceInspection` | interface | yes       | yes   |
-| `placePopover`             | function  | no        | yes   |
-| `pointInRect`              | function  | no        | yes   |
-| `PopoverPlacement`         | type      | yes       | yes   |
-| `PopoverPlacementOptions`  | interface | yes       | yes   |
-| `sortOverlaySurfaces`      | function  | no        | yes   |
+| Symbol                                  | Kind      | Type Only | JSDoc |
+| --------------------------------------- | --------- | --------- | ----- |
+| `clampRectToBounds`                     | function  | no        | yes   |
+| `hitTestOverlaySurfaces`                | function  | no        | yes   |
+| `OverlayActiveIdSynchronizationOptions` | interface | yes       | yes   |
+| `OverlayHit`                            | interface | yes       | yes   |
+| `OverlayKind`                           | type      | yes       | yes   |
+| `OverlayLayer`                          | type      | yes       | yes   |
+| `overlayLayerZIndex`                    | function  | no        | yes   |
+| `OverlayPoint`                          | interface | yes       | yes   |
+| `OverlayPointerResult`                  | interface | yes       | yes   |
+| `OverlaySize`                           | interface | yes       | yes   |
+| `OverlayStackController`                | class     | no        | yes   |
+| `OverlayStackInspection`                | interface | yes       | yes   |
+| `OverlayStackMutationOptions`           | interface | yes       | yes   |
+| `OverlayStackOptions`                   | interface | yes       | yes   |
+| `OverlaySurface`                        | interface | yes       | yes   |
+| `OverlaySurfaceInspection`              | interface | yes       | yes   |
+| `placePopover`                          | function  | no        | yes   |
+| `pointInRect`                           | function  | no        | yes   |
+| `PopoverPlacement`                      | type      | yes       | yes   |
+| `PopoverPlacementOptions`               | interface | yes       | yes   |
+| `sortOverlaySurfaces`                   | function  | no        | yes   |
 
 ### src/layout/recipe.ts
 
@@ -3164,6 +3729,37 @@ _Entrypoints: `.`, `./web`_
 | `SimpleLayoutSolver`        | class     | no        | yes   |
 | `SimpleLayoutSolverOptions` | interface | yes       | yes   |
 
+### src/layout/solvers/taffy.ts
+
+_Entrypoints: `./layout/taffy`_
+
+| Symbol                              | Kind      | Type Only | JSDoc |
+| ----------------------------------- | --------- | --------- | ----- |
+| `inspectTaffyBackendModule`         | function  | no        | yes   |
+| `loadTaffyLayoutSolver`             | function  | no        | yes   |
+| `TAFFY_BACKEND_PROTOCOL`            | const     | no        | yes   |
+| `TAFFY_BACKEND_PROTOCOL_VERSION`    | const     | no        | yes   |
+| `TAFFY_SUPPORTED_VERSION_SERIES`    | const     | no        | yes   |
+| `TaffyAdapterError`                 | class     | no        | yes   |
+| `TaffyAdapterErrorCode`             | type      | yes       | yes   |
+| `TaffyAvailableSpace`               | type      | yes       | yes   |
+| `TaffyBackend`                      | interface | yes       | yes   |
+| `TaffyBackendLayoutNode`            | interface | yes       | yes   |
+| `TaffyBackendManifest`              | interface | yes       | yes   |
+| `TaffyBackendModule`                | interface | yes       | yes   |
+| `TaffyBackendSolveRequest`          | interface | yes       | yes   |
+| `TaffyBackendSolveResult`           | interface | yes       | yes   |
+| `taffyLayoutSolver`                 | function  | no        | yes   |
+| `TaffyLayoutSolver`                 | class     | no        | yes   |
+| `TaffyLayoutSolverInspection`       | interface | yes       | yes   |
+| `TaffyLayoutSolverLoader`           | class     | no        | yes   |
+| `TaffyLayoutSolverLoaderInspection` | interface | yes       | yes   |
+| `TaffyLayoutSolverLoaderOptions`    | interface | yes       | yes   |
+| `TaffyLayoutSolverOptions`          | interface | yes       | yes   |
+| `TaffyMeasureInput`                 | interface | yes       | yes   |
+| `TaffyMeasureNode`                  | type      | yes       | yes   |
+| `TaffyMeasureOutput`                | interface | yes       | yes   |
+
 ### src/layout/solvers/yoga.ts
 
 _Entrypoints: `./layout/yoga`_
@@ -3209,7 +3805,9 @@ _Entrypoints: `.`, `./web`_
 | `ComputedLayoutStyle`        | interface | yes       | yes   |
 | `defaultComputedLayoutStyle` | function  | no        | yes   |
 | `frLength`                   | function  | no        | yes   |
+| `LayoutAlignContent`         | type      | yes       | yes   |
 | `LayoutAlignItems`           | type      | yes       | yes   |
+| `LayoutBoxSizing`            | type      | yes       | yes   |
 | `LayoutDisplay`              | type      | yes       | yes   |
 | `LayoutFlexDirection`        | type      | yes       | yes   |
 | `LayoutFlexWrap`             | type      | yes       | yes   |
@@ -3232,9 +3830,19 @@ _Entrypoints: `.`, `./web`_
 | `resolveLayoutLength`        | function  | no        | yes   |
 | `ZERO_BOX_EDGES`             | const     | no        | yes   |
 
+### src/layout/taffy.ts
+
+_Entrypoints: `./layout/taffy`_
+
+| Re-export Target              | Kind | Names |
+| ----------------------------- | ---- | ----- |
+| `src/layout/solvers/taffy.ts` | star | -     |
+
+_No direct exported symbols._
+
 ### src/layout/tiled_workspace.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `.`, `./app`, `./web`_
 
 | Symbol                                       | Kind      | Type Only | JSDoc |
 | -------------------------------------------- | --------- | --------- | ----- |
@@ -3388,16 +3996,19 @@ _Entrypoints: `.`, `./web`_
 
 _Entrypoints: `.`, `./web`_
 
-| Re-export Target              | Kind | Names |
-| ----------------------------- | ---- | ----- |
-| `src/markup/cascade.ts`       | star | -     |
-| `src/markup/css.ts`           | star | -     |
-| `src/markup/demo_fixtures.ts` | star | -     |
-| `src/markup/html.ts`          | star | -     |
-| `src/markup/hydrate.ts`       | star | -     |
-| `src/markup/layout_worker.ts` | star | -     |
-| `src/markup/support.ts`       | star | -     |
-| `src/markup/widgets.ts`       | star | -     |
+| Re-export Target                    | Kind | Names |
+| ----------------------------------- | ---- | ----- |
+| `src/markup/cascade.ts`             | star | -     |
+| `src/markup/css.ts`                 | star | -     |
+| `src/markup/demo_fixtures.ts`       | star | -     |
+| `src/markup/html.ts`                | star | -     |
+| `src/markup/hydrate.ts`             | star | -     |
+| `src/markup/layout_worker.ts`       | star | -     |
+| `src/markup/support.ts`             | star | -     |
+| `src/markup/widgets.ts`             | star | -     |
+| `src/markup/window_history.ts`      | star | -     |
+| `src/markup/window_interactions.ts` | star | -     |
+| `src/markup/windows.ts`             | star | -     |
 
 _No direct exported symbols._
 
@@ -3432,6 +4043,85 @@ _Entrypoints: `.`, `./web`_
 | `MarkupWidgetHydrationRegistry`     | class     | no        | yes   |
 | `MarkupWidgetKind`                  | type      | yes       | yes   |
 
+### src/markup/window_history.ts
+
+_Entrypoints: `.`, `./web`_
+
+| Symbol                                   | Kind      | Type Only | JSDoc |
+| ---------------------------------------- | --------- | --------- | ----- |
+| `createMarkupWindowHistoryAdapter`       | function  | no        | yes   |
+| `MarkupWindowHistoryAction`              | type      | yes       | yes   |
+| `MarkupWindowHistoryAdapter`             | class     | no        | yes   |
+| `MarkupWindowHistoryAdapterOptions`      | interface | yes       | yes   |
+| `MarkupWindowHistoryGesture`             | interface | yes       | yes   |
+| `MarkupWindowHistoryGestureInspection`   | interface | yes       | yes   |
+| `MarkupWindowHistoryGestureState`        | type      | yes       | yes   |
+| `MarkupWindowHistoryInspection`          | interface | yes       | yes   |
+| `MarkupWindowHistoryOperationInspection` | interface | yes       | yes   |
+| `MarkupWindowHistoryRestoreError`        | class     | no        | yes   |
+| `MarkupWindowHistoryRestoreFailure`      | type      | yes       | yes   |
+| `MarkupWindowSnapshotRestorer`           | type      | yes       | yes   |
+
+### src/markup/window_interactions.ts
+
+_Entrypoints: `.`, `./web`_
+
+| Symbol                                     | Kind      | Type Only | JSDoc |
+| ------------------------------------------ | --------- | --------- | ----- |
+| `createMarkupWindowInteractionController`  | function  | no        | yes   |
+| `hitTestMarkupFloatingWindows`             | function  | no        | yes   |
+| `MarkupWindowActiveInteractionInspection`  | interface | yes       | yes   |
+| `MarkupWindowCellPoint`                    | interface | yes       | yes   |
+| `MarkupWindowHitInspection`                | interface | yes       | yes   |
+| `MarkupWindowHitRegion`                    | type      | yes       | yes   |
+| `MarkupWindowHitTestOptions`               | interface | yes       | yes   |
+| `MarkupWindowInteractionController`        | class     | no        | yes   |
+| `MarkupWindowInteractionControllerOptions` | interface | yes       | yes   |
+| `MarkupWindowInteractionInspection`        | interface | yes       | yes   |
+| `MarkupWindowInteractionMode`              | type      | yes       | yes   |
+| `MarkupWindowInteractionResult`            | interface | yes       | yes   |
+| `MarkupWindowInteractionStatus`            | type      | yes       | yes   |
+
+### src/markup/windows.ts
+
+_Entrypoints: `.`, `./web`_
+
+| Symbol                                | Kind      | Type Only | JSDoc |
+| ------------------------------------- | --------- | --------- | ----- |
+| `createMarkupWindowController`        | function  | no        | yes   |
+| `MARKUP_WINDOW_SNAPSHOT_V1_VERSION`   | const     | no        | yes   |
+| `MARKUP_WINDOW_SNAPSHOT_VERSION`      | const     | no        | yes   |
+| `MarkupFloatingWindowProjection`      | interface | yes       | yes   |
+| `MarkupModalInspection`               | interface | yes       | yes   |
+| `MarkupModalSnapshot`                 | interface | yes       | yes   |
+| `MarkupWindowAction`                  | type      | yes       | yes   |
+| `MarkupWindowActionResult`            | interface | yes       | yes   |
+| `MarkupWindowActionStatus`            | type      | yes       | yes   |
+| `MarkupWindowCompactMode`             | type      | yes       | yes   |
+| `MarkupWindowController`              | class     | no        | yes   |
+| `MarkupWindowControllerInspection`    | interface | yes       | yes   |
+| `MarkupWindowControllerOptions`       | interface | yes       | yes   |
+| `MarkupWindowCorner`                  | type      | yes       | yes   |
+| `MarkupWindowDiagnostic`              | interface | yes       | yes   |
+| `MarkupWindowDiagnosticCode`          | type      | yes       | yes   |
+| `MarkupWindowInspection`              | interface | yes       | yes   |
+| `MarkupWindowLayoutLookup`            | interface | yes       | yes   |
+| `MarkupWindowMoveDelta`               | interface | yes       | yes   |
+| `MarkupWindowPlacement`               | type      | yes       | yes   |
+| `MarkupWindowPlacementSnapshot`       | interface | yes       | yes   |
+| `MarkupWindowProjection`              | interface | yes       | yes   |
+| `MarkupWindowResizeEdge`              | type      | yes       | yes   |
+| `MarkupWindowSnapshot`                | interface | yes       | yes   |
+| `MarkupWindowSnapshotV1`              | interface | yes       | yes   |
+| `MarkupWindowSnapTarget`              | type      | yes       | yes   |
+| `MarkupWindowState`                   | type      | yes       | yes   |
+| `normalizeMarkupWindowSnapshot`       | function  | no        | yes   |
+| `NormalizeMarkupWindowSnapshotResult` | type      | yes       | yes   |
+| `ProjectMarkupWindowsOptions`         | interface | yes       | yes   |
+| `ReconcileMarkupWindowsOptions`       | interface | yes       | yes   |
+| `RecoverMarkupWindowBoundsOptions`    | interface | yes       | yes   |
+| `SetMarkupWindowPlacementOptions`     | interface | yes       | yes   |
+
 ### src/perf/benchmark.ts
 
 _Entrypoints: `.`, `./web`_
@@ -3459,6 +4149,36 @@ _Entrypoints: `.`, `./web`_
 | `summarizeBenchmarkResults`       | function  | no        | yes   |
 | `summarizeBestBenchmarkSummaries` | function  | no        | yes   |
 
+### src/permissions.ts
+
+_Entrypoints: `.`_
+
+| Symbol                                                 | Kind      | Type Only | JSDoc |
+| ------------------------------------------------------ | --------- | --------- | ----- |
+| `createRuntimePermissionActivationReport`              | function  | no        | yes   |
+| `createRuntimePermissionActivationReportFromReporters` | function  | no        | yes   |
+| `createRuntimePermissionManifest`                      | function  | no        | yes   |
+| `inspectRuntimePermissionManifest`                     | function  | no        | yes   |
+| `normalizeRuntimePermissionManifest`                   | function  | no        | yes   |
+| `parseRuntimePermissionManifest`                       | function  | no        | yes   |
+| `ResolvedRuntimePermissionManifestLimits`              | interface | yes       | yes   |
+| `resolveRuntimePermissionManifestLimits`               | function  | no        | yes   |
+| `RUNTIME_PERMISSION_KINDS`                             | const     | no        | yes   |
+| `RUNTIME_PERMISSION_MANIFEST_SCHEMA_VERSION`           | const     | no        | yes   |
+| `RuntimePermissionActivationReport`                    | interface | yes       | yes   |
+| `RuntimePermissionKind`                                | type      | yes       | yes   |
+| `RuntimePermissionManifest`                            | interface | yes       | yes   |
+| `RuntimePermissionManifestError`                       | class     | no        | yes   |
+| `RuntimePermissionManifestErrorCode`                   | type      | yes       | yes   |
+| `RuntimePermissionManifestInput`                       | interface | yes       | yes   |
+| `RuntimePermissionManifestLimits`                      | interface | yes       | yes   |
+| `RuntimePermissionOperation`                           | type      | yes       | yes   |
+| `RuntimePermissionOperations`                          | interface | yes       | yes   |
+| `RuntimePermissionReportEntry`                         | type      | yes       | yes   |
+| `RuntimePermissionReporter`                            | interface | yes       | yes   |
+| `RuntimePermissionRequirement`                         | type      | yes       | yes   |
+| `serializeRuntimePermissionManifest`                   | function  | no        | yes   |
+
 ### src/platform/types.ts
 
 _Entrypoints: `./web`_
@@ -3475,6 +4195,156 @@ _Entrypoints: `./web`_
 | `PlatformInputEmitter`    | type      | yes       | yes   |
 | `PlatformInputEvents`     | interface | yes       | yes   |
 | `TuiPlatform`             | interface | yes       | yes   |
+
+### src/pointer_input.ts
+
+_Entrypoints: `.`, `./web`_
+
+| Symbol                               | Kind      | Type Only | JSDoc |
+| ------------------------------------ | --------- | --------- | ----- |
+| `adaptMousePointer`                  | function  | no        | yes   |
+| `adaptPenPointer`                    | function  | no        | yes   |
+| `adaptPointerEnvelope`               | function  | no        | yes   |
+| `adaptTerminalMousePointer`          | function  | no        | yes   |
+| `adaptTouchPointer`                  | function  | no        | yes   |
+| `createPointerAdapterFrame`          | function  | no        | yes   |
+| `dispatchPointerAdapterFrame`        | function  | no        | yes   |
+| `normalizePointerInputEvent`         | function  | no        | yes   |
+| `POINTER_INPUT_SCHEMA_VERSION`       | const     | no        | yes   |
+| `PointerAdapterFrame`                | interface | yes       | yes   |
+| `PointerAdapterInput`                | interface | yes       | yes   |
+| `PointerCaptureChange`               | interface | yes       | yes   |
+| `PointerCaptureChangeKind`           | type      | yes       | yes   |
+| `PointerCaptureController`           | class     | no        | yes   |
+| `PointerCaptureControllerOptions`    | interface | yes       | yes   |
+| `PointerCaptureDiagnostic`           | interface | yes       | yes   |
+| `PointerCaptureErrorSnapshot`        | interface | yes       | yes   |
+| `PointerCaptureInspection`           | interface | yes       | yes   |
+| `PointerCaptureInspectionEntry`      | interface | yes       | yes   |
+| `PointerCaptureListener`             | type      | yes       | yes   |
+| `PointerCaptureOwner`                | interface | yes       | yes   |
+| `PointerCaptureOwnerHandle`          | interface | yes       | yes   |
+| `PointerCaptureOwnerInspection`      | interface | yes       | yes   |
+| `PointerContactGeometry`             | interface | yes       | yes   |
+| `PointerCoordinate`                  | interface | yes       | yes   |
+| `PointerCoordinates`                 | interface | yes       | yes   |
+| `PointerCoordinateSpace`             | type      | yes       | yes   |
+| `PointerInputDevice`                 | type      | yes       | yes   |
+| `PointerInputError`                  | class     | no        | yes   |
+| `PointerInputErrorCode`              | type      | yes       | yes   |
+| `PointerInputEvent`                  | interface | yes       | yes   |
+| `PointerInputKind`                   | type      | yes       | yes   |
+| `PointerRouteContext`                | interface | yes       | yes   |
+| `PointerRouteResult`                 | interface | yes       | yes   |
+| `PointerSemanticController`          | interface | yes       | yes   |
+| `pointerSemanticTransition`          | function  | no        | yes   |
+| `PointerSemanticTransition`          | type      | yes       | yes   |
+| `PointerWheelDelta`                  | interface | yes       | yes   |
+| `TERMINAL_MOUSE_POINTER_ID`          | const     | no        | yes   |
+| `TerminalMousePointerAdapterOptions` | interface | yes       | yes   |
+
+### src/remote/handshake.ts
+
+_Entrypoints: `./web`, `./remote`_
+
+| Symbol                                | Kind      | Type Only | JSDoc |
+| ------------------------------------- | --------- | --------- | ----- |
+| `createRemoteHandshakeRejection`      | function  | no        | yes   |
+| `decodeRemoteHandshakeMessage`        | function  | no        | yes   |
+| `encodeRemoteHandshakeMessage`        | function  | no        | yes   |
+| `isRemoteHandshakeMessageType`        | function  | no        | yes   |
+| `normalizeRemoteCapabilityManifest`   | function  | no        | yes   |
+| `normalizeRemoteHandshakeMessage`     | function  | no        | yes   |
+| `REMOTE_HANDSHAKE_SCHEMA_VERSION`     | const     | no        | yes   |
+| `REMOTE_PROTOCOL_VERSION`             | const     | no        | yes   |
+| `RemoteCapabilityHandshake`           | class     | no        | yes   |
+| `RemoteCapabilityHandshakeInspection` | interface | yes       | yes   |
+| `RemoteCapabilityHandshakeOptions`    | interface | yes       | yes   |
+| `RemoteCapabilityManifest`            | interface | yes       | yes   |
+| `RemoteHandshakeAck`                  | interface | yes       | yes   |
+| `RemoteHandshakeError`                | class     | no        | yes   |
+| `RemoteHandshakeErrorCode`            | type      | yes       | yes   |
+| `RemoteHandshakeHello`                | interface | yes       | yes   |
+| `RemoteHandshakeLimits`               | interface | yes       | yes   |
+| `RemoteHandshakeMessage`              | type      | yes       | yes   |
+| `RemoteHandshakeNegotiated`           | interface | yes       | yes   |
+| `RemoteHandshakeReject`               | interface | yes       | yes   |
+| `RemoteHandshakeRejection`            | interface | yes       | yes   |
+| `RemoteHandshakeRejectionCode`        | type      | yes       | yes   |
+| `RemoteHandshakeRole`                 | type      | yes       | yes   |
+| `RemoteHandshakeState`                | type      | yes       | yes   |
+| `RemoteHandshakeTransition`           | interface | yes       | yes   |
+| `RemoteProtocolVersion`               | interface | yes       | yes   |
+| `ResolvedRemoteHandshakeLimits`       | interface | yes       | yes   |
+| `resolveRemoteHandshakeLimits`        | function  | no        | yes   |
+
+### src/runtime/async_channel.ts
+
+_Entrypoints: `.`, `./runtime`_
+
+| Symbol                              | Kind      | Type Only | JSDoc |
+| ----------------------------------- | --------- | --------- | ----- |
+| `AsyncChannel`                      | class     | no        | yes   |
+| `AsyncChannelAbortedError`          | class     | no        | yes   |
+| `AsyncChannelClosedError`           | class     | no        | yes   |
+| `AsyncChannelDisposedError`         | class     | no        | yes   |
+| `AsyncChannelDroppedInspection`     | interface | yes       | yes   |
+| `AsyncChannelEndResult`             | interface | yes       | yes   |
+| `AsyncChannelErrorInspection`       | interface | yes       | yes   |
+| `AsyncChannelInspection`            | interface | yes       | yes   |
+| `AsyncChannelIterator`              | interface | yes       | yes   |
+| `AsyncChannelIteratorOptions`       | interface | yes       | yes   |
+| `AsyncChannelOperationAbortedError` | class     | no        | yes   |
+| `AsyncChannelOperationOptions`      | interface | yes       | yes   |
+| `AsyncChannelOptions`               | interface | yes       | yes   |
+| `AsyncChannelOverflowError`         | class     | no        | yes   |
+| `AsyncChannelOverflowPolicy`        | type      | yes       | yes   |
+| `AsyncChannelReceiveResult`         | type      | yes       | yes   |
+| `AsyncChannelSendResult`            | interface | yes       | yes   |
+| `AsyncChannelSendStatus`            | type      | yes       | yes   |
+| `AsyncChannelSequenceOverflowError` | class     | no        | yes   |
+| `AsyncChannelStatus`                | type      | yes       | yes   |
+| `AsyncChannelValueResult`           | interface | yes       | yes   |
+| `AsyncChannelWaiterLimitError`      | class     | no        | yes   |
+| `createAsyncChannel`                | function  | no        | yes   |
+
+### src/runtime/async_iterable.ts
+
+_Entrypoints: `.`, `./web`, `./runtime`_
+
+| Symbol                                    | Kind      | Type Only | JSDoc |
+| ----------------------------------------- | --------- | --------- | ----- |
+| `AsyncIterableMapper`                     | type      | yes       | yes   |
+| `AsyncIterableOperatorAbortedError`       | class     | no        | yes   |
+| `AsyncIterableOperatorConcurrencyError`   | class     | no        | yes   |
+| `AsyncIterableOperatorConfigurationError` | class     | no        | yes   |
+| `AsyncIterableOperatorDisposedError`      | class     | no        | yes   |
+| `AsyncIterableOperatorErrorInspection`    | interface | yes       | yes   |
+| `AsyncIterableOperatorInspection`         | interface | yes       | yes   |
+| `AsyncIterableOperatorKind`               | type      | yes       | yes   |
+| `AsyncIterableOperatorOptions`            | interface | yes       | yes   |
+| `AsyncIterableOperatorPendingNextError`   | class     | no        | yes   |
+| `AsyncIterableOperatorStatus`             | type      | yes       | yes   |
+| `AsyncIterablePredicate`                  | type      | yes       | yes   |
+| `AsyncIterableRetryContext`               | interface | yes       | yes   |
+| `AsyncIterableRetryFactory`               | type      | yes       | yes   |
+| `bufferAsyncIterable`                     | function  | no        | yes   |
+| `BufferAsyncIterableOptions`              | interface | yes       | yes   |
+| `debounceAsyncIterable`                   | function  | no        | yes   |
+| `DebounceAsyncIterableOptions`            | interface | yes       | yes   |
+| `DisposableAsyncIterable`                 | interface | yes       | yes   |
+| `DisposableAsyncIterator`                 | interface | yes       | yes   |
+| `filterAsyncIterable`                     | function  | no        | yes   |
+| `mapAsyncIterable`                        | function  | no        | yes   |
+| `MergeAsyncIterableOptions`               | interface | yes       | yes   |
+| `mergeAsyncIterables`                     | function  | no        | yes   |
+| `retryAsyncIterable`                      | function  | no        | yes   |
+| `RetryAsyncIterableOptions`               | interface | yes       | yes   |
+| `switchLatestAsyncIterable`               | function  | no        | yes   |
+| `throttleAsyncIterable`                   | function  | no        | yes   |
+| `ThrottleAsyncIterableOptions`            | interface | yes       | yes   |
+| `windowAsyncIterable`                     | function  | no        | yes   |
+| `WindowAsyncIterableOptions`              | interface | yes       | yes   |
 
 ### src/runtime/capabilities.ts
 
@@ -3498,6 +4368,36 @@ _Entrypoints: `.`, `./web`, `./runtime`_
 | `RuntimeStorageStrategy`       | type      | yes       | yes   |
 | `RuntimeWorkerStrategy`        | type      | yes       | yes   |
 | `summarizeRuntimeCapabilities` | function  | no        | yes   |
+
+### src/runtime/clock.ts
+
+_Entrypoints: `.`, `./web`, `./runtime`_
+
+| Symbol                          | Kind      | Type Only | JSDoc |
+| ------------------------------- | --------- | --------- | ----- |
+| `createHostTimerScheduler`      | function  | no        | yes   |
+| `createVirtualTimerScheduler`   | function  | no        | yes   |
+| `HostTimerScheduler`            | class     | no        | yes   |
+| `HostTimerSchedulerOptions`     | interface | yes       | yes   |
+| `MAX_MONOTONIC_TIME`            | const     | no        | yes   |
+| `MonotonicClock`                | interface | yes       | yes   |
+| `MonotonicClockRegressionError` | class     | no        | yes   |
+| `TimerAdvanceLimitError`        | class     | no        | yes   |
+| `TimerCallback`                 | type      | yes       | yes   |
+| `TimerHandle`                   | interface | yes       | yes   |
+| `TimerInspection`               | interface | yes       | yes   |
+| `TimerScheduler`                | interface | yes       | yes   |
+| `TimerSchedulerDisposedError`   | class     | no        | yes   |
+| `TimerSchedulerErrorContext`    | interface | yes       | yes   |
+| `TimerSchedulerErrorPhase`      | type      | yes       | yes   |
+| `TimerSchedulerInspection`      | interface | yes       | yes   |
+| `TimerSchedulerOptions`         | interface | yes       | yes   |
+| `TimerSchedulerReentrancyError` | class     | no        | yes   |
+| `TimerStatus`                   | type      | yes       | yes   |
+| `VirtualTimerAdvanceOptions`    | interface | yes       | yes   |
+| `VirtualTimerAdvanceResult`     | interface | yes       | yes   |
+| `VirtualTimerScheduler`         | class     | no        | yes   |
+| `VirtualTimerSchedulerOptions`  | interface | yes       | yes   |
 
 ### src/runtime/data_pipeline_bindings.ts
 
@@ -3557,6 +4457,25 @@ _Entrypoints: `.`, `./web`, `./runtime`_
 | `NormalizedDataQueryParams`  | interface | yes       | yes   |
 | `pageDataQueryRows`          | function  | no        | yes   |
 | `queryLocalData`             | function  | no        | yes   |
+
+### src/runtime/deadline.ts
+
+_Entrypoints: `.`, `./runtime`_
+
+| Symbol                              | Kind      | Type Only | JSDoc |
+| ----------------------------------- | --------- | --------- | ----- |
+| `createDeadlineBudget`              | function  | no        | yes   |
+| `DeadlineBudget`                    | class     | no        | yes   |
+| `DeadlineBudgetCancellationError`   | class     | no        | yes   |
+| `DeadlineBudgetCancellationSource`  | type      | yes       | yes   |
+| `DeadlineBudgetChildOptions`        | interface | yes       | yes   |
+| `DeadlineBudgetInspection`          | interface | yes       | yes   |
+| `DeadlineBudgetOptions`             | interface | yes       | yes   |
+| `DeadlineBudgetReasonInspection`    | interface | yes       | yes   |
+| `DeadlineBudgetStatus`              | type      | yes       | yes   |
+| `DeadlineExceededError`             | class     | no        | yes   |
+| `isDeadlineBudgetCancellationError` | function  | no        | yes   |
+| `isDeadlineExceededError`           | function  | no        | yes   |
 
 ### src/runtime/diagnostics.ts
 
@@ -3646,10 +4565,14 @@ _Entrypoints: `.`, `./runtime`_
 
 | Re-export Target                           | Kind | Names |
 | ------------------------------------------ | ---- | ----- |
+| `src/runtime/async_channel.ts`             | star | -     |
+| `src/runtime/async_iterable.ts`            | star | -     |
 | `src/runtime/capabilities.ts`              | star | -     |
+| `src/runtime/clock.ts`                     | star | -     |
 | `src/runtime/data_pipeline.ts`             | star | -     |
 | `src/runtime/data_pipeline_bindings.ts`    | star | -     |
 | `src/runtime/data_query.ts`                | star | -     |
+| `src/runtime/deadline.ts`                  | star | -     |
 | `src/runtime/diagnostics.ts`               | star | -     |
 | `src/runtime/graphics_surface.ts`          | star | -     |
 | `src/runtime/kitty_graphics.ts`            | star | -     |
@@ -3657,6 +4580,8 @@ _Entrypoints: `.`, `./runtime`_
 | `src/runtime/renderer_backends.ts`         | star | -     |
 | `src/runtime/resource.ts`                  | star | -     |
 | `src/runtime/resource_bindings.ts`         | star | -     |
+| `src/runtime/resource_cache.ts`            | star | -     |
+| `src/runtime/resource_loads.ts`            | star | -     |
 | `src/runtime/render_loop.ts`               | star | -     |
 | `src/runtime/scheduler.ts`                 | star | -     |
 | `src/runtime/storage.ts`                   | star | -     |
@@ -3673,6 +4598,8 @@ _Entrypoints: `.`, `./runtime`_
 | `src/runtime/terminal_shell.ts`            | star | -     |
 | `src/runtime/terminal_shell_workspace.ts`  | star | -     |
 | `src/runtime/terminal_session.ts`          | star | -     |
+| `src/runtime/terminal_services.ts`         | star | -     |
+| `src/runtime/task_group.ts`                | star | -     |
 | `src/runtime/terminal_workspace.ts`        | star | -     |
 | `src/runtime/worker_pool.ts`               | star | -     |
 
@@ -3807,6 +4734,87 @@ _Entrypoints: `.`, `./web`, `./runtime`_
 | `ResourceParamsBindingInspection` | interface | yes       | yes   |
 | `ResourceParamsBindingOptions`    | interface | yes       | yes   |
 
+### src/runtime/resource_cache_policy.ts
+
+_Entrypoints: `.`, `./web`, `./runtime`_
+
+| Symbol                               | Kind      | Type Only | JSDoc |
+| ------------------------------------ | --------- | --------- | ----- |
+| `ResourceCacheEntryPolicyInspection` | interface | yes       | yes   |
+| `ResourceCachePolicyInspection`      | interface | yes       | yes   |
+| `ResourceCacheRefreshTrigger`        | type      | yes       | yes   |
+| `ResourceCacheTemporalPolicyOptions` | interface | yes       | yes   |
+
+### src/runtime/resource_cache.ts
+
+_Entrypoints: `.`, `./web`, `./runtime`_
+
+| Re-export Target                       | Kind  | Names                                                                                                                                                          |
+| -------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/runtime/resource_cache_policy.ts` | named | `type ResourceCacheEntryPolicyInspection`, `type ResourceCachePolicyInspection`, `type ResourceCacheRefreshTrigger`, `type ResourceCacheTemporalPolicyOptions` |
+
+| Symbol                                | Kind      | Type Only | JSDoc |
+| ------------------------------------- | --------- | --------- | ----- |
+| `canonicalResourceCacheKey`           | function  | no        | yes   |
+| `createResourceCacheCoordinator`      | function  | no        | yes   |
+| `ResolvedResourceCacheKeyLimits`      | interface | yes       | yes   |
+| `ResourceCacheCapacityError`          | class     | no        | yes   |
+| `ResourceCacheCoordinator`            | class     | no        | yes   |
+| `ResourceCacheCoordinatorDiagnostic`  | interface | yes       | yes   |
+| `ResourceCacheCoordinatorOptions`     | interface | yes       | yes   |
+| `ResourceCacheDiagnosticError`        | class     | no        | yes   |
+| `ResourceCacheDisposedError`          | class     | no        | yes   |
+| `ResourceCacheEntryDiagnostic`        | interface | yes       | yes   |
+| `ResourceCacheEntryEvent`             | interface | yes       | yes   |
+| `ResourceCacheEntryInspection`        | interface | yes       | yes   |
+| `ResourceCacheEntryStatus`            | type      | yes       | yes   |
+| `ResourceCacheEventDrainLimitError`   | class     | no        | yes   |
+| `ResourceCacheEventType`              | type      | yes       | yes   |
+| `ResourceCacheHandle`                 | class     | no        | yes   |
+| `ResourceCacheHandleReleasedError`    | class     | no        | yes   |
+| `ResourceCacheInspection`             | interface | yes       | yes   |
+| `ResourceCacheInspectionOptions`      | interface | yes       | yes   |
+| `ResourceCacheKeyError`               | class     | no        | yes   |
+| `ResourceCacheKeyErrorCode`           | type      | yes       | yes   |
+| `ResourceCacheKeyLimits`              | interface | yes       | yes   |
+| `ResourceCacheLimitError`             | class     | no        | yes   |
+| `ResourceCacheListener`               | type      | yes       | yes   |
+| `ResourceCacheListenerLimitError`     | class     | no        | yes   |
+| `ResourceCacheRevisionExhaustedError` | class     | no        | yes   |
+| `ResourceCacheSubscriptionOptions`    | interface | yes       | yes   |
+| `ResourceCacheValueKind`              | type      | yes       | yes   |
+
+### src/runtime/resource_loads.ts
+
+_Entrypoints: `.`, `./web`, `./runtime`_
+
+| Symbol                                 | Kind      | Type Only | JSDoc |
+| -------------------------------------- | --------- | --------- | ----- |
+| `createResourceLoadCoordinator`        | function  | no        | yes   |
+| `ResourceLoadCancelledError`           | class     | no        | yes   |
+| `ResourceLoadCapacityError`            | class     | no        | yes   |
+| `ResourceLoadConfigurationError`       | class     | no        | yes   |
+| `ResourceLoadCoordinator`              | class     | no        | yes   |
+| `ResourceLoadCoordinatorDisposedError` | class     | no        | yes   |
+| `ResourceLoadCoordinatorInspection`    | interface | yes       | yes   |
+| `ResourceLoadCoordinatorOptions`       | interface | yes       | yes   |
+| `ResourceLoadDiagnostic`               | interface | yes       | yes   |
+| `ResourceLoadDiagnosticCode`           | type      | yes       | yes   |
+| `ResourceLoader`                       | type      | yes       | yes   |
+| `ResourceLoaderContext`                | interface | yes       | yes   |
+| `ResourceLoadGenerationExhaustedError` | class     | no        | yes   |
+| `ResourceLoadGenerationInspection`     | interface | yes       | yes   |
+| `ResourceLoadHandle`                   | class     | no        | yes   |
+| `ResourceLoadHandleInspection`         | interface | yes       | yes   |
+| `ResourceLoadHandleLimitError`         | class     | no        | yes   |
+| `ResourceLoadHandleStatus`             | type      | yes       | yes   |
+| `ResourceLoadOptions`                  | interface | yes       | yes   |
+| `ResourceLoadPolicy`                   | type      | yes       | yes   |
+| `ResourceLoadPublicationError`         | class     | no        | yes   |
+| `ResourceLoadRequestError`             | class     | no        | yes   |
+| `ResourceLoadSnapshotLimits`           | interface | yes       | yes   |
+| `ResourceLoadSupersededError`          | class     | no        | yes   |
+
 ### src/runtime/resource.ts
 
 _Entrypoints: `.`, `./web`, `./runtime`_
@@ -3864,6 +4872,48 @@ _Entrypoints: `.`, `./web`, `./runtime`_
 | `PersistentSignal`        | class     | no        | yes   |
 | `PersistentSignalOptions` | interface | yes       | yes   |
 | `RuntimeStoreOptions`     | interface | yes       | yes   |
+
+### src/runtime/task_group.ts
+
+_Entrypoints: `.`, `./runtime`_
+
+| Symbol                         | Kind      | Type Only | JSDoc |
+| ------------------------------ | --------- | --------- | ----- |
+| `createTaskGroup`              | function  | no        | yes   |
+| `ImmutableTaskGroupContext`    | type      | yes       | yes   |
+| `isTaskGroupCancellationError` | function  | no        | yes   |
+| `SupervisedTask`               | interface | yes       | yes   |
+| `SupervisedTaskSettlement`     | interface | yes       | yes   |
+| `TaskCancelledResult`          | interface | yes       | yes   |
+| `TaskExecutionContext`         | interface | yes       | yes   |
+| `TaskFailedResult`             | interface | yes       | yes   |
+| `TaskFulfilledResult`          | interface | yes       | yes   |
+| `TaskGroup`                    | class     | no        | yes   |
+| `TaskGroupAggregateError`      | class     | no        | yes   |
+| `TaskGroupCancellationError`   | class     | no        | yes   |
+| `TaskGroupCancellationSource`  | type      | yes       | yes   |
+| `TaskGroupChildInspection`     | interface | yes       | yes   |
+| `TaskGroupChildOptions`        | interface | yes       | yes   |
+| `TaskGroupClosedError`         | class     | no        | yes   |
+| `TaskGroupContextValue`        | type      | yes       | yes   |
+| `TaskGroupCounts`              | interface | yes       | yes   |
+| `TaskGroupDiagnostic`          | interface | yes       | yes   |
+| `TaskGroupErrorInspection`     | interface | yes       | yes   |
+| `TaskGroupFailure`             | interface | yes       | yes   |
+| `TaskGroupFailureInspection`   | interface | yes       | yes   |
+| `TaskGroupFailurePolicy`       | type      | yes       | yes   |
+| `TaskGroupInspection`          | interface | yes       | yes   |
+| `TaskGroupOptions`             | interface | yes       | yes   |
+| `TaskGroupResult`              | interface | yes       | yes   |
+| `TaskGroupStatus`              | type      | yes       | yes   |
+| `TaskGroupTask`                | type      | yes       | yes   |
+| `TaskHandle`                   | interface | yes       | yes   |
+| `TaskHandleInspection`         | interface | yes       | yes   |
+| `TaskResult`                   | type      | yes       | yes   |
+| `TaskSpawnOptions`             | interface | yes       | yes   |
+| `TaskStatus`                   | type      | yes       | yes   |
+| `TaskSupervisor`               | interface | yes       | yes   |
+| `TaskSupervisorInspection`     | interface | yes       | yes   |
 
 ### src/runtime/telemetry.ts
 
@@ -3987,6 +5037,45 @@ _Entrypoints: `./terminal`_
 | `ParsedTerminalControlSequence` | interface | yes       | yes   |
 | `parseTerminalControlSequence`  | function  | no        | yes   |
 | `parseTerminalParams`           | function  | no        | yes   |
+
+### src/runtime/terminal_services.ts
+
+_Entrypoints: `.`, `./runtime`_
+
+| Symbol                              | Kind      | Type Only | JSDoc |
+| ----------------------------------- | --------- | --------- | ----- |
+| `createTerminalOscRouter`           | function  | no        | yes   |
+| `createTerminalOscService`          | function  | no        | yes   |
+| `createTerminalThemeProbe`          | function  | no        | yes   |
+| `disabledTerminalOscPolicy`         | const     | no        | yes   |
+| `parseTerminalOscColorResponse`     | function  | no        | yes   |
+| `parseTerminalOscMessage`           | function  | no        | yes   |
+| `sanitizeTerminalOscText`           | function  | no        | yes   |
+| `TerminalClipboardSelection`        | type      | yes       | yes   |
+| `terminalClipboardSequence`         | function  | no        | yes   |
+| `terminalColorQuerySequence`        | function  | no        | yes   |
+| `terminalDynamicColorSequence`      | function  | no        | yes   |
+| `terminalNotificationSequence`      | function  | no        | yes   |
+| `TerminalOscActionResult`           | interface | yes       | yes   |
+| `TerminalOscCapability`             | type      | yes       | yes   |
+| `TerminalOscColorResponse`          | interface | yes       | yes   |
+| `TerminalOscHandler`                | type      | yes       | yes   |
+| `TerminalOscMessage`                | interface | yes       | yes   |
+| `TerminalOscPolicy`                 | type      | yes       | yes   |
+| `TerminalOscRouter`                 | class     | no        | yes   |
+| `TerminalOscRouterInspection`       | interface | yes       | yes   |
+| `TerminalOscRouterOptions`          | interface | yes       | yes   |
+| `terminalOscSequence`               | function  | no        | yes   |
+| `TerminalOscService`                | class     | no        | yes   |
+| `TerminalOscServiceInspection`      | interface | yes       | yes   |
+| `TerminalOscServiceOptions`         | interface | yes       | yes   |
+| `TerminalOscTerminator`             | type      | yes       | yes   |
+| `terminalResetDynamicColorSequence` | function  | no        | yes   |
+| `TerminalThemeAppearance`           | type      | yes       | yes   |
+| `TerminalThemeProbe`                | class     | no        | yes   |
+| `TerminalThemeProbeInspection`      | interface | yes       | yes   |
+| `TerminalThemeProbeOptions`         | interface | yes       | yes   |
+| `terminalTitleSequence`             | function  | no        | yes   |
 
 ### src/runtime/terminal_session.ts
 
@@ -4128,6 +5217,35 @@ _Entrypoints: `.`, `./web`, `./runtime`_
 | `WorkerPoolOptions`         | interface | yes       | yes   |
 | `WorkerPoolRunOptions`      | interface | yes       | yes   |
 | `WorkerPoolTerminatedError` | class     | no        | yes   |
+
+### src/secrets.ts
+
+_Entrypoints: `.`_
+
+| Symbol                    | Kind      | Type Only | JSDoc |
+| ------------------------- | --------- | --------- | ----- |
+| `formatRedactedError`     | function  | no        | yes   |
+| `inspectRedactedError`    | function  | no        | yes   |
+| `inspectSecret`           | function  | no        | yes   |
+| `isSecret`                | function  | no        | yes   |
+| `RedactedJsonValue`       | type      | yes       | yes   |
+| `redactForHistory`        | function  | no        | yes   |
+| `redactForLog`            | function  | no        | yes   |
+| `redactForPersistence`    | function  | no        | yes   |
+| `RedactionAction`         | type      | yes       | yes   |
+| `RedactionLimits`         | interface | yes       | yes   |
+| `RedactionPathSegment`    | type      | yes       | yes   |
+| `RedactionRule`           | interface | yes       | yes   |
+| `RedactionSchema`         | interface | yes       | yes   |
+| `redactStructured`        | function  | no        | yes   |
+| `RedactStructuredOptions` | interface | yes       | yes   |
+| `secret`                  | function  | no        | yes   |
+| `Secret`                  | class     | no        | yes   |
+| `SECRET_REDACTED_MARKER`  | const     | no        | yes   |
+| `SecretError`             | class     | no        | yes   |
+| `SecretErrorCode`         | type      | yes       | yes   |
+| `SecretInspection`        | interface | yes       | yes   |
+| `stringifyRedacted`       | function  | no        | yes   |
 
 ### src/selection.ts
 
@@ -4758,6 +5876,119 @@ _Entrypoints: `.`, `./app`, `./remote`_
 | `Stdin`       | type      | yes       | yes   |
 | `Stdout`      | type      | yes       | yes   |
 
+### src/unicode/builtin.ts
+
+_Entrypoints: `.`_
+
+| Symbol                                 | Kind  | Type Only | JSDoc |
+| -------------------------------------- | ----- | --------- | ----- |
+| `BUILTIN_UNICODE_DATA_PACK`            | const | no        | yes   |
+| `BUILTIN_UNICODE_DATA_PACK_INSPECTION` | const | no        | yes   |
+| `DEFAULT_UNICODE_DATA_PACK_REGISTRY`   | const | no        | yes   |
+| `UNICODE_DATA_VERSION`                 | const | no        | yes   |
+
+### src/unicode/data_pack.ts
+
+_Entrypoints: `.`_
+
+| Symbol                              | Kind      | Type Only | JSDoc |
+| ----------------------------------- | --------- | --------- | ----- |
+| `fingerprintUnicodeDataPackContent` | function  | no        | yes   |
+| `hasEmojiProperty`                  | function  | no        | yes   |
+| `inspectUnicodeDataPack`            | function  | no        | yes   |
+| `lookupEastAsianWidthProperty`      | function  | no        | yes   |
+| `lookupEmojiProperties`             | function  | no        | yes   |
+| `lookupGraphemeBreakProperty`       | function  | no        | yes   |
+| `serializeUnicodeDataPack`          | function  | no        | yes   |
+| `UNICODE_DATA_PACK_LIMITS`          | const     | no        | yes   |
+| `UNICODE_DATA_PACK_SCHEMA`          | const     | no        | yes   |
+| `UNICODE_DATA_PACK_SCHEMA_VERSION`  | const     | no        | yes   |
+| `UnicodeBinaryPropertyRanges`       | interface | yes       | yes   |
+| `UnicodeCodePointRange`             | interface | yes       | yes   |
+| `UnicodeDataPack`                   | interface | yes       | yes   |
+| `UnicodeDataPackContent`            | interface | yes       | yes   |
+| `UnicodeDataPackInspection`         | interface | yes       | yes   |
+| `UnicodeDataPackNotFoundError`      | class     | no        | yes   |
+| `UnicodeDataPackRegistry`           | class     | no        | yes   |
+| `UnicodeDataPackRegistryInspection` | interface | yes       | yes   |
+| `UnicodeDataPackRegistryOptions`    | interface | yes       | yes   |
+| `UnicodeDataPackSelector`           | interface | yes       | yes   |
+| `UnicodeDataPackSource`             | interface | yes       | yes   |
+| `UnicodeDataPackTables`             | interface | yes       | yes   |
+| `UnicodeDataPackValidationError`    | class     | no        | yes   |
+| `unicodeDataSha256`                 | function  | no        | yes   |
+| `UnicodeValuedRange`                | interface | yes       | yes   |
+| `validateUnicodeDataPack`           | function  | no        | yes   |
+
+### src/unicode/grapheme.ts
+
+_Entrypoints: `.`_
+
+| Symbol                               | Kind      | Type Only | JSDoc |
+| ------------------------------------ | --------- | --------- | ----- |
+| `coveringGraphemeRange`              | function  | no        | yes   |
+| `DEFAULT_UNICODE_GRAPHEME_SEGMENTER` | const     | no        | yes   |
+| `graphemeBoundaries`                 | function  | no        | yes   |
+| `GraphemeBoundaryBias`               | type      | yes       | yes   |
+| `GraphemeBoundaryRange`              | interface | yes       | yes   |
+| `GraphemeBreakProperty`              | type      | yes       | yes   |
+| `GraphemeCluster`                    | interface | yes       | yes   |
+| `IndicConjunctBreakProperty`         | type      | yes       | yes   |
+| `isGraphemeBoundary`                 | function  | no        | yes   |
+| `iterateGraphemes`                   | function  | no        | yes   |
+| `lookupIndicConjunctBreakProperty`   | function  | no        | yes   |
+| `nextGraphemeBoundary`               | function  | no        | yes   |
+| `previousGraphemeBoundary`           | function  | no        | yes   |
+| `resolveGraphemeBoundary`            | function  | no        | yes   |
+| `segmentGraphemes`                   | function  | no        | yes   |
+| `truncateGraphemeClusters`           | function  | no        | yes   |
+| `truncateGraphemeUtf16`              | function  | no        | yes   |
+| `UnicodeGraphemeChunkSegmenter`      | class     | no        | yes   |
+| `UnicodeGraphemeDataError`           | class     | no        | yes   |
+| `UnicodeGraphemeSegmenter`           | class     | no        | yes   |
+| `UnicodeGraphemeSegmenterInspection` | interface | yes       | yes   |
+
+### src/unicode/mod.ts
+
+_Entrypoints: `.`_
+
+| Re-export Target           | Kind | Names |
+| -------------------------- | ---- | ----- |
+| `src/unicode/data_pack.ts` | star | -     |
+| `src/unicode/builtin.ts`   | star | -     |
+| `src/unicode/grapheme.ts`  | star | -     |
+| `src/unicode/width.ts`     | star | -     |
+
+_No direct exported symbols._
+
+### src/unicode/width.ts
+
+_Entrypoints: `.`, `./web`, `./terminal`_
+
+| Symbol                                    | Kind      | Type Only | JSDoc |
+| ----------------------------------------- | --------- | --------- | ----- |
+| `CJK_WIDE_WIDTH_PROFILE`                  | const     | no        | yes   |
+| `DEFAULT_TERMINAL_WIDTH_PROFILE_REGISTRY` | const     | no        | yes   |
+| `EastAsianWidthProperty`                  | type      | yes       | yes   |
+| `TERMINAL_WIDTH_PROFILE_LIMITS`           | const     | no        | yes   |
+| `TerminalCellWidth`                       | type      | yes       | yes   |
+| `terminalCodePointWidth`                  | function  | no        | yes   |
+| `TerminalCodePointWidthInspection`        | interface | yes       | yes   |
+| `terminalTextWidth`                       | function  | no        | yes   |
+| `TerminalTextWidthInspection`             | interface | yes       | yes   |
+| `TerminalWidthCategory`                   | type      | yes       | yes   |
+| `TerminalWidthError`                      | class     | no        | yes   |
+| `TerminalWidthErrorCode`                  | type      | yes       | yes   |
+| `TerminalWidthPolicy`                     | interface | yes       | yes   |
+| `TerminalWidthProfileDefinition`          | interface | yes       | yes   |
+| `TerminalWidthProfileInspection`          | interface | yes       | yes   |
+| `TerminalWidthProfileRegistry`            | class     | no        | yes   |
+| `TerminalWidthProfileRegistryInspection`  | interface | yes       | yes   |
+| `TerminalWidthProfileRegistryOptions`     | interface | yes       | yes   |
+| `UNICODE_NARROW_WIDTH_PROFILE`            | const     | no        | yes   |
+| `UnicodeTerminalWidthProfile`             | class     | no        | yes   |
+| `VISIBLE_COMBINING_WIDTH_PROFILE`         | const     | no        | yes   |
+
 ### src/utils/ansi_codes.ts
 
 _Entrypoints: `.`_
@@ -4959,24 +6190,38 @@ _Entrypoints: `./web`_
 
 _Entrypoints: `./web`, `./remote`_
 
-| Symbol                                | Kind      | Type Only | JSDoc |
-| ------------------------------------- | --------- | --------- | ----- |
-| `createRemoteTerminalBridge`          | function  | no        | yes   |
-| `createRemoteTerminalClient`          | function  | no        | yes   |
-| `createWebSocketRemoteTerminalClient` | function  | no        | yes   |
-| `decodeRemoteTerminalClientMessage`   | function  | no        | yes   |
-| `decodeRemoteTerminalServerMessage`   | function  | no        | yes   |
-| `encodeRemoteTerminalInput`           | function  | no        | yes   |
-| `encodeRemoteTerminalMessage`         | function  | no        | yes   |
-| `encodeRemoteTerminalServerMessage`   | function  | no        | yes   |
-| `RemoteTerminalBridge`                | class     | no        | yes   |
-| `RemoteTerminalBridgeInspection`      | interface | yes       | yes   |
-| `RemoteTerminalBridgeOptions`         | interface | yes       | yes   |
-| `RemoteTerminalClient`                | class     | no        | yes   |
-| `RemoteTerminalClientEvents`          | type      | yes       | yes   |
-| `RemoteTerminalClientInspection`      | interface | yes       | yes   |
-| `RemoteTerminalClientMessage`         | type      | yes       | yes   |
-| `RemoteTerminalInputEvent`            | type      | yes       | yes   |
-| `RemoteTerminalServerMessage`         | type      | yes       | yes   |
-| `RemoteTerminalTransport`             | interface | yes       | yes   |
-| `WebSocketRemoteTerminalTransport`    | class     | no        | yes   |
+| Symbol                                          | Kind      | Type Only | JSDoc |
+| ----------------------------------------------- | --------- | --------- | ----- |
+| `createNegotiatedRemoteTerminalBridge`          | function  | no        | yes   |
+| `createNegotiatedRemoteTerminalClient`          | function  | no        | yes   |
+| `createRemoteTerminalBridge`                    | function  | no        | yes   |
+| `createRemoteTerminalClient`                    | function  | no        | yes   |
+| `createWebSocketNegotiatedRemoteTerminalClient` | function  | no        | yes   |
+| `createWebSocketRemoteTerminalClient`           | function  | no        | yes   |
+| `decodeRemoteTerminalClientMessage`             | function  | no        | yes   |
+| `decodeRemoteTerminalServerMessage`             | function  | no        | yes   |
+| `DEFAULT_REMOTE_TERMINAL_CAPABILITY_MANIFEST`   | const     | no        | yes   |
+| `encodeRemoteTerminalInput`                     | function  | no        | yes   |
+| `encodeRemoteTerminalMessage`                   | function  | no        | yes   |
+| `encodeRemoteTerminalServerMessage`             | function  | no        | yes   |
+| `NegotiatedRemoteTerminalBridge`                | class     | no        | yes   |
+| `NegotiatedRemoteTerminalBridgeInspection`      | interface | yes       | yes   |
+| `NegotiatedRemoteTerminalBridgeOptions`         | interface | yes       | yes   |
+| `NegotiatedRemoteTerminalClient`                | class     | no        | yes   |
+| `NegotiatedRemoteTerminalClientEvents`          | type      | yes       | yes   |
+| `NegotiatedRemoteTerminalClientInspection`      | interface | yes       | yes   |
+| `REMOTE_TERMINAL_CAPABILITIES`                  | const     | no        | yes   |
+| `RemoteTerminalBridge`                          | class     | no        | yes   |
+| `RemoteTerminalBridgeInspection`                | interface | yes       | yes   |
+| `RemoteTerminalBridgeOptions`                   | interface | yes       | yes   |
+| `RemoteTerminalClient`                          | class     | no        | yes   |
+| `RemoteTerminalClientEvents`                    | type      | yes       | yes   |
+| `RemoteTerminalClientInspection`                | interface | yes       | yes   |
+| `RemoteTerminalClientMessage`                   | type      | yes       | yes   |
+| `RemoteTerminalInputEvent`                      | type      | yes       | yes   |
+| `RemoteTerminalNegotiationError`                | class     | no        | yes   |
+| `RemoteTerminalNegotiationErrorCode`            | type      | yes       | yes   |
+| `RemoteTerminalNegotiationOptions`              | interface | yes       | yes   |
+| `RemoteTerminalServerMessage`                   | type      | yes       | yes   |
+| `RemoteTerminalTransport`                       | interface | yes       | yes   |
+| `WebSocketRemoteTerminalTransport`              | class     | no        | yes   |

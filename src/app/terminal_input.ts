@@ -130,8 +130,14 @@ export function encodeTerminalMouse(
   if (scroll !== 0) {
     code = scroll < 0 ? 64 : 65;
   } else if (event.release) {
-    code = 3;
+    // SGR mouse releases retain the changed button when it is known; the
+    // legacy button-none value remains a compatible fallback.
+    code = event.button ?? 3;
     suffix = "m";
+  } else if (drag && event.button === undefined) {
+    // DECSET 1003 reports hover motion as button-none plus the motion bit.
+    if (tracking !== "any") return undefined;
+    code = 35;
   } else if (event.button === undefined) {
     return undefined;
   } else {

@@ -28,7 +28,31 @@ export type { Rectangle } from "./src/types.ts";
 export { GridLayout } from "./src/layout/grid_layout.ts";
 export { HorizontalLayout } from "./src/layout/horizontal_layout.ts";
 export { SplitPaneController } from "./src/layout/split_pane.ts";
+export { createTiledWorkspaceController, TiledWorkspaceController } from "./src/layout/tiled_workspace.ts";
+export type { TiledWorkspaceControllerOptions } from "./src/layout/tiled_workspace.ts";
 export { VerticalLayout } from "./src/layout/vertical_layout.ts";
+
+export {
+  createWorkbenchWindowHostController,
+  createWorkbenchWindowHostRoot,
+  WorkbenchWindowHostController,
+} from "./src/app/workbench_window_host.ts";
+export type {
+  WorkbenchWindowChromeControl,
+  WorkbenchWindowChromeProjection,
+  WorkbenchWindowHostCommand,
+  WorkbenchWindowHostControllerOptions,
+  WorkbenchWindowHostDescriptor,
+  WorkbenchWindowHostInspection,
+  WorkbenchWindowHostProjection,
+  WorkbenchWindowHostProjectionOptions,
+  WorkbenchWindowHostResult,
+  WorkbenchWindowSemanticNode,
+  WorkbenchWindowSeparatorProjection,
+  WorkbenchWindowShelfItem,
+  WorkbenchWindowSnapPreview,
+  WorkbenchWindowSwitcherProjection,
+} from "./src/app/workbench_window_host.ts";
 
 export { Box } from "./src/components/box.ts";
 export { Button } from "./src/components/button.ts";

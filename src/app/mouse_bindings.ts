@@ -29,7 +29,8 @@ export type MouseInteractionHandler<TEvent extends MouseInteractionEvent, TPaylo
 export interface MouseInteractionTarget<TPayload = unknown> {
   id: string;
   bounds: Rectangle | (() => Rectangle);
-  zIndex?: number;
+  /** Static or lazily resolved paint order used for every hit test. */
+  zIndex?: number | (() => number);
   disabled?: boolean | (() => boolean);
   captureDrag?: boolean;
   payload?: TPayload;
@@ -74,6 +75,7 @@ export class MouseInteractionRouter {
   readonly #targets = new OrderedIdCollection<RegisteredMouseInteractionTarget>(compareRegisteredMouseTargets);
   #sequence = 0;
   #captureId?: string;
+  #suppressCapturedGesture = false;
 
   register<TPayload>(target: MouseInteractionTarget<TPayload>): () => void {
     const registered: RegisteredMouseInteractionTarget<TPayload> = {
@@ -91,12 +93,14 @@ export class MouseInteractionRouter {
   unregister(id: string): boolean {
     if (this.#captureId === id) {
       this.#captureId = undefined;
+      this.#suppressCapturedGesture = true;
     }
     return this.#targets.delete(id);
   }
 
   clear(): void {
     this.#captureId = undefined;
+    this.#suppressCapturedGesture = false;
     this.#targets.clear();
   }
 
@@ -109,14 +113,14 @@ export class MouseInteractionRouter {
   }
 
   inspect(): MouseInteractionInspection[] {
-    const targets = this.#targets.ordered();
+    const targets = this.#orderedTargets();
     const inspected = new Array<MouseInteractionInspection>(targets.length);
     for (let index = 0; index < targets.length; index += 1) {
       const target = targets[index]!;
       inspected[index] = {
         id: target.id,
         bounds: boundsOf(target),
-        zIndex: target.zIndex ?? 0,
+        zIndex: zIndexOf(target),
         disabled: disabled(target),
         captureDrag: target.captureDrag ?? true,
         hasPressHandler: target.onPress !== undefined,
@@ -130,9 +134,18 @@ export class MouseInteractionRouter {
 
   async dispatch(event: MouseInteractionEvent): Promise<MouseInteractionDispatchResult> {
     const kind = interactionKind(event);
-    const capturedTarget = this.#captureId && (kind === "drag" || kind === "release")
-      ? this.#targets.get(this.#captureId)
-      : undefined;
+    if (kind === "press") this.#suppressCapturedGesture = false;
+    if ((kind === "drag" || kind === "release") && this.#suppressCapturedGesture) {
+      if (kind === "release") this.#suppressCapturedGesture = false;
+      return { handled: false, kind, captured: false };
+    }
+    const captureId = kind === "drag" || kind === "release" ? this.#captureId : undefined;
+    const capturedTarget = captureId ? this.#targets.get(captureId) : undefined;
+    if (captureId && (!capturedTarget || disabled(capturedTarget))) {
+      this.#captureId = undefined;
+      this.#suppressCapturedGesture = kind !== "release";
+      return { handled: false, targetId: capturedTarget?.id, kind, captured: false };
+    }
     const resolved = capturedTarget && !disabled(capturedTarget)
       ? { target: capturedTarget, bounds: boundsOf(capturedTarget) }
       : this.#resolveHit(event.x, event.y, kind);
@@ -161,11 +174,16 @@ export class MouseInteractionRouter {
       payload: target.payload,
     }) !== false;
 
-    if (handled && kind === "press" && (target.captureDrag ?? true)) {
-      this.#captureId = target.id;
+    if (kind === "press" && (target.captureDrag ?? true)) {
+      if (handled && this.#targets.get(target.id) === target && !disabled(target)) {
+        this.#captureId = target.id;
+      } else if (this.#targets.get(target.id) !== target || disabled(target)) {
+        this.#suppressCapturedGesture = true;
+      }
     }
     if (kind === "release" && captured) {
       this.#captureId = undefined;
+      this.#suppressCapturedGesture = false;
     }
 
     return { handled, targetId: target.id, kind, captured };
@@ -176,7 +194,7 @@ export class MouseInteractionRouter {
   }
 
   #resolveHit(x: number, y: number, kind: MouseInteractionKind): ResolvedMouseInteractionTarget | undefined {
-    const targets = this.#targets.ordered();
+    const targets = this.#orderedTargets();
     for (let index = 0; index < targets.length; index += 1) {
       const target = targets[index]!;
       if (disabled(target) || handlerFor(target, kind) === undefined) {
@@ -191,7 +209,13 @@ export class MouseInteractionRouter {
   }
 
   targets(): RegisteredMouseInteractionTarget[] {
-    return Array.from(this.#targets.ordered());
+    return this.#orderedTargets();
+  }
+
+  #orderedTargets(): RegisteredMouseInteractionTarget[] {
+    // OrderedIdCollection caches static order. Re-sort a detached view because
+    // signals/functions can change z-order without re-registering the target.
+    return Array.from(this.#targets.ordered()).sort(compareRegisteredMouseTargets);
   }
 }
 
@@ -199,7 +223,7 @@ function compareRegisteredMouseTargets(
   left: RegisteredMouseInteractionTarget,
   right: RegisteredMouseInteractionTarget,
 ): number {
-  return (right.zIndex ?? 0) - (left.zIndex ?? 0) || right.sequence - left.sequence;
+  return zIndexOf(right) - zIndexOf(left) || right.sequence - left.sequence;
 }
 
 /** Creates an mouse Interaction Router. */
@@ -217,12 +241,37 @@ export function bindMouseInteractions<
   target: TTarget,
   router: MouseInteractionRouter,
 ): () => void {
-  const stopPress = target.on("mousePress", (event) => void router.dispatch(event));
-  const stopScroll = target.on("mouseScroll", (event) => void router.dispatch(event));
+  // EventEmitter deliberately does not await listeners. Preserve source order
+  // here so an asynchronous press handler can establish capture before a drag
+  // or release emitted in the same turn is routed.
+  let pending: Promise<void> | undefined;
+  const enqueue = (event: MouseInteractionEvent): Promise<void> => {
+    // InputReader reuses one mutable mouse event and aliases its read buffer.
+    // Preserve the decoded event at synchronous ingress before an async press
+    // can let later drag/release decoding rewrite the queued values.
+    const snapshot = snapshotMouseInteractionEvent(event);
+    const dispatch = () => router.dispatch(snapshot);
+    const started = pending ? pending.then(dispatch) : dispatch();
+    const settled = started.then(() => undefined).catch(() => {
+      // Bindings are fire-and-forget by contract. Isolate a failed handler so
+      // later input is still routed and no rejected queue is left unobserved.
+    });
+    pending = settled;
+    void settled.then(() => {
+      if (pending === settled) pending = undefined;
+    });
+    return settled;
+  };
+  const stopPress = target.on("mousePress", enqueue);
+  const stopScroll = target.on("mouseScroll", enqueue);
   return () => {
     stopScroll();
     stopPress();
   };
+}
+
+function snapshotMouseInteractionEvent(event: MouseInteractionEvent): MouseInteractionEvent {
+  return { ...event, buffer: new Uint8Array(event.buffer) };
 }
 
 function interactionKind(event: MouseInteractionEvent): MouseInteractionKind {
@@ -249,6 +298,15 @@ function handlerFor(
 
 function boundsOf(target: MouseInteractionTarget): Rectangle {
   return typeof target.bounds === "function" ? target.bounds() : target.bounds;
+}
+
+function zIndexOf(target: MouseInteractionTarget): number {
+  try {
+    const value = typeof target.zIndex === "function" ? target.zIndex() : target.zIndex ?? 0;
+    return Number.isFinite(value) ? value : 0;
+  } catch {
+    return 0;
+  }
 }
 
 function disabled(target: MouseInteractionTarget): boolean {

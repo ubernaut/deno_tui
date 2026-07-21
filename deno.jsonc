@@ -11,7 +11,8 @@
     "./runtime": "./mod.runtime.ts",
     "./terminal": "./mod.terminal.ts",
     "./testing": "./mod.testing.ts",
-    "./layout/yoga": "./src/layout/solvers/yoga.ts"
+    "./layout/yoga": "./src/layout/solvers/yoga.ts",
+    "./layout/taffy": "./src/layout/taffy.ts"
   },
   "publish": {
     "include": [
@@ -42,6 +43,13 @@
     "demo": "deno run --watch --allow-hrtime ./examples/demo.ts",
     "terminal-app": "deno run -A ./examples/terminal_app.ts",
     "app-shell": "deno run -A ./examples/app_shell.ts",
+    "inkstone": "deno run ./examples/showcases/inkstone/main.ts",
+    "inkstone:persistent": "sh -c 'state_dir=\"${XDG_STATE_HOME:-$HOME/.local/state}/deno-tui\"; exec deno run --allow-read=\"$state_dir\" --allow-write=\"$state_dir\" ./examples/showcases/inkstone/main.ts --persist --state-file=\"$state_dir/inkstone-session.json\"'",
+    "inkstone:check": "deno check ./examples/showcases/inkstone/main.ts",
+    "muxstone": "deno run -A ./examples/showcases/muxstone/main.ts",
+    "muxstone:memory": "deno run -A ./examples/showcases/muxstone/main.ts --memory",
+    "muxstone:check": "deno check ./examples/showcases/muxstone/main.ts",
+    "muxstone:test": "deno test -A ./tests/showcases/muxstone_host.test.ts ./tests/showcases/muxstone_client.test.ts ./tests/showcases/muxstone_controller.test.ts ./tests/showcases/muxstone_app.test.ts",
     "command-search": "deno run -A ./examples/command_search_index.ts",
     "dashboard": "deno run -A ./examples/dashboard.ts",
     "layout-recipe": "deno run -A ./examples/layout_recipe_report.ts",
@@ -58,6 +66,8 @@
     "theme-resolver": "deno run -A ./examples/theme_resolver.ts",
     "theme-bindings": "deno run -A ./examples/theme_bindings.ts",
     "capabilities": "deno run -A ./scripts/capabilities.ts",
+    "unicode-data:check": "deno run --allow-read scripts/update_unicode_data.ts --check",
+    "unicode-data:update": "deno run --allow-read=src/unicode/generated,tests/fixtures/unicode --allow-net=www.unicode.org --allow-write=src/unicode/generated,tests/fixtures/unicode scripts/update_unicode_data.ts --update",
     "runtime-workloads": "deno run -A ./examples/runtime_workloads.ts",
     "e2e": "deno run -A ./scripts/e2e.ts",
     "benchmark": "deno run -A ./scripts/benchmark.ts",
@@ -81,6 +91,7 @@
     "form-workflow": "deno run -A ./examples/form_workflow.ts",
     "table-selection": "deno run -A ./examples/table_selection_workflow.ts",
     "window-manager": "deno run -A ./examples/window_manager_demo.ts",
+    "floating-windows": "deno run ./examples/floating_window_demo.ts",
     "workspace-launcher": "deno run -A ./examples/windowing_system_launcher.ts",
     "terminal-command": "deno run -A ./examples/terminal_command_workflow.ts",
     "health": "deno run -A ./scripts/health.ts",

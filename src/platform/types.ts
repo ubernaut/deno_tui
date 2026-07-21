@@ -9,6 +9,7 @@ import type {
   PasteEvent,
   TerminalFocusEvent,
 } from "../input_reader/types.ts";
+import type { PointerInputEvent } from "../pointer_input.ts";
 
 /** Object with an explicit cleanup hook for platform resources. */
 export interface Disposable {
@@ -35,6 +36,8 @@ export interface PlatformInputEvents {
   mouseScroll: MouseScrollEvent;
   paste: PasteEvent;
   terminalFocus: TerminalFocusEvent;
+  /** Full-fidelity mouse, touch, or pen event when the host can preserve pointer identity and cancellation. */
+  pointerInput: PointerInputEvent;
 }
 
 /** Event emitter contract accepted by platform input sources. */
@@ -44,6 +47,7 @@ export type PlatformInputEmitter = EventEmitter<{
   mouseScroll: { args: [MouseScrollEvent] };
   paste: { args: [PasteEvent] };
   terminalFocus: { args: [TerminalFocusEvent] };
+  pointerInput: { args: [PointerInputEvent] };
 }>;
 
 /** Runtime-specific input adapter that forwards events into the TUI event model. */

@@ -1,6 +1,6 @@
 import { crayon } from "crayon";
 import { assertEquals, assertStringIncludes } from "./deps.ts";
-import { Button, Computed, Signal, Text } from "../mod.app.ts";
+import { Button, Computed, Input, Signal, Text } from "../mod.app.ts";
 import { createTestTerminalApp } from "../mod.testing.ts";
 
 type CounterAction = { type: "increment" } | { type: "delayed" };
@@ -62,6 +62,45 @@ Deno.test("TerminalAppPilot drives keys clicks resize commands and snapshots", a
   } finally {
     harness.destroy();
     count.dispose();
+  }
+});
+
+Deno.test("TerminalApp focus traversal does not deliver its Tab to the newly focused input", async () => {
+  const firstText = new Signal("");
+  const secondText = new Signal("");
+  let first!: Input;
+  let second!: Input;
+  const harness = await createTestTerminalApp({
+    setup(app) {
+      first = new Input({
+        parent: app.tui,
+        rectangle: { column: 0, row: 0, width: 10, height: 1 },
+        zIndex: 1,
+        theme: { base: crayon.white, focused: crayon.cyan, cursor: { base: crayon.invert } },
+        text: firstText,
+      });
+      second = new Input({
+        parent: app.tui,
+        rectangle: { column: 0, row: 1, width: 10, height: 1 },
+        zIndex: 1,
+        theme: { base: crayon.white, focused: crayon.cyan, cursor: { base: crayon.invert } },
+        text: secondText,
+      });
+      app.registerComponent(first, { id: "first" });
+      app.registerComponent(second, { id: "second" });
+      app.focus.focus(first);
+    },
+  });
+
+  try {
+    await harness.pilot.press("tab");
+    assertEquals(harness.app.focus.current(), second);
+    assertEquals(firstText.peek(), "");
+    assertEquals(secondText.peek(), "");
+  } finally {
+    harness.destroy();
+    firstText.dispose();
+    secondText.dispose();
   }
 });
 

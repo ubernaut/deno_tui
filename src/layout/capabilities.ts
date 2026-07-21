@@ -107,14 +107,15 @@ type KnownSolverFieldMatrix = Readonly<Record<KnownLayoutSolverId, LayoutSolverF
 const fieldCapabilityMatrix = {
   display: field("supported", "partial"),
   position: field("partial", "supported"),
-  flexDirection: field("supported", "supported"),
+  flexDirection: field("supported", "partial"),
   flexWrap: field("partial", "supported"),
   flexGrow: field("partial", "supported"),
   flexShrink: field("partial", "supported"),
   flexBasis: field("partial", "partial"),
   order: field("supported", "supported"),
   alignItems: field("partial", "supported"),
-  justifyContent: field("partial", "supported"),
+  alignContent: field("partial", "unsupported"),
+  justifyContent: field("partial", "partial"),
   alignSelf: field("partial", "unsupported"),
   justifySelf: field("supported", "unsupported"),
   gridTemplateColumns: field("supported", "unsupported"),
@@ -132,11 +133,13 @@ const fieldCapabilityMatrix = {
   minHeight: field("partial", "partial"),
   maxWidth: field("partial", "partial"),
   maxHeight: field("partial", "partial"),
+  aspectRatio: field("supported", "unsupported"),
+  boxSizing: field("supported", "unsupported"),
   inset: field("partial", "partial"),
   margin: field("partial", "supported"),
-  padding: field("supported", "supported"),
+  padding: field("supported", "partial"),
   border: field("supported", "supported"),
-  gap: field("supported", "supported"),
+  gap: field("supported", "partial"),
   rowGap: field("partial", "partial"),
   columnGap: field("partial", "partial"),
   overflowX: field("metadata", "partial"),
@@ -170,6 +173,7 @@ export const LAYOUT_CSS_PROPERTY_FIELDS: Readonly<Record<string, readonly Layout
   flex: fields("flexGrow", "flexShrink", "flexBasis"),
   order: fields("order"),
   "align-items": fields("alignItems"),
+  "align-content": fields("alignContent"),
   "justify-content": fields("justifyContent"),
   "align-self": fields("alignSelf"),
   "justify-self": fields("justifySelf"),
@@ -193,6 +197,8 @@ export const LAYOUT_CSS_PROPERTY_FIELDS: Readonly<Record<string, readonly Layout
   "min-height": fields("minHeight"),
   "max-width": fields("maxWidth"),
   "max-height": fields("maxHeight"),
+  "aspect-ratio": fields("aspectRatio"),
+  "box-sizing": fields("boxSizing"),
   inset: fields("inset"),
   top: fields("inset"),
   right: fields("inset"),
@@ -256,7 +262,9 @@ export function resolvedLayoutDeclarationFields(
   }
   if (property === "flex-flow") {
     const output: LayoutStyleField[] = [];
-    if (words.some((word) => oneOf(word, "row", "column"))) output.push("flexDirection");
+    if (words.some((word) => oneOf(word, "row", "row-reverse", "column", "column-reverse"))) {
+      output.push("flexDirection");
+    }
     if (words.some((word) => oneOf(word, "nowrap", "wrap", "wrap-reverse"))) output.push("flexWrap");
     return output;
   }
@@ -318,12 +326,19 @@ export const SIMPLE_LAYOUT_SOLVER_CAPABILITIES: LayoutSolverCapabilities = freez
       ),
     },
     limitations: {
-      position: ["Insets affect absolute children; relative-position offsets are deferred to L1."],
+      position: ["Absolute and relative positioning use the deterministic terminal-cell inset subset."],
       flexWrap: ["wrap-reverse has solver-specific ordering and placement semantics pending L1."],
       flexGrow: ["Fractional weight and remainder distribution is a terminal-cell subset."],
       flexShrink: ["A zero shrink weight is not fully honored by the current integer allocator."],
       flexBasis: ["fr is not a valid generic flex-basis unit; intrinsic-basis parity is deferred to L1."],
-      alignItems: ["Applied to Flex containers; Grid container cross-axis distribution is deferred to L1."],
+      alignItems: [
+        "Applied to Flex containers; Grid container cross-axis distribution is deferred to L1.",
+        "Baseline alignment is unsupported until intrinsic measurement exposes an ascent/baseline contract.",
+      ],
+      alignContent: [
+        "Applied to wrapped Flex line collections; Grid track distribution is not implemented.",
+        "Defaults to start to preserve the package's established terminal-cell line placement; stretch is explicit.",
+      ],
       justifyContent: ["Applied to Flex containers; Grid container distribution is deferred to L1."],
       alignSelf: ["Applied to Grid items, not Flex items."],
       justifySelf: ["Applied to Grid items."],
@@ -335,10 +350,10 @@ export const SIMPLE_LAYOUT_SOLVER_CAPABILITIES: LayoutSolverCapabilities = freez
       minHeight: ["fr is unsupported outside Grid tracks."],
       maxWidth: ["fr is unsupported outside Grid tracks."],
       maxHeight: ["fr is unsupported outside Grid tracks."],
-      inset: ["Relative insets and fr insets are unsupported."],
-      margin: ["Margins are non-negative terminal-cell integers; root margins are ignored."],
-      rowGap: ["An explicit zero cannot override a nonzero gap shorthand in the current solver."],
-      columnGap: ["An explicit zero cannot override a nonzero gap shorthand in the current solver."],
+      aspectRatio: ["Derived axes are floored to whole terminal cells before allocation clipping."],
+      boxSizing: ["Defaults to border-box for compatibility; content-box is available explicitly."],
+      inset: ["fr insets are unsupported; when both relative edges are set, top and left take precedence."],
+      margin: ["Root margins are ignored; Flex auto margins and Block inline-axis auto margins are supported."],
       overflowX: ["Produces overflow metadata; clipping and scroll ownership remain renderer/controller concerns."],
       overflowY: ["Produces overflow metadata; clipping and scroll ownership remain renderer/controller concerns."],
       whiteSpace: ["Terminal-cell text measurement subset, not browser inline layout."],
@@ -384,7 +399,10 @@ export const YOGA_LAYOUT_SOLVER_CAPABILITIES: LayoutSolverCapabilities = freezeC
     },
     limitations: {
       display: ["block is approximated by column Flex; grid falls back to column Flex and emits a diagnostic."],
+      flexDirection: ["The adapter does not yet map row-reverse or column-reverse."],
       flexBasis: ["fr values are unsupported by the adapter."],
+      alignContent: ["The current adapter does not map align-content."],
+      justifyContent: ["The adapter does not yet map space-evenly."],
       alignSelf: ["The current adapter does not map align-self."],
       justifySelf: ["The current adapter does not map justify-self."],
       gridTemplateColumns: ["CSS Grid is not mapped by the Yoga adapter."],
@@ -403,6 +421,10 @@ export const YOGA_LAYOUT_SOLVER_CAPABILITIES: LayoutSolverCapabilities = freezeC
       maxWidth: ["fr values are unsupported by the adapter."],
       maxHeight: ["fr values are unsupported by the adapter."],
       inset: ["fr values are unsupported by the adapter."],
+      aspectRatio: ["The current adapter does not map aspect-ratio."],
+      boxSizing: ["The current adapter does not map box-sizing."],
+      margin: ["Percentage and auto margins are not mapped by the current adapter."],
+      padding: ["Percentage padding is not mapped by the current adapter."],
       rowGap: ["An explicit zero cannot override a nonzero gap shorthand in the current adapter."],
       columnGap: ["An explicit zero cannot override a nonzero gap shorthand in the current adapter."],
       overflowX: [
@@ -555,6 +577,40 @@ export function inspectLayoutDeclarationCompatibility(
     })];
   }
 
+  if (
+    capabilities.solverId === "yoga" && activeFields.includes("flexDirection") &&
+    declaration.value.trim().toLowerCase().split(/\s+/).some((word) =>
+      word === "row-reverse" || word === "column-reverse"
+    )
+  ) {
+    return [diagnostic(capabilities.solverId, declaration, {
+      code: "partial-solver-support",
+      field: "flexDirection",
+      message: "The Yoga adapter does not yet map row-reverse or column-reverse.",
+    })];
+  }
+
+  if (
+    capabilities.solverId === "yoga" && property === "justify-content" &&
+    declaration.value.trim().toLowerCase() === "space-evenly"
+  ) {
+    return [diagnostic(capabilities.solverId, declaration, {
+      code: "partial-solver-support",
+      field: "justifyContent",
+      message: "The Yoga adapter does not yet map justify-content:space-evenly.",
+    })];
+  }
+
+  const authoredNonCellField = yogaNonCellBoxField(property, declaration.value);
+  if (capabilities.solverId === "yoga" && authoredNonCellField && activeFields.includes(authoredNonCellField)) {
+    return [diagnostic(capabilities.solverId, declaration, {
+      code: "partial-solver-support",
+      field: authoredNonCellField,
+      message:
+        `The Yoga adapter does not map ${property} percentage/auto lengths; only terminal-cell values are portable.`,
+    })];
+  }
+
   const unsupportedFields = activeFields.filter((fieldName) => capabilities.style[fieldName] === "unsupported");
   if (unsupportedFields.length > 0) {
     return unsupportedFields.map((fieldName) =>
@@ -620,7 +676,8 @@ export function inspectLayoutDeclarationCompatibility(
   }
 
   if (
-    (property === "row-gap" || property === "column-gap") && Number.parseFloat(declaration.value) === 0 &&
+    capabilities.solverId === "yoga" && (property === "row-gap" || property === "column-gap") &&
+    Number.parseFloat(declaration.value) === 0 &&
     (declaration.style?.gap ?? 0) > 0
   ) {
     return [diagnostic(capabilities.solverId, declaration, {
@@ -700,22 +757,13 @@ export function inspectLayoutTreeCompatibility(
     }
 
     if (capabilities.solverId === "simple") {
-      if (ancestors.length === 0 && hasNonzeroEdge(node.style.margin)) {
+      if (ancestors.length === 0 && hasActiveMargin(node.style)) {
         diagnostics.push(fieldDiagnostic(
           capabilities.solverId,
           node.id,
           "margin",
           "unsupported-by-solver",
           "Simple solver ignores margins on the root layout node.",
-        ));
-      }
-      if (node.style.position === "relative" && hasActiveInset(node.style.inset)) {
-        diagnostics.push(fieldDiagnostic(
-          capabilities.solverId,
-          node.id,
-          "inset",
-          "unsupported-by-solver",
-          "Simple solver relative-position insets are not applied; use absolute positioning or wait for L1.",
         ));
       }
       if (parent?.style.display === "flex" && node.style.alignSelf !== defaults.alignSelf) {
@@ -743,6 +791,15 @@ export function inspectLayoutTreeCompatibility(
           "alignItems",
           "unsupported-by-solver",
           "Simple Grid does not apply alignItems to distribute items inside tracks; use per-item alignSelf.",
+        ));
+      }
+      if (node.style.display === "grid" && node.style.alignContent !== defaults.alignContent) {
+        diagnostics.push(fieldDiagnostic(
+          capabilities.solverId,
+          node.id,
+          "alignContent",
+          "unsupported-by-solver",
+          "Simple Grid does not apply alignContent to distribute the track collection.",
         ));
       }
       if (node.style.display === "grid" && node.style.justifyContent !== defaults.justifyContent) {
@@ -802,6 +859,27 @@ export function inspectLayoutTreeCompatibility(
         nodeId: node.id,
         message: "Yoga does not map LayoutNode.intrinsic metadata; provide measureText for text leaves instead.",
       });
+    }
+    if (
+      capabilities.solverId === "yoga" &&
+      (node.style.flexDirection === "row-reverse" || node.style.flexDirection === "column-reverse")
+    ) {
+      diagnostics.push(fieldDiagnostic(
+        capabilities.solverId,
+        node.id,
+        "flexDirection",
+        "partial-solver-support",
+        "The Yoga adapter does not yet map row-reverse or column-reverse.",
+      ));
+    }
+    if (capabilities.solverId === "yoga" && node.style.justifyContent === "space-evenly") {
+      diagnostics.push(fieldDiagnostic(
+        capabilities.solverId,
+        node.id,
+        "justifyContent",
+        "partial-solver-support",
+        "The Yoga adapter does not yet map justify-content:space-evenly.",
+      ));
     }
     if (capabilities.solverId === "yoga" && node.style.display === "block" && node.children.length > 0) {
       diagnostics.push(fieldDiagnostic(
@@ -994,18 +1072,34 @@ function containsFractionUnit(value: unknown): boolean {
   return Object.values(value).some((entry) => containsFractionUnit(entry));
 }
 
-function hasActiveInset(inset: ComputedLayoutStyle["inset"]): boolean {
-  return inset.top.unit !== "auto" || inset.right.unit !== "auto" || inset.bottom.unit !== "auto" ||
-    inset.left.unit !== "auto";
-}
-
 function hasDualInset(inset: ComputedLayoutStyle["inset"]): boolean {
   return (inset.left.unit !== "auto" && inset.right.unit !== "auto") ||
     (inset.top.unit !== "auto" && inset.bottom.unit !== "auto");
 }
 
-function hasNonzeroEdge(edges: ComputedLayoutStyle["margin"]): boolean {
-  return edges.top !== 0 || edges.right !== 0 || edges.bottom !== 0 || edges.left !== 0;
+function hasActiveMargin(style: ComputedLayoutStyle): boolean {
+  const edges = (style as ComputedLayoutStyle & {
+    __layoutLengths?: { margin?: Record<"top" | "right" | "bottom" | "left", LayoutLengthValue> };
+  }).__layoutLengths?.margin;
+  if (!edges) {
+    return style.margin.top !== 0 || style.margin.right !== 0 || style.margin.bottom !== 0 || style.margin.left !== 0;
+  }
+  return Object.values(edges).some((edge) => edge.unit === "auto" || edge.value !== 0);
+}
+
+function yogaNonCellBoxField(property: string, rawValue: string): LayoutStyleField | undefined {
+  const value = rawValue.trim().toLowerCase();
+  const hasPercent = /(?:^|\s)\.?\d+(?:\.\d+)?%(?:\s|$)/.test(value);
+  if (property === "margin" || property.startsWith("margin-")) {
+    return hasPercent || /(?:^|\s)auto(?:\s|$)/.test(value) ? "margin" : undefined;
+  }
+  if (property === "padding" || property.startsWith("padding-")) {
+    return hasPercent ? "padding" : undefined;
+  }
+  if (property === "gap") return hasPercent ? "gap" : undefined;
+  if (property === "row-gap") return hasPercent ? "rowGap" : undefined;
+  if (property === "column-gap") return hasPercent ? "columnGap" : undefined;
+  return undefined;
 }
 
 function layoutDeclarationValueIssue(property: string, rawValue: string): string | undefined {
@@ -1021,7 +1115,7 @@ function layoutDeclarationValueIssue(property: string, rawValue: string): string
       supported = oneOf(value, "relative", "absolute");
       break;
     case "flex-direction":
-      supported = oneOf(value, "row", "column");
+      supported = oneOf(value, "row", "row-reverse", "column", "column-reverse");
       break;
     case "flex-wrap":
       supported = oneOf(value, "nowrap", "wrap", "wrap-reverse");
@@ -1046,6 +1140,12 @@ function layoutDeclarationValueIssue(property: string, rawValue: string): string
     case "left":
       supported = validLayoutLength(value);
       break;
+    case "aspect-ratio":
+      supported = validAspectRatio(value);
+      break;
+    case "box-sizing":
+      supported = oneOf(value, "content-box", "border-box");
+      break;
     case "flex":
       supported = validFlexShorthand(words);
       break;
@@ -1056,6 +1156,20 @@ function layoutDeclarationValueIssue(property: string, rawValue: string): string
     case "align-items":
       supported = oneOf(value, "start", "end", "center", "stretch", "flex-start", "flex-end");
       break;
+    case "align-content":
+      supported = oneOf(
+        value,
+        "start",
+        "end",
+        "center",
+        "stretch",
+        "space-between",
+        "space-around",
+        "space-evenly",
+        "flex-start",
+        "flex-end",
+      );
+      break;
     case "justify-content":
       supported = oneOf(
         value,
@@ -1064,6 +1178,7 @@ function layoutDeclarationValueIssue(property: string, rawValue: string): string
         "center",
         "space-between",
         "space-around",
+        "space-evenly",
         "flex-start",
         "flex-end",
       );
@@ -1106,7 +1221,11 @@ function layoutDeclarationValueIssue(property: string, rawValue: string): string
       supported = words.length >= 1 && words.length <= 4 && words.every(validLayoutLength);
       break;
     case "margin":
+      supported = validLengthBox(words, true);
+      break;
     case "padding":
+      supported = validLengthBox(words, false);
+      break;
     case "border-width":
       supported = validCellBox(words);
       break;
@@ -1114,18 +1233,24 @@ function layoutDeclarationValueIssue(property: string, rawValue: string): string
     case "margin-right":
     case "margin-bottom":
     case "margin-left":
+      supported = validBoxLength(value, true);
+      break;
     case "padding-top":
     case "padding-right":
     case "padding-bottom":
     case "padding-left":
+      supported = validBoxLength(value, false);
+      break;
     case "border-top":
     case "border-right":
     case "border-bottom":
     case "border-left":
     case "gap":
+      supported = words.length >= 1 && words.length <= 2 && words.every(validGapLength);
+      break;
     case "row-gap":
     case "column-gap":
-      supported = validCellScalar(value);
+      supported = validGapLength(value);
       break;
     case "border":
       supported = validBorderShorthand(words);
@@ -1176,8 +1301,31 @@ function validCellScalar(value: string): boolean {
 }
 
 function validLayoutLength(value: string): boolean {
-  return value === "auto" || /^\d+(?:\.\d+)?$/.test(value) ||
+  return value === "auto" || /^(?:\d+(?:\.\d+)?|\.\d+)$/.test(value) ||
     /^(?:\d+(?:\.\d+)?|\.\d+)(?:%|fr|ch|cells?)$/.test(value);
+}
+
+function validAspectRatio(value: string): boolean {
+  if (value === "auto") return true;
+  const parts = value.split("/").map((part) => part.trim());
+  if (parts.length < 1 || parts.length > 2 || !parts.every(validPositiveNumber)) return false;
+  return parts.every((part) => Number.parseFloat(part) > 0);
+}
+
+function validPositiveNumber(value: string): boolean {
+  return /^(?:\d+(?:\.\d+)?|\.\d+)$/.test(value);
+}
+
+function validBoxLength(value: string, allowAuto: boolean): boolean {
+  return allowAuto && value === "auto" || validCellScalar(value) || /^(?:\d+(?:\.\d+)?|\.\d+)%$/.test(value);
+}
+
+function validLengthBox(words: readonly string[], allowAuto: boolean): boolean {
+  return words.length >= 1 && words.length <= 4 && words.every((word) => validBoxLength(word, allowAuto));
+}
+
+function validGapLength(value: string): boolean {
+  return validCellScalar(value) || /^(?:\d+(?:\.\d+)?|\.\d+)%$/.test(value);
 }
 
 function validCellBox(words: readonly string[]): boolean {
@@ -1189,7 +1337,7 @@ function validFlexFlow(words: readonly string[]): boolean {
   let direction = false;
   let wrap = false;
   for (const word of words) {
-    if (oneOf(word, "row", "column")) {
+    if (oneOf(word, "row", "row-reverse", "column", "column-reverse")) {
       if (direction) return false;
       direction = true;
     } else if (oneOf(word, "nowrap", "wrap", "wrap-reverse")) {

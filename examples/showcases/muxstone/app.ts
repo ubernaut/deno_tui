@@ -1,0 +1,2457 @@
+// Copyright 2023 Im-Beast. MIT license.
+
+import { createTerminalApp, type TerminalApp, type TerminalAppOptions } from "../../../mod.app.ts";
+import {
+  Component,
+  type ComponentOptions,
+  Computed,
+  createAnsiStyle,
+  DrawObject,
+  encodeTerminalKeyPress,
+  type PointerInputEvent,
+  type Rectangle,
+  Signal,
+  type SignalOfObject,
+  type Style,
+  type WorkbenchWindowChromeProjection,
+  type WorkbenchWindowHostCommand,
+  type WorkbenchWindowHostProjection,
+  type WorkbenchWindowHostProjectionOptions,
+} from "../../../mod.ts";
+import type { KeyPressEvent, MousePressEvent, MouseScrollEvent } from "../../../src/input_reader/types.ts";
+import {
+  layoutWorkbenchButtonRowInto,
+  type WorkbenchButtonRowItem,
+  type WorkbenchButtonRowPlacement,
+  type WorkbenchButtonRowRenderCommand,
+  workbenchButtonRowRenderCommandsInto,
+} from "../../../src/app/workbench_control_layout.ts";
+import {
+  createMuxstoneController,
+  MUXSTONE_SESSIONS_WINDOW_ID,
+  type MuxstoneController,
+  type MuxstoneControllerOptions,
+  type MuxstoneTerminalRuntime,
+} from "./controller.ts";
+import {
+  type MuxstoneRgb,
+  muxstoneSessionIdFromWindow,
+  type MuxstoneSessionSummary,
+  type MuxstoneThemeSpec,
+  muxstoneWindowId,
+} from "./model.ts";
+import { MuxstoneOperationQueue } from "./operation_queue.ts";
+import { MUXSTONE_PROTOCOL_LIMITS } from "./protocol.ts";
+import {
+  muxstonePointerCancellationEvent as pointerCancellationEvent,
+  MuxstoneTerminalMouseRouter,
+} from "./terminal_mouse.ts";
+import { muxstoneTerminalForegroundRgb, muxstoneTerminalRgb } from "./terminal_palette.ts";
+import {
+  MUXSTONE_METABALL_FRAME_INTERVAL_MS,
+  MUXSTONE_METABALL_LEVELS,
+  MuxstoneMetaballField,
+} from "./metaball_background.ts";
+
+/** Actions exposed through the application command registry. */
+export type MuxstoneAppAction =
+  | Readonly<{ type: "muxstone.new" }>
+  | Readonly<{ type: "muxstone.sessions" }>
+  | Readonly<{ type: "muxstone.theme" }>
+  | Readonly<{ type: "muxstone.help" }>
+  | Readonly<{ type: "muxstone.detach" }>
+  | Readonly<{ type: "muxstone.kill" }>
+  | Readonly<{ type: "muxstone.quit" }>;
+
+/** Mutable mount slot populated synchronously by TerminalApp setup. */
+export interface MuxstoneAppMountRef {
+  current?: MuxstoneAppMount;
+}
+
+/** Mounted surfaces and interaction hooks useful to launchers and pilots. */
+export interface MuxstoneAppMount {
+  readonly app: TerminalApp<MuxstoneAppAction>;
+  readonly controller: MuxstoneController;
+  readonly bodyRect: Computed<Rectangle>;
+  readonly shelfBounds: Computed<Rectangle>;
+  readonly windowProjection: Computed<WorkbenchWindowHostProjection>;
+  readonly selectedSessionIndex: Signal<number>;
+  /** Serializes workbench commands and raw PTY input in their arrival order. */
+  enqueue(operation: () => void | Promise<unknown>): Promise<void>;
+  /** Routes normalized browser/pen/touch input without compatibility-mouse duplication. */
+  handlePointer(event: PointerInputEvent): Promise<boolean>;
+  /** Routes physical wheel or trackpad scrolling at one cell coordinate. */
+  handleScroll(event: MouseScrollEvent): Promise<boolean>;
+  /** Returns the completed background-frame count for diagnostics and pilots. */
+  metaballFrameRevision(): number;
+  whenIdle(): Promise<void>;
+  dispose(): void;
+}
+
+/** Controller, app options, and mount reference returned to hosts. */
+export interface MuxstoneAppDefinition {
+  readonly controller: MuxstoneController;
+  readonly mount: MuxstoneAppMountRef;
+  readonly terminalOptions: TerminalAppOptions<MuxstoneAppAction>;
+}
+
+/** Minimal browser/mobile input source accepted by the Muxstone pointer bridge. */
+export interface MuxstonePointerInputSource {
+  on(type: "pointerInput", listener: (event: PointerInputEvent) => void | Promise<void>): () => void;
+  on(type: "mouseScroll", listener: (event: MouseScrollEvent) => void | Promise<void>): () => void;
+}
+
+/** Dependencies accepted by the definition/runtime factories. */
+export interface CreateMuxstoneAppDefinitionOptions {
+  readonly controller?: MuxstoneController;
+  readonly controllerOptions?: MuxstoneControllerOptions;
+}
+
+/** Running real-terminal Muxstone instance. */
+export interface MuxstoneTerminalAppRuntime {
+  readonly app: TerminalApp<MuxstoneAppAction>;
+  readonly controller: MuxstoneController;
+  readonly mount: MuxstoneAppMount;
+  start(): void;
+  destroy(): Promise<void>;
+}
+
+const HEADER_ROWS = 2;
+const FOOTER_ROWS = 2;
+const SESSION_LIST_START = 3;
+const MENU_NEW = Object.freeze({ column: 12, row: 0, width: 7, height: 1 });
+const MENU_SESSIONS = Object.freeze({ column: 22, row: 0, width: 12, height: 1 });
+const MENU_THEME = Object.freeze({ column: 37, row: 0, width: 9, height: 1 });
+const MENU_HELP = Object.freeze({ column: 49, row: 0, width: 8, height: 1 });
+const MAX_TOUCH_GESTURES = 8;
+const SCROLL_LINES_PER_NOTCH = 3;
+const CLASSIFIED_INPUT_PIPELINE_DEPTH = 4;
+const MAX_CLASSIFIED_INPUT_BYTES = MUXSTONE_PROTOCOL_LIMITS.inputBytes * CLASSIFIED_INPUT_PIPELINE_DEPTH;
+const MIN_CLASSIFIED_KEY_RESERVATION_BYTES = 64;
+
+/** Keeps animation behind explicit input and control work without treating child output as interaction. */
+export function muxstoneMetaballsMayAdvance(
+  now: number,
+  lastInputActivityAt: number,
+  hasPendingBarrier: boolean,
+): boolean {
+  return !hasPendingBarrier && now - lastInputActivityAt >= MUXSTONE_METABALL_FRAME_INTERVAL_MS;
+}
+
+type MuxstoneMenuId = "new" | "sessions" | "theme" | "help";
+
+export type MuxstoneTerminalBarAction =
+  | Readonly<{ kind: "session"; sessionId: string }>
+  | Readonly<{ kind: "sessions" }>;
+
+export interface MuxstoneTerminalBarProjection {
+  readonly bounds: Rectangle;
+  readonly collapsed: boolean;
+  readonly commands: readonly WorkbenchButtonRowRenderCommand<MuxstoneTerminalBarAction>[];
+}
+
+/**
+ * Projects the persistent terminal taskbar. Every presentation window that is
+ * still open participates, including normal, tiled, floating, and minimized
+ * terminals. If one row cannot contain every button, the row becomes one
+ * selector that opens the existing session manager instead of silently
+ * dropping terminals.
+ */
+export function projectMuxstoneTerminalBar(
+  controller: MuxstoneController,
+  _projection: WorkbenchWindowHostProjection,
+  bounds: Rectangle,
+): MuxstoneTerminalBarProjection {
+  const inspection = controller.windowHost.controller.inspect();
+  const windowsById = new Map(inspection.windows.map((window) => [window.id, window]));
+  const items: WorkbenchButtonRowItem<MuxstoneTerminalBarAction>[] = [];
+  for (const session of controller.sessions.peek()) {
+    const windowId = muxstoneWindowId(session.id);
+    const window = windowsById.get(windowId);
+    if (!window || window.state === "closed") continue;
+    const hiddenPrefix = window.state === "minimized" ? "▁ " : "";
+    items.push({
+      label: `${hiddenPrefix}${fitText(session.title, 18)}`,
+      action: { kind: "session", sessionId: session.id },
+      active: inspection.activeWindowId === windowId,
+    });
+  }
+
+  let collapsed = false;
+  let placements: WorkbenchButtonRowPlacement<MuxstoneTerminalBarAction>[] = [];
+  layoutWorkbenchButtonRowInto(placements, items, bounds, bounds.row, { gap: 1 });
+  if (placements.length < items.length) {
+    collapsed = true;
+    placements = [];
+    layoutWorkbenchButtonRowInto(
+      placements,
+      [{
+        label: `Terminals (${items.length}) ▾`,
+        action: { kind: "sessions" },
+      }],
+      bounds,
+      bounds.row,
+      { gap: 0 },
+    );
+  }
+  const commands: WorkbenchButtonRowRenderCommand<MuxstoneTerminalBarAction>[] = [];
+  workbenchButtonRowRenderCommandsInto(commands, placements);
+  return { bounds: { ...bounds }, collapsed, commands };
+}
+
+type MuxstoneTouchTarget =
+  | Readonly<{ kind: "menu"; id: MuxstoneMenuId; hitRect: Rectangle }>
+  | Readonly<{
+    kind: "modal";
+    action: "close-help" | "cancel-kill" | "confirm-kill";
+    sessionId?: string;
+    hitRect: Rectangle;
+  }>
+  | Readonly<{ kind: "window-command"; command: WorkbenchWindowHostCommand; hitRect: Rectangle }>
+  | Readonly<{ kind: "terminal-bar"; action: MuxstoneTerminalBarAction; hitRect: Rectangle }>
+  | Readonly<{ kind: "client"; windowId: string }>;
+
+interface MuxstoneTouchGesture {
+  readonly target: MuxstoneTouchTarget;
+  readonly startColumn: number;
+  readonly startRow: number;
+  readonly startLocalX?: number;
+  readonly startLocalY?: number;
+  lastColumn: number;
+  lastRow: number;
+  moved: boolean;
+}
+
+interface MuxstonePointerMoveExcursion {
+  minColumn?: number;
+  maxColumn?: number;
+  minRow?: number;
+  maxRow?: number;
+  minLocalX?: number;
+  maxLocalX?: number;
+  minLocalY?: number;
+  maxLocalY?: number;
+}
+
+interface MuxstonePointerMoveSlot {
+  event: PointerInputEvent;
+  readonly ingressRevision: number;
+  readonly excursion: MuxstonePointerMoveExcursion;
+  readonly result: Promise<boolean>;
+  readonly settle: (handled: boolean) => void;
+  started: boolean;
+}
+
+interface MuxstoneManagerSessionHit {
+  readonly session: MuxstoneSessionSummary;
+  readonly index: number;
+}
+
+/**
+ * Binds a browser/mobile host's normalized pointer stream. Browser callers
+ * must not also bind its compatibility `mousePress` stream.
+ */
+export function bindMuxstonePointerInput(
+  mount: MuxstoneAppMount,
+  source: MuxstonePointerInputSource,
+): () => void {
+  const stopPointer = source.on("pointerInput", async (event) => {
+    await mount.handlePointer(event);
+  });
+  const stopScroll = source.on("mouseScroll", async (event) => {
+    await mount.handleScroll(event);
+  });
+  return () => {
+    stopScroll();
+    stopPointer();
+  };
+}
+
+/** Creates an initialized Muxstone app definition around a detached-host controller. */
+export async function createMuxstoneAppDefinition(
+  options: CreateMuxstoneAppDefinitionOptions,
+): Promise<MuxstoneAppDefinition> {
+  const controller = options.controller ??
+    (options.controllerOptions ? await createMuxstoneController(options.controllerOptions) : undefined);
+  if (!controller) throw new TypeError("Muxstone requires a controller or controllerOptions.");
+  await controller.ready;
+  const mount: MuxstoneAppMountRef = {};
+  return {
+    controller,
+    mount,
+    terminalOptions: createMuxstoneTerminalOptions(controller, mount),
+  };
+}
+
+/** Creates and mounts the real terminal app without starting its input reader. */
+export async function createMuxstoneTerminalApp(
+  options: CreateMuxstoneAppDefinitionOptions,
+): Promise<MuxstoneTerminalAppRuntime> {
+  const definition = await createMuxstoneAppDefinition(options);
+  const app = createTerminalApp(definition.terminalOptions);
+  const mount = definition.mount.current;
+  if (!mount) {
+    app.destroy();
+    await definition.controller.dispose();
+    throw new Error("Muxstone desktop did not mount.");
+  }
+  return {
+    app,
+    controller: definition.controller,
+    mount,
+    start: () => app.start(),
+    destroy: async () => {
+      app.destroy();
+      await definition.controller.dispose();
+    },
+  };
+}
+
+/** Builds the declarative TerminalApp contract around one controller. */
+export function createMuxstoneTerminalOptions(
+  controller: MuxstoneController,
+  mount: MuxstoneAppMountRef = {},
+): TerminalAppOptions<MuxstoneAppAction> {
+  return {
+    id: "muxstone",
+    label: "Muxstone",
+    exitOnSignal: false,
+    tuiOptions: { refreshRate: 1000 / 60 },
+    commands: muxstoneCommands(),
+    onAction: (action) => handleMuxstoneAction(action, mount),
+    setup(app) {
+      const mounted = mountMuxstoneDesktop(app, controller);
+      mount.current = mounted;
+      return () => {
+        if (mount.current === mounted) mount.current = undefined;
+        mounted.dispose();
+        void controller.dispose();
+      };
+    },
+  };
+}
+
+/** Mounts the retained terminal desktop, window routing, and serialized input queue. */
+export function mountMuxstoneDesktop(
+  app: TerminalApp<MuxstoneAppAction>,
+  controller: MuxstoneController,
+): MuxstoneAppMount {
+  const owned: Array<{ dispose(): void }> = [];
+  const unsubscribers: Array<() => void> = [];
+  const subscriptions = new AbortController();
+  const own = <T extends { dispose(): void }>(value: T): T => {
+    owned.push(value);
+    return value;
+  };
+  const selectedSessionIndex = own(new Signal(0));
+  const metaballRevision = own(new Signal(0));
+  const metaballs = new MuxstoneMetaballField();
+  let lastInputActivityAt = performance.now();
+  const bodyRect = own(
+    new Computed<Rectangle>(() => ({
+      column: 0,
+      row: Math.min(HEADER_ROWS, Math.max(0, app.tui.rectangle.value.height - 1)),
+      width: Math.max(1, app.tui.rectangle.value.width),
+      height: Math.max(1, app.tui.rectangle.value.height - HEADER_ROWS - FOOTER_ROWS),
+    })),
+  );
+  const shelfBounds = own(
+    new Computed<Rectangle>(() => ({
+      column: 0,
+      row: Math.max(0, app.tui.rectangle.value.height - 2),
+      width: Math.max(1, app.tui.rectangle.value.width),
+      height: 1,
+    })),
+  );
+  const projectionOptions = (): WorkbenchWindowHostProjectionOptions => ({
+    separatorHitSize: 3,
+    shelfBounds: shelfBounds.peek(),
+  });
+  const windowProjection = own(
+    new Computed(() =>
+      controller.windowHost.project(bodyRect.value, {
+        separatorHitSize: 3,
+        shelfBounds: shelfBounds.value,
+      })
+    ),
+  );
+
+  let disposed = false;
+  // Consecutive raw bytes share a bounded, protocol-sized pipeline. Every
+  // control/window operation is a barrier: it waits for preceding input ACKs,
+  // then blocks later input until the operation is complete.
+  const reportInputError = (error: unknown): void => {
+    if (!disposed) controller.status.value = `Muxstone input failed: ${safeErrorMessage(error)}`;
+  };
+  const operationQueue = new MuxstoneOperationQueue({
+    write: (sessionId, data) => controller.writeSession(sessionId, data),
+    reportError: reportInputError,
+  });
+  let ingressRevision = 0;
+  const enqueue = (operation: () => void | Promise<unknown>): Promise<void> => {
+    ingressRevision += 1;
+    return disposed ? operationQueue.whenIdle() : operationQueue.enqueueBarrier(operation);
+  };
+  const enqueueRaw = (
+    data: string | Uint8Array,
+    sessionId = controller.activeRuntime()?.sessionId,
+  ): Promise<void> => {
+    ingressRevision += 1;
+    lastInputActivityAt = performance.now();
+    return disposed || !sessionId ? operationQueue.whenIdle() : operationQueue.enqueueInput(sessionId, data);
+  };
+  const enqueueGuardedRaw = (
+    data: string | Uint8Array,
+    shouldWrite: () => boolean | Promise<boolean>,
+    sessionId = controller.activeRuntime()?.sessionId,
+  ): Promise<void> => {
+    ingressRevision += 1;
+    lastInputActivityAt = performance.now();
+    return disposed || !sessionId
+      ? operationQueue.whenIdle()
+      : operationQueue.enqueueGuardedInput(sessionId, data, shouldWrite);
+  };
+  const syncWindows = async (): Promise<void> => {
+    await controller.syncWindowVisibility(bodyRect.peek());
+    const projection = controller.windowHost.project(bodyRect.peek(), projectionOptions());
+    controller.syncTerminalGeometry(projection);
+  };
+  const runWindowCommand = async (
+    command: WorkbenchWindowHostCommand,
+    alreadyExecuted: boolean,
+    fallbackWindowId?: string,
+  ): Promise<void> => {
+    const closeWindowId = command.kind === "close"
+      ? command.id ?? fallbackWindowId ?? controller.windowHost.controller.inspect().activeWindowId
+      : undefined;
+    const closeSessionId = muxstoneSessionIdFromWindow(closeWindowId);
+    if (closeSessionId && controller.runtime(closeSessionId)) {
+      const killed = await controller.killSession(closeSessionId);
+      if (!killed && alreadyExecuted && controller.runtime(closeSessionId)) {
+        // Pointer/key chrome has already committed the generic close. Restore
+        // the view when the daemon rejects termination so a live PTY never
+        // becomes a hidden or frozen orphan.
+        controller.windowHost.execute({ kind: "restore", id: closeWindowId }, bodyRect.peek());
+        controller.windowHost.execute({ kind: "focus", id: closeWindowId }, bodyRect.peek());
+      }
+    } else if (!alreadyExecuted) {
+      controller.windowHost.execute(command, bodyRect.peek(), projectionOptions());
+    }
+    await syncWindows();
+  };
+
+  // Computed captures its dependency set when it is constructed. A desktop
+  // mounted with zero sessions therefore cannot discover render signals for a
+  // terminal spawned later. Bridge the changing runtime set through one stable
+  // signal so every attached/spawned terminal can invalidate the retained
+  // desktop immediately.
+  const terminalRenderRevision = own(new Signal(0));
+  const terminalRenderSubscriptions = new Map<
+    string,
+    { signal: Signal<number>; listener: () => void }
+  >();
+  const syncTerminalRenderSubscriptions = (
+    sessions = controller.sessions.peek(),
+  ): void => {
+    const liveIds = new Set(sessions.map((session) => session.id));
+    for (const [sessionId, subscription] of terminalRenderSubscriptions) {
+      const runtime = controller.runtime(sessionId);
+      if (liveIds.has(sessionId) && runtime?.renderRevision === subscription.signal) continue;
+      subscription.signal.unsubscribe(subscription.listener);
+      terminalRenderSubscriptions.delete(sessionId);
+    }
+    for (const session of sessions) {
+      if (terminalRenderSubscriptions.has(session.id)) continue;
+      const signal = controller.runtime(session.id)?.renderRevision;
+      if (!signal) continue;
+      const listener = () => {
+        terminalRenderRevision.value += 1;
+      };
+      signal.subscribe(listener, subscriptions.signal);
+      terminalRenderSubscriptions.set(session.id, { signal, listener });
+    }
+  };
+  syncTerminalRenderSubscriptions();
+  controller.sessions.subscribe(syncTerminalRenderSubscriptions, subscriptions.signal);
+  unsubscribers.push(() => {
+    for (const subscription of terminalRenderSubscriptions.values()) {
+      subscription.signal.unsubscribe(subscription.listener);
+    }
+    terminalRenderSubscriptions.clear();
+  });
+
+  const animateMetaballs = (): void => {
+    if (disposed || !app.started) return;
+    const projection = windowProjection.peek();
+    if (!muxstoneMetaballBackgroundVisible(projection, bodyRect.peek())) return;
+    const now = performance.now();
+    if (!muxstoneMetaballsMayAdvance(now, lastInputActivityAt, operationQueue.hasPendingBarrier())) return;
+    const advanced = metaballs.advance({
+      bounds: bodyRect.peek(),
+      obstacles: projection.windows.map((window) => window.rect),
+      now,
+    });
+    if (advanced) metaballRevision.value += 1;
+  };
+  const metaballTimer = setInterval(animateMetaballs, MUXSTONE_METABALL_FRAME_INTERVAL_MS);
+  unsubscribers.push(() => clearInterval(metaballTimer));
+
+  const renderRevision = own(
+    new Computed(() => {
+      const projection = windowProjection.value;
+      const sessions = controller.sessions.value;
+      const fragments: Array<string | number | boolean | undefined> = [
+        app.tui.rectangle.value.width,
+        app.tui.rectangle.value.height,
+        projection.windows.length,
+        projection.shelf.length,
+        controller.themeRevision.value,
+        controller.prefixPending.value,
+        controller.helpVisible.value,
+        controller.pendingKillSessionId.value,
+        controller.status.value,
+        selectedSessionIndex.value,
+        controller.windowHost.viewRevision.value,
+        controller.windowHost.commitRevision.value,
+        terminalRenderRevision.value,
+        metaballRevision.value,
+      ];
+      for (const session of sessions) {
+        const runtime = controller.runtime(session.id);
+        fragments.push(
+          session.id,
+          session.title,
+          session.sequence,
+          session.status,
+          runtime?.renderRevision.peek(),
+          runtime?.attached.peek(),
+          runtime?.warning.peek(),
+        );
+      }
+      return fragments.join("|");
+    }),
+  );
+
+  const desktop = new MuxstoneDesktopSurface({
+    parent: app.tui,
+    theme: { base: identityStyle },
+    zIndex: 1,
+    rectangle: app.tui.rectangle,
+    revision: renderRevision,
+    render: () =>
+      renderMuxstoneDesktop({
+        bounds: app.tui.rectangle.peek(),
+        body: bodyRect.peek(),
+        projection: windowProjection.peek(),
+        controller,
+        selectedSessionIndex: selectedSessionIndex.peek(),
+        metaballs,
+      }),
+  });
+  void desktop;
+
+  const terminalMouse = new MuxstoneTerminalMouseRouter(controller);
+  const touchGestures = new Map<number, MuxstoneTouchGesture>();
+  let pendingPointerMove: MuxstonePointerMoveSlot | undefined;
+  const modalOpen = (): boolean =>
+    controller.helpVisible.peek() || controller.pendingKillSessionId.peek() !== undefined;
+
+  const performMenu = async (id: MuxstoneMenuId): Promise<void> => {
+    switch (id) {
+      case "new":
+        await controller.spawn({ bounds: bodyRect.peek() });
+        break;
+      case "sessions":
+        controller.openSessionManager(bodyRect.peek());
+        break;
+      case "theme":
+        controller.cycleTheme();
+        break;
+      case "help":
+        controller.openHelp();
+        break;
+    }
+    await syncWindows();
+  };
+
+  const activateMenu = (id: MuxstoneMenuId): Promise<void> =>
+    enqueue(async () => {
+      if (modalOpen()) return;
+      await performMenu(id);
+    });
+
+  const terminalBar = (): MuxstoneTerminalBarProjection =>
+    projectMuxstoneTerminalBar(controller, windowProjection.peek(), shelfBounds.peek());
+  const terminalBarCommandAt = (column: number, row: number) =>
+    terminalBar().commands.find((command) => contains(command.hitRect, column, row));
+  const performTerminalBarAction = async (action: MuxstoneTerminalBarAction): Promise<void> => {
+    if (action.kind === "sessions") {
+      controller.openSessionManager(bodyRect.peek());
+    } else {
+      await controller.openSession(action.sessionId, bodyRect.peek());
+    }
+    await syncWindows();
+  };
+
+  const cancelActiveWindowGesture = (event?: PointerInputEvent, legacy?: MousePressEvent): boolean => {
+    const inspection = controller.windowHost.inspect();
+    const pointerId = inspection.interaction.active?.pointerId ?? inspection.separatorResize?.pointerId;
+    if (pointerId === undefined) return false;
+    const result = controller.windowHost.handlePointer(
+      pointerCancellationEvent(pointerId, event, legacy),
+      bodyRect.peek(),
+      projectionOptions(),
+    );
+    touchGestures.delete(pointerId);
+    return result.handled;
+  };
+
+  const activateManagerHit = async (hit: MuxstoneManagerSessionHit): Promise<void> => {
+    selectedSessionIndex.value = hit.index;
+    await controller.openSession(hit.session.id, bodyRect.peek());
+    await syncWindows();
+  };
+
+  const scrollClientWindow = (windowId: string, delta: number): boolean => {
+    if (!Number.isFinite(delta) || delta === 0 || modalOpen()) return modalOpen();
+    if (windowId === MUXSTONE_SESSIONS_WINDOW_ID) {
+      const sessions = controller.sessions.peek();
+      if (sessions.length === 0) return true;
+      selectedSessionIndex.value = clampIndex(selectedSessionIndex.peek() + Math.trunc(delta), sessions.length);
+      return true;
+    }
+    const sessionId = muxstoneSessionIdFromWindow(windowId);
+    const runtime = sessionId ? controller.runtime(sessionId) : undefined;
+    if (!runtime) return false;
+    const before = runtime.scrollback.inspectViewport();
+    if (before.totalRows <= before.viewportRows) return true;
+    if (delta > 0 && before.mode === "live") return true;
+    runtime.scrollback.scrollLines(Math.trunc(delta));
+    const after = runtime.scrollback.inspectViewport();
+    if (delta > 0 && after.offset >= after.maxOffset) runtime.scrollback.exitCopyMode();
+    runtime.renderRevision.value += 1;
+    const current = runtime.scrollback.inspectViewport();
+    controller.status.value = current.mode === "copy"
+      ? `Copy mode · row ${current.offset + 1}/${Math.max(1, current.totalRows)} · scroll down for live`
+      : `Live terminal · ${runtime.summary.peek().title}`;
+    return true;
+  };
+
+  const scrollWindowAt = (column: number, row: number, delta: number): boolean => {
+    const window = clientWindowAt(windowProjection.peek(), column, row);
+    return window ? scrollClientWindow(window.id, delta) : false;
+  };
+
+  const performModalActivation = async (column: number, row: number): Promise<boolean> => {
+    if (controller.helpVisible.peek()) {
+      if (contains(muxstoneHelpLayout(windowProjection.peek().bounds).closeRect, column, row)) {
+        controller.closeHelp();
+      }
+      return true;
+    }
+    if (controller.pendingKillSessionId.peek()) {
+      const layout = muxstoneKillLayout(windowProjection.peek().bounds);
+      if (contains(layout.confirmRect, column, row)) {
+        await controller.confirmKillSession();
+        await syncWindows();
+      } else if (contains(layout.cancelRect, column, row)) {
+        controller.cancelKillSession();
+      }
+      return true;
+    }
+    return false;
+  };
+
+  const routeModalActivation = (column: number, row: number): Promise<boolean> => {
+    let handled = false;
+    return enqueue(async () => {
+      if (!modalOpen()) return;
+      cancelActiveWindowGesture();
+      handled = await performModalActivation(column, row);
+    }).then(() => handled);
+  };
+
+  const routeWindowPointer = async (event: MousePressEvent): Promise<boolean> => {
+    metaballs.setPointer({ column: event.x, row: event.y });
+    if (modalOpen()) {
+      if (terminalMouse.hasLegacyCapture) {
+        const packet = terminalMouse.routeLegacyPress(
+          { ...event, drag: false, release: true },
+          windowProjection.peek(),
+        );
+        if (packet) void enqueueRaw(packet.bytes, packet.sessionId);
+      }
+      let handled = false;
+      await enqueue(async () => {
+        cancelActiveWindowGesture(undefined, event);
+        if (!event.drag && !event.release && event.button === 0) {
+          await performModalActivation(event.x, event.y);
+        }
+        handled = true;
+      });
+      return handled;
+    }
+
+    if (contains(shelfBounds.peek(), event.x, event.y)) {
+      if (!event.drag && !event.release && event.button === 0) {
+        const command = terminalBarCommandAt(event.x, event.y);
+        if (command) await enqueue(() => performTerminalBarAction(command.item.action));
+      }
+      return true;
+    }
+
+    // Geometry gestures are local and synchronous. Do not make title-bar
+    // motion wait behind PTY ACKs; child bytes retain their own ordered lane.
+    const projectionBefore = windowProjection.peek();
+    const clientWindow = clientWindowAt(projectionBefore, event.x, event.y);
+    const result = controller.windowHost.handleMouse(
+      "terminal",
+      event,
+      bodyRect.peek(),
+      projectionOptions(),
+    );
+    let handled = result.handled;
+    if (!result.handled || terminalMouse.hasLegacyCapture) {
+      const packet = terminalMouse.routeLegacyPress(event, projectionBefore);
+      if (packet) {
+        void enqueueRaw(packet.bytes, packet.sessionId);
+        handled = true;
+      }
+    }
+    if (!event.drag && !event.release && event.button === 0) {
+      const hit = managerSessionAt(
+        controller,
+        projectionBefore,
+        selectedSessionIndex.peek(),
+        event.x,
+        event.y,
+      );
+      if (hit && clientWindow?.id === MUXSTONE_SESSIONS_WINDOW_ID) {
+        await enqueue(() => activateManagerHit(hit));
+        return true;
+      }
+      if (clientWindow) handled = true;
+      if (clientWindow && clientWindow.id !== MUXSTONE_SESSIONS_WINDOW_ID) controller.syncActiveSession();
+    }
+    if (result.handled) controller.syncTerminalGeometry(windowProjection.peek());
+    if (result.command) {
+      const command = result.command;
+      void enqueue(() => runWindowCommand(command, true));
+    }
+    return handled;
+  };
+
+  const routeWindowScroll = (event: MouseScrollEvent): Promise<boolean> => {
+    metaballs.setPointer({ column: event.x, row: event.y });
+    if (modalOpen()) return Promise.resolve(true);
+    if (contains(shelfBounds.peek(), event.x, event.y)) return Promise.resolve(true);
+    const packet = terminalMouse.routeLegacyScroll(event, windowProjection.peek());
+    if (packet) {
+      void enqueueRaw(packet.bytes, packet.sessionId);
+      return Promise.resolve(true);
+    }
+    return Promise.resolve(scrollWindowAt(event.x, event.y, event.scroll * SCROLL_LINES_PER_NOTCH));
+  };
+
+  const routeTerminalPointer = (
+    event: PointerInputEvent,
+    projection = windowProjection.peek(),
+  ): boolean => {
+    const packet = terminalMouse.routePointer(event, projection);
+    if (!packet) return false;
+    void enqueueRaw(packet.bytes, packet.sessionId);
+    return true;
+  };
+
+  const routeSemanticPointerFast = (event: PointerInputEvent): boolean | undefined => {
+    const projection = windowProjection.peek();
+    if (modalOpen()) {
+      for (const packet of terminalMouse.cancelPointerCaptures(projection, event)) {
+        void enqueueRaw(packet.bytes, packet.sessionId);
+      }
+      return undefined;
+    }
+    if (terminalMouse.hasPointerCapture(event.pointerId)) {
+      routeTerminalPointer(event, projection);
+      return true;
+    }
+    const hostInspection = controller.windowHost.inspect();
+    const activePointerId = hostInspection.interaction.active?.pointerId ??
+      hostInspection.separatorResize?.pointerId;
+    if (activePointerId === event.pointerId) {
+      const result = controller.windowHost.handlePointer(event, bodyRect.peek(), projectionOptions());
+      if (result.handled) controller.syncTerminalGeometry(windowProjection.peek());
+      return result.handled;
+    }
+    if (
+      event.kind === "wheel" ||
+      (event.kind === "move" && event.device === "mouse" && event.buttons === 0)
+    ) {
+      if (routeTerminalPointer(event, projection)) return true;
+      const point = event.coordinates.cell;
+      const direction = Math.sign(event.wheel?.deltaY ?? 0);
+      return event.kind === "wheel" && point && direction !== 0
+        ? scrollWindowAt(point.x, point.y, direction * SCROLL_LINES_PER_NOTCH) || undefined
+        : undefined;
+    }
+    const point = event.coordinates.cell;
+    if (point && contains(shelfBounds.peek(), point.x, point.y)) {
+      if (event.device !== "mouse") return undefined;
+      if (event.kind === "down" && primaryPointerActivation(event)) {
+        const command = terminalBarCommandAt(point.x, point.y);
+        if (command) void enqueue(() => performTerminalBarAction(command.item.action));
+      }
+      return true;
+    }
+    if (event.kind !== "down" || !point) return undefined;
+    const clientWindow = clientWindowAt(projection, point.x, point.y);
+    if (clientWindow && clientWindow.id !== MUXSTONE_SESSIONS_WINDOW_ID) {
+      controller.windowHost.handlePointer(event, bodyRect.peek(), projectionOptions());
+      if (routeTerminalPointer(event, projection) || event.device === "mouse") {
+        controller.syncActiveSession();
+        return true;
+      }
+      return undefined;
+    }
+    if (
+      primaryPointerActivation(event) &&
+      !touchWindowCommandAt(projection, point.x, point.y)
+    ) {
+      const result = controller.windowHost.handlePointer(event, bodyRect.peek(), projectionOptions());
+      if (result.handled) {
+        controller.syncTerminalGeometry(windowProjection.peek());
+        return true;
+      }
+    }
+    return undefined;
+  };
+
+  const modalTouchTargetAt = (column: number, row: number): MuxstoneTouchTarget | undefined => {
+    if (controller.helpVisible.peek()) {
+      const hitRect = muxstoneHelpLayout(windowProjection.peek().bounds).closeRect;
+      return contains(hitRect, column, row) ? { kind: "modal", action: "close-help", hitRect } : undefined;
+    }
+    const sessionId = controller.pendingKillSessionId.peek();
+    if (!sessionId) return undefined;
+    const layout = muxstoneKillLayout(windowProjection.peek().bounds);
+    if (contains(layout.confirmRect, column, row)) {
+      return { kind: "modal", action: "confirm-kill", sessionId, hitRect: layout.confirmRect };
+    }
+    if (contains(layout.cancelRect, column, row)) {
+      return { kind: "modal", action: "cancel-kill", sessionId, hitRect: layout.cancelRect };
+    }
+    return undefined;
+  };
+
+  const performTouchTarget = async (
+    gesture: MuxstoneTouchGesture,
+    point: { x: number; y: number } | undefined,
+  ): Promise<boolean> => {
+    if (!point || gesture.moved) return true;
+    const target = gesture.target;
+    if ("hitRect" in target && !contains(target.hitRect, point.x, point.y)) return true;
+    switch (target.kind) {
+      case "menu":
+        if (!modalOpen()) await performMenu(target.id);
+        return true;
+      case "modal":
+        if (target.action === "close-help" && controller.helpVisible.peek()) {
+          controller.closeHelp();
+        } else if (
+          target.action === "cancel-kill" && controller.pendingKillSessionId.peek() === target.sessionId
+        ) {
+          controller.cancelKillSession();
+        } else if (
+          target.action === "confirm-kill" && controller.pendingKillSessionId.peek() === target.sessionId
+        ) {
+          await controller.confirmKillSession();
+          await syncWindows();
+        }
+        return true;
+      case "window-command":
+        if (!modalOpen()) {
+          await runWindowCommand(target.command, false);
+        }
+        return true;
+      case "terminal-bar":
+        if (!modalOpen()) await performTerminalBarAction(target.action);
+        return true;
+      case "client": {
+        if (modalOpen()) return true;
+        const projection = windowProjection.peek();
+        const window = clientWindowAt(projection, point.x, point.y);
+        if (window?.id !== target.windowId) return true;
+        if (window.id === MUXSTONE_SESSIONS_WINDOW_ID) {
+          const hit = managerSessionAt(
+            controller,
+            projection,
+            selectedSessionIndex.peek(),
+            point.x,
+            point.y,
+          );
+          if (hit) await activateManagerHit(hit);
+        }
+        return true;
+      }
+    }
+  };
+
+  const routeSemanticPointerInBarrier = async (
+    event: PointerInputEvent,
+    excursion?: MuxstonePointerMoveExcursion,
+  ): Promise<boolean> => {
+    let handled = false;
+    const point = event.coordinates.cell;
+    const gesture = touchGestures.get(event.pointerId);
+    const touchLike = event.device !== "mouse";
+    const activation = primaryPointerActivation(event);
+
+    if (modalOpen()) {
+      cancelActiveWindowGesture(event);
+      if (!touchLike) {
+        if (event.kind === "down" && activation && point) {
+          await performModalActivation(point.x, point.y);
+        }
+        return true;
+      }
+      if (event.kind === "down") {
+        if (activation && point) {
+          const target = modalTouchTargetAt(point.x, point.y);
+          if (target) rememberTouchGesture(touchGestures, event, point, target);
+        }
+        return true;
+      }
+      if (gesture?.target.kind !== "modal") {
+        touchGestures.delete(event.pointerId);
+        return true;
+      }
+      if (event.kind === "move") updateTouchGesture(gesture, event, point, excursion);
+      if (event.kind === "up" || event.kind === "cancel") {
+        updateTouchGesture(gesture, event, point);
+        touchGestures.delete(event.pointerId);
+        if (event.kind === "up") await performTouchTarget(gesture, point);
+      }
+      return true;
+    }
+
+    if (!event.primary && !gesture) return false;
+    if (event.kind === "wheel") {
+      if (!point) return false;
+      const direction = Math.sign(event.wheel?.deltaY ?? 0);
+      return direction !== 0 && scrollWindowAt(point.x, point.y, direction * SCROLL_LINES_PER_NOTCH);
+    }
+
+    if (!point) {
+      if (touchLike && gesture) updateTouchGesture(gesture, event, undefined, excursion);
+      const result = controller.windowHost.handlePointer(event, bodyRect.peek(), projectionOptions());
+      if (event.kind === "up" || event.kind === "cancel") touchGestures.delete(event.pointerId);
+      if (result.handled) {
+        if (result.command) await runWindowCommand(result.command, true);
+        else await syncWindows();
+      }
+      return result.handled || gesture !== undefined;
+    }
+
+    const projectionBefore = windowProjection.peek();
+    const inTerminalBar = contains(shelfBounds.peek(), point.x, point.y);
+    if (inTerminalBar) {
+      if (!touchLike) {
+        if (event.kind === "down" && activation) {
+          const command = terminalBarCommandAt(point.x, point.y);
+          if (command) await performTerminalBarAction(command.item.action);
+        }
+        return true;
+      }
+      if (event.kind === "down") {
+        if (!activation) return true;
+        const command = terminalBarCommandAt(point.x, point.y);
+        if (command) {
+          rememberTouchGesture(touchGestures, event, point, {
+            kind: "terminal-bar",
+            action: command.item.action,
+            hitRect: command.hitRect,
+          });
+        }
+        return true;
+      }
+    }
+    if (!touchLike && event.kind === "down" && activation) {
+      const menu = menuAt(point.x, point.y, false);
+      if (menu) {
+        await performMenu(menu);
+        return true;
+      }
+    }
+
+    if (touchLike && event.kind === "down") {
+      if (!activation) return false;
+      const menu = menuAt(point.x, point.y, true);
+      if (menu) {
+        rememberTouchGesture(touchGestures, event, point, {
+          kind: "menu",
+          id: menu,
+          hitRect: expandedRect(menuRect(menu), 1),
+        });
+        return true;
+      }
+      const commandTarget = touchWindowCommandAt(projectionBefore, point.x, point.y);
+      if (commandTarget) {
+        rememberTouchGesture(touchGestures, event, point, commandTarget);
+        return true;
+      }
+    }
+
+    if (touchLike && gesture) {
+      if (event.kind === "move") {
+        const previousRow = gesture.lastRow;
+        updateTouchGesture(gesture, event, point, excursion);
+        if (gesture.target.kind === "client") {
+          const rowDelta = previousRow - point.y;
+          if (rowDelta !== 0) {
+            if (gesture.target.windowId === MUXSTONE_SESSIONS_WINDOW_ID) {
+              const sessions = controller.sessions.peek();
+              selectedSessionIndex.value = clampIndex(
+                selectedSessionIndex.peek() + rowDelta,
+                sessions.length,
+              );
+            } else {
+              scrollClientWindow(gesture.target.windowId, rowDelta);
+            }
+          }
+        }
+        return true;
+      }
+      if (event.kind === "up" || event.kind === "cancel") {
+        updateTouchGesture(gesture, event, point);
+        touchGestures.delete(event.pointerId);
+        if (event.kind === "up") await performTouchTarget(gesture, point);
+        return true;
+      }
+    }
+
+    const clientWindow = clientWindowAt(projectionBefore, point.x, point.y);
+    const result = controller.windowHost.handlePointer(event, bodyRect.peek(), projectionOptions());
+    handled = result.handled;
+    if (!touchLike && event.kind === "down" && activation && clientWindow) {
+      const hit = managerSessionAt(
+        controller,
+        projectionBefore,
+        selectedSessionIndex.peek(),
+        point.x,
+        point.y,
+      );
+      if (hit && clientWindow.id === MUXSTONE_SESSIONS_WINDOW_ID) await activateManagerHit(hit);
+      handled = true;
+    } else if (touchLike && event.kind === "down" && activation && clientWindow) {
+      rememberTouchGesture(touchGestures, event, point, { kind: "client", windowId: clientWindow.id });
+      handled = true;
+    }
+    if (result.command) await runWindowCommand(result.command, true);
+    else if (result.handled || clientWindow) await syncWindows();
+    return handled;
+  };
+
+  const routeSemanticPointer = (event: PointerInputEvent): Promise<boolean> => {
+    if (disposed) return Promise.resolve(false);
+    const pointerCell = event.coordinates.cell;
+    if (event.kind === "cancel") metaballs.clearPointer();
+    else if (pointerCell) metaballs.setPointer({ column: pointerCell.x, row: pointerCell.y });
+    const fastResult = routeSemanticPointerFast(event);
+    if (fastResult !== undefined) return Promise.resolve(fastResult);
+    if (
+      event.kind === "move" && pendingPointerMove && !pendingPointerMove.started &&
+      pendingPointerMove.event.pointerId === event.pointerId &&
+      pendingPointerMove.ingressRevision === ingressRevision
+    ) {
+      mergePointerExcursion(pendingPointerMove.excursion, event);
+      pendingPointerMove.event = event;
+      return pendingPointerMove.result;
+    }
+    let settle!: (handled: boolean) => void;
+    const result = new Promise<boolean>((resolve) => settle = resolve);
+    const slot: MuxstonePointerMoveSlot | undefined = event.kind === "move"
+      ? {
+        event,
+        ingressRevision: ingressRevision + 1,
+        excursion: pointerExcursion(event),
+        result,
+        settle,
+        started: false,
+      }
+      : undefined;
+    if (slot) pendingPointerMove = slot;
+    let ran = false;
+    const queued = enqueue(async () => {
+      ran = true;
+      if (slot) {
+        slot.started = true;
+        if (pendingPointerMove === slot) pendingPointerMove = undefined;
+      }
+      try {
+        const handled = await routeSemanticPointerInBarrier(slot?.event ?? event, slot?.excursion);
+        settle(handled);
+      } catch (error) {
+        if (!disposed) controller.status.value = `Muxstone pointer failed: ${safeErrorMessage(error)}`;
+        settle(false);
+      }
+    });
+    const settleSkipped = () => {
+      if (ran) return;
+      if (slot && pendingPointerMove === slot) pendingPointerMove = undefined;
+      settle(false);
+    };
+    void queued.then(settleSkipped, settleSkipped);
+    return result;
+  };
+
+  unsubscribers.push(app.mouse.register({
+    id: "muxstone-window-desktop",
+    bounds: () => ({
+      column: bodyRect.peek().column,
+      row: bodyRect.peek().row,
+      width: bodyRect.peek().width,
+      height: bodyRect.peek().height + shelfBounds.peek().height,
+    }),
+    zIndex: 10_000,
+    captureDrag: true,
+    onPress: routeWindowPointer,
+    onDrag: routeWindowPointer,
+    onRelease: routeWindowPointer,
+    onScroll: routeWindowScroll,
+  }));
+  unsubscribers.push(app.mouse.register({
+    id: "muxstone-modal",
+    bounds: () => app.tui.rectangle.peek(),
+    zIndex: 30_000,
+    disabled: () => !modalOpen(),
+    captureDrag: true,
+    onPress: (event) => event.button === 0 ? routeModalActivation(event.x, event.y) : true,
+    onDrag: () => true,
+    onRelease: () => true,
+    onScroll: () => true,
+  }));
+  unsubscribers.push(registerMenuTarget(app, "new", MENU_NEW, () => activateMenu("new"), modalOpen));
+  unsubscribers.push(
+    registerMenuTarget(app, "sessions", MENU_SESSIONS, () => activateMenu("sessions"), modalOpen),
+  );
+  unsubscribers.push(registerMenuTarget(app, "theme", MENU_THEME, () => activateMenu("theme"), modalOpen));
+  unsubscribers.push(registerMenuTarget(app, "help", MENU_HELP, () => activateMenu("help"), modalOpen));
+
+  const routeKeyInBarrier = async (
+    event: KeyPressEvent,
+    forwardTerminalInput: (bytes: Uint8Array) => void | Promise<unknown> = (bytes) => controller.writeActive(bytes),
+  ): Promise<void> => {
+    if (controller.helpVisible.peek()) {
+      if (event.key === "escape" || event.key === "?" || event.key.toLowerCase() === "q") {
+        controller.closeHelp();
+      }
+      return;
+    }
+    if (controller.pendingKillSessionId.peek()) {
+      if (event.key === "return" || event.key.toLowerCase() === "y") {
+        await controller.confirmKillSession();
+        await syncWindows();
+      } else if (event.key === "escape" || event.key.toLowerCase() === "n") {
+        controller.cancelKillSession();
+      }
+      return;
+    }
+    if (event.ctrl && !event.meta && event.key.toLowerCase() === "b") {
+      if (controller.prefixPending.peek()) {
+        controller.cancelPrefix();
+        await forwardTerminalInput(new Uint8Array([2]));
+      } else {
+        controller.beginPrefix();
+      }
+      return;
+    }
+    if (controller.prefixPending.peek()) {
+      await controller.handlePrefixKey(event.key, bodyRect.peek());
+      await syncWindows();
+      return;
+    }
+    if (shouldRouteAsWorkbenchKey(controller, event)) {
+      const activeWindowId = controller.windowHost.controller.inspect().activeWindowId;
+      const hostResult = controller.windowHost.handleKey(event, bodyRect.peek(), projectionOptions());
+      if (hostResult.handled) {
+        if (hostResult.command) await runWindowCommand(hostResult.command, true, activeWindowId);
+        else await syncWindows();
+        return;
+      }
+      if (await handleManagerKey(controller, selectedSessionIndex, event, bodyRect.peek())) {
+        await syncWindows();
+        return;
+      }
+    }
+    const bytes = encodeTerminalKeyPress(event);
+    if (bytes) await forwardTerminalInput(bytes);
+  };
+
+  type ClassifiedInputSegment = {
+    readonly sessionId: string;
+    readonly parts: Uint8Array[];
+    bytes: number;
+  };
+  type ClassifiedKeyBatch = {
+    readonly events: KeyPressEvent[];
+    reservedBytes: number;
+    started: boolean;
+    tailRevision: number;
+  };
+  let pendingClassifiedKeyBatch: ClassifiedKeyBatch | undefined;
+  let classifiedInputBytes = 0;
+  const appendClassifiedInput = (
+    segments: ClassifiedInputSegment[],
+    sessionId: string,
+    bytes: Uint8Array,
+  ): void => {
+    let offset = 0;
+    while (offset < bytes.byteLength) {
+      let segment = segments.at(-1);
+      if (
+        !segment || segment.sessionId !== sessionId ||
+        segment.bytes >= MUXSTONE_PROTOCOL_LIMITS.inputBytes
+      ) {
+        segment = { sessionId, parts: [], bytes: 0 };
+        segments.push(segment);
+      }
+      const take = Math.min(
+        bytes.byteLength - offset,
+        MUXSTONE_PROTOCOL_LIMITS.inputBytes - segment.bytes,
+      );
+      segment.parts.push(bytes.slice(offset, offset + take));
+      segment.bytes += take;
+      offset += take;
+    }
+  };
+  const flushClassifiedInput = async (segments: ClassifiedInputSegment[]): Promise<void> => {
+    if (segments.length === 0) return;
+    const writes = segments.splice(0).map((segment) => {
+      const bytes = new Uint8Array(segment.bytes);
+      let offset = 0;
+      for (const part of segment.parts) {
+        bytes.set(part, offset);
+        offset += part.byteLength;
+      }
+      return { sessionId: segment.sessionId, bytes };
+    });
+    for (let offset = 0; offset < writes.length; offset += CLASSIFIED_INPUT_PIPELINE_DEPTH) {
+      await Promise.all(
+        writes.slice(offset, offset + CLASSIFIED_INPUT_PIPELINE_DEPTH).map(async (write) => {
+          try {
+            await controller.writeSession(write.sessionId, write.bytes);
+          } catch (error) {
+            reportInputError(error);
+          }
+        }),
+      );
+    }
+  };
+  const drainClassifiedKeys = async (batch: ClassifiedKeyBatch): Promise<void> => {
+    batch.started = true;
+    const segments: ClassifiedInputSegment[] = [];
+    const appendToActive = (bytes: Uint8Array): void => {
+      const sessionId = controller.activeRuntime()?.sessionId;
+      if (sessionId) appendClassifiedInput(segments, sessionId, bytes);
+    };
+    for (const event of batch.events) {
+      const prefixKey = event.ctrl && !event.meta && event.key.toLowerCase() === "b";
+      const needsWorkbenchClassification = prefixKey || modalOpen() || controller.prefixPending.peek() ||
+        shouldRouteAsWorkbenchKey(controller, event);
+      if (needsWorkbenchClassification) {
+        await flushClassifiedInput(segments);
+        await routeKeyInBarrier(event, appendToActive);
+        continue;
+      }
+      const bytes = encodeTerminalKeyPress(event);
+      if (bytes) appendToActive(bytes);
+    }
+    await flushClassifiedInput(segments);
+  };
+  const snapshotKeyPress = (event: KeyPressEvent): KeyPressEvent => ({
+    ...event,
+    buffer: new Uint8Array(event.buffer),
+  });
+  const classifiedKeyReservationBytes = (event: KeyPressEvent): number => {
+    const encodedBytes = event.buffer.byteLength > 0
+      ? event.buffer.byteLength
+      : encodeTerminalKeyPress(event)?.byteLength ?? 0;
+    return Math.max(MIN_CLASSIFIED_KEY_RESERVATION_BYTES, event.key.length * 2, encodedBytes);
+  };
+  const enqueueClassifiedKey = (event: KeyPressEvent): void => {
+    const reservedBytes = classifiedKeyReservationBytes(event);
+    if (reservedBytes > MAX_CLASSIFIED_INPUT_BYTES - classifiedInputBytes) {
+      reportInputError(
+        new RangeError(`raw input buffer limit exceeded (${MAX_CLASSIFIED_INPUT_BYTES} bytes)`),
+      );
+      return;
+    }
+    classifiedInputBytes += reservedBytes;
+    const current = pendingClassifiedKeyBatch;
+    if (current && !current.started && current.tailRevision === ingressRevision) {
+      ingressRevision += 1;
+      current.tailRevision = ingressRevision;
+      current.events.push(event);
+      current.reservedBytes += reservedBytes;
+      return;
+    }
+    const batch: ClassifiedKeyBatch = {
+      events: [event],
+      reservedBytes,
+      started: false,
+      tailRevision: -1,
+    };
+    pendingClassifiedKeyBatch = batch;
+    const completed = enqueue(() => drainClassifiedKeys(batch));
+    batch.tailRevision = ingressRevision;
+    void completed.finally(() => {
+      classifiedInputBytes = Math.max(0, classifiedInputBytes - batch.reservedBytes);
+      if (pendingClassifiedKeyBatch === batch) pendingClassifiedKeyBatch = undefined;
+    });
+  };
+  const enqueueKeyBarrier = (event: KeyPressEvent): void => {
+    void enqueue(() => routeKeyInBarrier(event));
+  };
+
+  const allowPasteInBarrier = (): boolean => {
+    if (modalOpen()) return false;
+    // A paste is one atomic terminal payload, not a mux command. If it follows
+    // an armed prefix, cancel the prefix before forwarding the complete paste.
+    if (controller.prefixPending.peek()) controller.cancelPrefix();
+    return true;
+  };
+
+  let prefixIngressPending = false;
+  unsubscribers.push(app.tui.on("keyPress", (readerEvent) => {
+    // InputReader deliberately reuses one KeyPressEvent and aliases its read
+    // buffer. Snapshot at the synchronous ingress boundary before any queued
+    // prefix/control work can observe the next decoded key instead.
+    const event = snapshotKeyPress(readerEvent);
+    if (prefixIngressPending) {
+      prefixIngressPending = false;
+      enqueueKeyBarrier(event);
+      return;
+    }
+    const prefixKey = event.ctrl && !event.meta && event.key.toLowerCase() === "b";
+    const classificationBarrier = operationQueue.hasPendingBarrier();
+    if (
+      prefixKey && !classificationBarrier && !modalOpen() &&
+      !controller.prefixPending.peek()
+    ) {
+      prefixIngressPending = true;
+      enqueueKeyBarrier(event);
+      return;
+    }
+    if (
+      prefixKey || modalOpen() || controller.prefixPending.peek() || shouldRouteAsWorkbenchKey(controller, event)
+    ) {
+      enqueueKeyBarrier(event);
+      return;
+    }
+    if (classificationBarrier) {
+      enqueueClassifiedKey(event);
+      return;
+    }
+    const bytes = encodeTerminalKeyPress(event);
+    if (bytes) void enqueueRaw(bytes);
+  }));
+  unsubscribers.push(app.tui.on("paste", (event) => {
+    // Preserve the reader's raw bytes when available and let the operation
+    // queue perform the sole bounded copy/encoding step at ingress.
+    const paste = event.buffer.byteLength > 0 ? event.buffer : event.text;
+    if (
+      !prefixIngressPending && !operationQueue.hasPendingBarrier() && !modalOpen() &&
+      !controller.prefixPending.peek()
+    ) {
+      void enqueueRaw(paste);
+      return;
+    }
+    prefixIngressPending = false;
+    void enqueueGuardedRaw(paste, allowPasteInBarrier);
+  }));
+
+  const scheduleGeometry = (): void => {
+    if (disposed) return;
+    controller.syncTerminalGeometry(windowProjection.peek());
+  };
+  windowProjection.subscribe(scheduleGeometry, subscriptions.signal);
+  controller.sessions.subscribe((sessions) => {
+    selectedSessionIndex.value = clampIndex(selectedSessionIndex.peek(), sessions.length);
+  }, subscriptions.signal);
+  scheduleGeometry();
+
+  return {
+    app,
+    controller,
+    bodyRect,
+    shelfBounds,
+    windowProjection,
+    selectedSessionIndex,
+    enqueue,
+    handlePointer: routeSemanticPointer,
+    handleScroll: routeWindowScroll,
+    metaballFrameRevision: () => metaballRevision.peek(),
+    whenIdle: () => operationQueue.whenIdle(),
+    dispose() {
+      if (disposed) return;
+      const projection = windowProjection.peek();
+      for (const packet of terminalMouse.cancelAllCaptures(projection)) {
+        void controller.writeSession(packet.sessionId, packet.bytes).catch(() => false);
+      }
+      disposed = true;
+      touchGestures.clear();
+      terminalMouse.clear();
+      if (pendingPointerMove && !pendingPointerMove.started) {
+        pendingPointerMove.settle(false);
+        pendingPointerMove = undefined;
+      }
+      operationQueue.dispose();
+      subscriptions.abort();
+      for (let index = unsubscribers.length - 1; index >= 0; index -= 1) unsubscribers[index]!();
+      for (let index = owned.length - 1; index >= 0; index -= 1) owned[index]!.dispose();
+    },
+  };
+}
+
+function muxstoneCommands(): TerminalAppOptions<MuxstoneAppAction>["commands"] {
+  return [
+    { id: "muxstone.new", label: "New terminal", group: "sessions", action: { type: "muxstone.new" } },
+    {
+      id: "muxstone.sessions",
+      label: "Show session manager",
+      group: "sessions",
+      action: { type: "muxstone.sessions" },
+    },
+    { id: "muxstone.theme", label: "Cycle theme", group: "appearance", action: { type: "muxstone.theme" } },
+    { id: "muxstone.help", label: "Show help", group: "global", action: { type: "muxstone.help" } },
+    { id: "muxstone.detach", label: "Detach active terminal", group: "sessions", action: { type: "muxstone.detach" } },
+    { id: "muxstone.kill", label: "Kill active terminal", group: "sessions", action: { type: "muxstone.kill" } },
+    { id: "muxstone.quit", label: "Quit Muxstone", group: "global", action: { type: "muxstone.quit" } },
+  ];
+}
+
+async function handleMuxstoneAction(action: MuxstoneAppAction, mount: MuxstoneAppMountRef): Promise<void> {
+  const mounted = mount.current;
+  if (!mounted) return;
+  const { controller, bodyRect } = mounted;
+  await mounted.enqueue(async () => {
+    switch (action.type) {
+      case "muxstone.new":
+        await controller.spawn({ bounds: bodyRect.peek() });
+        break;
+      case "muxstone.sessions":
+        controller.windowHost.execute({ kind: "restore", id: MUXSTONE_SESSIONS_WINDOW_ID }, bodyRect.peek());
+        controller.windowHost.execute({ kind: "focus", id: MUXSTONE_SESSIONS_WINDOW_ID }, bodyRect.peek());
+        break;
+      case "muxstone.theme":
+        controller.cycleTheme();
+        break;
+      case "muxstone.help":
+        controller.openHelp();
+        break;
+      case "muxstone.detach":
+        await controller.closeActive(bodyRect.peek());
+        break;
+      case "muxstone.kill": {
+        const runtime = controller.activeRuntime();
+        if (runtime) controller.requestKillSession(runtime.sessionId);
+        break;
+      }
+      case "muxstone.quit":
+        mounted.app.destroy();
+        await controller.dispose();
+        return;
+    }
+    await controller.syncWindowVisibility(bodyRect.peek());
+    controller.syncTerminalGeometry(mounted.windowProjection.peek());
+  });
+}
+
+function registerMenuTarget(
+  app: TerminalApp<MuxstoneAppAction>,
+  id: string,
+  bounds: Rectangle,
+  activate: () => void | Promise<void>,
+  disabled: () => boolean,
+): () => void {
+  return app.mouse.register({
+    id: `muxstone-menu-${id}`,
+    bounds,
+    zIndex: 20_000,
+    disabled,
+    onPress: (event) => {
+      if (event.button !== 0 || event.release) return false;
+      void activate();
+      return true;
+    },
+  });
+}
+
+async function handleManagerKey(
+  controller: MuxstoneController,
+  selected: Signal<number>,
+  event: KeyPressEvent,
+  bounds: Rectangle,
+): Promise<boolean> {
+  if (controller.windowHost.controller.inspect().activeWindowId !== MUXSTONE_SESSIONS_WINDOW_ID) return false;
+  const sessions = controller.sessions.peek();
+  if (event.key === "up" || event.key === "down") {
+    const delta = event.key === "up" ? -1 : 1;
+    selected.value = wrapIndex(selected.peek() + delta, sessions.length);
+    return true;
+  }
+  const session = sessions[clampIndex(selected.peek(), sessions.length)];
+  if (!session) return event.key === "return" || event.key === "delete";
+  if (event.key === "return" || event.key === "space") {
+    await controller.openSession(session.id, bounds);
+    return true;
+  }
+  if (event.key === "delete") {
+    controller.requestKillSession(session.id);
+    return true;
+  }
+  return false;
+}
+
+function shouldRouteAsWorkbenchKey(controller: MuxstoneController, event: KeyPressEvent): boolean {
+  if (event.meta || controller.windowHost.inspect().switcherOpen) return true;
+  if (controller.windowHost.controller.inspect().activeWindowId !== MUXSTONE_SESSIONS_WINDOW_ID) return false;
+  return event.key === "up" || event.key === "down" || event.key === "return" || event.key === "space" ||
+    event.key === "delete";
+}
+
+interface RenderMuxstoneDesktopOptions {
+  bounds: Rectangle;
+  body: Rectangle;
+  projection: WorkbenchWindowHostProjection;
+  controller: MuxstoneController;
+  selectedSessionIndex: number;
+  metaballs: MuxstoneMetaballField;
+}
+
+/** The desktop effect remains visible unless a terminal owns the maximized surface. */
+export function muxstoneMetaballBackgroundVisible(
+  projection: WorkbenchWindowHostProjection,
+  bounds: Rectangle = projection.bounds,
+): boolean {
+  if (muxstoneSessionIdFromWindow(projection.core.maximizedWindowId) !== undefined) return false;
+  const covers = [
+    ...projection.windows.map((window) => window.rect),
+    ...projection.separators.map((item) => item.rect),
+  ];
+  for (let row = bounds.row; row < bounds.row + bounds.height; row += 1) {
+    for (let column = bounds.column; column < bounds.column + bounds.width; column += 1) {
+      if (!covers.some((rect) => contains(rect, column, row))) return true;
+    }
+  }
+  return false;
+}
+
+/** Paints one complete desktop into pre-styled terminal-cell strings. */
+function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][] {
+  const { bounds, body, projection, controller } = options;
+  const theme = controller.theme.peek();
+  const painter = new DesktopPainter(bounds, theme);
+  painter.fill(bounds, " ", { foreground: theme.text, background: theme.background });
+  painter.fill({ column: 0, row: 0, width: bounds.width, height: 1 }, " ", {
+    foreground: theme.text,
+    background: theme.surfaceStrong,
+  });
+  painter.write(0, 0, " MUXSTONE ", { foreground: theme.background, background: theme.accent, bold: true });
+  painter.write(MENU_NEW.column, 0, "[ New ]", { foreground: theme.text, background: theme.surfaceStrong, bold: true });
+  painter.write(MENU_SESSIONS.column, 0, "[ Sessions ]", {
+    foreground: theme.text,
+    background: theme.surfaceStrong,
+    bold: true,
+  });
+  painter.write(MENU_THEME.column, 0, "[ Theme ]", {
+    foreground: theme.text,
+    background: theme.surfaceStrong,
+    bold: true,
+  });
+  painter.write(MENU_HELP.column, 0, "[ Help ]", {
+    foreground: theme.text,
+    background: theme.surfaceStrong,
+    bold: true,
+  });
+  const prefix = controller.prefixPending.peek() ? "PREFIX ACTIVE" : "Ctrl-B prefix";
+  const headerStatus = `${theme.label} | ${prefix} `;
+  if (bounds.width - headerStatus.length > MENU_HELP.column + MENU_HELP.width) {
+    painter.writeRight(0, headerStatus, {
+      foreground: controller.prefixPending.peek() ? theme.background : theme.muted,
+      background: controller.prefixPending.peek() ? theme.warning : theme.surfaceStrong,
+      bold: controller.prefixPending.peek(),
+    });
+  }
+  painter.fill({ column: 0, row: 1, width: bounds.width, height: 1 }, " ", {
+    foreground: theme.muted,
+    background: theme.surface,
+  });
+  painter.write(
+    1,
+    1,
+    'Ctrl-B: c new | % tile right | " tile below | f float | z zoom | d detach | & kill | t theme | s sessions',
+    {
+      foreground: theme.muted,
+      background: theme.surface,
+    },
+  );
+  painter.fill(body, " ", { foreground: theme.text, background: theme.background });
+  if (muxstoneMetaballBackgroundVisible(projection, body)) {
+    paintMetaballBackground(painter, body, options.metaballs, theme);
+  }
+
+  for (const window of projection.tiledWindows) {
+    paintWindow(painter, window, controller, options.selectedSessionIndex);
+  }
+  for (const separator of projection.separators) {
+    painter.fill(separator.rect, separator.direction === "row" ? "|" : "-", {
+      foreground: theme.border,
+      background: theme.background,
+    });
+  }
+  for (const window of projection.floatingWindows) {
+    paintWindow(painter, window, controller, options.selectedSessionIndex);
+  }
+  paintTerminalBar(
+    painter,
+    projectMuxstoneTerminalBar(controller, projection, {
+      column: bounds.column,
+      row: Math.max(bounds.row, bounds.row + bounds.height - 2),
+      width: bounds.width,
+      height: Math.min(1, bounds.height),
+    }),
+    theme,
+  );
+  if (projection.snapPreview) {
+    painter.frame(projection.snapPreview.rect, ".", {
+      foreground: theme.accent,
+      background: theme.background,
+      bold: true,
+    });
+  }
+  if (projection.switcher) paintSwitcher(painter, projection, theme);
+  if (controller.helpVisible.peek()) paintHelp(painter, projection, theme);
+  const pendingKillSessionId = controller.pendingKillSessionId.peek();
+  if (pendingKillSessionId) paintKillConfirmation(painter, projection, controller, pendingKillSessionId);
+
+  const statusRow = Math.max(0, bounds.height - 1);
+  painter.fill({ column: 0, row: statusRow, width: bounds.width, height: 1 }, " ", {
+    foreground: theme.text,
+    background: theme.surfaceStrong,
+  });
+  painter.write(1, statusRow, controller.status.peek(), {
+    foreground: theme.text,
+    background: theme.surfaceStrong,
+  });
+  const sessions = controller.sessions.peek();
+  const attached = sessions.filter((session) => controller.runtime(session.id)?.attached.peek()).length;
+  painter.writeRight(
+    statusRow,
+    `${attached}/${sessions.length} attached | drag borders/title bars | Meta-Tab switch `,
+    {
+      foreground: theme.muted,
+      background: theme.surfaceStrong,
+    },
+  );
+  return painter.rows;
+}
+
+function paintMetaballBackground(
+  painter: DesktopPainter,
+  bounds: Rectangle,
+  metaballs: MuxstoneMetaballField,
+  theme: MuxstoneThemeSpec,
+): void {
+  const levels = metaballs.rasterize(bounds, MUXSTONE_METABALL_LEVELS);
+  const palette = muxstoneMetaballPalette(theme);
+  let offset = 0;
+  for (let row = bounds.row; row < bounds.row + bounds.height; row += 1) {
+    for (let column = bounds.column; column < bounds.column + bounds.width; column += 1) {
+      const level = levels[offset++] ?? 0;
+      if (level === 0) continue;
+      // recordMyScreen overlays horizontal scanlines. Quantizing alternate
+      // rows preserves that texture while bounding distinct ANSI styles.
+      const scanlineLevel = row % 2 === 0 ? level : Math.max(1, level - 1);
+      const color = palette[scanlineLevel] ?? theme.surface;
+      painter.cell(column, row, " ", { foreground: color, background: color });
+    }
+  }
+}
+
+function muxstoneMetaballPalette(theme: MuxstoneThemeSpec): readonly MuxstoneRgb[] {
+  const glowTarget = mixMuxstoneRgb(theme.accent, theme.success, 0.35);
+  return Array.from({ length: MUXSTONE_METABALL_LEVELS }, (_, level) => {
+    if (level === 0) return theme.background;
+    const progress = level / (MUXSTONE_METABALL_LEVELS - 1);
+    return progress <= 0.55
+      ? mixMuxstoneRgb(theme.background, theme.surface, progress / 0.55)
+      : mixMuxstoneRgb(theme.surface, glowTarget, ((progress - 0.55) / 0.45) * 0.78);
+  });
+}
+
+function mixMuxstoneRgb(from: MuxstoneRgb, to: MuxstoneRgb, amount: number): MuxstoneRgb {
+  const progress = Math.max(0, Math.min(1, amount));
+  return [
+    Math.round(from[0] + (to[0] - from[0]) * progress),
+    Math.round(from[1] + (to[1] - from[1]) * progress),
+    Math.round(from[2] + (to[2] - from[2]) * progress),
+  ];
+}
+
+function paintWindow(
+  painter: DesktopPainter,
+  window: WorkbenchWindowChromeProjection,
+  controller: MuxstoneController,
+  selectedSessionIndex: number,
+): void {
+  const theme = controller.theme.peek();
+  const border = window.active ? theme.accent : theme.border;
+  painter.fill(window.rect, " ", { foreground: theme.text, background: theme.surface });
+  painter.frame(window.rect, window.active ? "#" : "+", {
+    foreground: border,
+    background: theme.surfaceStrong,
+    bold: window.active,
+  });
+  painter.fill(window.titleBarRect, " ", {
+    foreground: window.active ? theme.background : theme.text,
+    background: window.active ? theme.accent : theme.surfaceStrong,
+    bold: window.active,
+  });
+  const firstControl = window.controls.reduce(
+    (minimum, control) => Math.min(minimum, control.rect.column),
+    window.titleBarRect.column + window.titleBarRect.width,
+  );
+  const titleWidth = Math.max(0, firstControl - window.titleBarRect.column - 2);
+  const sessionId = muxstoneSessionIdFromWindow(window.id);
+  const runtime = sessionId ? controller.runtime(sessionId) : undefined;
+  const copyMode = runtime?.scrollback.mode === "copy" ? " [SCROLL]" : "";
+  painter.write(
+    window.titleBarRect.column + 1,
+    window.titleBarRect.row,
+    fitText(
+      `${window.placement === "floating" ? "~" : "="} ${runtime?.summary.peek().title ?? window.title}${copyMode}`,
+      titleWidth,
+    ),
+    {
+      foreground: window.active ? theme.background : theme.text,
+      background: window.active ? theme.accent : theme.surfaceStrong,
+      bold: window.active,
+    },
+  );
+  for (const control of window.controls) {
+    const danger = control.kind === "close";
+    painter.write(control.rect.column, control.rect.row, fitText(control.text, control.rect.width), {
+      foreground: danger ? theme.danger : window.active ? theme.background : theme.text,
+      background: window.active ? theme.accent : theme.surfaceStrong,
+      bold: danger || window.active,
+    });
+  }
+  painter.fill(window.clientRect, " ", { foreground: theme.text, background: theme.surface });
+  if (window.id === MUXSTONE_SESSIONS_WINDOW_ID) {
+    paintSessionManager(painter, window.clientRect, controller, selectedSessionIndex, window.active);
+    return;
+  }
+  if (runtime) paintTerminal(painter, window.clientRect, runtime, theme, window.active);
+}
+
+function paintSessionManager(
+  painter: DesktopPainter,
+  rect: Rectangle,
+  controller: MuxstoneController,
+  selectedSessionIndex: number,
+  active: boolean,
+): void {
+  const theme = controller.theme.peek();
+  painter.write(rect.column + 1, rect.row, "Detached host sessions", {
+    foreground: theme.accent,
+    background: theme.surface,
+    bold: true,
+  });
+  painter.write(rect.column + 1, rect.row + 1, "Enter attach | Del kill | sessions survive UI exit", {
+    foreground: theme.muted,
+    background: theme.surface,
+  });
+  const sessions = controller.sessions.peek();
+  if (sessions.length === 0) {
+    painter.write(rect.column + 1, rect.row + SESSION_LIST_START, "No terminals. Ctrl-B c creates one.", {
+      foreground: theme.muted,
+      background: theme.surface,
+    });
+    return;
+  }
+  const selected = clampIndex(selectedSessionIndex, sessions.length);
+  const available = Math.max(0, rect.height - SESSION_LIST_START);
+  const offset = Math.max(0, Math.min(selected - Math.floor(available / 2), sessions.length - available));
+  for (let visibleIndex = 0; visibleIndex < available; visibleIndex += 1) {
+    const index = offset + visibleIndex;
+    const session = sessions[index];
+    if (!session) break;
+    const runtime = controller.runtime(session.id);
+    const isSelected = active && index === selected;
+    const attached = runtime?.attached.peek() ?? false;
+    const status = session.running ? (attached ? "LIVE" : "HOLD") : session.status.toUpperCase();
+    const row = rect.row + SESSION_LIST_START + visibleIndex;
+    painter.fill({ column: rect.column, row, width: rect.width, height: 1 }, " ", {
+      foreground: isSelected ? theme.background : session.running ? theme.text : theme.muted,
+      background: isSelected ? theme.accent : theme.surface,
+      bold: isSelected,
+    });
+    painter.write(
+      rect.column + 1,
+      row,
+      fitText(
+        `${isSelected ? ">" : " "} [${status}] ${session.title} :: ${session.commandLine}`,
+        Math.max(0, rect.width - 2),
+      ),
+      {
+        foreground: isSelected ? theme.background : session.running ? theme.text : theme.muted,
+        background: isSelected ? theme.accent : theme.surface,
+        bold: isSelected,
+      },
+    );
+  }
+}
+
+function paintTerminal(
+  painter: DesktopPainter,
+  rect: Rectangle,
+  runtime: MuxstoneTerminalRuntime,
+  theme: MuxstoneThemeSpec,
+  active: boolean,
+): void {
+  const inspection = runtime.screen.inspect();
+  const scrollback = runtime.scrollback.inspectViewport();
+  const rows = scrollback.mode === "copy"
+    ? runtime.screen.cellRowsRange(scrollback.offset, scrollback.viewportRows)
+    : runtime.screen.cellRows();
+  const cursorActive = scrollback.mode === "live" && active && runtime.attached.peek() &&
+    runtime.summary.peek().running && inspection.cursorVisible;
+  for (let row = 0; row < rect.height; row += 1) {
+    const cells = rows[row] ?? [];
+    for (let column = 0; column < rect.width; column += 1) {
+      const cell = cells[column] ?? { char: " " };
+      const cursor = cursorActive && inspection.cursor.row === row && inspection.cursor.column === column;
+      const background = cursor ? theme.accent : muxstoneTerminalRgb(cell.background, true) ?? theme.surface;
+      const foreground = cursor
+        ? theme.background
+        : cell.background === undefined
+        ? muxstoneTerminalForegroundRgb(cell.foreground, theme.surface, theme.text) ?? theme.text
+        : muxstoneTerminalRgb(cell.foreground, false) ?? theme.text;
+      painter.cell(rect.column + column, rect.row + row, cell.char || " ", {
+        foreground,
+        background,
+        bold: cursor || cell.bold,
+      });
+    }
+  }
+  const warning = runtime.warning.peek();
+  if (warning && rect.height > 0) {
+    painter.write(rect.column, rect.row + rect.height - 1, fitText(`! ${warning}`, rect.width), {
+      foreground: theme.warning,
+      background: theme.surfaceStrong,
+      bold: true,
+    });
+  }
+}
+
+function paintTerminalBar(
+  painter: DesktopPainter,
+  projection: MuxstoneTerminalBarProjection,
+  theme: MuxstoneThemeSpec,
+): void {
+  painter.fill(projection.bounds, " ", {
+    foreground: theme.text,
+    background: theme.surfaceStrong,
+  });
+  for (const command of projection.commands) {
+    const active = command.state === "active";
+    painter.fill(command.rect, " ", {
+      foreground: active ? theme.background : theme.text,
+      background: active ? theme.accent : theme.surfaceStrong,
+      bold: active,
+    });
+    painter.write(command.rect.column, command.rect.row, command.text, {
+      foreground: active ? theme.background : theme.text,
+      background: active ? theme.accent : theme.surfaceStrong,
+      bold: active,
+    });
+  }
+}
+
+function paintSwitcher(
+  painter: DesktopPainter,
+  projection: WorkbenchWindowHostProjection,
+  theme: MuxstoneThemeSpec,
+): void {
+  const switcher = projection.switcher!;
+  const width = Math.min(48, Math.max(20, projection.bounds.width - 8));
+  const height = Math.min(switcher.items.length + 2, Math.max(3, projection.bounds.height - 4));
+  const rect = {
+    column: projection.bounds.column + Math.max(0, Math.floor((projection.bounds.width - width) / 2)),
+    row: projection.bounds.row + Math.max(0, Math.floor((projection.bounds.height - height) / 2)),
+    width,
+    height,
+  };
+  painter.fill(rect, " ", { foreground: theme.text, background: theme.surfaceStrong });
+  painter.frame(rect, "#", { foreground: theme.accent, background: theme.surfaceStrong, bold: true });
+  for (let index = 0; index < Math.min(switcher.items.length, Math.max(0, height - 2)); index += 1) {
+    const item = switcher.items[index]!;
+    painter.write(
+      rect.column + 1,
+      rect.row + 1 + index,
+      fitText(`${item.selected ? ">" : " "} ${item.title}`, width - 2),
+      {
+        foreground: item.selected ? theme.background : theme.text,
+        background: item.selected ? theme.accent : theme.surfaceStrong,
+        bold: item.selected,
+      },
+    );
+  }
+}
+
+function paintHelp(
+  painter: DesktopPainter,
+  projection: WorkbenchWindowHostProjection,
+  theme: MuxstoneThemeSpec,
+): void {
+  const lines = [
+    "MUXSTONE KEY REFERENCE",
+    'Ctrl-B c        new floating term  Ctrl-B % / "   split right / below',
+    "Ctrl-B f/Space  float or tile      Ctrl-B z         maximize / restore",
+    "Ctrl-B arrows   snap to edge       Ctrl-B m         minimize to shelf",
+    "Ctrl-B n / p    next / previous    Ctrl-B w         window switcher",
+    "Ctrl-B s        session manager    Ctrl-B r         refresh and recover",
+    "Ctrl-B t        cycle theme        Ctrl-B Ctrl-B    send literal prefix",
+    "Ctrl-B d / x    detach window      Ctrl-B &         request terminal kill",
+    "Wheel terminals or swipe vertically for styled history; [SCROLL] marks copy mode.",
+    "Title-bar X / Meta-C kills that terminal; Ctrl-B d/x and quitting only detach.",
+    "Ctrl-B & asks before killing. Drag title bars; drag borders to resize.",
+    "Press Escape, q, or ? to close help. Mouse and touch can use Close.",
+  ];
+  const { rect, closeRect } = muxstoneHelpLayout(projection.bounds);
+  painter.fill(rect, " ", { foreground: theme.text, background: theme.surfaceStrong });
+  painter.frame(rect, "#", { foreground: theme.accent, background: theme.surfaceStrong, bold: true });
+  for (let index = 0; index < Math.min(lines.length, Math.max(0, rect.height - 3)); index += 1) {
+    painter.write(rect.column + 1, rect.row + 1 + index, fitText(lines[index]!, rect.width - 2), {
+      foreground: index === 0 ? theme.accent : theme.text,
+      background: theme.surfaceStrong,
+      bold: index === 0,
+    });
+  }
+  painter.write(closeRect.column, closeRect.row, "[ Close ]", {
+    foreground: theme.background,
+    background: theme.accent,
+    bold: true,
+  });
+}
+
+function paintKillConfirmation(
+  painter: DesktopPainter,
+  projection: WorkbenchWindowHostProjection,
+  controller: MuxstoneController,
+  sessionId: string,
+): void {
+  const theme = controller.theme.peek();
+  const title = controller.runtime(sessionId)?.summary.peek().title ?? sessionId;
+  const { rect, cancelRect, confirmRect } = muxstoneKillLayout(projection.bounds);
+  painter.fill(rect, " ", { foreground: theme.text, background: theme.surfaceStrong });
+  painter.frame(rect, "!", { foreground: theme.danger, background: theme.surfaceStrong, bold: true });
+  painter.write(rect.column + 2, rect.row + 1, fitText("TERMINATE HOST SESSION?", rect.width - 4), {
+    foreground: theme.danger,
+    background: theme.surfaceStrong,
+    bold: true,
+  });
+  painter.write(
+    rect.column + 2,
+    rect.row + Math.min(3, Math.max(1, rect.height - 2)),
+    fitText(`${title} (${sessionId})`, rect.width - 4),
+    {
+      foreground: theme.text,
+      background: theme.surfaceStrong,
+    },
+  );
+  painter.write(cancelRect.column, cancelRect.row, "[ Cancel ]", {
+    foreground: theme.text,
+    background: theme.surface,
+    bold: true,
+  });
+  painter.write(confirmRect.column, confirmRect.row, "[ Kill ]", {
+    foreground: theme.background,
+    background: theme.danger,
+    bold: true,
+  });
+}
+
+interface MuxstoneHelpLayout {
+  readonly rect: Rectangle;
+  readonly closeRect: Rectangle;
+}
+
+function muxstoneHelpLayout(bounds: Rectangle): MuxstoneHelpLayout {
+  const width = Math.min(84, Math.max(24, bounds.width - 4));
+  const height = Math.min(15, Math.max(3, bounds.height - 2));
+  const rect = centeredRect(bounds, width, height);
+  return {
+    rect,
+    closeRect: {
+      column: rect.column + Math.max(1, rect.width - 10),
+      row: rect.row + Math.max(1, rect.height - 2),
+      width: Math.min(9, Math.max(0, rect.width - 2)),
+      height: 1,
+    },
+  };
+}
+
+interface MuxstoneKillLayout {
+  readonly rect: Rectangle;
+  readonly cancelRect: Rectangle;
+  readonly confirmRect: Rectangle;
+}
+
+function muxstoneKillLayout(bounds: Rectangle): MuxstoneKillLayout {
+  const width = Math.min(62, Math.max(24, bounds.width - 6));
+  const rect = centeredRect(bounds, width, Math.min(8, Math.max(3, bounds.height - 2)));
+  const buttonRow = rect.row + Math.max(1, rect.height - 2);
+  return {
+    rect,
+    cancelRect: { column: rect.column + 2, row: buttonRow, width: 10, height: 1 },
+    confirmRect: {
+      column: rect.column + Math.max(13, rect.width - 10),
+      row: buttonRow,
+      width: 8,
+      height: 1,
+    },
+  };
+}
+
+function centeredRect(bounds: Rectangle, width: number, height: number): Rectangle {
+  return {
+    column: bounds.column + Math.max(0, Math.floor((bounds.width - width) / 2)),
+    row: bounds.row + Math.max(0, Math.floor((bounds.height - height) / 2)),
+    width,
+    height,
+  };
+}
+
+interface PaintedStyle {
+  foreground: MuxstoneRgb;
+  background: MuxstoneRgb;
+  bold?: boolean;
+}
+
+/** Small paint buffer that caches ANSI style functions by exact cell style. */
+class DesktopPainter {
+  readonly rows: string[][];
+  readonly #styles = new Map<string, Style>();
+
+  constructor(readonly bounds: Rectangle, readonly theme: MuxstoneThemeSpec) {
+    this.rows = Array.from(
+      { length: Math.max(0, bounds.height) },
+      () => Array.from({ length: Math.max(0, bounds.width) }, () => " "),
+    );
+  }
+
+  cell(column: number, row: number, char: string, style: PaintedStyle): void {
+    const localColumn = Math.floor(column - this.bounds.column);
+    const localRow = Math.floor(row - this.bounds.row);
+    if (localRow < 0 || localRow >= this.rows.length || localColumn < 0 || localColumn >= this.bounds.width) return;
+    this.rows[localRow]![localColumn] = this.#style(style)(char || " ");
+  }
+
+  write(column: number, row: number, text: string, style: PaintedStyle): void {
+    let cursor = column;
+    for (const char of text) this.cell(cursor++, row, char, style);
+  }
+
+  writeRight(row: number, text: string, style: PaintedStyle): void {
+    const fitted = fitText(text, this.bounds.width);
+    this.write(this.bounds.column + Math.max(0, this.bounds.width - fitted.length), row, fitted, style);
+  }
+
+  fill(rect: Rectangle, char: string, style: PaintedStyle): void {
+    for (let row = rect.row; row < rect.row + rect.height; row += 1) {
+      for (let column = rect.column; column < rect.column + rect.width; column += 1) {
+        this.cell(column, row, char, style);
+      }
+    }
+  }
+
+  frame(rect: Rectangle, char: string, style: PaintedStyle): void {
+    if (rect.width <= 0 || rect.height <= 0) return;
+    for (let column = rect.column; column < rect.column + rect.width; column += 1) {
+      this.cell(column, rect.row, char, style);
+      this.cell(column, rect.row + rect.height - 1, char, style);
+    }
+    for (let row = rect.row; row < rect.row + rect.height; row += 1) {
+      this.cell(rect.column, row, char, style);
+      this.cell(rect.column + rect.width - 1, row, char, style);
+    }
+  }
+
+  #style(spec: PaintedStyle): Style {
+    const key = `${spec.foreground.join(",")}|${spec.background.join(",")}|${spec.bold ? 1 : 0}`;
+    let style = this.#styles.get(key);
+    if (!style) {
+      style = createAnsiStyle({
+        foreground: spec.foreground,
+        background: spec.background,
+        bold: spec.bold,
+      });
+      this.#styles.set(key, style);
+    }
+    return style;
+  }
+}
+
+interface MuxstoneDesktopSurfaceOptions extends ComponentOptions {
+  readonly revision: Computed<string>;
+  readonly render: () => string[][];
+}
+
+/** One component/one draw object for the complete dynamic multiplexer desktop. */
+class MuxstoneDesktopSurface extends Component {
+  declare drawnObjects: { desktop: MuxstoneDesktopDrawObject };
+
+  constructor(private readonly options: MuxstoneDesktopSurfaceOptions) {
+    super(options);
+  }
+
+  override draw(): void {
+    super.draw();
+    const desktop = new MuxstoneDesktopDrawObject({
+      canvas: this.tui.canvas,
+      view: this.view,
+      style: this.style,
+      zIndex: this.zIndex,
+      rectangle: this.rectangle,
+      revision: this.options.revision,
+      render: this.options.render,
+    });
+    this.drawnObjects.desktop = desktop;
+    desktop.draw();
+  }
+}
+
+interface MuxstoneDesktopDrawObjectOptions {
+  canvas: DrawObject["canvas"];
+  view: DrawObject["view"];
+  style: DrawObject["style"];
+  zIndex: DrawObject["zIndex"];
+  rectangle: SignalOfObject<Rectangle>;
+  revision: Computed<string>;
+  render: () => string[][];
+}
+
+/** Retained canvas primitive that updates the desktop as coalesced row ranges. */
+class MuxstoneDesktopDrawObject extends DrawObject<"muxstone-desktop"> {
+  declare rectangle: SignalOfObject<Rectangle>;
+  readonly #revision: Computed<string>;
+  readonly #renderDesktop: () => string[][];
+  readonly #lifecycle = new AbortController();
+  #previousRows: string[][] = [];
+  #forceFullPaint = true;
+
+  constructor(options: MuxstoneDesktopDrawObjectOptions) {
+    super("muxstone-desktop", options);
+    this.rectangle = options.rectangle;
+    this.#revision = options.revision;
+    this.#renderDesktop = options.render;
+  }
+
+  override draw(): void {
+    this.rectangle.subscribe(() => this.#invalidate(true), this.#lifecycle.signal);
+    this.#revision.subscribe(() => this.#invalidate(false), this.#lifecycle.signal);
+    super.draw();
+  }
+
+  override erase(): void {
+    this.#lifecycle.abort();
+    super.erase();
+  }
+
+  override render(): void {
+    this.#forceFullPaint = true;
+    this.rerender();
+  }
+
+  override rerender(): void {
+    const rectangle = this.rectangle.peek();
+    const rows = this.#renderDesktop();
+    const previousRows = this.#previousRows;
+    const canvasSize = this.canvas.size.peek();
+    const rowEnd = Math.min(canvasSize.rows, rectangle.row + rectangle.height);
+    const columnEnd = Math.min(canvasSize.columns, rectangle.column + rectangle.width);
+    for (let row = Math.max(0, rectangle.row); row < rowEnd; row += 1) {
+      const source = rows[row - rectangle.row] ?? [];
+      const previous = previousRows[row - rectangle.row] ?? [];
+      const frameRow = this.canvas.frameBuffer[row] ??= [];
+      const omitted = this.omitCells[row];
+      const forced = this.rerenderCells[row];
+      let rangeStart = -1;
+      for (let column = Math.max(0, rectangle.column); column < columnEnd; column += 1) {
+        const sourceColumn = column - rectangle.column;
+        const value = source[sourceColumn] ?? " ";
+        const changed = this.#forceFullPaint || forced?.has(column) || previous[sourceColumn] !== value;
+        if (!changed || omitted?.has(column)) {
+          if (rangeStart !== -1) {
+            (this.canvas.rerenderRanges[row] ??= []).push({ row, startColumn: rangeStart, endColumn: column });
+            rangeStart = -1;
+          }
+          continue;
+        }
+        frameRow[column] = value;
+        if (rangeStart === -1) rangeStart = column;
+      }
+      if (rangeStart !== -1) {
+        (this.canvas.rerenderRanges[row] ??= []).push({ row, startColumn: rangeStart, endColumn: columnEnd });
+      }
+      forced?.clear();
+    }
+    this.#previousRows = rows;
+    this.#forceFullPaint = false;
+  }
+
+  #invalidate(moved: boolean): void {
+    if (moved) {
+      this.moved = true;
+      this.#forceFullPaint = true;
+    }
+    if (!this.updated) return;
+    this.updated = false;
+    this.canvas.updateObjects.push(this);
+    for (const objectUnder of this.objectsUnder) {
+      if (!objectUnder.updated) continue;
+      objectUnder.updated = false;
+      this.canvas.updateObjects.push(objectUnder);
+    }
+  }
+}
+
+function managerSessionAt(
+  controller: MuxstoneController,
+  projection: WorkbenchWindowHostProjection,
+  selectedSessionIndex: number,
+  column: number,
+  row: number,
+): MuxstoneManagerSessionHit | undefined {
+  const manager = projection.windows.find((window) => window.id === MUXSTONE_SESSIONS_WINDOW_ID);
+  if (!manager || !contains(manager.clientRect, column, row)) return undefined;
+  const sessions = controller.sessions.peek();
+  const available = Math.max(0, manager.clientRect.height - SESSION_LIST_START);
+  const relativeRow = row - manager.clientRect.row;
+  if (relativeRow < SESSION_LIST_START || relativeRow >= SESSION_LIST_START + available) return undefined;
+  const selected = clampIndex(selectedSessionIndex, sessions.length);
+  const offset = Math.max(0, Math.min(selected - Math.floor(available / 2), sessions.length - available));
+  const index = offset + relativeRow - SESSION_LIST_START;
+  const session = sessions[index];
+  return session ? { session, index } : undefined;
+}
+
+function clientWindowAt(
+  projection: WorkbenchWindowHostProjection,
+  column: number,
+  row: number,
+): WorkbenchWindowChromeProjection | undefined {
+  for (let index = projection.floatingWindows.length - 1; index >= 0; index -= 1) {
+    const window = projection.floatingWindows[index]!;
+    if (!contains(window.rect, column, row)) continue;
+    return contains(window.clientRect, column, row) ? window : undefined;
+  }
+  for (let index = projection.tiledWindows.length - 1; index >= 0; index -= 1) {
+    const window = projection.tiledWindows[index]!;
+    if (!contains(window.rect, column, row)) continue;
+    return contains(window.clientRect, column, row) ? window : undefined;
+  }
+  return undefined;
+}
+
+function menuAt(column: number, row: number, coarse: boolean): MuxstoneMenuId | undefined {
+  const entries = [
+    ["new", MENU_NEW],
+    ["sessions", MENU_SESSIONS],
+    ["theme", MENU_THEME],
+    ["help", MENU_HELP],
+  ] as const;
+  for (const [id, rect] of entries) {
+    if (contains(coarse ? expandedRect(rect, 1) : rect, column, row)) return id;
+  }
+  return undefined;
+}
+
+function menuRect(id: MuxstoneMenuId): Rectangle {
+  switch (id) {
+    case "new":
+      return MENU_NEW;
+    case "sessions":
+      return MENU_SESSIONS;
+    case "theme":
+      return MENU_THEME;
+    case "help":
+      return MENU_HELP;
+  }
+}
+
+function touchWindowCommandAt(
+  projection: WorkbenchWindowHostProjection,
+  column: number,
+  row: number,
+): Extract<MuxstoneTouchTarget, { kind: "window-command" }> | undefined {
+  for (let index = projection.shelf.length - 1; index >= 0; index -= 1) {
+    const item = projection.shelf[index]!;
+    if (item.rect && contains(item.rect, column, row)) {
+      return { kind: "window-command", command: item.command, hitRect: item.rect };
+    }
+  }
+  const windows = [...projection.tiledWindows, ...projection.floatingWindows];
+  for (let index = windows.length - 1; index >= 0; index -= 1) {
+    const window = windows[index]!;
+    if (!contains(window.rect, column, row)) continue;
+    for (let controlIndex = window.controls.length - 1; controlIndex >= 0; controlIndex -= 1) {
+      const control = window.controls[controlIndex]!;
+      if (control.command && contains(control.hitRect, column, row)) {
+        return { kind: "window-command", command: control.command, hitRect: control.hitRect };
+      }
+    }
+    return undefined;
+  }
+  return undefined;
+}
+
+function expandedRect(rect: Rectangle, amount: number): Rectangle {
+  const safeAmount = Math.max(0, Math.floor(amount));
+  return {
+    column: rect.column - safeAmount,
+    row: rect.row - safeAmount,
+    width: rect.width + safeAmount * 2,
+    height: rect.height + safeAmount * 2,
+  };
+}
+
+function rememberTouchGesture(
+  gestures: Map<number, MuxstoneTouchGesture>,
+  event: PointerInputEvent,
+  point: { x: number; y: number },
+  target: MuxstoneTouchTarget,
+): void {
+  if (!gestures.has(event.pointerId) && gestures.size >= MAX_TOUCH_GESTURES) {
+    const oldest = gestures.keys().next().value;
+    if (oldest !== undefined) gestures.delete(oldest);
+  }
+  gestures.set(event.pointerId, {
+    target,
+    startColumn: point.x,
+    startRow: point.y,
+    startLocalX: event.coordinates.local?.x,
+    startLocalY: event.coordinates.local?.y,
+    lastColumn: point.x,
+    lastRow: point.y,
+    moved: false,
+  });
+}
+
+function updateTouchGesture(
+  gesture: MuxstoneTouchGesture,
+  event: PointerInputEvent,
+  point: { x: number; y: number } | undefined,
+  excursion?: MuxstonePointerMoveExcursion,
+): void {
+  if (point) {
+    if (point.x !== gesture.startColumn || point.y !== gesture.startRow) gesture.moved = true;
+    gesture.lastColumn = point.x;
+    gesture.lastRow = point.y;
+  }
+  const local = event.coordinates.local;
+  if (
+    local && gesture.startLocalX !== undefined && gesture.startLocalY !== undefined &&
+    Math.hypot(local.x - gesture.startLocalX, local.y - gesture.startLocalY) >= 8
+  ) {
+    gesture.moved = true;
+  }
+  if (
+    excursion?.minColumn !== undefined && excursion.maxColumn !== undefined &&
+    (excursion.minColumn !== gesture.startColumn || excursion.maxColumn !== gesture.startColumn)
+  ) {
+    gesture.moved = true;
+  }
+  if (
+    excursion?.minRow !== undefined && excursion.maxRow !== undefined &&
+    (excursion.minRow !== gesture.startRow || excursion.maxRow !== gesture.startRow)
+  ) {
+    gesture.moved = true;
+  }
+  if (
+    gesture.startLocalX !== undefined && excursion?.minLocalX !== undefined && excursion.maxLocalX !== undefined &&
+    Math.max(
+        Math.abs(excursion.minLocalX - gesture.startLocalX),
+        Math.abs(excursion.maxLocalX - gesture.startLocalX),
+      ) >= 8
+  ) {
+    gesture.moved = true;
+  }
+  if (
+    gesture.startLocalY !== undefined && excursion?.minLocalY !== undefined && excursion.maxLocalY !== undefined &&
+    Math.max(
+        Math.abs(excursion.minLocalY - gesture.startLocalY),
+        Math.abs(excursion.maxLocalY - gesture.startLocalY),
+      ) >= 8
+  ) {
+    gesture.moved = true;
+  }
+}
+
+function pointerExcursion(event: PointerInputEvent): MuxstonePointerMoveExcursion {
+  const excursion: MuxstonePointerMoveExcursion = {};
+  mergePointerExcursion(excursion, event);
+  return excursion;
+}
+
+function mergePointerExcursion(excursion: MuxstonePointerMoveExcursion, event: PointerInputEvent): void {
+  const cell = event.coordinates.cell;
+  if (cell) {
+    excursion.minColumn = Math.min(excursion.minColumn ?? cell.x, cell.x);
+    excursion.maxColumn = Math.max(excursion.maxColumn ?? cell.x, cell.x);
+    excursion.minRow = Math.min(excursion.minRow ?? cell.y, cell.y);
+    excursion.maxRow = Math.max(excursion.maxRow ?? cell.y, cell.y);
+  }
+  const local = event.coordinates.local;
+  if (local) {
+    excursion.minLocalX = Math.min(excursion.minLocalX ?? local.x, local.x);
+    excursion.maxLocalX = Math.max(excursion.maxLocalX ?? local.x, local.x);
+    excursion.minLocalY = Math.min(excursion.minLocalY ?? local.y, local.y);
+    excursion.maxLocalY = Math.max(excursion.maxLocalY ?? local.y, local.y);
+  }
+}
+
+function primaryPointerActivation(event: PointerInputEvent): boolean {
+  return event.primary && (event.button === 0 || (event.device !== "mouse" && event.button === null));
+}
+
+function contains(rect: Rectangle, column: number, row: number): boolean {
+  return column >= rect.column && row >= rect.row && column < rect.column + rect.width && row < rect.row + rect.height;
+}
+
+function fitText(value: string, width: number): string {
+  const safeWidth = Math.max(0, Math.floor(width));
+  if (value.length <= safeWidth) return value;
+  if (safeWidth <= 3) return value.slice(0, safeWidth);
+  return `${value.slice(0, safeWidth - 3)}...`;
+}
+
+function clampIndex(index: number, length: number): number {
+  if (length <= 0) return 0;
+  return Math.max(0, Math.min(length - 1, Math.floor(index)));
+}
+
+function wrapIndex(index: number, length: number): number {
+  if (length <= 0) return 0;
+  return ((Math.floor(index) % length) + length) % length;
+}
+
+function identityStyle(value: string): string {
+  return value;
+}
+
+function safeErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}

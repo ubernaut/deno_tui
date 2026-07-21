@@ -18,6 +18,14 @@ import type { TerminalBackendAvailability, TerminalBackendProvider } from "./ter
 import type { DiagnosticsCollector } from "./diagnostics.ts";
 import { cloneTerminalCommand, normalizeTerminalDimension } from "./terminal_values.ts";
 import { errorMessage } from "../utils/formatting.ts";
+import { createRuntimePermissionManifest } from "../permissions.ts";
+import { BoundedOutputLineBuffer, MAX_PENDING_OUTPUT_LINE_LENGTH } from "./output_line_buffer.ts";
+import {
+  identifySpawnedLinuxChild,
+  inspectLinuxForegroundProcessTitle,
+  type LinuxProcessIdentity,
+  snapshotLinuxDirectChildren,
+} from "./linux_foreground_process.ts";
 
 const INPUT_DECODER = new TextDecoder();
 
@@ -40,6 +48,7 @@ export interface SigmaPtySize {
 export interface SigmaPtyLike {
   readonly readable: ReadableStream<string>;
   readonly exitCode?: number;
+  readBytes?(): { data: Uint8Array; done: boolean };
   write(data: string): void;
   resize(size: SigmaPtySize): void;
   close(): void;
@@ -108,6 +117,16 @@ export function createSigmaPtyTerminalBackendProvider(
     id,
     label,
     pty: true,
+    permissionManifest: createRuntimePermissionManifest({
+      adapterId: `terminal-backend:${id}`,
+      required: [
+        { kind: "subprocess", operation: "spawn", target: "*" },
+        { kind: "ffi", operation: "load", target: options.libPath ?? "jsr:@sigma/pty-ffi@0.42.0" },
+      ],
+      optional: [
+        { kind: "read", operation: "content", target: "/proc" },
+      ],
+    }),
     priority: 100,
     detachable: false,
     reconnectable: false,
@@ -166,7 +185,7 @@ export async function probeSigmaPtyAvailability(
 }
 
 async function importSigmaPtyModule(): Promise<SigmaPtyModule> {
-  return await import("jsr:@sigma/pty-ffi@0.39.1") as SigmaPtyModule;
+  return await import("jsr:@sigma/pty-ffi@0.42.0") as SigmaPtyModule;
 }
 
 class SigmaPtyTerminalBackend implements TerminalBackend {
@@ -190,11 +209,13 @@ class SigmaPtyTerminalBackend implements TerminalBackend {
   }
 
   spawn(options: TerminalBackendSpawnOptions): TerminalSessionHandle {
+    const childrenBeforeSpawn = snapshotLinuxDirectChildren();
     const pty = new this.#Pty(options.command, {
       args: options.args ? [...options.args] : undefined,
       cwd: options.cwd,
       env: options.env ? { ...options.env } : undefined,
     });
+    const processIdentity = identifySpawnedLinuxChild(childrenBeforeSpawn);
     if (this.#pollingIntervalMs !== undefined) pty.setPollingInterval?.(this.#pollingIntervalMs);
     return new SigmaPtySessionHandle({
       backendId: this.id,
@@ -204,6 +225,8 @@ class SigmaPtyTerminalBackend implements TerminalBackend {
       onData: options.onData,
       columns: options.columns,
       rows: options.rows,
+      pollingIntervalMs: this.#pollingIntervalMs,
+      processIdentity,
       now: this.#now,
       diagnostics: this.#diagnostics,
     });
@@ -220,6 +243,8 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
   readonly #now: () => number;
   readonly #onData?: (data: string | Uint8Array, source: TerminalOutputSource) => void;
   readonly #diagnostics?: DiagnosticsCollector;
+  readonly #pollingIntervalMs: number;
+  readonly #processIdentity?: LinuxProcessIdentity;
   #columns: number;
   #rows: number;
   #status: ProcessSessionStatus = "running";
@@ -236,6 +261,8 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
     onData?: (data: string | Uint8Array, source: TerminalOutputSource) => void;
     columns?: number;
     rows?: number;
+    pollingIntervalMs?: number;
+    processIdentity?: LinuxProcessIdentity;
     now: () => number;
     diagnostics?: DiagnosticsCollector;
   }) {
@@ -247,6 +274,8 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
     this.#diagnostics = options.diagnostics;
     this.#columns = normalizeTerminalDimension(options.columns, 80);
     this.#rows = normalizeTerminalDimension(options.rows, 24);
+    this.#pollingIntervalMs = Math.max(1, Math.floor(options.pollingIntervalMs ?? 100));
+    this.#processIdentity = options.processIdentity;
     this.#now = options.now;
     this.#startedAt = this.#now();
     this.#appendSystemLine(`$ ${formatProcessCommandLine(this.command)}`);
@@ -306,6 +335,8 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
       rows: this.#rows,
       resizeSupported: true,
     };
+    const title = this.#processIdentity ? inspectLinuxForegroundProcessTitle(this.#processIdentity) : undefined;
+    if (title) result.title = title;
     if (this.#exit) result.exit = { ...this.#exit };
     return result;
   }
@@ -317,35 +348,60 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
   }
 
   async #pumpReadable(): Promise<ProcessSessionInspection> {
-    const reader = this.#pty.readable.getReader();
-    let pending = "";
+    const lines = new BoundedOutputLineBuffer();
+    const decoder = new TextDecoder();
     try {
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
+      for await (const value of this.#readChunks()) {
         this.#onData?.(value, "stdout");
-        pending += value;
-        pending = this.#appendCompleteOutputLines(pending);
+        const timestamp = this.#now();
+        const text = typeof value === "string" ? value : decoder.decode(value, { stream: true });
+        const truncated = lines.append(text, (text) => {
+          this.output.append({ source: "stdout", text, timestamp });
+        });
+        if (truncated) {
+          this.#appendSystemLine(
+            `unterminated output fragment truncated to ${MAX_PENDING_OUTPUT_LINE_LENGTH} characters; raw terminal data is unaffected`,
+          );
+        }
       }
-      if (pending) this.output.append({ source: "stdout", text: pending, timestamp: this.#now() });
+      const timestamp = this.#now();
+      lines.append(decoder.decode(), (text) => this.output.append({ source: "stdout", text, timestamp }));
+      lines.finish((text) => this.output.append({ source: "stdout", text, timestamp }));
       if (this.#status === "running") this.#setExit(this.#pty.exitCode ?? 0);
     } catch (error) {
-      if (this.#status === "running") this.#status = "failed";
-      const detail = errorMessage(error);
-      this.#appendSystemLine(`pty failed: ${detail}`);
-      this.#reportDiagnostic("read-failed", "PTY read stream failed.", error, { command: this.command.command });
+      if (!this.#ptyClosed) {
+        if (this.#status === "running") this.#status = "failed";
+        const detail = errorMessage(error);
+        this.#appendSystemLine(`pty failed: ${detail}`);
+        this.#reportDiagnostic("read-failed", "PTY read stream failed.", error, { command: this.command.command });
+      }
     } finally {
-      reader.releaseLock();
       this.#closed = true;
     }
     return this.#processInspection();
   }
 
-  #appendCompleteOutputLines(text: string): string {
-    const lines = text.split(/\r?\n/);
-    const pending = lines.pop() ?? "";
-    for (const line of lines) this.output.append({ source: "stdout", text: line, timestamp: this.#now() });
-    return pending;
+  async *#readChunks(): AsyncGenerator<string | Uint8Array> {
+    if (this.#pty.readBytes) {
+      while (!this.#ptyClosed) {
+        const { data, done } = this.#pty.readBytes();
+        if (data.byteLength > 0) yield data;
+        if (done) return;
+        await waitForPtyPoll(this.#pollingIntervalMs);
+      }
+      return;
+    }
+
+    const reader = this.#pty.readable.getReader();
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) return;
+        yield value;
+      }
+    } finally {
+      reader.releaseLock();
+    }
   }
 
   #setExit(code: number): void {
@@ -393,4 +449,8 @@ class SigmaPtySessionHandle implements TerminalSessionHandle {
       output: this.output.inspect(),
     };
   }
+}
+
+function waitForPtyPoll(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }

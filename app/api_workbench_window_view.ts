@@ -312,7 +312,7 @@ interface ApiWorkbenchWindowShellRenderOptions<TId extends string, TAction> {
   renderContent: (frame: WorkbenchFrame, rect: Rectangle, context: ApiWorkbenchWindowContentContext) => void;
   afterRenderContent: (context: ApiWorkbenchWindowContentRenderedContext) => void;
   focusAction: (id: TId) => TAction;
-  titlebarAction: (id: TId, kind: WorkbenchTitlebarButtonKind) => TAction;
+  titlebarAction: (id: TId, kind: ApiWorkbenchWindowTitlebarButtonKind) => TAction;
   titlebarDragAction?: (id: TId) => TAction;
   scrollbarAction: (id: TId, axis: WorkbenchScrollbarAxis) => TAction;
   paint: (text: string, options: ApiWorkbenchWindowPaintStyle) => string;
@@ -1460,7 +1460,7 @@ export function renderApiWorkbenchWindowTitlebar<TId extends string, TAction, Fr
       },
     ) => number;
     addHit: (rect: Rectangle, action: TAction) => void;
-    titlebarAction: (id: TId, kind: WorkbenchTitlebarButtonKind) => TAction;
+    titlebarAction: (id: TId, kind: ApiWorkbenchWindowTitlebarButtonKind) => TAction;
     titlebarDragAction?: (id: TId) => TAction;
   },
 ): void {
@@ -1489,9 +1489,16 @@ export function renderApiWorkbenchWindowTitlebar<TId extends string, TAction, Fr
       accessibilityLabel: command.accessibilityLabel,
       shortcut: command.shortcut,
     });
-    options.addHit(command.hitRect, options.titlebarAction(options.id, command.kind));
+    // This legacy workbench view does not request the advanced host's AOT
+    // control. Keep its action boundary narrow even though both views share
+    // the renderer-neutral titlebar command generator.
+    if (command.kind !== "always-on-top") {
+      options.addHit(command.hitRect, options.titlebarAction(options.id, command.kind));
+    }
   }
 }
+
+type ApiWorkbenchWindowTitlebarButtonKind = Exclude<WorkbenchTitlebarButtonKind, "always-on-top">;
 
 export function renderApiWorkbenchWindowFrame<TId extends string = string>(
   options: ApiWorkbenchWindowFrameRenderOptions<TId>,

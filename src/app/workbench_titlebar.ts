@@ -5,7 +5,13 @@ import { buttonText, fitCellText } from "./workbench_frame.ts";
 import { textWidth } from "../utils/strings.ts";
 
 /** Button action kinds exposed by workbench titlebars. */
-export type WorkbenchTitlebarButtonKind = "minimize" | "maximize" | "restore" | "close" | "config";
+export type WorkbenchTitlebarButtonKind =
+  | "minimize"
+  | "maximize"
+  | "restore"
+  | "close"
+  | "always-on-top"
+  | "config";
 
 /** Tone hint for workbench titlebar button rendering. */
 export type WorkbenchTitlebarButtonTone = "default" | "muted" | "warning" | "success" | "danger";
@@ -34,6 +40,8 @@ export interface WorkbenchTitlebarLayoutOptions {
   configShortcut?: string;
   /** Selects one state-aware maximize/restore control. Omit to retain the legacy four-control layout. */
   maximized?: boolean;
+  /** Adds a state-aware pin control without changing legacy titlebars that omit this option. */
+  alwaysOnTop?: boolean;
 }
 
 /** Renderer-neutral titlebar layout result. */
@@ -91,6 +99,24 @@ const MINIMIZE_CONTROL_SPEC: WorkbenchTitlebarButtonSpec = {
   compact: true,
 };
 
+const PIN_CONTROL_SPEC: WorkbenchTitlebarButtonSpec = {
+  kind: "always-on-top",
+  label: "^",
+  accessibilityLabel: "Keep window always on top",
+  shortcut: "P",
+  tone: "default",
+  compact: true,
+};
+
+const UNPIN_CONTROL_SPEC: WorkbenchTitlebarButtonSpec = {
+  kind: "always-on-top",
+  label: "v",
+  accessibilityLabel: "Return window to normal stacking",
+  shortcut: "P",
+  tone: "success",
+  compact: true,
+};
+
 // Specs are ordered from the right edge toward the title; layout output is reversed into visual order.
 const LEGACY_WINDOW_CONTROL_SPECS: readonly WorkbenchTitlebarButtonSpec[] = [
   CLOSE_CONTROL_SPEC,
@@ -124,11 +150,16 @@ export function layoutWorkbenchTitlebarInto(
   target: WorkbenchTitlebarLayout,
   options: WorkbenchTitlebarLayoutOptions,
 ): WorkbenchTitlebarLayout {
-  const windowControlSpecs = options.maximized === undefined
+  const baseWindowControlSpecs = options.maximized === undefined
     ? LEGACY_WINDOW_CONTROL_SPECS
     : options.maximized
     ? MAXIMIZED_WINDOW_CONTROL_SPECS
     : NORMAL_WINDOW_CONTROL_SPECS;
+  const windowControlSpecs = options.alwaysOnTop === undefined ? baseWindowControlSpecs : [
+    ...baseWindowControlSpecs.slice(0, baseWindowControlSpecs.length - 1),
+    options.alwaysOnTop ? UNPIN_CONTROL_SPEC : PIN_CONTROL_SPEC,
+    baseWindowControlSpecs[baseWindowControlSpecs.length - 1]!,
+  ];
   const controlsMinWidth = options.controlsMinWidth ?? windowControlSpecs.length * 4;
   const configLabel = options.configLabel ?? "config";
   const buttons = target.buttons;

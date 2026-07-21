@@ -8,6 +8,7 @@ import { Signal } from "../signals/mod.ts";
 import { errorMessage } from "../utils/formatting.ts";
 import type { DiagnosticsCollector } from "./diagnostics.ts";
 import { cloneTerminalCommand } from "./terminal_values.ts";
+import { BoundedOutputLineBuffer, MAX_PENDING_OUTPUT_LINE_LENGTH } from "./output_line_buffer.ts";
 
 const INPUT_ENCODER = new TextEncoder();
 
@@ -267,22 +268,30 @@ export class ProcessSessionController {
     if (!stream) return;
     const decoder = new TextDecoder();
     const reader = stream.getReader();
-    let pending = "";
+    const lines = new BoundedOutputLineBuffer();
     try {
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
         this.#onOutputData?.(source, value);
-        pending += decoder.decode(value, { stream: true });
-        const lines = pending.split(/\r?\n/);
-        pending = lines.pop() ?? "";
-        for (const line of lines) {
+        const timestamp = this.#now();
+        const truncated = lines.append(decoder.decode(value, { stream: true }), (line) => {
           if (runId !== this.#runId) return;
-          this.output.append({ source, text: line, timestamp: this.#now() });
+          this.output.append({ source, text: line, timestamp });
+        });
+        if (truncated && runId === this.#runId) {
+          this.#appendSystemLine(
+            `unterminated ${source} fragment truncated to ${MAX_PENDING_OUTPUT_LINE_LENGTH} characters; raw process data is unaffected`,
+          );
         }
       }
-      pending += decoder.decode();
-      if (pending && runId === this.#runId) this.output.append({ source, text: pending, timestamp: this.#now() });
+      const timestamp = this.#now();
+      lines.append(decoder.decode(), (line) => {
+        if (runId === this.#runId) this.output.append({ source, text: line, timestamp });
+      });
+      lines.finish((line) => {
+        if (runId === this.#runId) this.output.append({ source, text: line, timestamp });
+      });
     } finally {
       reader.releaseLock();
     }

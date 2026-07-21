@@ -824,6 +824,27 @@ Deno.test("RenderLoop runs immediate ticks through an injectable timer", () => {
   assertEquals(timer.pendingCount(), 0);
 });
 
+Deno.test("RenderLoop compensates its next delay for time spent rendering", () => {
+  const timer = new TestRenderLoopTimer();
+  const frames: Array<[number, number]> = [];
+  const loop = new RenderLoop({
+    intervalMs: 16,
+    timer,
+    tick: ({ frame, deltaMs }) => {
+      frames.push([frame, deltaMs]);
+      timer.advance(6);
+    },
+  });
+
+  loop.start();
+  assertEquals(timer.lastDelay(), 10);
+  timer.advance(10);
+  timer.flushNext();
+  assertEquals(frames, [[1, 0], [2, 16]]);
+  assertEquals(timer.lastDelay(), 10);
+  loop.stop();
+});
+
 Deno.test("RenderLoop supports delayed start manual steps and interval updates", () => {
   const timer = new TestRenderLoopTimer();
   const frames: number[] = [];

@@ -479,12 +479,34 @@ Deno.test("workbench facade text prompt input edits printable cell-width keys", 
     applyWorkbenchTextPromptInput({ event: { key: "b" }, value: "1234", maxLength: 4 }),
     { action: "update", value: "1234" },
   );
+  assertEquals(
+    applyWorkbenchTextPromptInput({
+      event: { key: "e\u0301" },
+      value: "A",
+      maxLength: 8,
+      measureText: () => 1,
+    }),
+    { action: "update", value: "Ae\u0301" },
+  );
+  assertEquals(
+    applyWorkbenchTextPromptInput({
+      event: { key: "e\u0301" },
+      value: "A",
+      maxLength: 2,
+      measureText: () => 1,
+    }),
+    { action: "update", value: "A" },
+  );
 });
 
 Deno.test("workbench facade text prompt input handles backspace submit and cancel", () => {
   assertEquals(
     applyWorkbenchTextPromptInput({ event: { key: "backspace" }, value: "demo" }),
     { action: "update", value: "dem" },
+  );
+  assertEquals(
+    applyWorkbenchTextPromptInput({ event: { key: "backspace" }, value: "A😀e\u0301" }),
+    { action: "update", value: "A😀" },
   );
   assertEquals(
     applyWorkbenchTextPromptInput({ event: { key: "return" }, value: "demo" }),
@@ -510,6 +532,14 @@ Deno.test("workbench facade text prompt input ignores modified and non-cell keys
       event: { key: "字" },
       value: "demo",
       measureText: () => 2,
+    }),
+    { action: "ignore", value: "demo" },
+  );
+  assertEquals(
+    applyWorkbenchTextPromptInput({
+      event: { key: "ab" },
+      value: "demo",
+      measureText: () => 1,
     }),
     { action: "ignore", value: "demo" },
   );

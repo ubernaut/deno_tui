@@ -1444,6 +1444,32 @@ Deno.test("MouseInteractionRouter dispatches by z-order and local coordinates", 
   assertEquals(seen, ["front:1,1", "back:8,2"]);
 });
 
+Deno.test("MouseInteractionRouter re-resolves dynamic z-order without re-registration", async () => {
+  const router = createMouseInteractionRouter();
+  let firstZ = 2;
+  let secondZ = 1;
+  const seen: string[] = [];
+  router.register({
+    id: "first",
+    bounds: { column: 0, row: 0, width: 4, height: 2 },
+    zIndex: () => firstZ,
+    onPress: () => void seen.push("first"),
+  });
+  router.register({
+    id: "second",
+    bounds: { column: 0, row: 0, width: 4, height: 2 },
+    zIndex: () => secondZ,
+    onPress: () => void seen.push("second"),
+  });
+
+  assertEquals((await router.dispatch(createTestMousePress({ x: 1, y: 1 }))).targetId, "first");
+  firstZ = 0;
+  secondZ = 3;
+  assertEquals((await router.dispatch(createTestMousePress({ x: 1, y: 1 }))).targetId, "second");
+  assertEquals(router.inspect().map((target) => [target.id, target.zIndex]), [["second", 3], ["first", 0]]);
+  assertEquals(seen, ["first", "second"]);
+});
+
 Deno.test("MouseInteractionRouter captures drag until release", async () => {
   const router = createMouseInteractionRouter();
   const seen: string[] = [];
@@ -1480,6 +1506,54 @@ Deno.test("MouseInteractionRouter captures drag until release", async () => {
   await router.dispatch(createTestMousePress({ x: 11, y: 1, release: true, button: undefined }));
   assertEquals(router.captured(), undefined);
   assertEquals(seen, ["press", "drag:true:11", "release:true"]);
+});
+
+Deno.test("MouseInteractionRouter drops a captured gesture when its target becomes unavailable", async () => {
+  const router = createMouseInteractionRouter();
+  let disabled = false;
+  const seen: string[] = [];
+  router.register({
+    id: "under",
+    bounds: { column: 0, row: 0, width: 4, height: 4 },
+    onRelease: () => void seen.push("under:release"),
+  });
+  router.register({
+    id: "captured",
+    bounds: { column: 0, row: 0, width: 4, height: 4 },
+    zIndex: 10,
+    disabled: () => disabled,
+    onPress: () => void seen.push("captured:press"),
+    onRelease: () => void seen.push("captured:release"),
+  });
+
+  await router.dispatch(createTestMousePress({ x: 1, y: 1 }));
+  assertEquals(router.captured(), "captured");
+  disabled = true;
+  assertEquals(await router.dispatch(createTestMousePress({ x: 1, y: 1, release: true, button: undefined })), {
+    handled: false,
+    targetId: "captured",
+    kind: "release",
+    captured: false,
+  });
+  assertEquals(router.captured(), undefined);
+  assertEquals(seen, ["captured:press"]);
+
+  disabled = false;
+  router.register({
+    id: "self-disabling",
+    bounds: { column: 0, row: 0, width: 4, height: 4 },
+    zIndex: 20,
+    disabled: () => disabled,
+    onPress: () => {
+      seen.push("self:press");
+      disabled = true;
+    },
+  });
+  await router.dispatch(createTestMousePress({ x: 1, y: 1 }));
+  assertEquals(router.captured(), undefined);
+  assertEquals((await router.dispatch(createTestMousePress({ x: 1, y: 1, drag: true }))).handled, false);
+  assertEquals((await router.dispatch(createTestMousePress({ x: 1, y: 1, release: true }))).handled, false);
+  assertEquals(seen, ["captured:press", "self:press"]);
 });
 
 Deno.test("MouseInteractionRouter respects disabled targets dynamic bounds and scroll handlers", async () => {
@@ -1546,7 +1620,7 @@ Deno.test("bindMouseInteractions routes target mouse events and unsubscribes", a
   assertEquals(target.listenerCount(), 2);
   target.press({ x: 1, y: 1 });
   target.scroll(-1, { x: 1, y: 1 });
-  await Promise.resolve();
+  for (let turn = 0; turn < 8 && seen.length < 2; turn += 1) await Promise.resolve();
   assertEquals(seen, ["press", "scroll:-1"]);
 
   dispose();
@@ -1554,6 +1628,125 @@ Deno.test("bindMouseInteractions routes target mouse events and unsubscribes", a
   target.press({ x: 1, y: 1 });
   await Promise.resolve();
   assertEquals(seen, ["press", "scroll:-1"]);
+});
+
+Deno.test("bindMouseInteractions serializes asynchronous capture gestures emitted in one turn", async () => {
+  const router = createMouseInteractionRouter();
+  const target = new TestMouseTarget();
+  const seen: string[] = [];
+  let releasePress!: () => void;
+  const pressGate = new Promise<void>((resolve) => {
+    releasePress = resolve;
+  });
+  let finishGesture!: () => void;
+  const gestureFinished = new Promise<void>((resolve) => {
+    finishGesture = resolve;
+  });
+  router.register({
+    id: "drag",
+    bounds: { column: 0, row: 0, width: 4, height: 4 },
+    onPress: async () => {
+      seen.push("press:start");
+      await pressGate;
+      seen.push("press:end");
+    },
+    onDrag: (_event, context) => {
+      seen.push(`drag:${context.captured}`);
+    },
+    onRelease: (_event, context) => {
+      seen.push(`release:${context.captured}`);
+      finishGesture();
+    },
+  });
+
+  const dispose = bindMouseInteractions(target, router);
+  target.press({ x: 1, y: 1 });
+  target.press({ x: 8, y: 1, drag: true, movementX: 7 });
+  target.press({ x: 8, y: 1, release: true, button: undefined });
+  await Promise.resolve();
+  assertEquals(seen, ["press:start"]);
+  releasePress();
+  await gestureFinished;
+  assertEquals(seen, ["press:start", "press:end", "drag:true", "release:true"]);
+  for (let turn = 0; turn < 8 && router.captured() !== undefined; turn += 1) await Promise.resolve();
+  assertEquals(router.captured(), undefined);
+  dispose();
+});
+
+Deno.test("bindMouseInteractions snapshots the reusable reader event and backing buffer", async () => {
+  const router = createMouseInteractionRouter();
+  const target = new TestMouseTarget();
+  const seen: string[] = [];
+  let releasePress!: () => void;
+  const pressGate = new Promise<void>((resolve) => {
+    releasePress = resolve;
+  });
+  let finishGesture!: () => void;
+  const gestureFinished = new Promise<void>((resolve) => {
+    finishGesture = resolve;
+  });
+  router.register({
+    id: "reader-drag",
+    bounds: { column: 0, row: 0, width: 12, height: 4 },
+    onPress: async (event) => {
+      seen.push(`press:${event.x}:${event.drag}:${event.release}:${event.buffer[0]}`);
+      await pressGate;
+      seen.push(`press-after:${event.x}:${event.drag}:${event.release}:${event.buffer[0]}`);
+    },
+    onDrag: (event) => {
+      seen.push(`drag:${event.x}:${event.drag}:${event.release}:${event.buffer[0]}`);
+    },
+    onRelease: (event) => {
+      seen.push(`release:${event.x}:${event.drag}:${event.release}:${event.buffer[0]}`);
+      finishGesture();
+    },
+  });
+
+  const dispose = bindMouseInteractions(target, router);
+  const buffer = new Uint8Array([1]);
+  const reused = createTestMousePress({ x: 1, y: 1, buffer });
+  target.emitPress(reused);
+  Object.assign(reused, { x: 5, movementX: 4, drag: true });
+  buffer[0] = 2;
+  target.emitPress(reused);
+  Object.assign(reused, { x: 9, movementX: 4, drag: false, release: true, button: undefined });
+  buffer[0] = 3;
+  target.emitPress(reused);
+
+  assertEquals(seen, ["press:1:false:false:1"]);
+  releasePress();
+  await gestureFinished;
+  assertEquals(seen, [
+    "press:1:false:false:1",
+    "press-after:1:false:false:1",
+    "drag:5:true:false:2",
+    "release:9:false:true:3",
+  ]);
+  dispose();
+});
+
+Deno.test("bindMouseInteractions begins the first dispatch before later emitter listeners", () => {
+  const router = createMouseInteractionRouter();
+  const target = new TestMouseTarget();
+  let focus = "old";
+  const seen: string[] = [];
+  router.register({
+    id: "new",
+    bounds: { column: 0, row: 0, width: 4, height: 4 },
+    onPress: () => {
+      focus = "new";
+    },
+  });
+  const dispose = bindMouseInteractions(target, router);
+  const stopObserver = target.on("mousePress", () => {
+    seen.push(focus);
+  });
+
+  target.press({ x: 1, y: 1 });
+  assertEquals(focus, "new");
+  assertEquals(seen, ["new"]);
+  stopObserver();
+  dispose();
 });
 
 Deno.test("executeCommandSurfaceItem dispatches selected command items", async () => {

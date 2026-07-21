@@ -20,7 +20,13 @@ import {
   selectedCpuHexTilesWith,
   topCpuProcessLabelForCpu,
 } from "../app/visualization_system.ts";
-import { renderVisualization, visualizations, visualizationUsesThreeRenderer } from "../app/visualizations.ts";
+import {
+  monitorVisualizations,
+  renderMonitorVisualization,
+  renderVisualization,
+  visualizations,
+  visualizationUsesThreeRenderer,
+} from "../app/visualizations.ts";
 import type { RenderContext, SlotConfig, SourceFrame, SystemSnapshot } from "../app/types.ts";
 import { createWorkbenchVisualizationWindowOptions } from "../src/app/workbench_window_registry.ts";
 import { DiagnosticsCollector } from "../src/runtime/diagnostics.ts";
@@ -312,6 +318,19 @@ Deno.test("every visualization renders and reacts to changed inputs", () => {
     assert(hot.body.trim().length > 0, `${visualization.id} should render a non-empty hot body`);
     assertNotEquals(calm.body, hot.body, `${visualization.id} body should change with different inputs`);
   }
+});
+
+Deno.test("system monitor rendering rejects Three scenes and falls back to the slot metric graph", () => {
+  for (const visualization of monitorVisualizations) {
+    const rendered = renderMonitorVisualization(makeContext(visualization.id, calmSystem, calmSources));
+    assert(rendered.body.trim().length > 0, `${visualization.id} should render a non-empty monitor body`);
+    assertEquals(rendered.three, undefined);
+  }
+
+  const staleThreeSelection = renderMonitorVisualization(makeContext("three-lattice", calmSystem, calmSources));
+  assertEquals(staleThreeSelection.title, "CPU MONITOR");
+  assertEquals(staleThreeSelection.three, undefined);
+  assert(staleThreeSelection.body.includes("AVG 28.0%"));
 });
 
 Deno.test("visualization catalog classifies every workbench visualization by family", () => {

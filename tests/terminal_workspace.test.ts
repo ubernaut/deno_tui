@@ -15,7 +15,9 @@ import { TerminalOutputController } from "../src/components/terminal_output.ts";
 import { WindowManagerController } from "../src/layout/window_manager.ts";
 import type {
   TerminalBackend,
+  TerminalBackendAttachOptions,
   TerminalBackendSpawnOptions,
+  TerminalDetachedSession,
   TerminalSessionHandle,
 } from "../src/runtime/terminal_backend.ts";
 import {
@@ -967,6 +969,40 @@ Deno.test("TerminalShellWorkspaceController routes active shell sessions", async
   await workspace.dispose();
 });
 
+Deno.test("TerminalShellWorkspaceController materializes attach templates and preserves retained sessions", async () => {
+  const backend = new FakeRetainingWorkspaceShellBackend();
+  const workspace = new TerminalShellWorkspaceController({ backend, columns: 30, rows: 8 });
+  const descriptor = workspace.add(attachTerminalTemplate("host-shell-1", { title: "Retained" }), {
+    activate: true,
+  });
+
+  assertEquals(workspace.shell(descriptor.id) !== undefined, true);
+  assertEquals(workspace.inspect().activeShell?.detached, true);
+  assertEquals(await workspace.start(descriptor.id), true);
+  assertEquals(backend.attached.map((entry) => entry.sessionId), ["host-shell-1"]);
+
+  backend.emitAttached("attached output");
+  assertEquals(workspace.activeShell?.screen.textRows()[0], "attached output");
+  assertEquals(workspace.inspect().workspace.active?.detached, false);
+  assertEquals(workspace.inspect().workspace.active?.running, true);
+
+  const first = backend.handles.at(-1)!;
+  assertEquals(await workspace.detach(descriptor.id), true);
+  assertEquals(workspace.inspect().workspace.active?.detached, true);
+  assertEquals(first.killCalls, 0);
+  assertEquals(first.disposeCalls, 0);
+
+  assertEquals(await workspace.attach(descriptor.id), true);
+  assertEquals(backend.attached.length, 2);
+  const second = backend.handles.at(-1)!;
+  assertEquals(await workspace.remove(descriptor.id), true);
+  assertEquals(second.killCalls, 0);
+  assertEquals(second.disposeCalls, 0);
+  assertEquals(backend.detached.length, 2);
+
+  await workspace.dispose();
+});
+
 Deno.test("TerminalShellWorkspaceController synchronizes stop and OSC titles", async () => {
   const backend = new FakeWorkspaceShellBackend();
   const workspace = new TerminalShellWorkspaceController({ backend });
@@ -1065,6 +1101,43 @@ class FakeWorkspaceShellBackend implements TerminalBackend {
   }
 }
 
+class FakeRetainingWorkspaceShellBackend extends FakeWorkspaceShellBackend {
+  readonly detachable = true;
+  readonly reconnectable = true;
+  readonly attached: Array<{ sessionId: string; options: TerminalBackendAttachOptions }> = [];
+  readonly detached: TerminalDetachedSession[] = [];
+
+  attach(sessionId: string, options: TerminalBackendAttachOptions = {}): TerminalSessionHandle {
+    this.attached.push({ sessionId, options: { ...options } });
+    const handle = new FakeWorkspaceShellHandle(sessionId, this.id, {
+      command: "bash",
+      columns: options.columns,
+      rows: options.rows,
+      output: options.output,
+      onData: options.onData,
+    });
+    this.handles.push(handle);
+    return handle;
+  }
+
+  detach(session: TerminalSessionHandle): Promise<TerminalDetachedSession | undefined> {
+    const inspection = session.inspect();
+    const detached: TerminalDetachedSession = {
+      id: session.id,
+      backendId: this.id,
+      commandLine: inspection.commandLine,
+      columns: inspection.columns,
+      rows: inspection.rows,
+    };
+    this.detached.push(detached);
+    return Promise.resolve(detached);
+  }
+
+  emitAttached(data: string): void {
+    this.attached.at(-1)?.options.onData?.(data, "stdout");
+  }
+}
+
 class FakeTerminalBackend implements TerminalBackend {
   readonly id = "fake";
   readonly label = "Fake";
@@ -1095,6 +1168,8 @@ class FakeWorkspaceShellHandle implements TerminalSessionHandle {
   readonly output: TerminalOutputController;
   readonly writes: string[] = [];
   readonly resizes: Array<{ columns: number; rows: number }> = [];
+  killCalls = 0;
+  disposeCalls = 0;
   readonly closed: Promise<ProcessSessionInspection>;
   readonly #resolveClosed: (inspection: ProcessSessionInspection) => void;
   readonly #backendId: string;
@@ -1143,6 +1218,7 @@ class FakeWorkspaceShellHandle implements TerminalSessionHandle {
   }
 
   kill(): Promise<boolean> {
+    this.killCalls += 1;
     this.#status = "cancelled";
     this.finish(130);
     return Promise.resolve(true);
@@ -1163,6 +1239,7 @@ class FakeWorkspaceShellHandle implements TerminalSessionHandle {
   }
 
   dispose(): Promise<void> {
+    this.disposeCalls += 1;
     if (this.#status === "running") this.finish(0);
     return Promise.resolve();
   }

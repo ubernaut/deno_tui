@@ -25,6 +25,7 @@ export interface TerminalBackendAttachOptions {
   columns?: number;
   rows?: number;
   output?: TerminalOutputController;
+  onData?: (data: string | Uint8Array, source: TerminalOutputSource) => void;
 }
 
 /** Serializable descriptor for a session retained by a backend outside the active window handle. */
@@ -79,6 +80,8 @@ export interface TerminalBackend {
   readonly detachable?: boolean;
   readonly reconnectable?: boolean;
   spawn(options: TerminalBackendSpawnOptions): TerminalSessionHandle;
+  /** Optional async-capable spawn path used by remote or daemon-backed providers. */
+  spawnAsync?(options: TerminalBackendSpawnOptions): TerminalSessionHandle | Promise<TerminalSessionHandle>;
   attach?(
     sessionId: string,
     options?: TerminalBackendAttachOptions,

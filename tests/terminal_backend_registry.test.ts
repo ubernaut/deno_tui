@@ -15,6 +15,43 @@ import {
   type TerminalSessionHandle,
 } from "../src/runtime/mod.ts";
 import type { ProcessSessionCommand, ProcessSessionInspection, ProcessSessionStatus } from "../src/runtime/mod.ts";
+import { createRuntimePermissionManifest } from "../src/permissions.ts";
+import { parseLinuxProcessStat, sanitizeLinuxProcessTitle } from "../src/runtime/linux_foreground_process.ts";
+
+Deno.test("Linux foreground process metadata parses stat names and sanitizes process titles", () => {
+  const fields = [
+    "S",
+    "1",
+    "123",
+    "123",
+    "34816",
+    "456",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "20",
+    "0",
+    "1",
+    "0",
+    "999",
+  ];
+  assertEquals(parseLinuxProcessStat(`123 (strange ) name) ${fields.join(" ")}`), {
+    pid: 123,
+    parentPid: 1,
+    processGroupId: 123,
+    sessionId: 123,
+    foregroundProcessGroupId: 456,
+    startTime: "999",
+  });
+  assertEquals(sanitizeLinuxProcessTitle("\x1b]2;evil\x07\n  asciichurn\t"), "]2;evil asciichurn");
+  assertEquals(parseLinuxProcessStat("malformed"), undefined);
+});
 
 Deno.test("terminal backend registry resolves the process backend by default", async () => {
   const registry = createDefaultTerminalBackendRegistry({ process: { id: "proc", label: "Proc" } });
@@ -45,6 +82,7 @@ Deno.test("terminal backend registry prefers available pty providers when reques
       id: "pty",
       label: "PTY",
       pty: true,
+      permissionManifest: emptyPermissionManifest("terminal-backend:pty"),
       priority: 10,
       probe: () => ({ available: true }),
       create: () => new FakeTerminalBackend("pty", true),
@@ -62,6 +100,7 @@ Deno.test("terminal backend registry skips unavailable providers and can require
       id: "broken-pty",
       label: "Broken PTY",
       pty: true,
+      permissionManifest: emptyPermissionManifest("terminal-backend:broken-pty"),
       priority: 20,
       probe: () => ({ available: false, reason: "missing native library" }),
       create: () => new FakeTerminalBackend("broken-pty", true),
@@ -84,6 +123,7 @@ Deno.test("terminal backend registry reports probe failures to diagnostics", asy
       id: "throwing-pty",
       label: "Throwing PTY",
       pty: true,
+      permissionManifest: emptyPermissionManifest("terminal-backend:throwing-pty"),
       probe: () => {
         throw new Error("native probe crashed");
       },
@@ -114,6 +154,14 @@ Deno.test("sigma pty backend provider stays lazy and supports injected modules",
   const registry = new TerminalBackendRegistry([provider]);
 
   assertEquals(instantiated, 0);
+  assertEquals(registry.permissionReport().required.map((entry) => [entry.kind, entry.operation, entry.target]), [
+    ["subprocess", "spawn", "*"],
+    ["ffi", "load", "jsr:@sigma/pty-ffi@0.42.0"],
+  ]);
+  assertEquals(registry.permissionReport().optional.map((entry) => [entry.kind, entry.operation, entry.target]), [
+    ["read", "content", "/proc"],
+  ]);
+  assertEquals(instantiated, 0);
   assertEquals(await registry.inspect(), [
     {
       id: "ffi",
@@ -132,6 +180,10 @@ Deno.test("sigma pty backend provider stays lazy and supports injected modules",
   assertEquals(backend?.id, "ffi");
   assertEquals(instantiated, 1);
 });
+
+function emptyPermissionManifest(adapterId: string) {
+  return createRuntimePermissionManifest({ adapterId, required: [] });
+}
 
 Deno.test("sigma pty terminal backend wraps output write resize and close lifecycle", async () => {
   FakePty.instances = [];
@@ -187,6 +239,64 @@ Deno.test("sigma pty terminal backend wraps output write resize and close lifecy
 
   await handle.dispose();
   assertEquals(pty.closed, true);
+});
+
+Deno.test("sigma pty terminal backend bounds fullscreen output without dropping raw PTY data", async () => {
+  FakePty.instances = [];
+  const backend = createSigmaPtyTerminalBackendFromConstructor(FakePty, {
+    id: "pty",
+    now: () => 100,
+  });
+  let rawBytes = 0;
+  const handle = backend.spawn({
+    command: "asciichurn",
+    onData: (data) => rawBytes += String(data).length,
+  });
+  const pty = FakePty.instances[0]!;
+  const chunk = "x".repeat(4 * 1024);
+  const chunks = 2_048;
+
+  for (let index = 0; index < chunks; index += 1) pty.emit(chunk);
+  pty.finish(0);
+  const closed = await handle.closed;
+
+  assertEquals(closed.status, "exited");
+  assertEquals(rawBytes, chunk.length * chunks);
+  const output = handle.output.inspect().lines;
+  assertEquals(
+    output.filter((line) => line.source === "system" && line.text.includes("fragment truncated")).length,
+    1,
+  );
+  const retained = output.find((line) => line.source === "stdout");
+  assertEquals(retained?.text.length, 64 * 1024);
+  assertEquals(retained?.text, "x".repeat(64 * 1024));
+  await handle.dispose();
+});
+
+Deno.test("sigma pty terminal backend preserves UTF-8 split across raw byte reads", async () => {
+  const encoded = new TextEncoder().encode("█");
+  FakeBytePty.reads = [
+    { data: encoded.slice(0, 2), done: false },
+    { data: encoded.slice(2), done: false },
+    { data: new Uint8Array(), done: true },
+  ];
+  const backend = createSigmaPtyTerminalBackendFromConstructor(FakeBytePty, {
+    id: "byte-pty",
+    pollingIntervalMs: 1,
+    now: () => 100,
+  });
+  const raw: Uint8Array[] = [];
+  const handle = backend.spawn({
+    command: "blocks",
+    onData: (data) => raw.push(data instanceof Uint8Array ? data : new TextEncoder().encode(data)),
+  });
+
+  const closed = await handle.closed;
+
+  assertEquals(closed.status, "exited");
+  assertEquals(new TextDecoder().decode(concatBytes(raw)), "█");
+  assertEquals(handle.output.inspect().lines.find((line) => line.source === "stdout")?.text, "█");
+  await handle.dispose();
 });
 
 Deno.test("sigma pty terminal backend reports structured diagnostics for failures", async () => {
@@ -330,6 +440,33 @@ class FakePty implements SigmaPtyLike {
   fail(error: Error): void {
     this.#controller.error(error);
   }
+}
+
+class FakeBytePty implements SigmaPtyLike {
+  static reads: Array<{ data: Uint8Array; done: boolean }> = [];
+  readonly readable = new ReadableStream<string>();
+  readonly exitCode = 0;
+
+  constructor(_command: string, _options: SigmaPtyCommandOptions = {}) {}
+
+  readBytes(): { data: Uint8Array; done: boolean } {
+    return FakeBytePty.reads.shift() ?? { data: new Uint8Array(), done: false };
+  }
+
+  write(_data: string): void {}
+  resize(_size: SigmaPtySize): void {}
+  close(): void {}
+  setPollingInterval(_ms: number): void {}
+}
+
+function concatBytes(chunks: readonly Uint8Array[]): Uint8Array {
+  const output = new Uint8Array(chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0));
+  let offset = 0;
+  for (const chunk of chunks) {
+    output.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return output;
 }
 
 function fakeClock(values: number[]): () => number {

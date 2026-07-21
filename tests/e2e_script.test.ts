@@ -25,6 +25,20 @@ Deno.test("e2e command inspection validates anchors and forbidden runtime errors
   assertEquals(result.forbiddenMatches, []);
   assertEquals(result.outputPreview, "Ready\nTheme Unit-01");
 
+  const runtimeFailure = inspectE2ECommandOutput({
+    id: "runtime-failure",
+    label: "Runtime Failure",
+    command: ["deno", "task", "runtime-failure"],
+    required: ["Ready"],
+  }, {
+    code: 0,
+    stdout: "Ready\n",
+    stderr: "TypeError: boom\n",
+  });
+  assertEquals(runtimeFailure.passed, false);
+  assertEquals(runtimeFailure.missing, []);
+  assertEquals(runtimeFailure.forbiddenMatches, ["TypeError"]);
+
   const failed = inspectE2ECommandOutput({
     id: "broken",
     label: "Broken",
@@ -49,12 +63,26 @@ Deno.test("e2e artifact inspection validates generated browser assets", () => {
       required: ["Generated", "mount"],
       minBytes: 8,
     },
-    20,
-    "// Generated\nmount();",
+    64,
+    "// Generated\nclass ValidationError extends TypeError {}\nmount();",
   );
 
   assertEquals(result.passed, true);
   assertEquals(result.missing, []);
+  assertEquals(result.forbiddenMatches, []);
+
+  const explicitlyForbidden = inspectE2EArtifactData(
+    {
+      id: "bundle",
+      label: "Bundle",
+      path: "docs/assets/app.js",
+      forbidden: ["TypeError"],
+    },
+    64,
+    "class ValidationError extends TypeError {}",
+  );
+  assertEquals(explicitlyForbidden.passed, false);
+  assertEquals(explicitlyForbidden.forbiddenMatches, ["TypeError"]);
 
   const failed = inspectE2EArtifactData(
     {

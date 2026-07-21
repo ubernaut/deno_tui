@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Signal, signalify } from "../mod.ts";
-import { Offset, Rectangle } from "./types.ts";
+import type { Signal } from "./signals/mod.ts";
+import type { Offset, Rectangle } from "./types.ts";
+import { signalify } from "./utils/signals.ts";
 
 interface ViewOptions {
   offset?: Offset;

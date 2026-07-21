@@ -60,6 +60,66 @@ Deno.test("emitInputEvents drains input until EOF and restores event boundaries"
   assertEquals(rawModes, [true]);
 });
 
+Deno.test("emitInputEvents does not throttle immediately available reads by default", async () => {
+  const reads = [encoder.encode("a"), encoder.encode("b"), null];
+  const timerObservedByRead: boolean[] = [];
+  let timerFired = false;
+  const timer = setTimeout(() => {
+    timerFired = true;
+  }, 0);
+  const stdin = {
+    async read(buffer: Uint8Array) {
+      timerObservedByRead.push(timerFired);
+      const next = reads.shift();
+      if (next == null) return null;
+      buffer.set(next);
+      return next.length;
+    },
+    setRaw() {},
+  } as unknown as Stdin;
+  const emitter = new EventEmitter<InputEventRecord>();
+  const keys: string[] = [];
+  emitter.on("keyPress", (event) => {
+    keys.push(event.key);
+  });
+
+  await emitInputEvents(stdin, emitter);
+  clearTimeout(timer);
+
+  assertEquals(keys, ["a", "b"]);
+  assertEquals(timerObservedByRead, [false, false, false]);
+});
+
+Deno.test("emitInputEvents yields after a zero-byte adapter read", async () => {
+  const reads: Array<Uint8Array | 0 | null> = [0, encoder.encode("a"), null];
+  const timerObservedByRead: boolean[] = [];
+  let timerFired = false;
+  const timer = setTimeout(() => {
+    timerFired = true;
+  }, 0);
+  const stdin = {
+    async read(buffer: Uint8Array) {
+      timerObservedByRead.push(timerFired);
+      const next = reads.shift();
+      if (next == null || next === 0) return next;
+      buffer.set(next);
+      return next.length;
+    },
+    setRaw() {},
+  } as unknown as Stdin;
+  const emitter = new EventEmitter<InputEventRecord>();
+  const keys: string[] = [];
+  emitter.on("keyPress", (event) => {
+    keys.push(event.key);
+  });
+
+  await emitInputEvents(stdin, emitter);
+  clearTimeout(timer);
+
+  assertEquals(keys, ["a"]);
+  assertEquals(timerObservedByRead, [false, true, true]);
+});
+
 Deno.test("decodeBuffer maps xterm function keys", () => {
   assertEquals(decode("\x1bOP").key, "f1");
   assertEquals(decode("\x1bOQ").key, "f2");

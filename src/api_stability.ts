@@ -18,7 +18,8 @@ export interface PackageEntrypointManifest {
     | "./runtime"
     | "./terminal"
     | "./testing"
-    | "./layout/yoga";
+    | "./layout/yoga"
+    | "./layout/taffy";
   path:
     | "./mod.ts"
     | "./mod.app.ts"
@@ -29,7 +30,8 @@ export interface PackageEntrypointManifest {
     | "./mod.runtime.ts"
     | "./mod.terminal.ts"
     | "./mod.testing.ts"
-    | "./src/layout/solvers/yoga.ts";
+    | "./src/layout/solvers/yoga.ts"
+    | "./src/layout/taffy.ts";
   runtime: PackageRuntime;
   stability: ApiStabilityTier;
   description: string;
@@ -81,8 +83,9 @@ export const packageEntrypoints: readonly PackageEntrypointManifest[] = [
     includes: [
       "terminal Tui runtime",
       "components and controllers",
-      "app framework",
+      "app framework with typed forms and route locations",
       "runtime/concurrency primitives",
+      "version-pinned Unicode data and UAX #29 grapheme segmentation",
       "testing and benchmark helpers",
       "Three ASCII renderer",
     ],
@@ -100,6 +103,7 @@ export const packageEntrypoints: readonly PackageEntrypointManifest[] = [
       "common layouts and widgets",
       "Markdown document and terminal renderer",
       "commands, routes, and app plugins",
+      "advanced tiled/floating workbench window host",
     ],
     excludes: ["broad compatibility surface", "browser host helpers", "renderer internals", "demo workbench code"],
   },
@@ -114,6 +118,9 @@ export const packageEntrypoints: readonly PackageEntrypointManifest[] = [
       "browser platform and Canvas2D sink",
       "DOM render target",
       "IndexedDB/Worker-capable runtime primitives",
+      "typed forms/routes and temporal structural resource caches",
+      "bounded async streams",
+      "remote capability negotiation",
       "Three ASCII browser helpers",
     ],
     excludes: ["terminal Tui runtime", "Deno stdio lifecycle"],
@@ -124,7 +131,12 @@ export const packageEntrypoints: readonly PackageEntrypointManifest[] = [
     runtime: "remote",
     stability: "experimental",
     description: "Hosted terminal/client bridge protocol and browser WebSocket transport.",
-    includes: ["remote terminal protocol", "browser transport", "input/resize/ping message types"],
+    includes: [
+      "strict version/capability handshake",
+      "negotiated remote terminal protocol",
+      "browser transport",
+      "input/resize/ping message types",
+    ],
     excludes: ["server-side PTY host", "standalone browser renderer"],
   },
   {
@@ -167,7 +179,8 @@ export const packageEntrypoints: readonly PackageEntrypointManifest[] = [
       "scheduler and render loop",
       "worker pool",
       "runtime storage and diagnostics",
-      "resource/cache primitives",
+      "resource/cache primitives with freshness and retention policies",
+      "bounded channels and disposable async-iterable operators",
       "renderer backend metadata",
     ],
     excludes: ["widgets", "terminal Tui runtime", "browser DOM host"],
@@ -210,6 +223,21 @@ export const packageEntrypoints: readonly PackageEntrypointManifest[] = [
     description: "Optional Yoga-backed Flexbox solver for HTML/CSS-style layout trees.",
     includes: ["Yoga Flexbox solver", "cell-rect conversion", "text measurement hooks"],
     excludes: ["default dependency-free layout solver", "CSS parser and markup hydration helpers"],
+  },
+  {
+    specifier: "./layout/taffy",
+    path: "./src/layout/taffy.ts",
+    runtime: "shared",
+    stability: "experimental",
+    description: "Validated opt-in adapter boundary for caller-supplied Taffy 0.12.x WASM bridges.",
+    includes: [
+      "versioned backend protocol",
+      "caller-owned module loader",
+      "host intrinsic measurement boundary",
+      "terminal-cell result projection",
+      "lifecycle and failure diagnostics",
+    ],
+    excludes: ["bundled Taffy runtime", "default solver selection", "unverified JavaScript/WASM distributions"],
   },
 ] as const satisfies readonly PackageEntrypointManifest[];
 
@@ -286,6 +314,14 @@ export const apiSurfacePolicies: readonly ApiSurfacePolicy[] = [
     description: "Optional Yoga-backed layout solver subpath. Flexbox behavior may evolve with solver integration.",
   },
   {
+    pattern: "src/layout/taffy.ts",
+    runtime: "shared",
+    stability: "experimental",
+    public: true,
+    description:
+      "Opt-in Taffy 0.12.x bridge protocol and adapter. No backend or WASM artifact is bundled by the package.",
+  },
+  {
     pattern: "src/three_ascii/*",
     runtime: "shared",
     stability: "experimental",
@@ -341,9 +377,10 @@ export const packageReleasePolicy: PackageReleasePolicy = {
   deprecationPolicy: "Prefer one minor release of deprecation notice before removing stable public APIs.",
   releaseChecklist: [
     "deno fmt --check",
-    "deno check mod.ts mod.app.ts mod.web.ts mod.remote.ts mod.three_ascii.ts mod.theme.ts mod.runtime.ts mod.terminal.ts mod.testing.ts src/layout/solvers/yoga.ts",
+    "deno check mod.ts mod.app.ts mod.web.ts mod.remote.ts mod.three_ascii.ts mod.theme.ts mod.runtime.ts mod.terminal.ts mod.testing.ts src/layout/solvers/yoga.ts src/layout/taffy.ts",
     "deno task package-check -- --quiet",
     "deno task api-inventory -- --check --quiet --fail-duplicates --min-doc-coverage=1",
+    "deno task unicode-data:check",
     "deno task benchmark",
     "deno test",
     "deno task release-check -- --clean",

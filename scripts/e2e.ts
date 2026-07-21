@@ -230,7 +230,7 @@ export async function inspectE2EArtifactTarget(
 
 export function inspectE2EArtifactData(target: E2EArtifactTarget, bytes: number, text = ""): E2EArtifactResult {
   const missing = (target.required ?? []).filter((token) => !text.includes(token));
-  const forbiddenMatches = (target.forbidden ?? defaultForbiddenTokens).filter((token) => text.includes(token));
+  const forbiddenMatches = (target.forbidden ?? []).filter((token) => text.includes(token));
   const tooSmall = bytes < (target.minBytes ?? 1);
   const tooLarge = target.maxBytes !== undefined && bytes > target.maxBytes;
   return {

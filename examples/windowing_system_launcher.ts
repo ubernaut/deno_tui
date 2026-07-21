@@ -85,6 +85,27 @@ export const workspaceDemoItems: readonly WorkspaceDemoItem[] = [
     ],
   },
   {
+    id: "muxstone",
+    path: "apps/muxstone.tui",
+    title: "Muxstone Terminal Multiplexer",
+    kind: "app",
+    task: "muxstone",
+    summary: "Persistent local PTY host with detachable, draggable, themeable, and tileable terminal windows.",
+    features: [
+      "real PTY shells",
+      "detach and reattach",
+      "drag/resize/snap/tile",
+      "xterm-256 and truecolor",
+      "durable layouts",
+    ],
+    preview: [
+      'Ctrl-B c creates a terminal; Ctrl-B % and " tile beside or below.',
+      "Closing a window detaches its view while the local host keeps the process alive.",
+      "Drag floating title bars and borders, resize tiled separators, cycle four themes, and reattach later.",
+      "Use L to launch Muxstone. Ordinary quit detaches; only a confirmed Kill destroys a session.",
+    ],
+  },
+  {
     id: "showcase",
     path: "apps/showcase.tui",
     title: "Widget Showcase",
