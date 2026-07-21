@@ -358,6 +358,7 @@ export class MuxstoneController {
   readonly #statFile: (path: string) => Promise<boolean>;
   readonly #scpRunner: (localPath: string, remoteSpec: string) => Promise<{ ok: boolean; detail?: string }>;
   readonly #scpCwdTimeoutMs: number;
+  #scpCwdCapture?: Promise<string | undefined>;
 
   constructor(options: MuxstoneControllerOptions) {
     this.client = options.client;
@@ -688,47 +689,72 @@ export class MuxstoneController {
   }
 
   /**
+   * SSH target of one session, from the network-panel mapping or, for shells
+   * launched any other way, parsed from the session's `ssh …` command line.
+   */
+  scpEligibleTarget(sessionId: string): string | undefined {
+    const mapped = this.sessionHosts.peek()[sessionId];
+    if (mapped) return mapped;
+    const summary = this.#runtimes.get(sessionId)?.summary.peek();
+    if (!summary) return undefined;
+    const tokens = summary.commandLine.trim().split(/\s+/);
+    const command = tokens[0] ?? "";
+    if (command !== "ssh" && !command.endsWith("/ssh")) return undefined;
+    for (let index = tokens.length - 1; index >= 1; index -= 1) {
+      const token = tokens[index]!;
+      if (token.startsWith("-")) continue;
+      return isMuxstoneSshTarget(token) ? token : undefined;
+    }
+    return undefined;
+  }
+
+  /**
    * Intercepts a paste that names one existing local file while an SSH shell
-   * opened from the network panel is focused. Returns true when the transfer
-   * modal was opened; false means the caller must forward the paste verbatim.
+   * is focused. The modal opens as soon as the fast local stat confirms the
+   * file; the remote cwd resolves in the background and never blocks input.
+   * Returns true when the modal was opened; false means the caller must
+   * forward the paste verbatim.
    */
   async maybeInterceptScpPaste(text: string): Promise<boolean> {
     if (this.#disposed || this.pendingScp.peek()) return false;
     const runtime = this.activeRuntime();
     if (!runtime) return false;
-    const target = this.sessionHosts.peek()[runtime.sessionId];
+    const target = this.scpEligibleTarget(runtime.sessionId);
     if (!target) return false;
     const localPath = muxstoneScpCandidatePath(text);
     if (!localPath) return false;
     const exists = await this.#statFile(localPath).catch(() => false);
     if (!exists || this.#disposed) return false;
-    const remoteDir = await this.captureRemoteCwd(runtime.sessionId).catch(() => undefined);
-    if (this.#disposed) return false;
     this.prefixPending.value = false;
-    const request: MuxstoneScpRequest = {
-      sessionId: runtime.sessionId,
-      target,
-      localPath,
-      ...(remoteDir ? { remoteDir } : {}),
-      pasteText: text,
-    };
+    const request: MuxstoneScpRequest = { sessionId: runtime.sessionId, target, localPath, pasteText: text };
     this.pendingScp.value = request;
     this.status.value = `Send ${localPath} → ${
       muxstoneScpDestinationLabel(request)
     } ? Enter sends, p pastes the path, Escape cancels.`;
+    this.#scpCwdCapture = this.captureRemoteCwd(runtime.sessionId).then((remoteDir) => {
+      if (remoteDir && !this.#disposed && this.pendingScp.peek() === request) {
+        this.pendingScp.value = { ...request, remoteDir };
+      }
+      return remoteDir;
+    }).catch(() => undefined);
     return true;
   }
 
   /**
    * Runs a hidden-history `pwd` in the shell and captures the printed path, so
    * transfers land in the directory the user is actually in. Skipped for
-   * alternate-screen apps (the bytes would be typed into them); undefined
-   * falls back to the remote home directory.
+   * alternate-screen apps and whenever the shell is not sitting at an empty
+   * prompt (the probe would otherwise type into a half-written command);
+   * undefined falls back to the remote home directory.
    */
   async captureRemoteCwd(sessionId: string, timeoutMs = this.#scpCwdTimeoutMs): Promise<string | undefined> {
     const runtime = this.#runtimes.get(sessionId);
     if (!runtime || !runtime.attached.peek() || !runtime.summary.peek().running) return undefined;
-    if (runtime.screen.inspect().alternate) return undefined;
+    const inspection = runtime.screen.inspect();
+    if (inspection.alternate) return undefined;
+    const cursorLine = runtime.screen.textRows()[inspection.cursor.row] ?? "";
+    const beforeCursor = cursorLine.slice(0, inspection.cursor.column).trimEnd();
+    if (!/[$#%>❯]$/.test(beforeCursor)) return undefined;
     let settle: (value: string | undefined) => void;
     const captured = new Promise<string | undefined>((resolve) => settle = resolve);
     let buffer = "";
@@ -755,11 +781,15 @@ export class MuxstoneController {
     const request = this.pendingScp.peek();
     if (!request) return false;
     this.pendingScp.value = undefined;
-    const destination = muxstoneScpDestinationLabel(request);
-    const remoteSpec = `${request.target}:${request.remoteDir ? `${request.remoteDir}/` : ""}`;
-    this.status.value = `scp ${request.localPath} → ${destination} …`;
+    // A still-running cwd probe may finish after confirmation; honor it.
+    const capturedDir = request.remoteDir ?? await (this.#scpCwdCapture ?? Promise.resolve(undefined));
+    this.#scpCwdCapture = undefined;
+    const resolved = capturedDir ? { ...request, remoteDir: capturedDir } : request;
+    const destination = muxstoneScpDestinationLabel(resolved);
+    const remoteSpec = `${resolved.target}:${resolved.remoteDir ? `${resolved.remoteDir}/` : ""}`;
+    this.status.value = `scp ${resolved.localPath} → ${destination} …`;
     try {
-      const result = await this.#scpRunner(request.localPath, remoteSpec);
+      const result = await this.#scpRunner(resolved.localPath, remoteSpec);
       if (this.#disposed) return result.ok;
       this.status.value = result.ok
         ? `Sent ${request.localPath} → ${destination}`
@@ -776,6 +806,7 @@ export class MuxstoneController {
     if (this.#disposed) return undefined;
     const request = this.pendingScp.peek();
     this.pendingScp.value = undefined;
+    this.#scpCwdCapture = undefined;
     this.status.value = this.#statusSummary();
     return pastePathInstead ? request?.pasteText : undefined;
   }

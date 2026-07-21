@@ -2113,7 +2113,7 @@ Deno.test("Muxstone paste of a local file path onto an SSH shell offers and runs
 });
 
 Deno.test("Muxstone scp capture runs pwd in the shell and targets the captured directory", async () => {
-  const initial = session("cwd-shell", "cwd shell", 0);
+  const initial = session("cwd-shell", "cwd shell", 0, "ssh studio.tail.net");
   const client = new FakeMuxstoneClient([initial]);
   const scpCalls: Array<{ local: string; target: string }> = [];
   const controller = await createMuxstoneController({
@@ -2138,24 +2138,29 @@ Deno.test("Muxstone scp capture runs pwd in the shell and targets the captured d
     const mounted = mount.current;
     assert(mounted);
     await mounted.whenIdle();
-    controller.sessionHosts.value = Object.freeze({ [initial.id]: "studio.tail.net" });
+    // The target derives from the session's own `ssh …` command line; no
+    // network-panel mapping is seeded. The prompt must be visible so the
+    // idle-prompt guard allows the probe.
+    client.emitOutput({ sessionId: initial.id, sequence: 1, data: "user@studio:~$ " });
     controller.windowHost.execute(
       { kind: "focus", id: muxstoneWindowId(initial.id) },
       mounted.bodyRect.peek(),
     );
+    await waitForCondition(() => controller.runtime(initial.id)!.lastSequence === 1, 2_000);
 
     harness.app.tui.emit("paste", { key: "paste", text: "/tmp/report.pdf", buffer: new Uint8Array() });
+    await waitForCondition(() => controller.pendingScp.peek() !== undefined, 2_000);
+    assertEquals(controller.pendingScp.peek()!.remoteDir, undefined);
     await waitForCondition(
       () => client.inputs.some((input) => input.sessionId === initial.id && input.data === " pwd\r"),
       2_000,
     );
     client.emitOutput({
       sessionId: initial.id,
-      sequence: 1,
+      sequence: 2,
       data: " pwd\r\n\x1b[32m/home/cos/projects\x1b[0m\r\nuser@studio:~$ ",
     });
-    await waitForCondition(() => controller.pendingScp.peek() !== undefined, 2_000);
-    assertEquals(controller.pendingScp.peek()!.remoteDir, "/home/cos/projects");
+    await waitForCondition(() => controller.pendingScp.peek()?.remoteDir === "/home/cos/projects", 2_000);
 
     await harness.pilot.press("return");
     await waitForCondition(() => scpCalls.length === 1, 2_000);

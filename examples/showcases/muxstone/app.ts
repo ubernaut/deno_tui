@@ -1668,7 +1668,7 @@ export function mountMuxstoneDesktop(
     // transfer offer instead of literal input; every other paste flows through.
     const activeSessionId = controller.activeRuntime()?.sessionId;
     const scpCandidate = event.text.length > 0 && !modalOpen() &&
-      activeSessionId !== undefined && controller.sessionHosts.peek()[activeSessionId] !== undefined &&
+      activeSessionId !== undefined && controller.scpEligibleTarget(activeSessionId) !== undefined &&
       muxstoneScpCandidatePath(event.text) !== undefined;
     if (scpCandidate) {
       const text = event.text;
