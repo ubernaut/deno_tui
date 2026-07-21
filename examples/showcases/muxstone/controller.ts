@@ -131,63 +131,6 @@ async function defaultMuxstoneStatFile(path: string): Promise<boolean> {
   }
 }
 
-async function defaultMuxstoneScpRunner(
-  localPath: string,
-  remoteSpec: string,
-  password: string,
-): Promise<{ ok: boolean; detail?: string }> {
-  const baseArgs = ["-q", "-o", "StrictHostKeyChecking=accept-new"];
-  // Without a password, let ssh use the agent/keys and never prompt.
-  if (!password) {
-    return await runScp([...baseArgs, "-o", "BatchMode=yes", "--", localPath, remoteSpec], {});
-  }
-  // scp reads passwords from a tty or SSH_ASKPASS, never stdin. Provide a
-  // one-shot askpass helper that echoes the password from an env var passed
-  // only to this child; the temp script is 0700 and removed immediately.
-  const askpass = await Deno.makeTempFile({ prefix: "muxstone-askpass-" });
-  try {
-    await Deno.writeTextFile(askpass, '#!/bin/sh\nprintf "%s\\n" "$MUXSTONE_SCP_PASSWORD"\n');
-    await Deno.chmod(askpass, 0o700);
-    return await runScp(
-      [
-        ...baseArgs,
-        "-o",
-        "NumberOfPasswordPrompts=1",
-        "-o",
-        "PreferredAuthentications=password,keyboard-interactive",
-        "--",
-        localPath,
-        remoteSpec,
-      ],
-      {
-        MUXSTONE_SCP_PASSWORD: password,
-        SSH_ASKPASS: askpass,
-        SSH_ASKPASS_REQUIRE: "force",
-        DISPLAY: Deno.env.get("DISPLAY") ?? ":0",
-      },
-    );
-  } finally {
-    await Deno.remove(askpass).catch(() => undefined);
-  }
-}
-
-async function runScp(args: string[], env: Record<string, string>): Promise<{ ok: boolean; detail?: string }> {
-  const command = new Deno.Command("scp", {
-    args,
-    env,
-    stdin: "null",
-    stdout: "null",
-    stderr: "piped",
-    // A detached session keeps ssh from finding a controlling tty and forces
-    // the SSH_ASKPASS path when a password was supplied.
-    ...(Deno.build.os !== "windows" ? { detached: true } : {}),
-  });
-  const output = await command.output();
-  if (output.code === 0) return { ok: true };
-  const detail = new TextDecoder().decode(output.stderr).trim().slice(0, 160);
-  return { ok: false, detail: detail || `scp exited with code ${output.code}` };
-}
-
 /**
  * Finds the path printed by a `pwd` probe in raw shell output: a line that is
  * exactly one conservatively-charactered absolute path, ANSI sequences
@@ -203,10 +146,6 @@ export function muxstoneCapturedPwdPath(output: string): string | undefined {
     return line;
   }
   return undefined;
-}
-
-function safeScpErrorMessage(error: unknown): string {
-  return (error instanceof Error ? error.message : String(error)).slice(0, 160);
 }
 
 /** Builds the Hosts/Tailscale hierarchy consumed by the shared workbench tree widget. */
@@ -312,15 +251,6 @@ export interface MuxstoneControllerOptions {
   readonly tailnetPollIntervalMs?: number;
   /** Injectable local-file existence probe for paste-to-scp interception. */
   readonly statFile?: (path: string) => Promise<boolean>;
-  /**
-   * Injectable scp executor receiving the full `host:dir/` remote spec and an
-   * optional password (empty string means "use key/agent auth"); defaults to
-   * the real `scp` binary with an askpass helper.
-   */
-  readonly scpRunner?: (localPath: string, remoteSpec: string, password: string) => Promise<{
-    ok: boolean;
-    detail?: string;
-  }>;
   /** How long the remote `pwd` capture may wait before falling back to the remote home. */
   readonly scpCwdTimeoutMs?: number;
 }
@@ -406,10 +336,6 @@ export class MuxstoneController {
   readonly #tailnetSource: Pick<TailnetStatusSource, "fetchStatus">;
   readonly #tailnetPollIntervalMs?: number;
   readonly #statFile: (path: string) => Promise<boolean>;
-  readonly #scpRunner: (localPath: string, remoteSpec: string, password: string) => Promise<{
-    ok: boolean;
-    detail?: string;
-  }>;
   readonly #scpCwdTimeoutMs: number;
   #scpCwdCapture?: Promise<string | undefined>;
 
@@ -450,7 +376,6 @@ export class MuxstoneController {
     this.#tailnetSource = options.tailnetSource ?? createTailscaleStatusSource();
     this.#tailnetPollIntervalMs = options.tailnetPollIntervalMs;
     this.#statFile = options.statFile ?? defaultMuxstoneStatFile;
-    this.#scpRunner = options.scpRunner ?? defaultMuxstoneScpRunner;
     this.#scpCwdTimeoutMs = Math.min(10_000, Math.max(50, options.scpCwdTimeoutMs ?? 1_500));
     this.networkTree = new TreeController({
       nodes: buildMuxstoneNetworkNodes([], undefined, this.#networkExpansion),
@@ -848,8 +773,12 @@ export class MuxstoneController {
     this.pendingScp.value = { ...request, password: request.password.slice(0, -1) };
   }
 
-  /** Runs the pending transfer in the background; resolves when scp finishes. */
-  async confirmScpTransfer(): Promise<boolean> {
+  /**
+   * Opens a dedicated terminal window running scp so its native progress meter
+   * is visible. When a password was typed, it is injected once at the first
+   * password prompt; otherwise scp uses key/agent auth or prompts in-window.
+   */
+  async confirmScpTransfer(bounds: Rectangle): Promise<boolean> {
     this.#assertActive();
     const request = this.pendingScp.peek();
     if (!request) return false;
@@ -857,21 +786,45 @@ export class MuxstoneController {
     // A still-running cwd probe may finish after confirmation; honor it.
     const capturedDir = request.remoteDir ?? await (this.#scpCwdCapture ?? Promise.resolve(undefined));
     this.#scpCwdCapture = undefined;
-    const resolved = capturedDir ? { ...request, remoteDir: capturedDir } : request;
-    const destination = muxstoneScpDestinationLabel(resolved);
-    const remoteSpec = `${resolved.target}:${resolved.remoteDir ? `${resolved.remoteDir}/` : ""}`;
-    this.status.value = `scp ${resolved.localPath} → ${destination} …`;
-    try {
-      const result = await this.#scpRunner(resolved.localPath, remoteSpec, resolved.password);
-      if (this.#disposed) return result.ok;
-      this.status.value = result.ok
-        ? `Sent ${request.localPath} → ${destination}`
-        : `scp failed: ${result.detail ?? "unknown error"}`;
-      return result.ok;
-    } catch (error) {
-      if (!this.#disposed) this.status.value = `scp failed: ${safeScpErrorMessage(error)}`;
-      return false;
-    }
+    if (this.#disposed) return false;
+    const remoteDir = capturedDir ?? request.remoteDir;
+    const remoteSpec = `${request.target}:${remoteDir ? `${remoteDir}/` : ""}`;
+    const fileName = request.localPath.split("/").pop() || request.localPath;
+    const session = await this.spawn({
+      bounds,
+      command: "scp",
+      // No -q: scp draws its progress meter when stdout is a PTY.
+      args: ["-o", "StrictHostKeyChecking=accept-new", "--", request.localPath, remoteSpec],
+      title: `scp ${fileName}`,
+    });
+    if (!session) return false;
+    if (request.password) this.#injectScpPassword(session.id, request.password);
+    this.status.value = `Transferring ${fileName} → ${muxstoneScpDestinationLabel(request)} in a new window…`;
+    return true;
+  }
+
+  /** Watches one scp session for its password prompt and answers it exactly once. */
+  #injectScpPassword(sessionId: string, password: string, timeoutMs = 30_000): void {
+    const runtime = this.#runtimes.get(sessionId);
+    if (!runtime) return;
+    let buffer = "";
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      runtime.outputTaps.delete(tap);
+    };
+    const tap = (chunk: string) => {
+      if (done) return;
+      buffer = (buffer + chunk).slice(-256);
+      if (/[Pp]assword:\s*$|[Pp]assphrase[^:]*:\s*$/.test(buffer)) {
+        finish();
+        void this.writeSession(sessionId, `${password}\r`).catch(() => false);
+      }
+    };
+    const timer = setTimeout(finish, Math.max(1_000, timeoutMs));
+    runtime.outputTaps.add(tap);
   }
 
   /** Dismisses the modal; returns the original paste text when it should be forwarded. */

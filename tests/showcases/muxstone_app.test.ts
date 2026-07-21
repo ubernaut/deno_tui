@@ -2054,7 +2054,6 @@ Deno.test("Muxstone network panel lists hosts and tailnet devices, opens SSH, an
 Deno.test("Muxstone paste of a local file path onto an SSH shell offers and runs scp", async () => {
   const initial = session("scp-shell", "scp shell", 0);
   const client = new FakeMuxstoneClient([initial]);
-  const scpCalls: Array<{ local: string; target: string; password: string }> = [];
   const controller = await createMuxstoneController({
     client,
     initialSessions: [initial],
@@ -2064,10 +2063,6 @@ Deno.test("Muxstone paste of a local file path onto an SSH shell offers and runs
     tailnetPollIntervalMs: 300_000,
     statFile: (path) => Promise.resolve(path === "/tmp/report.pdf"),
     scpCwdTimeoutMs: 60,
-    scpRunner: (local, target, password) => {
-      scpCalls.push({ local, target, password });
-      return Promise.resolve({ ok: true });
-    },
   });
   const mount: MuxstoneAppMountRef = {};
   const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
@@ -2086,16 +2081,36 @@ Deno.test("Muxstone paste of a local file path onto an SSH shell offers and runs
     harness.app.tui.emit("paste", { key: "paste", text: "/tmp/report.pdf", buffer: new Uint8Array() });
     await waitForCondition(() => controller.pendingScp.peek() !== undefined, 2_000);
     assertEquals(controller.pendingScp.peek()!.target, "studio.tail.net");
-    // A typed password fills the masked field and reaches the runner.
+    // A typed password fills the masked field.
     await harness.pilot.press("h");
     await harness.pilot.press("i");
     assertEquals(controller.pendingScp.peek()!.password, "hi");
+    // Send spawns a dedicated scp terminal window showing progress.
     await harness.pilot.press("return");
-    await waitForCondition(() => scpCalls.length === 1, 2_000);
-    assertEquals(scpCalls[0], { local: "/tmp/report.pdf", target: "studio.tail.net:", password: "hi" });
+    await waitForCondition(() => client.spawned.some((options) => options.command === "scp"), 2_000);
+    const scpSpawn = client.spawned.find((options) => options.command === "scp")!;
+    assertEquals(scpSpawn.args, [
+      "-o",
+      "StrictHostKeyChecking=accept-new",
+      "--",
+      "/tmp/report.pdf",
+      "studio.tail.net:",
+    ]);
+    assertEquals(scpSpawn.title, "scp report.pdf");
     assertEquals(controller.pendingScp.peek(), undefined);
+    // The typed password is injected once scp prompts in that window.
+    const scpSessionId = client.listSnapshot().find((s) => s.commandLine === "scp")!.id;
+    client.emitOutput({ sessionId: scpSessionId, sequence: 1, data: "cos@studio's password: " });
+    await waitForCondition(
+      () => client.inputs.some((input) => input.sessionId === scpSessionId && input.data === "hi\r"),
+      2_000,
+    );
 
     // The "Paste path" button forwards the literal text and skips scp.
+    controller.windowHost.execute(
+      { kind: "focus", id: muxstoneWindowId(initial.id) },
+      mounted.bodyRect.peek(),
+    );
     harness.app.tui.emit("paste", { key: "paste", text: "/tmp/report.pdf", buffer: new Uint8Array() });
     await waitForCondition(() => controller.pendingScp.peek() !== undefined, 2_000);
     const pasteRect = muxstoneScpLayout(mounted.windowProjection.peek().bounds).pasteRect;
@@ -2122,7 +2137,6 @@ Deno.test("Muxstone paste of a local file path onto an SSH shell offers and runs
 Deno.test("Muxstone scp capture runs pwd in the shell and targets the captured directory", async () => {
   const initial = session("cwd-shell", "cwd shell", 0, "ssh studio.tail.net");
   const client = new FakeMuxstoneClient([initial]);
-  const scpCalls: Array<{ local: string; target: string; password: string }> = [];
   const controller = await createMuxstoneController({
     client,
     initialSessions: [initial],
@@ -2132,10 +2146,6 @@ Deno.test("Muxstone scp capture runs pwd in the shell and targets the captured d
     tailnetPollIntervalMs: 300_000,
     statFile: () => Promise.resolve(true),
     scpCwdTimeoutMs: 2_000,
-    scpRunner: (local, target, password) => {
-      scpCalls.push({ local, target, password });
-      return Promise.resolve({ ok: true });
-    },
   });
   const mount: MuxstoneAppMountRef = {};
   const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
@@ -2170,12 +2180,15 @@ Deno.test("Muxstone scp capture runs pwd in the shell and targets the captured d
     await waitForCondition(() => controller.pendingScp.peek()?.remoteDir === "/home/cos/projects", 2_000);
 
     await harness.pilot.press("return");
-    await waitForCondition(() => scpCalls.length === 1, 2_000);
-    assertEquals(scpCalls[0], {
-      local: "/tmp/report.pdf",
-      target: "studio.tail.net:/home/cos/projects/",
-      password: "",
-    });
+    await waitForCondition(() => client.spawned.some((options) => options.command === "scp"), 2_000);
+    const scpSpawn = client.spawned.find((options) => options.command === "scp")!;
+    assertEquals(scpSpawn.args, [
+      "-o",
+      "StrictHostKeyChecking=accept-new",
+      "--",
+      "/tmp/report.pdf",
+      "studio.tail.net:/home/cos/projects/",
+    ]);
   } finally {
     harness.destroy();
     await controller.dispose();

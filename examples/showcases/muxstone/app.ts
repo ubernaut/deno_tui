@@ -837,7 +837,7 @@ export function mountMuxstoneDesktop(
     if (scpRequest) {
       const layout = muxstoneScpLayout(windowProjection.peek().bounds);
       if (contains(layout.sendRect, column, row)) {
-        void controller.confirmScpTransfer();
+        void controller.confirmScpTransfer(bodyRect.peek());
       } else if (contains(layout.pasteRect, column, row)) {
         const text = controller.cancelScpTransfer(true);
         if (text) void controller.writeSession(scpRequest.sessionId, new TextEncoder().encode(text));
@@ -1094,7 +1094,7 @@ export function mountMuxstoneDesktop(
         } else if (target.action === "terminate-quit" && controller.quitModalVisible.peek()) {
           requestClientExit(true);
         } else if (target.action === "send-scp" && controller.pendingScp.peek()) {
-          void controller.confirmScpTransfer();
+          void controller.confirmScpTransfer(bodyRect.peek());
         } else if (target.action === "paste-scp" && controller.pendingScp.peek()) {
           const scpRequest = controller.pendingScp.peek()!;
           const text = controller.cancelScpTransfer(true);
@@ -1453,7 +1453,7 @@ export function mountMuxstoneDesktop(
       // The modal hosts a password field, so printable keys type into it;
       // only Enter/Escape/Backspace act. "Paste path" stays on its button.
       if (event.key === "return") {
-        void controller.confirmScpTransfer();
+        void controller.confirmScpTransfer(bodyRect.peek());
       } else if (event.key === "escape") {
         controller.cancelScpTransfer(false);
       } else if (event.key === "backspace") {
