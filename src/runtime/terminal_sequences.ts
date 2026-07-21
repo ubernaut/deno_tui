@@ -27,6 +27,8 @@ export function parseTerminalControlSequence(
       length: 2,
     };
   }
+  const intermediateEsc = parseIntermediateEscSequence(value, start);
+  if (intermediateEsc) return intermediateEsc;
   if (value.charCodeAt(start) !== 0x1b || value[start + 1] !== "[") return undefined;
 
   let index = start + 2;
@@ -110,5 +112,34 @@ function isSingleCharacterEscSequence(value: string, start: number): boolean {
   if (value.charCodeAt(start) !== 0x1b) return false;
   const command = value[start + 1];
   return command === "7" || command === "8" || command === "M" || command === "H" || command === "D" ||
-    command === "E" || command === "c";
+    command === "E" || command === "c" || command === "=" || command === ">";
+}
+
+/** Parses ECMA-35 ESC sequences with 0x20-0x2F intermediates (charset designation, DECALN, `ESC % G`). */
+function parseIntermediateEscSequence(
+  value: string,
+  start: number,
+): ParsedTerminalControlSequence | undefined {
+  if (value.charCodeAt(start) !== 0x1b) return undefined;
+  let index = start + 1;
+  const intermediatesStart = index;
+  while (index < value.length) {
+    const code = value.charCodeAt(index);
+    if (code >= 0x20 && code <= 0x2f) {
+      index++;
+      continue;
+    }
+    break;
+  }
+  if (index === intermediatesStart) return undefined;
+  const finalCode = value.charCodeAt(index);
+  if (!(finalCode >= 0x30 && finalCode <= 0x7e)) return undefined;
+  return {
+    kind: "esc",
+    private: false,
+    params: "",
+    intermediates: value.slice(intermediatesStart, index),
+    command: value[index]!,
+    length: index - start + 1,
+  };
 }

@@ -77,8 +77,8 @@ export async function runMuxstoneClient(options: MuxstoneShowcaseLaunchOptions):
     persistenceDebounceMs: storage.inspect().durable ? 120 : 0,
   });
   const connectionStatus = connection.launched
-    ? "Detached host launched · terminals survive UI exit · Ctrl-B ? commands"
-    : "Reattached to detached host · Ctrl-B ? commands";
+    ? "Detached host launched · terminals survive UI exit · Ctrl-N ? commands"
+    : "Reattached to detached host · Ctrl-N ? commands";
   await launchInitialMuxstoneTerminalIfEmpty(controller, connectionStatus);
   const runtime = await createMuxstoneTerminalApp({ controller });
   bindAwaitedMuxstoneClientShutdown(runtime);

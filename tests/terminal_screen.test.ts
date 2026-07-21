@@ -817,3 +817,44 @@ Deno.test("terminal scrollback commands drive copy mode search and selection", a
   dispose();
   assertEquals(registry.list("terminal"), []);
 });
+
+Deno.test("TerminalScreen consumes charset designations without printing artifacts", () => {
+  const screen = new TerminalScreenController({ columns: 12, rows: 2 });
+  // ncurses sgr0 is `ESC ( B ESC [ m`; enacs designates G1 as DEC graphics.
+  screen.write("a\x1b(Bb\x1b)0c\x1b(Bd");
+  assertEquals(screen.textRows()[0], "abcd");
+  assertEquals(screen.cursor.column, 4);
+});
+
+Deno.test("TerminalScreen renders DEC Special Graphics through SO/SI shifts", () => {
+  const screen = new TerminalScreenController({ columns: 12, rows: 2 });
+  screen.write("\x1b(B\x1b)0A\x0eqqlk\x0fB");
+  assertEquals(screen.textRows()[0], "A──┌┐B");
+});
+
+Deno.test("TerminalScreen supports G0 DEC graphics designation directly", () => {
+  const screen = new TerminalScreenController({ columns: 12, rows: 2 });
+  screen.write("\x1b(0xjm\x1b(Bxq");
+  assertEquals(screen.textRows()[0], "│┘└xq");
+});
+
+Deno.test("TerminalScreen holds back charset sequences split across writes", () => {
+  const screen = new TerminalScreenController({ columns: 12, rows: 2 });
+  screen.write("a\x1b(");
+  screen.write("Bb");
+  assertEquals(screen.textRows()[0], "ab");
+});
+
+Deno.test("TerminalScreen consumes keypad mode selections silently", () => {
+  const screen = new TerminalScreenController({ columns: 12, rows: 2 });
+  screen.write("a\x1b=b\x1b>c");
+  assertEquals(screen.textRows()[0], "abc");
+});
+
+Deno.test("TerminalScreen clear resets charset shift state", () => {
+  const screen = new TerminalScreenController({ columns: 12, rows: 2 });
+  screen.write("\x1b)0\x0e");
+  screen.clear();
+  screen.write("qx");
+  assertEquals(screen.textRows()[0], "qx");
+});

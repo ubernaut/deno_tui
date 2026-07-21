@@ -265,3 +265,36 @@ function seededRandom(seed: number): () => number {
     return state / 0x100000000;
   };
 }
+
+function decodeMouseEvents(code: string): Array<Record<string, unknown>> {
+  const events: Array<Record<string, unknown>> = [];
+  for (const event of decodeBuffer(encoder.encode(code))) {
+    if (event.key === "mouse") events.push({ ...event });
+  }
+  return events;
+}
+
+Deno.test("decodeBuffer maps SGR wheel codes to signed vertical scroll", () => {
+  const up = decodeMouseEvents("\x1b[<64;5;6M");
+  assertEquals(up.length, 1);
+  assertEquals(up[0]!.scroll, -1);
+  const down = decodeMouseEvents("\x1b[<65;5;6M");
+  assertEquals(down[0]!.scroll, 1);
+  const ctrlUp = decodeMouseEvents("\x1b[<80;5;6M");
+  assertEquals(ctrlUp[0]!.scroll, -1);
+  assertEquals(ctrlUp[0]!.ctrl, true);
+});
+
+Deno.test("decodeBuffer never reports SGR horizontal wheel motion as vertical scroll", () => {
+  assertEquals(decodeMouseEvents("\x1b[<66;5;6M"), []);
+  assertEquals(decodeMouseEvents("\x1b[<67;5;6M"), []);
+});
+
+Deno.test("decodeBuffer maps legacy X10 wheel bytes to signed vertical scroll", () => {
+  const up = decodeMouseEvents("\x1b[M\x60\x25\x26");
+  assertEquals(up.length, 1);
+  assertEquals(up[0]!.scroll, -1);
+  const down = decodeMouseEvents("\x1b[M\x61\x25\x26");
+  assertEquals(down[0]!.scroll, 1);
+  assertEquals(decodeMouseEvents("\x1b[M\x62\x25\x26"), []);
+});

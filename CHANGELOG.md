@@ -25,6 +25,18 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Added
 
+- Added the Muxstone `[ Network ]` menu and left-docked panel with remembered SSH hosts (persisted, deletable) and
+  live Tailscale devices from a strict LocalAPI-with-CLI-fallback status source, with visibility-gated jittered
+  polling and one-keystroke SSH session spawning through the detached host.
+- Added a Muxstone end-session control: a header `[ ✕ ]` button opening a Cancel / Detach / Terminate modal, where
+  detach exits the client leaving the daemon running and terminate shuts the daemon down first.
+- Added five selectable animated Muxstone desktop backgrounds — dense matrix glyph rain, a window-aware procedural
+  circuitboard whose wires route around windows, tap into their borders, and glow brighter toward the focused
+  window, a full-coverage Giger-style biomechanical wall, a dense breeze-reactive palm-frond canopy, and a
+  block-style vaporwave/outrun sunset with a rising/setting scanline sun and a grid that drives toward the viewer —
+  all theme-derived, deterministic, pointer-aware, persisted, and cycled with prefix `b`.
+- Muxstone's network panel lists each host's open shells beneath it (persisted session→host mapping); activating a
+  shell focuses its window.
 - Added the beta `./app` entrypoint with `TerminalApp`, declarative app definitions, default interaction/lifecycle
   wiring, disposable input handling, component registration, and a focused runnable example.
 - Added a headless `TerminalAppPilot` through `./testing` for deterministic key, pointer, paste, focus, resize, command,
@@ -114,6 +126,10 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Changed
 
+- The Muxstone showcase prefix key moved from tmux-conflicting Ctrl-B to Ctrl-N; double Ctrl-N forwards a literal
+  Ctrl-N byte to the focused terminal.
+- The Muxstone network panel browses hosts and tailnet machines through the shared workbench `TreeController`
+  hierarchy, and freshly spawned floating terminals open centered and focused above the panel.
 - Text-row components now allocate and retire visible rows as their terminal height changes, including styled ANSI rows.
 - Tightened the contributor API inventory gate to require duplicate-free public exports and 100% JSDoc coverage.
 - Made every published entrypoint pass JSR fast-type and declaration-output validation without `--allow-slow-types`.
@@ -124,6 +140,13 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Fixed
 
+- The terminal screen model now consumes ECMA-35 charset designations (`ESC ( B`, `ESC ) 0`), keypad mode selects,
+  and SO/SI shifts, rendering DEC Special Graphics as box-drawing glyphs; curses apps such as nano no longer leak
+  `(B`-style artifacts or draw ACS borders as letters, including across chunk-split writes.
+- The input reader no longer decodes SGR or legacy X10 horizontal-wheel codes as vertical scrolls, and legacy X10
+  wheel-up bytes now decode as scroll events instead of drags.
+- Muxstone wheel input over an alternate-screen child without mouse tracking now sends cursor-key fallback bytes to
+  the child instead of trapping the window in workbench copy mode, so full-screen apps scroll naturally.
 - Three ASCII now verifies mapped GPU readback before selecting an adapter and falls back to a compatible software
   adapter when the primary device cannot support terminal readback.
 - Three ASCII canvas objects keep their startup or last complete grid visible while deferred readback warms, including

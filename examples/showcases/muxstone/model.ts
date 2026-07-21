@@ -234,11 +234,32 @@ export interface MuxstoneClientPort {
 }
 
 /** JSON-safe metadata stored alongside the exact window-host snapshot. */
+/** Selectable animated desktop backgrounds in stable cycle order. */
+export const MUXSTONE_BACKGROUND_IDS = ["metaballs", "matrix", "circuit", "biomech", "jungle", "vaporwave"] as const;
+export type MuxstoneBackgroundId = (typeof MUXSTONE_BACKGROUND_IDS)[number];
+
+/** Normalizes any persisted value to a known background id. */
+export function muxstoneBackgroundId(value: unknown): MuxstoneBackgroundId {
+  return MUXSTONE_BACKGROUND_IDS.includes(value as MuxstoneBackgroundId) ? value as MuxstoneBackgroundId : "metaballs";
+}
+
 export interface MuxstoneWorkspaceState {
   readonly schemaVersion: typeof MUXSTONE_SESSION_SCHEMA_VERSION;
   readonly themeId: MuxstoneThemeId;
   readonly activeSessionId?: string;
   readonly terminalOrdinal: number;
+  readonly savedHosts: readonly string[];
+  readonly backgroundId: MuxstoneBackgroundId;
+  /** Session id → SSH target for shells opened from the network panel. */
+  readonly sessionHosts: Readonly<Record<string, string>>;
+}
+
+/** Maximum remembered SSH targets persisted with the workspace. */
+export const MUXSTONE_MAX_SAVED_HOSTS = 64;
+
+/** Conservative SSH target check: optional user@ plus hostname/IP, no option-like leading dash. */
+export function isMuxstoneSshTarget(value: string): boolean {
+  return value.length <= 253 && /^(?:[A-Za-z0-9][A-Za-z0-9._-]{0,63}@)?[A-Za-z0-9][A-Za-z0-9.:_-]{0,252}$/.test(value);
 }
 
 /** Public, content-minimized controller lifecycle inspection. */
@@ -298,11 +319,32 @@ export function normalizeMuxstoneWorkspaceState(value: unknown): MuxstoneWorkspa
   const activeSessionId = typeof record.activeSessionId === "string" && isMuxstoneSessionId(record.activeSessionId)
     ? record.activeSessionId
     : undefined;
+  const savedHosts: string[] = [];
+  if (Array.isArray(record.savedHosts)) {
+    for (const host of record.savedHosts) {
+      if (savedHosts.length >= MUXSTONE_MAX_SAVED_HOSTS) break;
+      if (typeof host === "string" && isMuxstoneSshTarget(host) && !savedHosts.includes(host)) {
+        savedHosts.push(host);
+      }
+    }
+  }
+  const sessionHosts: Record<string, string> = {};
+  if (record.sessionHosts && typeof record.sessionHosts === "object" && !Array.isArray(record.sessionHosts)) {
+    for (const [sessionId, target] of Object.entries(record.sessionHosts as Record<string, unknown>)) {
+      if (Object.keys(sessionHosts).length >= MUXSTONE_MAX_SAVED_HOSTS) break;
+      if (isMuxstoneSessionId(sessionId) && typeof target === "string" && isMuxstoneSshTarget(target)) {
+        sessionHosts[sessionId] = target;
+      }
+    }
+  }
   return Object.freeze({
     schemaVersion: MUXSTONE_SESSION_SCHEMA_VERSION,
     themeId,
     terminalOrdinal,
     ...(activeSessionId ? { activeSessionId } : {}),
+    savedHosts: Object.freeze(savedHosts),
+    backgroundId: muxstoneBackgroundId(record.backgroundId),
+    sessionHosts: Object.freeze(sessionHosts),
   });
 }
 
@@ -312,6 +354,9 @@ export function initialMuxstoneWorkspaceState(): MuxstoneWorkspaceState {
     schemaVersion: MUXSTONE_SESSION_SCHEMA_VERSION,
     themeId: "midnight",
     terminalOrdinal: 1,
+    savedHosts: Object.freeze([]) as readonly string[],
+    backgroundId: "metaballs" as const,
+    sessionHosts: Object.freeze({}),
   });
 }
 

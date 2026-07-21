@@ -325,9 +325,12 @@ function decodeMouseSGR(
   const movementY = lastMouseEvent ? y - lastMouseEvent.y : 0;
 
   let scroll: MouseScrollEvent["scroll"] = 0;
-  if (modifiers >= 64) {
-    scroll = modifiers % 2 === 0 ? -1 : 1;
-    modifiers -= scroll < 0 ? 64 : 65;
+  if (modifiers >= 64 && modifiers < 128) {
+    const wheel = modifiers & ~0b11100;
+    // SGR 66/67 report horizontal wheel motion; never surface it as vertical.
+    if (wheel !== 64 && wheel !== 65) return undefined;
+    scroll = wheel === 64 ? -1 : 1;
+    modifiers -= wheel;
   }
 
   let drag = false;
@@ -408,6 +411,9 @@ function decodeMouseVT_UTF8(
   const movementY = lastMouseEvent ? y - lastMouseEvent.y : 0;
 
   const buttonInfo = modifiers & 3;
+  const wheelRange = !!(modifiers & 32) && !!(modifiers & 64);
+  // Legacy wheel buttons: 0 up, 1 down, 2/3 horizontal (never vertical scroll).
+  if (wheelRange && buttonInfo >= 2) return undefined;
   let release = false;
 
   let button: MousePressEvent["button"];
@@ -420,7 +426,7 @@ function decodeMouseVT_UTF8(
   const shift = !!(modifiers & 4);
   const meta = !!(modifiers & 8);
   const ctrl = !!(modifiers & 16);
-  const scroll = button && !!(modifiers & 32) && !!(modifiers & 64) ? (modifiers & 3 ? 1 : -1) : 0;
+  const scroll = wheelRange ? (buttonInfo === 0 ? -1 : 1) as -1 | 1 : 0;
   if (scroll) button = undefined;
   const drag = !scroll && !!(modifiers & 64);
 

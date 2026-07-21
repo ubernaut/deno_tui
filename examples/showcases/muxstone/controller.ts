@@ -8,6 +8,8 @@ import {
   Signal,
   TerminalScreenController,
   TerminalScrollbackController,
+  TreeController,
+  type TreeNode,
   type WorkbenchWindowHostDescriptor,
   type WorkbenchWindowHostProjection,
   type WorkbenchWindowHostResult,
@@ -19,13 +21,23 @@ import {
   type ShowcaseProviderActivationResult,
 } from "../shared/mod.ts";
 import {
+  createTailscaleStatusSource,
+  type TailnetDevice,
+  TailnetPoller,
+  type TailnetStatusResult,
+  type TailnetStatusSource,
+} from "./tailnet.ts";
+import {
   initialMuxstoneWorkspaceState,
   isMuxstoneSessionId,
+  isMuxstoneSshTarget,
+  MUXSTONE_BACKGROUND_IDS,
   MUXSTONE_MANIFEST,
   MUXSTONE_MAX_COLUMNS,
   MUXSTONE_MAX_ROWS,
   MUXSTONE_MAX_SESSIONS,
   MUXSTONE_THEMES,
+  type MuxstoneBackgroundId,
   type MuxstoneClientPort,
   type MuxstoneControllerInspection,
   type MuxstoneOutputFrame,
@@ -41,6 +53,108 @@ import {
 
 /** Stable host-manager window shown alongside terminal windows. */
 export const MUXSTONE_SESSIONS_WINDOW_ID = "sessions" as const;
+
+/** Network tree node id for one saved SSH host entry. */
+export function muxstoneNetworkHostNodeId(target: string): string {
+  return `host:${target}`;
+}
+
+/** Extracts the saved SSH target from a `host:` parent node id. */
+export function muxstoneNetworkNodeHostTarget(nodeId: string): string | undefined {
+  return nodeId.startsWith("host:") ? nodeId.slice(5) : undefined;
+}
+
+/** Extracts the SSH target from an `act:host-shell:` action leaf id. */
+export function muxstoneNetworkNodeHostShellTarget(nodeId: string): string | undefined {
+  return nodeId.startsWith("act:host-shell:") ? nodeId.slice(15) : undefined;
+}
+
+/** Extracts the daemon session id from a `ses:` open-shell leaf id. */
+export function muxstoneNetworkNodeSessionId(nodeId: string): string | undefined {
+  return nodeId.startsWith("ses:") ? nodeId.slice(4) : undefined;
+}
+
+/** Extracts the tailnet device id from a `dev:` machine or `act:shell:` action node id. */
+export function muxstoneNetworkNodeDeviceId(nodeId: string): string | undefined {
+  if (nodeId.startsWith("dev:")) return nodeId.slice(4);
+  if (nodeId.startsWith("act:shell:")) return nodeId.slice(10);
+  return undefined;
+}
+
+/** Compact single-line label for one tailnet device row. */
+export function muxstoneNetworkDeviceLabel(device: TailnetDevice): string {
+  const glyph = device.online ? "●" : "○";
+  const relay = device.relayed && device.online ? " · relay" : "";
+  const suffix = device.self ? " · this device" : device.online ? "" : " · offline";
+  return `${glyph} ${device.shortName} · ${device.os}${relay}${suffix}`;
+}
+
+/** Builds the Hosts/Tailscale hierarchy consumed by the shared workbench tree widget. */
+export function buildMuxstoneNetworkNodes(
+  savedHosts: readonly string[],
+  status: TailnetStatusResult | undefined,
+  expansion: ReadonlySet<string>,
+  sessions: readonly MuxstoneSessionSummary[] = [],
+  sessionHosts: Readonly<Record<string, string>> = {},
+): TreeNode[] {
+  const shellsForTargets = (targets: readonly (string | undefined)[]): TreeNode[] => {
+    const nodes: TreeNode[] = [];
+    for (const session of sessions) {
+      const target = sessionHosts[session.id];
+      if (!target || !targets.includes(target)) continue;
+      nodes.push({
+        id: `ses:${session.id}`,
+        label: `⌨ ${session.title}${session.running ? "" : " · exited"}`,
+      });
+    }
+    return nodes;
+  };
+  const hostChildren: TreeNode[] = savedHosts.length > 0
+    ? savedHosts.map((target) => {
+      const id = muxstoneNetworkHostNodeId(target);
+      return {
+        id,
+        label: `@ ${target}`,
+        children: [
+          { id: `act:host-shell:${target}`, label: "Open shell" },
+          ...shellsForTargets([target]),
+        ],
+        expanded: expansion.has(id),
+      };
+    })
+    : [{ id: "note:hosts-empty", label: "No saved hosts · SSH once to remember" }];
+  const tailscaleChildren: TreeNode[] = [];
+  if (!status) {
+    tailscaleChildren.push({ id: "note:ts-loading", label: "Checking tailscaled…" });
+  } else if (!status.snapshot || status.availability === "unavailable") {
+    tailscaleChildren.push({ id: "note:ts-detail", label: status.detail });
+  } else {
+    if (status.availability === "degraded") {
+      tailscaleChildren.push({ id: "note:ts-detail", label: status.detail });
+    }
+    if (status.snapshot.devices.length === 0) {
+      tailscaleChildren.push({ id: "note:ts-empty", label: "No devices in this tailnet." });
+    }
+    for (const device of status.snapshot.devices) {
+      const id = `dev:${device.id}`;
+      tailscaleChildren.push({
+        id,
+        label: muxstoneNetworkDeviceLabel(device),
+        children: [
+          { id: `act:shell:${device.id}`, label: "Open shell" },
+          ...shellsForTargets([device.dnsName || undefined, device.ipv4]),
+        ],
+        expanded: expansion.has(id),
+      });
+    }
+  }
+  return [
+    { id: "hosts", label: "HOSTS", children: hostChildren, expanded: expansion.has("hosts") },
+    { id: "tailscale", label: "TAILSCALE", children: tailscaleChildren, expanded: expansion.has("tailscale") },
+  ];
+}
+/** Stable left-docked network panel window listing saved hosts and tailnet devices. */
+export const MUXSTONE_NETWORK_WINDOW_ID = "network" as const;
 const WINDOW_RECONCILE_ATTEMPTS = 8;
 
 /** Live client-side projection of one daemon-owned terminal. */
@@ -72,6 +186,8 @@ export interface MuxstoneControllerOptions {
   readonly defaultCwd?: string;
   readonly now?: () => number;
   readonly persistenceDebounceMs?: number;
+  readonly tailnetSource?: Pick<TailnetStatusSource, "fetchStatus">;
+  readonly tailnetPollIntervalMs?: number;
 }
 
 /** Options for launching and positioning one terminal window. */
@@ -109,7 +225,14 @@ export class MuxstoneController {
   readonly prefixPending = new Signal(false);
   readonly helpVisible = new Signal(false);
   readonly pendingKillSessionId = new Signal<string | undefined>(undefined);
+  readonly quitModalVisible = new Signal(false);
   readonly status = new Signal("Connecting to local Muxstone host…");
+  readonly networkStatus = new Signal<TailnetStatusResult | undefined>(undefined);
+  readonly savedHosts = new Signal<readonly string[]>([]);
+  readonly sessionHosts = new Signal<Readonly<Record<string, string>>>({});
+  readonly backgroundId = new Signal<MuxstoneBackgroundId>("metaballs");
+  /** Hierarchical Hosts/Tailscale browser state, driven by the shared workbench tree widget. */
+  readonly networkTree: TreeController;
 
   readonly #runtimes = new Map<string, MuxstoneTerminalRuntime>();
   readonly #lifecycleTails = new Map<string, Promise<void>>();
@@ -122,6 +245,11 @@ export class MuxstoneController {
   #terminalOrdinal = 1;
   #disposed = false;
   #disposePromise?: Promise<void>;
+  #lastBounds: Rectangle = { column: 0, row: 0, width: 120, height: 36 };
+  readonly #networkExpansion = new Set<string>(["hosts", "tailscale"]);
+  #tailnetPoller?: TailnetPoller;
+  readonly #tailnetSource: Pick<TailnetStatusSource, "fetchStatus">;
+  readonly #tailnetPollIntervalMs?: number;
 
   constructor(options: MuxstoneControllerOptions) {
     this.client = options.client;
@@ -157,7 +285,38 @@ export class MuxstoneController {
     if (!windowHost) throw new Error("Muxstone requires the advanced window host.");
     this.windowHost = windowHost;
     this.theme = new Computed(() => muxstoneTheme(this.themeId.value));
+    this.#tailnetSource = options.tailnetSource ?? createTailscaleStatusSource();
+    this.#tailnetPollIntervalMs = options.tailnetPollIntervalMs;
+    this.networkTree = new TreeController({
+      nodes: buildMuxstoneNetworkNodes([], undefined, this.#networkExpansion),
+      onToggle: (row, expanded) => {
+        if (expanded) this.#networkExpansion.add(row.id);
+        else this.#networkExpansion.delete(row.id);
+      },
+    });
+    this.savedHosts.subscribe(() => this.#rebuildNetworkTree());
+    this.networkStatus.subscribe(() => this.#rebuildNetworkTree());
+    this.sessionHosts.subscribe(() => this.#rebuildNetworkTree());
+    this.sessions.subscribe(() => this.#rebuildNetworkTree());
     this.ready = this.#initialize();
+  }
+
+  #rebuildNetworkTree(): void {
+    if (this.#disposed) return;
+    this.networkTree.nodes.value = buildMuxstoneNetworkNodes(
+      this.savedHosts.peek(),
+      this.networkStatus.peek(),
+      this.#networkExpansion,
+      this.sessions.peek(),
+      this.sessionHosts.peek(),
+    );
+  }
+
+  /** Resolves a tailnet device referenced by a network tree node id. */
+  networkDevice(nodeId: string): TailnetDevice | undefined {
+    const deviceId = muxstoneNetworkNodeDeviceId(nodeId);
+    if (!deviceId) return undefined;
+    return this.networkStatus.peek()?.snapshot?.devices.find((device) => device.id === deviceId);
   }
 
   /** Returns the live screen/runtime for one stable daemon session. */
@@ -176,7 +335,24 @@ export class MuxstoneController {
     if (!this.#disposed) this.#persistActiveSession();
   }
 
-  /** Arms the tmux-compatible Ctrl-B prefix without forwarding it to a child. */
+  /** Opens the end-session choice modal and clears conflicting transient UI. */
+  openQuitModal(): void {
+    this.#assertActive();
+    this.prefixPending.value = false;
+    this.helpVisible.value = false;
+    this.pendingKillSessionId.value = undefined;
+    this.quitModalVisible.value = true;
+    this.status.value = "End session? d detaches, t terminates the host, Escape cancels.";
+  }
+
+  /** Closes the end-session modal without detaching or terminating anything. */
+  cancelQuitModal(): void {
+    if (this.#disposed) return;
+    this.quitModalVisible.value = false;
+    this.status.value = this.#statusSummary();
+  }
+
+  /** Arms the tmux-style Ctrl-N prefix without forwarding it to a child. */
   beginPrefix(): void {
     this.#assertActive();
     this.prefixPending.value = true;
@@ -190,7 +366,7 @@ export class MuxstoneController {
     this.status.value = this.#statusSummary();
   }
 
-  /** Executes one awaited Ctrl-B command. Unknown keys are consumed and explained. */
+  /** Executes one awaited Ctrl-N command. Unknown keys are consumed and explained. */
   async handlePrefixKey(key: string, bounds: Rectangle): Promise<boolean> {
     this.#assertActive();
     this.prefixPending.value = false;
@@ -219,6 +395,9 @@ export class MuxstoneController {
         return true;
       case "t":
         this.cycleTheme();
+        return true;
+      case "b":
+        this.cycleBackground();
         return true;
       case "f":
       case "space":
@@ -265,7 +444,7 @@ export class MuxstoneController {
         this.cancelPrefix();
         return true;
       default:
-        this.status.value = `Unknown prefix command: ${key} · Ctrl-B ? for help`;
+        this.status.value = `Unknown prefix command: ${key} · Ctrl-N ? for help`;
         return true;
     }
   }
@@ -315,9 +494,104 @@ export class MuxstoneController {
     this.status.value = this.#statusSummary();
   }
 
+  /** Toggles the left-docked network panel; opening starts tailnet polling, closing stops it. */
+  toggleNetworkPanel(bounds: Rectangle): void {
+    this.#assertActive();
+    const active = this.windowHost.controller.inspect().activeWindowId === MUXSTONE_NETWORK_WINDOW_ID;
+    if (active) {
+      this.windowHost.execute({ kind: "minimize", id: MUXSTONE_NETWORK_WINDOW_ID }, bounds);
+      this.#tailnetPoller?.setVisible(false);
+      this.status.value = this.#statusSummary();
+      return;
+    }
+    this.windowHost.execute({ kind: "restore", id: MUXSTONE_NETWORK_WINDOW_ID }, bounds);
+    this.windowHost.execute({ kind: "focus", id: MUXSTONE_NETWORK_WINDOW_ID }, bounds);
+    this.#ensureTailnetPoller().setVisible(true);
+    this.status.value = "Network panel · Enter opens SSH · Del forgets a saved host · r refreshes.";
+  }
+
+  /** Forces one immediate tailnet status fetch. */
+  async refreshNetwork(): Promise<void> {
+    this.#assertActive();
+    await this.#ensureTailnetPoller().refresh();
+  }
+
+  /** Opens an SSH terminal to a validated target through the detached host and remembers it. */
+  async spawnNetworkShell(
+    target: string,
+    title: string,
+    bounds: Rectangle,
+  ): Promise<MuxstoneSessionSummary | undefined> {
+    this.#assertActive();
+    if (!isMuxstoneSshTarget(target)) {
+      this.status.value = `Refusing SSH target with unsupported characters: ${target.slice(0, 40)}`;
+      return undefined;
+    }
+    const session = await this.spawn({ bounds, command: "ssh", args: [target], title: title || target });
+    if (session) {
+      this.rememberHost(target);
+      this.sessionHosts.value = Object.freeze({ ...this.sessionHosts.peek(), [session.id]: target });
+      this.#persistMetadata();
+    }
+    return session;
+  }
+
+  /** Preferred SSH target for one tailnet device (MagicDNS name over raw IP). */
+  static tailnetSshTarget(device: TailnetDevice): string | undefined {
+    const target = device.dnsName || device.ipv4;
+    return target && isMuxstoneSshTarget(target) ? target : undefined;
+  }
+
+  /** Persists one SSH target in the saved-hosts list. */
+  rememberHost(target: string): void {
+    if (this.#disposed || !isMuxstoneSshTarget(target)) return;
+    const current = this.savedHosts.peek();
+    if (current.includes(target)) return;
+    this.savedHosts.value = Object.freeze([target, ...current].slice(0, 64));
+    this.#persistMetadata();
+  }
+
+  /** Removes one SSH target from the saved-hosts list. */
+  forgetHost(target: string): boolean {
+    this.#assertActive();
+    const current = this.savedHosts.peek();
+    if (!current.includes(target)) return false;
+    this.savedHosts.value = Object.freeze(current.filter((host) => host !== target));
+    this.#persistMetadata();
+    this.status.value = `Forgot saved host ${target}.`;
+    return true;
+  }
+
+  /** Centered default rect for a freshly spawned floating terminal, cascading slightly per launch. */
+  #centeredFloatingRect(): Rectangle {
+    const bounds = this.#lastBounds;
+    const width = Math.max(24, Math.min(86, bounds.width - 6));
+    const height = Math.max(8, Math.min(28, bounds.height - 4));
+    const cascade = ((this.#terminalOrdinal % 5) - 2) * 2;
+    return {
+      column: Math.max(bounds.column, bounds.column + Math.floor((bounds.width - width) / 2) + cascade),
+      row: Math.max(bounds.row, bounds.row + Math.floor((bounds.height - height) / 2) + Math.trunc(cascade / 2)),
+      width,
+      height,
+    };
+  }
+
+  #ensureTailnetPoller(): TailnetPoller {
+    this.#tailnetPoller ??= new TailnetPoller({
+      source: this.#tailnetSource,
+      onResult: (result) => {
+        if (this.#disposed) return;
+        this.networkStatus.value = result;
+      },
+      ...(this.#tailnetPollIntervalMs !== undefined ? { intervalMs: this.#tailnetPollIntervalMs } : {}),
+    });
+    return this.#tailnetPoller;
+  }
+
   /** Launches a daemon-owned shell, floating by default or tiled when explicitly docked. */
   async spawn(options: MuxstoneControllerSpawnOptions = {}): Promise<MuxstoneSessionSummary | undefined> {
     this.#assertActive();
+    if (options.bounds) this.#lastBounds = { ...options.bounds };
     if (this.#runtimes.size >= MUXSTONE_MAX_SESSIONS) {
       this.status.value = `Session limit reached (${MUXSTONE_MAX_SESSIONS}).`;
       return undefined;
@@ -380,7 +654,7 @@ export class MuxstoneController {
       // The manager is an always-on-top floating utility. Leaving it over the
       // first focused shell hides the prompt and early echo, which looks like
       // severe input latency even though the PTY is current. Keep it one
-      // Ctrl-B s away on the shelf when it launched the terminal.
+      // Ctrl-N s away on the shelf when it launched the terminal.
       if (minimizeSessionManager) {
         this.windowHost.execute({ kind: "minimize", id: MUXSTONE_SESSIONS_WINDOW_ID }, bounds);
       }
@@ -519,6 +793,18 @@ export class MuxstoneController {
     return MUXSTONE_THEMES[next]!;
   }
 
+  /** Cycles the animated desktop background and persists the selection. */
+  cycleBackground(direction: -1 | 1 = 1): MuxstoneBackgroundId {
+    this.#assertActive();
+    const current = MUXSTONE_BACKGROUND_IDS.indexOf(this.backgroundId.peek());
+    const next = (Math.max(0, current) + direction + MUXSTONE_BACKGROUND_IDS.length) % MUXSTONE_BACKGROUND_IDS.length;
+    this.backgroundId.value = MUXSTONE_BACKGROUND_IDS[next]!;
+    this.themeRevision.value += 1;
+    this.#persistMetadata();
+    this.status.value = `Background: ${MUXSTONE_BACKGROUND_IDS[next]!}`;
+    return MUXSTONE_BACKGROUND_IDS[next]!;
+  }
+
   /** Writes exact bytes to the selected attached terminal. */
   async writeActive(data: string | Uint8Array): Promise<boolean> {
     this.#assertActive();
@@ -639,7 +925,16 @@ export class MuxstoneController {
     const restored = normalizeMuxstoneWorkspaceState(this.kernel.appState.peek());
     this.themeId.value = restored.themeId;
     this.#terminalOrdinal = restored.terminalOrdinal;
+    this.savedHosts.value = restored.savedHosts;
+    this.sessionHosts.value = restored.sessionHosts;
+    this.backgroundId.value = restored.backgroundId;
     this.themeRevision.value += 1;
+    // The network panel opens on demand from the menu; a restored session
+    // starts with it tucked away regardless of how the last run ended.
+    this.windowHost.execute(
+      { kind: "minimize", id: MUXSTONE_NETWORK_WINDOW_ID },
+      { column: 0, row: 0, width: 120, height: 36 },
+    );
     const windows = this.windowHost.controller.inspect().windows;
     const activeId = restored.activeSessionId && this.#runtimes.has(restored.activeSessionId)
       ? restored.activeSessionId
@@ -824,6 +1119,18 @@ export class MuxstoneController {
         floatingRect: { column: 2, row: 2, width: 38, height: 16 },
         alwaysOnTop: true,
       },
+      // The network panel stacks in the normal tier so freshly spawned
+      // terminals (which take focus) always land above it.
+      {
+        id: MUXSTONE_NETWORK_WINDOW_ID,
+        title: "Network",
+        minWidth: 24,
+        minHeight: 8,
+        maxWidth: 46,
+        maxHeight: 42,
+        placement: "floating",
+        floatingRect: { column: 0, row: 0, width: 32, height: 22 },
+      },
       ...[...runtimes.values()].map((runtime) => ({
         id: muxstoneWindowId(runtime.sessionId),
         title: (summaries.get(runtime.sessionId) ?? runtime.summary.peek()).title,
@@ -831,7 +1138,9 @@ export class MuxstoneController {
         minHeight: 6,
         maxWidth: MUXSTONE_MAX_COLUMNS + 2,
         maxHeight: MUXSTONE_MAX_ROWS + 2,
-        ...(runtime.sessionId === floatingSessionId ? { placement: "floating" as const } : {}),
+        ...(runtime.sessionId === floatingSessionId
+          ? { placement: "floating" as const, floatingRect: this.#centeredFloatingRect() }
+          : {}),
       })),
     ];
   }
@@ -844,11 +1153,18 @@ export class MuxstoneController {
     if (this.#disposed) return;
     const current = normalizeMuxstoneWorkspaceState(this.kernel.appState.peek());
     const selected = activeSessionId === undefined ? current.activeSessionId : activeSessionId;
+    const sessionHosts: Record<string, string> = {};
+    for (const [sessionId, target] of Object.entries(this.sessionHosts.peek())) {
+      if (this.#runtimes.has(sessionId)) sessionHosts[sessionId] = target;
+    }
     this.kernel.setState({
       schemaVersion: 1,
       themeId: this.themeId.peek(),
       terminalOrdinal: this.#terminalOrdinal,
       ...(selected && this.#runtimes.has(selected) ? { activeSessionId: selected } : {}),
+      savedHosts: this.savedHosts.peek(),
+      backgroundId: this.backgroundId.peek(),
+      sessionHosts,
     });
   }
 
@@ -856,7 +1172,7 @@ export class MuxstoneController {
     const sessions = this.sessions.peek();
     const running = sessions.filter((session) => session.running).length;
     const hidden = [...this.#runtimes.values()].filter((runtime) => !runtime.attached.peek()).length;
-    return `${running}/${sessions.length} running · ${hidden} detached · Ctrl-B ? commands`;
+    return `${running}/${sessions.length} running · ${hidden} detached · Ctrl-N ? commands`;
   }
 
   #runtimeRequired(sessionId: string): MuxstoneTerminalRuntime {
@@ -891,6 +1207,13 @@ export class MuxstoneController {
     this.prefixPending.dispose();
     this.helpVisible.dispose();
     this.pendingKillSessionId.dispose();
+    this.quitModalVisible.dispose();
+    this.#tailnetPoller?.dispose();
+    this.networkTree.dispose();
+    this.networkStatus.dispose();
+    this.savedHosts.dispose();
+    this.sessionHosts.dispose();
+    this.backgroundId.dispose();
     this.status.value = "disposed";
     this.status.dispose();
   }

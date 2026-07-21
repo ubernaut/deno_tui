@@ -61,6 +61,36 @@ const DEFAULT_SCROLLBACK_LIMIT = 1000;
 const MAX_PENDING_CONTROL_LENGTH = 64 * 1024;
 const BLANK_CELL: TerminalScreenCell = Object.freeze({ char: " " });
 
+/** VT100 DEC Special Graphics set used by curses ACS line drawing (`ESC ( 0` / `ESC ) 0` + SO). */
+const DEC_SPECIAL_GRAPHICS: Readonly<Record<string, string>> = Object.freeze({
+  "`": "◆",
+  "a": "▒",
+  "f": "°",
+  "g": "±",
+  "j": "┘",
+  "k": "┐",
+  "l": "┌",
+  "m": "└",
+  "n": "┼",
+  "o": "⎺",
+  "p": "⎻",
+  "q": "─",
+  "r": "⎼",
+  "s": "⎽",
+  "t": "├",
+  "u": "┤",
+  "v": "┴",
+  "w": "┬",
+  "x": "│",
+  "y": "≤",
+  "z": "≥",
+  "{": "π",
+  "|": "≠",
+  "}": "£",
+  "~": "·",
+  "0": "█",
+});
+
 /** Lightweight ANSI terminal screen model for process and PTY output renderers. */
 export class TerminalScreenController {
   #columns: number;
@@ -84,6 +114,8 @@ export class TerminalScreenController {
   #lastPrintableWidth = 1;
   #tabStops: Set<number>;
   #pendingControl = "";
+  readonly #charsetDecGraphics = [false, false];
+  #activeCharset: 0 | 1 = 0;
   readonly #decoder = new TextDecoder();
 
   constructor(options: TerminalScreenControllerOptions = {}) {
@@ -163,6 +195,9 @@ export class TerminalScreenController {
     this.#state.cursor = { column: 0, row: 0 };
     this.#scrollRegion = fullScrollRegion(this.#rows);
     this.#tabStops = defaultTabStops(this.#columns);
+    this.#charsetDecGraphics[0] = false;
+    this.#charsetDecGraphics[1] = false;
+    this.#activeCharset = 0;
   }
 
   textRows(): string[] {
@@ -225,14 +260,23 @@ export class TerminalScreenController {
       this.#state.cursor.column = Math.max(0, this.#state.cursor.column - 1);
       return;
     }
+    if (char === "\x0e") {
+      this.#activeCharset = 1;
+      return;
+    }
+    if (char === "\x0f") {
+      this.#activeCharset = 0;
+      return;
+    }
     if (char === "\t") {
       this.#state.cursor.column = nextTabStop(this.#tabStops, this.#state.cursor.column, this.#columns);
       return;
     }
     if (char < " ") return;
 
-    const width = terminalGraphicWidth(char);
-    const cell = this.#styledCell(char);
+    const glyph = this.#charsetDecGraphics[this.#activeCharset] ? DEC_SPECIAL_GRAPHICS[char] ?? char : char;
+    const width = terminalGraphicWidth(glyph);
+    const cell = this.#styledCell(glyph);
     this.#writeCell(cell);
     for (let index = 1; index < width; index += 1) {
       this.#writeCell(BLANK_CELL);
@@ -279,6 +323,13 @@ export class TerminalScreenController {
       this.#applyOsc(sequence.params);
       return;
     }
+    if (sequence.kind === "esc" && sequence.intermediates) {
+      this.#applyEscIntermediates(sequence.intermediates, sequence.command);
+      return;
+    }
+    // Keypad application/numeric modes are recognized so their bytes never
+    // leak into the grid; the screen model itself needs no keypad state.
+    if (sequence.kind === "esc" && (sequence.command === "=" || sequence.command === ">")) return;
     const params = parseTerminalParams(sequence.params);
     if (sequence.private && (sequence.command === "h" || sequence.command === "l")) {
       this.#applyPrivateModes(params, sequence.command === "h");
@@ -428,6 +479,15 @@ export class TerminalScreenController {
     const cell: TerminalScreenCell = { char, ...this.#style };
     if (this.#hyperlink) cell.hyperlink = this.#hyperlink;
     return cell;
+  }
+
+  #applyEscIntermediates(intermediates: string, command: string): void {
+    // ECMA-35 charset designation: `ESC ( final` selects G0, `ESC ) final` G1.
+    // Only DEC Special Graphics (`0`) changes rendering; every other final —
+    // and the G2/G3, DECALN, and `ESC % G` families — is consumed silently so
+    // its bytes never print as literal glyphs.
+    if (intermediates === "(") this.#charsetDecGraphics[0] = command === "0";
+    else if (intermediates === ")") this.#charsetDecGraphics[1] = command === "0";
   }
 
   #applyPrivateModes(params: number[], enabled: boolean): void {
@@ -787,7 +847,14 @@ function readTerminalGraphic(text: string, index: number): string {
 
 function incompleteTerminalControl(suffix: string): boolean {
   if (suffix === "\x1b") return true;
-  return suffix.startsWith("\x1b[") || suffix.startsWith("\x1b]");
+  if (suffix.startsWith("\x1b[") || suffix.startsWith("\x1b]")) return true;
+  // A trailing ESC plus only intermediates (e.g. a chunk-split `ESC (`) still
+  // awaits its final byte; never let its pieces print as literal glyphs.
+  for (let index = 1; index < suffix.length; index += 1) {
+    const code = suffix.charCodeAt(index);
+    if (code < 0x20 || code > 0x2f) return false;
+  }
+  return true;
 }
 
 function terminalGraphicWidth(char: string): number {

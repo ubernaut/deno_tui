@@ -1,0 +1,400 @@
+// Copyright 2023 Im-Beast. MIT license.
+
+import { assert, assertEquals, assertNotEquals } from "../deps.ts";
+import type { Rectangle } from "../../src/types.ts";
+import type {
+  MuxstoneAnimatedBackground,
+  MuxstoneBackgroundCell,
+} from "../../examples/showcases/muxstone/background.ts";
+import { MuxstoneMatrixRainField } from "../../examples/showcases/muxstone/matrix_background.ts";
+import { MuxstoneCircuitField } from "../../examples/showcases/muxstone/circuit_background.ts";
+import { muxstoneTheme } from "../../examples/showcases/muxstone/model.ts";
+
+const THEME = muxstoneTheme("midnight");
+const ALT_THEME = muxstoneTheme("t2");
+const START = 10_000;
+const STEP = 125;
+const TRACE_GLYPHS = new Set(["─", "│", "┌", "┐", "└", "┘", "o"]);
+
+type CellSnapshot = { char: string; foreground: readonly number[]; bold: boolean } | null;
+
+function rect(width: number, height: number): Rectangle {
+  return { column: 0, row: 0, width, height };
+}
+
+function snapshot(
+  grid: ReadonlyArray<ReadonlyArray<MuxstoneBackgroundCell | undefined>>,
+): CellSnapshot[][] {
+  return grid.map((row) =>
+    row.map((cell) => cell ? { char: cell.char, foreground: [...cell.foreground], bold: cell.bold ?? false } : null)
+  );
+}
+
+function advanceFrames(
+  field: MuxstoneAnimatedBackground,
+  bounds: Rectangle,
+  from: number,
+  frames: number,
+): number {
+  let now = from;
+  for (let index = 0; index < frames; index += 1) {
+    now += STEP;
+    field.advance({ bounds, now });
+  }
+  return now;
+}
+
+function advanceObstacleFrames(
+  field: MuxstoneAnimatedBackground,
+  bounds: Rectangle,
+  from: number,
+  frames: number,
+  obstacles: readonly Rectangle[],
+  activeObstacle?: Rectangle,
+): number {
+  let now = from;
+  for (let index = 0; index < frames; index += 1) {
+    now += STEP;
+    field.advance({ bounds, now, obstacles, ...(activeObstacle ? { activeObstacle } : {}) });
+  }
+  return now;
+}
+
+function inZone(x: number, y: number, zone: Rectangle, margin = 1): boolean {
+  return x >= zone.column - margin && x <= zone.column + zone.width - 1 + margin &&
+    y >= zone.row - margin && y <= zone.row + zone.height - 1 + margin;
+}
+
+function onBorder(x: number, y: number, zone: Rectangle): boolean {
+  const inside = inZone(x, y, zone, 0);
+  return inside && (
+    x === zone.column || x === zone.column + zone.width - 1 ||
+    y === zone.row || y === zone.row + zone.height - 1
+  );
+}
+
+/**
+ * Asserts no chip or trace cell occupies the zone plus 1-cell margin. Tap
+ * traces terminate flush on their window border by design, so only their final
+ * approach cells (margin cell plus the border via) are exempt.
+ */
+function assertClearOfZone(field: MuxstoneCircuitField, zone: Rectangle): void {
+  const inspection = field.inspect();
+  for (const chip of inspection.chips) {
+    const overlaps = chip.x <= zone.column + zone.width && zone.column - 1 <= chip.x + chip.side - 1 &&
+      chip.y <= zone.row + zone.height && zone.row - 1 <= chip.y + chip.side - 1;
+    assert(!overlaps, `chip at ${chip.x},${chip.y} side ${chip.side} intersects keep-out zone`);
+  }
+  for (const trace of inspection.traces) {
+    const cells = trace.kind === "tap" ? trace.cells.slice(0, -2) : trace.cells;
+    for (const cell of cells) {
+      assert(!inZone(cell.x, cell.y, zone), `${trace.kind} trace cell ${cell.x},${cell.y} inside keep-out zone`);
+    }
+  }
+}
+
+function traceLayoutKey(field: MuxstoneCircuitField): string {
+  const inspection = field.inspect();
+  return JSON.stringify({
+    chips: inspection.chips,
+    traces: inspection.traces.map((trace) => ({ kind: trace.kind, cells: trace.cells })),
+  });
+}
+
+function eachField(run: (name: string, create: (seed: number) => MuxstoneAnimatedBackground) => void): void {
+  run("matrix", (seed) => new MuxstoneMatrixRainField({ seed }));
+  run("circuit", (seed) => new MuxstoneCircuitField({ seed }));
+}
+
+eachField((name, create) => {
+  Deno.test(`MuxstoneBackgrounds: ${name} is deterministic for equal seeds and timestamps`, () => {
+    const bounds = rect(80, 24);
+    const a = create(7);
+    const b = create(7);
+    advanceFrames(a, bounds, START, 10);
+    advanceFrames(b, bounds, START, 10);
+    assertEquals(snapshot(a.rasterizeCells(bounds, THEME)), snapshot(b.rasterizeCells(bounds, THEME)));
+
+    const c = create(8);
+    advanceFrames(c, bounds, START, 10);
+    assertNotEquals(snapshot(a.rasterizeCells(bounds, THEME)), snapshot(c.rasterizeCells(bounds, THEME)));
+  });
+
+  Deno.test(`MuxstoneBackgrounds: ${name} grid changes as simulated time advances`, () => {
+    const bounds = rect(100, 30);
+    const field = create(11);
+    const now = advanceFrames(field, bounds, START, 4);
+    const before = snapshot(field.rasterizeCells(bounds, THEME));
+    advanceFrames(field, bounds, now, 6);
+    const after = snapshot(field.rasterizeCells(bounds, THEME));
+    assertNotEquals(before, after);
+  });
+
+  Deno.test(`MuxstoneBackgrounds: ${name} matches bounds dimensions and survives resizes`, () => {
+    const field = create(3);
+    const small = rect(80, 24);
+    let now = advanceFrames(field, small, START, 3);
+    const smallGrid = field.rasterizeCells(small, THEME);
+    assertEquals(smallGrid.length, 24);
+    for (const row of smallGrid) assertEquals(row.length, 80);
+
+    const large = rect(120, 40);
+    now = advanceFrames(field, large, now, 3);
+    const largeGrid = field.rasterizeCells(large, THEME);
+    assertEquals(largeGrid.length, 40);
+    for (const row of largeGrid) assertEquals(row.length, 120);
+  });
+
+  Deno.test(`MuxstoneBackgrounds: ${name} defined cells stay finite 8-bit RGB and follow the theme`, () => {
+    const bounds = rect(100, 30);
+    const field = create(21);
+    advanceFrames(field, bounds, START, 8);
+    const midnight = snapshot(field.rasterizeCells(bounds, THEME));
+    const neuralSteel = snapshot(field.rasterizeCells(bounds, ALT_THEME));
+
+    let defined = 0;
+    for (const grid of [midnight, neuralSteel]) {
+      for (const row of grid) {
+        for (const cell of row) {
+          if (!cell) continue;
+          defined += 1;
+          assertEquals(cell.foreground.length, 3);
+          for (const channel of cell.foreground) {
+            assert(Number.isInteger(channel), `channel ${channel} must be an integer`);
+            assert(channel >= 0 && channel <= 255, `channel ${channel} out of range`);
+          }
+        }
+      }
+    }
+    assert(defined > 0, "expected at least one painted cell");
+    assertNotEquals(midnight, neuralSteel);
+  });
+
+  Deno.test(`MuxstoneBackgrounds: ${name} performs 100 frames at 200x60 in under 2 seconds`, () => {
+    const bounds = rect(200, 60);
+    const field = create(5);
+    const startedAt = performance.now();
+    let now = START;
+    for (let index = 0; index < 100; index += 1) {
+      now += STEP;
+      field.advance({ bounds, now });
+      field.rasterizeCells(bounds, THEME);
+    }
+    const elapsed = performance.now() - startedAt;
+    assert(elapsed < 2_000, `100 frames took ${elapsed.toFixed(1)}ms`);
+  });
+});
+
+Deno.test("MuxstoneMatrixRainField: pointer proximity diverges from a pointer-free twin", () => {
+  const bounds = rect(100, 30);
+  const withPointer = new MuxstoneMatrixRainField({ seed: 9 });
+  const without = new MuxstoneMatrixRainField({ seed: 9 });
+  let now = advanceFrames(withPointer, bounds, START, 5);
+  advanceFrames(without, bounds, START, 5);
+
+  const visible = withPointer.inspect().drops.find((drop) => drop.y >= 0 && drop.y < bounds.height) ??
+    withPointer.inspect().drops[0]!;
+  withPointer.setPointer({ column: visible.column, row: 12 }, now);
+  now = advanceFrames(withPointer, bounds, now, 8);
+  advanceFrames(without, bounds, now - 8 * STEP, 8);
+  assertNotEquals(
+    snapshot(withPointer.rasterizeCells(bounds, THEME)),
+    snapshot(without.rasterizeCells(bounds, THEME)),
+  );
+});
+
+Deno.test("MuxstoneCircuitField: pointer proximity diverges from a pointer-free twin", () => {
+  const bounds = rect(100, 30);
+  const withPointer = new MuxstoneCircuitField({ seed: 13 });
+  const without = new MuxstoneCircuitField({ seed: 13 });
+  let now = advanceFrames(withPointer, bounds, START, 2);
+  advanceFrames(without, bounds, START, 2);
+
+  const trace = withPointer.inspect().traces.find((candidate) => candidate.cells.length > 0);
+  assert(trace, "expected at least one grown trace");
+  const pulseCell = trace.cells[trace.pulses[0]!.index % trace.cells.length]!;
+  withPointer.setPointer({ column: pulseCell.x, row: pulseCell.y }, now);
+  now = advanceFrames(withPointer, bounds, now, 4);
+  advanceFrames(without, bounds, now - 4 * STEP, 4);
+  assertNotEquals(
+    snapshot(withPointer.rasterizeCells(bounds, THEME)),
+    snapshot(without.rasterizeCells(bounds, THEME)),
+  );
+});
+
+Deno.test("MuxstoneCircuitField: layout grows chips and traces whose bits keep moving", () => {
+  const bounds = rect(100, 30);
+  const field = new MuxstoneCircuitField({ seed: 17 });
+  let now = advanceFrames(field, bounds, START, 2);
+
+  const inspection = field.inspect();
+  assert(inspection.chips.length >= 1, "expected at least one chip");
+  assert(inspection.traces.some((trace) => trace.cells.length > 0), "expected at least one trace cell");
+
+  const before = snapshot(field.rasterizeCells(bounds, THEME));
+  let sawChipFill = false;
+  let sawTraceGlyph = false;
+  for (const row of before) {
+    for (const cell of row) {
+      if (!cell) continue;
+      if (cell.char === "▓") sawChipFill = true;
+      if (TRACE_GLYPHS.has(cell.char)) sawTraceGlyph = true;
+    }
+  }
+  assert(sawChipFill, "expected a chip interior cell");
+  assert(sawTraceGlyph, "expected a trace glyph cell");
+
+  now = advanceFrames(field, bounds, now, 4);
+  const after = snapshot(field.rasterizeCells(bounds, THEME));
+  let traceCellChanged = false;
+  for (let row = 0; row < before.length && !traceCellChanged; row += 1) {
+    for (let column = 0; column < before[row]!.length; column += 1) {
+      const a = before[row]![column];
+      const b = after[row]![column];
+      const traceCell = (a !== null && TRACE_GLYPHS.has(a.char)) || (b !== null && TRACE_GLYPHS.has(b.char));
+      if (!traceCell) continue;
+      if (JSON.stringify(a) !== JSON.stringify(b)) {
+        traceCellChanged = true;
+        break;
+      }
+    }
+  }
+  assert(traceCellChanged, "expected bit motion to change at least one trace cell");
+});
+
+Deno.test("MuxstoneCircuitField: chips and traces avoid obstacle keep-out zones", () => {
+  const bounds = rect(120, 36);
+  const obstacle: Rectangle = { column: 44, row: 12, width: 28, height: 10 };
+  const field = new MuxstoneCircuitField({ seed: 31 });
+  advanceObstacleFrames(field, bounds, START, 20, [obstacle]);
+  assertClearOfZone(field, obstacle);
+});
+
+Deno.test("MuxstoneCircuitField: layout rearranges when an obstacle moves", () => {
+  const bounds = rect(120, 36);
+  const positionA: Rectangle = { column: 12, row: 6, width: 20, height: 8 };
+  const positionB: Rectangle = { column: 78, row: 20, width: 30, height: 10 };
+  const field = new MuxstoneCircuitField({ seed: 37 });
+  let now = advanceObstacleFrames(field, bounds, START, 20, [positionA]);
+  assertClearOfZone(field, positionA);
+  const beforeMove = traceLayoutKey(field);
+
+  now = advanceObstacleFrames(field, bounds, now, 20, [positionB]);
+  assertClearOfZone(field, positionB);
+  assertNotEquals(traceLayoutKey(field), beforeMove, "expected the layout to rearrange after the obstacle moved");
+});
+
+Deno.test("MuxstoneCircuitField: obstacles receive tap traces terminating flush on their border", () => {
+  const bounds = rect(120, 36);
+  const obstacle: Rectangle = { column: 50, row: 10, width: 20, height: 8 };
+  const field = new MuxstoneCircuitField({ seed: 29 });
+  advanceObstacleFrames(field, bounds, START, 20, [obstacle]);
+
+  const inspection = field.inspect();
+  const taps = inspection.traces.filter((trace) => trace.kind === "tap");
+  assert(taps.length >= 1, "expected at least one tap trace for the obstacle");
+  for (const tap of taps) {
+    assertEquals(tap.obstacleIndex, 0);
+    assert(tap.cells.length >= 2, "expected a routed tap path");
+    const via = tap.cells[tap.cells.length - 1]!;
+    assertEquals(via.glyph, "o");
+    assert(onBorder(via.x, via.y, obstacle), `via at ${via.x},${via.y} must sit flush on the obstacle border`);
+    for (let index = 1; index < tap.cells.length; index += 1) {
+      const previous = tap.cells[index - 1]!;
+      const current = tap.cells[index]!;
+      assertEquals(
+        Math.abs(previous.x - current.x) + Math.abs(previous.y - current.y),
+        1,
+        "tap path cells must connect contiguously toward the via",
+      );
+    }
+    const chip = inspection.chips[tap.chipIndex]!;
+    const first = tap.cells[0]!;
+    assert(
+      first.x >= chip.x - 1 && first.x <= chip.x + chip.side &&
+        first.y >= chip.y - 1 && first.y <= chip.y + chip.side,
+      "tap path must start at the source chip edge",
+    );
+  }
+});
+
+Deno.test("MuxstoneCircuitField: active-window taps render brighter with faster pulses", () => {
+  const bounds = rect(100, 30);
+  const obstacle: Rectangle = { column: 60, row: 8, width: 24, height: 10 };
+  const focused = new MuxstoneCircuitField({ seed: 41 });
+  const unfocused = new MuxstoneCircuitField({ seed: 41 });
+  let now = START;
+  for (let index = 0; index < 16; index += 1) {
+    now += STEP;
+    focused.advance({ bounds, now, obstacles: [obstacle], activeObstacle: obstacle });
+    unfocused.advance({ bounds, now, obstacles: [obstacle] });
+  }
+
+  const focusedTaps = focused.inspect().traces.filter((trace) => trace.kind === "tap");
+  const unfocusedTaps = unfocused.inspect().traces.filter((trace) => trace.kind === "tap");
+  assert(focusedTaps.length >= 1, "expected at least one tap trace");
+  assertEquals(
+    focusedTaps.map((trace) => trace.cells),
+    unfocusedTaps.map((trace) => trace.cells),
+    "focus emphasis must not change tap geometry",
+  );
+
+  const focusedGrid = snapshot(focused.rasterizeCells(bounds, THEME));
+  const unfocusedGrid = snapshot(unfocused.rasterizeCells(bounds, THEME));
+  let colorDiffers = false;
+  for (const tap of focusedTaps) {
+    for (const cell of tap.cells) {
+      const a = focusedGrid[cell.y]?.[cell.x];
+      const b = unfocusedGrid[cell.y]?.[cell.x];
+      if (a && b && JSON.stringify(a.foreground) !== JSON.stringify(b.foreground)) colorDiffers = true;
+    }
+  }
+  assert(colorDiffers, "expected active tap cells to rasterize with a brighter blend");
+
+  let pulsesDiverged = false;
+  for (let index = 0; index < 6; index += 1) {
+    now += STEP;
+    focused.advance({ bounds, now, obstacles: [obstacle], activeObstacle: obstacle });
+    unfocused.advance({ bounds, now, obstacles: [obstacle] });
+    const focusedPulses = focused.inspect().traces.filter((trace) => trace.kind === "tap").map((t) => t.pulses);
+    const unfocusedPulses = unfocused.inspect().traces.filter((trace) => trace.kind === "tap").map((t) => t.pulses);
+    if (JSON.stringify(focusedPulses) !== JSON.stringify(unfocusedPulses)) pulsesDiverged = true;
+  }
+  assert(pulsesDiverged, "expected doubled pulse speed on active taps to diverge pulse positions");
+});
+
+Deno.test("MuxstoneCircuitField: obstacle sequences preserve determinism", () => {
+  const bounds = rect(120, 36);
+  const positionA: Rectangle = { column: 20, row: 8, width: 24, height: 10 };
+  const positionB: Rectangle = { column: 70, row: 18, width: 26, height: 12 };
+  const positionBMoved: Rectangle = { column: 64, row: 14, width: 26, height: 12 };
+  const a = new MuxstoneCircuitField({ seed: 23 });
+  const b = new MuxstoneCircuitField({ seed: 23 });
+  for (const field of [a, b]) {
+    let now = START;
+    now = advanceObstacleFrames(field, bounds, now, 6, [positionA]);
+    now = advanceObstacleFrames(field, bounds, now, 6, [positionA, positionB], positionB);
+    advanceObstacleFrames(field, bounds, now, 6, [positionBMoved], positionBMoved);
+  }
+  assertEquals(JSON.parse(JSON.stringify(a.inspect())), JSON.parse(JSON.stringify(b.inspect())));
+  assertEquals(snapshot(a.rasterizeCells(bounds, THEME)), snapshot(b.rasterizeCells(bounds, THEME)));
+});
+
+Deno.test("MuxstoneCircuitField: 100 frames at 200x60 with 3 moving obstacles stay under budget", () => {
+  const bounds = rect(200, 60);
+  const field = new MuxstoneCircuitField({ seed: 5 });
+  const startedAt = performance.now();
+  let now = START;
+  for (let frame = 0; frame < 100; frame += 1) {
+    now += STEP;
+    const obstacles: Rectangle[] = [
+      { column: 10 + (frame % 20), row: 5, width: 30, height: 12 },
+      { column: 90, row: 10 + (frame % 10), width: 40, height: 14 },
+      { column: 150 - (frame % 15), row: 34, width: 28, height: 10 },
+    ];
+    field.advance({ bounds, now, obstacles, activeObstacle: obstacles[0]! });
+    field.rasterizeCells(bounds, THEME);
+  }
+  const elapsed = performance.now() - startedAt;
+  assert(elapsed < 2_500, `100 obstacle frames took ${elapsed.toFixed(1)}ms`);
+});

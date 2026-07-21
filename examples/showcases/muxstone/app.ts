@@ -13,6 +13,7 @@ import {
   Signal,
   type SignalOfObject,
   type Style,
+  type TreeRow,
   type WorkbenchWindowChromeProjection,
   type WorkbenchWindowHostCommand,
   type WorkbenchWindowHostProjection,
@@ -28,12 +29,18 @@ import {
 } from "../../../src/app/workbench_control_layout.ts";
 import {
   createMuxstoneController,
+  MUXSTONE_NETWORK_WINDOW_ID,
   MUXSTONE_SESSIONS_WINDOW_ID,
-  type MuxstoneController,
+  MuxstoneController,
   type MuxstoneControllerOptions,
+  muxstoneNetworkNodeDeviceId,
+  muxstoneNetworkNodeHostShellTarget,
+  muxstoneNetworkNodeHostTarget,
+  muxstoneNetworkNodeSessionId,
   type MuxstoneTerminalRuntime,
 } from "./controller.ts";
 import {
+  type MuxstoneBackgroundId,
   type MuxstoneRgb,
   muxstoneSessionIdFromWindow,
   type MuxstoneSessionSummary,
@@ -47,6 +54,12 @@ import {
   MuxstoneTerminalMouseRouter,
 } from "./terminal_mouse.ts";
 import { muxstoneTerminalForegroundRgb, muxstoneTerminalRgb } from "./terminal_palette.ts";
+import type { MuxstoneAnimatedBackground } from "./background.ts";
+import { MuxstoneBiomechField } from "./biomech_background.ts";
+import { MuxstoneCircuitField } from "./circuit_background.ts";
+import { MuxstoneJungleField } from "./jungle_background.ts";
+import { MuxstoneMatrixRainField } from "./matrix_background.ts";
+import { MuxstoneVaporwaveField } from "./vaporwave_background.ts";
 import {
   MUXSTONE_METABALL_FRAME_INTERVAL_MS,
   MUXSTONE_METABALL_LEVELS,
@@ -120,9 +133,12 @@ const HEADER_ROWS = 2;
 const FOOTER_ROWS = 2;
 const SESSION_LIST_START = 3;
 const MENU_NEW = Object.freeze({ column: 12, row: 0, width: 7, height: 1 });
-const MENU_SESSIONS = Object.freeze({ column: 22, row: 0, width: 12, height: 1 });
-const MENU_THEME = Object.freeze({ column: 37, row: 0, width: 9, height: 1 });
-const MENU_HELP = Object.freeze({ column: 49, row: 0, width: 8, height: 1 });
+const MENU_NETWORK = Object.freeze({ column: 22, row: 0, width: 11, height: 1 });
+const MENU_SESSIONS = Object.freeze({ column: 36, row: 0, width: 12, height: 1 });
+const MENU_THEME = Object.freeze({ column: 51, row: 0, width: 9, height: 1 });
+const MENU_HELP = Object.freeze({ column: 63, row: 0, width: 8, height: 1 });
+const MENU_QUIT_WIDTH = 5;
+const NETWORK_LIST_START = 1;
 const MAX_TOUCH_GESTURES = 8;
 const SCROLL_LINES_PER_NOTCH = 3;
 const CLASSIFIED_INPUT_PIPELINE_DEPTH = 4;
@@ -138,7 +154,16 @@ export function muxstoneMetaballsMayAdvance(
   return !hasPendingBarrier && now - lastInputActivityAt >= MUXSTONE_METABALL_FRAME_INTERVAL_MS;
 }
 
-type MuxstoneMenuId = "new" | "sessions" | "theme" | "help";
+type MuxstoneMenuId = "new" | "network" | "sessions" | "theme" | "help" | "quit";
+
+function menuQuitRect(bounds: Rectangle): Rectangle {
+  return {
+    column: bounds.column + Math.max(0, bounds.width - MENU_QUIT_WIDTH),
+    row: 0,
+    width: Math.min(MENU_QUIT_WIDTH, bounds.width),
+    height: 1,
+  };
+}
 
 export type MuxstoneTerminalBarAction =
   | Readonly<{ kind: "session"; sessionId: string }>
@@ -203,7 +228,7 @@ type MuxstoneTouchTarget =
   | Readonly<{ kind: "menu"; id: MuxstoneMenuId; hitRect: Rectangle }>
   | Readonly<{
     kind: "modal";
-    action: "close-help" | "cancel-kill" | "confirm-kill";
+    action: "close-help" | "cancel-kill" | "confirm-kill" | "cancel-quit" | "detach-quit" | "terminate-quit";
     sessionId?: string;
     hitRect: Rectangle;
   }>
@@ -346,6 +371,33 @@ export function mountMuxstoneDesktop(
   const selectedSessionIndex = own(new Signal(0));
   const metaballRevision = own(new Signal(0));
   const metaballs = new MuxstoneMetaballField();
+  const backgroundFields = new Map<MuxstoneBackgroundId, MuxstoneAnimatedBackground>();
+  const activeBackgroundField = (): MuxstoneAnimatedBackground | undefined => {
+    const id = controller.backgroundId.peek();
+    if (id === "metaballs") return undefined;
+    let field = backgroundFields.get(id);
+    if (!field) {
+      field = id === "matrix"
+        ? new MuxstoneMatrixRainField()
+        : id === "circuit"
+        ? new MuxstoneCircuitField()
+        : id === "biomech"
+        ? new MuxstoneBiomechField()
+        : id === "vaporwave"
+        ? new MuxstoneVaporwaveField()
+        : new MuxstoneJungleField();
+      backgroundFields.set(id, field);
+    }
+    return field;
+  };
+  const backgroundSetPointer = (point: { column: number; row: number }): void => {
+    metaballs.setPointer(point);
+    activeBackgroundField()?.setPointer(point);
+  };
+  const backgroundClearPointer = (): void => {
+    metaballs.clearPointer();
+    activeBackgroundField()?.clearPointer();
+  };
   let lastInputActivityAt = performance.now();
   const bodyRect = own(
     new Computed<Rectangle>(() => ({
@@ -486,11 +538,15 @@ export function mountMuxstoneDesktop(
     if (!muxstoneMetaballBackgroundVisible(projection, bodyRect.peek())) return;
     const now = performance.now();
     if (!muxstoneMetaballsMayAdvance(now, lastInputActivityAt, operationQueue.hasPendingBarrier())) return;
-    const advanced = metaballs.advance({
+    const activeWindowId = controller.windowHost.controller.inspect().activeWindowId;
+    const activeRect = projection.windows.find((window) => window.id === activeWindowId)?.rect;
+    const frame = {
       bounds: bodyRect.peek(),
       obstacles: projection.windows.map((window) => window.rect),
+      ...(activeRect ? { activeObstacle: activeRect } : {}),
       now,
-    });
+    };
+    const advanced = activeBackgroundField()?.advance(frame) ?? metaballs.advance(frame);
     if (advanced) metaballRevision.value += 1;
   };
   const metaballTimer = setInterval(animateMetaballs, MUXSTONE_METABALL_FRAME_INTERVAL_MS);
@@ -546,6 +602,7 @@ export function mountMuxstoneDesktop(
         controller,
         selectedSessionIndex: selectedSessionIndex.peek(),
         metaballs,
+        backgroundField: activeBackgroundField(),
       }),
   });
   void desktop;
@@ -554,7 +611,29 @@ export function mountMuxstoneDesktop(
   const touchGestures = new Map<number, MuxstoneTouchGesture>();
   let pendingPointerMove: MuxstonePointerMoveSlot | undefined;
   const modalOpen = (): boolean =>
-    controller.helpVisible.peek() || controller.pendingKillSessionId.peek() !== undefined;
+    controller.helpVisible.peek() || controller.pendingKillSessionId.peek() !== undefined ||
+    controller.quitModalVisible.peek();
+
+  let exitRequested = false;
+  const requestClientExit = (terminateHost: boolean): void => {
+    if (exitRequested || disposed) return;
+    exitRequested = true;
+    controller.cancelQuitModal();
+    void (async () => {
+      if (terminateHost) {
+        try {
+          await controller.shutdownHost();
+        } catch {
+          // The client still exits; an unreachable host cannot block quitting.
+        }
+      }
+      // The launcher's shutdown binding listens for this event; emitting it is
+      // the same exit path as SIGINT and must precede the listener teardown
+      // that app.destroy() performs.
+      app.tui.emit("destroy");
+      app.destroy();
+    })();
+  };
 
   const performMenu = async (id: MuxstoneMenuId): Promise<void> => {
     switch (id) {
@@ -564,14 +643,68 @@ export function mountMuxstoneDesktop(
       case "sessions":
         controller.openSessionManager(bodyRect.peek());
         break;
+      case "network":
+        controller.toggleNetworkPanel(bodyRect.peek());
+        break;
       case "theme":
         controller.cycleTheme();
         break;
       case "help":
         controller.openHelp();
         break;
+      case "quit":
+        controller.openQuitModal();
+        break;
     }
     await syncWindows();
+  };
+
+  const activateNetworkNode = async (row: TreeRow): Promise<void> => {
+    const sessionId = muxstoneNetworkNodeSessionId(row.id);
+    if (sessionId) {
+      await controller.openSession(sessionId, bodyRect.peek());
+      await syncWindows();
+      return;
+    }
+    const hostShellTarget = muxstoneNetworkNodeHostShellTarget(row.id);
+    if (hostShellTarget) {
+      await controller.spawnNetworkShell(hostShellTarget, hostShellTarget, bodyRect.peek());
+      await syncWindows();
+      return;
+    }
+    if (!row.id.startsWith("act:shell:")) return;
+    const device = controller.networkDevice(row.id);
+    if (!device) return;
+    const target = MuxstoneController.tailnetSshTarget(device);
+    if (!target) {
+      controller.status.value = `No reachable SSH target for ${device.shortName}.`;
+      return;
+    }
+    await controller.spawnNetworkShell(target, device.shortName, bodyRect.peek());
+    await syncWindows();
+  };
+
+  const networkRowAt = (column: number, row: number): TreeRow | undefined => {
+    const projection = windowProjection.peek();
+    const window = projection.windows.find((candidate) => candidate.id === MUXSTONE_NETWORK_WINDOW_ID);
+    if (!window || !contains(window.clientRect, column, row)) return undefined;
+    const relative = row - window.clientRect.row - NETWORK_LIST_START;
+    if (relative < 0) return undefined;
+    const tree = controller.networkTree;
+    const height = Math.max(1, window.clientRect.height - NETWORK_LIST_START);
+    const visible = tree.visible(height);
+    const target = visible[relative];
+    if (!target) return undefined;
+    tree.setSelectedIndex(target.index);
+    return target;
+  };
+
+  const activateNetworkHit = async (row: TreeRow): Promise<void> => {
+    if (row.hasChildren) {
+      controller.networkTree.toggleActive();
+      return;
+    }
+    await activateNetworkNode(row);
   };
 
   const activateMenu = (id: MuxstoneMenuId): Promise<void> =>
@@ -620,9 +753,24 @@ export function mountMuxstoneDesktop(
       selectedSessionIndex.value = clampIndex(selectedSessionIndex.peek() + Math.trunc(delta), sessions.length);
       return true;
     }
+    if (windowId === MUXSTONE_NETWORK_WINDOW_ID) {
+      controller.networkTree.move(Math.sign(delta));
+      return true;
+    }
     const sessionId = muxstoneSessionIdFromWindow(windowId);
     const runtime = sessionId ? controller.runtime(sessionId) : undefined;
     if (!runtime) return false;
+    // Full-screen apps own their viewport: translate wheel motion into cursor
+    // keys instead of trapping the window in workbench copy mode. Children
+    // with mouse tracking already consumed the wheel before this fallback.
+    const screenInspection = runtime.screen.inspect();
+    if (screenInspection.alternate && runtime.scrollback.mode === "live") {
+      if (runtime.attached.peek() && runtime.summary.peek().running) {
+        const bytes = wheelFallbackKeyBytes(delta, screenInspection.privateModes.includes(1));
+        if (bytes) void enqueueRaw(bytes, runtime.sessionId);
+      }
+      return true;
+    }
     const before = runtime.scrollback.inspectViewport();
     if (before.totalRows <= before.viewportRows) return true;
     if (delta > 0 && before.mode === "live") return true;
@@ -659,6 +807,13 @@ export function mountMuxstoneDesktop(
       }
       return true;
     }
+    if (controller.quitModalVisible.peek()) {
+      const layout = muxstoneQuitLayout(windowProjection.peek().bounds);
+      if (contains(layout.terminateRect, column, row)) requestClientExit(true);
+      else if (contains(layout.detachRect, column, row)) requestClientExit(false);
+      else if (contains(layout.cancelRect, column, row)) controller.cancelQuitModal();
+      return true;
+    }
     return false;
   };
 
@@ -672,7 +827,7 @@ export function mountMuxstoneDesktop(
   };
 
   const routeWindowPointer = async (event: MousePressEvent): Promise<boolean> => {
-    metaballs.setPointer({ column: event.x, row: event.y });
+    backgroundSetPointer({ column: event.x, row: event.y });
     if (modalOpen()) {
       if (terminalMouse.hasLegacyCapture) {
         const packet = terminalMouse.routeLegacyPress(
@@ -730,6 +885,13 @@ export function mountMuxstoneDesktop(
         await enqueue(() => activateManagerHit(hit));
         return true;
       }
+      if (clientWindow?.id === MUXSTONE_NETWORK_WINDOW_ID) {
+        const networkRow = networkRowAt(event.x, event.y);
+        if (networkRow) {
+          await enqueue(() => activateNetworkHit(networkRow));
+          return true;
+        }
+      }
       if (clientWindow) handled = true;
       if (clientWindow && clientWindow.id !== MUXSTONE_SESSIONS_WINDOW_ID) controller.syncActiveSession();
     }
@@ -742,7 +904,7 @@ export function mountMuxstoneDesktop(
   };
 
   const routeWindowScroll = (event: MouseScrollEvent): Promise<boolean> => {
-    metaballs.setPointer({ column: event.x, row: event.y });
+    backgroundSetPointer({ column: event.x, row: event.y });
     if (modalOpen()) return Promise.resolve(true);
     if (contains(shelfBounds.peek(), event.x, event.y)) return Promise.resolve(true);
     const packet = terminalMouse.routeLegacyScroll(event, windowProjection.peek());
@@ -832,13 +994,27 @@ export function mountMuxstoneDesktop(
       return contains(hitRect, column, row) ? { kind: "modal", action: "close-help", hitRect } : undefined;
     }
     const sessionId = controller.pendingKillSessionId.peek();
-    if (!sessionId) return undefined;
-    const layout = muxstoneKillLayout(windowProjection.peek().bounds);
-    if (contains(layout.confirmRect, column, row)) {
-      return { kind: "modal", action: "confirm-kill", sessionId, hitRect: layout.confirmRect };
+    if (sessionId) {
+      const layout = muxstoneKillLayout(windowProjection.peek().bounds);
+      if (contains(layout.confirmRect, column, row)) {
+        return { kind: "modal", action: "confirm-kill", sessionId, hitRect: layout.confirmRect };
+      }
+      if (contains(layout.cancelRect, column, row)) {
+        return { kind: "modal", action: "cancel-kill", sessionId, hitRect: layout.cancelRect };
+      }
+      return undefined;
     }
-    if (contains(layout.cancelRect, column, row)) {
-      return { kind: "modal", action: "cancel-kill", sessionId, hitRect: layout.cancelRect };
+    if (controller.quitModalVisible.peek()) {
+      const layout = muxstoneQuitLayout(windowProjection.peek().bounds);
+      if (contains(layout.terminateRect, column, row)) {
+        return { kind: "modal", action: "terminate-quit", hitRect: layout.terminateRect };
+      }
+      if (contains(layout.detachRect, column, row)) {
+        return { kind: "modal", action: "detach-quit", hitRect: layout.detachRect };
+      }
+      if (contains(layout.cancelRect, column, row)) {
+        return { kind: "modal", action: "cancel-quit", hitRect: layout.cancelRect };
+      }
     }
     return undefined;
   };
@@ -866,6 +1042,12 @@ export function mountMuxstoneDesktop(
         ) {
           await controller.confirmKillSession();
           await syncWindows();
+        } else if (target.action === "cancel-quit" && controller.quitModalVisible.peek()) {
+          controller.cancelQuitModal();
+        } else if (target.action === "detach-quit" && controller.quitModalVisible.peek()) {
+          requestClientExit(false);
+        } else if (target.action === "terminate-quit" && controller.quitModalVisible.peek()) {
+          requestClientExit(true);
         }
         return true;
       case "window-command":
@@ -890,6 +1072,9 @@ export function mountMuxstoneDesktop(
             point.y,
           );
           if (hit) await activateManagerHit(hit);
+        } else if (window.id === MUXSTONE_NETWORK_WINDOW_ID) {
+          const networkRow = networkRowAt(point.x, point.y);
+          if (networkRow) await activateNetworkHit(networkRow);
         }
         return true;
       }
@@ -976,7 +1161,7 @@ export function mountMuxstoneDesktop(
       }
     }
     if (!touchLike && event.kind === "down" && activation) {
-      const menu = menuAt(point.x, point.y, false);
+      const menu = menuAt(point.x, point.y, false, app.tui.rectangle.peek());
       if (menu) {
         await performMenu(menu);
         return true;
@@ -985,12 +1170,12 @@ export function mountMuxstoneDesktop(
 
     if (touchLike && event.kind === "down") {
       if (!activation) return false;
-      const menu = menuAt(point.x, point.y, true);
+      const menu = menuAt(point.x, point.y, true, app.tui.rectangle.peek());
       if (menu) {
         rememberTouchGesture(touchGestures, event, point, {
           kind: "menu",
           id: menu,
-          hitRect: expandedRect(menuRect(menu), 1),
+          hitRect: expandedRect(menuRect(menu, app.tui.rectangle.peek()), 1),
         });
         return true;
       }
@@ -1041,6 +1226,10 @@ export function mountMuxstoneDesktop(
         point.y,
       );
       if (hit && clientWindow.id === MUXSTONE_SESSIONS_WINDOW_ID) await activateManagerHit(hit);
+      if (clientWindow.id === MUXSTONE_NETWORK_WINDOW_ID) {
+        const networkRow = networkRowAt(point.x, point.y);
+        if (networkRow) await activateNetworkHit(networkRow);
+      }
       handled = true;
     } else if (touchLike && event.kind === "down" && activation && clientWindow) {
       rememberTouchGesture(touchGestures, event, point, { kind: "client", windowId: clientWindow.id });
@@ -1054,8 +1243,8 @@ export function mountMuxstoneDesktop(
   const routeSemanticPointer = (event: PointerInputEvent): Promise<boolean> => {
     if (disposed) return Promise.resolve(false);
     const pointerCell = event.coordinates.cell;
-    if (event.kind === "cancel") metaballs.clearPointer();
-    else if (pointerCell) metaballs.setPointer({ column: pointerCell.x, row: pointerCell.y });
+    if (event.kind === "cancel") backgroundClearPointer();
+    else if (pointerCell) backgroundSetPointer({ column: pointerCell.x, row: pointerCell.y });
     const fastResult = routeSemanticPointerFast(event);
     if (fastResult !== undefined) return Promise.resolve(fastResult);
     if (
@@ -1132,10 +1321,48 @@ export function mountMuxstoneDesktop(
   }));
   unsubscribers.push(registerMenuTarget(app, "new", MENU_NEW, () => activateMenu("new"), modalOpen));
   unsubscribers.push(
+    registerMenuTarget(app, "network", MENU_NETWORK, () => activateMenu("network"), modalOpen),
+  );
+  unsubscribers.push(
     registerMenuTarget(app, "sessions", MENU_SESSIONS, () => activateMenu("sessions"), modalOpen),
   );
   unsubscribers.push(registerMenuTarget(app, "theme", MENU_THEME, () => activateMenu("theme"), modalOpen));
   unsubscribers.push(registerMenuTarget(app, "help", MENU_HELP, () => activateMenu("help"), modalOpen));
+  unsubscribers.push(
+    registerMenuTarget(
+      app,
+      "quit",
+      () => menuQuitRect(app.tui.rectangle.peek()),
+      () => activateMenu("quit"),
+      modalOpen,
+    ),
+  );
+
+  const handleNetworkKey = async (event: KeyPressEvent): Promise<boolean> => {
+    if (controller.windowHost.controller.inspect().activeWindowId !== MUXSTONE_NETWORK_WINDOW_ID) return false;
+    const tree = controller.networkTree;
+    if (event.key.toLowerCase() === "r" && !event.ctrl && !event.meta) {
+      void controller.refreshNetwork().catch(() => undefined);
+      return true;
+    }
+    if (event.key === "return") {
+      const row = tree.selected();
+      if (!row) return true;
+      if (row.hasChildren) tree.toggleActive();
+      else await activateNetworkNode(row);
+      return true;
+    }
+    if (event.key === "delete") {
+      const target = muxstoneNetworkNodeHostTarget(tree.selected()?.id ?? "");
+      if (target) controller.forgetHost(target);
+      return true;
+    }
+    const networkWindow = windowProjection.peek().windows.find(
+      (candidate) => candidate.id === MUXSTONE_NETWORK_WINDOW_ID,
+    );
+    const height = Math.max(1, (networkWindow?.clientRect.height ?? 10) - NETWORK_LIST_START);
+    return tree.handleKeyPress(event, height) !== undefined;
+  };
 
   const routeKeyInBarrier = async (
     event: KeyPressEvent,
@@ -1156,10 +1383,20 @@ export function mountMuxstoneDesktop(
       }
       return;
     }
-    if (event.ctrl && !event.meta && event.key.toLowerCase() === "b") {
+    if (controller.quitModalVisible.peek()) {
+      if (event.key === "escape" || event.key.toLowerCase() === "c") {
+        controller.cancelQuitModal();
+      } else if (event.key === "return" || event.key.toLowerCase() === "d") {
+        requestClientExit(false);
+      } else if (event.key.toLowerCase() === "t") {
+        requestClientExit(true);
+      }
+      return;
+    }
+    if (event.ctrl && !event.meta && event.key.toLowerCase() === "n") {
       if (controller.prefixPending.peek()) {
         controller.cancelPrefix();
-        await forwardTerminalInput(new Uint8Array([2]));
+        await forwardTerminalInput(new Uint8Array([14]));
       } else {
         controller.beginPrefix();
       }
@@ -1176,6 +1413,10 @@ export function mountMuxstoneDesktop(
       if (hostResult.handled) {
         if (hostResult.command) await runWindowCommand(hostResult.command, true, activeWindowId);
         else await syncWindows();
+        return;
+      }
+      if (await handleNetworkKey(event)) {
+        await syncWindows();
         return;
       }
       if (await handleManagerKey(controller, selectedSessionIndex, event, bodyRect.peek())) {
@@ -1255,7 +1496,7 @@ export function mountMuxstoneDesktop(
       if (sessionId) appendClassifiedInput(segments, sessionId, bytes);
     };
     for (const event of batch.events) {
-      const prefixKey = event.ctrl && !event.meta && event.key.toLowerCase() === "b";
+      const prefixKey = event.ctrl && !event.meta && event.key.toLowerCase() === "n";
       const needsWorkbenchClassification = prefixKey || modalOpen() || controller.prefixPending.peek() ||
         shouldRouteAsWorkbenchKey(controller, event);
       if (needsWorkbenchClassification) {
@@ -1332,7 +1573,7 @@ export function mountMuxstoneDesktop(
       enqueueKeyBarrier(event);
       return;
     }
-    const prefixKey = event.ctrl && !event.meta && event.key.toLowerCase() === "b";
+    const prefixKey = event.ctrl && !event.meta && event.key.toLowerCase() === "n";
     const classificationBarrier = operationQueue.hasPendingBarrier();
     if (
       prefixKey && !classificationBarrier && !modalOpen() &&
@@ -1467,10 +1708,17 @@ async function handleMuxstoneAction(action: MuxstoneAppAction, mount: MuxstoneAp
   });
 }
 
+function wheelFallbackKeyBytes(delta: number, applicationCursorKeys: boolean): Uint8Array | undefined {
+  const lines = Math.min(12, Math.abs(Math.trunc(delta)));
+  if (lines === 0) return undefined;
+  const key = delta < 0 ? (applicationCursorKeys ? "\x1bOA" : "\x1b[A") : applicationCursorKeys ? "\x1bOB" : "\x1b[B";
+  return new TextEncoder().encode(key.repeat(lines));
+}
+
 function registerMenuTarget(
   app: TerminalApp<MuxstoneAppAction>,
   id: string,
-  bounds: Rectangle,
+  bounds: Rectangle | (() => Rectangle),
   activate: () => void | Promise<void>,
   disabled: () => boolean,
 ): () => void {
@@ -1515,7 +1763,13 @@ async function handleManagerKey(
 
 function shouldRouteAsWorkbenchKey(controller: MuxstoneController, event: KeyPressEvent): boolean {
   if (event.meta || controller.windowHost.inspect().switcherOpen) return true;
-  if (controller.windowHost.controller.inspect().activeWindowId !== MUXSTONE_SESSIONS_WINDOW_ID) return false;
+  const activeWindowId = controller.windowHost.controller.inspect().activeWindowId;
+  if (activeWindowId === MUXSTONE_NETWORK_WINDOW_ID) {
+    return event.key === "up" || event.key === "down" || event.key === "left" || event.key === "right" ||
+      event.key === "return" || event.key === "space" || event.key === "delete" || event.key === "pageup" ||
+      event.key === "pagedown" || event.key === "home" || event.key === "end" || event.key.toLowerCase() === "r";
+  }
+  if (activeWindowId !== MUXSTONE_SESSIONS_WINDOW_ID) return false;
   return event.key === "up" || event.key === "down" || event.key === "return" || event.key === "space" ||
     event.key === "delete";
 }
@@ -1527,6 +1781,7 @@ interface RenderMuxstoneDesktopOptions {
   controller: MuxstoneController;
   selectedSessionIndex: number;
   metaballs: MuxstoneMetaballField;
+  backgroundField?: MuxstoneAnimatedBackground;
 }
 
 /** The desktop effect remains visible unless a terminal owns the maximized surface. */
@@ -1559,6 +1814,11 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
   });
   painter.write(0, 0, " MUXSTONE ", { foreground: theme.background, background: theme.accent, bold: true });
   painter.write(MENU_NEW.column, 0, "[ New ]", { foreground: theme.text, background: theme.surfaceStrong, bold: true });
+  painter.write(MENU_NETWORK.column, 0, "[ Network ]", {
+    foreground: theme.text,
+    background: theme.surfaceStrong,
+    bold: true,
+  });
   painter.write(MENU_SESSIONS.column, 0, "[ Sessions ]", {
     foreground: theme.text,
     background: theme.surfaceStrong,
@@ -1574,8 +1834,8 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
     background: theme.surfaceStrong,
     bold: true,
   });
-  const prefix = controller.prefixPending.peek() ? "PREFIX ACTIVE" : "Ctrl-B prefix";
-  const headerStatus = `${theme.label} | ${prefix} `;
+  const prefix = controller.prefixPending.peek() ? "PREFIX ACTIVE" : "Ctrl-N prefix";
+  const headerStatus = `${theme.label} | ${prefix} ${" ".repeat(MENU_QUIT_WIDTH)}`;
   if (bounds.width - headerStatus.length > MENU_HELP.column + MENU_HELP.width) {
     painter.writeRight(0, headerStatus, {
       foreground: controller.prefixPending.peek() ? theme.background : theme.muted,
@@ -1583,6 +1843,12 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
       bold: controller.prefixPending.peek(),
     });
   }
+  const quitRect = menuQuitRect(bounds);
+  painter.write(quitRect.column, 0, "[ ✕ ]", {
+    foreground: theme.background,
+    background: theme.danger,
+    bold: true,
+  });
   painter.fill({ column: 0, row: 1, width: bounds.width, height: 1 }, " ", {
     foreground: theme.muted,
     background: theme.surface,
@@ -1590,7 +1856,7 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
   painter.write(
     1,
     1,
-    'Ctrl-B: c new | % tile right | " tile below | f float | z zoom | d detach | & kill | t theme | s sessions',
+    'Ctrl-N: c new | % tile right | " tile below | f float | z zoom | d detach | & kill | t theme | b bg | s sessions',
     {
       foreground: theme.muted,
       background: theme.surface,
@@ -1598,7 +1864,8 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
   );
   painter.fill(body, " ", { foreground: theme.text, background: theme.background });
   if (muxstoneMetaballBackgroundVisible(projection, body)) {
-    paintMetaballBackground(painter, body, options.metaballs, theme);
+    if (options.backgroundField) paintAnimatedBackground(painter, body, options.backgroundField, theme);
+    else paintMetaballBackground(painter, body, options.metaballs, theme);
   }
 
   for (const window of projection.tiledWindows) {
@@ -1632,6 +1899,7 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
   }
   if (projection.switcher) paintSwitcher(painter, projection, theme);
   if (controller.helpVisible.peek()) paintHelp(painter, projection, theme);
+  if (controller.quitModalVisible.peek()) paintQuitModal(painter, projection, theme);
   const pendingKillSessionId = controller.pendingKillSessionId.peek();
   if (pendingKillSessionId) paintKillConfirmation(painter, projection, controller, pendingKillSessionId);
 
@@ -1655,6 +1923,27 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
     },
   );
   return painter.rows;
+}
+
+function paintAnimatedBackground(
+  painter: DesktopPainter,
+  bounds: Rectangle,
+  field: MuxstoneAnimatedBackground,
+  theme: MuxstoneThemeSpec,
+): void {
+  const grid = field.rasterizeCells(bounds, theme);
+  for (let row = 0; row < grid.length; row += 1) {
+    const cells = grid[row]!;
+    for (let column = 0; column < cells.length; column += 1) {
+      const cell = cells[column];
+      if (!cell) continue;
+      painter.write(bounds.column + column, bounds.row + row, cell.char, {
+        foreground: cell.foreground,
+        background: theme.background,
+        ...(cell.bold ? { bold: true } : {}),
+      });
+    }
+  }
 }
 
 function paintMetaballBackground(
@@ -1752,7 +2041,61 @@ function paintWindow(
     paintSessionManager(painter, window.clientRect, controller, selectedSessionIndex, window.active);
     return;
   }
+  if (window.id === MUXSTONE_NETWORK_WINDOW_ID) {
+    paintNetworkPanel(painter, window.clientRect, controller, window.active);
+    return;
+  }
   if (runtime) paintTerminal(painter, window.clientRect, runtime, theme, window.active);
+}
+
+function paintNetworkPanel(
+  painter: DesktopPainter,
+  rect: Rectangle,
+  controller: MuxstoneController,
+  active: boolean,
+): void {
+  const theme = controller.theme.peek();
+  painter.write(
+    rect.column + 1,
+    rect.row,
+    fitText("Enter open · ←/→ fold · Del forget · r refresh", Math.max(0, rect.width - 2)),
+    {
+      foreground: theme.muted,
+      background: theme.surface,
+    },
+  );
+  const tree = controller.networkTree;
+  const height = Math.max(0, rect.height - NETWORK_LIST_START);
+  const visible = tree.visible(height);
+  const selected = tree.selected();
+  for (let visibleIndex = 0; visibleIndex < visible.length; visibleIndex += 1) {
+    const row = visible[visibleIndex]!;
+    const paintRow = rect.row + NETWORK_LIST_START + visibleIndex;
+    const width = Math.max(0, rect.width - 2);
+    const isSelected = active && selected?.index === row.index;
+    const note = row.id.startsWith("note:");
+    const heading = row.depth === 0;
+    const offline = controller.networkDevice(row.id)?.online === false;
+    const foreground = isSelected
+      ? theme.background
+      : heading
+      ? theme.accent
+      : note || offline
+      ? theme.muted
+      : theme.text;
+    if (isSelected) {
+      painter.fill({ column: rect.column, row: paintRow, width: rect.width, height: 1 }, " ", {
+        foreground,
+        background: theme.accent,
+        bold: true,
+      });
+    }
+    painter.write(rect.column + 1, paintRow, fitText(row.text, width), {
+      foreground,
+      background: isSelected ? theme.accent : theme.surface,
+      bold: isSelected || heading,
+    });
+  }
 }
 
 function paintSessionManager(
@@ -1774,7 +2117,7 @@ function paintSessionManager(
   });
   const sessions = controller.sessions.peek();
   if (sessions.length === 0) {
-    painter.write(rect.column + 1, rect.row + SESSION_LIST_START, "No terminals. Ctrl-B c creates one.", {
+    painter.write(rect.column + 1, rect.row + SESSION_LIST_START, "No terminals. Ctrl-N c creates one.", {
       foreground: theme.muted,
       background: theme.surface,
     });
@@ -1917,16 +2260,17 @@ function paintHelp(
 ): void {
   const lines = [
     "MUXSTONE KEY REFERENCE",
-    'Ctrl-B c        new floating term  Ctrl-B % / "   split right / below',
-    "Ctrl-B f/Space  float or tile      Ctrl-B z         maximize / restore",
-    "Ctrl-B arrows   snap to edge       Ctrl-B m         minimize to shelf",
-    "Ctrl-B n / p    next / previous    Ctrl-B w         window switcher",
-    "Ctrl-B s        session manager    Ctrl-B r         refresh and recover",
-    "Ctrl-B t        cycle theme        Ctrl-B Ctrl-B    send literal prefix",
-    "Ctrl-B d / x    detach window      Ctrl-B &         request terminal kill",
+    'Ctrl-N c        new floating term  Ctrl-N % / "   split right / below',
+    "Ctrl-N f/Space  float or tile      Ctrl-N z         maximize / restore",
+    "Ctrl-N arrows   snap to edge       Ctrl-N m         minimize to shelf",
+    "Ctrl-N n / p    next / previous    Ctrl-N w         window switcher",
+    "Ctrl-N s        session manager    Ctrl-N r         refresh and recover",
+    "Ctrl-N t        cycle theme        Ctrl-N Ctrl-N    send literal prefix",
+    "Ctrl-N b        cycle background   Menu Network     hosts + tailnet panel",
+    "Ctrl-N d / x    detach window      Ctrl-N &         request terminal kill",
     "Wheel terminals or swipe vertically for styled history; [SCROLL] marks copy mode.",
-    "Title-bar X / Meta-C kills that terminal; Ctrl-B d/x and quitting only detach.",
-    "Ctrl-B & asks before killing. Drag title bars; drag borders to resize.",
+    "Title-bar X / Meta-C kills that terminal; Ctrl-N d/x and quitting only detach.",
+    "Ctrl-N & asks before killing. Drag title bars; drag borders to resize.",
     "Press Escape, q, or ? to close help. Mouse and touch can use Close.",
   ];
   const { rect, closeRect } = muxstoneHelpLayout(projection.bounds);
@@ -1983,6 +2327,45 @@ function paintKillConfirmation(
   });
 }
 
+function paintQuitModal(
+  painter: DesktopPainter,
+  projection: WorkbenchWindowHostProjection,
+  theme: MuxstoneThemeSpec,
+): void {
+  const { rect, cancelRect, detachRect, terminateRect } = muxstoneQuitLayout(projection.bounds);
+  painter.fill(rect, " ", { foreground: theme.text, background: theme.surfaceStrong });
+  painter.frame(rect, "!", { foreground: theme.warning, background: theme.surfaceStrong, bold: true });
+  painter.write(rect.column + 2, rect.row + 1, fitText("END MUXSTONE SESSION?", rect.width - 4), {
+    foreground: theme.warning,
+    background: theme.surfaceStrong,
+    bold: true,
+  });
+  painter.write(
+    rect.column + 2,
+    rect.row + Math.min(3, Math.max(1, rect.height - 2)),
+    fitText("Detach keeps terminals running · Terminate kills the host and every terminal", rect.width - 4),
+    {
+      foreground: theme.text,
+      background: theme.surfaceStrong,
+    },
+  );
+  painter.write(cancelRect.column, cancelRect.row, "[ Cancel ]", {
+    foreground: theme.text,
+    background: theme.surface,
+    bold: true,
+  });
+  painter.write(detachRect.column, detachRect.row, "[ Detach ]", {
+    foreground: theme.background,
+    background: theme.accent,
+    bold: true,
+  });
+  painter.write(terminateRect.column, terminateRect.row, "[ Terminate ]", {
+    foreground: theme.background,
+    background: theme.danger,
+    bold: true,
+  });
+}
+
 interface MuxstoneHelpLayout {
   readonly rect: Rectangle;
   readonly closeRect: Rectangle;
@@ -2020,6 +2403,36 @@ function muxstoneKillLayout(bounds: Rectangle): MuxstoneKillLayout {
       column: rect.column + Math.max(13, rect.width - 10),
       row: buttonRow,
       width: 8,
+      height: 1,
+    },
+  };
+}
+
+export interface MuxstoneQuitLayout {
+  readonly rect: Rectangle;
+  readonly cancelRect: Rectangle;
+  readonly detachRect: Rectangle;
+  readonly terminateRect: Rectangle;
+}
+
+/** Layout for the end-session modal; exported for deterministic pointer tests. */
+export function muxstoneQuitLayout(bounds: Rectangle): MuxstoneQuitLayout {
+  const width = Math.min(82, Math.max(40, bounds.width - 6));
+  const rect = centeredRect(bounds, width, Math.min(8, Math.max(5, bounds.height - 2)));
+  const buttonRow = rect.row + Math.max(1, rect.height - 2);
+  return {
+    rect,
+    cancelRect: { column: rect.column + 2, row: buttonRow, width: 10, height: 1 },
+    detachRect: {
+      column: rect.column + Math.max(13, Math.floor((rect.width - 10) / 2)),
+      row: buttonRow,
+      width: 10,
+      height: 1,
+    },
+    terminateRect: {
+      column: rect.column + Math.max(26, rect.width - 15),
+      row: buttonRow,
+      width: 13,
       height: 1,
     },
   };
@@ -2266,12 +2679,14 @@ function clientWindowAt(
   return undefined;
 }
 
-function menuAt(column: number, row: number, coarse: boolean): MuxstoneMenuId | undefined {
+function menuAt(column: number, row: number, coarse: boolean, bounds: Rectangle): MuxstoneMenuId | undefined {
   const entries = [
     ["new", MENU_NEW],
+    ["network", MENU_NETWORK],
     ["sessions", MENU_SESSIONS],
     ["theme", MENU_THEME],
     ["help", MENU_HELP],
+    ["quit", menuQuitRect(bounds)],
   ] as const;
   for (const [id, rect] of entries) {
     if (contains(coarse ? expandedRect(rect, 1) : rect, column, row)) return id;
@@ -2279,16 +2694,20 @@ function menuAt(column: number, row: number, coarse: boolean): MuxstoneMenuId | 
   return undefined;
 }
 
-function menuRect(id: MuxstoneMenuId): Rectangle {
+function menuRect(id: MuxstoneMenuId, bounds: Rectangle): Rectangle {
   switch (id) {
     case "new":
       return MENU_NEW;
+    case "network":
+      return MENU_NETWORK;
     case "sessions":
       return MENU_SESSIONS;
     case "theme":
       return MENU_THEME;
     case "help":
       return MENU_HELP;
+    case "quit":
+      return menuQuitRect(bounds);
   }
 }
 

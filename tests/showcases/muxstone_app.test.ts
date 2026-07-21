@@ -13,10 +13,12 @@ import {
   muxstoneMetaballBackgroundVisible,
   muxstoneMetaballsMayAdvance,
   type MuxstonePointerInputSource,
+  muxstoneQuitLayout,
   projectMuxstoneTerminalBar,
 } from "../../examples/showcases/muxstone/app.ts";
 import {
   createMuxstoneController,
+  MUXSTONE_NETWORK_WINDOW_ID,
   MUXSTONE_SESSIONS_WINDOW_ID,
   type MuxstoneController,
 } from "../../examples/showcases/muxstone/controller.ts";
@@ -29,8 +31,10 @@ import {
   type MuxstoneSpawnOptions,
   muxstoneTheme,
   muxstoneWindowId,
+  normalizeMuxstoneWorkspaceState,
 } from "../../examples/showcases/muxstone/model.ts";
 import { MUXSTONE_PROTOCOL_LIMITS } from "../../examples/showcases/muxstone/protocol.ts";
+import type { TailnetStatusResult } from "../../examples/showcases/muxstone/tailnet.ts";
 import { muxstoneTerminalForegroundRgb } from "../../examples/showcases/muxstone/terminal_palette.ts";
 import {
   MUXSTONE_METABALL_LEVELS,
@@ -207,7 +211,7 @@ Deno.test("Muxstone mounted app renders styled terminal cells and routes ordered
     assertStringIncludes(harness.pilot.snapshot(), "asciichurn");
     assertStringIncludes(harness.pilot.snapshot(), "MUXSTONE");
 
-    await harness.pilot.press("b", { ctrl: true, buffer: new Uint8Array([2]) });
+    await harness.pilot.press("n", { ctrl: true, buffer: new Uint8Array([14]) });
     await harness.pilot.press("f", { buffer: new TextEncoder().encode("f") });
     await mounted.whenIdle();
     let floating = mounted.windowProjection.peek().floatingWindows.find((window) =>
@@ -251,7 +255,7 @@ Deno.test("Muxstone mounted app renders styled terminal cells and routes ordered
       row: beforeDrag.row + 4,
     });
 
-    await harness.pilot.press("b", { ctrl: true, buffer: new Uint8Array([2]) });
+    await harness.pilot.press("n", { ctrl: true, buffer: new Uint8Array([14]) });
     await harness.pilot.press("f", { buffer: new TextEncoder().encode("f") });
     await mounted.whenIdle();
     assertEquals(
@@ -259,7 +263,7 @@ Deno.test("Muxstone mounted app renders styled terminal cells and routes ordered
       true,
     );
 
-    await harness.pilot.press("b", { ctrl: true, buffer: new Uint8Array([2]) });
+    await harness.pilot.press("n", { ctrl: true, buffer: new Uint8Array([14]) });
     await mounted.whenIdle();
     assertEquals(controller.prefixPending.peek(), true);
     assertEquals(client.inputs.length, 0);
@@ -273,7 +277,7 @@ Deno.test("Muxstone mounted app renders styled terminal cells and routes ordered
     await mounted.whenIdle();
     assertEquals(client.inputs, [{ sessionId: "shell-1", data: "a" }]);
 
-    await harness.pilot.press("b", { ctrl: true, buffer: new Uint8Array([2]) });
+    await harness.pilot.press("n", { ctrl: true, buffer: new Uint8Array([14]) });
     await harness.pilot.press("c", { buffer: new TextEncoder().encode("c") });
     await mounted.whenIdle();
     assertEquals(controller.sessions.peek().length, 2);
@@ -663,7 +667,7 @@ Deno.test("Muxstone exposes prefix help, forwards a literal prefix, and confirms
     assert(mounted);
     await mounted.whenIdle();
 
-    await harness.pilot.press("b", { ctrl: true, buffer: new Uint8Array([2]) });
+    await harness.pilot.press("n", { ctrl: true, buffer: new Uint8Array([14]) });
     await harness.pilot.press("?");
     await mounted.whenIdle();
     assertEquals(controller.helpVisible.peek(), true);
@@ -672,12 +676,12 @@ Deno.test("Muxstone exposes prefix help, forwards a literal prefix, and confirms
     await mounted.whenIdle();
     assertEquals(controller.helpVisible.peek(), false);
 
-    await harness.pilot.press("b", { ctrl: true, buffer: new Uint8Array([2]) });
-    await harness.pilot.press("b", { ctrl: true, buffer: new Uint8Array([2]) });
+    await harness.pilot.press("n", { ctrl: true, buffer: new Uint8Array([14]) });
+    await harness.pilot.press("n", { ctrl: true, buffer: new Uint8Array([14]) });
     await mounted.whenIdle();
-    assertEquals(client.inputs, [{ sessionId: "safe-1", data: "\x02" }]);
+    assertEquals(client.inputs, [{ sessionId: "safe-1", data: "\x0e" }]);
 
-    await harness.pilot.press("b", { ctrl: true, buffer: new Uint8Array([2]) });
+    await harness.pilot.press("n", { ctrl: true, buffer: new Uint8Array([14]) });
     await harness.pilot.press("&");
     await mounted.whenIdle();
     assertEquals(controller.pendingKillSessionId.peek(), "safe-1");
@@ -688,7 +692,7 @@ Deno.test("Muxstone exposes prefix help, forwards a literal prefix, and confirms
     assertEquals(controller.pendingKillSessionId.peek(), undefined);
     assertEquals(controller.sessions.peek().length, 1);
 
-    await harness.pilot.press("b", { ctrl: true, buffer: new Uint8Array([2]) });
+    await harness.pilot.press("n", { ctrl: true, buffer: new Uint8Array([14]) });
     await harness.pilot.press("&");
     await harness.pilot.press("y");
     await mounted.whenIdle();
@@ -717,7 +721,7 @@ Deno.test("Muxstone manager reopens a detached terminal without replacing its ho
     await mounted.whenIdle();
     assertEquals(controller.runtime("persist-1")?.attached.peek(), true);
 
-    await harness.pilot.press("b", { ctrl: true });
+    await harness.pilot.press("n", { ctrl: true });
     await harness.pilot.press("d");
     await mounted.whenIdle();
     assertEquals(controller.runtime("persist-1")?.attached.peek(), false);
@@ -728,7 +732,7 @@ Deno.test("Muxstone manager reopens a detached terminal without replacing its ho
       "closed",
     );
 
-    await harness.pilot.press("b", { ctrl: true });
+    await harness.pilot.press("n", { ctrl: true });
     await harness.pilot.press("s");
     await mounted.whenIdle();
     assertEquals(controller.windowHost.controller.inspect().activeWindowId, MUXSTONE_SESSIONS_WINDOW_ID);
@@ -787,7 +791,7 @@ Deno.test("Muxstone pipelines bounded raw batches and fences them around control
     client.inputs.splice(0);
     const themeBefore = controller.themeId.peek();
     await harness.pilot.press("q");
-    await harness.pilot.press("b", { ctrl: true, buffer: new Uint8Array([2]) });
+    await harness.pilot.press("n", { ctrl: true, buffer: new Uint8Array([14]) });
     await harness.pilot.press("t");
     await harness.pilot.press("r");
     await Promise.resolve();
@@ -804,7 +808,7 @@ Deno.test("Muxstone pipelines bounded raw batches and fences them around control
     client.inputs.splice(0);
     const pointerThemeBefore = controller.themeId.peek();
     await harness.pilot.press("u");
-    const pointerTheme = mounted.handlePointer(mousePointer("down", 38, 0, 71));
+    const pointerTheme = mounted.handlePointer(mousePointer("down", 52, 0, 71));
     await harness.pilot.press("v");
     await Promise.resolve();
     assertEquals(client.inputs.map((input) => input.data).join(""), "u");
@@ -866,7 +870,7 @@ Deno.test("Muxstone coalesces printable keys classified behind a control barrier
     assertEquals(client.inputs.map((input) => input.data).join(""), "q");
     assertEquals(client.pendingInputAckCount, 1);
 
-    await harness.pilot.press("b", { ctrl: true, buffer: new Uint8Array([2]) });
+    await harness.pilot.press("n", { ctrl: true, buffer: new Uint8Array([14]) });
     await harness.pilot.press("t");
     const suffix = "abcdefghijklmnopqrstuvwx";
     await Promise.all(([...suffix] as Key[]).map((key) => harness.pilot.press(key)));
@@ -950,7 +954,7 @@ Deno.test("Muxstone snapshots reused key events before asynchronous prefix routi
       mounted.bodyRect.peek(),
     );
 
-    const source = new Uint8Array([2, ...new TextEncoder().encode("ca")]);
+    const source = new Uint8Array([14, ...new TextEncoder().encode("ca")]);
     for (const event of decodeBuffer(source)) {
       if (event.key !== "mouse" && event.key !== "paste" && event.key !== "focus") {
         harness.app.tui.emit("keyPress", event);
@@ -984,7 +988,7 @@ Deno.test("Muxstone repaints Workbench light/dark themes and the six-family T2 t
     await mounted.whenIdle();
 
     const initialTheme = controller.themeId.peek();
-    assertEquals((await harness.pilot.click(38, 0)).press.handled, true);
+    assertEquals((await harness.pilot.click(52, 0)).press.handled, true);
     await mounted.whenIdle();
     assertNotEquals(controller.themeId.peek(), initialTheme);
 
@@ -1030,7 +1034,7 @@ Deno.test("Muxstone mouse menus, modal buttons, floating chrome, shelf, and tile
     assertEquals(controller.sessions.peek().length, 2);
     const spawned = controller.sessions.peek().find((entry) => entry.id !== initial.id)!;
 
-    assertEquals((await harness.pilot.click(50, 0)).press.handled, true);
+    assertEquals((await harness.pilot.click(64, 0)).press.handled, true);
     await mounted.whenIdle();
     assertEquals(controller.helpVisible.peek(), true);
     const blockedTheme = controller.themeId.peek();
@@ -1533,9 +1537,9 @@ Deno.test("Muxstone wheel and touch input scroll styled history and manipulate w
     await mounted.handlePointer(touchPointer("up", 18, 0, 18));
     assertEquals(controller.sessions.peek().length, beforeCancelledNew);
 
-    await mounted.handlePointer(touchPointer("down", 50, 0, 19));
+    await mounted.handlePointer(touchPointer("down", 64, 0, 19));
     assertEquals(controller.helpVisible.peek(), false);
-    await mounted.handlePointer(touchPointer("up", 50, 0, 20));
+    await mounted.handlePointer(touchPointer("up", 64, 0, 20));
     assertEquals(controller.helpVisible.peek(), true);
     const close = helpClosePoint(mounted.windowProjection.peek().bounds);
     await mounted.handlePointer(touchPointer("down", close.column, close.row, 21));
@@ -1546,14 +1550,14 @@ Deno.test("Muxstone wheel and touch input scroll styled history and manipulate w
     const pointerSource = new FakeMuxstonePointerSource();
     const unbindPointer = bindMuxstonePointerInput(mounted, pointerSource);
     const beforeTheme = controller.themeId.peek();
-    await pointerSource.emitPointer(touchPointer("down", 38, 0, 23));
+    await pointerSource.emitPointer(touchPointer("down", 52, 0, 23));
     assertEquals(controller.themeId.peek(), beforeTheme);
-    await pointerSource.emitPointer(touchPointer("up", 38, 0, 24));
+    await pointerSource.emitPointer(touchPointer("up", 52, 0, 24));
     assertNotEquals(controller.themeId.peek(), beforeTheme);
     unbindPointer();
     const afterUnbind = controller.themeId.peek();
-    await pointerSource.emitPointer(touchPointer("down", 38, 0, 25));
-    await pointerSource.emitPointer(touchPointer("up", 38, 0, 26));
+    await pointerSource.emitPointer(touchPointer("down", 52, 0, 25));
+    await pointerSource.emitPointer(touchPointer("up", 52, 0, 26));
     assertEquals(controller.themeId.peek(), afterUnbind);
 
     controller.openHelp();
@@ -1569,8 +1573,8 @@ Deno.test("Muxstone wheel and touch input scroll styled history and manipulate w
     await barrierStarted;
     const closeDown = mounted.handlePointer(touchPointer("down", orderedClose.column, orderedClose.row, 27, 70));
     const closeUp = mounted.handlePointer(touchPointer("up", orderedClose.column, orderedClose.row, 28, 70));
-    const themeDown = mounted.handlePointer(touchPointer("down", 38, 0, 29, 71));
-    const themeUp = mounted.handlePointer(touchPointer("up", 38, 0, 30, 71));
+    const themeDown = mounted.handlePointer(touchPointer("down", 52, 0, 29, 71));
+    const themeUp = mounted.handlePointer(touchPointer("up", 52, 0, 30, 71));
     releaseBarrier();
     await Promise.all([barrier, closeDown, closeUp, themeDown, themeUp]);
     assertEquals(controller.helpVisible.peek(), false);
@@ -1630,9 +1634,9 @@ Deno.test("Muxstone classifies queued keys against the modal state in arrival or
 
     harness.app.tui.emit(
       "keyPress",
-      createTestKeyPress("b", {
+      createTestKeyPress("n", {
         ctrl: true,
-        buffer: new Uint8Array([2]),
+        buffer: new Uint8Array([14]),
       }),
     );
     harness.app.tui.emit(
@@ -1689,9 +1693,9 @@ Deno.test("Muxstone classifies queued keys against the modal state in arrival or
     const prefixPasteStart = client.inputs.length;
     harness.app.tui.emit(
       "keyPress",
-      createTestKeyPress("b", {
+      createTestKeyPress("n", {
         ctrl: true,
-        buffer: new Uint8Array([2]),
+        buffer: new Uint8Array([14]),
       }),
     );
     harness.app.tui.emit("paste", largePrefixPaste);
@@ -1718,9 +1722,9 @@ Deno.test("Muxstone classifies queued keys against the modal state in arrival or
     const inputCountBeforeOversizedPaste = client.inputs.length;
     harness.app.tui.emit(
       "keyPress",
-      createTestKeyPress("b", {
+      createTestKeyPress("n", {
         ctrl: true,
-        buffer: new Uint8Array([2]),
+        buffer: new Uint8Array([14]),
       }),
     );
     harness.app.tui.emit("paste", oversizedPaste);
@@ -1732,9 +1736,9 @@ Deno.test("Muxstone classifies queued keys against the modal state in arrival or
     const inputCountBeforeModalPaste = client.inputs.length;
     harness.app.tui.emit(
       "keyPress",
-      createTestKeyPress("b", {
+      createTestKeyPress("n", {
         ctrl: true,
-        buffer: new Uint8Array([2]),
+        buffer: new Uint8Array([14]),
       }),
     );
     harness.app.tui.emit(
@@ -1814,6 +1818,253 @@ Deno.test("Muxstone coalesced pointer callers share completion and disposal sett
   }
 });
 
+Deno.test("Muxstone translates wheel into cursor keys for alternate-screen apps without mouse tracking", async () => {
+  const initial = session("alt-screen", "alt screen", 0);
+  const client = new FakeMuxstoneClient([initial]);
+  const controller = await createMuxstoneController({ client, initialSessions: [initial] });
+  const mount: MuxstoneAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 100, rows: 28 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+    controller.windowHost.execute({ kind: "close", id: MUXSTONE_SESSIONS_WINDOW_ID }, mounted.bodyRect.peek());
+    controller.windowHost.execute({ kind: "focus", id: muxstoneWindowId(initial.id) }, mounted.bodyRect.peek());
+    await harness.pilot.settle();
+    const runtime = controller.runtime(initial.id)!;
+    client.emitOutput({ sessionId: initial.id, sequence: 1, data: "\x1b[?1049h" });
+    await waitForCondition(() => runtime.screen.inspect().alternate, 2_000);
+
+    const terminal = mounted.windowProjection.peek().windows.find(
+      (window) => window.id === muxstoneWindowId(initial.id),
+    );
+    assert(terminal);
+    const wheelX = terminal.clientRect.column + 2;
+    const wheelY = terminal.clientRect.row + 2;
+    assertEquals((await harness.pilot.scroll(-1, wheelX, wheelY)).handled, true);
+    await mounted.whenIdle();
+    assertEquals(runtime.scrollback.inspect().mode, "live");
+    assertEquals(client.inputs, [{ sessionId: initial.id, data: "\x1b[A".repeat(3) }]);
+
+    client.inputs.length = 0;
+    client.emitOutput({ sessionId: initial.id, sequence: 2, data: "\x1b[?1h" });
+    await waitForCondition(() => runtime.screen.inspect().privateModes.includes(1), 2_000);
+    assertEquals((await harness.pilot.scroll(1, wheelX, wheelY)).handled, true);
+    await mounted.whenIdle();
+    assertEquals(runtime.scrollback.inspect().mode, "live");
+    assertEquals(client.inputs, [{ sessionId: initial.id, data: "\x1bOB".repeat(3) }]);
+  } finally {
+    harness.destroy();
+    await controller.dispose();
+  }
+});
+
+Deno.test("Muxstone quit control cancels, detaches, and terminates from the end-session modal", async () => {
+  const initial = session("quit-shell", "quit shell", 0);
+  const client = new FakeMuxstoneClient([initial]);
+  const controller = await createMuxstoneController({ client, initialSessions: [initial] });
+  const mount: MuxstoneAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 100, rows: 28 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+    const bounds = harness.app.tui.rectangle.peek();
+    const quitX = bounds.column + bounds.width - 3;
+
+    assertEquals((await harness.pilot.click(quitX, 0)).press.handled, true);
+    await mounted.whenIdle();
+    assertEquals(controller.quitModalVisible.peek(), true);
+    await harness.pilot.press("escape");
+    await mounted.whenIdle();
+    assertEquals(controller.quitModalVisible.peek(), false);
+
+    let destroyed = false;
+    harness.app.tui.on("destroy", () => {
+      destroyed = true;
+    });
+    assertEquals((await harness.pilot.click(quitX, 0)).press.handled, true);
+    await mounted.whenIdle();
+    const layout = muxstoneQuitLayout(mounted.windowProjection.peek().bounds);
+    assertEquals(
+      (await harness.pilot.click(layout.detachRect.column + 1, layout.detachRect.row)).press.handled,
+      true,
+    );
+    await waitForCondition(() => destroyed, 2_000);
+    assertEquals(client.shutdownCalls, 0);
+    assertEquals(controller.quitModalVisible.peek(), false);
+  } finally {
+    harness.destroy();
+    await controller.dispose();
+  }
+});
+
+Deno.test("Muxstone quit modal terminate shuts down the detached host before exiting", async () => {
+  const initial = session("terminate-shell", "terminate shell", 0);
+  const client = new FakeMuxstoneClient([initial]);
+  const controller = await createMuxstoneController({ client, initialSessions: [initial] });
+  const mount: MuxstoneAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 100, rows: 28 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+    let destroyed = false;
+    harness.app.tui.on("destroy", () => {
+      destroyed = true;
+    });
+    const bounds = harness.app.tui.rectangle.peek();
+    assertEquals((await harness.pilot.click(bounds.column + bounds.width - 3, 0)).press.handled, true);
+    await mounted.whenIdle();
+    assertEquals(controller.quitModalVisible.peek(), true);
+    await harness.pilot.press("t");
+    await waitForCondition(() => destroyed && client.shutdownCalls === 1, 2_000);
+  } finally {
+    harness.destroy();
+    await controller.dispose();
+  }
+});
+
+Deno.test("Muxstone network panel lists hosts and tailnet devices, opens SSH, and forgets hosts", async () => {
+  const initial = session("net-shell", "net shell", 0);
+  const client = new FakeMuxstoneClient([initial]);
+  const tailnetResult: TailnetStatusResult = {
+    availability: "available",
+    detail: "tailscale is running",
+    snapshot: {
+      backendState: "Running",
+      devices: [
+        {
+          id: "self",
+          shortName: "workshop",
+          dnsName: "workshop.tail.net",
+          os: "linux",
+          online: true,
+          self: true,
+          relayed: false,
+          tags: [],
+          ipv4: "100.64.0.1",
+        },
+        {
+          id: "peer-1",
+          shortName: "studio",
+          dnsName: "studio.tail.net",
+          os: "linux",
+          online: true,
+          self: false,
+          relayed: false,
+          tags: [],
+        },
+      ],
+      capturedAt: 1,
+    },
+  };
+  const controller = await createMuxstoneController({
+    client,
+    initialSessions: [initial],
+    tailnetSource: { fetchStatus: () => Promise.resolve(tailnetResult) },
+    tailnetPollIntervalMs: 300_000,
+  });
+  const mount: MuxstoneAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 100, rows: 28 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+
+    assertEquals((await harness.pilot.click(23, 0)).press.handled, true);
+    await mounted.whenIdle();
+    assertEquals(
+      controller.windowHost.controller.inspect().activeWindowId,
+      MUXSTONE_NETWORK_WINDOW_ID,
+    );
+    await waitForCondition(() => controller.networkStatus.peek() !== undefined, 2_000);
+    await waitForCondition(
+      () => controller.networkTree.visibleRows().some((row) => row.id === "dev:peer-1"),
+      2_000,
+    );
+
+    for (let step = 0; step < 4; step += 1) await harness.pilot.press("down");
+    assertEquals(controller.networkTree.selected()?.id, "dev:peer-1");
+    await harness.pilot.press("right");
+    await harness.pilot.press("down");
+    assertEquals(controller.networkTree.selected()?.id, "act:shell:peer-1");
+    await harness.pilot.press("return");
+    await waitForCondition(() => client.spawned.length === 1, 2_000);
+    assertEquals(client.spawned[0]!.command, "ssh");
+    assertEquals(client.spawned[0]!.args, ["studio.tail.net"]);
+    assertEquals(client.spawned[0]!.title, "studio");
+    assertEquals(controller.savedHosts.peek(), ["studio.tail.net"]);
+
+    controller.windowHost.execute(
+      { kind: "focus", id: MUXSTONE_NETWORK_WINDOW_ID },
+      mounted.bodyRect.peek(),
+    );
+    await waitForCondition(
+      () => controller.networkTree.visibleRows().some((row) => row.id === "host:studio.tail.net"),
+      2_000,
+    );
+
+    assertEquals(controller.sessionHosts.peek()["spawned-1"], "studio.tail.net");
+    controller.networkTree.setExpanded("host:studio.tail.net", true);
+    await waitForCondition(
+      () => controller.networkTree.visibleRows().some((row) => row.id === "ses:spawned-1"),
+      2_000,
+    );
+    controller.networkTree.setSelectedIndex(
+      controller.networkTree.visibleRows().findIndex((row) => row.id === "ses:spawned-1"),
+    );
+    await harness.pilot.press("return");
+    await mounted.whenIdle();
+    assertEquals(
+      controller.windowHost.controller.inspect().activeWindowId,
+      muxstoneWindowId("spawned-1"),
+    );
+
+    controller.windowHost.execute(
+      { kind: "focus", id: MUXSTONE_NETWORK_WINDOW_ID },
+      mounted.bodyRect.peek(),
+    );
+    controller.networkTree.setSelectedIndex(
+      controller.networkTree.visibleRows().findIndex((row) => row.id === "host:studio.tail.net"),
+    );
+    await harness.pilot.press("delete");
+    await mounted.whenIdle();
+    assertEquals(controller.savedHosts.peek(), []);
+  } finally {
+    harness.destroy();
+    await controller.dispose();
+  }
+});
+
+Deno.test("Muxstone workspace state round-trips saved hosts and rejects hostile entries", () => {
+  const normalized = normalizeMuxstoneWorkspaceState({
+    schemaVersion: 1,
+    themeId: "midnight",
+    terminalOrdinal: 3,
+    savedHosts: ["studio.tail.net", "user@host-1", "-rm -rf /", "studio.tail.net", 42, "ok.example"],
+  });
+  assertEquals(normalized.savedHosts, ["studio.tail.net", "user@host-1", "ok.example"]);
+  assertEquals(normalizeMuxstoneWorkspaceState(undefined).savedHosts, []);
+  const withSessions = normalizeMuxstoneWorkspaceState({
+    schemaVersion: 1,
+    themeId: "midnight",
+    terminalOrdinal: 1,
+    savedHosts: [],
+    sessionHosts: { "spawned-1": "studio.tail.net", "bad id!": "x", "spawned-2": "-rm" },
+  });
+  assertEquals(withSessions.sessionHosts, { "spawned-1": "studio.tail.net" });
+  assertEquals(normalizeMuxstoneWorkspaceState(undefined).sessionHosts, {});
+});
+
 class FakeMuxstonePointerSource implements MuxstonePointerInputSource {
   readonly #pointerListeners = new Set<(event: PointerInputEvent) => void | Promise<void>>();
   readonly #scrollListeners = new Set<(event: MouseScrollEvent) => void | Promise<void>>();
@@ -1846,6 +2097,7 @@ class FakeMuxstoneClient implements MuxstoneClientPort {
   delayInputAcks = false;
   rejectAttach = false;
   rejectKill = false;
+  shutdownCalls = 0;
   readonly inputs: Array<{ sessionId: string; data: string }> = [];
   readonly spawned: MuxstoneSpawnOptions[] = [];
   readonly detached: string[] = [];
@@ -1948,6 +2200,7 @@ class FakeMuxstoneClient implements MuxstoneClientPort {
   }
 
   shutdownHost(): Promise<boolean> {
+    this.shutdownCalls += 1;
     this.#sessions.clear();
     this.#listeners.clear();
     return Promise.resolve(true);

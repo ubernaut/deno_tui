@@ -7,3 +7,4 @@ export * from "./controller.ts";
 export * from "./host.ts";
 export * from "./model.ts";
 export * from "./protocol.ts";
+export * from "./tailnet.ts";
