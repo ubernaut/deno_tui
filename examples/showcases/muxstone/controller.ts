@@ -133,10 +133,10 @@ async function defaultMuxstoneStatFile(path: string): Promise<boolean> {
 
 async function defaultMuxstoneScpRunner(
   localPath: string,
-  target: string,
+  remoteSpec: string,
 ): Promise<{ ok: boolean; detail?: string }> {
   const command = new Deno.Command("scp", {
-    args: ["-q", "--", localPath, `${target}:`],
+    args: ["-q", "--", localPath, remoteSpec],
     stdin: "null",
     stdout: "null",
     stderr: "piped",
@@ -145,6 +145,23 @@ async function defaultMuxstoneScpRunner(
   if (output.code === 0) return { ok: true };
   const detail = new TextDecoder().decode(output.stderr).trim().slice(0, 160);
   return { ok: false, detail: detail || `scp exited with code ${output.code}` };
+}
+
+/**
+ * Finds the path printed by a `pwd` probe in raw shell output: a line that is
+ * exactly one conservatively-charactered absolute path, ANSI sequences
+ * stripped, ignoring the probe's own echo and prompt lines.
+ */
+export function muxstoneCapturedPwdPath(output: string): string | undefined {
+  // deno-lint-ignore no-control-regex
+  const plain = output.replace(/\x1b\][^\x07\x1b]*(\x07|\x1b\\)/g, "").replace(/\x1b\[[0-9;?]*[A-Za-z]/g, "");
+  for (const rawLine of plain.split(/[\r\n]+/)) {
+    const line = rawLine.trim();
+    if (!line.startsWith("/") || line.length > 510) continue;
+    if (!/^\/[A-Za-z0-9._/@+-]*$/.test(line)) continue;
+    return line;
+  }
+  return undefined;
 }
 
 function safeScpErrorMessage(error: unknown): string {
@@ -228,6 +245,8 @@ export interface MuxstoneTerminalRuntime {
   readonly attached: Signal<boolean>;
   readonly renderRevision: Signal<number>;
   readonly warning: Signal<string | undefined>;
+  /** Transient observers of decoded output text (e.g. remote cwd capture). */
+  readonly outputTaps: Set<(chunk: string) => void>;
   hostTitle: string;
   screenTitle?: string;
   lastSequence: number;
@@ -252,8 +271,10 @@ export interface MuxstoneControllerOptions {
   readonly tailnetPollIntervalMs?: number;
   /** Injectable local-file existence probe for paste-to-scp interception. */
   readonly statFile?: (path: string) => Promise<boolean>;
-  /** Injectable scp executor; the default runs the real `scp` binary. */
-  readonly scpRunner?: (localPath: string, target: string) => Promise<{ ok: boolean; detail?: string }>;
+  /** Injectable scp executor receiving the full `host:dir/` remote spec; defaults to the real `scp` binary. */
+  readonly scpRunner?: (localPath: string, remoteSpec: string) => Promise<{ ok: boolean; detail?: string }>;
+  /** How long the remote `pwd` capture may wait before falling back to the remote home. */
+  readonly scpCwdTimeoutMs?: number;
 }
 
 /** One intercepted paste awaiting a Send / Paste path / Cancel decision. */
@@ -261,8 +282,15 @@ export interface MuxstoneScpRequest {
   readonly sessionId: string;
   readonly target: string;
   readonly localPath: string;
+  /** Remote directory captured from the shell, or undefined for the remote home. */
+  readonly remoteDir?: string;
   /** Original pasted text, forwarded verbatim when the user picks "Paste path". */
   readonly pasteText: string;
+}
+
+/** Human-readable destination for one pending transfer. */
+export function muxstoneScpDestinationLabel(request: Pick<MuxstoneScpRequest, "target" | "remoteDir">): string {
+  return `${request.target}:${request.remoteDir ?? "~"}`;
 }
 
 /** Options for launching and positioning one terminal window. */
@@ -328,7 +356,8 @@ export class MuxstoneController {
   readonly #tailnetSource: Pick<TailnetStatusSource, "fetchStatus">;
   readonly #tailnetPollIntervalMs?: number;
   readonly #statFile: (path: string) => Promise<boolean>;
-  readonly #scpRunner: (localPath: string, target: string) => Promise<{ ok: boolean; detail?: string }>;
+  readonly #scpRunner: (localPath: string, remoteSpec: string) => Promise<{ ok: boolean; detail?: string }>;
+  readonly #scpCwdTimeoutMs: number;
 
   constructor(options: MuxstoneControllerOptions) {
     this.client = options.client;
@@ -368,6 +397,7 @@ export class MuxstoneController {
     this.#tailnetPollIntervalMs = options.tailnetPollIntervalMs;
     this.#statFile = options.statFile ?? defaultMuxstoneStatFile;
     this.#scpRunner = options.scpRunner ?? defaultMuxstoneScpRunner;
+    this.#scpCwdTimeoutMs = Math.min(10_000, Math.max(50, options.scpCwdTimeoutMs ?? 1_500));
     this.networkTree = new TreeController({
       nodes: buildMuxstoneNetworkNodes([], undefined, this.#networkExpansion),
       onToggle: (row, expanded) => {
@@ -672,10 +702,51 @@ export class MuxstoneController {
     if (!localPath) return false;
     const exists = await this.#statFile(localPath).catch(() => false);
     if (!exists || this.#disposed) return false;
+    const remoteDir = await this.captureRemoteCwd(runtime.sessionId).catch(() => undefined);
+    if (this.#disposed) return false;
     this.prefixPending.value = false;
-    this.pendingScp.value = { sessionId: runtime.sessionId, target, localPath, pasteText: text };
-    this.status.value = `Send ${localPath} → ${target}:~ ? Enter sends, p pastes the path, Escape cancels.`;
+    const request: MuxstoneScpRequest = {
+      sessionId: runtime.sessionId,
+      target,
+      localPath,
+      ...(remoteDir ? { remoteDir } : {}),
+      pasteText: text,
+    };
+    this.pendingScp.value = request;
+    this.status.value = `Send ${localPath} → ${
+      muxstoneScpDestinationLabel(request)
+    } ? Enter sends, p pastes the path, Escape cancels.`;
     return true;
+  }
+
+  /**
+   * Runs a hidden-history `pwd` in the shell and captures the printed path, so
+   * transfers land in the directory the user is actually in. Skipped for
+   * alternate-screen apps (the bytes would be typed into them); undefined
+   * falls back to the remote home directory.
+   */
+  async captureRemoteCwd(sessionId: string, timeoutMs = this.#scpCwdTimeoutMs): Promise<string | undefined> {
+    const runtime = this.#runtimes.get(sessionId);
+    if (!runtime || !runtime.attached.peek() || !runtime.summary.peek().running) return undefined;
+    if (runtime.screen.inspect().alternate) return undefined;
+    let settle: (value: string | undefined) => void;
+    const captured = new Promise<string | undefined>((resolve) => settle = resolve);
+    let buffer = "";
+    const tap = (chunk: string) => {
+      buffer = (buffer + chunk).slice(-8_192);
+      const path = muxstoneCapturedPwdPath(buffer);
+      if (path) settle(path);
+    };
+    runtime.outputTaps.add(tap);
+    const timer = setTimeout(() => settle(undefined), Math.max(50, timeoutMs));
+    try {
+      // The leading space keeps the probe out of history in most shells.
+      await this.writeSession(sessionId, " pwd\r");
+      return await captured;
+    } finally {
+      clearTimeout(timer);
+      runtime.outputTaps.delete(tap);
+    }
   }
 
   /** Runs the pending transfer in the background; resolves when scp finishes. */
@@ -684,12 +755,14 @@ export class MuxstoneController {
     const request = this.pendingScp.peek();
     if (!request) return false;
     this.pendingScp.value = undefined;
-    this.status.value = `scp ${request.localPath} → ${request.target}:~ …`;
+    const destination = muxstoneScpDestinationLabel(request);
+    const remoteSpec = `${request.target}:${request.remoteDir ? `${request.remoteDir}/` : ""}`;
+    this.status.value = `scp ${request.localPath} → ${destination} …`;
     try {
-      const result = await this.#scpRunner(request.localPath, request.target);
+      const result = await this.#scpRunner(request.localPath, remoteSpec);
       if (this.#disposed) return result.ok;
       this.status.value = result.ok
-        ? `Sent ${request.localPath} → ${request.target}:~`
+        ? `Sent ${request.localPath} → ${destination}`
         : `scp failed: ${result.detail ?? "unknown error"}`;
       return result.ok;
     } catch (error) {
@@ -1152,6 +1225,10 @@ export class MuxstoneController {
     }
     runtime.lastSequence = sequence;
     runtime.screen.write(frameValue.data);
+    if (runtime.outputTaps.size > 0) {
+      const text = typeof frameValue.data === "string" ? frameValue.data : new TextDecoder().decode(frameValue.data);
+      for (const tap of runtime.outputTaps) tap(text);
+    }
     const observedTitle = runtime.screen.inspect().title;
     if (observedTitle !== undefined) {
       const screenTitle = normalizeRuntimeTitle(observedTitle);
@@ -1390,6 +1467,7 @@ function createTerminalRuntime(summary: MuxstoneSessionSummary): MuxstoneTermina
     attached: new Signal(false),
     renderRevision: new Signal(0),
     warning: new Signal<string | undefined>(undefined),
+    outputTaps: new Set(),
     hostTitle: summary.title,
     lastSequence: 0,
     attachGeneration: 0,

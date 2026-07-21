@@ -38,6 +38,7 @@ import {
   muxstoneNetworkNodeHostTarget,
   muxstoneNetworkNodeSessionId,
   muxstoneScpCandidatePath,
+  muxstoneScpDestinationLabel,
   type MuxstoneScpRequest,
   type MuxstoneTerminalRuntime,
 } from "./controller.ts";
@@ -2572,7 +2573,7 @@ function paintScpModal(
   painter.write(
     rect.column + 2,
     rect.row + Math.min(3, Math.max(1, rect.height - 2)),
-    fitText(`${request.localPath} → ${request.target}:~`, rect.width - 4),
+    fitText(`${request.localPath} → ${muxstoneScpDestinationLabel(request)}`, rect.width - 4),
     {
       foreground: theme.text,
       background: theme.surfaceStrong,
