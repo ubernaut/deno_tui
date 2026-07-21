@@ -114,6 +114,11 @@ export class TerminalScreenController {
   #lastPrintableWidth = 1;
   #tabStops: Set<number>;
   #pendingControl = "";
+  // VT100 deferred-wrap latch: after a glyph fills the last column the cursor
+  // parks there and only the *next* printable character wraps + scrolls. Full
+  // -screen TUIs (e.g. nested Muxstone) paint the bottom row edge-to-edge every
+  // frame; without this latch each paint would spuriously scroll the screen up.
+  #pendingWrap = false;
   readonly #charsetDecGraphics = [false, false];
   #activeCharset: 0 | 1 = 0;
   readonly #decoder = new TextDecoder();
@@ -186,6 +191,7 @@ export class TerminalScreenController {
     if (this.#mainState) this.#mainState = resizeState(this.#mainState, nextColumns, nextRows);
     this.#scrollRegion = fullScrollRegion(this.#rows);
     this.#tabStops = resizeTabStops(this.#tabStops, this.#columns);
+    this.#pendingWrap = false;
   }
 
   clear(): void {
@@ -198,6 +204,7 @@ export class TerminalScreenController {
     this.#charsetDecGraphics[0] = false;
     this.#charsetDecGraphics[1] = false;
     this.#activeCharset = 0;
+    this.#pendingWrap = false;
   }
 
   textRows(): string[] {
@@ -249,14 +256,17 @@ export class TerminalScreenController {
 
   #writeChar(char: string): void {
     if (char === "\n") {
+      this.#pendingWrap = false;
       this.#newline();
       return;
     }
     if (char === "\r") {
+      this.#pendingWrap = false;
       this.#state.cursor.column = 0;
       return;
     }
     if (char === "\b") {
+      this.#pendingWrap = false;
       this.#state.cursor.column = Math.max(0, this.#state.cursor.column - 1);
       return;
     }
@@ -269,6 +279,7 @@ export class TerminalScreenController {
       return;
     }
     if (char === "\t") {
+      this.#pendingWrap = false;
       this.#state.cursor.column = nextTabStop(this.#tabStops, this.#state.cursor.column, this.#columns);
       return;
     }
@@ -277,28 +288,49 @@ export class TerminalScreenController {
     const glyph = this.#charsetDecGraphics[this.#activeCharset] ? DEC_SPECIAL_GRAPHICS[char] ?? char : char;
     const width = terminalGraphicWidth(glyph);
     const cell = this.#styledCell(glyph);
-    this.#writeCell(cell);
-    for (let index = 1; index < width; index += 1) {
-      this.#writeCell(BLANK_CELL);
-    }
+    this.#placeGlyph(cell, width);
     this.#lastPrintableCell = { ...cell };
     this.#lastPrintableWidth = width;
   }
 
-  #writeCell(cell: TerminalScreenCell): void {
+  #placeGlyph(cell: TerminalScreenCell, width: number): void {
+    // Resolve a wrap deferred from a previous edge write before placing this glyph.
+    if (this.#pendingWrap) {
+      if (this.#autoWrap) {
+        this.#state.cursor.column = 0;
+        this.#index();
+      }
+      this.#pendingWrap = false;
+    }
+    // A double-width glyph that cannot fit in the final column wraps first.
+    if (width === 2 && this.#autoWrap && this.#state.cursor.column >= this.#columns - 1) {
+      this.#putCellAt(this.#state.cursor.column, BLANK_CELL, false);
+      this.#state.cursor.column = 0;
+      this.#index();
+    }
+    const startColumn = this.#state.cursor.column;
+    this.#putCellAt(startColumn, cell, true);
+    const lastColumn = Math.min(this.#columns - 1, startColumn + width - 1);
+    for (let column = startColumn + 1; column <= lastColumn; column += 1) {
+      this.#putCellAt(column, BLANK_CELL, false);
+    }
+    if (lastColumn >= this.#columns - 1) {
+      // At the right edge park the cursor and defer the wrap; only the next
+      // printable character (if autowrap is on) actually advances + scrolls.
+      this.#state.cursor.column = this.#columns - 1;
+      this.#pendingWrap = this.#autoWrap;
+    } else {
+      this.#state.cursor.column = lastColumn + 1;
+    }
+  }
+
+  #putCellAt(column: number, cell: TerminalScreenCell, insert: boolean): void {
     const row = this.#state.cells[this.#state.cursor.row]!;
-    if (this.#insertMode) {
-      row.splice(this.#state.cursor.column, 0, { char: " " });
+    if (insert && this.#insertMode) {
+      row.splice(column, 0, { char: " " });
       row.length = this.#columns;
     }
-    row[this.#state.cursor.column] = cell;
-    if (this.#state.cursor.column >= this.#columns - 1) {
-      if (!this.#autoWrap) return;
-      this.#state.cursor.column = 0;
-      this.#newline();
-    } else {
-      this.#state.cursor.column += 1;
-    }
+    row[column] = cell;
   }
 
   #newline(): void {
@@ -319,6 +351,11 @@ export class TerminalScreenController {
   }
 
   #applyControl(sequence: ParsedTerminalControlSequence): void {
+    // Any control sequence other than a pure style change (SGR `m`) breaks the
+    // printable run, so the deferred-wrap latch no longer applies. SGR keeps it
+    // so autowrap streams that recolor mid-line (pagers, syntax highlighting)
+    // still wrap at the right edge.
+    if (sequence.command !== "m") this.#pendingWrap = false;
     if (sequence.kind === "osc") {
       this.#applyOsc(sequence.params);
       return;
@@ -582,10 +619,7 @@ export class TerminalScreenController {
     if (!this.#lastPrintableCell) return;
     const amount = Math.max(1, Math.floor(count));
     for (let index = 0; index < amount; index += 1) {
-      this.#writeCell({ ...this.#lastPrintableCell });
-      for (let width = 1; width < this.#lastPrintableWidth; width += 1) {
-        this.#writeCell(BLANK_CELL);
-      }
+      this.#placeGlyph({ ...this.#lastPrintableCell }, this.#lastPrintableWidth);
     }
   }
 

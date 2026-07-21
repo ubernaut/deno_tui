@@ -344,8 +344,15 @@ Deno.test("TerminalScreenController supports DEC autowrap mode", () => {
 
   screen.write("\x1b[?7hF");
   assertEquals(screen.textRows(), ["abcF", ""]);
-  assertEquals(screen.inspect().cursor, { column: 0, row: 1 });
+  // Deferred wrap (VT100 pending-wrap latch): filling the last column parks the
+  // cursor there instead of moving to the next row.
+  assertEquals(screen.inspect().cursor, { column: 3, row: 0 });
   assertEquals(screen.inspect().privateModes, [7]);
+
+  // The next printable character consumes the pending wrap and advances to row 1.
+  screen.write("G");
+  assertEquals(screen.textRows(), ["abcF", "G"]);
+  assertEquals(screen.inspect().cursor, { column: 1, row: 1 });
 });
 
 Deno.test("TerminalScreenController supports insert and replace character modes", () => {
@@ -408,7 +415,26 @@ Deno.test("TerminalScreenController clips insert mode at the row edge", () => {
 
   screen.write("abcdef\x1b[1;5H\x1b[4hXY");
   assertEquals(screen.textRows(), ["abcdXY", ""]);
-  assertEquals(screen.inspect().cursor, { column: 0, row: 1 });
+  // Deferred wrap: the final inserted glyph parks at the last column rather than
+  // wrapping to the next row.
+  assertEquals(screen.inspect().cursor, { column: 5, row: 0 });
+});
+
+Deno.test("TerminalScreenController does not scroll when a full-screen paint fills the last row edge-to-edge", () => {
+  // Reproduces the nested-Muxstone symptom: a full-screen TUI cursor-addresses
+  // the bottom row and paints it to the final column every frame. With immediate
+  // autowrap this scrolled the whole screen up on each frame; deferred wrap keeps
+  // the addressed content stable.
+  const screen = new TerminalScreenController({ columns: 20, rows: 5 });
+  screen.write("\x1b[1;1HTOP-ROW-STAYS-HERE!!");
+  for (let frame = 0; frame < 10; frame += 1) {
+    screen.write("\x1b[5;1H" + "B".repeat(20));
+  }
+  const rows = screen.textRows();
+  assertEquals(rows[0], "TOP-ROW-STAYS-HERE!!");
+  assertEquals(rows[4], "B".repeat(20));
+  assertEquals(screen.scrollbackRows, 0);
+  assertEquals(screen.inspect().cursor, { column: 19, row: 4 });
 });
 
 Deno.test("TerminalScreenController tracks cursor style sequences", () => {
