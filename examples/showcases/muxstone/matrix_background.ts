@@ -38,7 +38,7 @@ const DROPS_PER_COLUMN = 1.1;
 const CELLS_PER_GLYPH_MUTATION = 70;
 
 /** Deterministic glyph pool: halfwidth katakana, digits, and sparse symbols. */
-const MATRIX_GLYPHS: readonly string[] = Array.from("ﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇ0123456789:・=*+-");
+const MATRIX_GLYPHS: readonly string[] = Array.from("ﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇ0123456789:･=*+-");
 
 /** Construction options shared by the Muxstone animated background catalog. */
 export interface MuxstoneMatrixRainFieldOptions {

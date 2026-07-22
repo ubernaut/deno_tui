@@ -2497,11 +2497,16 @@ function paintTerminal(
         background = dimTowards(background, theme.surface);
         foreground = dimTowards(foreground, theme.surface);
       }
-      painter.cell(rect.column + column, rect.row + row, cell.char || " ", {
+      const glyph = cell.char || " ";
+      painter.cell(rect.column + column, rect.row + row, glyph, {
         foreground,
         background,
         bold: cursor || cell.bold,
       });
+      // The screen model stores a blank in the second column of a wide glyph.
+      // Painting it would retire the glyph we just placed, so step over it and
+      // let the painter own both columns.
+      if (muxstoneGlyphColumns(glyph) === 2) column += 1;
     }
   }
   const warning = runtime.warning.peek();
@@ -3108,6 +3113,25 @@ interface PaintedStyle {
 }
 
 /** Small paint buffer that caches ANSI style functions by exact cell style. */
+/**
+ * Marks the second column of a double-width glyph. An empty cell makes the ANSI
+ * sink emit nothing there, which is exactly right: the glyph itself already
+ * moved the real cursor across both columns.
+ */
+const MUXSTONE_WIDE_GLYPH_FOLLOWER = "";
+
+/**
+ * Terminal columns one glyph occupies. The desktop is modelled one column per
+ * cell, so a double-width glyph that is not accounted for shifts every later
+ * cell on the row and — because the canvas repaints differentially — the damage
+ * persists until something forces a full repaint.
+ */
+export function muxstoneGlyphColumns(glyph: string): 1 | 2 {
+  const code = glyph.codePointAt(0);
+  if (code === undefined || code < 0x80) return 1;
+  return textWidth(glyph) > 1 ? 2 : 1;
+}
+
 class DesktopPainter {
   readonly rows: string[][];
   readonly #styles = new Map<string, Style>();
@@ -3123,12 +3147,44 @@ class DesktopPainter {
     const localColumn = Math.floor(column - this.bounds.column);
     const localRow = Math.floor(row - this.bounds.row);
     if (localRow < 0 || localRow >= this.rows.length || localColumn < 0 || localColumn >= this.bounds.width) return;
-    this.rows[localRow]![localColumn] = this.#style(style)(char || " ");
+    const target = this.rows[localRow]!;
+    const glyph = char || " ";
+    const paint = this.#style(style);
+    // Overwriting either half of an existing double-width glyph has to retire
+    // the other half, or its two-column render desynchronises every later cell.
+    this.#retireWideGlyphAt(target, localColumn);
+    if (muxstoneGlyphColumns(glyph) === 1) {
+      target[localColumn] = paint(glyph);
+      return;
+    }
+    // A double-width glyph on the final column has nowhere to put its follower,
+    // so it degrades to a blank rather than spilling past the desktop edge.
+    if (localColumn + 1 >= this.bounds.width) {
+      target[localColumn] = paint(" ");
+      return;
+    }
+    // The follower is left empty so the sink emits nothing for it and the real
+    // cursor, already advanced two columns by the glyph, stays in step.
+    this.#retireWideGlyphAt(target, localColumn + 1);
+    target[localColumn] = paint(glyph);
+    target[localColumn + 1] = MUXSTONE_WIDE_GLYPH_FOLLOWER;
   }
 
   write(column: number, row: number, text: string, style: PaintedStyle): void {
     let cursor = column;
-    for (const char of text) this.cell(cursor++, row, char, style);
+    for (const char of text) {
+      this.cell(cursor, row, char, style);
+      cursor += muxstoneGlyphColumns(char);
+    }
+  }
+
+  /** Blanks whichever half of a straddling double-width glyph touches `column`. */
+  #retireWideGlyphAt(target: string[], column: number): void {
+    if (target[column] === MUXSTONE_WIDE_GLYPH_FOLLOWER) {
+      if (column > 0) target[column - 1] = " ";
+    } else if (target[column + 1] === MUXSTONE_WIDE_GLYPH_FOLLOWER) {
+      target[column + 1] = " ";
+    }
   }
 
   writeRight(row: number, text: string, style: PaintedStyle): void {

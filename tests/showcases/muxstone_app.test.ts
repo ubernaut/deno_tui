@@ -3,6 +3,7 @@
 import { assert, assertEquals, assertNotEquals, assertStringIncludes } from "../deps.ts";
 import { encodeTerminalPaste, POINTER_INPUT_SCHEMA_VERSION, type PointerInputEvent } from "../../mod.ts";
 import { createTestTerminalApp } from "../../src/testing/app.ts";
+import { stripAnsi } from "../../src/testing/snapshot.ts";
 import { createTestKeyPress, createTestMousePress } from "../../src/testing/input.ts";
 import { decodeBuffer } from "../../src/input_reader/mod.ts";
 import type { Key, MouseScrollEvent } from "../../src/input_reader/types.ts";
@@ -11,6 +12,7 @@ import {
   createMuxstoneTerminalOptions,
   type MuxstoneAppMountRef,
   muxstoneGlobalConfigLayout,
+  muxstoneGlyphColumns,
   muxstoneMetaballBackgroundVisible,
   muxstoneMetaballsMayAdvance,
   type MuxstonePointerInputSource,
@@ -2789,5 +2791,80 @@ Deno.test("Muxstone global settings normalize and reject unknown values", () => 
       settings = cycleMuxstoneGlobalSetting(settings, spec.id, 1);
     }
     assertEquals(settings[spec.id], defaults[spec.id], `${spec.id} should wrap back to its start`);
+  }
+});
+
+Deno.test("Muxstone glyph columns classify single- and double-width characters", () => {
+  for (const glyph of [" ", "a", "#", "~", "░", "▓", "█", "·", "･", "ﾊ", "─", "│", "✕"]) {
+    assertEquals(muxstoneGlyphColumns(glyph), 1, `${JSON.stringify(glyph)} should be one column`);
+  }
+  for (const glyph of ["日", "中", "ア", "・", "🙂"]) {
+    assertEquals(muxstoneGlyphColumns(glyph), 2, `${JSON.stringify(glyph)} should be two columns`);
+  }
+});
+
+Deno.test("Muxstone background glyph vocabularies stay single-width", async () => {
+  // A double-width glyph in a background bleeds one column right. On a window's
+  // left edge that lands inside the window, and because the canvas repaints
+  // differentially the damage persists until a full repaint.
+  const fields = ["matrix", "circuit", "jungle", "biomech", "vaporwave", "skull", "metaball"];
+  for (const field of fields) {
+    const source = await Deno.readTextFile(`./examples/showcases/muxstone/${field}_background.ts`);
+    const wide = new Set<string>();
+    for (const glyph of source) {
+      if (glyph.codePointAt(0)! >= 0x80 && muxstoneGlyphColumns(glyph) === 2) wide.add(glyph);
+    }
+    assertEquals([...wide], [], `${field}_background.ts must not contain double-width glyphs`);
+  }
+});
+
+Deno.test("Muxstone pairs a wide terminal glyph with an empty follower cell", async () => {
+  const initial = session("wide-shell", "wide shell", 1);
+  const client = new FakeMuxstoneClient([initial], {
+    "wide-shell": [{ sessionId: "wide-shell", sequence: 1, data: "\x1b[1;1H日本AB" }],
+  });
+  const controller = await createMuxstoneController({ client, initialSessions: [initial] });
+  const mount: MuxstoneAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 110, rows: 32 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+    controller.windowHost.execute({ kind: "close", id: MUXSTONE_SESSIONS_WINDOW_ID }, mounted.bodyRect.peek());
+    await harness.pilot.settle();
+
+    const terminal = mounted.windowProjection.peek().windows.find(
+      (window) => window.id === muxstoneWindowId("wide-shell"),
+    )!;
+    const row = harness.canvas.frameBuffer[terminal.clientRect.row] ?? [];
+    const start = terminal.clientRect.column;
+    const charAt = (offset: number): string => {
+      const value = row[start + offset];
+      const text = typeof value === "string" ? value : value ? new TextDecoder().decode(value) : "";
+      return stripAnsi(text);
+    };
+
+    // Each wide glyph owns two columns: the glyph then an empty follower, so the
+    // ASCII after it still lands on its own column instead of being displaced.
+    assertEquals(charAt(0), "日");
+    assertEquals(charAt(1), "");
+    assertEquals(charAt(2), "本");
+    assertEquals(charAt(3), "");
+    assertEquals(charAt(4), "A");
+    assertEquals(charAt(5), "B");
+
+    // Advertised columns match cells consumed, which is what keeps everything to
+    // the right - including the neighbouring window's border - on its own column.
+    let columns = 0;
+    for (let offset = 0; offset < 6; offset += 1) {
+      const glyph = charAt(offset);
+      if (glyph !== "") columns += muxstoneGlyphColumns(glyph);
+    }
+    assertEquals(columns, 6);
+  } finally {
+    harness.destroy();
+    await controller.dispose();
   }
 });
