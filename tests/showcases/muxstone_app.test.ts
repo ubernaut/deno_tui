@@ -10,6 +10,7 @@ import {
   bindMuxstonePointerInput,
   createMuxstoneTerminalOptions,
   type MuxstoneAppMountRef,
+  muxstoneGlobalConfigLayout,
   muxstoneMetaballBackgroundVisible,
   muxstoneMetaballsMayAdvance,
   type MuxstonePointerInputSource,
@@ -25,8 +26,12 @@ import {
   type MuxstoneController,
 } from "../../examples/showcases/muxstone/controller.ts";
 import {
+  cycleMuxstoneGlobalSetting,
   cycleMuxstoneWindowSetting,
+  defaultMuxstoneGlobalSettings,
   defaultMuxstoneWindowSettings,
+  MUXSTONE_BACKGROUND_IDS,
+  MUXSTONE_GLOBAL_SETTING_SPECS,
   MUXSTONE_THEMES,
   MUXSTONE_WINDOW_SETTING_SPECS,
   type MuxstoneAttachResult,
@@ -36,6 +41,7 @@ import {
   type MuxstoneSpawnOptions,
   muxstoneTheme,
   muxstoneWindowId,
+  normalizeMuxstoneGlobalSettings,
   normalizeMuxstoneWindowSettings,
   normalizeMuxstoneWorkspaceState,
 } from "../../examples/showcases/muxstone/model.ts";
@@ -812,22 +818,25 @@ Deno.test("Muxstone pipelines bounded raw batches and fences them around control
     await mounted.whenIdle();
 
     client.inputs.splice(0);
-    const pointerThemeBefore = controller.themeId.peek();
     await harness.pilot.press("u");
-    const pointerTheme = mounted.handlePointer(mousePointer("down", 52, 0, 71));
+    const pointerMenu = mounted.handlePointer(mousePointer("down", 52, 0, 71));
     await harness.pilot.press("v");
     await Promise.resolve();
+    // The menu press is fenced behind the outstanding ack, so nothing has opened.
     assertEquals(client.inputs.map((input) => input.data).join(""), "u");
-    assertEquals(controller.themeId.peek(), pointerThemeBefore);
+    assertEquals(controller.globalConfigVisible.peek(), false);
 
     client.resolveNextInputAck();
-    assertEquals(await pointerTheme, true);
+    assertEquals(await pointerMenu, true);
     for (let attempt = 0; attempt < 16; attempt += 1) {
-      if (client.inputs.map((input) => input.data).join("") === "uv") break;
+      if (controller.globalConfigVisible.peek()) break;
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
-    assertNotEquals(controller.themeId.peek(), pointerThemeBefore);
-    assertEquals(client.inputs.map((input) => input.data).join(""), "uv");
+    // "v" was queued after the menu press, so the now-open modal claims it
+    // instead of the terminal - proving the control op was ordered first.
+    assertEquals(controller.globalConfigVisible.peek(), true);
+    assertEquals(client.inputs.map((input) => input.data).join(""), "u");
+    controller.closeGlobalConfig();
     await client.resolveAllInputAcks();
     await mounted.whenIdle();
 
@@ -996,7 +1005,21 @@ Deno.test("Muxstone repaints Workbench light/dark themes and the six-family T2 t
     const initialTheme = controller.themeId.peek();
     assertEquals((await harness.pilot.click(52, 0)).press.handled, true);
     await mounted.whenIdle();
+    assertEquals(controller.globalConfigVisible.peek(), true);
+    // Pick a different theme straight off the select list.
+    const themePick = MUXSTONE_THEMES.findIndex((entry) => entry.id !== initialTheme);
+    const themeLayout = muxstoneGlobalConfigLayout(
+      mounted.windowProjection.peek().bounds,
+      Math.max(0, MUXSTONE_THEMES.findIndex((entry) => entry.id === initialTheme)),
+      0,
+    );
+    const themeRow = themeLayout.themeRows.find((entry) => entry.index === themePick)!;
+    assertEquals((await harness.pilot.click(themeRow.rect.column + 2, themeRow.rect.row)).press.handled, true);
+    await mounted.whenIdle();
+    assertEquals(controller.themeId.peek(), MUXSTONE_THEMES[themePick]!.id);
     assertNotEquals(controller.themeId.peek(), initialTheme);
+    controller.closeGlobalConfig();
+    await mounted.whenIdle();
 
     for (const themeId of ["unit01", "parchment", "t2"] as const) {
       cycleToTheme(controller, themeId);
@@ -1040,12 +1063,33 @@ Deno.test("Muxstone mouse menus, modal buttons, floating chrome, shelf, and tile
     assertEquals(controller.sessions.peek().length, 2);
     const spawned = controller.sessions.peek().find((entry) => entry.id !== initial.id)!;
 
+    // Background now lives in the global config modal's select list.
     const backgroundBefore = controller.backgroundId.peek();
-    assertEquals((await harness.pilot.click(64, 0)).press.handled, true);
+    assertEquals((await harness.pilot.click(52, 0)).press.handled, true);
     await mounted.whenIdle();
+    assertEquals(controller.globalConfigVisible.peek(), true);
+    const backgroundPick = MUXSTONE_BACKGROUND_IDS.findIndex((id) => id !== backgroundBefore);
+    const backgroundLayout = muxstoneGlobalConfigLayout(
+      mounted.windowProjection.peek().bounds,
+      0,
+      Math.max(0, MUXSTONE_BACKGROUND_IDS.indexOf(backgroundBefore)),
+    );
+    const backgroundRow = backgroundLayout.backgroundRows.find((entry) => entry.index === backgroundPick)!;
+    assertEquals(
+      (await harness.pilot.click(backgroundRow.rect.column + 2, backgroundRow.rect.row)).press.handled,
+      true,
+    );
+    await mounted.whenIdle();
+    assertEquals(controller.backgroundId.peek(), MUXSTONE_BACKGROUND_IDS[backgroundPick]!);
     assertNotEquals(controller.backgroundId.peek(), backgroundBefore);
+    assertEquals(
+      (await harness.pilot.click(backgroundLayout.closeRect.column + 1, backgroundLayout.closeRect.row)).press.handled,
+      true,
+    );
+    await mounted.whenIdle();
+    assertEquals(controller.globalConfigVisible.peek(), false);
 
-    assertEquals((await harness.pilot.click(73, 0)).press.handled, true);
+    assertEquals((await harness.pilot.click(65, 0)).press.handled, true);
     await mounted.whenIdle();
     assertEquals(controller.helpVisible.peek(), true);
     const blockedTheme = controller.themeId.peek();
@@ -1548,9 +1592,9 @@ Deno.test("Muxstone wheel and touch input scroll styled history and manipulate w
     await mounted.handlePointer(touchPointer("up", 18, 0, 18));
     assertEquals(controller.sessions.peek().length, beforeCancelledNew);
 
-    await mounted.handlePointer(touchPointer("down", 73, 0, 19));
+    await mounted.handlePointer(touchPointer("down", 65, 0, 19));
     assertEquals(controller.helpVisible.peek(), false);
-    await mounted.handlePointer(touchPointer("up", 73, 0, 20));
+    await mounted.handlePointer(touchPointer("up", 65, 0, 20));
     assertEquals(controller.helpVisible.peek(), true);
     const close = helpClosePoint(mounted.windowProjection.peek().bounds);
     await mounted.handlePointer(touchPointer("down", close.column, close.row, 21));
@@ -1560,20 +1604,19 @@ Deno.test("Muxstone wheel and touch input scroll styled history and manipulate w
 
     const pointerSource = new FakeMuxstonePointerSource();
     const unbindPointer = bindMuxstonePointerInput(mounted, pointerSource);
-    const beforeTheme = controller.themeId.peek();
+    // The config menu only acts on release, and only while the source is bound.
     await pointerSource.emitPointer(touchPointer("down", 52, 0, 23));
-    assertEquals(controller.themeId.peek(), beforeTheme);
+    assertEquals(controller.globalConfigVisible.peek(), false);
     await pointerSource.emitPointer(touchPointer("up", 52, 0, 24));
-    assertNotEquals(controller.themeId.peek(), beforeTheme);
+    assertEquals(controller.globalConfigVisible.peek(), true);
+    controller.closeGlobalConfig();
     unbindPointer();
-    const afterUnbind = controller.themeId.peek();
     await pointerSource.emitPointer(touchPointer("down", 52, 0, 25));
     await pointerSource.emitPointer(touchPointer("up", 52, 0, 26));
-    assertEquals(controller.themeId.peek(), afterUnbind);
+    assertEquals(controller.globalConfigVisible.peek(), false);
 
     controller.openHelp();
     const orderedClose = helpClosePoint(mounted.windowProjection.peek().bounds);
-    const beforeOrderedTheme = controller.themeId.peek();
     let releaseBarrier!: () => void;
     let markBarrierStarted!: () => void;
     const barrierStarted = new Promise<void>((resolve) => markBarrierStarted = resolve);
@@ -1584,12 +1627,14 @@ Deno.test("Muxstone wheel and touch input scroll styled history and manipulate w
     await barrierStarted;
     const closeDown = mounted.handlePointer(touchPointer("down", orderedClose.column, orderedClose.row, 27, 70));
     const closeUp = mounted.handlePointer(touchPointer("up", orderedClose.column, orderedClose.row, 28, 70));
-    const themeDown = mounted.handlePointer(touchPointer("down", 52, 0, 29, 71));
-    const themeUp = mounted.handlePointer(touchPointer("up", 52, 0, 30, 71));
+    const configDown = mounted.handlePointer(touchPointer("down", 52, 0, 29, 71));
+    const configUp = mounted.handlePointer(touchPointer("up", 52, 0, 30, 71));
     releaseBarrier();
-    await Promise.all([barrier, closeDown, closeUp, themeDown, themeUp]);
+    await Promise.all([barrier, closeDown, closeUp, configDown, configUp]);
+    // Help closed first, then the config menu opened - both behind one barrier.
     assertEquals(controller.helpVisible.peek(), false);
-    assertNotEquals(controller.themeId.peek(), beforeOrderedTheme);
+    assertEquals(controller.globalConfigVisible.peek(), true);
+    controller.closeGlobalConfig();
 
     controller.requestKillSession(initial.id);
     const kill = killButtonPoints(mounted.windowProjection.peek().bounds);
@@ -2635,5 +2680,114 @@ Deno.test("Muxstone confirm-on-close off kills a terminal without the prompt", a
     await waitForCondition(() => controller.runtime("quick-kill") === undefined, 2_000);
   } finally {
     await controller.dispose();
+  }
+});
+
+Deno.test("Muxstone global config modal picks theme and background from select lists", async () => {
+  const initial = session("global-cfg", "global cfg", 0);
+  const client = new FakeMuxstoneClient([initial]);
+  const controller = await createMuxstoneController({ client, initialSessions: [initial] });
+  const mount: MuxstoneAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 110, rows: 34 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+
+    // The [ Config ] menu button opens it.
+    assertEquals((await harness.pilot.click(52, 0)).press.handled, true);
+    await mounted.whenIdle();
+    assertEquals(controller.globalConfigVisible.peek(), true);
+    assertEquals(controller.globalConfigPane.peek(), "theme");
+
+    const bounds = mounted.windowProjection.peek().bounds;
+    const layoutFor = () =>
+      muxstoneGlobalConfigLayout(
+        bounds,
+        Math.max(0, MUXSTONE_THEMES.findIndex((entry) => entry.id === controller.themeId.peek())),
+        Math.max(0, MUXSTONE_BACKGROUND_IDS.indexOf(controller.backgroundId.peek())),
+      );
+
+    // Arrow keys walk the theme list and apply live.
+    const themeBefore = controller.themeId.peek();
+    await harness.pilot.press("down");
+    await mounted.whenIdle();
+    assertNotEquals(controller.themeId.peek(), themeBefore);
+    await harness.pilot.press("up");
+    await mounted.whenIdle();
+    assertEquals(controller.themeId.peek(), themeBefore);
+
+    // Tab moves to the background pane, where arrows drive that list instead.
+    await harness.pilot.press("tab");
+    await mounted.whenIdle();
+    assertEquals(controller.globalConfigPane.peek(), "background");
+    const backgroundBefore = controller.backgroundId.peek();
+    await harness.pilot.press("down");
+    await mounted.whenIdle();
+    assertNotEquals(controller.backgroundId.peek(), backgroundBefore);
+    assertEquals(controller.themeId.peek(), themeBefore);
+
+    // Clicking a background row selects it directly.
+    const jungleIndex = MUXSTONE_BACKGROUND_IDS.indexOf("jungle");
+    const jungleRow = layoutFor().backgroundRows.find((entry) => entry.index === jungleIndex)!;
+    assertEquals((await harness.pilot.click(jungleRow.rect.column + 2, jungleRow.rect.row)).press.handled, true);
+    await mounted.whenIdle();
+    assertEquals(controller.backgroundId.peek(), "jungle");
+
+    // Tab again reaches the options pane where left/right cycles values.
+    await harness.pilot.press("tab");
+    await mounted.whenIdle();
+    assertEquals(controller.globalConfigPane.peek(), "options");
+    assertEquals(controller.globalSettings.peek().overgrowInactive, true);
+    await harness.pilot.press("right");
+    await mounted.whenIdle();
+    assertEquals(controller.globalSettings.peek().overgrowInactive, false);
+    await harness.pilot.press("right");
+    await mounted.whenIdle();
+    assertEquals(controller.globalSettings.peek().overgrowInactive, true);
+
+    // Overgrow time is the second option and clicking its row cycles it.
+    assertEquals(MUXSTONE_GLOBAL_SETTING_SPECS[1]!.id, "overgrowFullMs");
+    const timeBefore = controller.globalSettings.peek().overgrowFullMs;
+    const optionRow = layoutFor().optionRows[1]!;
+    assertEquals((await harness.pilot.click(optionRow.column + 2, optionRow.row)).press.handled, true);
+    await mounted.whenIdle();
+    assertNotEquals(controller.globalSettings.peek().overgrowFullMs, timeBefore);
+
+    // Settings persist with the workspace.
+    const persisted = normalizeMuxstoneWorkspaceState(controller.kernel.appState.peek());
+    assertEquals(persisted.globalSettings, controller.globalSettings.peek());
+    assertEquals(persisted.backgroundId, "jungle");
+
+    // Escape closes.
+    await harness.pilot.press("escape");
+    await mounted.whenIdle();
+    assertEquals(controller.globalConfigVisible.peek(), false);
+  } finally {
+    harness.destroy();
+    await controller.dispose();
+  }
+});
+
+Deno.test("Muxstone global settings normalize and reject unknown values", () => {
+  const defaults = defaultMuxstoneGlobalSettings();
+  assertEquals(defaults.overgrowInactive, true);
+  assertEquals(normalizeMuxstoneGlobalSettings(null), defaults);
+  assertEquals(normalizeMuxstoneGlobalSettings({ overgrowInactive: "yes" }), defaults);
+  assertEquals(
+    normalizeMuxstoneGlobalSettings({ overgrowInactive: false, overgrowFullMs: 30_000 }),
+    { overgrowInactive: false, overgrowFullMs: 30_000 },
+  );
+  // Unlisted durations fall back rather than being trusted.
+  assertEquals(normalizeMuxstoneGlobalSettings({ overgrowFullMs: 7 }).overgrowFullMs, defaults.overgrowFullMs);
+
+  for (const spec of MUXSTONE_GLOBAL_SETTING_SPECS) {
+    let settings = defaults;
+    for (let step = 0; step < spec.values.length; step += 1) {
+      settings = cycleMuxstoneGlobalSetting(settings, spec.id, 1);
+    }
+    assertEquals(settings[spec.id], defaults[spec.id], `${spec.id} should wrap back to its start`);
   }
 });

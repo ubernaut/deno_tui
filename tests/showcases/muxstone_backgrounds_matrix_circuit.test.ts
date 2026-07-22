@@ -398,3 +398,41 @@ Deno.test("MuxstoneCircuitField: 100 frames at 200x60 with 3 moving obstacles st
   const elapsed = performance.now() - startedAt;
   assert(elapsed < 2_500, `100 obstacle frames took ${elapsed.toFixed(1)}ms`);
 });
+
+Deno.test("MuxstoneMatrixRainField: columns fall at sharply different speeds", () => {
+  const field = new MuxstoneMatrixRainField({ seed: 99 });
+  const bounds = { column: 0, row: 0, width: 120, height: 40 };
+  // Advance long enough that many drops have respawned into fresh speed classes.
+  const speeds: number[] = [];
+  for (let frame = 0; frame < 400; frame += 1) {
+    field.advance({ bounds, obstacles: [], now: frame * 16.7 });
+    for (const drop of field.inspect().drops) speeds.push(drop.speed);
+  }
+  assert(speeds.length > 0, "expected drops to sample");
+
+  const slowest = Math.min(...speeds);
+  const fastest = Math.max(...speeds);
+  // "Significantly faster" - the quickest streaks outrun the drifters manyfold.
+  assert(fastest / slowest >= 6, `expected a wide speed spread, got ${slowest}..${fastest}`);
+
+  // The population is genuinely tiered rather than one uniform band: a clear
+  // majority drift slowly while a real minority tear down the screen.
+  // Measured on screen, not at spawn: a slow plurality with a visible minority
+  // of streaks. Thresholds sit well clear of the observed ~0.52 / ~0.19 split.
+  const drifters = speeds.filter((speed) => speed <= 0.24).length / speeds.length;
+  const streakers = speeds.filter((speed) => speed >= 0.95).length / speeds.length;
+  assert(drifters > 0.35, `expected a slow plurality, got ${drifters}`);
+  assert(streakers > 0.10, `expected a visible share of fast streaks, got ${streakers}`);
+
+  // Faster columns carry longer tails so the streaks read as motion.
+  const inspection = field.inspect().drops;
+  const fast = inspection.filter((drop) => drop.speed >= 0.95);
+  const slow = inspection.filter((drop) => drop.speed <= 0.24);
+  if (fast.length > 0 && slow.length > 0) {
+    const mean = (values: readonly number[]) => values.reduce((total, value) => total + value, 0) / values.length;
+    assert(
+      mean(fast.map((drop) => drop.tail)) > mean(slow.map((drop) => drop.tail)),
+      "fast drops should trail longer than slow ones",
+    );
+  }
+});

@@ -264,6 +264,8 @@ export interface MuxstoneWorkspaceState {
   readonly sessionHosts: Readonly<Record<string, string>>;
   /** Session id → per-window shell settings edited from the titlebar config button. */
   readonly windowSettings: Readonly<Record<string, MuxstoneWindowSettings>>;
+  /** Desktop-wide settings edited from the global config modal. */
+  readonly globalSettings: MuxstoneGlobalSettings;
 }
 
 /** Per-window shell settings owned by one terminal window. */
@@ -285,14 +287,17 @@ export interface MuxstoneWindowSettings {
 /** Identity of one configurable per-window setting. */
 export type MuxstoneWindowSettingId = keyof MuxstoneWindowSettings;
 
-/** One cycleable per-window setting, shared by the config modal and its tests. */
-export interface MuxstoneWindowSettingSpec {
-  readonly id: MuxstoneWindowSettingId;
+/** One cycleable setting, shared by the config modals and their tests. */
+export interface MuxstoneSettingSpec<TId extends string> {
+  readonly id: TId;
   readonly label: string;
   readonly detail: string;
   readonly values: readonly (boolean | number)[];
   readonly format: (value: boolean | number) => string;
 }
+
+/** One cycleable per-window setting. */
+export type MuxstoneWindowSettingSpec = MuxstoneSettingSpec<MuxstoneWindowSettingId>;
 
 const onOff = (value: boolean | number): string => (value ? "On" : "Off");
 
@@ -356,29 +361,98 @@ export function defaultMuxstoneWindowSettings(): MuxstoneWindowSettings {
 
 /** Strictly normalizes one persisted per-window settings record. */
 export function normalizeMuxstoneWindowSettings(value: unknown): MuxstoneWindowSettings {
-  const defaults = defaultMuxstoneWindowSettings();
-  if (!value || typeof value !== "object" || Array.isArray(value)) return defaults;
-  const record = value as Record<string, unknown>;
-  const resolved: Record<string, boolean | number> = { ...defaults };
-  for (const spec of MUXSTONE_WINDOW_SETTING_SPECS) {
-    const candidate = record[spec.id];
-    if (spec.values.includes(candidate as boolean | number)) resolved[spec.id] = candidate as boolean | number;
-  }
-  return Object.freeze(resolved) as unknown as MuxstoneWindowSettings;
+  return normalizeSettings(value, MUXSTONE_WINDOW_SETTING_SPECS, defaultMuxstoneWindowSettings());
 }
 
 /** Returns the next value for one setting, wrapping in the declared order. */
+function cycleSetting<TId extends string, TSettings extends Readonly<Record<TId, boolean | number>>>(
+  settings: TSettings,
+  specs: readonly MuxstoneSettingSpec<TId>[],
+  id: TId,
+  direction: number,
+): TSettings {
+  const spec = specs.find((candidate) => candidate.id === id);
+  if (!spec) return settings;
+  const current = spec.values.indexOf(settings[id]);
+  const step = Math.sign(direction) || 1;
+  const next = spec.values[(current + step + spec.values.length) % spec.values.length]!;
+  return Object.freeze({ ...settings, [id]: next }) as TSettings;
+}
+
+/** Normalizes one persisted settings record against its spec table. */
+function normalizeSettings<TId extends string, TSettings extends Readonly<Record<TId, boolean | number>>>(
+  value: unknown,
+  specs: readonly MuxstoneSettingSpec<TId>[],
+  defaults: TSettings,
+): TSettings {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return defaults;
+  const record = value as Record<string, unknown>;
+  const resolved: Record<string, boolean | number> = { ...defaults };
+  for (const spec of specs) {
+    const candidate = record[spec.id];
+    if (spec.values.includes(candidate as boolean | number)) resolved[spec.id] = candidate as boolean | number;
+  }
+  return Object.freeze(resolved) as TSettings;
+}
+
+/** Returns the next value for one per-window setting. */
 export function cycleMuxstoneWindowSetting(
   settings: MuxstoneWindowSettings,
   id: MuxstoneWindowSettingId,
   direction = 1,
 ): MuxstoneWindowSettings {
-  const spec = MUXSTONE_WINDOW_SETTING_SPECS.find((candidate) => candidate.id === id);
-  if (!spec) return settings;
-  const current = spec.values.indexOf(settings[id]);
-  const step = Math.sign(direction) || 1;
-  const next = spec.values[(current + step + spec.values.length) % spec.values.length]!;
-  return Object.freeze({ ...settings, [id]: next }) as MuxstoneWindowSettings;
+  return cycleSetting(settings, MUXSTONE_WINDOW_SETTING_SPECS, id, direction);
+}
+
+/** Desktop-wide settings edited from the global config modal. */
+export interface MuxstoneGlobalSettings {
+  /** Let the animated background reclaim windows that have lost focus. */
+  readonly overgrowInactive: boolean;
+  /** Milliseconds of idling before a window is as overgrown as it will get. */
+  readonly overgrowFullMs: number;
+}
+
+/** Identity of one configurable desktop-wide setting. */
+export type MuxstoneGlobalSettingId = keyof MuxstoneGlobalSettings;
+
+/** One cycleable desktop-wide setting. */
+export type MuxstoneGlobalSettingSpec = MuxstoneSettingSpec<MuxstoneGlobalSettingId>;
+
+/** Ordered desktop-wide settings presented by the global config modal. */
+export const MUXSTONE_GLOBAL_SETTING_SPECS: readonly MuxstoneGlobalSettingSpec[] = Object.freeze([
+  Object.freeze({
+    id: "overgrowInactive" as const,
+    label: "Overgrow inactive windows",
+    detail: "Jungle, matrix and circuit creep over windows that lose focus.",
+    values: Object.freeze([true, false]),
+    format: onOff,
+  }),
+  Object.freeze({
+    id: "overgrowFullMs" as const,
+    label: "Overgrow time",
+    detail: "How long a window idles before it is as overgrown as it gets.",
+    values: Object.freeze([240_000, 120_000, 60_000, 30_000]),
+    format: (value: boolean | number) => `${Math.round(Number(value) / 1000)}s`,
+  }),
+]) as readonly MuxstoneGlobalSettingSpec[];
+
+/** Factory defaults for desktop-wide settings. */
+export function defaultMuxstoneGlobalSettings(): MuxstoneGlobalSettings {
+  return Object.freeze({ overgrowInactive: true, overgrowFullMs: 120_000 });
+}
+
+/** Strictly normalizes persisted desktop-wide settings. */
+export function normalizeMuxstoneGlobalSettings(value: unknown): MuxstoneGlobalSettings {
+  return normalizeSettings(value, MUXSTONE_GLOBAL_SETTING_SPECS, defaultMuxstoneGlobalSettings());
+}
+
+/** Returns the next value for one desktop-wide setting. */
+export function cycleMuxstoneGlobalSetting(
+  settings: MuxstoneGlobalSettings,
+  id: MuxstoneGlobalSettingId,
+  direction = 1,
+): MuxstoneGlobalSettings {
+  return cycleSetting(settings, MUXSTONE_GLOBAL_SETTING_SPECS, id, direction);
 }
 
 /** Maximum remembered SSH targets persisted with the workspace. */
@@ -480,6 +554,7 @@ export function normalizeMuxstoneWorkspaceState(value: unknown): MuxstoneWorkspa
     backgroundId: muxstoneBackgroundId(record.backgroundId),
     sessionHosts: Object.freeze(sessionHosts),
     windowSettings: Object.freeze(windowSettings),
+    globalSettings: normalizeMuxstoneGlobalSettings(record.globalSettings),
   });
 }
 
@@ -493,6 +568,7 @@ export function initialMuxstoneWorkspaceState(): MuxstoneWorkspaceState {
     backgroundId: "metaballs" as const,
     sessionHosts: Object.freeze({}),
     windowSettings: Object.freeze({}),
+    globalSettings: defaultMuxstoneGlobalSettings(),
   });
 }
 

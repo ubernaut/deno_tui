@@ -28,12 +28,15 @@ import {
   type TailnetStatusSource,
 } from "./tailnet.ts";
 import {
+  cycleMuxstoneGlobalSetting,
   cycleMuxstoneWindowSetting,
+  defaultMuxstoneGlobalSettings,
   defaultMuxstoneWindowSettings,
   initialMuxstoneWorkspaceState,
   isMuxstoneSessionId,
   isMuxstoneSshTarget,
   MUXSTONE_BACKGROUND_IDS,
+  MUXSTONE_GLOBAL_SETTING_SPECS,
   MUXSTONE_MANIFEST,
   MUXSTONE_MAX_COLUMNS,
   MUXSTONE_MAX_ROWS,
@@ -41,13 +44,17 @@ import {
   MUXSTONE_THEMES,
   MUXSTONE_WINDOW_SETTING_SPECS,
   type MuxstoneBackgroundId,
+  muxstoneBackgroundId,
   type MuxstoneClientPort,
   type MuxstoneControllerInspection,
+  type MuxstoneGlobalSettingId,
+  type MuxstoneGlobalSettings,
   type MuxstoneOutputFrame,
   muxstoneSessionIdFromWindow,
   type MuxstoneSessionSummary,
   type MuxstoneSpawnOptions,
   muxstoneTheme,
+  type MuxstoneThemeId,
   type MuxstoneThemeSpec,
   muxstoneWindowId,
   type MuxstoneWindowSettingId,
@@ -58,6 +65,12 @@ import {
 
 /** Stable host-manager window shown alongside terminal windows. */
 export const MUXSTONE_SESSIONS_WINDOW_ID = "sessions" as const;
+
+/** Focusable panes inside the global config modal, in Tab order. */
+export const MUXSTONE_GLOBAL_CONFIG_PANES = Object.freeze(["theme", "background", "options"] as const);
+
+/** One focusable pane inside the global config modal. */
+export type MuxstoneGlobalConfigPane = (typeof MUXSTONE_GLOBAL_CONFIG_PANES)[number];
 
 /** Network tree node id for one saved SSH host entry. */
 export function muxstoneNetworkHostNodeId(target: string): string {
@@ -325,6 +338,14 @@ export class MuxstoneController {
   readonly configSessionId = new Signal<string | undefined>(undefined);
   /** Highlighted row inside the per-window config modal. */
   readonly configRowIndex = new Signal(0);
+  /** Desktop-wide settings edited from the global config modal. */
+  readonly globalSettings = new Signal<MuxstoneGlobalSettings>(defaultMuxstoneGlobalSettings());
+  /** Whether the global config modal is open. */
+  readonly globalConfigVisible = new Signal(false);
+  /** Focused pane inside the global config modal. */
+  readonly globalConfigPane = new Signal<MuxstoneGlobalConfigPane>("theme");
+  /** Highlighted option row inside the global config modal. */
+  readonly globalConfigOptionIndex = new Signal(0);
   /** Pending paste-to-scp confirmation; non-undefined opens the transfer modal. */
   readonly pendingScp = new Signal<MuxstoneScpRequest | undefined>(undefined);
   /** Hierarchical Hosts/Tailscale browser state, driven by the shared workbench tree widget. */
@@ -522,6 +543,96 @@ export class MuxstoneController {
     const runtime = this.#runtimes.get(sessionId);
     if (!runtime) return;
     runtime.screen.setScrollbackLimit(settings.scrollbackLimit);
+  }
+
+  /** Selects one theme by id and persists it. */
+  setTheme(id: MuxstoneThemeId): MuxstoneThemeSpec {
+    this.#assertActive();
+    const theme = muxstoneTheme(id);
+    if (theme.id !== this.themeId.peek()) {
+      this.themeId.value = theme.id;
+      this.themeRevision.value += 1;
+      for (const runtime of this.#runtimes.values()) runtime.renderRevision.value += 1;
+      this.#persistMetadata();
+    }
+    this.status.value = `Theme: ${theme.label}`;
+    return theme;
+  }
+
+  /** Selects one animated desktop background by id and persists it. */
+  setBackground(id: MuxstoneBackgroundId): MuxstoneBackgroundId {
+    this.#assertActive();
+    const next = muxstoneBackgroundId(id);
+    if (next !== this.backgroundId.peek()) {
+      this.backgroundId.value = next;
+      this.themeRevision.value += 1;
+      this.#persistMetadata();
+    }
+    this.status.value = `Background: ${next}`;
+    return next;
+  }
+
+  /** Opens the desktop-wide config modal. */
+  openGlobalConfig(): void {
+    this.#assertActive();
+    this.prefixPending.value = false;
+    this.helpVisible.value = false;
+    this.pendingKillSessionId.value = undefined;
+    this.configSessionId.value = undefined;
+    this.globalConfigPane.value = "theme";
+    this.globalConfigOptionIndex.value = 0;
+    this.globalConfigVisible.value = true;
+    this.status.value = "Settings · Tab pane · ↑↓ choose · ←→ change · Escape close";
+  }
+
+  /** Closes the desktop-wide config modal. */
+  closeGlobalConfig(): void {
+    if (this.#disposed) return;
+    this.globalConfigVisible.value = false;
+    this.status.value = this.#statusSummary();
+  }
+
+  /** Moves focus between the theme, background and options panes. */
+  moveGlobalConfigPane(delta: number): MuxstoneGlobalConfigPane {
+    if (this.#disposed) return this.globalConfigPane.peek();
+    const panes = MUXSTONE_GLOBAL_CONFIG_PANES;
+    const current = panes.indexOf(this.globalConfigPane.peek());
+    const next = panes[(Math.max(0, current) + Math.trunc(delta) + panes.length) % panes.length]!;
+    this.globalConfigPane.value = next;
+    return next;
+  }
+
+  /** Moves the selection inside the focused pane, applying list picks live. */
+  moveGlobalConfigSelection(delta: number): void {
+    if (this.#disposed) return;
+    const step = Math.trunc(delta);
+    if (step === 0) return;
+    switch (this.globalConfigPane.peek()) {
+      case "theme":
+        this.cycleTheme(step > 0 ? 1 : -1);
+        return;
+      case "background":
+        this.cycleBackground(step > 0 ? 1 : -1);
+        return;
+      case "options": {
+        const count = MUXSTONE_GLOBAL_SETTING_SPECS.length;
+        this.globalConfigOptionIndex.value = (this.globalConfigOptionIndex.peek() + step + count) % count;
+        return;
+      }
+    }
+  }
+
+  /** Cycles one desktop-wide setting and persists it. */
+  cycleGlobalSetting(id: MuxstoneGlobalSettingId, direction = 1): MuxstoneGlobalSettings {
+    const current = this.globalSettings.peek();
+    if (this.#disposed) return current;
+    const next = cycleMuxstoneGlobalSetting(current, id, direction);
+    this.globalSettings.value = next;
+    this.themeRevision.value += 1;
+    this.#persistMetadata();
+    const spec = MUXSTONE_GLOBAL_SETTING_SPECS.find((candidate) => candidate.id === id);
+    if (spec) this.status.value = `${spec.label}: ${spec.format(next[id])}`;
+    return next;
   }
 
   /** Arms the tmux-style Ctrl-N prefix without forwarding it to a child. */
@@ -1278,6 +1389,7 @@ export class MuxstoneController {
     this.sessionHosts.value = restored.sessionHosts;
     this.backgroundId.value = restored.backgroundId;
     this.windowSettings.value = restored.windowSettings;
+    this.globalSettings.value = restored.globalSettings;
     for (const [sessionId, settings] of Object.entries(restored.windowSettings)) {
       this.#applyWindowSettings(sessionId, settings);
     }
@@ -1527,6 +1639,7 @@ export class MuxstoneController {
       backgroundId: this.backgroundId.peek(),
       sessionHosts,
       windowSettings,
+      globalSettings: this.globalSettings.peek(),
     });
   }
 

@@ -43,6 +43,9 @@ import {
   type MuxstoneTerminalRuntime,
 } from "./controller.ts";
 import {
+  MUXSTONE_BACKGROUND_IDS,
+  MUXSTONE_GLOBAL_SETTING_SPECS,
+  MUXSTONE_THEMES,
   MUXSTONE_WINDOW_SETTING_SPECS,
   type MuxstoneBackgroundId,
   type MuxstoneRgb,
@@ -53,6 +56,12 @@ import {
   type MuxstoneWindowSettings,
 } from "./model.ts";
 import { textWidth } from "../../../src/utils/strings.ts";
+import {
+  muxstoneBackgroundOvergrows,
+  muxstoneOvergrowthCovers,
+  muxstoneOvergrowthRatio,
+  MuxstoneOvergrowthTracker,
+} from "./overgrowth.ts";
 import { MuxstoneOperationQueue } from "./operation_queue.ts";
 import { MUXSTONE_PROTOCOL_LIMITS } from "./protocol.ts";
 import {
@@ -142,9 +151,8 @@ const SESSION_LIST_START = 3;
 const MENU_NEW = Object.freeze({ column: 12, row: 0, width: 7, height: 1 });
 const MENU_NETWORK = Object.freeze({ column: 22, row: 0, width: 11, height: 1 });
 const MENU_SESSIONS = Object.freeze({ column: 36, row: 0, width: 12, height: 1 });
-const MENU_THEME = Object.freeze({ column: 51, row: 0, width: 9, height: 1 });
-const MENU_BACKGROUND = Object.freeze({ column: 63, row: 0, width: 6, height: 1 });
-const MENU_HELP = Object.freeze({ column: 72, row: 0, width: 8, height: 1 });
+const MENU_CONFIG = Object.freeze({ column: 51, row: 0, width: 10, height: 1 });
+const MENU_HELP = Object.freeze({ column: 64, row: 0, width: 8, height: 1 });
 const MENU_QUIT_WIDTH = 5;
 const NETWORK_LIST_START = 1;
 const MAX_TOUCH_GESTURES = 8;
@@ -162,7 +170,7 @@ export function muxstoneMetaballsMayAdvance(
   return !hasPendingBarrier && now - lastInputActivityAt >= MUXSTONE_METABALL_FRAME_INTERVAL_MS;
 }
 
-type MuxstoneMenuId = "new" | "network" | "sessions" | "theme" | "background" | "help" | "quit";
+type MuxstoneMenuId = "new" | "network" | "sessions" | "config" | "help" | "quit";
 
 function menuQuitRect(bounds: Rectangle): Rectangle {
   return {
@@ -551,10 +559,48 @@ export function mountMuxstoneDesktop(
     terminalRenderSubscriptions.clear();
   });
 
+  const overgrowthTracker = new MuxstoneOvergrowthTracker();
+  let overgrowthRatios: ReadonlyMap<string, number> = new Map();
+
+  /** True when the active background reclaims idle windows and the user wants it. */
+  const overgrowthEnabled = (): boolean =>
+    controller.globalSettings.peek().overgrowInactive &&
+    muxstoneBackgroundOvergrows(controller.backgroundId.peek());
+
+  /** Recomputes per-window reclaim ratios; returns true when any of them moved. */
+  const syncOvergrowth = (
+    projection: WorkbenchWindowHostProjection,
+    activeWindowId: string | undefined,
+    now: number,
+  ): boolean => {
+    if (!overgrowthEnabled()) {
+      if (overgrowthRatios.size === 0) return false;
+      overgrowthTracker.clear();
+      overgrowthRatios = new Map();
+      return true;
+    }
+    const fullMs = controller.globalSettings.peek().overgrowFullMs;
+    overgrowthTracker.sync(projection.windows.map((window) => window.id), activeWindowId, now);
+    const next = new Map<string, number>();
+    let changed = overgrowthRatios.size !== 0 && projection.windows.length === 0;
+    for (const window of projection.windows) {
+      const ratio = muxstoneOvergrowthRatio(overgrowthTracker.idleMs(window.id, now), fullMs);
+      if (ratio > 0) next.set(window.id, ratio);
+      // Quantize the comparison so only visible steps trigger a repaint.
+      const before = Math.round((overgrowthRatios.get(window.id) ?? 0) * 64);
+      if (before !== Math.round(ratio * 64)) changed = true;
+    }
+    overgrowthRatios = next;
+    return changed;
+  };
+
   const animateMetaballs = (): void => {
     if (disposed || !app.started) return;
     const projection = windowProjection.peek();
-    if (!muxstoneMetaballBackgroundVisible(projection, bodyRect.peek())) return;
+    // Overgrowth keeps advancing even when windows fully occlude the desktop —
+    // that is precisely the case where the background is creeping over them.
+    const backdropVisible = muxstoneMetaballBackgroundVisible(projection, bodyRect.peek());
+    if (!backdropVisible && !overgrowthEnabled()) return;
     const now = performance.now();
     if (!muxstoneMetaballsMayAdvance(now, lastInputActivityAt, operationQueue.hasPendingBarrier())) return;
     const activeWindowId = controller.windowHost.controller.inspect().activeWindowId;
@@ -566,7 +612,7 @@ export function mountMuxstoneDesktop(
       now,
     };
     const advanced = activeBackgroundField()?.advance(frame) ?? metaballs.advance(frame);
-    if (advanced) metaballRevision.value += 1;
+    if (advanced || syncOvergrowth(projection, activeWindowId, now)) metaballRevision.value += 1;
   };
   const metaballTimer = setInterval(animateMetaballs, MUXSTONE_METABALL_FRAME_INTERVAL_MS);
   unsubscribers.push(() => clearInterval(metaballTimer));
@@ -622,6 +668,7 @@ export function mountMuxstoneDesktop(
         selectedSessionIndex: selectedSessionIndex.peek(),
         metaballs,
         backgroundField: activeBackgroundField(),
+        ...(overgrowthRatios.size > 0 ? { overgrowth: { ratios: overgrowthRatios } } : {}),
       }),
   });
   void desktop;
@@ -632,7 +679,7 @@ export function mountMuxstoneDesktop(
   const modalOpen = (): boolean =>
     controller.helpVisible.peek() || controller.pendingKillSessionId.peek() !== undefined ||
     controller.quitModalVisible.peek() || controller.pendingScp.peek() !== undefined ||
-    controller.configSessionId.peek() !== undefined;
+    controller.configSessionId.peek() !== undefined || controller.globalConfigVisible.peek();
 
   let exitRequested = false;
   const requestClientExit = (terminateHost: boolean): void => {
@@ -666,11 +713,8 @@ export function mountMuxstoneDesktop(
       case "network":
         controller.toggleNetworkPanel(bodyRect.peek());
         break;
-      case "theme":
-        controller.cycleTheme();
-        break;
-      case "background":
-        controller.cycleBackground();
+      case "config":
+        controller.openGlobalConfig();
         break;
       case "help":
         controller.openHelp();
@@ -843,6 +887,35 @@ export function mountMuxstoneDesktop(
       if (contains(layout.terminateRect, column, row)) requestClientExit(true);
       else if (contains(layout.detachRect, column, row)) requestClientExit(false);
       else if (contains(layout.cancelRect, column, row)) controller.cancelQuitModal();
+      return true;
+    }
+    if (controller.globalConfigVisible.peek()) {
+      const themeIndex = Math.max(0, MUXSTONE_THEMES.findIndex((entry) => entry.id === controller.themeId.peek()));
+      const backgroundIndex = Math.max(0, MUXSTONE_BACKGROUND_IDS.indexOf(controller.backgroundId.peek()));
+      const layout = muxstoneGlobalConfigLayout(windowProjection.peek().bounds, themeIndex, backgroundIndex);
+      if (contains(layout.closeRect, column, row)) {
+        controller.closeGlobalConfig();
+        return true;
+      }
+      for (const entry of layout.themeRows) {
+        if (!contains(entry.rect, column, row)) continue;
+        controller.globalConfigPane.value = "theme";
+        controller.setTheme(MUXSTONE_THEMES[entry.index]!.id);
+        return true;
+      }
+      for (const entry of layout.backgroundRows) {
+        if (!contains(entry.rect, column, row)) continue;
+        controller.globalConfigPane.value = "background";
+        controller.setBackground(MUXSTONE_BACKGROUND_IDS[entry.index]!);
+        return true;
+      }
+      for (let index = 0; index < layout.optionRows.length; index += 1) {
+        if (!contains(layout.optionRows[index]!, column, row)) continue;
+        controller.globalConfigPane.value = "options";
+        controller.globalConfigOptionIndex.value = index;
+        controller.cycleGlobalSetting(MUXSTONE_GLOBAL_SETTING_SPECS[index]!.id, 1);
+        return true;
+      }
       return true;
     }
     const configSessionId = controller.configSessionId.peek();
@@ -1419,10 +1492,7 @@ export function mountMuxstoneDesktop(
   unsubscribers.push(
     registerMenuTarget(app, "sessions", MENU_SESSIONS, () => activateMenu("sessions"), modalOpen),
   );
-  unsubscribers.push(registerMenuTarget(app, "theme", MENU_THEME, () => activateMenu("theme"), modalOpen));
-  unsubscribers.push(
-    registerMenuTarget(app, "background", MENU_BACKGROUND, () => activateMenu("background"), modalOpen),
-  );
+  unsubscribers.push(registerMenuTarget(app, "config", MENU_CONFIG, () => activateMenu("config"), modalOpen));
   unsubscribers.push(registerMenuTarget(app, "help", MENU_HELP, () => activateMenu("help"), modalOpen));
   unsubscribers.push(
     registerMenuTarget(
@@ -1486,6 +1556,28 @@ export function mountMuxstoneDesktop(
         requestClientExit(false);
       } else if (event.key.toLowerCase() === "t") {
         requestClientExit(true);
+      }
+      return;
+    }
+    if (controller.globalConfigVisible.peek()) {
+      const optionId = MUXSTONE_GLOBAL_SETTING_SPECS[controller.globalConfigOptionIndex.peek()]?.id;
+      const inOptions = controller.globalConfigPane.peek() === "options";
+      if (event.key === "escape" || event.key.toLowerCase() === "q") {
+        controller.closeGlobalConfig();
+      } else if (event.key === "tab") {
+        controller.moveGlobalConfigPane(event.shift ? -1 : 1);
+      } else if (event.key === "up") {
+        controller.moveGlobalConfigSelection(-1);
+      } else if (event.key === "down") {
+        controller.moveGlobalConfigSelection(1);
+      } else if (event.key === "left") {
+        if (inOptions && optionId) controller.cycleGlobalSetting(optionId, -1);
+        else controller.moveGlobalConfigPane(-1);
+      } else if (event.key === "right") {
+        if (inOptions && optionId) controller.cycleGlobalSetting(optionId, 1);
+        else controller.moveGlobalConfigPane(1);
+      } else if ((event.key === "return" || event.key === "space") && inOptions && optionId) {
+        controller.cycleGlobalSetting(optionId, 1);
       }
       return;
     }
@@ -1929,6 +2021,7 @@ interface RenderMuxstoneDesktopOptions {
   selectedSessionIndex: number;
   metaballs: MuxstoneMetaballField;
   backgroundField?: MuxstoneAnimatedBackground;
+  overgrowth?: MuxstoneOvergrowthPass;
 }
 
 /** The desktop effect remains visible unless a terminal owns the maximized surface. */
@@ -1971,12 +2064,7 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
     background: theme.surfaceStrong,
     bold: true,
   });
-  painter.write(MENU_THEME.column, 0, "[ Theme ]", {
-    foreground: theme.text,
-    background: theme.surfaceStrong,
-    bold: true,
-  });
-  painter.write(MENU_BACKGROUND.column, 0, "[ BG ]", {
+  painter.write(MENU_CONFIG.column, 0, "[ Config ]", {
     foreground: theme.text,
     background: theme.surfaceStrong,
     bold: true,
@@ -2015,8 +2103,11 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
     },
   );
   painter.fill(body, " ", { foreground: theme.text, background: theme.background });
+  // One rasterization serves both the desktop backdrop and the overgrowth pass,
+  // so reclaimed cells line up exactly with the background behind the window.
+  const backgroundGrid = options.backgroundField?.rasterizeCells(body, theme);
   if (muxstoneMetaballBackgroundVisible(projection, body)) {
-    if (options.backgroundField) paintAnimatedBackground(painter, body, options.backgroundField, theme);
+    if (backgroundGrid) paintBackgroundGrid(painter, body, backgroundGrid, theme);
     else paintMetaballBackground(painter, body, options.metaballs, theme);
   }
 
@@ -2031,6 +2122,9 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
   }
   for (const window of projection.floatingWindows) {
     paintWindow(painter, window, controller, options.selectedSessionIndex);
+  }
+  if (backgroundGrid && options.overgrowth) {
+    paintOvergrowth(painter, body, backgroundGrid, theme, projection, options.overgrowth);
   }
   paintTerminalBar(
     painter,
@@ -2056,6 +2150,7 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
   if (scpRequest) paintScpModal(painter, projection, theme, scpRequest);
   const configSessionId = controller.configSessionId.peek();
   if (configSessionId) paintWindowConfigModal(painter, projection, theme, controller, configSessionId);
+  if (controller.globalConfigVisible.peek()) paintGlobalConfigModal(painter, projection, theme, controller);
   const pendingKillSessionId = controller.pendingKillSessionId.peek();
   if (pendingKillSessionId) paintKillConfirmation(painter, projection, controller, pendingKillSessionId);
 
@@ -2081,13 +2176,52 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
   return painter.rows;
 }
 
-function paintAnimatedBackground(
+/** Per-window reclaim ratios handed to the overgrowth pass. */
+export interface MuxstoneOvergrowthPass {
+  /** Window id → reclaim ratio in [0, 1]; absent or 0 leaves the window intact. */
+  readonly ratios: ReadonlyMap<string, number>;
+}
+
+/**
+ * Redraws background cells over windows that have lost focus. Only the client
+ * area is reclaimed — chrome stays legible so an overgrown window can still be
+ * found and clicked back to life.
+ */
+function paintOvergrowth(
   painter: DesktopPainter,
   bounds: Rectangle,
-  field: MuxstoneAnimatedBackground,
+  grid: ReturnType<MuxstoneAnimatedBackground["rasterizeCells"]>,
+  theme: MuxstoneThemeSpec,
+  projection: WorkbenchWindowHostProjection,
+  pass: MuxstoneOvergrowthPass,
+): void {
+  for (const window of projection.windows) {
+    const ratio = pass.ratios.get(window.id) ?? 0;
+    if (ratio <= 0) continue;
+    const client = window.clientRect;
+    for (let row = client.row; row < client.row + client.height; row += 1) {
+      const gridRow = grid[row - bounds.row];
+      if (!gridRow) continue;
+      for (let column = client.column; column < client.column + client.width; column += 1) {
+        const cell = gridRow[column - bounds.column];
+        if (!cell) continue;
+        if (!muxstoneOvergrowthCovers(column, row, client, ratio)) continue;
+        painter.write(column, row, cell.char, {
+          foreground: cell.foreground,
+          background: theme.background,
+          ...(cell.bold ? { bold: true } : {}),
+        });
+      }
+    }
+  }
+}
+
+function paintBackgroundGrid(
+  painter: DesktopPainter,
+  bounds: Rectangle,
+  grid: ReturnType<MuxstoneAnimatedBackground["rasterizeCells"]>,
   theme: MuxstoneThemeSpec,
 ): void {
-  const grid = field.rasterizeCells(bounds, theme);
   for (let row = 0; row < grid.length; row += 1) {
     const cells = grid[row]!;
     for (let column = 0; column < cells.length; column += 1) {
@@ -2620,6 +2754,176 @@ export function muxstoneQuitLayout(bounds: Rectangle): MuxstoneQuitLayout {
   };
 }
 
+/** Layout for the global config modal; exported for deterministic pointer tests. */
+export interface MuxstoneGlobalConfigLayout {
+  readonly rect: Rectangle;
+  /** Visible theme rows, paired with the theme index each row shows. */
+  readonly themeRows: readonly { readonly rect: Rectangle; readonly index: number }[];
+  /** Visible background rows, paired with the background index each row shows. */
+  readonly backgroundRows: readonly { readonly rect: Rectangle; readonly index: number }[];
+  /** One hit row per entry in MUXSTONE_GLOBAL_SETTING_SPECS, in declaration order. */
+  readonly optionRows: readonly Rectangle[];
+  readonly closeRect: Rectangle;
+}
+
+/** Scrolls a select list so the selected row stays visible. */
+function selectListStart(selected: number, total: number, visible: number): number {
+  if (total <= visible) return 0;
+  return clampNumber(selected - Math.floor(visible / 2), 0, total - visible);
+}
+
+function clampNumber(value: number, low: number, high: number): number {
+  return Math.max(low, Math.min(high, value));
+}
+
+/** Layout for the global config modal; exported for deterministic pointer tests. */
+export function muxstoneGlobalConfigLayout(
+  bounds: Rectangle,
+  themeIndex: number,
+  backgroundIndex: number,
+): MuxstoneGlobalConfigLayout {
+  const width = Math.min(78, Math.max(52, bounds.width - 6));
+  const optionCount = MUXSTONE_GLOBAL_SETTING_SPECS.length;
+  // Frame + title + headers + lists + gap + options + buttons + frame.
+  const desired = MUXSTONE_THEMES.length + optionCount + 6;
+  const height = Math.min(Math.max(12, bounds.height - 2), desired);
+  const rect = centeredRect(bounds, width, height);
+  const listTop = rect.row + 2;
+  const visibleRows = Math.max(1, rect.height - optionCount - 5);
+  const columnWidth = Math.max(8, Math.floor((rect.width - 5) / 2));
+  const themeStart = selectListStart(themeIndex, MUXSTONE_THEMES.length, visibleRows);
+  const backgroundStart = selectListStart(backgroundIndex, MUXSTONE_BACKGROUND_IDS.length, visibleRows);
+  const themeRows: { rect: Rectangle; index: number }[] = [];
+  const backgroundRows: { rect: Rectangle; index: number }[] = [];
+  for (let offset = 0; offset < visibleRows; offset += 1) {
+    const row = listTop + offset;
+    if (themeStart + offset < MUXSTONE_THEMES.length) {
+      themeRows.push({
+        rect: { column: rect.column + 2, row, width: columnWidth, height: 1 },
+        index: themeStart + offset,
+      });
+    }
+    if (backgroundStart + offset < MUXSTONE_BACKGROUND_IDS.length) {
+      backgroundRows.push({
+        rect: { column: rect.column + 3 + columnWidth, row, width: columnWidth, height: 1 },
+        index: backgroundStart + offset,
+      });
+    }
+  }
+  const optionTop = rect.row + rect.height - optionCount - 2;
+  const optionRows: Rectangle[] = [];
+  for (let index = 0; index < optionCount; index += 1) {
+    optionRows.push({ column: rect.column + 2, row: optionTop + index, width: Math.max(0, rect.width - 4), height: 1 });
+  }
+  return {
+    rect,
+    themeRows,
+    backgroundRows,
+    optionRows,
+    closeRect: {
+      column: rect.column + Math.max(2, rect.width - 11),
+      row: rect.row + rect.height - 1,
+      width: 9,
+      height: 1,
+    },
+  };
+}
+
+function paintGlobalConfigModal(
+  painter: DesktopPainter,
+  projection: WorkbenchWindowHostProjection,
+  theme: MuxstoneThemeSpec,
+  controller: MuxstoneController,
+): void {
+  const themeIndex = Math.max(0, MUXSTONE_THEMES.findIndex((entry) => entry.id === controller.themeId.peek()));
+  const backgroundIndex = Math.max(0, MUXSTONE_BACKGROUND_IDS.indexOf(controller.backgroundId.peek()));
+  const layout = muxstoneGlobalConfigLayout(projection.bounds, themeIndex, backgroundIndex);
+  const { rect, themeRows, backgroundRows, optionRows, closeRect } = layout;
+  const pane = controller.globalConfigPane.peek();
+  const settings = controller.globalSettings.peek();
+  const optionIndex = controller.globalConfigOptionIndex.peek();
+
+  painter.fill(rect, " ", { foreground: theme.text, background: theme.surfaceStrong });
+  painter.frame(rect, "#", { foreground: theme.accent, background: theme.surfaceStrong, bold: true });
+  painter.write(rect.column + 2, rect.row, " Muxstone settings ", {
+    foreground: theme.background,
+    background: theme.accent,
+    bold: true,
+  });
+
+  const columnWidth = themeRows[0]?.rect.width ?? Math.max(8, Math.floor((rect.width - 5) / 2));
+  const headerRow = rect.row + 1;
+  const header = (column: number, text: string, focused: boolean) => {
+    painter.write(column, headerRow, fitText(text, columnWidth), {
+      foreground: focused ? theme.accent : theme.muted,
+      background: theme.surfaceStrong,
+      bold: focused,
+    });
+  };
+  header(rect.column + 2, "Theme", pane === "theme");
+  header(rect.column + 3 + columnWidth, "Background", pane === "background");
+
+  const paintRow = (rowRect: Rectangle, label: string, selected: boolean, focused: boolean) => {
+    painter.fill(rowRect, " ", {
+      foreground: selected ? theme.background : theme.text,
+      background: selected ? (focused ? theme.accent : theme.surface) : theme.surfaceStrong,
+      bold: selected,
+    });
+    painter.write(rowRect.column, rowRect.row, fitText(`${selected ? ">" : " "} ${label}`, rowRect.width), {
+      foreground: selected ? (focused ? theme.background : theme.accent) : theme.text,
+      background: selected ? (focused ? theme.accent : theme.surface) : theme.surfaceStrong,
+      bold: selected,
+    });
+  };
+  for (const row of themeRows) {
+    paintRow(row.rect, MUXSTONE_THEMES[row.index]!.label, row.index === themeIndex, pane === "theme");
+  }
+  for (const row of backgroundRows) {
+    const id = MUXSTONE_BACKGROUND_IDS[row.index]!;
+    const grows = muxstoneBackgroundOvergrows(id) ? " *" : "";
+    paintRow(row.rect, `${id}${grows}`, row.index === backgroundIndex, pane === "background");
+  }
+
+  for (let index = 0; index < optionRows.length; index += 1) {
+    const rowRect = optionRows[index]!;
+    const spec = MUXSTONE_GLOBAL_SETTING_SPECS[index]!;
+    const focused = pane === "options" && index === optionIndex;
+    const value = spec.format(settings[spec.id]);
+
+    const valueColumn = rowRect.column + Math.max(0, rowRect.width - textWidth(value) - 1);
+    painter.fill(rowRect, " ", {
+      foreground: focused ? theme.background : theme.text,
+      background: focused ? theme.accent : theme.surfaceStrong,
+      bold: focused,
+    });
+    painter.write(
+      rowRect.column,
+      rowRect.row,
+      fitText(`${focused ? ">" : " "} ${spec.label}`, Math.max(0, valueColumn - rowRect.column - 1)),
+      {
+        foreground: focused ? theme.background : theme.text,
+        background: focused ? theme.accent : theme.surfaceStrong,
+        bold: focused,
+      },
+    );
+    painter.write(valueColumn, rowRect.row, value, {
+      foreground: focused ? theme.background : theme.accent,
+      background: focused ? theme.accent : theme.surfaceStrong,
+      bold: true,
+    });
+  }
+
+  painter.write(rect.column + 2, rect.row + rect.height - 1, fitText(" * overgrows idle windows ", rect.width - 14), {
+    foreground: theme.muted,
+    background: theme.surfaceStrong,
+  });
+  painter.write(closeRect.column, closeRect.row, "[ Close ]", {
+    foreground: theme.background,
+    background: theme.accent,
+    bold: true,
+  });
+}
+
 /** Layout for the per-window config modal; exported for deterministic pointer tests. */
 export interface MuxstoneWindowConfigLayout {
   readonly rect: Rectangle;
@@ -3034,8 +3338,7 @@ function menuAt(column: number, row: number, coarse: boolean, bounds: Rectangle)
     ["new", MENU_NEW],
     ["network", MENU_NETWORK],
     ["sessions", MENU_SESSIONS],
-    ["theme", MENU_THEME],
-    ["background", MENU_BACKGROUND],
+    ["config", MENU_CONFIG],
     ["help", MENU_HELP],
     ["quit", menuQuitRect(bounds)],
   ] as const;
@@ -3053,10 +3356,8 @@ function menuRect(id: MuxstoneMenuId, bounds: Rectangle): Rectangle {
       return MENU_NETWORK;
     case "sessions":
       return MENU_SESSIONS;
-    case "theme":
-      return MENU_THEME;
-    case "background":
-      return MENU_BACKGROUND;
+    case "config":
+      return MENU_CONFIG;
     case "help":
       return MENU_HELP;
     case "quit":

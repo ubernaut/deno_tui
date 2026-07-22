@@ -17,6 +17,23 @@ const POINTER_REACH_COLUMNS = 6;
 const POINTER_SPEED_MULTIPLIER = 2;
 const MIN_TAIL_CELLS = 4;
 const MAX_TAIL_CELLS = 18;
+
+/**
+ * Speed classes for falling columns. A uniform spread made every column drift
+ * at much the same rate; tiering it keeps a slow-drifting majority while a few
+ * streakers tear down the screen roughly an order of magnitude faster.
+ *
+ * Weights are spawn probabilities, not the mix you see: a streaker clears the
+ * screen in a fraction of a drifter's lifetime, so it occupies its column for
+ * proportionally less time. The fast weight is skewed well above its intended
+ * on-screen share to compensate.
+ */
+const MATRIX_SPEED_CLASSES: readonly { readonly weight: number; readonly low: number; readonly high: number }[] = Object
+  .freeze([
+    Object.freeze({ weight: 0.28, low: 0.09, high: 0.24 }), // drifters
+    Object.freeze({ weight: 0.27, low: 0.30, high: 0.62 }), // mid field
+    Object.freeze({ weight: 0.45, low: 0.95, high: 1.90 }), // streakers
+  ]);
 const DROPS_PER_COLUMN = 1.1;
 const CELLS_PER_GLYPH_MUTATION = 70;
 
@@ -200,11 +217,12 @@ export class MuxstoneMatrixRainField implements MuxstoneAnimatedBackground {
   }
 
   #createDrop(bounds: Rectangle): MatrixDrop {
+    const speed = this.#rollSpeed();
     return {
       column: Math.floor(this.#random() * bounds.width),
       y: -this.#random() * bounds.height,
-      speed: 0.16 + this.#random() * 0.34,
-      tail: MIN_TAIL_CELLS + Math.floor(this.#random() * (MAX_TAIL_CELLS - MIN_TAIL_CELLS + 1)),
+      speed,
+      tail: this.#rollTail(speed),
       boost: 0,
     };
   }
@@ -212,9 +230,30 @@ export class MuxstoneMatrixRainField implements MuxstoneAnimatedBackground {
   #respawnDrop(drop: MatrixDrop, bounds: Rectangle): void {
     drop.column = Math.floor(this.#random() * bounds.width);
     drop.y = -(1 + this.#random() * bounds.height * 0.6);
-    drop.speed = 0.16 + this.#random() * 0.34;
-    drop.tail = MIN_TAIL_CELLS + Math.floor(this.#random() * (MAX_TAIL_CELLS - MIN_TAIL_CELLS + 1));
+    drop.speed = this.#rollSpeed();
+    drop.tail = this.#rollTail(drop.speed);
     drop.boost = 0;
+  }
+
+  /** Draws a fall rate from the weighted speed classes. */
+  #rollSpeed(): number {
+    let roll = this.#random();
+    for (const speedClass of MATRIX_SPEED_CLASSES) {
+      if (roll < speedClass.weight) {
+        return speedClass.low + this.#random() * (speedClass.high - speedClass.low);
+      }
+      roll -= speedClass.weight;
+    }
+    const last = MATRIX_SPEED_CLASSES[MATRIX_SPEED_CLASSES.length - 1]!;
+    return last.low + this.#random() * (last.high - last.low);
+  }
+
+  /** Faster columns stretch longer tails, so streaks read as motion not noise. */
+  #rollTail(speed: number): number {
+    const span = MAX_TAIL_CELLS - MIN_TAIL_CELLS;
+    const bias = Math.min(1, speed / MATRIX_SPEED_CLASSES[MATRIX_SPEED_CLASSES.length - 1]!.high);
+    const base = MIN_TAIL_CELLS + span * bias * 0.6;
+    return Math.min(MAX_TAIL_CELLS, Math.round(base + this.#random() * span * 0.4));
   }
 
   #random(): number {
