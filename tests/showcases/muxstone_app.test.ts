@@ -3134,3 +3134,152 @@ Deno.test("Muxstone draws Zellij-style thin window borders by default and can sw
     await controller.dispose();
   }
 });
+
+Deno.test("Muxstone forwards wheel to a child that enabled mouse tracking", async () => {
+  const initial = session("mouse-shell", "mouse shell", 0);
+  const client = new FakeMuxstoneClient([initial]);
+  const controller = await createMuxstoneController({ client, initialSessions: [initial] });
+  const mount: MuxstoneAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 100, rows: 28 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+    controller.windowHost.execute({ kind: "close", id: MUXSTONE_SESSIONS_WINDOW_ID }, mounted.bodyRect.peek());
+    controller.windowHost.execute({ kind: "focus", id: muxstoneWindowId(initial.id) }, mounted.bodyRect.peek());
+    await harness.pilot.settle();
+    const runtime = controller.runtime(initial.id)!;
+
+    // Exactly what tmux sends on attach: alt screen plus SGR mouse tracking.
+    client.emitOutput({
+      sessionId: initial.id,
+      sequence: 1,
+      data: "\x1b[?1049h\x1b[?1000h\x1b[?1002h\x1b[?1006h",
+    });
+    await waitForCondition(
+      () => runtime.screen.inspect().alternate && runtime.screen.inspect().privateModes.includes(1006),
+      2_000,
+    );
+
+    const terminal = mounted.windowProjection.peek().windows.find(
+      (window) => window.id === muxstoneWindowId(initial.id),
+    )!;
+    const wheelX = terminal.clientRect.column + 2;
+    const wheelY = terminal.clientRect.row + 2;
+    client.inputs.length = 0;
+    assertEquals((await harness.pilot.scroll(-1, wheelX, wheelY)).handled, true);
+    await mounted.whenIdle();
+
+    const sent = client.inputs.map((input) => input.data).join("");
+    // A real SGR wheel-up packet, not cursor keys and not local scrollback.
+    assertStringIncludes(sent, "\x1b[<64;");
+    assertEquals(runtime.scrollback.inspect().mode, "live");
+  } finally {
+    harness.destroy();
+    await controller.dispose();
+  }
+});
+
+Deno.test("Muxstone forwards clicks and drags to a child that enabled mouse tracking", async () => {
+  const initial = session("click-shell", "click shell", 0);
+  const client = new FakeMuxstoneClient([initial]);
+  const controller = await createMuxstoneController({ client, initialSessions: [initial] });
+  const mount: MuxstoneAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 100, rows: 28 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+    controller.windowHost.execute({ kind: "close", id: MUXSTONE_SESSIONS_WINDOW_ID }, mounted.bodyRect.peek());
+    controller.windowHost.execute({ kind: "focus", id: muxstoneWindowId(initial.id) }, mounted.bodyRect.peek());
+    await harness.pilot.settle();
+    const runtime = controller.runtime(initial.id)!;
+    client.emitOutput({
+      sessionId: initial.id,
+      sequence: 1,
+      data: "\x1b[?1049h\x1b[?1000h\x1b[?1002h\x1b[?1006h",
+    });
+    await waitForCondition(() => runtime.screen.inspect().privateModes.includes(1006), 2_000);
+
+    const terminal = mounted.windowProjection.peek().windows.find(
+      (window) => window.id === muxstoneWindowId(initial.id),
+    )!;
+    const x = terminal.clientRect.column + 3;
+    const y = terminal.clientRect.row + 4;
+    client.inputs.length = 0;
+    await harness.pilot.click(x, y);
+    await mounted.whenIdle();
+    const sent = client.inputs.map((input) => input.data).join("");
+    // Press then release, addressed in the child's own coordinate space.
+    assertStringIncludes(sent, "\x1b[<0;4;5M");
+    assertStringIncludes(sent, "\x1b[<0;4;5m");
+  } finally {
+    harness.destroy();
+    await controller.dispose();
+  }
+});
+
+Deno.test("Muxstone stops forwarding the wheel when a window turns mouse reporting off", async () => {
+  const initial = session("noreport-shell", "noreport shell", 0);
+  const client = new FakeMuxstoneClient([initial]);
+  const controller = await createMuxstoneController({ client, initialSessions: [initial] });
+  const mount: MuxstoneAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 100, rows: 28 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+    controller.windowHost.execute({ kind: "close", id: MUXSTONE_SESSIONS_WINDOW_ID }, mounted.bodyRect.peek());
+    controller.windowHost.execute({ kind: "focus", id: muxstoneWindowId(initial.id) }, mounted.bodyRect.peek());
+    await harness.pilot.settle();
+    const runtime = controller.runtime(initial.id)!;
+    client.emitOutput({
+      sessionId: initial.id,
+      sequence: 1,
+      data: "\x1b[?1049h\x1b[?1000h\x1b[?1002h\x1b[?1006h",
+    });
+    await waitForCondition(() => runtime.screen.inspect().privateModes.includes(1006), 2_000);
+
+    const terminal = mounted.windowProjection.peek().windows.find(
+      (window) => window.id === muxstoneWindowId(initial.id),
+    )!;
+    const wheelX = terminal.clientRect.column + 2;
+    const wheelY = terminal.clientRect.row + 2;
+
+    // Turning the per-window setting off stops mouse packets reaching the child,
+    // which is exactly what "cannot scroll inside tmux" looks like.
+    controller.cycleWindowSetting("noreport-shell", "mouseReporting", 1);
+    assertEquals(controller.windowSettingsFor("noreport-shell").mouseReporting, false);
+
+    // The window says so, so a dead-feeling mouse is explained rather than
+    // looking like broken passthrough.
+    await harness.pilot.settle();
+    harness.app.tui.canvas.render();
+    const titleRow = harness.canvas.frameBuffer[terminal.titleBarRect.row] ?? [];
+    const title = titleRow.map((value) => stripAnsi(typeof value === "string" ? value : "")).join("");
+    assertStringIncludes(title, "[NO MOUSE]");
+
+    client.inputs.length = 0;
+    await harness.pilot.scroll(-1, wheelX, wheelY);
+    await mounted.whenIdle();
+    const withoutReporting = client.inputs.map((input) => input.data).join("");
+    assertEquals(withoutReporting.includes("\x1b[<"), false, "no mouse packet should reach the child");
+
+    // Turning it back on restores passthrough.
+    controller.cycleWindowSetting("noreport-shell", "mouseReporting", 1);
+    assertEquals(controller.windowSettingsFor("noreport-shell").mouseReporting, true);
+    client.inputs.length = 0;
+    await harness.pilot.scroll(-1, wheelX, wheelY);
+    await mounted.whenIdle();
+    assertStringIncludes(client.inputs.map((input) => input.data).join(""), "\x1b[<64;");
+  } finally {
+    harness.destroy();
+    await controller.dispose();
+  }
+});

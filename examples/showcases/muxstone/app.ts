@@ -2336,11 +2336,16 @@ function paintWindow(
   const sessionId = muxstoneSessionIdFromWindow(window.id);
   const runtime = sessionId ? controller.runtime(sessionId) : undefined;
   const copyMode = runtime?.scrollback.mode === "copy" ? " [SCROLL]" : "";
+  // Mouse reporting off is otherwise invisible and looks exactly like broken
+  // passthrough, so the window says so rather than leaving you to guess.
+  const noMouse = sessionId && !controller.windowSettingsFor(sessionId).mouseReporting ? " [NO MOUSE]" : "";
   painter.write(
     window.titleBarRect.column + 1,
     window.titleBarRect.row,
     fitText(
-      `${window.placement === "floating" ? "~" : "="} ${runtime?.summary.peek().title ?? window.title}${copyMode}`,
+      `${window.placement === "floating" ? "~" : "="} ${
+        runtime?.summary.peek().title ?? window.title
+      }${copyMode}${noMouse}`,
       titleWidth,
     ),
     {
