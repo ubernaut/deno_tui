@@ -34,10 +34,12 @@ import {
   defaultMuxstoneGlobalSettings,
   defaultMuxstoneWindowSettings,
   MUXSTONE_BACKGROUND_IDS,
+  MUXSTONE_BORDER_STYLES,
   MUXSTONE_GLOBAL_SETTING_SPECS,
   MUXSTONE_THEMES,
   MUXSTONE_WINDOW_SETTING_SPECS,
   type MuxstoneAttachResult,
+  muxstoneBorderGlyphs,
   type MuxstoneClientPort,
   type MuxstoneOutputFrame,
   type MuxstoneSessionSummary,
@@ -2782,7 +2784,7 @@ Deno.test("Muxstone global settings normalize and reject unknown values", () => 
   assertEquals(normalizeMuxstoneGlobalSettings({ overgrowInactive: "yes" }), defaults);
   assertEquals(
     normalizeMuxstoneGlobalSettings({ overgrowInactive: false, overgrowFullMs: 30_000 }),
-    { overgrowInactive: false, overgrowFullMs: 30_000 },
+    { overgrowInactive: false, overgrowFullMs: 30_000, borderStyle: "thin" },
   );
   // Unlisted durations fall back rather than being trusted.
   assertEquals(normalizeMuxstoneGlobalSettings({ overgrowFullMs: 7 }).overgrowFullMs, defaults.overgrowFullMs);
@@ -3059,6 +3061,74 @@ Deno.test("Muxstone fits text to terminal columns, not code units", async () => 
       if (glyph !== "") columns += muxstoneGlyphColumns(glyph);
     }
     assertEquals(columns, harness.canvas.size.peek().columns);
+  } finally {
+    harness.destroy();
+    await controller.dispose();
+  }
+});
+
+Deno.test("Muxstone draws Zellij-style thin window borders by default and can switch style", async () => {
+  // Every frame glyph must be single-width or it would shift the row underneath.
+  for (const [id, glyphs] of Object.entries(MUXSTONE_BORDER_STYLES)) {
+    for (const [corner, glyph] of Object.entries(glyphs)) {
+      assertEquals(muxstoneGlyphColumns(glyph), 1, `${id}.${corner} must be one column`);
+      assertEquals([...glyph].length, 1, `${id}.${corner} must be a single glyph`);
+    }
+  }
+  assertEquals(defaultMuxstoneGlobalSettings().borderStyle, "thin");
+  assertEquals(muxstoneBorderGlyphs("nonsense").topLeft, MUXSTONE_BORDER_STYLES.thin.topLeft);
+
+  const initial = session("border-shell", "border shell", 1);
+  const client = new FakeMuxstoneClient([initial]);
+  const controller = await createMuxstoneController({ client, initialSessions: [initial] });
+  const mount: MuxstoneAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 100, rows: 28 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+    controller.windowHost.execute({ kind: "minimize", id: MUXSTONE_SESSIONS_WINDOW_ID }, mounted.bodyRect.peek());
+    await harness.pilot.settle();
+    harness.app.tui.canvas.render();
+
+    const terminal = mounted.windowProjection.peek().windows.find(
+      (window) => window.id === muxstoneWindowId("border-shell"),
+    )!;
+    const glyphAt = (column: number, row: number): string => {
+      const value = harness.canvas.frameBuffer[row]?.[column];
+      return stripAnsi(typeof value === "string" ? value : "");
+    };
+    const rect = terminal.rect;
+    const left = rect.column;
+    const right = rect.column + rect.width - 1;
+    const bottom = rect.row + rect.height - 1;
+
+    // Default corners and sides come from the rounded thin vocabulary.
+    const thin = MUXSTONE_BORDER_STYLES.thin;
+    assertEquals(glyphAt(left, bottom), thin.bottomLeft);
+    assertEquals(glyphAt(right, bottom), thin.bottomRight);
+    assertEquals(glyphAt(left, rect.row + 1), thin.left);
+    assertEquals(glyphAt(right, rect.row + 1), thin.right);
+    assertEquals(glyphAt(left + 1, bottom), thin.bottom);
+
+    // Switching the setting repaints with the ASCII vocabulary instead.
+    controller.cycleGlobalSetting("borderStyle", 1);
+    controller.cycleGlobalSetting("borderStyle", 1);
+    assertEquals(controller.globalSettings.peek().borderStyle, "ascii");
+    await harness.pilot.settle();
+    harness.app.tui.canvas.render();
+    const ascii = MUXSTONE_BORDER_STYLES.ascii;
+    assertEquals(glyphAt(left, bottom), ascii.bottomLeft);
+    assertEquals(glyphAt(left + 1, bottom), ascii.bottom);
+    assertEquals(glyphAt(left, rect.row + 1), ascii.left);
+
+    // The choice persists with the workspace.
+    assertEquals(
+      normalizeMuxstoneWorkspaceState(controller.kernel.appState.peek()).globalSettings.borderStyle,
+      "ascii",
+    );
   } finally {
     harness.destroy();
     await controller.dispose();

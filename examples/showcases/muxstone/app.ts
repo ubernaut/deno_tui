@@ -48,6 +48,8 @@ import {
   MUXSTONE_THEMES,
   MUXSTONE_WINDOW_SETTING_SPECS,
   type MuxstoneBackgroundId,
+  type MuxstoneBorderGlyphs,
+  muxstoneBorderGlyphs,
   type MuxstoneRgb,
   muxstoneSessionIdFromWindow,
   type MuxstoneSessionSummary,
@@ -2132,11 +2134,13 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
   for (const window of projection.tiledWindows) {
     paintWindow(painter, window, controller, options.selectedSessionIndex);
   }
+  const borderGlyphs = muxstoneBorderGlyphs(controller.globalSettings.peek().borderStyle);
   for (const separator of projection.separators) {
-    painter.fill(separator.rect, separator.direction === "row" ? "|" : "-", {
-      foreground: theme.border,
-      background: theme.background,
-    });
+    painter.fill(
+      separator.rect,
+      separator.direction === "row" ? borderGlyphs.verticalSeparator : borderGlyphs.horizontalSeparator,
+      { foreground: theme.border, background: theme.background },
+    );
   }
   for (const window of projection.floatingWindows) {
     paintWindow(painter, window, controller, options.selectedSessionIndex);
@@ -2312,7 +2316,9 @@ function paintWindow(
   const theme = controller.theme.peek();
   const border = window.active ? theme.accent : theme.border;
   painter.fill(window.rect, " ", { foreground: theme.text, background: theme.surface });
-  painter.frame(window.rect, window.active ? "#" : "+", {
+  // Focus reads through colour and weight, so both states share one frame
+  // vocabulary rather than swapping the glyphs out underneath the window.
+  painter.borderBox(window.rect, muxstoneBorderGlyphs(controller.globalSettings.peek().borderStyle), {
     foreground: border,
     background: theme.surfaceStrong,
     bold: window.active,
@@ -3226,6 +3232,25 @@ class DesktopPainter {
         this.cell(column, row, char, style);
       }
     }
+  }
+
+  /** Draws a box frame with distinct corner and edge glyphs. */
+  borderBox(rect: Rectangle, glyphs: MuxstoneBorderGlyphs, style: PaintedStyle): void {
+    if (rect.width <= 0 || rect.height <= 0) return;
+    const right = rect.column + rect.width - 1;
+    const bottom = rect.row + rect.height - 1;
+    for (let column = rect.column + 1; column < right; column += 1) {
+      this.cell(column, rect.row, glyphs.top, style);
+      this.cell(column, bottom, glyphs.bottom, style);
+    }
+    for (let row = rect.row + 1; row < bottom; row += 1) {
+      this.cell(rect.column, row, glyphs.left, style);
+      this.cell(right, row, glyphs.right, style);
+    }
+    this.cell(rect.column, rect.row, glyphs.topLeft, style);
+    this.cell(right, rect.row, glyphs.topRight, style);
+    this.cell(rect.column, bottom, glyphs.bottomLeft, style);
+    this.cell(right, bottom, glyphs.bottomRight, style);
   }
 
   frame(rect: Rectangle, char: string, style: PaintedStyle): void {

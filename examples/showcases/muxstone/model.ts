@@ -292,14 +292,17 @@ export interface MuxstoneSettingSpec<TId extends string> {
   readonly id: TId;
   readonly label: string;
   readonly detail: string;
-  readonly values: readonly (boolean | number)[];
-  readonly format: (value: boolean | number) => string;
+  readonly values: readonly MuxstoneSettingValue[];
+  readonly format: (value: MuxstoneSettingValue) => string;
 }
+
+/** Every value a cycleable setting may hold. */
+export type MuxstoneSettingValue = boolean | number | string;
 
 /** One cycleable per-window setting. */
 export type MuxstoneWindowSettingSpec = MuxstoneSettingSpec<MuxstoneWindowSettingId>;
 
-const onOff = (value: boolean | number): string => (value ? "On" : "Off");
+const onOff = (value: MuxstoneSettingValue): string => (value ? "On" : "Off");
 
 /** Ordered per-window settings presented by the titlebar config modal. */
 export const MUXSTONE_WINDOW_SETTING_SPECS: readonly MuxstoneWindowSettingSpec[] = Object.freeze([
@@ -315,7 +318,7 @@ export const MUXSTONE_WINDOW_SETTING_SPECS: readonly MuxstoneWindowSettingSpec[]
     label: "Scrollback",
     detail: "Lines retained above the live screen.",
     values: Object.freeze([1_000, 2_000, 5_000, 10_000, 50_000]),
-    format: (value: boolean | number) => `${Number(value).toLocaleString("en-US")} lines`,
+    format: (value: MuxstoneSettingValue) => `${Number(value).toLocaleString("en-US")} lines`,
   }),
   Object.freeze({
     id: "mouseReporting" as const,
@@ -329,7 +332,7 @@ export const MUXSTONE_WINDOW_SETTING_SPECS: readonly MuxstoneWindowSettingSpec[]
     label: "Wheel scroll",
     detail: "Rows moved per wheel notch.",
     values: Object.freeze([1, 3, 5, 10]),
-    format: (value: boolean | number) => `${value} ${value === 1 ? "line" : "lines"}`,
+    format: (value: MuxstoneSettingValue) => `${value} ${value === 1 ? "line" : "lines"}`,
   }),
   Object.freeze({
     id: "dimInactive" as const,
@@ -365,7 +368,7 @@ export function normalizeMuxstoneWindowSettings(value: unknown): MuxstoneWindowS
 }
 
 /** Returns the next value for one setting, wrapping in the declared order. */
-function cycleSetting<TId extends string, TSettings extends Readonly<Record<TId, boolean | number>>>(
+function cycleSetting<TId extends string, TSettings extends Readonly<Record<TId, MuxstoneSettingValue>>>(
   settings: TSettings,
   specs: readonly MuxstoneSettingSpec<TId>[],
   id: TId,
@@ -380,17 +383,19 @@ function cycleSetting<TId extends string, TSettings extends Readonly<Record<TId,
 }
 
 /** Normalizes one persisted settings record against its spec table. */
-function normalizeSettings<TId extends string, TSettings extends Readonly<Record<TId, boolean | number>>>(
+function normalizeSettings<TId extends string, TSettings extends Readonly<Record<TId, MuxstoneSettingValue>>>(
   value: unknown,
   specs: readonly MuxstoneSettingSpec<TId>[],
   defaults: TSettings,
 ): TSettings {
   if (!value || typeof value !== "object" || Array.isArray(value)) return defaults;
   const record = value as Record<string, unknown>;
-  const resolved: Record<string, boolean | number> = { ...defaults };
+  const resolved: Record<string, MuxstoneSettingValue> = { ...defaults };
   for (const spec of specs) {
     const candidate = record[spec.id];
-    if (spec.values.includes(candidate as boolean | number)) resolved[spec.id] = candidate as boolean | number;
+    if (spec.values.includes(candidate as MuxstoneSettingValue)) {
+      resolved[spec.id] = candidate as MuxstoneSettingValue;
+    }
   }
   return Object.freeze(resolved) as TSettings;
 }
@@ -404,12 +409,91 @@ export function cycleMuxstoneWindowSetting(
   return cycleSetting(settings, MUXSTONE_WINDOW_SETTING_SPECS, id, direction);
 }
 
+/** Frame glyphs for one window border style. All must be single-width. */
+export interface MuxstoneBorderGlyphs {
+  readonly topLeft: string;
+  readonly top: string;
+  readonly topRight: string;
+  readonly left: string;
+  readonly right: string;
+  readonly bottomLeft: string;
+  readonly bottom: string;
+  readonly bottomRight: string;
+  /** Divider drawn between side-by-side tiled windows. */
+  readonly verticalSeparator: string;
+  /** Divider drawn between stacked tiled windows. */
+  readonly horizontalSeparator: string;
+}
+
+/** Stable border style identities persisted with the workspace. */
+export const MUXSTONE_BORDER_STYLE_IDS = ["thin", "square", "ascii"] as const;
+
+/** One selectable window border style. */
+export type MuxstoneBorderStyleId = (typeof MUXSTONE_BORDER_STYLE_IDS)[number];
+
+/**
+ * Window frame vocabularies. `thin` matches Zellij's default chrome — single
+ * line box drawing with rounded corners — and is the default. `square` is the
+ * same weight with hard corners, and `ascii` keeps the original blocky frame
+ * for terminals or fonts without box-drawing coverage.
+ */
+export const MUXSTONE_BORDER_STYLES: Readonly<Record<MuxstoneBorderStyleId, MuxstoneBorderGlyphs>> = Object.freeze({
+  thin: Object.freeze({
+    topLeft: "\u256d",
+    top: "\u2500",
+    topRight: "\u256e",
+    left: "\u2502",
+    right: "\u2502",
+    bottomLeft: "\u2570",
+    bottom: "\u2500",
+    bottomRight: "\u256f",
+    verticalSeparator: "\u2502",
+    horizontalSeparator: "\u2500",
+  }),
+  square: Object.freeze({
+    topLeft: "\u250c",
+    top: "\u2500",
+    topRight: "\u2510",
+    left: "\u2502",
+    right: "\u2502",
+    bottomLeft: "\u2514",
+    bottom: "\u2500",
+    bottomRight: "\u2518",
+    verticalSeparator: "\u2502",
+    horizontalSeparator: "\u2500",
+  }),
+  ascii: Object.freeze({
+    topLeft: "+",
+    top: "-",
+    topRight: "+",
+    left: "|",
+    right: "|",
+    bottomLeft: "+",
+    bottom: "-",
+    bottomRight: "+",
+    verticalSeparator: "|",
+    horizontalSeparator: "-",
+  }),
+});
+
+/** Resolves a persisted border style id, falling back to the Zellij-style thin frame. */
+export function muxstoneBorderStyleId(value: unknown): MuxstoneBorderStyleId {
+  return MUXSTONE_BORDER_STYLE_IDS.includes(value as MuxstoneBorderStyleId) ? value as MuxstoneBorderStyleId : "thin";
+}
+
+/** Returns the frame glyphs for one border style. */
+export function muxstoneBorderGlyphs(id: unknown): MuxstoneBorderGlyphs {
+  return MUXSTONE_BORDER_STYLES[muxstoneBorderStyleId(id)];
+}
+
 /** Desktop-wide settings edited from the global config modal. */
 export interface MuxstoneGlobalSettings {
   /** Let the animated background reclaim windows that have lost focus. */
   readonly overgrowInactive: boolean;
   /** Milliseconds of idling before a window is as overgrown as it will get. */
   readonly overgrowFullMs: number;
+  /** Window frame vocabulary. */
+  readonly borderStyle: MuxstoneBorderStyleId;
 }
 
 /** Identity of one configurable desktop-wide setting. */
@@ -432,13 +516,20 @@ export const MUXSTONE_GLOBAL_SETTING_SPECS: readonly MuxstoneGlobalSettingSpec[]
     label: "Overgrow time",
     detail: "How long a window idles before it is as overgrown as it gets.",
     values: Object.freeze([240_000, 120_000, 60_000, 30_000]),
-    format: (value: boolean | number) => `${Math.round(Number(value) / 1000)}s`,
+    format: (value: MuxstoneSettingValue) => `${Math.round(Number(value) / 1000)}s`,
+  }),
+  Object.freeze({
+    id: "borderStyle" as const,
+    label: "Window borders",
+    detail: "Thin is Zellij-style rounded box drawing; ASCII suits sparse fonts.",
+    values: Object.freeze([...MUXSTONE_BORDER_STYLE_IDS]),
+    format: (value: MuxstoneSettingValue) => String(value),
   }),
 ]) as readonly MuxstoneGlobalSettingSpec[];
 
 /** Factory defaults for desktop-wide settings. */
 export function defaultMuxstoneGlobalSettings(): MuxstoneGlobalSettings {
-  return Object.freeze({ overgrowInactive: true, overgrowFullMs: 120_000 });
+  return Object.freeze({ overgrowInactive: true, overgrowFullMs: 120_000, borderStyle: "thin" as const });
 }
 
 /** Strictly normalizes persisted desktop-wide settings. */
