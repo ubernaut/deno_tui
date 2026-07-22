@@ -367,6 +367,11 @@ export class TerminalScreenController {
     // Keypad application/numeric modes are recognized so their bytes never
     // leak into the grid; the screen model itself needs no keypad state.
     if (sequence.kind === "esc" && (sequence.command === "=" || sequence.command === ">")) return;
+    // xterm private-parameter extensions (`ESC [ < … `, `ESC [ = … `, `ESC [ > … `):
+    // secondary/tertiary DA, XTVERSION and modifyOtherKeys. tmux emits these on
+    // every attach. They carry no screen-model effect, but must be consumed so
+    // neither their bytes nor their parameters reach the grid or the SGR state.
+    if (sequence.kind === "csi" && sequence.prefix && sequence.prefix !== "?") return;
     const params = parseTerminalParams(sequence.params);
     if (sequence.private && (sequence.command === "h" || sequence.command === "l")) {
       this.#applyPrivateModes(params, sequence.command === "h");
@@ -881,7 +886,19 @@ function readTerminalGraphic(text: string, index: number): string {
 
 function incompleteTerminalControl(suffix: string): boolean {
   if (suffix === "\x1b") return true;
-  if (suffix.startsWith("\x1b[") || suffix.startsWith("\x1b]")) return true;
+  // An OSC stays pending until its BEL/ST terminator arrives.
+  if (suffix.startsWith("\x1b]")) return true;
+  if (suffix.startsWith("\x1b[")) {
+    // A CSI is only genuinely pending while every byte after the introducer is
+    // a parameter/intermediate byte (0x20-0x3F). Anything else means the
+    // sequence is malformed, so report it complete and let the writer skip the
+    // ESC rather than buffering the rest of the stream forever.
+    for (let index = 2; index < suffix.length; index += 1) {
+      const code = suffix.charCodeAt(index);
+      if (code < 0x20 || code > 0x3f) return false;
+    }
+    return true;
+  }
   // A trailing ESC plus only intermediates (e.g. a chunk-split `ESC (`) still
   // awaits its final byte; never let its pieces print as literal glyphs.
   for (let index = 1; index < suffix.length; index += 1) {

@@ -72,17 +72,38 @@ export class TerminalScrollbackController {
   }
 
   get mode(): TerminalScrollbackMode {
+    this.#enforceLiveWhileAlternate();
     return this.#mode;
   }
 
   get offset(): number {
+    this.#enforceLiveWhileAlternate();
     return this.#mode === "live" ? this.#maxOffset() : this.#offset;
   }
 
   enterCopyMode(): void {
+    // The alternate screen has no scrollback of its own, and the main buffer's
+    // history belongs to a different screen. Full-screen apps (tmux, vim, less)
+    // own their viewport, so copy mode stays disabled while they are attached.
+    if (this.#enforceLiveWhileAlternate()) return;
     if (this.#mode === "copy") return;
     this.#mode = "copy";
     this.#offset = this.#maxOffset();
+  }
+
+  /**
+   * Snaps back to live mode whenever the alternate screen is active so a copy
+   * mode entered before a full-screen app started cannot survive into it and
+   * paint stale main-buffer history over the app.
+   */
+  #enforceLiveWhileAlternate(): boolean {
+    if (!this.screen.alternate) return false;
+    if (this.#mode !== "live") {
+      this.#mode = "live";
+      this.#offset = this.#maxOffset();
+    }
+    this.#selection = undefined;
+    return true;
   }
 
   exitCopyMode(): void {
@@ -103,6 +124,7 @@ export class TerminalScrollbackController {
   }
 
   scrollLines(delta: number): number {
+    if (this.#enforceLiveWhileAlternate()) return this.offset;
     if (this.#mode !== "copy") this.enterCopyMode();
     this.#offset = clamp(this.#offset + Math.trunc(delta), 0, this.#maxOffset());
     return this.#offset;
@@ -219,6 +241,9 @@ export class TerminalScrollbackController {
   }
 
   #rows(): string[] {
+    // While the alternate screen is active only its live rows exist; the main
+    // buffer's scrollback belongs to the screen underneath it.
+    if (this.screen.alternate) return this.screen.textRows();
     const scrollbackRows = this.screen.scrollbackTextRows();
     const liveRows = this.screen.textRows();
     const rows = new Array<string>(scrollbackRows.length + liveRows.length);
@@ -233,6 +258,7 @@ export class TerminalScrollbackController {
   }
 
   #rowCount(): number {
+    if (this.screen.alternate) return this.screen.rows;
     return this.screen.scrollbackRows + this.screen.rows;
   }
 

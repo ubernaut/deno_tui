@@ -19,6 +19,7 @@ Deno.test("terminal sequence parser parses private CSI sequences", () => {
   assertEquals(parseTerminalControlSequence("\x1b[?1000;1006hrest"), {
     kind: "csi",
     private: true,
+    prefix: "?",
     params: "1000;1006",
     intermediates: "",
     command: "h",
@@ -30,6 +31,7 @@ Deno.test("terminal sequence parser preserves CSI intermediates", () => {
   assertEquals(parseTerminalControlSequence("\x1b[6 q"), {
     kind: "csi",
     private: false,
+    prefix: "",
     params: "6",
     intermediates: " ",
     command: "q",
@@ -41,6 +43,7 @@ Deno.test("terminal sequence parser supports OSC BEL and ST terminators", () => 
   assertEquals(parseTerminalControlSequence("\x1b]0;title\x07after"), {
     kind: "osc",
     private: false,
+    prefix: "",
     params: "0;title",
     intermediates: "",
     command: "]",
@@ -49,6 +52,7 @@ Deno.test("terminal sequence parser supports OSC BEL and ST terminators", () => 
   assertEquals(parseTerminalControlSequence("\x1b]2;editor\x1b\\after"), {
     kind: "osc",
     private: false,
+    prefix: "",
     params: "2;editor",
     intermediates: "",
     command: "]",
@@ -61,6 +65,7 @@ Deno.test("terminal sequence parser supports single-character ESC controls", () 
     assertEquals(parseTerminalControlSequence(`\x1b${command}rest`), {
       kind: "esc",
       private: false,
+      prefix: "",
       params: "",
       intermediates: "",
       command,
@@ -73,6 +78,7 @@ Deno.test("terminal sequence parser parses controls at an offset without slicing
   assertEquals(parseTerminalControlSequence("xx\x1b[?25l", 2), {
     kind: "csi",
     private: true,
+    prefix: "?",
     params: "25",
     intermediates: "",
     command: "l",
@@ -81,6 +87,7 @@ Deno.test("terminal sequence parser parses controls at an offset without slicing
   assertEquals(parseTerminalControlSequence("xx\x1b]0;title\x07after", 2), {
     kind: "osc",
     private: false,
+    prefix: "",
     params: "0;title",
     intermediates: "",
     command: "]",
@@ -89,6 +96,7 @@ Deno.test("terminal sequence parser parses controls at an offset without slicing
   assertEquals(parseTerminalControlSequence("xx\x1bMrest", 2), {
     kind: "esc",
     private: false,
+    prefix: "",
     params: "",
     intermediates: "",
     command: "M",
@@ -437,6 +445,46 @@ Deno.test("TerminalScreenController does not scroll when a full-screen paint fil
   assertEquals(screen.inspect().cursor, { column: 19, row: 4 });
 });
 
+Deno.test("terminal sequence parser accepts every ECMA-48 private prefix", () => {
+  // tmux emits `ESC [ > c` (secondary DA) and `ESC [ > q` (XTVERSION) on attach.
+  for (const prefix of ["<", "=", ">", "?"]) {
+    const parsed = parseTerminalControlSequence(`\x1b[${prefix}1c`);
+    assertEquals(parsed?.kind, "csi");
+    assertEquals(parsed?.prefix, prefix);
+    assertEquals(parsed?.params, "1");
+    assertEquals(parsed?.command, "c");
+    assertEquals(parsed?.length, 5);
+  }
+});
+
+Deno.test("TerminalScreenController keeps rendering after xterm private-prefix queries", () => {
+  // Regression: an unparsed `ESC [ > c` used to buffer the rest of the stream
+  // forever, so a tmux attach froze the window until 64KB accumulated.
+  const screen = new TerminalScreenController({ columns: 20, rows: 3 });
+  screen.write("BEFORE\r\n");
+  screen.write("\x1b[>c");
+  screen.write("AFTER\r\n");
+  assertEquals(screen.textRows(), ["BEFORE", "AFTER", ""]);
+
+  // The parameters of an ignored extension must not leak into SGR state either.
+  const styled = new TerminalScreenController({ columns: 20, rows: 2 });
+  styled.write("\x1b[>4;2mX");
+  assertEquals(styled.textRows()[0], "X");
+  assertEquals(styled.cellRows()[0]![0], { char: "X" });
+});
+
+Deno.test("TerminalScreenController recovers from a malformed CSI instead of stalling", () => {
+  // The sequence is unrecoverable, so some of its bytes may surface as text; what
+  // matters is that the writer resynchronises instead of buffering the rest of
+  // the stream forever waiting for a final byte that never arrives.
+  const screen = new TerminalScreenController({ columns: 20, rows: 2 });
+  screen.write("\x1b[\x07VISIBLE");
+  assertEquals(screen.textRows()[0]?.endsWith("VISIBLE"), true);
+
+  screen.write("\r\nMORE");
+  assertEquals(screen.textRows()[1], "MORE");
+});
+
 Deno.test("TerminalScreenController tracks cursor style sequences", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 2 });
 
@@ -693,6 +741,40 @@ Deno.test("TerminalScreenController replays a full-screen curses-style transcrip
   assertEquals(screen.inspect().alternate, false);
   assertEquals(screen.inspect().cursorVisible, true);
   assertEquals(screen.textRows()[0], "shell prompt");
+});
+
+Deno.test("TerminalScrollbackController snaps to live and hides main scrollback in the alternate screen", () => {
+  // Regression: scrolling up at a shell prompt and then attaching a full-screen
+  // app (tmux) left the window in copy mode, painting stale pre-attach history
+  // over the app and letting the wheel scroll through it.
+  const screen = new TerminalScreenController({ columns: 12, rows: 3, scrollbackLimit: 20 });
+  screen.write("one\ntwo\nthree\nfour\nfive");
+  const scrollback = new TerminalScrollbackController({ screen, viewportRows: 3 });
+
+  scrollback.scrollLines(-2);
+  assertEquals(scrollback.mode, "copy");
+
+  // A full-screen app takes over: copy mode must not survive into it.
+  screen.write("\x1b[?1049h");
+  screen.write("APP");
+  assertEquals(scrollback.mode, "live");
+  assertEquals(scrollback.offset, 0);
+
+  // The alternate screen exposes only its own rows, so there is nothing to scroll.
+  const viewport = scrollback.inspectViewport();
+  assertEquals(viewport.totalRows, 3);
+  assertEquals(viewport.maxOffset, 0);
+  assertEquals(scrollback.inspect().visibleRows, ["APP", "", ""]);
+
+  // Scrolling while the app is attached stays a no-op rather than entering copy mode.
+  scrollback.scrollLines(-5);
+  assertEquals(scrollback.mode, "live");
+  assertEquals(scrollback.inspect().visibleRows, ["APP", "", ""]);
+
+  // Leaving the alternate screen restores the main buffer's scrollback.
+  screen.write("\x1b[?1049l");
+  assertEquals(scrollback.mode, "live");
+  assertEquals(scrollback.inspectViewport().totalRows, 5);
 });
 
 Deno.test("TerminalScrollbackController follows live output and enters copy mode on scroll", () => {

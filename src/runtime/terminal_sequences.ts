@@ -4,6 +4,12 @@
 export interface ParsedTerminalControlSequence {
   kind: "csi" | "osc" | "esc";
   private: boolean;
+  /**
+   * ECMA-48 private-parameter prefix byte (`<`, `=`, `>`, `?`) when present.
+   * `?` selects DEC private modes; `<`/`=`/`>` mark xterm extensions such as
+   * secondary DA (`ESC [ > c`), XTVERSION (`ESC [ > q`) and modifyOtherKeys.
+   */
+  prefix: string;
   params: string;
   intermediates: string;
   command: string;
@@ -21,6 +27,7 @@ export function parseTerminalControlSequence(
     return {
       kind: "esc",
       private: false,
+      prefix: "",
       params: "",
       intermediates: "",
       command: value[start + 1]!,
@@ -32,8 +39,12 @@ export function parseTerminalControlSequence(
   if (value.charCodeAt(start) !== 0x1b || value[start + 1] !== "[") return undefined;
 
   let index = start + 2;
-  const privateMarker = value[index] === "?";
-  if (privateMarker) index++;
+  // Accept every ECMA-48 private-parameter prefix (0x3C-0x3F), not just `?`.
+  // Without this, queries such as tmux's `ESC [ > c` fail to parse and the
+  // caller buffers the remainder of the stream forever.
+  const prefixCode = value.charCodeAt(index);
+  const prefix = prefixCode >= 0x3c && prefixCode <= 0x3f ? value[index]! : "";
+  if (prefix) index++;
 
   const paramsStart = index;
   while (index < value.length) {
@@ -62,7 +73,8 @@ export function parseTerminalControlSequence(
 
   return {
     kind: "csi",
-    private: privateMarker,
+    private: prefix === "?",
+    prefix,
     params: value.slice(paramsStart, paramsEnd),
     intermediates: value.slice(intermediatesStart, intermediatesEnd),
     command: value[index]!,
@@ -101,6 +113,7 @@ function parseOscSequence(value: string, start: number): ParsedTerminalControlSe
   return {
     kind: "osc",
     private: false,
+    prefix: "",
     params: value.slice(contentStart, end),
     intermediates: "",
     command: "]",
@@ -137,6 +150,7 @@ function parseIntermediateEscSequence(
   return {
     kind: "esc",
     private: false,
+    prefix: "",
     params: "",
     intermediates: value.slice(intermediatesStart, index),
     command: value[index]!,
