@@ -12,6 +12,7 @@ export const MUXSTONE_OVERGROWTH_BACKGROUND_IDS: readonly MuxstoneBackgroundId[]
   "jungle",
   "matrix",
   "circuit",
+  "ivy",
 ]);
 
 /** True when the given background participates in inactive-window overgrowth. */

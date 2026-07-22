@@ -14,7 +14,7 @@ import { MUXSTONE_BACKGROUND_IDS } from "../../examples/showcases/muxstone/model
 const RECT = { column: 10, row: 4, width: 20, height: 10 };
 
 Deno.test("muxstone overgrowth applies only to the organic backgrounds", () => {
-  assertEquals([...MUXSTONE_OVERGROWTH_BACKGROUND_IDS].sort(), ["circuit", "jungle", "matrix"]);
+  assertEquals([...MUXSTONE_OVERGROWTH_BACKGROUND_IDS].sort(), ["circuit", "ivy", "jungle", "matrix"]);
   for (const id of MUXSTONE_BACKGROUND_IDS) {
     assertEquals(muxstoneBackgroundOvergrows(id), MUXSTONE_OVERGROWTH_BACKGROUND_IDS.includes(id));
   }

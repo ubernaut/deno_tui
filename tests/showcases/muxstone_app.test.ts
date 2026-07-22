@@ -2811,14 +2811,19 @@ Deno.test("Muxstone background glyph vocabularies stay single-width", async () =
   // A double-width glyph in a background bleeds one column right. On a window's
   // left edge that lands inside the window, and because the canvas repaints
   // differentially the damage persists until a full repaint.
-  const fields = ["matrix", "circuit", "jungle", "biomech", "vaporwave", "skull", "metaball"];
+  // Discovered from disk so a new background is covered without editing this.
+  const fields: string[] = [];
+  for await (const entry of Deno.readDir("./examples/showcases/muxstone")) {
+    if (entry.isFile && entry.name.endsWith("_background.ts")) fields.push(entry.name);
+  }
+  assert(fields.length >= 8, `expected the background catalog, found ${fields.length}`);
   for (const field of fields) {
-    const source = await Deno.readTextFile(`./examples/showcases/muxstone/${field}_background.ts`);
+    const source = await Deno.readTextFile(`./examples/showcases/muxstone/${field}`);
     const wide = new Set<string>();
     for (const glyph of source) {
       if (glyph.codePointAt(0)! >= 0x80 && muxstoneGlyphColumns(glyph) === 2) wide.add(glyph);
     }
-    assertEquals([...wide], [], `${field}_background.ts must not contain double-width glyphs`);
+    assertEquals([...wide], [], `${field} must not contain double-width glyphs`);
   }
 });
 
