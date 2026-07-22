@@ -81,14 +81,14 @@ Deno.test("Muxstone includes every Workbench theme and its six-family T2 palette
     border: [155, 115, 220],
     text: [205, 234, 255],
     muted: [220, 168, 255],
-    accent: [205, 234, 255],
+    accent: [255, 105, 180],
     success: [205, 234, 255],
     warning: [155, 115, 220],
     danger: [220, 168, 255],
   });
   const t2 = muxstoneTheme("t2");
   const t2Swatches = new Set(Object.values(MUXSTONE_T2_SWATCHES).map((rgb) => rgb.join(",")));
-  assertEquals(t2Swatches.size, 6);
+  assertEquals(t2Swatches.size, 7);
   const t2RoleSwatches = new Set(THEME_RGB_FIELDS.map((field) => t2[field].join(",")));
   assertEquals(t2RoleSwatches, t2Swatches);
   assert(contrastRatio(t2.text, t2.surface) >= 4.5);

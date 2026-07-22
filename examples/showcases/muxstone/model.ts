@@ -31,7 +31,7 @@ export type MuxstoneThemeId = "midnight" | "amber" | "matrix" | "paper" | Muxsto
 /** RGB tuple used by the renderer without depending on terminal palette state. */
 export type MuxstoneRgb = readonly [red: number, green: number, blue: number];
 
-/** Six named T2 color families used to keep the theme deliberate and testable. */
+/** Seven named T2 color families used to keep the theme deliberate and testable. */
 export const MUXSTONE_T2_SWATCHES = {
   black: [3, 4, 8],
   charcoal: [24, 26, 34],
@@ -39,6 +39,8 @@ export const MUXSTONE_T2_SWATCHES = {
   lightBlue: [205, 234, 255],
   darkPurple: [155, 115, 220],
   lightPurple: [220, 168, 255],
+  /** Highlight accent: cool steel everywhere, one hot filament where focus lands. */
+  hotPink: [255, 105, 180],
 } as const satisfies Readonly<Record<string, MuxstoneRgb>>;
 
 /** One complete Muxstone chrome/default-terminal theme. */
@@ -130,7 +132,7 @@ export const MUXSTONE_THEMES = [
     border: MUXSTONE_T2_SWATCHES.darkPurple,
     text: MUXSTONE_T2_SWATCHES.lightBlue,
     muted: MUXSTONE_T2_SWATCHES.lightPurple,
-    accent: MUXSTONE_T2_SWATCHES.lightBlue,
+    accent: MUXSTONE_T2_SWATCHES.hotPink,
     success: MUXSTONE_T2_SWATCHES.lightBlue,
     warning: MUXSTONE_T2_SWATCHES.darkPurple,
     danger: MUXSTONE_T2_SWATCHES.lightPurple,
