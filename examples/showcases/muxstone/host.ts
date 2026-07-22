@@ -1,6 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 
 import type { ProcessSessionInspection } from "../../../src/runtime/process_session.ts";
+import { MuxstoneTerminalModeTracker } from "./terminal_modes.ts";
 import {
   createProcessTerminalBackend,
   type TerminalBackend,
@@ -128,6 +129,34 @@ interface ReplayEntry {
   bytes: number;
 }
 
+/**
+ * Puts the sticky-mode preamble in front of retained output without disturbing
+ * sequence numbering: it rides on the first surviving frame, or becomes a frame
+ * of its own at the session's current sequence when nothing survived.
+ */
+function prependModePreamble(
+  retained: readonly ReplayEntry[],
+  preamble: string,
+  latestSequence: number,
+): ReplayEntry[] {
+  if (preamble === "") return [...retained];
+  const bytes = new TextEncoder().encode(preamble);
+  const first = retained[0];
+  if (!first) {
+    return [{ sequence: latestSequence, data: encodeMuxstoneData(bytes), bytes: bytes.byteLength }];
+  }
+  // Replay payloads are base64, so the preamble is merged before encoding
+  // rather than concatenated after it.
+  const head = decodeMuxstoneData(first.data);
+  const merged = new Uint8Array(bytes.byteLength + head.byteLength);
+  merged.set(bytes, 0);
+  merged.set(head, bytes.byteLength);
+  return [
+    { sequence: first.sequence, data: encodeMuxstoneData(merged), bytes: merged.byteLength },
+    ...retained.slice(1),
+  ];
+}
+
 interface HostSession {
   id: string;
   handle: TerminalSessionHandle;
@@ -140,6 +169,8 @@ interface HostSession {
   sequence: number;
   replay: ReplayEntry[];
   replayBytes: number;
+  /** Sticky DEC private modes, so a rotated replay cannot lose them. */
+  modes: MuxstoneTerminalModeTracker;
   clients: Set<HostConnection>;
   ready: boolean;
   terminating: boolean;
@@ -430,6 +461,7 @@ export class MuxstoneHostController {
         sequence: 0,
         replay: [],
         replayBytes: 0,
+        modes: new MuxstoneTerminalModeTracker(),
         clients: new Set([connection]),
         ready: false,
         terminating: false,
@@ -464,7 +496,14 @@ export class MuxstoneHostController {
     const latestSequence = session.sequence;
     // Snapshot references, not payloads: live ring rotation must not move the
     // attach barrier while this connection lazily produces its replay.
-    const replay = session.replay.filter((entry) => entry.sequence > afterSequence && entry.sequence <= latestSequence);
+    const retained = session.replay.filter((entry) =>
+      entry.sequence > afterSequence && entry.sequence <= latestSequence
+    );
+    // The raw ring rotates, so the bytes that switched on mouse reporting,
+    // bracketed paste or the alternate screen are long gone on a busy session.
+    // Re-assert the modes the child currently holds ahead of whatever survived;
+    // the replay that follows ends in the same state, so this is idempotent.
+    const replay = prependModePreamble(retained, session.modes.preamble(), latestSequence);
     const replayFromSequence = replay[0]?.sequence ?? latestSequence + 1;
     if (!connection.beginReplay(session.id)) {
       if (!connection.closed) throw hostError("attach-in-progress", "Session attachment is already replaying.");
@@ -488,6 +527,7 @@ export class MuxstoneHostController {
 
   #appendOutput(session: HostSession, chunk: Uint8Array): void {
     if (session.terminated || chunk.byteLength === 0) return;
+    session.modes.write(chunk);
     const entry: ReplayEntry = {
       sequence: ++session.sequence,
       data: encodeMuxstoneData(chunk),

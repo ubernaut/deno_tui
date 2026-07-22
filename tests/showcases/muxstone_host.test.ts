@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertRejects } from "../deps.ts";
+import { assert, assertEquals, assertRejects, assertStringIncludes } from "../deps.ts";
 import { TerminalOutputController } from "../../src/components/terminal_output.ts";
 import type {
   ProcessSessionCommand,
@@ -1157,3 +1157,101 @@ class FakeTerminalHandle implements TerminalSessionHandle {
     };
   }
 }
+
+Deno.test("muxstone re-asserts sticky terminal modes when the replay ring has rotated", async () => {
+  const backend = new FakeTerminalBackend();
+  // A tiny ring so the opening bytes are evicted almost immediately, exactly as
+  // a long-running tmux session evicts the modes it set once at startup.
+  const host = createHost(backend, { replayEntries: 2, replayBytes: 1024 });
+  const ownerPeer = new FakePeer();
+  const owner = host.connect(ownerPeer);
+  await authenticate(owner);
+  await owner.receive(wire({ version: 1, type: "spawn", requestId: 1, command: "demo" }));
+  await drain();
+  const spawned = ownerPeer.messages().find((message) => message.type === "spawned");
+  assert(spawned?.type === "spawned");
+  owner.disconnect();
+
+  const handle = backend.handles[0]!;
+  // What tmux emits on startup: alternate screen, cursor keys, SGR mouse,
+  // bracketed paste. These are set once and never repeated.
+  handle.emit("\x1b[?1049h\x1b[?1h\x1b[?1000h\x1b[?1002h\x1b[?1006h\x1b[?2004h");
+  handle.emit("later output one");
+  handle.emit("later output two");
+
+  const peer = new FakePeer();
+  const client = host.connect(peer);
+  await authenticate(client);
+  await client.receive(wire({
+    version: 1,
+    type: "attach",
+    requestId: 1,
+    sessionId: spawned.session.id,
+    afterSequence: 0,
+  }));
+  await drain();
+
+  const attached = peer.messages().find((message) => message.type === "attached");
+  assert(attached?.type === "attached");
+  assertEquals(attached.truncated, true);
+
+  const replayed = peer.messages()
+    .filter((message) => message.type === "output")
+    .map((message) => textDecoder.decode(decodeMuxstoneData(message.data)))
+    .join("");
+
+  // The evicted mode-setting bytes are re-asserted ahead of what survived, so a
+  // fresh view still knows the child wants mouse reporting and the alt screen.
+  for (const mode of ["\x1b[?1h", "\x1b[?1000h", "\x1b[?1002h", "\x1b[?1006h", "\x1b[?2004h", "\x1b[?1049h"]) {
+    assertStringIncludes(replayed, mode);
+  }
+  // Alternate screen is asserted after the rest so entering it cannot clobber them.
+  assert(
+    replayed.indexOf("\x1b[?1049h") > replayed.indexOf("\x1b[?1006h"),
+    "alternate screen must be re-entered after the other modes",
+  );
+  // The surviving output still arrives, and in order.
+  assertStringIncludes(replayed, "later output one");
+  assertStringIncludes(replayed, "later output two");
+  assert(replayed.indexOf("later output one") < replayed.indexOf("later output two"));
+});
+
+Deno.test("muxstone drops sticky modes the child turned off before a client attaches", async () => {
+  const backend = new FakeTerminalBackend();
+  const host = createHost(backend, { replayEntries: 2, replayBytes: 1024 });
+  const ownerPeer = new FakePeer();
+  const owner = host.connect(ownerPeer);
+  await authenticate(owner);
+  await owner.receive(wire({ version: 1, type: "spawn", requestId: 1, command: "demo" }));
+  await drain();
+  const spawned = ownerPeer.messages().find((message) => message.type === "spawned");
+  assert(spawned?.type === "spawned");
+  owner.disconnect();
+
+  const handle = backend.handles[0]!;
+  handle.emit("\x1b[?1049h\x1b[?1006h\x1b[?1000h");
+  // The program exits its full-screen mode again, so nothing should be asserted.
+  handle.emit("\x1b[?1000l\x1b[?1006l\x1b[?1049l");
+  handle.emit("back at the shell");
+  handle.emit("still at the shell");
+
+  const peer = new FakePeer();
+  const client = host.connect(peer);
+  await authenticate(client);
+  await client.receive(wire({
+    version: 1,
+    type: "attach",
+    requestId: 1,
+    sessionId: spawned.session.id,
+    afterSequence: 0,
+  }));
+  await drain();
+
+  const replayed = peer.messages()
+    .filter((message) => message.type === "output")
+    .map((message) => textDecoder.decode(decodeMuxstoneData(message.data)))
+    .join("");
+  assertEquals(replayed.includes("\x1b[?1049h"), false, "a mode the child turned off must not come back");
+  assertEquals(replayed.includes("\x1b[?1006h"), false);
+  assertStringIncludes(replayed, "still at the shell");
+});
