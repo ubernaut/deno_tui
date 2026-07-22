@@ -485,6 +485,65 @@ Deno.test("TerminalScreenController recovers from a malformed CSI instead of sta
   assertEquals(screen.textRows()[1], "MORE");
 });
 
+Deno.test("TerminalScreenController erases the display without moving the cursor or resetting state", () => {
+  // Regression: ED 2 ran a full reset, so apps that erase and keep drawing
+  // (tmux, Claude Code) had their next writes land at the top-left corner.
+  const screen = new TerminalScreenController({ columns: 20, rows: 6 });
+  screen.write("\x1b[2;5r"); // scroll region rows 2..5
+  screen.write("\x1b[4;7H"); // park the cursor mid-screen
+  screen.write("\x1b[2J");
+  assertEquals(screen.inspect().cursor, { column: 6, row: 3 });
+  screen.write("THINKING");
+  assertEquals(screen.textRows()[3], "      THINKING");
+  assertEquals(screen.textRows()[0], "");
+
+  // The scroll region survived the erase, so a linefeed at its bottom scrolls
+  // only the region rather than the whole screen.
+  screen.write("\x1b[5;1Hbottom\n");
+  assertEquals(screen.textRows()[0], "");
+
+  // ED 3 additionally drops saved lines.
+  const scrolled = new TerminalScreenController({ columns: 8, rows: 2, scrollbackLimit: 10 });
+  scrolled.write("a\nb\nc\nd");
+  assertEquals(scrolled.scrollbackRows > 0, true);
+  scrolled.write("\x1b[3J");
+  assertEquals(scrolled.scrollbackRows, 0);
+});
+
+Deno.test("TerminalScreenController does not scroll on a linefeed below the scroll region", () => {
+  // tmux keeps its status line outside the scroll region; a linefeed there used
+  // to scroll every row of the screen.
+  const screen = new TerminalScreenController({ columns: 20, rows: 4 });
+  screen.write("\x1b[1;1HROW0\x1b[2;1HROW1\x1b[3;1HROW2\x1b[4;1HSTATUS");
+  screen.write("\x1b[1;3r"); // region = rows 0..2, status row excluded
+  screen.write("\x1b[4;7H"); // cursor on the status row, below the region
+  screen.write("\n");
+  assertEquals(screen.textRows(), ["ROW0", "ROW1", "ROW2", "STATUS"]);
+  assertEquals(screen.scrollbackRows, 0);
+});
+
+Deno.test("TerminalScreenController fills erased and scrolled cells with the active background", () => {
+  // Background-colour erase: clearing or scrolling inside a coloured pane must
+  // not leave default-coloured gaps.
+  const screen = new TerminalScreenController({ columns: 6, rows: 3 });
+  screen.write("\x1b[44m"); // blue background
+  screen.write("\x1b[1;1Hab\x1b[K"); // erase to end of line
+  const firstRow = screen.cellRows()[0]!;
+  assertEquals(firstRow[2]!.background, 44);
+  assertEquals(firstRow[2]!.char, " ");
+  // Foreground/attributes are not carried by the erase.
+  assertEquals(firstRow[2]!.foreground, undefined);
+
+  // Lines scrolled into the region take the same background.
+  screen.write("\x1b[3;1H\n");
+  assertEquals(screen.cellRows()[2]![0]!.background, 44);
+
+  // With no background set the shared blank cell is still used.
+  const plain = new TerminalScreenController({ columns: 4, rows: 2 });
+  plain.write("xy\x1b[K");
+  assertEquals(plain.cellRows()[0]![2], { char: " " });
+});
+
 Deno.test("TerminalScreenController tracks cursor style sequences", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 2 });
 

@@ -345,6 +345,21 @@ export class TerminalScreenController {
     row[column] = cell;
   }
 
+  /**
+   * Background-colour erase: cells vacated by an erase, insert/delete or scroll
+   * take the active SGR background (foreground and attributes are not carried),
+   * so clearing or scrolling inside a coloured pane leaves no default-coloured
+   * gaps. Falls back to the shared blank cell when no background is set.
+   */
+  #eraseCell(): TerminalScreenCell {
+    const background = this.#style.background;
+    return background === undefined ? BLANK_CELL : { char: " ", background };
+  }
+
+  #eraseRow(): TerminalScreenCell[] {
+    return new Array<TerminalScreenCell>(this.#columns).fill(this.#eraseCell());
+  }
+
   #newline(): void {
     this.#state.cursor.column = 0;
     this.#index();
@@ -359,7 +374,9 @@ export class TerminalScreenController {
       this.#state.cursor.row += 1;
       return;
     }
-    this.#scrollRegionUp(0, this.#rows - 1, 1);
+    // The cursor sits on the last screen row but below the scroll region — as
+    // tmux keeps its status line. A linefeed there scrolls nothing and the
+    // cursor stays put; scrolling the whole screen would corrupt every row.
   }
 
   #applyControl(sequence: ParsedTerminalControlSequence): void {
@@ -691,19 +708,27 @@ export class TerminalScreenController {
 
   #eraseDisplay(mode: number): void {
     if (mode === 2 || mode === 3) {
-      this.clear();
+      // ED erases cells only. It must not move the cursor or disturb the scroll
+      // region, tab stops, charset shifts or decoder state — a full `clear()`
+      // here made apps that erase and keep drawing (tmux, Claude Code) land
+      // their next writes at the top-left corner.
+      for (let row = 0; row < this.#rows; row += 1) {
+        fillCells(this.#state.cells[row]!, 0, this.#columns, this.#eraseCell());
+      }
+      // ED 3 additionally drops saved lines, matching xterm.
+      if (mode === 3) this.#scrollback = [];
       return;
     }
     if (mode === 1) {
       for (let row = 0; row <= this.#state.cursor.row; row += 1) {
         const end = row === this.#state.cursor.row ? this.#state.cursor.column + 1 : this.#columns;
-        fillBlankCells(this.#state.cells[row]!, 0, end);
+        fillCells(this.#state.cells[row]!, 0, end, this.#eraseCell());
       }
       return;
     }
     for (let row = this.#state.cursor.row; row < this.#rows; row += 1) {
       const start = row === this.#state.cursor.row ? this.#state.cursor.column : 0;
-      fillBlankCells(this.#state.cells[row]!, start, this.#columns - start);
+      fillCells(this.#state.cells[row]!, start, this.#columns - start, this.#eraseCell());
     }
   }
 
@@ -711,28 +736,28 @@ export class TerminalScreenController {
     const row = this.#state.cells[this.#state.cursor.row]!;
     const start = mode === 1 || mode === 2 ? 0 : this.#state.cursor.column;
     const end = mode === 1 ? this.#state.cursor.column + 1 : this.#columns;
-    fillBlankCells(row, start, end - start);
+    fillCells(row, start, end - start, this.#eraseCell());
   }
 
   #insertCharacters(count: number): void {
     const row = this.#state.cells[this.#state.cursor.row]!;
     const column = this.#state.cursor.column;
     const amount = clamp(Math.floor(count), 1, this.#columns - column);
-    shiftCellsRight(row, column, amount, this.#columns);
+    shiftCellsRight(row, column, amount, this.#columns, this.#eraseCell());
   }
 
   #deleteCharacters(count: number): void {
     const row = this.#state.cells[this.#state.cursor.row]!;
     const column = this.#state.cursor.column;
     const amount = clamp(Math.floor(count), 1, this.#columns - column);
-    shiftCellsLeft(row, column, amount, this.#columns);
+    shiftCellsLeft(row, column, amount, this.#columns, this.#eraseCell());
   }
 
   #eraseCharacters(count: number): void {
     const row = this.#state.cells[this.#state.cursor.row]!;
     const column = this.#state.cursor.column;
     const amount = clamp(Math.floor(count), 1, this.#columns - column);
-    fillBlankCells(row, column, amount);
+    fillCells(row, column, amount, this.#eraseCell());
   }
 
   #insertLines(count: number): void {
@@ -740,7 +765,7 @@ export class TerminalScreenController {
     if (row < this.#scrollRegion.top || row > this.#scrollRegion.bottom) return;
     const amount = clamp(Math.floor(count), 1, this.#scrollRegion.bottom - row + 1);
     for (let index = 0; index < amount; index += 1) {
-      this.#state.cells.splice(row, 0, blankRow(this.#columns));
+      this.#state.cells.splice(row, 0, this.#eraseRow());
       this.#state.cells.splice(this.#scrollRegion.bottom + 1, 1);
     }
   }
@@ -751,7 +776,7 @@ export class TerminalScreenController {
     const amount = clamp(Math.floor(count), 1, this.#scrollRegion.bottom - row + 1);
     for (let index = 0; index < amount; index += 1) {
       this.#state.cells.splice(row, 1);
-      this.#state.cells.splice(this.#scrollRegion.bottom, 0, blankRow(this.#columns));
+      this.#state.cells.splice(this.#scrollRegion.bottom, 0, this.#eraseRow());
     }
   }
 
@@ -780,7 +805,7 @@ export class TerminalScreenController {
         this.#scrollback.push(shifted);
         if (this.#scrollback.length > this.#scrollbackLimit) this.#scrollback.shift();
       }
-      this.#state.cells.splice(bottom, 0, blankRow(this.#columns));
+      this.#state.cells.splice(bottom, 0, this.#eraseRow());
     }
   }
 
@@ -788,7 +813,7 @@ export class TerminalScreenController {
     const amount = clamp(Math.floor(count), 1, bottom - top + 1);
     for (let index = 0; index < amount; index += 1) {
       this.#state.cells.splice(bottom, 1);
-      this.#state.cells.splice(top, 0, blankRow(this.#columns));
+      this.#state.cells.splice(top, 0, this.#eraseRow());
     }
   }
 
@@ -924,30 +949,47 @@ function terminalGraphicWidth(char: string): number {
   return Math.max(1, Math.min(2, textWidth(char)));
 }
 
-function fillBlankCells(row: TerminalScreenCell[], start: number, count: number): void {
+function fillCells(
+  row: TerminalScreenCell[],
+  start: number,
+  count: number,
+  cell: TerminalScreenCell = BLANK_CELL,
+): void {
   const end = Math.min(row.length, start + Math.max(0, count));
   for (let column = Math.max(0, start); column < end; column += 1) {
-    row[column] = BLANK_CELL;
+    row[column] = cell;
   }
 }
 
-function shiftCellsRight(row: TerminalScreenCell[], start: number, amount: number, columns: number): void {
+function shiftCellsRight(
+  row: TerminalScreenCell[],
+  start: number,
+  amount: number,
+  columns: number,
+  fill: TerminalScreenCell,
+): void {
   const shift = Math.max(0, amount);
   if (shift === 0) return;
   for (let column = columns - 1; column >= start + shift; column -= 1) {
     row[column] = row[column - shift] ?? BLANK_CELL;
   }
-  fillBlankCells(row, start, Math.min(shift, columns - start));
+  fillCells(row, start, Math.min(shift, columns - start), fill);
 }
 
-function shiftCellsLeft(row: TerminalScreenCell[], start: number, amount: number, columns: number): void {
+function shiftCellsLeft(
+  row: TerminalScreenCell[],
+  start: number,
+  amount: number,
+  columns: number,
+  fill: TerminalScreenCell,
+): void {
   const shift = Math.max(0, amount);
   if (shift === 0) return;
   const fillStart = Math.max(start, columns - shift);
   for (let column = start; column < columns - shift; column += 1) {
     row[column] = row[column + shift] ?? BLANK_CELL;
   }
-  fillBlankCells(row, fillStart, columns - fillStart);
+  fillCells(row, fillStart, columns - fillStart, fill);
 }
 
 function terminalCellRowsToText(rows: readonly TerminalScreenCell[][]): string[] {
