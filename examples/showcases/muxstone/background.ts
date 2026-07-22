@@ -46,6 +46,22 @@ export interface MuxstoneAnimatedBackground {
   ): ReadonlyArray<ReadonlyArray<MuxstoneBackgroundCell | undefined>>;
 }
 
+/**
+ * Backgrounds that answer clicks on bare desktop. Implementations return true
+ * when the click landed on something they own, which claims the event.
+ */
+export interface MuxstoneInteractiveBackground extends MuxstoneAnimatedBackground {
+  /** Handles a click at one desktop cell; true when the field consumed it. */
+  pick(column: number, row: number, now?: number): boolean;
+}
+
+/** Narrows a background to one that accepts clicks. */
+export function muxstoneBackgroundAcceptsPicks(
+  field: MuxstoneAnimatedBackground | undefined,
+): field is MuxstoneInteractiveBackground {
+  return typeof (field as MuxstoneInteractiveBackground | undefined)?.pick === "function";
+}
+
 /** Linear blend between two theme colors; `mix` is clamped to [0, 1]. */
 export function mixMuxstoneRgb(from: MuxstoneRgb, to: MuxstoneRgb, mix: number): MuxstoneRgb {
   const amount = Math.min(1, Math.max(0, mix));

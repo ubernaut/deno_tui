@@ -25,51 +25,98 @@ const MIN_STRAND_LENGTH = 18;
 const STRAND_LENGTH_SPREAD = 70;
 /** How often the field surveys itself for bare ground worth seeding. */
 const SURVEY_INTERVAL_MS = 6_000;
-/** Strands live this long before their trailing cells begin to wither. */
-const STRAND_LIFETIME_MS = 150_000;
-/** A strand only starts budding once it has been growing this long. */
-const BLOOM_AGE_MS = 22_000;
+/**
+ * Strands live this long before their trailing cells wither. It comfortably
+ * exceeds the time a section needs to work through leaf, flower and fruit, so
+ * mature growth is something you actually get to see rather than a race.
+ */
+const STRAND_LIFETIME_MS = 600_000;
+/**
+ * Growth is staged by the age of each individual section, so a strand reads as
+ * bare stalk at the tip and progressively richer the further back you look:
+ * stalk, then leaves, then flowers, then fruit.
+ */
+const LEAF_AGE_MS = 8_000;
+const FLOWER_AGE_MS = 25_000;
+const FRUIT_AGE_MS = 50_000;
 /** A bud takes this long to open from first swell to full flower. */
-const BLOOM_OPEN_MS = 14_000;
-/** Cells between bud sites along a mature strand. */
-const BLOOM_SPACING_CELLS = 11;
+const BLOOM_OPEN_MS = 12_000;
+/** Fruit must hang this long before it is ripe enough to pick. */
+const FRUIT_RIPEN_MS = 60_000;
+/** Age past which a section thickens into a second cell of stalk. */
+const THICKEN_AGE_MS = 14_000;
+/**
+ * Per-tick chance an eligible section advances a stage, scaled by its age.
+ * Each stage is rarer than the last, so leaves are common, flowers occasional
+ * and fruit a genuine find.
+ */
+const LEAF_CHANCE = 0.055;
+const FLOWER_CHANCE = 0.010;
+const FRUIT_CHANCE = 0.007;
+/**
+ * Young stalk keeps its ornaments well apart so the runner stays readable;
+ * older stalk tolerates them packed closer, which is what makes a mature
+ * section visibly carry more than a fresh one.
+ */
+const ORNAMENT_SPACING_YOUNG = 3;
+const ORNAMENT_SPACING_MATURE = 1;
+/** How often ornament growth is reconsidered. */
+const ORNAMENT_TICK_MS = 900;
+/** Confetti thrown by one picked fruit. */
+const CONFETTI_PER_FRUIT = 18;
+const CONFETTI_LIFETIME_MS = 1_400;
+const CONFETTI_GRAVITY = 0.055;
 const MAX_STRANDS = 40;
 const SURVEY_SAMPLES = 40;
 const OBSTACLE_MARGIN = 1;
 
-/** Vine glyphs chosen by the direction the strand is travelling. */
-const VINE_HORIZONTAL = "─";
-const VINE_VERTICAL = "│";
-const VINE_DIAGONAL_DOWN = "╲";
-const VINE_DIAGONAL_UP = "╱";
-/** Arc glyphs used where a strand changes quadrant, giving the curling look. */
-const ARC_GLYPHS = ["╭", "╮", "╰", "╯"] as const;
-/** Leaves scattered along a strand. */
-const LEAF_GLYPHS = ["·", "•", "¤", "☘"] as const;
-/** Bud opening sequence: swell, part, open, full bloom. */
-const BLOOM_STAGES = ["·", "∘", "○", "❁"] as const;
+/**
+ * Stalk weight by section age: a fresh tip is a faint sliver and an old runner
+ * is solid block, so the vine visibly thickens as it matures.
+ */
+const STALK_GLYPHS = ["░", "▒", "▓", "█"] as const;
+/** Secondary cell painted beside a thick section to widen the runner. */
+const STALK_EDGE_GLYPH = "▒";
+/** Leaflets, drawn as plain ASCII rather than symbol glyphs. */
+const LEAF_GLYPHS = ["<", ">", "v", "^"] as const;
+/** Bud opening sequence in ASCII: set, swell, part, open bloom. */
+const BLOOM_STAGES = [".", ":", "+", "*"] as const;
+/** Fruit: dull while it sets, then a full berry once ripe and pickable. */
+const FRUIT_UNRIPE_GLYPH = "o";
+const FRUIT_RIPE_GLYPH = "@";
+/** Confetti thrown when ripe fruit is picked, oldest particles first. */
+const CONFETTI_GLYPHS = ["*", "+", "x", "'", "."] as const;
 
-/** One flower on a strand, keyed to the cell index it sits on. */
-export interface MuxstoneIvyBloomSnapshot {
-  readonly cellIndex: number;
-  /** 0 at first swell through 1 at full bloom. */
+/** What one section of stalk is currently carrying. */
+export type MuxstoneIvyOrnament = "none" | "leaf" | "flower" | "fruit";
+
+/** One section of a strand exposed for deterministic tests. */
+export interface MuxstoneIvyCellSnapshot {
+  readonly x: number;
+  readonly y: number;
+  /** How long this section has existed, in milliseconds. */
+  readonly ageMs: number;
+  readonly ornament: MuxstoneIvyOrnament;
+  /** 0 at first swell through 1 at full bloom; only meaningful for flowers. */
   readonly openness: number;
-  /** Index into the theme's flower palette. */
-  readonly hue: number;
+  /** True once fruit has hung long enough to be picked. */
+  readonly ripe: boolean;
 }
 
 /** One ivy strand exposed for deterministic tests. */
 export interface MuxstoneIvyStrandSnapshot {
-  readonly cells: readonly { readonly x: number; readonly y: number }[];
+  readonly cells: readonly MuxstoneIvyCellSnapshot[];
   readonly ageMs: number;
   readonly growing: boolean;
-  readonly blooms: readonly MuxstoneIvyBloomSnapshot[];
 }
 
 /** Serializable ivy inspection for tests and diagnostics. */
 export interface MuxstoneIvyInspection {
   readonly strands: readonly MuxstoneIvyStrandSnapshot[];
   readonly obstacles: readonly Rectangle[];
+  /** Live confetti particles from recently picked fruit. */
+  readonly confetti: number;
+  readonly ripeFruit: number;
 }
 
 /** Construction options for the ivy field. */
@@ -84,14 +131,23 @@ interface IvyCell {
   y: number;
   /** Heading, in radians, the strand held when it entered this cell. */
   heading: number;
-  /** True where the strand changed quadrant, so an arc glyph is drawn. */
-  arc: boolean;
-  leaf: boolean;
+  /** Milliseconds since this section grew; drives every growth stage. */
+  ageMs: number;
+  ornament: MuxstoneIvyOrnament;
+  /** Milliseconds a flower has been opening. */
+  bloomMs: number;
+  /** Milliseconds fruit has hung, or undefined when the cell carries none. */
+  fruitMs?: number;
+  hue: number;
+  seed: number;
 }
 
-interface IvyBloom {
-  cellIndex: number;
-  openedMs: number;
+interface IvyConfetti {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  lifeMs: number;
   hue: number;
 }
 
@@ -104,8 +160,6 @@ interface IvyStrand {
   targetLength: number;
   growthAccumulator: number;
   ageMs: number;
-  blooms: IvyBloom[];
-  nextBloomCell: number;
   hue: number;
 }
 
@@ -133,6 +187,8 @@ export class MuxstoneIvyField implements MuxstoneAnimatedBackground {
   #activePointer?: { column: number; row: number };
   #lastFrameAt?: number;
   #surveyTimerMs = 0;
+  #ornamentTimerMs = 0;
+  #confetti: IvyConfetti[] = [];
   #cells: (MuxstoneBackgroundCell | undefined)[][] = [];
 
   constructor(options: MuxstoneIvyFieldOptions = {}) {
@@ -170,21 +226,25 @@ export class MuxstoneIvyField implements MuxstoneAnimatedBackground {
 
     let changed = this.#syncObstacles(options, bounds);
 
+    this.#ornamentTimerMs += elapsed;
+    const growOrnaments = this.#ornamentTimerMs >= ORNAMENT_TICK_MS;
+    if (growOrnaments) this.#ornamentTimerMs = 0;
+
     for (let index = this.#strands.length - 1; index >= 0; index -= 1) {
       const strand = this.#strands[index]!;
       strand.ageMs += elapsed;
       if (this.#extendStrand(strand, bounds, delta)) changed = true;
-      if (this.#advanceBlooms(strand, elapsed)) changed = true;
-      // Old strands wither from the tail so the board keeps turning over.
-      if (strand.ageMs > STRAND_LIFETIME_MS) {
+      if (this.#ageSections(strand, elapsed, growOrnaments)) changed = true;
+      // Old strands wither from the tail so the board keeps turning over, but
+      // only on the slow tick: shedding a cell per frame would strip a long
+      // runner in seconds.
+      if (growOrnaments && strand.ageMs > STRAND_LIFETIME_MS) {
         strand.cells.shift();
-        for (const bloom of strand.blooms) bloom.cellIndex -= 1;
-        strand.blooms = strand.blooms.filter((bloom) => bloom.cellIndex >= 0);
-        strand.nextBloomCell = Math.max(0, strand.nextBloomCell - 1);
         changed = true;
         if (strand.cells.length === 0) this.#strands.splice(index, 1);
       }
     }
+    if (this.#advanceConfetti(elapsed, delta, bounds)) changed = true;
 
     while (this.#surveyTimerMs >= SURVEY_INTERVAL_MS) {
       this.#surveyTimerMs -= SURVEY_INTERVAL_MS;
@@ -215,43 +275,70 @@ export class MuxstoneIvyField implements MuxstoneAnimatedBackground {
     ];
 
     for (const strand of this.#strands) {
-      const length = strand.cells.length;
-      if (length === 0) continue;
-      const bloomAt = new Map<number, IvyBloom>();
-      for (const bloom of strand.blooms) bloomAt.set(bloom.cellIndex, bloom);
-
-      for (let index = 0; index < length; index += 1) {
-        const cell = strand.cells[index]!;
+      for (const cell of strand.cells) {
         if (cell.x < 0 || cell.x >= width || cell.y < 0 || cell.y >= height) continue;
-        const bloom = bloomAt.get(index);
-        if (bloom) {
-          const stage = Math.min(
-            BLOOM_STAGES.length - 1,
-            Math.floor(bloom.openedMs / BLOOM_OPEN_MS * BLOOM_STAGES.length),
-          );
-          const openness = Math.min(1, bloom.openedMs / BLOOM_OPEN_MS);
-          const petal = flowerPalette[bloom.hue % flowerPalette.length]!;
+        const maturity = Math.min(1, cell.ageMs / (FRUIT_AGE_MS * 1.2));
+        const stalkShade = mixMuxstoneRgb(vineDeep, vineLit, 0.2 + maturity * 0.6);
+
+        // A mature runner spills onto the cell beside it, so old growth reads
+        // visibly thicker than the fresh tip.
+        if (cell.ageMs >= THICKEN_AGE_MS) {
+          const perpendicular = headingStep(cell.heading + TAU / 4);
+          const edgeX = cell.x + perpendicular.dx;
+          const edgeY = cell.y + perpendicular.dy;
+          if (edgeX >= 0 && edgeX < width && edgeY >= 0 && edgeY < height && !this.#cells[edgeY]![edgeX]) {
+            this.#cells[edgeY]![edgeX] = {
+              char: STALK_EDGE_GLYPH,
+              foreground: mixMuxstoneRgb(vineDeep, stalkShade, 0.55),
+            };
+          }
+        }
+
+        // Stalk first; an ornament then overwrites its own cell.
+        const weight = Math.min(STALK_GLYPHS.length - 1, Math.floor(maturity * STALK_GLYPHS.length));
+        this.#cells[cell.y]![cell.x] = { char: STALK_GLYPHS[weight]!, foreground: stalkShade };
+
+        if (cell.ornament === "leaf") {
           this.#cells[cell.y]![cell.x] = {
-            char: BLOOM_STAGES[stage]!,
-            // A bud starts near the vine's own green and saturates as it opens.
-            foreground: mixMuxstoneRgb(vineLit, petal, 0.35 + openness * 0.65),
+            char: LEAF_GLYPHS[cell.seed % LEAF_GLYPHS.length]!,
+            foreground: mixMuxstoneRgb(stalkShade, theme.success, 0.5),
+          };
+        } else if (cell.ornament === "flower") {
+          const openness = Math.min(1, cell.bloomMs / BLOOM_OPEN_MS);
+          const petal = flowerPalette[cell.hue % flowerPalette.length]!;
+          this.#cells[cell.y]![cell.x] = {
+            char: BLOOM_STAGES[bloomStage(cell.bloomMs)]!,
+            foreground: mixMuxstoneRgb(vineLit, petal, 0.3 + openness * 0.7),
             ...(openness > 0.6 ? { bold: true } : {}),
           };
-          continue;
+        } else if (cell.ornament === "fruit") {
+          const ripe = (cell.fruitMs ?? 0) >= FRUIT_RIPEN_MS;
+          const berry = flowerPalette[(cell.hue + 2) % flowerPalette.length]!;
+          this.#cells[cell.y]![cell.x] = {
+            char: ripe ? FRUIT_RIPE_GLYPH : FRUIT_UNRIPE_GLYPH,
+            // Ripe fruit is saturated and bold; it is the only clickable thing.
+            foreground: ripe ? berry : mixMuxstoneRgb(stalkShade, berry, 0.4),
+            ...(ripe ? { bold: true } : {}),
+          };
         }
-        // Tip cells read brightest so a growing strand shows its leading edge.
-        const tipness = length <= 1 ? 1 : index / (length - 1);
-        const near = this.#activePointer !== undefined &&
-          Math.max(Math.abs(cell.x - this.#activePointer.column), Math.abs(cell.y - this.#activePointer.row)) <=
-            POINTER_REACH_CELLS;
-        const shade = mixMuxstoneRgb(vineDeep, vineLit, tipness * 0.75 + (near ? 0.25 : 0));
-        this.#cells[cell.y]![cell.x] = {
-          char: cell.leaf ? LEAF_GLYPHS[(cell.x + cell.y) % LEAF_GLYPHS.length]! : ivyGlyph(cell),
-          foreground: shade,
-          ...(near || tipness > 0.94 ? { bold: true } : {}),
-        };
       }
     }
+
+    for (const particle of this.#confetti) {
+      const x = Math.round(particle.x);
+      const y = Math.round(particle.y);
+      if (x < 0 || x >= width || y < 0 || y >= height) continue;
+      const life = Math.min(1, particle.lifeMs / CONFETTI_LIFETIME_MS);
+      const stage = Math.min(CONFETTI_GLYPHS.length - 1, Math.floor(life * CONFETTI_GLYPHS.length));
+      const spark = flowerPalette[particle.hue % flowerPalette.length]!;
+      this.#cells[y]![x] = {
+        char: CONFETTI_GLYPHS[stage]!,
+        // Sparks fade back toward the vine as they fall.
+        foreground: mixMuxstoneRgb(spark, vineDeep, life * 0.7),
+        ...(life < 0.5 ? { bold: true } : {}),
+      };
+    }
+
     return this.#cells;
   }
 
@@ -259,16 +346,25 @@ export class MuxstoneIvyField implements MuxstoneAnimatedBackground {
   inspect(): MuxstoneIvyInspection {
     return {
       strands: this.#strands.map((strand) => ({
-        cells: strand.cells.map((cell) => ({ x: cell.x, y: cell.y })),
+        cells: strand.cells.map((cell) => ({
+          x: cell.x,
+          y: cell.y,
+          ageMs: cell.ageMs,
+          ornament: cell.ornament,
+          openness: Math.min(1, cell.bloomMs / BLOOM_OPEN_MS),
+          ripe: cell.ornament === "fruit" && (cell.fruitMs ?? 0) >= FRUIT_RIPEN_MS,
+        })),
         ageMs: strand.ageMs,
         growing: strand.cells.length < strand.targetLength,
-        blooms: strand.blooms.map((bloom) => ({
-          cellIndex: bloom.cellIndex,
-          openness: Math.min(1, bloom.openedMs / BLOOM_OPEN_MS),
-          hue: bloom.hue,
-        })),
       })),
       obstacles: this.#obstacles.map((rectangle) => ({ ...rectangle })),
+      confetti: this.#confetti.length,
+      ripeFruit: this.#strands.reduce(
+        (total, strand) =>
+          total + strand.cells.filter((cell) => cell.ornament === "fruit" && (cell.fruitMs ?? 0) >= FRUIT_RIPEN_MS)
+            .length,
+        0,
+      ),
     };
   }
 
@@ -283,6 +379,7 @@ export class MuxstoneIvyField implements MuxstoneAnimatedBackground {
     this.#obstacles = [];
     this.#obstacleKey = undefined;
     this.#strands = [];
+    this.#confetti = [];
     const target = clampInteger(Math.round((4 + (bounds.width * bounds.height) / 380) * this.#density), 3, MAX_STRANDS);
     for (let index = 0; index < target; index += 1) this.#seedStrand(bounds);
   }
@@ -326,17 +423,16 @@ export class MuxstoneIvyField implements MuxstoneAnimatedBackground {
       }
     }
     if (!this.#passable(x, y, bounds)) return false;
+    const hue = Math.floor(this.#random() * 4);
     this.#strands.push({
-      cells: [{ x, y, heading, arc: false, leaf: false }],
+      cells: [{ x, y, heading, ageMs: 0, ornament: "none", bloomMs: 0, hue, seed: Math.floor(this.#random() * 1024) }],
       heading,
       curl: (this.#random() - 0.5) * MAX_TURN_PER_CELL,
       curlHoldCells: 3 + Math.floor(this.#random() * 8),
       targetLength: MIN_STRAND_LENGTH + Math.floor(this.#random() * STRAND_LENGTH_SPREAD),
       growthAccumulator: 0,
       ageMs: 0,
-      blooms: [],
-      nextBloomCell: BLOOM_SPACING_CELLS,
-      hue: Math.floor(this.#random() * 4),
+      hue,
     });
     return true;
   }
@@ -377,40 +473,135 @@ export class MuxstoneIvyField implements MuxstoneAnimatedBackground {
           return grew;
         }
       }
-      const arc = quadrant(strand.heading) !== quadrant(previousHeading);
+      void previousHeading;
       strand.cells.push({
         x: nextX,
         y: nextY,
         heading: strand.heading,
-        arc,
-        leaf: this.#random() < 0.18,
+        ageMs: 0,
+        ornament: "none",
+        bloomMs: 0,
+        hue: strand.hue,
+        seed: Math.floor(this.#random() * 1024),
       });
       grew = true;
     }
     return grew;
   }
 
-  /** Sets new buds on mature strands and opens the ones already set. */
-  #advanceBlooms(strand: IvyStrand, elapsed: number): boolean {
+  /**
+   * Ages every section and promotes it through the growth stages. A section
+   * only ever advances one step — bare, leaf, flower, fruit — and the chance of
+   * advancing rises with age, so old runners end up carrying far more than the
+   * young growth near the tip.
+   */
+  #ageSections(strand: IvyStrand, elapsed: number, grow: boolean): boolean {
     let changed = false;
-    if (strand.ageMs >= BLOOM_AGE_MS) {
-      while (strand.nextBloomCell < strand.cells.length) {
-        strand.blooms.push({
-          cellIndex: strand.nextBloomCell,
-          openedMs: 0,
-          hue: (strand.hue + strand.blooms.length) % 4,
-        });
-        strand.nextBloomCell += BLOOM_SPACING_CELLS;
+    for (let index = 0; index < strand.cells.length; index += 1) {
+      const cell = strand.cells[index]!;
+      cell.ageMs += elapsed;
+      if (cell.ornament === "flower" && cell.bloomMs < BLOOM_OPEN_MS) {
+        const before = bloomStage(cell.bloomMs);
+        cell.bloomMs = Math.min(BLOOM_OPEN_MS, cell.bloomMs + elapsed);
+        if (bloomStage(cell.bloomMs) !== before) changed = true;
+      }
+      if (cell.fruitMs !== undefined) {
+        const wasRipe = cell.fruitMs >= FRUIT_RIPEN_MS;
+        cell.fruitMs += elapsed;
+        if (!wasRipe && cell.fruitMs >= FRUIT_RIPEN_MS) changed = true;
+      }
+      if (!grow) continue;
+      // Older sections sprout more readily; the ramp is capped so growth stays
+      // gradual rather than snapping to fully dressed.
+      const maturity = Math.min(1, cell.ageMs / (FRUIT_AGE_MS * 1.5));
+      const roll = this.#random();
+      if (cell.ornament === "none") {
+        // Bare stalk only sprouts away from what is already growing, so the
+        // runner never disappears under its own foliage.
+        if (cell.ageMs < LEAF_AGE_MS) continue;
+        if (roll > LEAF_CHANCE * (0.35 + maturity)) continue;
+        if (this.#ornamentNearby(strand, index, ornamentSpacing(cell.ageMs))) continue;
+        cell.ornament = "leaf";
+        changed = true;
+      } else if (cell.ornament === "leaf" && cell.ageMs >= FLOWER_AGE_MS) {
+        if (roll > FLOWER_CHANCE * (0.35 + maturity)) continue;
+        cell.ornament = "flower";
+        cell.bloomMs = 0;
+        changed = true;
+      } else if (cell.ornament === "flower" && cell.bloomMs >= BLOOM_OPEN_MS && cell.ageMs >= FRUIT_AGE_MS) {
+        if (roll > FRUIT_CHANCE * (0.35 + maturity)) continue;
+        cell.ornament = "fruit";
+        cell.fruitMs = 0;
         changed = true;
       }
     }
-    for (const bloom of strand.blooms) {
-      if (bloom.openedMs >= BLOOM_OPEN_MS) continue;
-      const before = Math.floor(bloom.openedMs / BLOOM_OPEN_MS * BLOOM_STAGES.length);
-      bloom.openedMs = Math.min(BLOOM_OPEN_MS, bloom.openedMs + elapsed);
-      if (Math.floor(bloom.openedMs / BLOOM_OPEN_MS * BLOOM_STAGES.length) !== before) changed = true;
-    }
     return changed;
+  }
+
+  /** True when a neighbouring section along the strand already carries growth. */
+  #ornamentNearby(strand: IvyStrand, index: number, spacing: number): boolean {
+    const first = Math.max(0, index - spacing);
+    const last = Math.min(strand.cells.length - 1, index + spacing);
+    for (let probe = first; probe <= last; probe += 1) {
+      if (probe !== index && strand.cells[probe]!.ornament !== "none") return true;
+    }
+    return false;
+  }
+
+  /** Steps live confetti and retires spent particles. */
+  #advanceConfetti(elapsed: number, delta: number, bounds: Rectangle): boolean {
+    if (this.#confetti.length === 0) return false;
+    for (let index = this.#confetti.length - 1; index >= 0; index -= 1) {
+      const particle = this.#confetti[index]!;
+      particle.lifeMs += elapsed;
+      particle.x += particle.vx * delta;
+      particle.y += particle.vy * delta;
+      particle.vy += CONFETTI_GRAVITY * delta;
+      const gone = particle.lifeMs >= CONFETTI_LIFETIME_MS ||
+        particle.x < -2 || particle.y < -2 || particle.x > bounds.width + 2 || particle.y > bounds.height + 2;
+      if (gone) this.#confetti.splice(index, 1);
+    }
+    return true;
+  }
+
+  /**
+   * Picks ripe fruit at one desktop cell, bursting it into confetti. Returns
+   * false for anything else so the click falls through to the desktop.
+   */
+  pick(column: number, row: number, now = performance.now()): boolean {
+    const bounds = this.#bounds;
+    if (!bounds) return false;
+    const x = Math.floor(column - bounds.column);
+    const y = Math.floor(row - bounds.row);
+    for (const strand of this.#strands) {
+      for (const cell of strand.cells) {
+        if (cell.x !== x || cell.y !== y) continue;
+        if (cell.ornament !== "fruit" || (cell.fruitMs ?? 0) < FRUIT_RIPEN_MS) continue;
+        cell.ornament = "none";
+        cell.fruitMs = undefined;
+        cell.bloomMs = 0;
+        // The section keeps its age, so it will bud and fruit again in time.
+        this.#burst(x, y, cell.hue);
+        this.#lastFrameAt = finite(now, this.#lastFrameAt ?? 0);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  #burst(x: number, y: number, hue: number): void {
+    for (let index = 0; index < CONFETTI_PER_FRUIT; index += 1) {
+      const angle = (index / CONFETTI_PER_FRUIT) * TAU + this.#random() * 0.4;
+      const speed = 0.25 + this.#random() * 0.75;
+      this.#confetti.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 0.35,
+        lifeMs: 0,
+        hue: (hue + index) % 4,
+      });
+    }
   }
 
   /** Periodic survey: seeds a strand into whatever bare ground it can find. */
@@ -491,7 +682,6 @@ export class MuxstoneIvyField implements MuxstoneAnimatedBackground {
       const keep = strand.cells.findIndex((cell) => !this.#passable(cell.x, cell.y, bounds));
       if (keep < 0) continue;
       strand.cells.length = keep;
-      strand.blooms = strand.blooms.filter((bloom) => bloom.cellIndex < keep);
       strand.targetLength = Math.min(strand.targetLength, keep);
       if (strand.cells.length === 0) this.#strands.splice(index, 1);
     }
@@ -504,12 +694,16 @@ export class MuxstoneIvyField implements MuxstoneAnimatedBackground {
   }
 }
 
-/** Chooses the vine glyph for one cell from the heading it was entered on. */
-function ivyGlyph(cell: IvyCell): string {
-  if (cell.arc) return ARC_GLYPHS[quadrant(cell.heading)]!;
-  const step = headingStep(cell.heading);
-  if (step.dx !== 0 && step.dy !== 0) return step.dx === step.dy ? VINE_DIAGONAL_DOWN : VINE_DIAGONAL_UP;
-  return step.dy === 0 ? VINE_HORIZONTAL : VINE_VERTICAL;
+/** How far apart ornaments must sit on a section of the given age. */
+function ornamentSpacing(ageMs: number): number {
+  if (ageMs >= FRUIT_AGE_MS) return ORNAMENT_SPACING_MATURE;
+  if (ageMs >= FLOWER_AGE_MS) return ORNAMENT_SPACING_MATURE + 1;
+  return ORNAMENT_SPACING_YOUNG;
+}
+
+/** Index into BLOOM_STAGES for one bud's opening progress. */
+function bloomStage(bloomMs: number): number {
+  return Math.min(BLOOM_STAGES.length - 1, Math.floor(bloomMs / BLOOM_OPEN_MS * BLOOM_STAGES.length));
 }
 
 /** Quantizes a heading to one of eight cell steps. */

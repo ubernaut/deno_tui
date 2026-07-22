@@ -70,31 +70,97 @@ Deno.test("MuxstoneIvyField: strands creep outward along curving arcs", () => {
     }
   }
 
-  // The path actually curves: arc glyphs appear, not just straight runs.
-  const painted = grid(field).join("");
-  const arcs = [...painted].filter((glyph) => "╭╮╰╯".includes(glyph)).length;
-  assert(arcs > 10, `expected curving arcs, found ${arcs}`);
+  // The path actually curves: strands change direction rather than running straight.
+  let turns = 0;
+  for (const strand of field.inspect().strands) {
+    for (let index = 2; index < strand.cells.length; index += 1) {
+      const a = strand.cells[index - 2]!;
+      const b = strand.cells[index - 1]!;
+      const c = strand.cells[index]!;
+      if (b.x - a.x !== c.x - b.x || b.y - a.y !== c.y - b.y) turns += 1;
+    }
+  }
+  assert(turns > 10, `expected curving strands, found ${turns} direction changes`);
 });
 
-Deno.test("MuxstoneIvyField: mature strands bud and open flowers gradually", () => {
+Deno.test("MuxstoneIvyField: sections mature through stalk, leaves, flowers, then fruit", () => {
   const field = new MuxstoneIvyField({ seed: 15 });
-  // Well before the bloom age nothing has budded.
-  let now = run(field, 600);
-  assertEquals(field.inspect().strands.some((strand) => strand.blooms.length > 0), false);
+  const ornaments = (): Record<string, number> => {
+    const counts: Record<string, number> = { none: 0, leaf: 0, flower: 0, fruit: 0 };
+    for (const strand of field.inspect().strands) {
+      for (const cell of strand.cells) counts[cell.ornament] = (counts[cell.ornament] ?? 0) + 1;
+    }
+    return counts;
+  };
 
-  // Past the bloom age buds appear, and they start closed rather than open.
-  now = run(field, 1_400, [], now);
-  const budded = field.inspect().strands.flatMap((strand) => strand.blooms);
-  assert(budded.length > 0, "mature strands should set buds");
-  assert(budded.some((bloom) => bloom.openness < 1), "buds should open gradually, not instantly");
+  // Fresh growth is bare stalk only.
+  let now = run(field, 200);
+  const young = ornaments();
+  assertEquals(young.leaf, 0);
+  assertEquals(young.flower, 0);
+  assertEquals(young.fruit, 0);
+  assert(young.none > 0, "expected stalk to exist");
 
-  // Given enough time they reach full bloom.
-  now = run(field, 1_800, [], now);
-  const opened = field.inspect().strands.flatMap((strand) => strand.blooms);
-  assert(opened.some((bloom) => bloom.openness >= 1), "buds should eventually reach full bloom");
+  // Leaves arrive first.
+  now = run(field, 900, [], now);
+  const leafy = ornaments();
+  assert(leafy.leaf > 0, "leaves should appear before flowers");
+  assertEquals(leafy.fruit, 0, "fruit must not precede flowers");
 
-  // Flowers are drawn from the opening sequence, ending in the full blossom.
-  assert(grid(field).join("").includes("❁"), "an open flower should be painted");
+  // Then flowers, then fruit, with every stage still represented.
+  now = run(field, 25_000, [], now);
+  const mature = ornaments();
+  assert(mature.flower > 0, "flowers should follow leaves");
+  assert(mature.fruit > 0, "fruit should follow flowers");
+  assert(mature.none > 0, "bare stalk should remain visible between growth");
+  assert(mature.leaf > 0, "leaves should persist on mature growth");
+
+  // Older sections carry more than young ones.
+  const byAge = field.inspect().strands.flatMap((strand) => strand.cells);
+  const old = byAge.filter((cell) => cell.ageMs >= 60_000);
+  const fresh = byAge.filter((cell) => cell.ageMs < 10_000);
+  if (old.length > 20 && fresh.length > 20) {
+    const density = (cells: typeof byAge) => cells.filter((cell) => cell.ornament !== "none").length / cells.length;
+    assert(
+      density(old) > density(fresh),
+      `older sections should carry more growth: ${density(old)} vs ${density(fresh)}`,
+    );
+  }
+
+  // Flowers open gradually through the ASCII sequence rather than snapping open.
+  const painted = grid(field).join("");
+  assert(/[.:+*]/.test(painted), "an opening flower should be painted");
+});
+
+Deno.test("MuxstoneIvyField: ripe fruit is pickable and bursts into confetti", () => {
+  const field = new MuxstoneIvyField({ seed: 15 });
+  // Long enough for fruit to set and then hang until ripe.
+  run(field, 26_000);
+  const ripe = field.inspect().strands.flatMap((strand) => strand.cells).find((cell) => cell.ripe);
+  assert(ripe, "expected ripe fruit after a long run");
+  assertEquals(field.inspect().confetti, 0);
+
+  // Empty ground and unripe fruit are not pickable, so ordinary clicks fall through.
+  assertEquals(field.pick(-50, -50), false);
+  // Strands overlap, so only consider a cell that carries no ripe fruit at all.
+  const cells = field.inspect().strands.flatMap((strand) => strand.cells);
+  const ripeAt = new Set(cells.filter((cell) => cell.ripe).map((cell) => `${cell.x},${cell.y}`));
+  const unripe = cells.find((cell) => cell.ornament === "fruit" && !ripeAt.has(`${cell.x},${cell.y}`));
+  if (unripe) assertEquals(field.pick(unripe.x, unripe.y), false, "unripe fruit must not be pickable");
+
+  // Picking ripe fruit consumes it and throws confetti.
+  assertEquals(field.pick(ripe.x, ripe.y), true);
+  assert(field.inspect().confetti > 0, "picking should throw confetti");
+  const stillThere = field.inspect().strands.flatMap((strand) => strand.cells)
+    .some((cell) => cell.x === ripe.x && cell.y === ripe.y && cell.ornament === "fruit");
+  assertEquals(stillThere, false, "picked fruit should be gone");
+  // The same cell cannot be picked twice.
+  assertEquals(field.pick(ripe.x, ripe.y), false);
+
+  // Confetti is drawn, then settles away on its own.
+  assert(/[*+x'.]/.test(grid(field).join("")), "confetti should be painted");
+  run(field, 400, [], 26_000 * 16.7);
+  assertEquals(field.inspect().confetti, 0, "confetti should expire");
 });
 
 Deno.test("MuxstoneIvyField: keeps clear of obstacles and creeps over them once released", () => {

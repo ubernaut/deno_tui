@@ -71,7 +71,7 @@ import {
   MuxstoneTerminalMouseRouter,
 } from "./terminal_mouse.ts";
 import { muxstoneTerminalForegroundRgb, muxstoneTerminalRgb } from "./terminal_palette.ts";
-import type { MuxstoneAnimatedBackground } from "./background.ts";
+import { type MuxstoneAnimatedBackground, muxstoneBackgroundAcceptsPicks } from "./background.ts";
 import { MuxstoneBiomechField } from "./biomech_background.ts";
 import { MuxstoneCircuitField } from "./circuit_background.ts";
 import { MuxstoneJungleField } from "./jungle_background.ts";
@@ -1026,6 +1026,18 @@ export function mountMuxstoneDesktop(
       }
     }
     const clientWindow = clientWindowAt(projectionBefore, event.x, event.y);
+    // Bare desktop: the background gets first refusal, which is how ripe ivy
+    // fruit is picked. It only claims the click when something was actually
+    // there, so an ordinary desktop click still falls through.
+    if (!clientWindow && !event.drag && !event.release && event.button === 0) {
+      const field = activeBackgroundField();
+      if (muxstoneBackgroundAcceptsPicks(field) && contains(bodyRect.peek(), event.x, event.y)) {
+        if (field.pick(event.x, event.y)) {
+          metaballRevision.value += 1;
+          return true;
+        }
+      }
+    }
     const result = controller.windowHost.handleMouse(
       "terminal",
       event,
