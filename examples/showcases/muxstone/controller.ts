@@ -28,6 +28,8 @@ import {
   type TailnetStatusSource,
 } from "./tailnet.ts";
 import {
+  cycleMuxstoneWindowSetting,
+  defaultMuxstoneWindowSettings,
   initialMuxstoneWorkspaceState,
   isMuxstoneSessionId,
   isMuxstoneSshTarget,
@@ -37,6 +39,7 @@ import {
   MUXSTONE_MAX_ROWS,
   MUXSTONE_MAX_SESSIONS,
   MUXSTONE_THEMES,
+  MUXSTONE_WINDOW_SETTING_SPECS,
   type MuxstoneBackgroundId,
   type MuxstoneClientPort,
   type MuxstoneControllerInspection,
@@ -47,6 +50,8 @@ import {
   muxstoneTheme,
   type MuxstoneThemeSpec,
   muxstoneWindowId,
+  type MuxstoneWindowSettingId,
+  type MuxstoneWindowSettings,
   type MuxstoneWorkspaceState,
   normalizeMuxstoneWorkspaceState,
 } from "./model.ts";
@@ -314,6 +319,12 @@ export class MuxstoneController {
   readonly savedHosts = new Signal<readonly string[]>([]);
   readonly sessionHosts = new Signal<Readonly<Record<string, string>>>({});
   readonly backgroundId = new Signal<MuxstoneBackgroundId>("metaballs");
+  /** Session id → per-window shell settings edited from the titlebar config button. */
+  readonly windowSettings = new Signal<Readonly<Record<string, MuxstoneWindowSettings>>>({});
+  /** Session whose per-window config modal is open, when any. */
+  readonly configSessionId = new Signal<string | undefined>(undefined);
+  /** Highlighted row inside the per-window config modal. */
+  readonly configRowIndex = new Signal(0);
   /** Pending paste-to-scp confirmation; non-undefined opens the transfer modal. */
   readonly pendingScp = new Signal<MuxstoneScpRequest | undefined>(undefined);
   /** Hierarchical Hosts/Tailscale browser state, driven by the shared workbench tree widget. */
@@ -367,6 +378,10 @@ export class MuxstoneController {
         ownerId: "muxstone-window-host",
         snapDistance: 2,
         snapOnRelease: true,
+        // Terminal windows own per-window shell settings; the manager and
+        // network panels have nothing to configure.
+        windowConfigButton: (id: string) => muxstoneSessionIdFromWindow(id) !== undefined,
+        windowConfigLabel: "cfg",
       },
     });
     const windowHost = this.kernel.windowHost;
@@ -440,6 +455,73 @@ export class MuxstoneController {
     if (this.#disposed) return;
     this.quitModalVisible.value = false;
     this.status.value = this.#statusSummary();
+  }
+
+  /** Returns the effective per-window settings for one session. */
+  windowSettingsFor(sessionId: string): MuxstoneWindowSettings {
+    return this.windowSettings.peek()[sessionId] ?? defaultMuxstoneWindowSettings();
+  }
+
+  /** Opens the per-window config modal for one terminal session. */
+  openWindowConfig(sessionId: string): boolean {
+    if (this.#disposed || !this.#runtimes.has(sessionId)) return false;
+    this.prefixPending.value = false;
+    this.helpVisible.value = false;
+    this.pendingKillSessionId.value = undefined;
+    this.configRowIndex.value = 0;
+    this.configSessionId.value = sessionId;
+    this.status.value = "Window config · ↑↓ choose · ←→/Enter change · r reset · Escape close";
+    return true;
+  }
+
+  /** Closes the per-window config modal. */
+  closeWindowConfig(): void {
+    if (this.#disposed) return;
+    this.configSessionId.value = undefined;
+    this.status.value = this.#statusSummary();
+  }
+
+  /** Moves the highlighted row inside the config modal. */
+  moveWindowConfigRow(delta: number): void {
+    if (this.#disposed || !this.configSessionId.peek()) return;
+    const count = MUXSTONE_WINDOW_SETTING_SPECS.length;
+    const next = (this.configRowIndex.peek() + Math.trunc(delta) + count) % count;
+    this.configRowIndex.value = next;
+  }
+
+  /** Cycles one setting for a session and applies it to the live runtime. */
+  cycleWindowSetting(sessionId: string, id: MuxstoneWindowSettingId, direction = 1): MuxstoneWindowSettings {
+    const current = this.windowSettingsFor(sessionId);
+    if (this.#disposed) return current;
+    const next = cycleMuxstoneWindowSetting(current, id, direction);
+    this.#commitWindowSettings(sessionId, next);
+    const spec = MUXSTONE_WINDOW_SETTING_SPECS.find((candidate) => candidate.id === id);
+    if (spec) this.status.value = `${spec.label}: ${spec.format(next[id])}`;
+    return next;
+  }
+
+  /** Restores factory defaults for one window. */
+  resetWindowSettings(sessionId: string): MuxstoneWindowSettings {
+    const defaults = defaultMuxstoneWindowSettings();
+    if (this.#disposed) return defaults;
+    this.#commitWindowSettings(sessionId, defaults);
+    this.status.value = "Window settings reset to defaults.";
+    return defaults;
+  }
+
+  #commitWindowSettings(sessionId: string, settings: MuxstoneWindowSettings): void {
+    this.windowSettings.value = Object.freeze({ ...this.windowSettings.peek(), [sessionId]: settings });
+    this.#applyWindowSettings(sessionId, settings);
+    const runtime = this.#runtimes.get(sessionId);
+    if (runtime) runtime.renderRevision.value += 1;
+    this.#persistMetadata();
+  }
+
+  /** Pushes settings that own live runtime state into the session's screen model. */
+  #applyWindowSettings(sessionId: string, settings: MuxstoneWindowSettings): void {
+    const runtime = this.#runtimes.get(sessionId);
+    if (!runtime) return;
+    runtime.screen.setScrollbackLimit(settings.scrollbackLimit);
   }
 
   /** Arms the tmux-style Ctrl-N prefix without forwarding it to a child. */
@@ -546,6 +628,12 @@ export class MuxstoneController {
     if (!runtime) return false;
     this.prefixPending.value = false;
     this.helpVisible.value = false;
+    // Windows configured without a close prompt terminate straight away.
+    if (!this.windowSettingsFor(sessionId).confirmClose) {
+      this.pendingKillSessionId.value = undefined;
+      void this.killSession(sessionId);
+      return true;
+    }
     this.pendingKillSessionId.value = sessionId;
     this.status.value = `Kill ${runtime.summary.peek().title}? Press y/Enter to confirm or Escape to cancel.`;
     return true;
@@ -1189,6 +1277,10 @@ export class MuxstoneController {
     this.savedHosts.value = restored.savedHosts;
     this.sessionHosts.value = restored.sessionHosts;
     this.backgroundId.value = restored.backgroundId;
+    this.windowSettings.value = restored.windowSettings;
+    for (const [sessionId, settings] of Object.entries(restored.windowSettings)) {
+      this.#applyWindowSettings(sessionId, settings);
+    }
     this.themeRevision.value += 1;
     // The network panel opens on demand from the menu; a restored session
     // starts with it tucked away regardless of how the last run ended.
@@ -1422,6 +1514,10 @@ export class MuxstoneController {
     for (const [sessionId, target] of Object.entries(this.sessionHosts.peek())) {
       if (this.#runtimes.has(sessionId)) sessionHosts[sessionId] = target;
     }
+    const windowSettings: Record<string, MuxstoneWindowSettings> = {};
+    for (const [sessionId, settings] of Object.entries(this.windowSettings.peek())) {
+      if (this.#runtimes.has(sessionId)) windowSettings[sessionId] = settings;
+    }
     this.kernel.setState({
       schemaVersion: 1,
       themeId: this.themeId.peek(),
@@ -1430,6 +1526,7 @@ export class MuxstoneController {
       savedHosts: this.savedHosts.peek(),
       backgroundId: this.backgroundId.peek(),
       sessionHosts,
+      windowSettings,
     });
   }
 

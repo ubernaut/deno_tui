@@ -43,13 +43,16 @@ import {
   type MuxstoneTerminalRuntime,
 } from "./controller.ts";
 import {
+  MUXSTONE_WINDOW_SETTING_SPECS,
   type MuxstoneBackgroundId,
   type MuxstoneRgb,
   muxstoneSessionIdFromWindow,
   type MuxstoneSessionSummary,
   type MuxstoneThemeSpec,
   muxstoneWindowId,
+  type MuxstoneWindowSettings,
 } from "./model.ts";
+import { textWidth } from "../../../src/utils/strings.ts";
 import { MuxstoneOperationQueue } from "./operation_queue.ts";
 import { MUXSTONE_PROTOCOL_LIMITS } from "./protocol.ts";
 import {
@@ -628,7 +631,8 @@ export function mountMuxstoneDesktop(
   let pendingPointerMove: MuxstonePointerMoveSlot | undefined;
   const modalOpen = (): boolean =>
     controller.helpVisible.peek() || controller.pendingKillSessionId.peek() !== undefined ||
-    controller.quitModalVisible.peek() || controller.pendingScp.peek() !== undefined;
+    controller.quitModalVisible.peek() || controller.pendingScp.peek() !== undefined ||
+    controller.configSessionId.peek() !== undefined;
 
   let exitRequested = false;
   const requestClientExit = (terminateHost: boolean): void => {
@@ -809,6 +813,14 @@ export function mountMuxstoneDesktop(
     return window ? scrollClientWindow(window.id, delta) : false;
   };
 
+  /** Wheel notches scale by the target window's own `Wheel scroll` setting. */
+  const wheelDeltaAt = (column: number, row: number, notches: number): number => {
+    const window = clientWindowAt(windowProjection.peek(), column, row);
+    const sessionId = window ? muxstoneSessionIdFromWindow(window.id) : undefined;
+    const lines = sessionId ? controller.windowSettingsFor(sessionId).wheelLines : SCROLL_LINES_PER_NOTCH;
+    return notches * lines;
+  };
+
   const performModalActivation = async (column: number, row: number): Promise<boolean> => {
     if (controller.helpVisible.peek()) {
       if (contains(muxstoneHelpLayout(windowProjection.peek().bounds).closeRect, column, row)) {
@@ -831,6 +843,23 @@ export function mountMuxstoneDesktop(
       if (contains(layout.terminateRect, column, row)) requestClientExit(true);
       else if (contains(layout.detachRect, column, row)) requestClientExit(false);
       else if (contains(layout.cancelRect, column, row)) controller.cancelQuitModal();
+      return true;
+    }
+    const configSessionId = controller.configSessionId.peek();
+    if (configSessionId) {
+      const layout = muxstoneWindowConfigLayout(windowProjection.peek().bounds);
+      if (contains(layout.closeRect, column, row)) {
+        controller.closeWindowConfig();
+      } else if (contains(layout.resetRect, column, row)) {
+        controller.resetWindowSettings(configSessionId);
+      } else {
+        for (let index = 0; index < layout.rowRects.length; index += 1) {
+          if (!contains(layout.rowRects[index]!, column, row)) continue;
+          controller.configRowIndex.value = index;
+          controller.cycleWindowSetting(configSessionId, MUXSTONE_WINDOW_SETTING_SPECS[index]!.id, 1);
+          break;
+        }
+      }
       return true;
     }
     const scpRequest = controller.pendingScp.peek();
@@ -890,6 +919,17 @@ export function mountMuxstoneDesktop(
     // Geometry gestures are local and synchronous. Do not make title-bar
     // motion wait behind PTY ACKs; child bytes retain their own ordered lane.
     const projectionBefore = windowProjection.peek();
+    // The `config` titlebar button carries no built-in window command, so claim
+    // its press here before the host treats the title bar as a move gesture.
+    if (!event.drag && !event.release && event.button === 0) {
+      const configSessionId = configControlSessionAt(projectionBefore, event.x, event.y);
+      if (configSessionId) {
+        await enqueue(() => {
+          controller.openWindowConfig(configSessionId);
+        });
+        return true;
+      }
+    }
     const clientWindow = clientWindowAt(projectionBefore, event.x, event.y);
     const result = controller.windowHost.handleMouse(
       "terminal",
@@ -944,7 +984,7 @@ export function mountMuxstoneDesktop(
       void enqueueRaw(packet.bytes, packet.sessionId);
       return Promise.resolve(true);
     }
-    return Promise.resolve(scrollWindowAt(event.x, event.y, event.scroll * SCROLL_LINES_PER_NOTCH));
+    return Promise.resolve(scrollWindowAt(event.x, event.y, wheelDeltaAt(event.x, event.y, event.scroll)));
   };
 
   const routeTerminalPointer = (
@@ -985,7 +1025,7 @@ export function mountMuxstoneDesktop(
       const point = event.coordinates.cell;
       const direction = Math.sign(event.wheel?.deltaY ?? 0);
       return event.kind === "wheel" && point && direction !== 0
-        ? scrollWindowAt(point.x, point.y, direction * SCROLL_LINES_PER_NOTCH) || undefined
+        ? scrollWindowAt(point.x, point.y, wheelDeltaAt(point.x, point.y, direction)) || undefined
         : undefined;
     }
     const point = event.coordinates.cell;
@@ -1176,7 +1216,7 @@ export function mountMuxstoneDesktop(
     if (event.kind === "wheel") {
       if (!point) return false;
       const direction = Math.sign(event.wheel?.deltaY ?? 0);
-      return direction !== 0 && scrollWindowAt(point.x, point.y, direction * SCROLL_LINES_PER_NOTCH);
+      return direction !== 0 && scrollWindowAt(point.x, point.y, wheelDeltaAt(point.x, point.y, direction));
     }
 
     if (!point) {
@@ -1446,6 +1486,24 @@ export function mountMuxstoneDesktop(
         requestClientExit(false);
       } else if (event.key.toLowerCase() === "t") {
         requestClientExit(true);
+      }
+      return;
+    }
+    const configSessionId = controller.configSessionId.peek();
+    if (configSessionId) {
+      const settingId = MUXSTONE_WINDOW_SETTING_SPECS[controller.configRowIndex.peek()]?.id;
+      if (event.key === "escape" || event.key.toLowerCase() === "q") {
+        controller.closeWindowConfig();
+      } else if (event.key === "up") {
+        controller.moveWindowConfigRow(-1);
+      } else if (event.key === "down") {
+        controller.moveWindowConfigRow(1);
+      } else if (event.key === "left" && settingId) {
+        controller.cycleWindowSetting(configSessionId, settingId, -1);
+      } else if ((event.key === "right" || event.key === "return" || event.key === "space") && settingId) {
+        controller.cycleWindowSetting(configSessionId, settingId, 1);
+      } else if (event.key.toLowerCase() === "r") {
+        controller.resetWindowSettings(configSessionId);
       }
       return;
     }
@@ -1996,6 +2054,8 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
   if (controller.quitModalVisible.peek()) paintQuitModal(painter, projection, theme);
   const scpRequest = controller.pendingScp.peek();
   if (scpRequest) paintScpModal(painter, projection, theme, scpRequest);
+  const configSessionId = controller.configSessionId.peek();
+  if (configSessionId) paintWindowConfigModal(painter, projection, theme, controller, configSessionId);
   const pendingKillSessionId = controller.pendingKillSessionId.peek();
   if (pendingKillSessionId) paintKillConfirmation(painter, projection, controller, pendingKillSessionId);
 
@@ -2141,7 +2201,9 @@ function paintWindow(
     paintNetworkPanel(painter, window.clientRect, controller, window.active);
     return;
   }
-  if (runtime) paintTerminal(painter, window.clientRect, runtime, theme, window.active);
+  if (runtime && sessionId) {
+    paintTerminal(painter, window.clientRect, runtime, theme, window.active, controller.windowSettingsFor(sessionId));
+  }
 }
 
 function paintNetworkPanel(
@@ -2252,12 +2314,26 @@ function paintSessionManager(
   }
 }
 
+/** Unthemed terminal defaults used when a window opts out of theme recoloring. */
+const RAW_TERMINAL_BACKGROUND: MuxstoneRgb = [0, 0, 0];
+const RAW_TERMINAL_FOREGROUND: MuxstoneRgb = [229, 229, 229];
+
+/** Fades one color toward the surface so unfocused windows recede. */
+function dimTowards(color: MuxstoneRgb, towards: MuxstoneRgb): MuxstoneRgb {
+  return [
+    Math.round(color[0] + (towards[0] - color[0]) * 0.45),
+    Math.round(color[1] + (towards[1] - color[1]) * 0.45),
+    Math.round(color[2] + (towards[2] - color[2]) * 0.45),
+  ];
+}
+
 function paintTerminal(
   painter: DesktopPainter,
   rect: Rectangle,
   runtime: MuxstoneTerminalRuntime,
   theme: MuxstoneThemeSpec,
   active: boolean,
+  settings: MuxstoneWindowSettings,
 ): void {
   const inspection = runtime.screen.inspect();
   const scrollback = runtime.scrollback.inspectViewport();
@@ -2266,17 +2342,27 @@ function paintTerminal(
     : runtime.screen.cellRows();
   const cursorActive = scrollback.mode === "live" && active && runtime.attached.peek() &&
     runtime.summary.peek().running && inspection.cursorVisible;
+  // Theme-off keeps the child's true ANSI colors over a plain terminal ground;
+  // theme-on maps unset colors onto the theme and lifts ANSI text to contrast.
+  const themed = settings.themed;
+  const defaultBackground = themed ? theme.surface : RAW_TERMINAL_BACKGROUND;
+  const defaultForeground = themed ? theme.text : RAW_TERMINAL_FOREGROUND;
+  const dim = settings.dimInactive && !active;
   for (let row = 0; row < rect.height; row += 1) {
     const cells = rows[row] ?? [];
     for (let column = 0; column < rect.width; column += 1) {
       const cell = cells[column] ?? { char: " " };
       const cursor = cursorActive && inspection.cursor.row === row && inspection.cursor.column === column;
-      const background = cursor ? theme.accent : muxstoneTerminalRgb(cell.background, true) ?? theme.surface;
-      const foreground = cursor
+      let background = cursor ? theme.accent : muxstoneTerminalRgb(cell.background, true) ?? defaultBackground;
+      let foreground = cursor
         ? theme.background
-        : cell.background === undefined
-        ? muxstoneTerminalForegroundRgb(cell.foreground, theme.surface, theme.text) ?? theme.text
-        : muxstoneTerminalRgb(cell.foreground, false) ?? theme.text;
+        : cell.background === undefined && themed
+        ? muxstoneTerminalForegroundRgb(cell.foreground, theme.surface, theme.text) ?? defaultForeground
+        : muxstoneTerminalRgb(cell.foreground, false) ?? defaultForeground;
+      if (dim) {
+        background = dimTowards(background, theme.surface);
+        foreground = dimTowards(foreground, theme.surface);
+      }
       painter.cell(rect.column + column, rect.row + row, cell.char || " ", {
         foreground,
         background,
@@ -2532,6 +2618,97 @@ export function muxstoneQuitLayout(bounds: Rectangle): MuxstoneQuitLayout {
       height: 1,
     },
   };
+}
+
+/** Layout for the per-window config modal; exported for deterministic pointer tests. */
+export interface MuxstoneWindowConfigLayout {
+  readonly rect: Rectangle;
+  /** One hit row per entry in MUXSTONE_WINDOW_SETTING_SPECS, in declaration order. */
+  readonly rowRects: readonly Rectangle[];
+  readonly resetRect: Rectangle;
+  readonly closeRect: Rectangle;
+}
+
+/** Layout for the per-window config modal; exported for deterministic pointer tests. */
+export function muxstoneWindowConfigLayout(bounds: Rectangle): MuxstoneWindowConfigLayout {
+  const width = Math.min(72, Math.max(44, bounds.width - 6));
+  const rowCount = MUXSTONE_WINDOW_SETTING_SPECS.length;
+  // Frame + title + blank + rows + blank + buttons + frame.
+  const height = Math.min(Math.max(8, bounds.height - 2), rowCount + 6);
+  const rect = centeredRect(bounds, width, height);
+  const firstRow = rect.row + 2;
+  const usableRows = Math.max(0, rect.height - 5);
+  const rowRects: Rectangle[] = [];
+  for (let index = 0; index < Math.min(rowCount, usableRows); index += 1) {
+    rowRects.push({ column: rect.column + 2, row: firstRow + index, width: Math.max(0, rect.width - 4), height: 1 });
+  }
+  const buttonRow = rect.row + Math.max(1, rect.height - 2);
+  return {
+    rect,
+    rowRects,
+    resetRect: { column: rect.column + 2, width: 9, row: buttonRow, height: 1 },
+    closeRect: { column: rect.column + Math.max(13, rect.width - 11), width: 9, row: buttonRow, height: 1 },
+  };
+}
+
+function paintWindowConfigModal(
+  painter: DesktopPainter,
+  projection: WorkbenchWindowHostProjection,
+  theme: MuxstoneThemeSpec,
+  controller: MuxstoneController,
+  sessionId: string,
+): void {
+  const { rect, rowRects, resetRect, closeRect } = muxstoneWindowConfigLayout(projection.bounds);
+  const settings = controller.windowSettingsFor(sessionId);
+  const selected = controller.configRowIndex.peek();
+  const title = controller.runtime(sessionId)?.summary.peek().title ?? sessionId;
+  painter.fill(rect, " ", { foreground: theme.text, background: theme.surfaceStrong });
+  painter.frame(rect, "#", { foreground: theme.accent, background: theme.surfaceStrong, bold: true });
+  painter.write(rect.column + 2, rect.row, fitText(` ${title} settings `, Math.max(0, rect.width - 4)), {
+    foreground: theme.background,
+    background: theme.accent,
+    bold: true,
+  });
+  for (let index = 0; index < rowRects.length; index += 1) {
+    const rowRect = rowRects[index]!;
+    const spec = MUXSTONE_WINDOW_SETTING_SPECS[index]!;
+    const active = index === selected;
+    const value = spec.format(settings[spec.id]);
+    const label = `${active ? ">" : " "} ${spec.label}`;
+    // Right-align the value so the column of settings reads as a table.
+    const valueColumn = rowRect.column + Math.max(0, rowRect.width - textWidth(value) - 1);
+    painter.fill(rowRect, " ", {
+      foreground: active ? theme.background : theme.text,
+      background: active ? theme.accent : theme.surfaceStrong,
+      bold: active,
+    });
+    painter.write(rowRect.column, rowRect.row, fitText(label, Math.max(0, valueColumn - rowRect.column - 1)), {
+      foreground: active ? theme.background : theme.text,
+      background: active ? theme.accent : theme.surfaceStrong,
+      bold: active,
+    });
+    painter.write(valueColumn, rowRect.row, value, {
+      foreground: active ? theme.background : theme.accent,
+      background: active ? theme.accent : theme.surfaceStrong,
+      bold: true,
+    });
+  }
+  const detail = MUXSTONE_WINDOW_SETTING_SPECS[selected]?.detail ?? "";
+  const detailRow = rect.row + Math.max(1, rect.height - 3);
+  painter.write(rect.column + 2, detailRow, fitText(detail, Math.max(0, rect.width - 4)), {
+    foreground: theme.muted,
+    background: theme.surfaceStrong,
+  });
+  painter.write(resetRect.column, resetRect.row, "[ Reset ]", {
+    foreground: theme.text,
+    background: theme.surface,
+    bold: true,
+  });
+  painter.write(closeRect.column, closeRect.row, "[ Close ]", {
+    foreground: theme.background,
+    background: theme.accent,
+    bold: true,
+  });
 }
 
 interface MuxstoneScpLayout {
@@ -2885,6 +3062,26 @@ function menuRect(id: MuxstoneMenuId, bounds: Rectangle): Rectangle {
     case "quit":
       return menuQuitRect(bounds);
   }
+}
+
+/** Returns the session whose `config` titlebar button covers one cell, when any. */
+function configControlSessionAt(
+  projection: WorkbenchWindowHostProjection,
+  column: number,
+  row: number,
+): string | undefined {
+  const windows = [...projection.tiledWindows, ...projection.floatingWindows];
+  for (let index = windows.length - 1; index >= 0; index -= 1) {
+    const window = windows[index]!;
+    if (!contains(window.rect, column, row)) continue;
+    for (const control of window.controls) {
+      if (control.kind === "config" && contains(control.hitRect, column, row)) {
+        return muxstoneSessionIdFromWindow(window.id);
+      }
+    }
+    return undefined;
+  }
+  return undefined;
 }
 
 function touchWindowCommandAt(

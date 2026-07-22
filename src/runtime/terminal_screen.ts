@@ -155,6 +155,18 @@ export class TerminalScreenController {
     return this.#scrollback.length;
   }
 
+  get scrollbackLimit(): number {
+    return this.#scrollbackLimit;
+  }
+
+  /** Retunes retained history, trimming the oldest rows when the limit shrinks. */
+  setScrollbackLimit(limit: number): void {
+    this.#scrollbackLimit = Math.max(0, Math.floor(Number.isFinite(limit) ? limit : this.#scrollbackLimit));
+    if (this.#scrollback.length > this.#scrollbackLimit) {
+      this.#scrollback.splice(0, this.#scrollback.length - this.#scrollbackLimit);
+    }
+  }
+
   write(data: string | Uint8Array): void {
     const decoded = typeof data === "string"
       ? this.#decoder.decode() + data

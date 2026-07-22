@@ -15,6 +15,7 @@ import {
   type MuxstonePointerInputSource,
   muxstoneQuitLayout,
   muxstoneScpLayout,
+  muxstoneWindowConfigLayout,
   projectMuxstoneTerminalBar,
 } from "../../examples/showcases/muxstone/app.ts";
 import {
@@ -24,7 +25,10 @@ import {
   type MuxstoneController,
 } from "../../examples/showcases/muxstone/controller.ts";
 import {
+  cycleMuxstoneWindowSetting,
+  defaultMuxstoneWindowSettings,
   MUXSTONE_THEMES,
+  MUXSTONE_WINDOW_SETTING_SPECS,
   type MuxstoneAttachResult,
   type MuxstoneClientPort,
   type MuxstoneOutputFrame,
@@ -32,6 +36,7 @@ import {
   type MuxstoneSpawnOptions,
   muxstoneTheme,
   muxstoneWindowId,
+  normalizeMuxstoneWindowSettings,
   normalizeMuxstoneWorkspaceState,
 } from "../../examples/showcases/muxstone/model.ts";
 import { MUXSTONE_PROTOCOL_LIMITS } from "../../examples/showcases/muxstone/protocol.ts";
@@ -2501,3 +2506,134 @@ function session(
     updatedAt: 1,
   };
 }
+
+Deno.test("Muxstone window settings cycle, normalize, and reject unknown values", () => {
+  const defaults = defaultMuxstoneWindowSettings();
+  assertEquals(defaults.themed, true);
+  assertEquals(defaults.scrollbackLimit, 2_000);
+
+  // Every spec cycles through its declared values and wraps in both directions.
+  for (const spec of MUXSTONE_WINDOW_SETTING_SPECS) {
+    let settings = defaults;
+    const seen: (boolean | number)[] = [];
+    for (let step = 0; step < spec.values.length; step += 1) {
+      settings = cycleMuxstoneWindowSetting(settings, spec.id, 1);
+      seen.push(settings[spec.id]);
+    }
+    assertEquals(settings[spec.id], defaults[spec.id], `${spec.id} should return to its start`);
+    assertEquals(new Set(seen).size, spec.values.length, `${spec.id} should visit every value`);
+    const back = cycleMuxstoneWindowSetting(defaults, spec.id, -1);
+    assertEquals(spec.values.includes(back[spec.id]), true);
+  }
+
+  // Persisted junk falls back to defaults per field rather than being trusted.
+  const restored = normalizeMuxstoneWindowSettings({
+    themed: false,
+    scrollbackLimit: 999_999,
+    mouseReporting: "yes",
+    wheelLines: 5,
+  });
+  assertEquals(restored.themed, false);
+  assertEquals(restored.scrollbackLimit, defaults.scrollbackLimit);
+  assertEquals(restored.mouseReporting, defaults.mouseReporting);
+  assertEquals(restored.wheelLines, 5);
+  assertEquals(normalizeMuxstoneWindowSettings(null), defaults);
+});
+
+Deno.test("Muxstone titlebar config button opens a per-window settings modal", async () => {
+  const initial = session("cfg-shell", "cfg shell", 0);
+  const client = new FakeMuxstoneClient([initial]);
+  const controller = await createMuxstoneController({ client, initialSessions: [initial] });
+  const mount: MuxstoneAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 110, rows: 30 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+
+    // The terminal window carries a `config` control; the manager window does not.
+    const projection = mounted.windowProjection.peek();
+    const terminalWindow = projection.windows.find((w) => w.id === muxstoneWindowId("cfg-shell"));
+    assert(terminalWindow, "terminal window should be projected");
+    const configControl = terminalWindow.controls.find((control) => control.kind === "config");
+    assert(configControl, "terminal window should expose a config control");
+    const managerWindow = projection.windows.find((w) => w.id === MUXSTONE_SESSIONS_WINDOW_ID);
+    assertEquals(managerWindow?.controls.some((control) => control.kind === "config"), false);
+
+    // Clicking it opens the modal for that window.
+    assertEquals(controller.configSessionId.peek(), undefined);
+    await harness.pilot.click(configControl.hitRect.column, configControl.hitRect.row);
+    await mounted.whenIdle();
+    assertEquals(controller.configSessionId.peek(), "cfg-shell");
+
+    // Theme colors is the first row; clicking it flips the setting off.
+    const layout = muxstoneWindowConfigLayout(mounted.windowProjection.peek().bounds);
+    assertEquals(MUXSTONE_WINDOW_SETTING_SPECS[0]!.id, "themed");
+    const themedRow = layout.rowRects[0]!;
+    await harness.pilot.click(themedRow.column + 2, themedRow.row);
+    await mounted.whenIdle();
+    assertEquals(controller.windowSettingsFor("cfg-shell").themed, false);
+
+    // Scrollback cycles and reaches the live screen model.
+    controller.configRowIndex.value = 1;
+    assertEquals(MUXSTONE_WINDOW_SETTING_SPECS[1]!.id, "scrollbackLimit");
+    controller.cycleWindowSetting("cfg-shell", "scrollbackLimit", 1);
+    const scrollbackLimit = controller.windowSettingsFor("cfg-shell").scrollbackLimit;
+    assertNotEquals(scrollbackLimit, 2_000);
+    assertEquals(controller.runtime("cfg-shell")?.screen.scrollbackLimit, scrollbackLimit);
+
+    // Reset restores defaults, and Close dismisses the modal.
+    await harness.pilot.click(layout.resetRect.column + 1, layout.resetRect.row);
+    await mounted.whenIdle();
+    assertEquals(controller.windowSettingsFor("cfg-shell"), defaultMuxstoneWindowSettings());
+    await harness.pilot.click(layout.closeRect.column + 1, layout.closeRect.row);
+    await mounted.whenIdle();
+    assertEquals(controller.configSessionId.peek(), undefined);
+  } finally {
+    harness.destroy();
+    await controller.dispose();
+  }
+});
+
+Deno.test("Muxstone window settings persist and drive scrollback on restore", async () => {
+  const initial = session("persist-shell", "persist shell", 0);
+  const client = new FakeMuxstoneClient([initial]);
+  const controller = await createMuxstoneController({ client, initialSessions: [initial] });
+
+  try {
+    controller.cycleWindowSetting("persist-shell", "themed", 1);
+    controller.cycleWindowSetting("persist-shell", "scrollbackLimit", 1);
+    const expected = controller.windowSettingsFor("persist-shell");
+    assertEquals(expected.themed, false);
+
+    const persisted = normalizeMuxstoneWorkspaceState(controller.kernel.appState.peek());
+    assertEquals(persisted.windowSettings["persist-shell"], expected);
+    assertEquals(controller.runtime("persist-shell")?.screen.scrollbackLimit, expected.scrollbackLimit);
+  } finally {
+    await controller.dispose();
+  }
+});
+
+Deno.test("Muxstone confirm-on-close off kills a terminal without the prompt", async () => {
+  const initial = session("quick-kill", "quick kill", 0);
+  const client = new FakeMuxstoneClient([initial]);
+  const controller = await createMuxstoneController({ client, initialSessions: [initial] });
+
+  try {
+    // Default asks first.
+    assertEquals(controller.requestKillSession("quick-kill"), true);
+    assertEquals(controller.pendingKillSessionId.peek(), "quick-kill");
+    controller.cancelKillSession();
+
+    // With the prompt disabled the session terminates directly.
+    controller.cycleWindowSetting("quick-kill", "confirmClose", 1);
+    assertEquals(controller.windowSettingsFor("quick-kill").confirmClose, false);
+    assertEquals(controller.requestKillSession("quick-kill"), true);
+    assertEquals(controller.pendingKillSessionId.peek(), undefined);
+    await waitForCondition(() => controller.runtime("quick-kill") === undefined, 2_000);
+  } finally {
+    await controller.dispose();
+  }
+});

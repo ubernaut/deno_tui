@@ -260,6 +260,123 @@ export interface MuxstoneWorkspaceState {
   readonly backgroundId: MuxstoneBackgroundId;
   /** Session id → SSH target for shells opened from the network panel. */
   readonly sessionHosts: Readonly<Record<string, string>>;
+  /** Session id → per-window shell settings edited from the titlebar config button. */
+  readonly windowSettings: Readonly<Record<string, MuxstoneWindowSettings>>;
+}
+
+/** Per-window shell settings owned by one terminal window. */
+export interface MuxstoneWindowSettings {
+  /** Recolor child output through the active theme (off shows the app's true ANSI colors). */
+  readonly themed: boolean;
+  /** Retained scrollback lines for the main screen buffer. */
+  readonly scrollbackLimit: number;
+  /** Forward mouse events to the child program instead of handling them locally. */
+  readonly mouseReporting: boolean;
+  /** Rows moved per wheel notch. */
+  readonly wheelLines: number;
+  /** Dim the window's output while it is not focused. */
+  readonly dimInactive: boolean;
+  /** Ask before killing this terminal. */
+  readonly confirmClose: boolean;
+}
+
+/** Identity of one configurable per-window setting. */
+export type MuxstoneWindowSettingId = keyof MuxstoneWindowSettings;
+
+/** One cycleable per-window setting, shared by the config modal and its tests. */
+export interface MuxstoneWindowSettingSpec {
+  readonly id: MuxstoneWindowSettingId;
+  readonly label: string;
+  readonly detail: string;
+  readonly values: readonly (boolean | number)[];
+  readonly format: (value: boolean | number) => string;
+}
+
+const onOff = (value: boolean | number): string => (value ? "On" : "Off");
+
+/** Ordered per-window settings presented by the titlebar config modal. */
+export const MUXSTONE_WINDOW_SETTING_SPECS: readonly MuxstoneWindowSettingSpec[] = Object.freeze([
+  Object.freeze({
+    id: "themed" as const,
+    label: "Theme colors",
+    detail: "Off renders the program's true ANSI colors, unmapped.",
+    values: Object.freeze([true, false]),
+    format: onOff,
+  }),
+  Object.freeze({
+    id: "scrollbackLimit" as const,
+    label: "Scrollback",
+    detail: "Lines retained above the live screen.",
+    values: Object.freeze([1_000, 2_000, 5_000, 10_000, 50_000]),
+    format: (value: boolean | number) => `${Number(value).toLocaleString("en-US")} lines`,
+  }),
+  Object.freeze({
+    id: "mouseReporting" as const,
+    label: "Mouse reporting",
+    detail: "Off keeps the mouse local so you can scroll and select instead.",
+    values: Object.freeze([true, false]),
+    format: onOff,
+  }),
+  Object.freeze({
+    id: "wheelLines" as const,
+    label: "Wheel scroll",
+    detail: "Rows moved per wheel notch.",
+    values: Object.freeze([1, 3, 5, 10]),
+    format: (value: boolean | number) => `${value} ${value === 1 ? "line" : "lines"}`,
+  }),
+  Object.freeze({
+    id: "dimInactive" as const,
+    label: "Dim when inactive",
+    detail: "Fades this window's output while another window has focus.",
+    values: Object.freeze([false, true]),
+    format: onOff,
+  }),
+  Object.freeze({
+    id: "confirmClose" as const,
+    label: "Confirm on close",
+    detail: "Off kills this terminal immediately, with no prompt.",
+    values: Object.freeze([true, false]),
+    format: onOff,
+  }),
+]) as readonly MuxstoneWindowSettingSpec[];
+
+/** Factory defaults applied to every terminal window. */
+export function defaultMuxstoneWindowSettings(): MuxstoneWindowSettings {
+  return Object.freeze({
+    themed: true,
+    scrollbackLimit: 2_000,
+    mouseReporting: true,
+    wheelLines: 3,
+    dimInactive: false,
+    confirmClose: true,
+  });
+}
+
+/** Strictly normalizes one persisted per-window settings record. */
+export function normalizeMuxstoneWindowSettings(value: unknown): MuxstoneWindowSettings {
+  const defaults = defaultMuxstoneWindowSettings();
+  if (!value || typeof value !== "object" || Array.isArray(value)) return defaults;
+  const record = value as Record<string, unknown>;
+  const resolved: Record<string, boolean | number> = { ...defaults };
+  for (const spec of MUXSTONE_WINDOW_SETTING_SPECS) {
+    const candidate = record[spec.id];
+    if (spec.values.includes(candidate as boolean | number)) resolved[spec.id] = candidate as boolean | number;
+  }
+  return Object.freeze(resolved) as unknown as MuxstoneWindowSettings;
+}
+
+/** Returns the next value for one setting, wrapping in the declared order. */
+export function cycleMuxstoneWindowSetting(
+  settings: MuxstoneWindowSettings,
+  id: MuxstoneWindowSettingId,
+  direction = 1,
+): MuxstoneWindowSettings {
+  const spec = MUXSTONE_WINDOW_SETTING_SPECS.find((candidate) => candidate.id === id);
+  if (!spec) return settings;
+  const current = spec.values.indexOf(settings[id]);
+  const step = Math.sign(direction) || 1;
+  const next = spec.values[(current + step + spec.values.length) % spec.values.length]!;
+  return Object.freeze({ ...settings, [id]: next }) as MuxstoneWindowSettings;
 }
 
 /** Maximum remembered SSH targets persisted with the workspace. */
@@ -345,6 +462,13 @@ export function normalizeMuxstoneWorkspaceState(value: unknown): MuxstoneWorkspa
       }
     }
   }
+  const windowSettings: Record<string, MuxstoneWindowSettings> = {};
+  if (record.windowSettings && typeof record.windowSettings === "object" && !Array.isArray(record.windowSettings)) {
+    for (const [sessionId, settings] of Object.entries(record.windowSettings as Record<string, unknown>)) {
+      if (Object.keys(windowSettings).length >= MUXSTONE_MAX_SAVED_HOSTS) break;
+      if (isMuxstoneSessionId(sessionId)) windowSettings[sessionId] = normalizeMuxstoneWindowSettings(settings);
+    }
+  }
   return Object.freeze({
     schemaVersion: MUXSTONE_SESSION_SCHEMA_VERSION,
     themeId,
@@ -353,6 +477,7 @@ export function normalizeMuxstoneWorkspaceState(value: unknown): MuxstoneWorkspa
     savedHosts: Object.freeze(savedHosts),
     backgroundId: muxstoneBackgroundId(record.backgroundId),
     sessionHosts: Object.freeze(sessionHosts),
+    windowSettings: Object.freeze(windowSettings),
   });
 }
 
@@ -365,6 +490,7 @@ export function initialMuxstoneWorkspaceState(): MuxstoneWorkspaceState {
     savedHosts: Object.freeze([]) as readonly string[],
     backgroundId: "metaballs" as const,
     sessionHosts: Object.freeze({}),
+    windowSettings: Object.freeze({}),
   });
 }
 

@@ -93,6 +93,14 @@ export interface WorkbenchWindowHostControllerOptions<TId extends string = strin
   commandStep?: number;
   /** Pointer-capture owner id. Supply a stable value when hosts share a capture controller. */
   ownerId?: string;
+  /**
+   * Adds a per-window `config` titlebar button. Pass a predicate to show it only
+   * on some windows. The button carries no built-in command, so the host app
+   * routes its activation itself. Defaults to off.
+   */
+  windowConfigButton?: boolean | ((id: string) => boolean);
+  /** Label rendered inside the per-window config button. Defaults to `config`. */
+  windowConfigLabel?: string;
 }
 
 /** Commands shared by keyboard, pointer chrome, palettes, and renderer hosts. */
@@ -320,6 +328,8 @@ export class WorkbenchWindowHostController<TId extends string = string> {
   readonly #shelfBuffers: WorkbenchShelfLayoutBuffers<string> = createWorkbenchShelfLayoutBuffers<string>();
   readonly #separatorOwnerId: string;
   readonly #separatorOwnerHandle: PointerCaptureOwnerHandle;
+  readonly #windowConfigButton: (id: string) => boolean;
+  readonly #windowConfigLabel: string;
   #switcher?: SwitcherState;
   #separatorResize?: SeparatorResizeState;
   #disposed = false;
@@ -340,6 +350,9 @@ export class WorkbenchWindowHostController<TId extends string = string> {
       ? Math.max(1, Math.floor(options.commandStep!))
       : DEFAULT_COMMAND_STEP;
     this.#input = new InputEnvelopeFactory({ now: options.now ?? Date.now });
+    const configButton = options.windowConfigButton ?? false;
+    this.#windowConfigButton = typeof configButton === "function" ? configButton : () => configButton;
+    this.#windowConfigLabel = options.windowConfigLabel ?? "config";
     const controller = new MarkupWindowController({
       root: options.root ?? createWorkbenchWindowHostRoot(options.windows!, options.rootId),
       workspace: this.workspace,
@@ -882,6 +895,9 @@ export class WorkbenchWindowHostController<TId extends string = string> {
       title,
       maximized: window.state === "maximized",
       alwaysOnTop: placement === "floating" ? window.alwaysOnTop : undefined,
+      showConfig: this.#windowConfigButton(id),
+      configLabel: this.#windowConfigLabel,
+      configAccessibilityLabel: `Configure ${title}`,
     });
     const commandBuffer = this.#titlebarCommands.get(id) ?? [];
     this.#titlebarCommands.set(id, commandBuffer);

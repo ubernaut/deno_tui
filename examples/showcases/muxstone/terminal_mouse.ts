@@ -327,6 +327,8 @@ function terminalTargetAt(
       const sessionId = muxstoneSessionIdFromWindow(window.id);
       const runtime = sessionId ? controller.runtime(sessionId) : undefined;
       if (!runtime || !terminalRuntimeAcceptsMouse(runtime)) return undefined;
+      // Mouse reporting off keeps the pointer local so wheel and selection work.
+      if (!controller.windowSettingsFor(sessionId!).mouseReporting) return undefined;
       return { runtime, window };
     }
   }
@@ -341,6 +343,7 @@ function terminalTargetForCapture(
   const window = projection.windows.find((candidate) => candidate.id === capture.windowId);
   const runtime = controller.runtime(capture.sessionId);
   if (!window || !runtime || !terminalRuntimeAcceptsMouse(runtime, false)) return undefined;
+  if (!controller.windowSettingsFor(capture.sessionId).mouseReporting) return undefined;
   return { runtime, window };
 }
 
