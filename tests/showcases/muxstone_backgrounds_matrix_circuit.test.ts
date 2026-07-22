@@ -436,3 +436,87 @@ Deno.test("MuxstoneMatrixRainField: columns fall at sharply different speeds", (
     );
   }
 });
+
+Deno.test("MuxstoneCircuitField: surveys the board and populates empty space over time", () => {
+  const field = new MuxstoneCircuitField({ seed: 7 });
+  const bounds = { column: 0, row: 0, width: 160, height: 48 };
+  field.advance({ bounds, obstacles: [], now: 0 });
+  const initialChips = field.inspect().chips.length;
+  assert(initialChips > 0, "expected an initial layout");
+
+  // Run past several survey intervals; the board should fill toward its ceiling.
+  let now = 0;
+  for (let frame = 0; frame < 4_000; frame += 1) {
+    now += 16.7;
+    field.advance({ bounds, obstacles: [], now });
+  }
+  const grownChips = field.inspect().chips.length;
+  assert(
+    grownChips > initialChips,
+    `expected the survey to add chips into empty board, ${initialChips} -> ${grownChips}`,
+  );
+
+  // Chips never overlap each other, however many surveys have run.
+  const chips = field.inspect().chips;
+  for (let a = 0; a < chips.length; a += 1) {
+    for (let b = a + 1; b < chips.length; b += 1) {
+      const first = chips[a]!;
+      const second = chips[b]!;
+      const disjoint = first.x + first.side <= second.x || second.x + second.side <= first.x ||
+        first.y + first.side <= second.y || second.y + second.side <= first.y;
+      assert(disjoint, `chips ${a} and ${b} overlap after resurvey`);
+    }
+  }
+  // And the board stays bounded rather than growing without limit.
+  assert(chips.length <= 18, `chip count should stay bounded, got ${chips.length}`);
+});
+
+Deno.test("MuxstoneCircuitField: routes over windows that are no longer obstacles", () => {
+  const bounds = { column: 0, row: 0, width: 120, height: 40 };
+  const window = { column: 30, row: 10, width: 40, height: 16 };
+
+  // While the window is an obstacle the board keeps clear of it.
+  const avoiding = new MuxstoneCircuitField({ seed: 11 });
+  let now = 0;
+  for (let frame = 0; frame < 200; frame += 1) {
+    now += 16.7;
+    avoiding.advance({ bounds, obstacles: [window], now });
+  }
+  // Measure the interior: the board deliberately taps a window's border with
+  // vias, so the edge ring is expected to carry a cell or two either way.
+  const interior = {
+    column: window.column + 2,
+    row: window.row + 2,
+    width: window.width - 4,
+    height: window.height - 4,
+  };
+  const avoidingCells = countCellsInside(avoiding, bounds, interior);
+
+  // Dropping it from the obstacle list - as overgrowth does for idle windows -
+  // lets the fabric grow across it instead.
+  const covering = new MuxstoneCircuitField({ seed: 11 });
+  now = 0;
+  for (let frame = 0; frame < 200; frame += 1) {
+    now += 16.7;
+    covering.advance({ bounds, obstacles: [], now });
+  }
+  const coveringCells = countCellsInside(covering, bounds, interior);
+
+  assertEquals(avoidingCells, 0, "an obstacle window must stay clear of the board");
+  assert(coveringCells > 0, "a reclaimed window should have circuitry drawn across it");
+});
+
+function countCellsInside(
+  field: MuxstoneCircuitField,
+  bounds: { column: number; row: number; width: number; height: number },
+  region: { column: number; row: number; width: number; height: number },
+): number {
+  const grid = field.rasterizeCells(bounds, THEME);
+  let count = 0;
+  for (let row = region.row; row < region.row + region.height; row += 1) {
+    for (let column = region.column; column < region.column + region.width; column += 1) {
+      if (grid[row - bounds.row]?.[column - bounds.column]) count += 1;
+    }
+  }
+  return count;
+}

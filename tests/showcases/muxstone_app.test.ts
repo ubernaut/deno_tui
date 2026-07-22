@@ -2939,3 +2939,128 @@ Deno.test("Muxstone retires a truncation warning instead of blocking a content r
     await controller.dispose();
   }
 });
+
+Deno.test("Muxstone overgrowth never bleeds onto a window stacked above it", async () => {
+  const under = session("under-win", "under", 1);
+  const over = session("over-win", "over", 2);
+  const client = new FakeMuxstoneClient([under, over], {
+    // The focused window fills its view with a glyph the background never uses.
+    "over-win": [{ sessionId: "over-win", sequence: 1, data: "\x1b[1;1H" + "X".repeat(200) }],
+  });
+  const controller = await createMuxstoneController({ client, initialSessions: [under, over] });
+  const mount: MuxstoneAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 110, rows: 32 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+    const body = mounted.bodyRect.peek();
+    controller.windowHost.execute({ kind: "minimize", id: MUXSTONE_SESSIONS_WINDOW_ID }, body);
+    controller.setBackground("jungle");
+    // Two overlapping floating windows, the focused one on top.
+    controller.windowHost.execute({
+      kind: "set-placement",
+      id: muxstoneWindowId("under-win"),
+      placement: "floating",
+      rect: { column: 2, row: 2, width: 50, height: 20 },
+    }, body);
+    controller.windowHost.execute({
+      kind: "set-placement",
+      id: muxstoneWindowId("over-win"),
+      placement: "floating",
+      rect: { column: 20, row: 6, width: 40, height: 14 },
+    }, body);
+    controller.windowHost.execute({ kind: "focus", id: muxstoneWindowId("over-win") }, body);
+    await mounted.whenIdle();
+
+    harness.app.start();
+    await waitForCondition(() => mounted.overgrowthRatios().has(muxstoneWindowId("under-win")), 3_000);
+    // Let the idle window reclaim a good share of itself.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    harness.app.tui.canvas.render();
+
+    const projection = mounted.windowProjection.peek();
+    const overWindow = projection.windows.find((window) => window.id === muxstoneWindowId("over-win"))!;
+    const underWindow = projection.windows.find((window) => window.id === muxstoneWindowId("under-win"))!;
+    // The focused window really is stacked above the idle one.
+    const stack = [...projection.tiledWindows, ...projection.floatingWindows].map((window) => window.id);
+    assert(
+      stack.indexOf(overWindow.id) > stack.indexOf(underWindow.id),
+      "the focused window should paint after the idle one",
+    );
+
+    // Every cell of the focused window that overlaps the reclaimed one still
+    // shows its own content, not background creeping through from underneath.
+    let checked = 0;
+    for (let row = overWindow.clientRect.row; row < overWindow.clientRect.row + overWindow.clientRect.height; row++) {
+      for (
+        let column = overWindow.clientRect.column;
+        column < overWindow.clientRect.column + overWindow.clientRect.width;
+        column++
+      ) {
+        const insideUnder = column >= underWindow.clientRect.column &&
+          column < underWindow.clientRect.column + underWindow.clientRect.width &&
+          row >= underWindow.clientRect.row && row < underWindow.clientRect.row + underWindow.clientRect.height;
+        if (!insideUnder) continue;
+        const value = harness.canvas.frameBuffer[row]?.[column];
+        const glyph = stripAnsi(typeof value === "string" ? value : "");
+        assert(
+          glyph === "X" || glyph === " " || glyph === "",
+          `focused window cell at ${column},${row} was overgrown with ${JSON.stringify(glyph)}`,
+        );
+        checked += 1;
+      }
+    }
+    assert(checked > 40, `expected a meaningful overlap to inspect, checked ${checked}`);
+  } finally {
+    harness.destroy();
+    await controller.dispose();
+  }
+});
+
+Deno.test("Muxstone fits text to terminal columns, not code units", async () => {
+  const initial = session("fit-shell", "fit shell", 1);
+  const client = new FakeMuxstoneClient([initial], {
+    // A wide glyph on the final content column must not spill onto the border.
+    "fit-shell": [{ sessionId: "fit-shell", sequence: 1, data: "\x1b[1;1H" + "-".repeat(200) }],
+  });
+  const controller = await createMuxstoneController({ client, initialSessions: [initial] });
+  const mount: MuxstoneAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 100, rows: 28 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+    // A CJK window title must be truncated by display width so it cannot run
+    // past the title bar and over the window controls.
+    controller.runtime("fit-shell")!.screen.write("\x1b]2;" + "日本語".repeat(20) + "\x07");
+    await mounted.whenIdle();
+    harness.app.tui.canvas.render();
+
+    const terminal = mounted.windowProjection.peek().windows.find(
+      (window) => window.id === muxstoneWindowId("fit-shell"),
+    )!;
+    // Every control stays on its own column: nothing from the title overran it.
+    for (const control of terminal.controls) {
+      const value = harness.canvas.frameBuffer[control.rect.row]?.[control.rect.column];
+      const glyph = stripAnsi(typeof value === "string" ? value : "");
+      assertEquals(muxstoneGlyphColumns(glyph || " "), 1, "controls must not be overrun by wide title text");
+    }
+
+    // The row's advertised columns never exceed the desktop width.
+    const titleRow = harness.canvas.frameBuffer[terminal.titleBarRect.row] ?? [];
+    let columns = 0;
+    for (const value of titleRow) {
+      const glyph = stripAnsi(typeof value === "string" ? value : "");
+      if (glyph !== "") columns += muxstoneGlyphColumns(glyph);
+    }
+    assertEquals(columns, harness.canvas.size.peek().columns);
+  } finally {
+    harness.destroy();
+    await controller.dispose();
+  }
+});

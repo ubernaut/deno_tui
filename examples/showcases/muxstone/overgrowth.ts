@@ -59,6 +59,30 @@ export function muxstoneOvergrowthCovers(
   return muxstoneOvergrowthThreshold(column, row, rect) < ratio;
 }
 
+/**
+ * True when a reclaimed cell is actually visible. Windows stacked above the
+ * reclaimed one clip it, so an idle window's overgrowth can never sprout
+ * background characters across the focused window sitting on top of it.
+ */
+export function muxstoneOvergrowthVisible(
+  column: number,
+  row: number,
+  rect: Rectangle,
+  ratio: number,
+  occluders: readonly Rectangle[],
+): boolean {
+  if (!muxstoneOvergrowthCovers(column, row, rect, ratio)) return false;
+  for (const occluder of occluders) {
+    if (
+      column >= occluder.column && column < occluder.column + occluder.width &&
+      row >= occluder.row && row < occluder.row + occluder.height
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /** Stable per-cell hash in [0, 1); no Math.random so frames stay reproducible. */
 function overgrowthNoise(column: number, row: number): number {
   let hash = Math.imul(column + 0x9e3779b9, 0x85ebca6b) ^ Math.imul(row + 0x165667b1, 0xc2b2ae35);

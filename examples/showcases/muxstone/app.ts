@@ -58,9 +58,9 @@ import {
 import { textWidth } from "../../../src/utils/strings.ts";
 import {
   muxstoneBackgroundOvergrows,
-  muxstoneOvergrowthCovers,
   muxstoneOvergrowthRatio,
   MuxstoneOvergrowthTracker,
+  muxstoneOvergrowthVisible,
 } from "./overgrowth.ts";
 import { MuxstoneOperationQueue } from "./operation_queue.ts";
 import { MUXSTONE_PROTOCOL_LIMITS } from "./protocol.ts";
@@ -612,9 +612,16 @@ export function mountMuxstoneDesktop(
     if (!muxstoneMetaballsMayAdvance(now, lastInputActivityAt, operationQueue.hasPendingBarrier())) return;
     const activeWindowId = controller.windowHost.controller.inspect().activeWindowId;
     const activeRect = projection.windows.find((window) => window.id === activeWindowId)?.rect;
+    // A window the background has begun reclaiming is no longer an obstacle to
+    // it: circuits route their traces straight over idle windows so there is
+    // something to see once the overgrowth exposes the board underneath.
+    const reclaiming = overgrowthEnabled();
+    const obstacles = projection.windows
+      .filter((window) => !reclaiming || (overgrowthRatios.get(window.id) ?? 0) <= 0)
+      .map((window) => window.rect);
     const frame = {
       bounds: bodyRect.peek(),
-      obstacles: projection.windows.map((window) => window.rect),
+      obstacles,
       ...(activeRect ? { activeObstacle: activeRect } : {}),
       now,
     };
@@ -2206,17 +2213,24 @@ function paintOvergrowth(
   projection: WorkbenchWindowHostProjection,
   pass: MuxstoneOvergrowthPass,
 ): void {
-  for (const window of projection.windows) {
+  // Same order the windows were painted in, so anything later in the list is
+  // stacked above and must not be drawn over.
+  const stack = [...projection.tiledWindows, ...projection.floatingWindows];
+  for (let index = 0; index < stack.length; index += 1) {
+    const window = stack[index]!;
     const ratio = pass.ratios.get(window.id) ?? 0;
     if (ratio <= 0) continue;
     const client = window.clientRect;
+    const above = stack.slice(index + 1).map((other) => other.rect);
     for (let row = client.row; row < client.row + client.height; row += 1) {
       const gridRow = grid[row - bounds.row];
       if (!gridRow) continue;
       for (let column = client.column; column < client.column + client.width; column += 1) {
         const cell = gridRow[column - bounds.column];
         if (!cell) continue;
-        if (!muxstoneOvergrowthCovers(column, row, client, ratio)) continue;
+        // An idle window's overgrowth stops at whatever is stacked on top of it,
+        // so reclaiming a window below never bleeds onto the focused one.
+        if (!muxstoneOvergrowthVisible(column, row, client, ratio, above)) continue;
         painter.write(column, row, cell.char, {
           foreground: cell.foreground,
           background: theme.background,
@@ -2508,7 +2522,10 @@ function paintTerminal(
         background = dimTowards(background, theme.surface);
         foreground = dimTowards(foreground, theme.surface);
       }
-      const glyph = cell.char || " ";
+      const rawGlyph = cell.char || " ";
+      // A double-width glyph on the last content column would put its follower
+      // on the window border, so it degrades to a blank inside the client area.
+      const glyph = muxstoneGlyphColumns(rawGlyph) === 2 && column + 1 >= rect.width ? " " : rawGlyph;
       painter.cell(rect.column + column, rect.row + row, glyph, {
         foreground,
         background,
@@ -3591,11 +3608,28 @@ function contains(rect: Rectangle, column: number, row: number): boolean {
   return column >= rect.column && row >= rect.row && column < rect.column + rect.width && row < rect.row + rect.height;
 }
 
+/**
+ * Truncates to a terminal-column budget, not a code-unit count. Measuring by
+ * `length` let a double-width title overflow its region, and slicing by index
+ * could cut a surrogate pair in half; iterating by code point avoids both.
+ */
 function fitText(value: string, width: number): string {
   const safeWidth = Math.max(0, Math.floor(width));
-  if (value.length <= safeWidth) return value;
-  if (safeWidth <= 3) return value.slice(0, safeWidth);
-  return `${value.slice(0, safeWidth - 3)}...`;
+  if (safeWidth === 0) return "";
+  let columns = 0;
+  for (const char of value) columns += muxstoneGlyphColumns(char);
+  if (columns <= safeWidth) return value;
+  const ellipsis = safeWidth > 3 ? "..." : "";
+  const budget = safeWidth - ellipsis.length;
+  let fitted = "";
+  let used = 0;
+  for (const char of value) {
+    const glyphWidth = muxstoneGlyphColumns(char);
+    if (used + glyphWidth > budget) break;
+    fitted += char;
+    used += glyphWidth;
+  }
+  return fitted + ellipsis;
 }
 
 function clampIndex(index: number, length: number): number {

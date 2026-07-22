@@ -7,6 +7,7 @@ import {
   muxstoneOvergrowthRatio,
   muxstoneOvergrowthThreshold,
   MuxstoneOvergrowthTracker,
+  muxstoneOvergrowthVisible,
 } from "../../examples/showcases/muxstone/overgrowth.ts";
 import { MUXSTONE_BACKGROUND_IDS } from "../../examples/showcases/muxstone/model.ts";
 
@@ -97,4 +98,40 @@ Deno.test("muxstone overgrowth tracker resets the focused window and forgets clo
 
   tracker.clear();
   assertEquals(tracker.idleMs("a", 40_000), 0);
+});
+
+Deno.test("muxstone overgrowth is clipped by windows stacked above the reclaimed one", () => {
+  // An idle window behind the focused one must not paint its reclaim over the
+  // window on top, or the focused window sprouts background characters.
+  const idle = { column: 0, row: 0, width: 40, height: 20 };
+  const onTop = { column: 20, row: 5, width: 30, height: 10 };
+  const ratio = MUXSTONE_MAX_OVERGROWTH_RATIO;
+
+  let visibleUnderneath = 0;
+  let visibleBeneathTop = 0;
+  let clipped = 0;
+  for (let row = idle.row; row < idle.row + idle.height; row += 1) {
+    for (let column = idle.column; column < idle.column + idle.width; column += 1) {
+      const covers = muxstoneOvergrowthCovers(column, row, idle, ratio);
+      const visible = muxstoneOvergrowthVisible(column, row, idle, ratio, [onTop]);
+      const beneath = column >= onTop.column && column < onTop.column + onTop.width &&
+        row >= onTop.row && row < onTop.row + onTop.height;
+      if (visible && beneath) visibleBeneathTop += 1;
+      if (visible && !beneath) visibleUnderneath += 1;
+      if (covers && !visible) clipped += 1;
+    }
+  }
+
+  assertEquals(visibleBeneathTop, 0, "no reclaimed cell may show through the window on top");
+  assert(visibleUnderneath > 0, "the exposed part of the idle window must still reclaim");
+  assert(clipped > 0, "the stacked window must actually be clipping something");
+
+  // With nothing stacked above, clipping changes nothing.
+  let unclipped = 0;
+  for (let row = idle.row; row < idle.row + idle.height; row += 1) {
+    for (let column = idle.column; column < idle.column + idle.width; column += 1) {
+      if (muxstoneOvergrowthVisible(column, row, idle, ratio, [])) unclipped += 1;
+    }
+  }
+  assertEquals(unclipped, visibleUnderneath + clipped);
 });

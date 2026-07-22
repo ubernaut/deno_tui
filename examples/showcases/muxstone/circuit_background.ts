@@ -17,6 +17,12 @@ const POINTER_REACH_CELLS = 5;
 const PULSE_CELLS_PER_FRAME = 0.5;
 const TRACE_REWIRE_INTERVAL_MS = 7_000;
 const CHIP_DRIFT_INTERVAL_MS = 18_000;
+/** How often the board re-surveys itself for gaps worth populating. */
+const BOARD_REASSESS_INTERVAL_MS = 9_000;
+/** Upper bound on chips once the board starts filling reclaimed space. */
+const MAX_BOARD_CHIPS = 18;
+/** Candidate placements sampled per survey when hunting for empty board. */
+const EMPTY_REGION_SAMPLES = 56;
 const MIN_CHIP_SIDE = 5;
 const MAX_CHIP_SIDE = 9;
 const CHIP_MARGIN = 1;
@@ -176,6 +182,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
   #nextChipId = 0;
   #cells: (MuxstoneBackgroundCell | undefined)[][] = [];
   #rewireTimerMs = 0;
+  #reassessTimerMs = 0;
   #driftTimerMs = 0;
 
   constructor(options: MuxstoneCircuitFieldOptions = {}) {
@@ -212,6 +219,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     const delta = elapsed / FRAME_BASELINE_MS;
     this.#rewireTimerMs += elapsed;
     this.#driftTimerMs += elapsed;
+    this.#reassessTimerMs += elapsed;
 
     const pointer = this.#pointer && now - this.#pointer.updatedAt <= POINTER_LIFETIME_MS ? this.#pointer : undefined;
     this.#activePointer = pointer
@@ -252,6 +260,10 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     while (this.#driftTimerMs >= CHIP_DRIFT_INTERVAL_MS) {
       this.#driftTimerMs -= CHIP_DRIFT_INTERVAL_MS;
       if (this.#driftOneChip(bounds)) changed = true;
+    }
+    while (this.#reassessTimerMs >= BOARD_REASSESS_INTERVAL_MS) {
+      this.#reassessTimerMs -= BOARD_REASSESS_INTERVAL_MS;
+      if (this.#reassessBoard(bounds)) changed = true;
     }
     return changed;
   }
@@ -583,6 +595,48 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       }
     }
     this.#chips.splice(chipIndex, 1);
+  }
+
+  /**
+   * Periodic survey of the board. Free space — whether the board was always
+   * empty there or a window stopped being a keep-out zone — gets a new chip
+   * wired into the fabric, and one existing chip re-grows its traces so the
+   * layout keeps reconfiguring instead of settling permanently.
+   */
+  #reassessBoard(bounds: Rectangle): boolean {
+    const { width, height } = bounds;
+    const maxSide = Math.min(MAX_CHIP_SIDE, width - 2 * CHIP_MARGIN, height - 2 * CHIP_MARGIN);
+    if (maxSide < 3) return false;
+    const minSide = Math.min(MIN_CHIP_SIDE, maxSide);
+    const ceiling = clampInteger(
+      Math.round((3 + (width * height) / 480) * this.#density),
+      3,
+      MAX_BOARD_CHIPS,
+    );
+
+    let changed = false;
+    if (this.#chips.length < ceiling) {
+      for (let attempt = 0; attempt < EMPTY_REGION_SAMPLES; attempt += 1) {
+        const side = minSide + Math.floor(this.#random() * (maxSide - minSide + 1));
+        const spanX = width - side - 2 * CHIP_MARGIN + 1;
+        const spanY = height - side - 2 * CHIP_MARGIN + 1;
+        if (spanX <= 0 || spanY <= 0) continue;
+        const x = CHIP_MARGIN + Math.floor(this.#random() * spanX);
+        const y = CHIP_MARGIN + Math.floor(this.#random() * spanY);
+        if (!this.#chipFits(x, y, side, -1)) continue;
+        this.#chips.push({ id: this.#nextChipId++, x, y, side, label: this.#createLabel() });
+        this.#markChip(this.#chips.length - 1, 1);
+        this.#growChipTraces(this.#chips.length - 1, bounds);
+        changed = true;
+        break;
+      }
+    }
+
+    if (this.#chips.length > 0) {
+      this.#growChipTraces(Math.floor(this.#random() * this.#chips.length), bounds);
+      changed = true;
+    }
+    return changed;
   }
 
   #growChipTraces(chipIndex: number, bounds: Rectangle): void {
