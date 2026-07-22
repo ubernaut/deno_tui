@@ -66,6 +66,13 @@ import {
 /** Stable host-manager window shown alongside terminal windows. */
 export const MUXSTONE_SESSIONS_WINDOW_ID = "sessions" as const;
 
+/**
+ * How long a transient per-terminal warning stays on screen. The notice is
+ * painted over the bottom row of the window's content, so it has to retire on
+ * its own rather than blocking that row for the life of the session.
+ */
+export const MUXSTONE_WARNING_TTL_MS = 6_000;
+
 /** Focusable panes inside the global config modal, in Tab order. */
 export const MUXSTONE_GLOBAL_CONFIG_PANES = Object.freeze(["theme", "background", "options"] as const);
 
@@ -353,6 +360,7 @@ export class MuxstoneController {
 
   readonly #runtimes = new Map<string, MuxstoneTerminalRuntime>();
   readonly #lifecycleTails = new Map<string, Promise<void>>();
+  readonly #warningTimers = new Map<string, ReturnType<typeof setTimeout>>();
   readonly #pendingResizes = new Map<string, { columns: number; rows: number }>();
   readonly #resizeFlights = new Map<string, Promise<void>>();
   readonly #killFlights = new Map<string, Promise<boolean>>();
@@ -633,6 +641,39 @@ export class MuxstoneController {
     const spec = MUXSTONE_GLOBAL_SETTING_SPECS.find((candidate) => candidate.id === id);
     if (spec) this.status.value = `${spec.label}: ${spec.format(next[id])}`;
     return next;
+  }
+
+  /**
+   * Shows a transient warning on one terminal and schedules its retirement, so
+   * a one-off notice cannot occupy a content row forever.
+   */
+  #warn(runtime: MuxstoneTerminalRuntime, message: string): void {
+    runtime.warning.value = message;
+    const existing = this.#warningTimers.get(runtime.sessionId);
+    if (existing !== undefined) clearTimeout(existing);
+    const timer = setTimeout(() => {
+      this.#warningTimers.delete(runtime.sessionId);
+      if (this.#disposed || runtime.warning.peek() !== message) return;
+      runtime.warning.value = undefined;
+      runtime.renderRevision.value += 1;
+    }, MUXSTONE_WARNING_TTL_MS);
+    // Never let a pending notice hold the process (or a test) open.
+    if (typeof Deno !== "undefined" && typeof Deno.unrefTimer === "function") Deno.unrefTimer(timer);
+    this.#warningTimers.set(runtime.sessionId, timer);
+  }
+
+  /** Retires a terminal's warning immediately, e.g. once its view is usable. */
+  clearWarning(sessionId: string): void {
+    const runtime = this.#runtimes.get(sessionId);
+    if (!runtime) return;
+    const timer = this.#warningTimers.get(sessionId);
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      this.#warningTimers.delete(sessionId);
+    }
+    if (runtime.warning.peek() === undefined) return;
+    runtime.warning.value = undefined;
+    runtime.renderRevision.value += 1;
   }
 
   /** Arms the tmux-style Ctrl-N prefix without forwarding it to a child. */
@@ -1207,9 +1248,10 @@ export class MuxstoneController {
         running: false,
         updatedAt: Math.max(summary.updatedAt, Date.now()),
       });
-      runtime.warning.value = `Terminated; window cleanup is pending (${
-        reconciliation.reason ?? reconciliation.status
-      }).`;
+      this.#warn(
+        runtime,
+        `Terminated; window cleanup is pending (${reconciliation.reason ?? reconciliation.status}).`,
+      );
       runtime.renderRevision.value += 1;
       this.#publishSessions();
       this.windowHost.execute({ kind: "close", id: muxstoneWindowId(sessionId) }, {
@@ -1437,7 +1479,7 @@ export class MuxstoneController {
         if (generation !== runtime.attachGeneration || this.#disposed) return;
         if (attachment.truncated) {
           runtime.screen.clear();
-          runtime.warning.value = "Replay buffer was truncated; this view resumed at the retained boundary.";
+          this.#warn(runtime, "Replay buffer was truncated; this view resumed at the retained boundary.");
           runtime.lastSequence = 0;
         }
         this.#setHostSummary(runtime, attachment.session);
@@ -1448,7 +1490,7 @@ export class MuxstoneController {
         this.#publishSessions();
         result = true;
       } catch {
-        runtime.warning.value = "The detached terminal could not be attached.";
+        this.#warn(runtime, "The detached terminal could not be attached.");
         runtime.renderRevision.value += 1;
       }
     });
@@ -1482,7 +1524,7 @@ export class MuxstoneController {
     const sequence = Number.isSafeInteger(frameValue.sequence) ? frameValue.sequence : -1;
     if (sequence <= runtime.lastSequence) return;
     if (runtime.lastSequence > 0 && sequence !== runtime.lastSequence + 1) {
-      runtime.warning.value = `Output sequence gap (${runtime.lastSequence} → ${sequence}).`;
+      this.#warn(runtime, `Output sequence gap (${runtime.lastSequence} → ${sequence}).`);
     }
     runtime.lastSequence = sequence;
     runtime.screen.write(frameValue.data);
@@ -1667,6 +1709,8 @@ export class MuxstoneController {
     this.helpVisible.value = false;
     this.pendingKillSessionId.value = undefined;
     this.#pendingResizes.clear();
+    for (const timer of this.#warningTimers.values()) clearTimeout(timer);
+    this.#warningTimers.clear();
     const detachments = [...this.#runtimes.values()].map((runtime) => this.#detachRuntime(runtime));
     await Promise.allSettled(detachments);
     await this.kernel.dispose();

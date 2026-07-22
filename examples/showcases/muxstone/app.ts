@@ -113,6 +113,8 @@ export interface MuxstoneAppMount {
   handleScroll(event: MouseScrollEvent): Promise<boolean>;
   /** Returns the completed background-frame count for diagnostics and pilots. */
   metaballFrameRevision(): number;
+  /** Window id → background reclaim ratio, for diagnostics and pilots. */
+  overgrowthRatios(): ReadonlyMap<string, number>;
   whenIdle(): Promise<void>;
   dispose(): void;
 }
@@ -597,11 +599,16 @@ export function mountMuxstoneDesktop(
   const animateMetaballs = (): void => {
     if (disposed || !app.started) return;
     const projection = windowProjection.peek();
+    const now = performance.now();
     // Overgrowth keeps advancing even when windows fully occlude the desktop —
     // that is precisely the case where the background is creeping over them.
     const backdropVisible = muxstoneMetaballBackgroundVisible(projection, bodyRect.peek());
-    if (!backdropVisible && !overgrowthEnabled()) return;
-    const now = performance.now();
+    if (!backdropVisible && !overgrowthEnabled()) {
+      // Nothing left to animate, but reclaim state from a previous background
+      // must still be retired or those windows stay overgrown forever.
+      if (syncOvergrowth(projection, undefined, now)) metaballRevision.value += 1;
+      return;
+    }
     if (!muxstoneMetaballsMayAdvance(now, lastInputActivityAt, operationQueue.hasPendingBarrier())) return;
     const activeWindowId = controller.windowHost.controller.inspect().activeWindowId;
     const activeRect = projection.windows.find((window) => window.id === activeWindowId)?.rect;
@@ -612,7 +619,10 @@ export function mountMuxstoneDesktop(
       now,
     };
     const advanced = activeBackgroundField()?.advance(frame) ?? metaballs.advance(frame);
-    if (advanced || syncOvergrowth(projection, activeWindowId, now)) metaballRevision.value += 1;
+    // Both sides must run every tick: `||` would short-circuit the overgrowth
+    // sync away on the (near-universal) frames where the field also advanced.
+    const overgrew = syncOvergrowth(projection, activeWindowId, now);
+    if (advanced || overgrew) metaballRevision.value += 1;
   };
   const metaballTimer = setInterval(animateMetaballs, MUXSTONE_METABALL_FRAME_INTERVAL_MS);
   unsubscribers.push(() => clearInterval(metaballTimer));
@@ -1871,6 +1881,7 @@ export function mountMuxstoneDesktop(
     handlePointer: routeSemanticPointer,
     handleScroll: routeWindowScroll,
     metaballFrameRevision: () => metaballRevision.peek(),
+    overgrowthRatios: () => overgrowthRatios,
     whenIdle: () => operationQueue.whenIdle(),
     dispose() {
       if (disposed) return;

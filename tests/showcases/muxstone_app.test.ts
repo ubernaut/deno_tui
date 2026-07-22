@@ -25,6 +25,7 @@ import {
   createMuxstoneController,
   MUXSTONE_NETWORK_WINDOW_ID,
   MUXSTONE_SESSIONS_WINDOW_ID,
+  MUXSTONE_WARNING_TTL_MS,
   type MuxstoneController,
 } from "../../examples/showcases/muxstone/controller.ts";
 import {
@@ -2298,6 +2299,7 @@ class FakeMuxstoneClient implements MuxstoneClientPort {
   connected = true;
   delayInputAcks = false;
   rejectAttach = false;
+  truncateNextAttach = false;
   rejectKill = false;
   shutdownCalls = 0;
   readonly inputs: Array<{ sessionId: string; data: string }> = [];
@@ -2349,7 +2351,7 @@ class FakeMuxstoneClient implements MuxstoneClientPort {
     return Promise.resolve({
       session: current,
       replay: (this.#replay.get(sessionId) ?? []).filter((frame) => frame.sequence > (options.sinceSequence ?? 0)),
-      truncated: false,
+      truncated: this.truncateNextAttach,
     });
   }
 
@@ -2865,6 +2867,75 @@ Deno.test("Muxstone pairs a wide terminal glyph with an empty follower cell", as
     assertEquals(columns, 6);
   } finally {
     harness.destroy();
+    await controller.dispose();
+  }
+});
+
+Deno.test("Muxstone overgrows every unselected window while an organic background runs", async () => {
+  const first = session("grow-a", "grow a", 1);
+  const second = session("grow-b", "grow b", 2);
+  const client = new FakeMuxstoneClient([first, second]);
+  const controller = await createMuxstoneController({ client, initialSessions: [first, second] });
+  const mount: MuxstoneAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 110, rows: 32 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+    controller.setBackground("jungle");
+    controller.windowHost.execute({ kind: "focus", id: muxstoneWindowId("grow-a") }, mounted.bodyRect.peek());
+    await mounted.whenIdle();
+
+    harness.app.start();
+    await waitForCondition(() => mounted.overgrowthRatios().size > 0, 3_000);
+
+    // Every window except the focused one is reclaimed, the manager included.
+    const active = controller.windowHost.controller.inspect().activeWindowId;
+    const ratios = mounted.overgrowthRatios();
+    assertEquals(ratios.has(active ?? ""), false, "the focused window must stay clear");
+    for (const window of mounted.windowProjection.peek().windows) {
+      if (window.id === active) continue;
+      assert(ratios.has(window.id), `expected ${window.id} to overgrow while unfocused`);
+      assert(ratios.get(window.id)! > 0);
+    }
+
+    // Focusing a reclaimed window resets it.
+    const reclaimed = [...ratios.keys()].find((id) => id !== active)!;
+    controller.windowHost.execute({ kind: "focus", id: reclaimed }, mounted.bodyRect.peek());
+    await waitForCondition(() => !mounted.overgrowthRatios().has(reclaimed), 3_000);
+    assertEquals(mounted.overgrowthRatios().has(reclaimed), false);
+
+    // A background that does not overgrow retires every ratio.
+    controller.setBackground("vaporwave");
+    await waitForCondition(() => mounted.overgrowthRatios().size === 0, 3_000);
+    assertEquals(mounted.overgrowthRatios().size, 0, "vaporwave must not overgrow windows");
+  } finally {
+    harness.destroy();
+    await controller.dispose();
+  }
+});
+
+Deno.test("Muxstone retires a truncation warning instead of blocking a content row", async () => {
+  const initial = session("warn-shell", "warn shell", 1);
+  const client = new FakeMuxstoneClient([initial]);
+  // The host reports a truncated replay, which used to pin a notice over the
+  // bottom row of this window's content for the life of the session.
+  client.truncateNextAttach = true;
+  const controller = await createMuxstoneController({ client, initialSessions: [initial] });
+
+  try {
+    const runtime = controller.runtime("warn-shell");
+    assert(runtime);
+    await waitForCondition(() => runtime.warning.peek() !== undefined, 2_000);
+    assertStringIncludes(runtime.warning.peek() ?? "", "Replay buffer was truncated");
+
+    // It clears on demand rather than persisting.
+    controller.clearWarning("warn-shell");
+    assertEquals(runtime.warning.peek(), undefined);
+    assert(MUXSTONE_WARNING_TTL_MS > 0 && MUXSTONE_WARNING_TTL_MS <= 30_000);
+  } finally {
     await controller.dispose();
   }
 });
