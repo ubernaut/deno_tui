@@ -246,6 +246,7 @@ export const MUXSTONE_BACKGROUND_IDS = [
   "vaporwave",
   "skull",
   "ivy",
+  "fire",
 ] as const;
 export type MuxstoneBackgroundId = (typeof MUXSTONE_BACKGROUND_IDS)[number];
 

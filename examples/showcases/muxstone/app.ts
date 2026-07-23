@@ -76,6 +76,7 @@ import { MuxstoneBiomechField } from "./biomech_background.ts";
 import { MuxstoneCircuitField } from "./circuit_background.ts";
 import { MuxstoneJungleField } from "./jungle_background.ts";
 import { MuxstoneMatrixRainField } from "./matrix_background.ts";
+import { MuxstoneFireField } from "./fire_background.ts";
 import { MuxstoneIvyField } from "./ivy_background.ts";
 import { MuxstoneSkullField } from "./skull_background.ts";
 import { MuxstoneVaporwaveField } from "./vaporwave_background.ts";
@@ -461,6 +462,8 @@ export function mountMuxstoneDesktop(
         ? new MuxstoneSkullField()
         : id === "ivy"
         ? new MuxstoneIvyField()
+        : id === "fire"
+        ? new MuxstoneFireField()
         : new MuxstoneJungleField();
       backgroundFields.set(id, field);
     }

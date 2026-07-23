@@ -49,7 +49,7 @@
     "muxstone": "deno run -A ./examples/showcases/muxstone/main.ts",
     "muxstone:memory": "deno run -A ./examples/showcases/muxstone/main.ts --memory",
     "muxstone:check": "deno check ./examples/showcases/muxstone/main.ts",
-    "muxstone:test": "deno test -A ./tests/showcases/muxstone_host.test.ts ./tests/showcases/muxstone_client.test.ts ./tests/showcases/muxstone_controller.test.ts ./tests/showcases/muxstone_app.test.ts ./tests/showcases/muxstone_tailnet.test.ts ./tests/showcases/muxstone_terminal_modes.test.ts ./tests/showcases/muxstone_overgrowth.test.ts ./tests/showcases/muxstone_backgrounds_matrix_circuit.test.ts ./tests/showcases/muxstone_backgrounds_biomech_jungle.test.ts ./tests/showcases/muxstone_backgrounds_vaporwave.test.ts ./tests/showcases/muxstone_backgrounds_skull.test.ts ./tests/showcases/muxstone_backgrounds_ivy.test.ts",
+    "muxstone:test": "deno test -A ./tests/showcases/muxstone_host.test.ts ./tests/showcases/muxstone_client.test.ts ./tests/showcases/muxstone_controller.test.ts ./tests/showcases/muxstone_app.test.ts ./tests/showcases/muxstone_tailnet.test.ts ./tests/showcases/muxstone_terminal_modes.test.ts ./tests/showcases/muxstone_overgrowth.test.ts ./tests/showcases/muxstone_backgrounds_matrix_circuit.test.ts ./tests/showcases/muxstone_backgrounds_biomech_jungle.test.ts ./tests/showcases/muxstone_backgrounds_vaporwave.test.ts ./tests/showcases/muxstone_backgrounds_skull.test.ts ./tests/showcases/muxstone_backgrounds_ivy.test.ts ./tests/showcases/muxstone_backgrounds_fire.test.ts",
     "command-search": "deno run -A ./examples/command_search_index.ts",
     "dashboard": "deno run -A ./examples/dashboard.ts",
     "layout-recipe": "deno run -A ./examples/layout_recipe_report.ts",
