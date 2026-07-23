@@ -3434,3 +3434,63 @@ Deno.test("Muxstone pulls floating windows back on screen when the desktop shrin
     await controller.dispose();
   }
 });
+
+Deno.test("Muxstone modal layouts stay within a cramped desktop", () => {
+  const within = (rect: Rectangle, bounds: Rectangle, label: string) => {
+    assert(rect.column >= bounds.column, `${label}: left edge off screen`);
+    assert(rect.row >= bounds.row, `${label}: top edge off screen`);
+    assert(
+      rect.column + rect.width <= bounds.column + bounds.width,
+      `${label}: right edge off screen (${rect.column}+${rect.width} > ${bounds.width})`,
+    );
+    assert(
+      rect.row + rect.height <= bounds.row + bounds.height,
+      `${label}: bottom edge off screen (${rect.row}+${rect.height} > ${bounds.height})`,
+    );
+    assert(rect.width >= 1 && rect.height >= 1, `${label}: collapsed`);
+  };
+
+  // From a phone-narrow strip up to comfortably large, including sizes below
+  // every modal's old minimum width.
+  for (
+    const size of [
+      { width: 20, height: 6 },
+      { width: 30, height: 8 },
+      { width: 46, height: 10 },
+      { width: 58, height: 12 },
+      { width: 80, height: 24 },
+      { width: 200, height: 60 },
+    ]
+  ) {
+    const bounds = { column: 0, row: 1, ...size };
+    const quit = muxstoneQuitLayout(bounds);
+    within(quit.rect, bounds, "quit");
+    const quitButtons = [quit.cancelRect, quit.detachRect, quit.terminateRect];
+    for (const button of quitButtons) within(button, bounds, "quit button");
+    // Destructive buttons must never share a cell: a mis-hit would terminate.
+    for (let a = 0; a < quitButtons.length; a += 1) {
+      for (let b = a + 1; b < quitButtons.length; b += 1) {
+        const first = quitButtons[a]!;
+        const second = quitButtons[b]!;
+        const disjoint = first.row !== second.row ||
+          first.column + first.width <= second.column ||
+          second.column + second.width <= first.column;
+        assert(disjoint, `quit buttons ${a}/${b} overlap at ${size.width}x${size.height}`);
+      }
+    }
+
+    const scp = muxstoneScpLayout(bounds);
+    within(scp.rect, bounds, "scp");
+
+    const windowConfig = muxstoneWindowConfigLayout(bounds);
+    within(windowConfig.rect, bounds, "window config");
+    within(windowConfig.closeRect, bounds, "window config close");
+
+    const global = muxstoneGlobalConfigLayout(bounds, 0, 0);
+    within(global.rect, bounds, "global config");
+    within(global.closeRect, bounds, "global config close");
+
+    const start = muxstoneStartMenuLayout(bounds);
+    within(start.panelRect, bounds, "start menu");
+  }
+});

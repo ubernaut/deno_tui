@@ -2669,8 +2669,11 @@ function paintSwitcher(
   theme: MuxstoneThemeSpec,
 ): void {
   const switcher = projection.switcher!;
-  const width = Math.min(48, Math.max(20, projection.bounds.width - 8));
-  const height = Math.min(switcher.items.length + 2, Math.max(3, projection.bounds.height - 4));
+  const width = fitModalSpan(projection.bounds.width, 20, 48, 8);
+  const height = Math.min(
+    switcher.items.length + 2,
+    fitModalSpan(projection.bounds.height, 3, projection.bounds.height, 4),
+  );
   const rect = {
     column: projection.bounds.column + Math.max(0, Math.floor((projection.bounds.width - width) / 2)),
     row: projection.bounds.row + Math.max(0, Math.floor((projection.bounds.height - height) / 2)),
@@ -2814,17 +2817,20 @@ interface MuxstoneHelpLayout {
 }
 
 function muxstoneHelpLayout(bounds: Rectangle): MuxstoneHelpLayout {
-  const width = Math.min(84, Math.max(24, bounds.width - 4));
-  const height = Math.min(15, Math.max(3, bounds.height - 2));
+  const width = fitModalSpan(bounds.width, 24, 84, 4);
+  const height = fitModalSpan(bounds.height, 3, 15, 2);
   const rect = centeredRect(bounds, width, height);
+  return { rect, closeRect: rightAlignedButton(rect, 9) };
+}
+
+/** A button pinned to a modal's bottom-right, clamped to stay inside the box. */
+function rightAlignedButton(rect: Rectangle, width: number): Rectangle {
+  const fitted = Math.max(1, Math.min(width, rect.width - 2));
   return {
-    rect,
-    closeRect: {
-      column: rect.column + Math.max(1, rect.width - 10),
-      row: rect.row + Math.max(1, rect.height - 2),
-      width: Math.min(9, Math.max(0, rect.width - 2)),
-      height: 1,
-    },
+    column: Math.max(rect.column + 1, rect.column + rect.width - 1 - fitted),
+    row: rect.row + Math.max(1, rect.height - 2),
+    width: fitted,
+    height: 1,
   };
 }
 
@@ -2835,19 +2841,10 @@ interface MuxstoneKillLayout {
 }
 
 function muxstoneKillLayout(bounds: Rectangle): MuxstoneKillLayout {
-  const width = Math.min(62, Math.max(24, bounds.width - 6));
-  const rect = centeredRect(bounds, width, Math.min(8, Math.max(3, bounds.height - 2)));
-  const buttonRow = rect.row + Math.max(1, rect.height - 2);
-  return {
-    rect,
-    cancelRect: { column: rect.column + 2, row: buttonRow, width: 10, height: 1 },
-    confirmRect: {
-      column: rect.column + Math.max(13, rect.width - 10),
-      row: buttonRow,
-      width: 8,
-      height: 1,
-    },
-  };
+  const width = fitModalSpan(bounds.width, 24, 62, 6);
+  const rect = centeredRect(bounds, width, fitModalSpan(bounds.height, 3, 8, 2));
+  const [cancelRect, confirmRect] = modalButtonRects(rect, [10, 8]);
+  return { rect, cancelRect: cancelRect!, confirmRect: confirmRect! };
 }
 
 export interface MuxstoneQuitLayout {
@@ -2859,25 +2856,11 @@ export interface MuxstoneQuitLayout {
 
 /** Layout for the end-session modal; exported for deterministic pointer tests. */
 export function muxstoneQuitLayout(bounds: Rectangle): MuxstoneQuitLayout {
-  const width = Math.min(82, Math.max(40, bounds.width - 6));
-  const rect = centeredRect(bounds, width, Math.min(8, Math.max(5, bounds.height - 2)));
-  const buttonRow = rect.row + Math.max(1, rect.height - 2);
-  return {
-    rect,
-    cancelRect: { column: rect.column + 2, row: buttonRow, width: 10, height: 1 },
-    detachRect: {
-      column: rect.column + Math.max(13, Math.floor((rect.width - 10) / 2)),
-      row: buttonRow,
-      width: 10,
-      height: 1,
-    },
-    terminateRect: {
-      column: rect.column + Math.max(26, rect.width - 15),
-      row: buttonRow,
-      width: 13,
-      height: 1,
-    },
-  };
+  const width = fitModalSpan(bounds.width, 40, 82, 6);
+  // Enough rows to stack the three buttons if the box has to go narrow.
+  const rect = centeredRect(bounds, width, fitModalSpan(bounds.height, 5, 8, 2));
+  const [cancelRect, detachRect, terminateRect] = modalButtonRects(rect, [10, 10, 13]);
+  return { rect, cancelRect: cancelRect!, detachRect: detachRect!, terminateRect: terminateRect! };
 }
 
 /** Layout for the global config modal; exported for deterministic pointer tests. */
@@ -2908,11 +2891,11 @@ export function muxstoneGlobalConfigLayout(
   themeIndex: number,
   backgroundIndex: number,
 ): MuxstoneGlobalConfigLayout {
-  const width = Math.min(78, Math.max(52, bounds.width - 6));
+  const width = fitModalSpan(bounds.width, 52, 78, 6);
   const optionCount = MUXSTONE_GLOBAL_SETTING_SPECS.length;
   // Frame + title + headers + lists + gap + options + buttons + frame.
   const desired = MUXSTONE_THEMES.length + optionCount + 6;
-  const height = Math.min(Math.max(12, bounds.height - 2), desired);
+  const height = Math.min(desired, fitModalSpan(bounds.height, 12, bounds.height, 2));
   const rect = centeredRect(bounds, width, height);
   const listTop = rect.row + 2;
   const visibleRows = Math.max(1, rect.height - optionCount - 5);
@@ -2947,9 +2930,9 @@ export function muxstoneGlobalConfigLayout(
     backgroundRows,
     optionRows,
     closeRect: {
-      column: rect.column + Math.max(2, rect.width - 11),
+      column: Math.max(rect.column + 1, rect.column + rect.width - 10),
       row: rect.row + rect.height - 1,
-      width: 9,
+      width: Math.max(1, Math.min(9, rect.width - 2)),
       height: 1,
     },
   };
@@ -3061,10 +3044,10 @@ export interface MuxstoneWindowConfigLayout {
 
 /** Layout for the per-window config modal; exported for deterministic pointer tests. */
 export function muxstoneWindowConfigLayout(bounds: Rectangle): MuxstoneWindowConfigLayout {
-  const width = Math.min(72, Math.max(44, bounds.width - 6));
+  const width = fitModalSpan(bounds.width, 44, 72, 6);
   const rowCount = MUXSTONE_WINDOW_SETTING_SPECS.length;
   // Frame + title + blank + rows + blank + buttons + frame.
-  const height = Math.min(Math.max(8, bounds.height - 2), rowCount + 6);
+  const height = Math.min(rowCount + 6, fitModalSpan(bounds.height, 8, bounds.height, 2));
   const rect = centeredRect(bounds, width, height);
   const firstRow = rect.row + 2;
   const usableRows = Math.max(0, rect.height - 5);
@@ -3077,7 +3060,12 @@ export function muxstoneWindowConfigLayout(bounds: Rectangle): MuxstoneWindowCon
     rect,
     rowRects,
     resetRect: { column: rect.column + 2, width: 9, row: buttonRow, height: 1 },
-    closeRect: { column: rect.column + Math.max(13, rect.width - 11), width: 9, row: buttonRow, height: 1 },
+    closeRect: {
+      column: Math.max(rect.column + 1, rect.column + rect.width - 10),
+      width: Math.max(1, Math.min(9, rect.width - 2)),
+      row: buttonRow,
+      height: 1,
+    },
   };
 }
 
@@ -3150,25 +3138,10 @@ interface MuxstoneScpLayout {
 
 /** Layout for the paste-to-scp modal; exported for deterministic pointer tests. */
 export function muxstoneScpLayout(bounds: Rectangle): MuxstoneScpLayout {
-  const width = Math.min(84, Math.max(44, bounds.width - 6));
-  const rect = centeredRect(bounds, width, Math.min(9, Math.max(6, bounds.height - 2)));
-  const buttonRow = rect.row + Math.max(1, rect.height - 2);
-  return {
-    rect,
-    cancelRect: { column: rect.column + 2, row: buttonRow, width: 10, height: 1 },
-    pasteRect: {
-      column: rect.column + Math.max(13, Math.floor((rect.width - 14) / 2)),
-      row: buttonRow,
-      width: 14,
-      height: 1,
-    },
-    sendRect: {
-      column: rect.column + Math.max(29, rect.width - 10),
-      row: buttonRow,
-      width: 8,
-      height: 1,
-    },
-  };
+  const width = fitModalSpan(bounds.width, 44, 84, 6);
+  const rect = centeredRect(bounds, width, fitModalSpan(bounds.height, 6, 9, 2));
+  const [cancelRect, pasteRect, sendRect] = modalButtonRects(rect, [10, 14, 8]);
+  return { rect, cancelRect: cancelRect!, pasteRect: pasteRect!, sendRect: sendRect! };
 }
 
 function paintScpModal(
@@ -3219,12 +3192,58 @@ function paintScpModal(
 }
 
 function centeredRect(bounds: Rectangle, width: number, height: number): Rectangle {
+  // A modal can never be wider or taller than its host, so clamp before
+  // centering; otherwise an oversized box spills past the right/bottom edge.
+  const fittedWidth = Math.max(1, Math.min(width, bounds.width));
+  const fittedHeight = Math.max(1, Math.min(height, bounds.height));
   return {
-    column: bounds.column + Math.max(0, Math.floor((bounds.width - width) / 2)),
-    row: bounds.row + Math.max(0, Math.floor((bounds.height - height) / 2)),
-    width,
-    height,
+    column: bounds.column + Math.max(0, Math.floor((bounds.width - fittedWidth) / 2)),
+    row: bounds.row + Math.max(0, Math.floor((bounds.height - fittedHeight) / 2)),
+    width: fittedWidth,
+    height: fittedHeight,
   };
+}
+
+/**
+ * Fits a modal span to the space available. On a roomy desktop it yields the
+ * preferred [min, max] size; on a cramped one it collapses to the room left
+ * after the margin and never exceeds it — so a modal's minimum size can never
+ * push it off a small screen.
+ */
+function fitModalSpan(available: number, min: number, max: number, margin: number): number {
+  const room = Math.max(1, Math.floor(available) - margin);
+  return Math.max(1, Math.min(room, Math.min(max, Math.max(min, room))));
+}
+
+/**
+ * Lays out a modal's action buttons so they always stay inside the box. When
+ * the box is wide enough they spread across the bottom row; when it is too
+ * narrow they stack vertically instead of overlapping, which matters for
+ * destructive choices where a mis-hit is costly. Buttons keep their declared
+ * order, and each is clamped to the box width.
+ */
+function modalButtonRects(rect: Rectangle, widths: readonly number[], gap = 2): Rectangle[] {
+  const inner = Math.max(1, rect.width - 4);
+  const spread = widths.reduce((sum, width) => sum + Math.min(width, inner), 0) + gap * (widths.length - 1);
+  if (widths.length <= 1 || spread <= inner) {
+    const buttonRow = rect.row + Math.max(1, rect.height - 2);
+    const slack = widths.length > 1 ? Math.max(0, Math.floor((inner - spread) / (widths.length - 1))) : 0;
+    let column = rect.column + 2;
+    return widths.map((width) => {
+      const fitted = Math.min(width, inner);
+      const button = { column, row: buttonRow, width: fitted, height: 1 };
+      column += fitted + gap + slack;
+      return button;
+    });
+  }
+  // Stack up from just above the bottom border, first button at the top.
+  const firstRow = rect.row + Math.max(1, rect.height - 1 - widths.length);
+  return widths.map((width, index) => ({
+    column: rect.column + 2,
+    row: firstRow + index,
+    width: Math.min(width, inner),
+    height: 1,
+  }));
 }
 
 interface PaintedStyle {
