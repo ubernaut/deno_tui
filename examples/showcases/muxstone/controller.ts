@@ -919,6 +919,37 @@ export class MuxstoneController {
   }
 
   /** Centered default rect for a freshly spawned floating terminal, cascading slightly per launch. */
+  /**
+   * Refits floating windows after the desktop changes shape. A window whose
+   * durable rect now falls partly or wholly outside the viewport is shrunk to
+   * fit and nudged back on screen, so a smaller parent never strands a window
+   * where it cannot be reached. Windows that still fit are left untouched, and
+   * tiled/maximized/minimized windows are the layout's concern, not this pass.
+   * Returns true when any window moved.
+   */
+  reflowFloatingWindows(bounds: Rectangle): boolean {
+    if (this.#disposed) return false;
+    const viewport = normalizeReflowBounds(bounds);
+    if (!viewport) return false;
+    let changed = false;
+    for (const window of this.windowHost.controller.inspect().windows) {
+      if (window.placement !== "floating" || window.state === "minimized" || window.state === "maximized") continue;
+      const rect = window.floatingRect;
+      if (!rect) continue;
+      const fitted = fitFloatingRect(rect, viewport);
+      if (
+        fitted.column === rect.column && fitted.row === rect.row &&
+        fitted.width === rect.width && fitted.height === rect.height
+      ) {
+        continue;
+      }
+      this.windowHost.execute({ kind: "set-placement", id: window.id, placement: "floating", rect: fitted }, viewport);
+      changed = true;
+    }
+    if (changed) this.#lastBounds = { ...viewport };
+    return changed;
+  }
+
   #centeredFloatingRect(): Rectangle {
     const bounds = this.#lastBounds;
     const width = Math.max(24, Math.min(86, bounds.width - 6));
@@ -1895,6 +1926,41 @@ function applicationCommandName(command: string): string {
 
 function finiteTime(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+}
+
+/** Minimum floating window footprint kept usable when refitting to a small parent. */
+const MUXSTONE_MIN_FLOATING_WIDTH = 12;
+const MUXSTONE_MIN_FLOATING_HEIGHT = 3;
+
+/** Shrinks and nudges one floating rect so it sits wholly inside the viewport. */
+function fitFloatingRect(rect: Rectangle, bounds: Rectangle): Rectangle {
+  // Never grow a window that already fits; only shrink one too big for the parent.
+  const width = Math.max(
+    1,
+    Math.min(rect.width, Math.max(MUXSTONE_MIN_FLOATING_WIDTH, Math.min(rect.width, bounds.width))),
+  );
+  const height = Math.max(
+    1,
+    Math.min(rect.height, Math.max(MUXSTONE_MIN_FLOATING_HEIGHT, Math.min(rect.height, bounds.height))),
+  );
+  const cappedWidth = Math.min(width, bounds.width);
+  const cappedHeight = Math.min(height, bounds.height);
+  const column = clampValue(rect.column, bounds.column, bounds.column + bounds.width - cappedWidth);
+  const row = clampValue(rect.row, bounds.row, bounds.row + bounds.height - cappedHeight);
+  return { column, row, width: cappedWidth, height: cappedHeight };
+}
+
+/** Clamps a value into an inclusive range, tolerating an inverted range. */
+function clampValue(value: number, low: number, high: number): number {
+  return Math.max(low, Math.min(Math.max(low, high), value));
+}
+
+/** Integer-normalizes viewport bounds for reflow; undefined when unusable. */
+function normalizeReflowBounds(bounds: Rectangle): Rectangle | undefined {
+  const width = Math.floor(bounds.width);
+  const height = Math.floor(bounds.height);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return undefined;
+  return { column: Math.floor(bounds.column), row: Math.floor(bounds.row), width, height };
 }
 
 function clampDimension(value: unknown, fallback: number, maximum: number): number {

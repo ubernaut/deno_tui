@@ -825,3 +825,72 @@ class FakeMuxstoneClient implements MuxstoneClientPort {
 function cloneSession(session: MutableSession): MuxstoneSessionSummary {
   return { ...session };
 }
+
+Deno.test("Muxstone refits floating windows that a smaller desktop would strand offscreen", async () => {
+  const host = new FakeMuxstoneHost();
+  const controller = await createMuxstoneController({ client: host.client() });
+  try {
+    const big = { column: 0, row: 1, width: 160, height: 48 };
+    const session = await controller.spawn({ bounds: big, title: "floater" });
+    assert(session);
+    const windowId = muxstoneWindowId(session.id);
+
+    // Park it near the far corner of the large desktop.
+    controller.windowHost.execute(
+      {
+        kind: "set-placement",
+        id: windowId,
+        placement: "floating",
+        rect: { column: 120, row: 30, width: 34, height: 14 },
+      },
+      big,
+    );
+    const floatingRectOf = () =>
+      controller.windowHost.controller.inspect().windows.find((window) => window.id === windowId)!.floatingRect!;
+    const before = floatingRectOf();
+    assertEquals(before, { column: 120, row: 30, width: 34, height: 14 });
+
+    // Shrinking the desktop strands that corner; the reflow pulls it back on.
+    const small = { column: 0, row: 1, width: 80, height: 24 };
+    assertEquals(controller.reflowFloatingWindows(small), true);
+    const after = floatingRectOf();
+    assert(after.column >= small.column, "left edge on screen");
+    assert(after.row >= small.row, "top edge on screen");
+    assert(after.column + after.width <= small.column + small.width, "right edge on screen");
+    assert(after.row + after.height <= small.row + small.height, "bottom edge on screen");
+    // It shrank only as needed and never grew.
+    assert(after.width <= before.width && after.height <= before.height);
+
+    // A window that already fits is left exactly where it is, and a no-op reflow
+    // reports no change so it never churns geometry needlessly.
+    assertEquals(controller.reflowFloatingWindows(small), false);
+    assertEquals(floatingRectOf(), after);
+
+    // Growing the desktop back does not disturb a window that already fits.
+    assertEquals(controller.reflowFloatingWindows(big), false);
+    assertEquals(floatingRectOf(), after);
+  } finally {
+    await controller.dispose();
+  }
+});
+
+Deno.test("Muxstone reflow leaves tiled and maximized windows to the layout", async () => {
+  const host = new FakeMuxstoneHost();
+  const controller = await createMuxstoneController({ client: host.client() });
+  try {
+    const big = { column: 0, row: 1, width: 160, height: 48 };
+    const session = await controller.spawn({ bounds: big, title: "tiled" });
+    assert(session);
+    const windowId = muxstoneWindowId(session.id);
+    controller.windowHost.execute({ kind: "set-placement", id: windowId, placement: "tiled" }, big);
+
+    // A tiled window is the layout's concern; reflow must not touch it.
+    assertEquals(controller.reflowFloatingWindows({ column: 0, row: 1, width: 40, height: 12 }), false);
+    assertEquals(
+      controller.windowHost.controller.inspect().windows.find((window) => window.id === windowId)?.placement,
+      "tiled",
+    );
+  } finally {
+    await controller.dispose();
+  }
+});

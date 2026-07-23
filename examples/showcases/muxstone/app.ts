@@ -1977,6 +1977,16 @@ export function mountMuxstoneDesktop(
     controller.syncTerminalGeometry(windowProjection.peek());
   };
   windowProjection.subscribe(scheduleGeometry, subscriptions.signal);
+  // Refit floating windows when the desktop changes shape so a smaller parent
+  // never strands one offscreen. Guarded on size so it only fires on a real
+  // resize, not on every window move that also republishes bodyRect's readers.
+  let lastReflowSize = { width: bodyRect.peek().width, height: bodyRect.peek().height };
+  bodyRect.subscribe((bounds) => {
+    if (disposed) return;
+    if (bounds.width === lastReflowSize.width && bounds.height === lastReflowSize.height) return;
+    lastReflowSize = { width: bounds.width, height: bounds.height };
+    if (controller.reflowFloatingWindows(bounds)) void syncWindows();
+  }, subscriptions.signal);
   controller.sessions.subscribe((sessions) => {
     selectedSessionIndex.value = clampIndex(selectedSessionIndex.peek(), sessions.length);
   }, subscriptions.signal);

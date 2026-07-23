@@ -3393,3 +3393,44 @@ Deno.test("Muxstone start menu holds every command and frees the bottom rows", a
     await controller.dispose();
   }
 });
+
+Deno.test("Muxstone pulls floating windows back on screen when the desktop shrinks", async () => {
+  const initial = session("reflow-shell", "reflow shell", 0);
+  const client = new FakeMuxstoneClient([initial]);
+  const controller = await createMuxstoneController({ client, initialSessions: [initial] });
+  const mount: MuxstoneAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 160, rows: 48 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+    const windowId = muxstoneWindowId("reflow-shell");
+    controller.windowHost.execute(
+      {
+        kind: "set-placement",
+        id: windowId,
+        placement: "floating",
+        rect: { column: 120, row: 34, width: 36, height: 12 },
+      },
+      mounted.bodyRect.peek(),
+    );
+    await mounted.whenIdle();
+
+    // Shrinking the terminal strands the window off the new viewport.
+    harness.canvas.size.value = { columns: 80, rows: 24 };
+    await mounted.whenIdle();
+
+    const bounds = mounted.bodyRect.peek();
+    const rect = controller.windowHost.controller.inspect().windows
+      .find((window) => window.id === windowId)!.floatingRect!;
+    assert(rect.column >= bounds.column, "left edge back on screen");
+    assert(rect.row >= bounds.row, "top edge back on screen");
+    assert(rect.column + rect.width <= bounds.column + bounds.width, "right edge back on screen");
+    assert(rect.row + rect.height <= bounds.row + bounds.height, "bottom edge back on screen");
+  } finally {
+    harness.destroy();
+    await controller.dispose();
+  }
+});
