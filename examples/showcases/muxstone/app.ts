@@ -150,15 +150,27 @@ export interface MuxstoneTerminalAppRuntime {
   destroy(): Promise<void>;
 }
 
-const HEADER_ROWS = 2;
-const FOOTER_ROWS = 2;
+// One top bar, no bottom bars: the window taskbar sits inline on the top row
+// and every command lives in the start-menu dropdown, so all other rows are
+// terminal real estate.
+const HEADER_ROWS = 1;
+const FOOTER_ROWS = 0;
 const SESSION_LIST_START = 3;
-const MENU_NEW = Object.freeze({ column: 12, row: 0, width: 7, height: 1 });
-const MENU_NETWORK = Object.freeze({ column: 22, row: 0, width: 11, height: 1 });
-const MENU_SESSIONS = Object.freeze({ column: 36, row: 0, width: 12, height: 1 });
-const MENU_CONFIG = Object.freeze({ column: 51, row: 0, width: 10, height: 1 });
-const MENU_HELP = Object.freeze({ column: 64, row: 0, width: 8, height: 1 });
+/** Start-menu button occupying the top-left, opening the command dropdown. */
+const START_BUTTON_IDLE_LABEL = "≡ Muxstone ▾";
+const START_BUTTON_PREFIX_LABEL = "≡ PREFIX ▾";
+const START_BUTTON = Object.freeze({ column: 0, row: 0, width: 14, height: 1 });
 const MENU_QUIT_WIDTH = 5;
+/** Command items listed in the start-menu dropdown, in display order. */
+const START_MENU_ITEMS: readonly { readonly id: MuxstoneMenuId; readonly label: string; readonly danger?: boolean }[] =
+  Object.freeze([
+    { id: "new", label: "New terminal" },
+    { id: "network", label: "Network" },
+    { id: "sessions", label: "Sessions" },
+    { id: "config", label: "Settings" },
+    { id: "help", label: "Help" },
+    { id: "quit", label: "Quit", danger: true },
+  ]);
 const NETWORK_LIST_START = 1;
 const MAX_TOUCH_GESTURES = 8;
 const SCROLL_LINES_PER_NOTCH = 3;
@@ -184,6 +196,35 @@ function menuQuitRect(bounds: Rectangle): Rectangle {
     width: Math.min(MENU_QUIT_WIDTH, bounds.width),
     height: 1,
   };
+}
+
+/** One command row inside the start-menu dropdown. */
+export interface MuxstoneStartMenuItemLayout {
+  readonly id: MuxstoneMenuId;
+  readonly label: string;
+  readonly danger: boolean;
+  readonly rect: Rectangle;
+}
+
+/** Placement of the start-menu dropdown; exported for deterministic pointer tests. */
+export interface MuxstoneStartMenuLayout {
+  readonly panelRect: Rectangle;
+  readonly items: readonly MuxstoneStartMenuItemLayout[];
+}
+
+/** Lays out the start-menu dropdown hanging below the top-left button. */
+export function muxstoneStartMenuLayout(bounds: Rectangle): MuxstoneStartMenuLayout {
+  const labelWidth = START_MENU_ITEMS.reduce((max, item) => Math.max(max, textWidth(item.label)), 0);
+  const width = Math.min(Math.max(18, labelWidth + 4), Math.max(4, bounds.width));
+  const height = Math.min(START_MENU_ITEMS.length + 2, Math.max(3, bounds.height - 1));
+  const panelRect: Rectangle = { column: bounds.column, row: bounds.row + 1, width, height };
+  const items = START_MENU_ITEMS.map((item, index) => ({
+    id: item.id,
+    label: item.label,
+    danger: item.danger ?? false,
+    rect: { column: panelRect.column + 1, row: panelRect.row + 1 + index, width: panelRect.width - 2, height: 1 },
+  }));
+  return { panelRect, items };
 }
 
 export type MuxstoneTerminalBarAction =
@@ -247,6 +288,7 @@ export function projectMuxstoneTerminalBar(
 
 type MuxstoneTouchTarget =
   | Readonly<{ kind: "menu"; id: MuxstoneMenuId; hitRect: Rectangle }>
+  | Readonly<{ kind: "start-item"; id: MuxstoneMenuId; hitRect: Rectangle }>
   | Readonly<{
     kind: "modal";
     action:
@@ -441,13 +483,15 @@ export function mountMuxstoneDesktop(
       height: Math.max(1, app.tui.rectangle.value.height - HEADER_ROWS - FOOTER_ROWS),
     })),
   );
+  // The window taskbar shares the top bar: it starts just past the start button
+  // and stops short of the quick quit control on the right.
   const shelfBounds = own(
-    new Computed<Rectangle>(() => ({
-      column: 0,
-      row: Math.max(0, app.tui.rectangle.value.height - 2),
-      width: Math.max(1, app.tui.rectangle.value.width),
-      height: 1,
-    })),
+    new Computed<Rectangle>(() => {
+      const width = app.tui.rectangle.value.width;
+      const column = START_BUTTON.width + 1;
+      const available = Math.max(0, width - column - MENU_QUIT_WIDTH - 1);
+      return { column, row: 0, width: Math.max(1, available), height: 1 };
+    }),
   );
   const projectionOptions = (): WorkbenchWindowHostProjectionOptions => ({
     separatorHitSize: 3,
@@ -688,6 +732,7 @@ export function mountMuxstoneDesktop(
         projection: windowProjection.peek(),
         controller,
         selectedSessionIndex: selectedSessionIndex.peek(),
+        shelf: shelfBounds.peek(),
         metaballs,
         backgroundField: activeBackgroundField(),
         ...(overgrowthRatios.size > 0 ? { overgrowth: { ratios: overgrowthRatios } } : {}),
@@ -701,7 +746,8 @@ export function mountMuxstoneDesktop(
   const modalOpen = (): boolean =>
     controller.helpVisible.peek() || controller.pendingKillSessionId.peek() !== undefined ||
     controller.quitModalVisible.peek() || controller.pendingScp.peek() !== undefined ||
-    controller.configSessionId.peek() !== undefined || controller.globalConfigVisible.peek();
+    controller.configSessionId.peek() !== undefined || controller.globalConfigVisible.peek() ||
+    controller.startMenuVisible.peek();
 
   let exitRequested = false;
   const requestClientExit = (terminateHost: boolean): void => {
@@ -888,6 +934,18 @@ export function mountMuxstoneDesktop(
   };
 
   const performModalActivation = async (column: number, row: number): Promise<boolean> => {
+    if (controller.startMenuVisible.peek()) {
+      const layout = muxstoneStartMenuLayout(app.tui.rectangle.peek());
+      const item = layout.items.find((candidate) => contains(candidate.rect, column, row));
+      if (item) {
+        controller.closeStartMenu();
+        await performMenu(item.id);
+        return true;
+      }
+      // Anywhere else — including the start button itself — simply dismisses.
+      controller.closeStartMenu();
+      return true;
+    }
     if (controller.helpVisible.peek()) {
       if (contains(muxstoneHelpLayout(windowProjection.peek().bounds).closeRect, column, row)) {
         controller.closeHelp();
@@ -1168,6 +1226,11 @@ export function mountMuxstoneDesktop(
   };
 
   const modalTouchTargetAt = (column: number, row: number): MuxstoneTouchTarget | undefined => {
+    if (controller.startMenuVisible.peek()) {
+      const layout = muxstoneStartMenuLayout(app.tui.rectangle.peek());
+      const item = layout.items.find((candidate) => contains(candidate.rect, column, row));
+      return item ? { kind: "start-item", id: item.id, hitRect: item.rect } : undefined;
+    }
     if (controller.helpVisible.peek()) {
       const hitRect = muxstoneHelpLayout(windowProjection.peek().bounds).closeRect;
       return contains(hitRect, column, row) ? { kind: "modal", action: "close-help", hitRect } : undefined;
@@ -1221,6 +1284,12 @@ export function mountMuxstoneDesktop(
     switch (target.kind) {
       case "menu":
         if (!modalOpen()) await performMenu(target.id);
+        return true;
+      case "start-item":
+        if (controller.startMenuVisible.peek()) {
+          controller.closeStartMenu();
+          await performMenu(target.id);
+        }
         return true;
       case "modal":
         if (target.action === "close-help" && controller.helpVisible.peek()) {
@@ -1306,7 +1375,8 @@ export function mountMuxstoneDesktop(
         }
         return true;
       }
-      if (gesture?.target.kind !== "modal") {
+      // Start-menu rows complete on release just like any other modal button.
+      if (gesture?.target.kind !== "modal" && gesture?.target.kind !== "start-item") {
         touchGestures.delete(event.pointerId);
         return true;
       }
@@ -1360,6 +1430,15 @@ export function mountMuxstoneDesktop(
         return true;
       }
     }
+    // The start button is not a command, it toggles the dropdown, so it is
+    // resolved before the direct-command menu targets.
+    if (event.kind === "down" && activation) {
+      const startRect = touchLike ? coarseMenuRect(START_BUTTON) : START_BUTTON;
+      if (contains(startRect, point.x, point.y)) {
+        controller.toggleStartMenu();
+        return true;
+      }
+    }
     if (!touchLike && event.kind === "down" && activation) {
       const menu = menuAt(point.x, point.y, false, app.tui.rectangle.peek());
       if (menu) {
@@ -1375,7 +1454,7 @@ export function mountMuxstoneDesktop(
         rememberTouchGesture(touchGestures, event, point, {
           kind: "menu",
           id: menu,
-          hitRect: expandedRect(menuRect(menu, app.tui.rectangle.peek()), 1),
+          hitRect: coarseMenuRect(menuRect(menu, app.tui.rectangle.peek())),
         });
         return true;
       }
@@ -1495,11 +1574,14 @@ export function mountMuxstoneDesktop(
 
   unsubscribers.push(app.mouse.register({
     id: "muxstone-window-desktop",
+    // Spans the whole screen because the window taskbar now shares the top bar
+    // with the start button. The start and quit targets sit at a higher zIndex,
+    // so they still win their own cells.
     bounds: () => ({
-      column: bodyRect.peek().column,
-      row: bodyRect.peek().row,
-      width: bodyRect.peek().width,
-      height: bodyRect.peek().height + shelfBounds.peek().height,
+      column: 0,
+      row: 0,
+      width: Math.max(1, app.tui.rectangle.peek().width),
+      height: Math.max(1, app.tui.rectangle.peek().height),
     }),
     zIndex: 10_000,
     captureDrag: true,
@@ -1519,15 +1601,14 @@ export function mountMuxstoneDesktop(
     onRelease: () => true,
     onScroll: () => true,
   }));
-  unsubscribers.push(registerMenuTarget(app, "new", MENU_NEW, () => activateMenu("new"), modalOpen));
+  // Only two always-live top-bar controls remain: the start button and quit.
+  // Everything else is a row inside the dropdown, handled by the modal catcher.
   unsubscribers.push(
-    registerMenuTarget(app, "network", MENU_NETWORK, () => activateMenu("network"), modalOpen),
+    registerMenuTarget(app, "start", START_BUTTON, () =>
+      enqueue(() => {
+        controller.toggleStartMenu();
+      }), modalOpen),
   );
-  unsubscribers.push(
-    registerMenuTarget(app, "sessions", MENU_SESSIONS, () => activateMenu("sessions"), modalOpen),
-  );
-  unsubscribers.push(registerMenuTarget(app, "config", MENU_CONFIG, () => activateMenu("config"), modalOpen));
-  unsubscribers.push(registerMenuTarget(app, "help", MENU_HELP, () => activateMenu("help"), modalOpen));
   unsubscribers.push(
     registerMenuTarget(
       app,
@@ -1568,6 +1649,10 @@ export function mountMuxstoneDesktop(
     event: KeyPressEvent,
     forwardTerminalInput: (bytes: Uint8Array) => void | Promise<unknown> = (bytes) => controller.writeActive(bytes),
   ): Promise<void> => {
+    if (controller.startMenuVisible.peek()) {
+      if (event.key === "escape" || event.key.toLowerCase() === "q") controller.closeStartMenu();
+      return;
+    }
     if (controller.helpVisible.peek()) {
       if (event.key === "escape" || event.key === "?" || event.key.toLowerCase() === "q") {
         controller.closeHelp();
@@ -2054,6 +2139,8 @@ interface RenderMuxstoneDesktopOptions {
   projection: WorkbenchWindowHostProjection;
   controller: MuxstoneController;
   selectedSessionIndex: number;
+  /** Top-bar region the window taskbar is laid out into. */
+  shelf: Rectangle;
   metaballs: MuxstoneMetaballField;
   backgroundField?: MuxstoneAnimatedBackground;
   overgrowth?: MuxstoneOvergrowthPass;
@@ -2083,60 +2170,30 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
   const theme = controller.theme.peek();
   const painter = new DesktopPainter(bounds, theme);
   painter.fill(bounds, " ", { foreground: theme.text, background: theme.background });
+  // Single top bar: start-menu button, then the window taskbar, then quit.
   painter.fill({ column: 0, row: 0, width: bounds.width, height: 1 }, " ", {
     foreground: theme.text,
     background: theme.surfaceStrong,
   });
-  painter.write(0, 0, " MUXSTONE ", { foreground: theme.background, background: theme.accent, bold: true });
-  painter.write(MENU_NEW.column, 0, "[ New ]", { foreground: theme.text, background: theme.surfaceStrong, bold: true });
-  painter.write(MENU_NETWORK.column, 0, "[ Network ]", {
-    foreground: theme.text,
-    background: theme.surfaceStrong,
+  const prefixPending = controller.prefixPending.peek();
+  const startLabel = prefixPending ? START_BUTTON_PREFIX_LABEL : START_BUTTON_IDLE_LABEL;
+  painter.write(START_BUTTON.column, 0, fitText(startLabel, START_BUTTON.width), {
+    foreground: theme.background,
+    // The prefix cue lives on the start button now that the status bars are gone.
+    background: prefixPending ? theme.warning : theme.accent,
     bold: true,
   });
-  painter.write(MENU_SESSIONS.column, 0, "[ Sessions ]", {
-    foreground: theme.text,
-    background: theme.surfaceStrong,
-    bold: true,
-  });
-  painter.write(MENU_CONFIG.column, 0, "[ Config ]", {
-    foreground: theme.text,
-    background: theme.surfaceStrong,
-    bold: true,
-  });
-  painter.write(MENU_HELP.column, 0, "[ Help ]", {
-    foreground: theme.text,
-    background: theme.surfaceStrong,
-    bold: true,
-  });
-  const prefix = controller.prefixPending.peek() ? "PREFIX ACTIVE" : "Ctrl-N prefix";
-  const headerStatus = `${theme.label} | ${prefix} ${" ".repeat(MENU_QUIT_WIDTH)}`;
-  if (bounds.width - headerStatus.length > MENU_HELP.column + MENU_HELP.width) {
-    painter.writeRight(0, headerStatus, {
-      foreground: controller.prefixPending.peek() ? theme.background : theme.muted,
-      background: controller.prefixPending.peek() ? theme.warning : theme.surfaceStrong,
-      bold: controller.prefixPending.peek(),
-    });
-  }
+  paintTerminalBar(
+    painter,
+    projectMuxstoneTerminalBar(controller, projection, options.shelf),
+    theme,
+  );
   const quitRect = menuQuitRect(bounds);
   painter.write(quitRect.column, 0, "[ ✕ ]", {
     foreground: theme.background,
     background: theme.danger,
     bold: true,
   });
-  painter.fill({ column: 0, row: 1, width: bounds.width, height: 1 }, " ", {
-    foreground: theme.muted,
-    background: theme.surface,
-  });
-  painter.write(
-    1,
-    1,
-    'Ctrl-N: c new | % tile right | " tile below | f float | z zoom | d detach | & kill | t theme | b bg | s sessions',
-    {
-      foreground: theme.muted,
-      background: theme.surface,
-    },
-  );
   painter.fill(body, " ", { foreground: theme.text, background: theme.background });
   // One rasterization serves both the desktop backdrop and the overgrowth pass,
   // so reclaimed cells line up exactly with the background behind the window.
@@ -2163,16 +2220,6 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
   if (backgroundGrid && options.overgrowth) {
     paintOvergrowth(painter, body, backgroundGrid, theme, projection, options.overgrowth);
   }
-  paintTerminalBar(
-    painter,
-    projectMuxstoneTerminalBar(controller, projection, {
-      column: bounds.column,
-      row: Math.max(bounds.row, bounds.row + bounds.height - 2),
-      width: bounds.width,
-      height: Math.min(1, bounds.height),
-    }),
-    theme,
-  );
   if (projection.snapPreview) {
     painter.frame(projection.snapPreview.rect, ".", {
       foreground: theme.accent,
@@ -2181,6 +2228,7 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
     });
   }
   if (projection.switcher) paintSwitcher(painter, projection, theme);
+  if (controller.startMenuVisible.peek()) paintStartMenu(painter, bounds, theme, controller);
   if (controller.helpVisible.peek()) paintHelp(painter, projection, theme);
   if (controller.quitModalVisible.peek()) paintQuitModal(painter, projection, theme);
   const scpRequest = controller.pendingScp.peek();
@@ -2191,26 +2239,31 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
   const pendingKillSessionId = controller.pendingKillSessionId.peek();
   if (pendingKillSessionId) paintKillConfirmation(painter, projection, controller, pendingKillSessionId);
 
-  const statusRow = Math.max(0, bounds.height - 1);
-  painter.fill({ column: 0, row: statusRow, width: bounds.width, height: 1 }, " ", {
-    foreground: theme.text,
-    background: theme.surfaceStrong,
-  });
-  painter.write(1, statusRow, controller.status.peek(), {
-    foreground: theme.text,
-    background: theme.surfaceStrong,
-  });
-  const sessions = controller.sessions.peek();
-  const attached = sessions.filter((session) => controller.runtime(session.id)?.attached.peek()).length;
-  painter.writeRight(
-    statusRow,
-    `${attached}/${sessions.length} attached | drag borders/title bars | Meta-Tab switch `,
-    {
-      foreground: theme.muted,
-      background: theme.surfaceStrong,
-    },
-  );
   return painter.rows;
+}
+
+/** Paints the start-menu dropdown below the top-left button. */
+function paintStartMenu(
+  painter: DesktopPainter,
+  bounds: Rectangle,
+  theme: MuxstoneThemeSpec,
+  _controller: MuxstoneController,
+): void {
+  const { panelRect, items } = muxstoneStartMenuLayout(bounds);
+  painter.fill(panelRect, " ", { foreground: theme.text, background: theme.surfaceStrong });
+  painter.borderBox(panelRect, muxstoneBorderGlyphs("thin"), {
+    foreground: theme.accent,
+    background: theme.surfaceStrong,
+    bold: true,
+  });
+  for (const item of items) {
+    if (item.rect.row >= panelRect.row + panelRect.height - 1) break;
+    painter.write(item.rect.column, item.rect.row, fitText(item.label, item.rect.width), {
+      foreground: item.danger ? theme.danger : theme.text,
+      background: theme.surfaceStrong,
+      bold: item.danger,
+    });
+  }
 }
 
 /** Per-window reclaim ratios handed to the overgrowth pass. */
@@ -2641,11 +2694,12 @@ function paintHelp(
     "Ctrl-N n / p    next / previous    Ctrl-N w         window switcher",
     "Ctrl-N s        session manager    Ctrl-N r         refresh and recover",
     "Ctrl-N t        cycle theme        Ctrl-N Ctrl-N    send literal prefix",
-    "Ctrl-N b        cycle background   Menu Network     hosts + tailnet panel",
+    "Ctrl-N b        cycle background   Start menu       every command lives there",
     "Ctrl-N d / x    detach window      Ctrl-N &         request terminal kill",
     "Wheel terminals or swipe vertically for styled history; [SCROLL] marks copy mode.",
     "Title-bar X / Meta-C kills that terminal; Ctrl-N d/x and quitting only detach.",
     "Ctrl-N & asks before killing. Drag title bars; drag borders to resize.",
+    "Top bar: start menu at the left, open terminals beside it, quit at the right.",
     "Press Escape, q, or ? to close help. Mouse and touch can use Close.",
   ];
   const { rect, closeRect } = muxstoneHelpLayout(projection.bounds);
@@ -3462,35 +3516,30 @@ function clientWindowAt(
   return undefined;
 }
 
+/**
+ * Widens a top-bar target for touch without growing it vertically. The header
+ * is a single row now, so a vertical expansion would reach into the window
+ * title bars immediately beneath it and swallow their controls.
+ */
+function coarseMenuRect(rect: Rectangle): Rectangle {
+  return { column: rect.column - 1, row: rect.row, width: rect.width + 2, height: rect.height };
+}
+
 function menuAt(column: number, row: number, coarse: boolean, bounds: Rectangle): MuxstoneMenuId | undefined {
-  const entries = [
-    ["new", MENU_NEW],
-    ["network", MENU_NETWORK],
-    ["sessions", MENU_SESSIONS],
-    ["config", MENU_CONFIG],
-    ["help", MENU_HELP],
-    ["quit", menuQuitRect(bounds)],
-  ] as const;
+  // Only quit is still a direct top-bar command; the rest live in the dropdown.
+  const entries = [["quit", menuQuitRect(bounds)]] as const;
   for (const [id, rect] of entries) {
-    if (contains(coarse ? expandedRect(rect, 1) : rect, column, row)) return id;
+    if (contains(coarse ? coarseMenuRect(rect) : rect, column, row)) return id;
   }
   return undefined;
 }
 
 function menuRect(id: MuxstoneMenuId, bounds: Rectangle): Rectangle {
   switch (id) {
-    case "new":
-      return MENU_NEW;
-    case "network":
-      return MENU_NETWORK;
-    case "sessions":
-      return MENU_SESSIONS;
-    case "config":
-      return MENU_CONFIG;
-    case "help":
-      return MENU_HELP;
     case "quit":
       return menuQuitRect(bounds);
+    default:
+      return START_BUTTON;
   }
 }
 

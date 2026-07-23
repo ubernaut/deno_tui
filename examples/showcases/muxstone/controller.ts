@@ -334,6 +334,8 @@ export class MuxstoneController {
   readonly helpVisible = new Signal(false);
   readonly pendingKillSessionId = new Signal<string | undefined>(undefined);
   readonly quitModalVisible = new Signal(false);
+  /** Whether the top-left start menu dropdown is open. */
+  readonly startMenuVisible = new Signal(false);
   readonly status = new Signal("Connecting to local Muxstone host…");
   readonly networkStatus = new Signal<TailnetStatusResult | undefined>(undefined);
   readonly savedHosts = new Signal<readonly string[]>([]);
@@ -469,12 +471,36 @@ export class MuxstoneController {
     if (!this.#disposed) this.#persistActiveSession();
   }
 
+  /** Opens the top-left start menu dropdown. */
+  openStartMenu(): void {
+    this.#assertActive();
+    this.prefixPending.value = false;
+    this.startMenuVisible.value = true;
+  }
+
+  /** Closes the start menu dropdown. */
+  closeStartMenu(): void {
+    if (this.#disposed) return;
+    this.startMenuVisible.value = false;
+  }
+
+  /** Toggles the start menu dropdown, returning its new visibility. */
+  toggleStartMenu(): boolean {
+    if (this.startMenuVisible.peek()) {
+      this.closeStartMenu();
+      return false;
+    }
+    this.openStartMenu();
+    return true;
+  }
+
   /** Opens the end-session choice modal and clears conflicting transient UI. */
   openQuitModal(): void {
     this.#assertActive();
     this.prefixPending.value = false;
     this.helpVisible.value = false;
     this.pendingKillSessionId.value = undefined;
+    this.startMenuVisible.value = false;
     this.quitModalVisible.value = true;
     this.status.value = "End session? d detaches, t terminates the host, Escape cancels.";
   }
@@ -1727,6 +1753,7 @@ export class MuxstoneController {
     this.helpVisible.dispose();
     this.pendingKillSessionId.dispose();
     this.quitModalVisible.dispose();
+    this.startMenuVisible.dispose();
     this.#tailnetPoller?.dispose();
     this.networkTree.dispose();
     this.networkStatus.dispose();

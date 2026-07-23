@@ -1,7 +1,15 @@
 // Copyright 2023 Im-Beast. MIT license.
 
 import { assert, assertEquals, assertNotEquals, assertStringIncludes } from "../deps.ts";
-import { encodeTerminalPaste, POINTER_INPUT_SCHEMA_VERSION, type PointerInputEvent } from "../../mod.ts";
+import {
+  encodeTerminalPaste,
+  POINTER_INPUT_SCHEMA_VERSION,
+  type PointerInputEvent,
+  type Rectangle,
+} from "../../mod.ts";
+
+/** Width of the top-left start button, mirrored from the app layout. */
+const START_BUTTON_WIDTH = 14;
 import { createTestTerminalApp } from "../../src/testing/app.ts";
 import { stripAnsi } from "../../src/testing/snapshot.ts";
 import { createTestKeyPress, createTestMousePress } from "../../src/testing/input.ts";
@@ -18,6 +26,7 @@ import {
   type MuxstonePointerInputSource,
   muxstoneQuitLayout,
   muxstoneScpLayout,
+  muxstoneStartMenuLayout,
   muxstoneWindowConfigLayout,
   projectMuxstoneTerminalBar,
 } from "../../examples/showcases/muxstone/app.ts";
@@ -226,7 +235,7 @@ Deno.test("Muxstone mounted app renders styled terminal cells and routes ordered
     const truecolor = typeof truecolorValue === "string" ? truecolorValue : new TextDecoder().decode(truecolorValue);
     assertStringIncludes(truecolor, "\x1b[38;2;12;34;56;48;2;14;21;34mY");
     assertStringIncludes(harness.pilot.snapshot(), "asciichurn");
-    assertStringIncludes(harness.pilot.snapshot(), "MUXSTONE");
+    assertStringIncludes(harness.pilot.snapshot(), "Muxstone");
 
     await harness.pilot.press("n", { ctrl: true, buffer: new Uint8Array([14]) });
     await harness.pilot.press("f", { buffer: new TextEncoder().encode("f") });
@@ -824,24 +833,24 @@ Deno.test("Muxstone pipelines bounded raw batches and fences them around control
 
     client.inputs.splice(0);
     await harness.pilot.press("u");
-    const pointerMenu = mounted.handlePointer(mousePointer("down", 52, 0, 71));
+    const pointerMenu = mounted.handlePointer(mousePointer("down", 1, 0, 71));
     await harness.pilot.press("v");
     await Promise.resolve();
     // The menu press is fenced behind the outstanding ack, so nothing has opened.
     assertEquals(client.inputs.map((input) => input.data).join(""), "u");
-    assertEquals(controller.globalConfigVisible.peek(), false);
+    assertEquals(controller.startMenuVisible.peek(), false);
 
     client.resolveNextInputAck();
     assertEquals(await pointerMenu, true);
     for (let attempt = 0; attempt < 16; attempt += 1) {
-      if (controller.globalConfigVisible.peek()) break;
+      if (controller.startMenuVisible.peek()) break;
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
     // "v" was queued after the menu press, so the now-open modal claims it
     // instead of the terminal - proving the control op was ordered first.
-    assertEquals(controller.globalConfigVisible.peek(), true);
+    assertEquals(controller.startMenuVisible.peek(), true);
     assertEquals(client.inputs.map((input) => input.data).join(""), "u");
-    controller.closeGlobalConfig();
+    controller.closeStartMenu();
     await client.resolveAllInputAcks();
     await mounted.whenIdle();
 
@@ -1008,8 +1017,7 @@ Deno.test("Muxstone repaints Workbench light/dark themes and the six-family T2 t
     await mounted.whenIdle();
 
     const initialTheme = controller.themeId.peek();
-    assertEquals((await harness.pilot.click(52, 0)).press.handled, true);
-    await mounted.whenIdle();
+    await clickStartMenuItem(harness, mounted, "config");
     assertEquals(controller.globalConfigVisible.peek(), true);
     // Pick a different theme straight off the select list.
     const themePick = MUXSTONE_THEMES.findIndex((entry) => entry.id !== initialTheme);
@@ -1035,7 +1043,8 @@ Deno.test("Muxstone repaints Workbench light/dark themes and the six-family T2 t
         brandCell,
         `38;2;${theme.background.join(";")};48;2;${theme.accent.join(";")}`,
       );
-      const headerCell = canvasCell(harness.canvas.frameBuffer[0]?.[10]);
+      // Just past the start button, where the top bar is plain chrome.
+      const headerCell = canvasCell(harness.canvas.frameBuffer[0]?.[START_BUTTON_WIDTH]);
       assertStringIncludes(
         headerCell,
         `38;2;${theme.text.join(";")};48;2;${theme.surfaceStrong.join(";")}`,
@@ -1063,15 +1072,13 @@ Deno.test("Muxstone mouse menus, modal buttons, floating chrome, shelf, and tile
     assert(mounted);
     await mounted.whenIdle();
 
-    assertEquals((await harness.pilot.click(13, 0)).press.handled, true);
-    await mounted.whenIdle();
+    await clickStartMenuItem(harness, mounted, "new");
     assertEquals(controller.sessions.peek().length, 2);
     const spawned = controller.sessions.peek().find((entry) => entry.id !== initial.id)!;
 
     // Background now lives in the global config modal's select list.
     const backgroundBefore = controller.backgroundId.peek();
-    assertEquals((await harness.pilot.click(52, 0)).press.handled, true);
-    await mounted.whenIdle();
+    await clickStartMenuItem(harness, mounted, "config");
     assertEquals(controller.globalConfigVisible.peek(), true);
     const backgroundPick = MUXSTONE_BACKGROUND_IDS.findIndex((id) => id !== backgroundBefore);
     const backgroundLayout = muxstoneGlobalConfigLayout(
@@ -1094,10 +1101,10 @@ Deno.test("Muxstone mouse menus, modal buttons, floating chrome, shelf, and tile
     await mounted.whenIdle();
     assertEquals(controller.globalConfigVisible.peek(), false);
 
-    assertEquals((await harness.pilot.click(65, 0)).press.handled, true);
-    await mounted.whenIdle();
+    await clickStartMenuItem(harness, mounted, "help");
     assertEquals(controller.helpVisible.peek(), true);
     const blockedTheme = controller.themeId.peek();
+    // The modal catcher owns every click while help is up.
     assertEquals((await harness.pilot.click(38, 0)).press.targetId, "muxstone-modal");
     await mounted.whenIdle();
     assertEquals(controller.themeId.peek(), blockedTheme);
@@ -1583,9 +1590,12 @@ Deno.test("Muxstone wheel and touch input scroll styled history and manipulate w
     await mounted.handlePointer(touchPointer("up", swipeX, swipeY + 4, 12));
     assertEquals(runtime.scrollback.inspect().mode, "copy");
 
+    // A non-activating press on the top bar is absorbed by the chrome and must
+    // not act; what matters is that it changes nothing.
     const rightClickTheme = controller.themeId.peek();
-    assertEquals(await mounted.handlePointer(mousePointer("down", 38, 0, 13, 2)), false);
+    await mounted.handlePointer(mousePointer("down", 38, 0, 13, 2));
     assertEquals(controller.themeId.peek(), rightClickTheme);
+    assertEquals(controller.startMenuVisible.peek(), false);
 
     const beforeCancelledNew = controller.sessions.peek().length;
     await mounted.handlePointer(touchPointer("down", 13, 0, 14));
@@ -1597,9 +1607,13 @@ Deno.test("Muxstone wheel and touch input scroll styled history and manipulate w
     await mounted.handlePointer(touchPointer("up", 18, 0, 18));
     assertEquals(controller.sessions.peek().length, beforeCancelledNew);
 
-    await mounted.handlePointer(touchPointer("down", 65, 0, 19));
+    await mounted.handlePointer(touchPointer("down", 1, 0, 19));
+    assertEquals(controller.startMenuVisible.peek(), true);
     assertEquals(controller.helpVisible.peek(), false);
-    await mounted.handlePointer(touchPointer("up", 65, 0, 20));
+    const helpItem = muxstoneStartMenuLayout(harness.app.tui.rectangle.peek()).items
+      .find((item) => item.id === "help")!;
+    await mounted.handlePointer(touchPointer("down", helpItem.rect.column + 1, helpItem.rect.row, 20));
+    await mounted.handlePointer(touchPointer("up", helpItem.rect.column + 1, helpItem.rect.row, 21));
     assertEquals(controller.helpVisible.peek(), true);
     const close = helpClosePoint(mounted.windowProjection.peek().bounds);
     await mounted.handlePointer(touchPointer("down", close.column, close.row, 21));
@@ -1609,16 +1623,14 @@ Deno.test("Muxstone wheel and touch input scroll styled history and manipulate w
 
     const pointerSource = new FakeMuxstonePointerSource();
     const unbindPointer = bindMuxstonePointerInput(mounted, pointerSource);
-    // The config menu only acts on release, and only while the source is bound.
-    await pointerSource.emitPointer(touchPointer("down", 52, 0, 23));
-    assertEquals(controller.globalConfigVisible.peek(), false);
-    await pointerSource.emitPointer(touchPointer("up", 52, 0, 24));
-    assertEquals(controller.globalConfigVisible.peek(), true);
-    controller.closeGlobalConfig();
+    // The start button responds only while the source is bound.
+    await pointerSource.emitPointer(touchPointer("down", 1, 0, 23));
+    assertEquals(controller.startMenuVisible.peek(), true);
+    controller.closeStartMenu();
     unbindPointer();
-    await pointerSource.emitPointer(touchPointer("down", 52, 0, 25));
-    await pointerSource.emitPointer(touchPointer("up", 52, 0, 26));
-    assertEquals(controller.globalConfigVisible.peek(), false);
+    await pointerSource.emitPointer(touchPointer("down", 1, 0, 25));
+    await pointerSource.emitPointer(touchPointer("up", 1, 0, 26));
+    assertEquals(controller.startMenuVisible.peek(), false);
 
     controller.openHelp();
     const orderedClose = helpClosePoint(mounted.windowProjection.peek().bounds);
@@ -1632,14 +1644,14 @@ Deno.test("Muxstone wheel and touch input scroll styled history and manipulate w
     await barrierStarted;
     const closeDown = mounted.handlePointer(touchPointer("down", orderedClose.column, orderedClose.row, 27, 70));
     const closeUp = mounted.handlePointer(touchPointer("up", orderedClose.column, orderedClose.row, 28, 70));
-    const configDown = mounted.handlePointer(touchPointer("down", 52, 0, 29, 71));
-    const configUp = mounted.handlePointer(touchPointer("up", 52, 0, 30, 71));
+    const startDown = mounted.handlePointer(touchPointer("down", 1, 0, 29, 71));
+    const startUp = mounted.handlePointer(touchPointer("up", 1, 0, 30, 71));
     releaseBarrier();
-    await Promise.all([barrier, closeDown, closeUp, configDown, configUp]);
-    // Help closed first, then the config menu opened - both behind one barrier.
+    await Promise.all([barrier, closeDown, closeUp, startDown, startUp]);
+    // Help closed first, then the start menu opened - both behind one barrier.
     assertEquals(controller.helpVisible.peek(), false);
-    assertEquals(controller.globalConfigVisible.peek(), true);
-    controller.closeGlobalConfig();
+    assertEquals(controller.startMenuVisible.peek(), true);
+    controller.closeStartMenu();
 
     controller.requestKillSession(initial.id);
     const kill = killButtonPoints(mounted.windowProjection.peek().bounds);
@@ -2041,7 +2053,7 @@ Deno.test("Muxstone network panel lists hosts and tailnet devices, opens SSH, an
     assert(mounted);
     await mounted.whenIdle();
 
-    assertEquals((await harness.pilot.click(23, 0)).press.handled, true);
+    await clickStartMenuItem(harness, mounted, "network");
     await mounted.whenIdle();
     assertEquals(
       controller.windowHost.controller.inspect().activeWindowId,
@@ -2419,6 +2431,23 @@ class FakeMuxstoneClient implements MuxstoneClientPort {
   }
 }
 
+/** Opens the start menu and clicks one command row, the way a user would. */
+async function clickStartMenuItem(
+  harness: {
+    pilot: { click: (column: number, row: number) => Promise<unknown> };
+    app: { tui: { rectangle: { peek: () => Rectangle } } };
+  },
+  mounted: { whenIdle: () => Promise<void> },
+  id: string,
+): Promise<void> {
+  await harness.pilot.click(1, 0);
+  await mounted.whenIdle();
+  const layout = muxstoneStartMenuLayout(harness.app.tui.rectangle.peek());
+  const item = layout.items.find((candidate) => candidate.id === id)!;
+  await harness.pilot.click(item.rect.column + 1, item.rect.row);
+  await mounted.whenIdle();
+}
+
 async function waitForCondition(predicate: () => boolean, timeoutMs: number): Promise<void> {
   const deadline = performance.now() + timeoutMs;
   while (!predicate()) {
@@ -2702,9 +2731,8 @@ Deno.test("Muxstone global config modal picks theme and background from select l
     assert(mounted);
     await mounted.whenIdle();
 
-    // The [ Config ] menu button opens it.
-    assertEquals((await harness.pilot.click(52, 0)).press.handled, true);
-    await mounted.whenIdle();
+    // Settings opens from the start menu.
+    await clickStartMenuItem(harness, mounted, "config");
     assertEquals(controller.globalConfigVisible.peek(), true);
     assertEquals(controller.globalConfigPane.peek(), "theme");
 
@@ -3283,6 +3311,83 @@ Deno.test("Muxstone stops forwarding the wheel when a window turns mouse reporti
     await harness.pilot.scroll(-1, wheelX, wheelY);
     await mounted.whenIdle();
     assertStringIncludes(client.inputs.map((input) => input.data).join(""), "\x1b[<64;");
+  } finally {
+    harness.destroy();
+    await controller.dispose();
+  }
+});
+
+Deno.test("Muxstone start menu holds every command and frees the bottom rows", async () => {
+  const initial = session("start-shell", "start shell", 0);
+  const client = new FakeMuxstoneClient([initial]);
+  const controller = await createMuxstoneController({ client, initialSessions: [initial] });
+  const mount: MuxstoneAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 100, rows: 28 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+
+    // One header row and no footer: the desktop reaches the last row.
+    const bounds = harness.app.tui.rectangle.peek();
+    const body = mounted.bodyRect.peek();
+    assertEquals(body.row, 1);
+    assertEquals(body.row + body.height, bounds.height);
+
+    // The taskbar shares the top row, to the right of the start button.
+    const shelf = mounted.shelfBounds.peek();
+    assertEquals(shelf.row, 0);
+    assert(shelf.column >= START_BUTTON_WIDTH, "the taskbar must clear the start button");
+
+    // Closed by default; the button toggles it.
+    assertEquals(controller.startMenuVisible.peek(), false);
+    assertEquals((await harness.pilot.click(1, 0)).press.handled, true);
+    await mounted.whenIdle();
+    assertEquals(controller.startMenuVisible.peek(), true);
+
+    // Every former top-bar command is present, and it hangs below the top bar.
+    const layout = muxstoneStartMenuLayout(bounds);
+    assertEquals(layout.items.map((item) => item.id), ["new", "network", "sessions", "config", "help", "quit"]);
+    assertEquals(layout.panelRect.row, 1);
+    assertEquals(layout.panelRect.column, 0);
+    assertEquals(layout.items.find((item) => item.id === "quit")?.danger, true);
+
+    // Clicking outside dismisses without running anything.
+    const before = controller.sessions.peek().length;
+    assertEquals((await harness.pilot.click(bounds.width - 20, bounds.height - 2)).press.handled, true);
+    await mounted.whenIdle();
+    assertEquals(controller.startMenuVisible.peek(), false);
+    assertEquals(controller.sessions.peek().length, before);
+
+    // A command row runs and closes the menu.
+    await clickStartMenuItem(harness, mounted, "new");
+    assertEquals(controller.startMenuVisible.peek(), false);
+    assertEquals(controller.sessions.peek().length, before + 1);
+
+    // Escape dismisses too.
+    await harness.pilot.click(1, 0);
+    await mounted.whenIdle();
+    assertEquals(controller.startMenuVisible.peek(), true);
+    await harness.pilot.press("escape");
+    await mounted.whenIdle();
+    assertEquals(controller.startMenuVisible.peek(), false);
+
+    // Quit stays reachable in one click from the top-right.
+    assertEquals((await harness.pilot.click(bounds.width - 3, 0)).press.handled, true);
+    await mounted.whenIdle();
+    assertEquals(controller.quitModalVisible.peek(), true);
+    controller.cancelQuitModal();
+
+    // The prefix cue rides on the start button now that the status bars are gone.
+    await harness.pilot.press("n", { ctrl: true, buffer: new Uint8Array([14]) });
+    await mounted.whenIdle();
+    assertEquals(controller.prefixPending.peek(), true);
+    harness.app.tui.canvas.render();
+    const topRow = (harness.canvas.frameBuffer[0] ?? [])
+      .map((value) => stripAnsi(typeof value === "string" ? value : "")).join("");
+    assertStringIncludes(topRow, "PREFIX");
   } finally {
     harness.destroy();
     await controller.dispose();
