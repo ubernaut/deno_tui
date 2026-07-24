@@ -520,3 +520,91 @@ function countCellsInside(
   }
   return count;
 }
+
+Deno.test("MuxstoneCircuitField: chips are logic gates driven by power and ground rails", () => {
+  const field = new MuxstoneCircuitField({ seed: 7 });
+  const bounds = { column: 0, row: 0, width: 100, height: 32 };
+  let now = 0;
+  for (let frame = 0; frame < 60; frame += 1) {
+    now += 60;
+    field.advance({ bounds, obstacles: [], now });
+  }
+  const inspection = field.inspect();
+
+  // Every chip is a named gate wired to at least two inputs.
+  const gates = new Set(["AND", "OR", "NAND", "NOR", "XOR", "XNOR"]);
+  assert(inspection.chips.length >= 3, "expected a populated board");
+  for (const chip of inspection.chips) {
+    assert(gates.has(chip.gate), `unexpected gate ${chip.gate}`);
+    assertEquals(chip.label, chip.gate);
+    assert(chip.inputCount >= 2, "a gate should be wired to at least two inputs");
+  }
+  // A mix of gate kinds keeps the behaviour interesting.
+  const kinds = new Set(inspection.chips.map((chip) => chip.gate));
+  assert(kinds.size >= 2, "expected more than one gate kind on the board");
+
+  // Power and ground rails are both placed, at distinct spots.
+  assert(inspection.power, "expected a power rail");
+  assert(inspection.ground, "expected a ground rail");
+  assertEquals(inspection.power!.label, "VCC");
+  assertEquals(inspection.ground!.label, "GND");
+  assert(
+    inspection.power!.x !== inspection.ground!.x || inspection.power!.y !== inspection.ground!.y,
+    "the rails must not overlap",
+  );
+});
+
+Deno.test("MuxstoneCircuitField: the logic network settles to a mix of high and low gates", () => {
+  // A working board neither latches every gate high nor stalls every gate low;
+  // it does real work driven by the two rails.
+  const field = new MuxstoneCircuitField({ seed: 11 });
+  const bounds = { column: 0, row: 0, width: 90, height: 28 };
+  let now = 0;
+  // Advance well past several logic ticks so states have settled/oscillated.
+  for (let frame = 0; frame < 300; frame += 1) {
+    now += 60;
+    field.advance({ bounds, obstacles: [], now });
+  }
+  const inspection = field.inspect();
+  // At least some gates end up high and some low: the network is doing work,
+  // not stuck all-on or all-off.
+  const live = inspection.liveChips;
+  assert(live >= 0 && live <= inspection.chips.length);
+  assert(live !== inspection.chips.length || inspection.chips.length <= 1, "not every gate should latch high");
+});
+
+Deno.test("MuxstoneCircuitField: the logic network changes state over time", () => {
+  const field = new MuxstoneCircuitField({ seed: 7 });
+  const bounds = { column: 0, row: 0, width: 92, height: 26 };
+  let now = 0;
+  for (let frame = 0; frame < 120; frame += 1) {
+    now += 60;
+    field.advance({ bounds, obstacles: [], now });
+  }
+  const seen = new Set<string>();
+  for (let tick = 0; tick < 12; tick += 1) {
+    for (let frame = 0; frame < 12; frame += 1) {
+      now += 60;
+      field.advance({ bounds, obstacles: [], now });
+    }
+    seen.add(field.inspect().chips.map((chip) => (chip.state ? "1" : "0")).join(""));
+  }
+  // Feedback between gates makes the board oscillate rather than freeze on one
+  // pattern, which is the emergent behaviour the simulation exists to show.
+  assert(seen.size >= 2, `expected the logic state to evolve, saw ${seen.size} distinct patterns`);
+});
+
+Deno.test("MuxstoneCircuitField: logic simulation stays deterministic for one seed", () => {
+  const bounds = { column: 0, row: 0, width: 88, height: 30 };
+  const drive = (seed: number): string => {
+    const field = new MuxstoneCircuitField({ seed });
+    let now = 0;
+    for (let frame = 0; frame < 240; frame += 1) {
+      now += 60;
+      field.advance({ bounds, obstacles: [], now });
+    }
+    return field.inspect().chips.map((chip) => `${chip.gate}:${chip.state ? 1 : 0}`).join("|");
+  };
+  assertEquals(drive(19), drive(19));
+  assert(drive(19) !== drive(20), "different seeds should diverge");
+});

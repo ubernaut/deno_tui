@@ -61,3 +61,6 @@ Cross-cutting rules:
 | BG-007 | Vaporwave/outrun background (scanline sun rise/set cycle, driving grid, pointer parallax, block-glyph style) | done (`vaporwave_background.ts`, tested) |
 | BG-008 | Circuit window integration: keep-out routing around windows, staggered re-route on window move, border taps with vias, active-window emphasis (brighter + 2× pulses) | done (`circuit_background.ts`, tested) |
 | BG-009 | Skull machine background (comic biomech skull recreation: amber mouse-tracking eyes with seeded blinks, pulsating tube tangle, breathing shading) | in progress (`skull_background.ts`) |
+| BG-010 | Ivy background (staged stalk/leaf/flower/fruit growth, thickening block stalks, pickable fruit with confetti) | done (`ivy_background.ts`, tested) |
+| BG-011 | Fire background (heat-diffusion cellular automaton, plasma ember source, pointer heat bloom, obstacle cold voids, overgrows idle windows) | done (`fire_background.ts`, tested) |
+| BG-012 | Circuit logic simulation: chips become AND/OR/NAND/NOR/XOR/XNOR gates wired to nearest neighbours and to VCC/GND rails, evaluated on a synchronous logic clock; feedback loops oscillate, energized traces run bright/fast and idle ones dim/slow, gate bodies light when high | done (`circuit_background.ts`, tested) |

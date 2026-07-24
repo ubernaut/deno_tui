@@ -8,7 +8,7 @@ import {
   type MuxstoneBackgroundCell,
   type MuxstoneBackgroundPoint,
 } from "./background.ts";
-import type { MuxstoneThemeSpec } from "./model.ts";
+import type { MuxstoneRgb, MuxstoneThemeSpec } from "./model.ts";
 
 const FRAME_BASELINE_MS = 16.7;
 const MAX_FRAME_DELTA_MS = 48;
@@ -43,6 +43,33 @@ const ACTIVE_TAP_BASE_MIX = 0.6;
 const CHIP_LABEL_LETTERS = "ABCDEFGHJKLMNPRSTUVWXYZ";
 const VIA_GLYPH = "o";
 const CHIP_FILL_GLYPH = "▓";
+
+/**
+ * Each chip is a logic gate. The board is driven by a single power rail (always
+ * high) and ground rail (always low); every chip's inputs are wired to nearby
+ * chips and, seeded so the network stays anchored, to those two rails. Gates are
+ * re-evaluated on a slow logic clock with a synchronous update, so feedback
+ * loops between chips settle, blink, or free-run — the emergent behaviour is a
+ * function of how the wires happened to connect.
+ */
+const GATE_TYPES = ["AND", "OR", "NAND", "NOR", "XOR", "XNOR"] as const;
+type GateType = (typeof GATE_TYPES)[number];
+
+/** One wired input: another chip's output, or one of the two power rails. */
+type LogicRef =
+  | { readonly kind: "chip"; readonly id: number }
+  | { readonly kind: "power" }
+  | { readonly kind: "ground" };
+
+/** Interval between synchronous logic evaluations. */
+const LOGIC_TICK_MS = 620;
+/** Inputs wired into each gate. */
+const MIN_GATE_INPUTS = 2;
+const MAX_GATE_INPUTS = 3;
+/** Pulse-speed multiplier for a de-energized (output-low) trace; it idles slow. */
+const IDLE_PULSE_MULTIPLIER = 0.22;
+const POWER_LABEL = "VCC";
+const GROUND_LABEL = "GND";
 
 /** Direction order: up, right, down, left. */
 const DIR_DX = [0, 1, 0, -1] as const;
@@ -81,6 +108,19 @@ export interface MuxstoneCircuitChipSnapshot {
   readonly y: number;
   readonly side: number;
   readonly label: string;
+  /** The logic gate this chip evaluates. */
+  readonly gate: GateType;
+  /** Number of wired inputs. */
+  readonly inputCount: number;
+  /** Current logic output. */
+  readonly state: boolean;
+}
+
+/** A power or ground rail exposed for deterministic tests. */
+export interface MuxstoneCircuitRailSnapshot {
+  readonly x: number;
+  readonly y: number;
+  readonly label: string;
 }
 
 /** One trace snapshot with its animated pulses, exposed for deterministic tests. */
@@ -105,6 +145,12 @@ export interface MuxstoneCircuitInspection {
   readonly activeObstacleIndex?: number;
   /** Queued layout-reaction jobs still waiting to run. */
   readonly pendingJobs: number;
+  /** The power rail node, when placed. */
+  readonly power?: MuxstoneCircuitRailSnapshot;
+  /** The ground rail node, when placed. */
+  readonly ground?: MuxstoneCircuitRailSnapshot;
+  /** Count of chips whose output is currently high. */
+  readonly liveChips: number;
 }
 
 interface CircuitChip {
@@ -113,6 +159,19 @@ interface CircuitChip {
   y: number;
   side: number;
   label: string;
+  gate: GateType;
+  inputs: LogicRef[];
+  /** Current logic output, committed on the previous tick. */
+  state: boolean;
+  /** Output computed this tick, swapped in after every gate has been read. */
+  nextState: boolean;
+}
+
+/** A power or ground rail node placed on the board. */
+interface CircuitRail {
+  readonly x: number;
+  readonly y: number;
+  readonly label: string;
 }
 
 interface CircuitTraceCell {
@@ -184,6 +243,11 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
   #rewireTimerMs = 0;
   #reassessTimerMs = 0;
   #driftTimerMs = 0;
+  #logicTimerMs = 0;
+  #power?: CircuitRail;
+  #ground?: CircuitRail;
+  /** Chip count the logic graph was last wired for; a change forces a rewire. */
+  #logicChipCount = -1;
 
   constructor(options: MuxstoneCircuitFieldOptions = {}) {
     this.#randomState = (options.seed ?? 0x50_43_42_31) >>> 0;
@@ -220,6 +284,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     this.#rewireTimerMs += elapsed;
     this.#driftTimerMs += elapsed;
     this.#reassessTimerMs += elapsed;
+    this.#logicTimerMs += elapsed;
 
     const pointer = this.#pointer && now - this.#pointer.updatedAt <= POINTER_LIFETIME_MS ? this.#pointer : undefined;
     this.#activePointer = pointer
@@ -229,12 +294,23 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     let changed = false;
     if (this.#syncObstacles(options, bounds)) changed = true;
     if (this.#processLayoutJobs(bounds)) changed = true;
+    // Chips added or removed by the layout must join the logic graph before the
+    // next evaluation, or their inputs would reference a stale population.
+    if (this.#chips.length !== this.#logicChipCount) this.#rewireLogic();
+    while (this.#logicTimerMs >= LOGIC_TICK_MS) {
+      this.#logicTimerMs -= LOGIC_TICK_MS;
+      if (this.#tickLogic()) changed = true;
+    }
 
     const activeIndex = this.#activeObstacleIndex;
     for (const trace of this.#traces) {
       const length = trace.cells.length;
       if (length === 0) continue;
       const activeTap = trace.kind === "tap" && activeIndex !== undefined && trace.obstacleIndex === activeIndex;
+      // A trace carries its source chip's output: energized traces run at full
+      // speed, idle ones only creep, so the logic state reads at a glance.
+      const energized = this.#chips[trace.chipIndex]?.state ?? true;
+      const logicMultiplier = energized ? 1 : IDLE_PULSE_MULTIPLIER;
       for (const pulse of trace.pulses) {
         const cell = trace.cells[pulse.index % length]!;
         const near = this.#activePointer !== undefined &&
@@ -243,7 +319,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
               Math.abs(cell.y - this.#activePointer.row),
             ) <= POINTER_REACH_CELLS;
         pulse.accumulator += PULSE_CELLS_PER_FRAME * (near ? 2 : 1) *
-          (activeTap ? ACTIVE_TAP_PULSE_MULTIPLIER : 1) * delta;
+          (activeTap ? ACTIVE_TAP_PULSE_MULTIPLIER : 1) * logicMultiplier * delta;
         const steps = Math.floor(pulse.accumulator);
         if (steps > 0) {
           pulse.accumulator -= steps;
@@ -294,11 +370,20 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     const activeTapVia = mixMuxstoneRgb(viaColor, theme.accent, 0.5);
     const activeTapHead = mixMuxstoneRgb(pulseHead, theme.text, 0.35);
     const activeTapTrail = mixMuxstoneRgb(pulseTrail, theme.accent, 0.5);
+    // An energized (output-high) trace carries the theme accent; an idle one
+    // recedes toward the board so live logic stands out from dormant logic.
+    const liveTrace = mixMuxstoneRgb(traceBase, theme.accent, 0.55);
+    const idleTrace = mixMuxstoneRgb(traceBase, theme.background, 0.35);
+    const liveChipBody = mixMuxstoneRgb(chipBody, theme.accent, 0.5);
+    const liveChipBorder = mixMuxstoneRgb(chipBorder, theme.accent, 0.55);
+    const liveLabel = mixMuxstoneRgb(labelColor, theme.text, 0.6);
     const pointer = this.#activePointer;
     const activeIndex = this.#activeObstacleIndex;
 
     for (const trace of this.#traces) {
       const activeTap = trace.kind === "tap" && activeIndex !== undefined && trace.obstacleIndex === activeIndex;
+      const energized = this.#chips[trace.chipIndex]?.state ?? false;
+      const baseColor = activeTap ? activeTapBase : energized ? liveTrace : idleTrace;
       for (const cell of trace.cells) {
         if (cell.x < 0 || cell.x >= width || cell.y < 0 || cell.y >= height) continue;
         const near = pointer !== undefined &&
@@ -307,7 +392,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
           ? highlight
           : cell.glyph === VIA_GLYPH
           ? (activeTap ? activeTapVia : viaColor)
-          : (activeTap ? activeTapBase : traceBase);
+          : baseColor;
         this.#cells[cell.y]![cell.x] = { char: cell.glyph, foreground };
       }
       const length = trace.cells.length;
@@ -332,6 +417,9 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
 
     for (const chip of this.#chips) {
       const last = chip.side - 1;
+      // A gate that is currently outputting high lights up its body and border.
+      const bodyColor = chip.state ? liveChipBody : chipBody;
+      const borderColor = chip.state ? liveChipBorder : chipBorder;
       for (let r = 0; r < chip.side; r += 1) {
         const gy = chip.y + r;
         if (gy < 0 || gy >= height) continue;
@@ -346,25 +434,60 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
             : r === last
             ? (c === 0 ? "╚" : c === last ? "╝" : "═")
             : "║";
-          this.#cells[gy]![gx] = { char, foreground: edge ? chipBorder : chipBody };
+          this.#cells[gy]![gx] = { char, foreground: edge ? borderColor : bodyColor };
         }
       }
+      // Centre the gate label inside the chip interior, clipped to what fits.
+      const interior = Math.max(0, chip.side - 2);
+      const label = chip.label.slice(0, interior);
       const labelRow = chip.y + Math.floor(chip.side / 2);
-      const labelColumn = chip.x + Math.floor((chip.side - 2) / 2);
-      for (let index = 0; index < chip.label.length; index += 1) {
+      const labelColumn = chip.x + 1 + Math.max(0, Math.floor((interior - label.length) / 2));
+      for (let index = 0; index < label.length; index += 1) {
         const gx = labelColumn + index;
         if (labelRow < 0 || labelRow >= height || gx < 0 || gx >= width) continue;
-        this.#cells[labelRow]![gx] = { char: chip.label[index]!, foreground: labelColor, bold: true };
+        this.#cells[labelRow]![gx] = {
+          char: label[index]!,
+          foreground: chip.state ? liveLabel : labelColor,
+          bold: true,
+        };
       }
     }
+
+    this.#paintRail(this.#power, theme, mixMuxstoneRgb(theme.warning, theme.text, 0.3), true, width, height);
+    this.#paintRail(this.#ground, theme, mixMuxstoneRgb(theme.muted, theme.background, 0.2), false, width, height);
     return this.#cells;
+  }
+
+  /** Draws one rail node as a bold 3-cell label. */
+  #paintRail(
+    rail: CircuitRail | undefined,
+    _theme: MuxstoneThemeSpec,
+    color: MuxstoneRgb,
+    bold: boolean,
+    width: number,
+    height: number,
+  ): void {
+    if (!rail || rail.y < 0 || rail.y >= height) return;
+    for (let index = 0; index < rail.label.length; index += 1) {
+      const gx = rail.x + index;
+      if (gx < 0 || gx >= width) continue;
+      this.#cells[rail.y]![gx] = { char: rail.label[index]!, foreground: color, bold };
+    }
   }
 
   /** Deterministic state snapshot for tests. */
   inspect(): MuxstoneCircuitInspection {
     return {
       ...(this.#bounds ? { bounds: { ...this.#bounds } } : {}),
-      chips: this.#chips.map((chip) => ({ x: chip.x, y: chip.y, side: chip.side, label: chip.label })),
+      chips: this.#chips.map((chip) => ({
+        x: chip.x,
+        y: chip.y,
+        side: chip.side,
+        label: chip.label,
+        gate: chip.gate,
+        inputCount: chip.inputs.length,
+        state: chip.state,
+      })),
       traces: this.#traces.map((trace) => ({
         chipIndex: trace.chipIndex,
         kind: trace.kind,
@@ -375,6 +498,9 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       obstacles: this.#obstacles.map((rectangle) => ({ ...rectangle })),
       ...(this.#activeObstacleIndex !== undefined ? { activeObstacleIndex: this.#activeObstacleIndex } : {}),
       pendingJobs: this.#pendingJobs.length,
+      ...(this.#power ? { power: { ...this.#power } } : {}),
+      ...(this.#ground ? { ground: { ...this.#ground } } : {}),
+      liveChips: this.#chips.reduce((count, chip) => count + (chip.state ? 1 : 0), 0),
     };
   }
 
@@ -398,6 +524,10 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     this.#pendingJobs = [];
     this.#chips = [];
     this.#traces = [];
+    this.#power = undefined;
+    this.#ground = undefined;
+    this.#logicChipCount = -1;
+    this.#logicTimerMs = 0;
     const maxSide = Math.min(MAX_CHIP_SIDE, width - 2 * CHIP_MARGIN, height - 2 * CHIP_MARGIN);
     if (maxSide < 3) return;
     const minSide = Math.min(MIN_CHIP_SIDE, maxSide);
@@ -412,7 +542,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
         const x = CHIP_MARGIN + Math.floor(this.#random() * spanX);
         const y = CHIP_MARGIN + Math.floor(this.#random() * spanY);
         if (!this.#chipFits(x, y, side, -1)) continue;
-        this.#chips.push({ id: this.#nextChipId++, x, y, side, label: this.#createLabel() });
+        this.#chips.push(this.#createChip(x, y, side));
         this.#markChip(this.#chips.length - 1, 1);
         break;
       }
@@ -420,6 +550,8 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     for (let chipIndex = 0; chipIndex < this.#chips.length; chipIndex += 1) {
       this.#growChipTraces(chipIndex, bounds);
     }
+    this.#placeRails(bounds);
+    this.#rewireLogic();
   }
 
   /** Applies the frame's obstacle list; tears down anything newly in a keep-out zone. */
@@ -624,7 +756,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
         const x = CHIP_MARGIN + Math.floor(this.#random() * spanX);
         const y = CHIP_MARGIN + Math.floor(this.#random() * spanY);
         if (!this.#chipFits(x, y, side, -1)) continue;
-        this.#chips.push({ id: this.#nextChipId++, x, y, side, label: this.#createLabel() });
+        this.#chips.push(this.#createChip(x, y, side));
         this.#markChip(this.#chips.length - 1, 1);
         this.#growChipTraces(this.#chips.length - 1, bounds);
         changed = true;
@@ -1004,6 +1136,121 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     );
   }
 
+  /** Builds one chip as a randomly-typed gate with a seeded initial output. */
+  #createChip(x: number, y: number, side: number): CircuitChip {
+    const gate = GATE_TYPES[Math.floor(this.#random() * GATE_TYPES.length)]!;
+    return {
+      id: this.#nextChipId++,
+      x,
+      y,
+      side,
+      label: gate,
+      gate,
+      inputs: [],
+      state: this.#random() < 0.5,
+      nextState: false,
+    };
+  }
+
+  /**
+   * Places the power and ground rails at open cells, biased toward opposite
+   * board corners so the network spans between them.
+   */
+  #placeRails(bounds: Rectangle): void {
+    this.#power = this.#placeRail(bounds, POWER_LABEL, 0.15, 0.2) ??
+      this.#power ?? { x: 1, y: 1, label: POWER_LABEL };
+    this.#ground = this.#placeRail(bounds, GROUND_LABEL, 0.85, 0.85) ??
+      this.#ground ?? { x: Math.max(0, bounds.width - 4), y: Math.max(0, bounds.height - 2), label: GROUND_LABEL };
+  }
+
+  #placeRail(bounds: Rectangle, label: string, biasX: number, biasY: number): CircuitRail | undefined {
+    const targetX = Math.floor(bounds.width * biasX);
+    const targetY = Math.floor(bounds.height * biasY);
+    let best: CircuitRail | undefined;
+    let bestScore = Infinity;
+    for (let attempt = 0; attempt < 48; attempt += 1) {
+      const x = clampInteger(targetX + Math.floor((this.#random() - 0.5) * bounds.width * 0.3), 0, bounds.width - 3);
+      const y = clampInteger(targetY + Math.floor((this.#random() - 0.5) * bounds.height * 0.3), 0, bounds.height - 1);
+      if (!this.#railFits(x, y, bounds)) continue;
+      const score = Math.abs(x - targetX) + Math.abs(y - targetY);
+      if (score < bestScore) {
+        bestScore = score;
+        best = { x, y, label };
+      }
+    }
+    return best;
+  }
+
+  #railFits(x: number, y: number, bounds: Rectangle): boolean {
+    if (y < 0 || y >= bounds.height) return false;
+    for (let column = x; column < x + 3; column += 1) {
+      if (column < 0 || column >= bounds.width) return false;
+      const cell = y * bounds.width + column;
+      if (this.#occupancy[cell] !== 0 || this.#keepOut[cell] !== 0) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Wires every chip's inputs to its nearest neighbours plus, for a seeded
+   * share, the power or ground rail. Runs when the chip population changes so
+   * new gates join the network and stale references drop out.
+   */
+  #rewireLogic(): void {
+    const chips = this.#chips;
+    this.#logicChipCount = chips.length;
+    if (chips.length === 0) return;
+    for (let index = 0; index < chips.length; index += 1) {
+      const chip = chips[index]!;
+      // Rank other chips by proximity so wiring follows the board's geometry.
+      const neighbours = chips
+        .map((other, otherIndex) => ({ otherIndex, distance: chipDistance(chip, other) }))
+        .filter((entry) => entry.otherIndex !== index)
+        .sort((a, b) => a.distance - b.distance);
+      const wantInputs = MIN_GATE_INPUTS + Math.floor(this.#random() * (MAX_GATE_INPUTS - MIN_GATE_INPUTS + 1));
+      const inputs: LogicRef[] = [];
+      // Seed the graph against both rails: some gates read power, some ground,
+      // and the geometric wiring carries those references across the network.
+      const railRoll = this.#random();
+      if (railRoll < 0.34) inputs.push({ kind: "power" });
+      else if (railRoll < 0.62) inputs.push({ kind: "ground" });
+      for (const neighbour of neighbours) {
+        if (inputs.length >= wantInputs) break;
+        inputs.push({ kind: "chip", id: chips[neighbour.otherIndex]!.id });
+      }
+      // A lone chip with no neighbours still needs a driver, so fall back to a rail.
+      while (inputs.length < Math.min(wantInputs, MIN_GATE_INPUTS)) {
+        inputs.push({ kind: this.#random() < 0.5 ? "power" : "ground" });
+      }
+      chip.inputs = inputs;
+    }
+  }
+
+  /** Evaluates every gate synchronously from the previous tick's outputs. */
+  #tickLogic(): boolean {
+    const chips = this.#chips;
+    if (chips.length === 0) return false;
+    const byId = new Map<number, CircuitChip>();
+    for (const chip of chips) byId.set(chip.id, chip);
+    for (const chip of chips) {
+      let high = 0;
+      let total = 0;
+      for (const input of chip.inputs) {
+        total += 1;
+        if (input.kind === "power") high += 1;
+        else if (input.kind === "ground") continue;
+        else if (byId.get(input.id)?.state) high += 1;
+      }
+      chip.nextState = evaluateGate(chip.gate, high, total);
+    }
+    let changed = false;
+    for (const chip of chips) {
+      if (chip.nextState !== chip.state) changed = true;
+      chip.state = chip.nextState;
+    }
+    return changed;
+  }
+
   #createLabel(): string {
     const letter = CHIP_LABEL_LETTERS[Math.floor(this.#random() * CHIP_LABEL_LETTERS.length)]!;
     const digit = Math.floor(this.#random() * 10);
@@ -1014,6 +1261,34 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     this.#randomState = (Math.imul(this.#randomState, 1_664_525) + 1_013_904_223) >>> 0;
     return this.#randomState / 0x1_0000_0000;
   }
+}
+
+/** Evaluates one gate from the count of high inputs out of the total wired. */
+function evaluateGate(gate: GateType, high: number, total: number): boolean {
+  if (total === 0) return false;
+  switch (gate) {
+    case "AND":
+      return high === total;
+    case "OR":
+      return high > 0;
+    case "NAND":
+      return high !== total;
+    case "NOR":
+      return high === 0;
+    case "XOR":
+      return (high & 1) === 1;
+    case "XNOR":
+      return (high & 1) === 0;
+  }
+}
+
+/** Manhattan distance between two chip centres. */
+function chipDistance(a: CircuitChip, b: CircuitChip): number {
+  const ax = a.x + a.side / 2;
+  const ay = a.y + a.side / 2;
+  const bx = b.x + b.side / 2;
+  const by = b.y + b.side / 2;
+  return Math.abs(ax - bx) + Math.abs(ay - by);
 }
 
 function pathToTraceCells(path: readonly CircuitPathPoint[]): CircuitTraceCell[] {
