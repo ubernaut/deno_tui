@@ -60,6 +60,28 @@ Deno.test("emitInputEvents drains input until EOF and restores event boundaries"
   assertEquals(rawModes, [true]);
 });
 
+Deno.test("emitInputEvents honours the cbreak option so multiplexers capture Ctrl+C", async () => {
+  const run = async (options: { cbreak?: boolean }) => {
+    const reads: (Uint8Array | null)[] = [null];
+    let observed: { cbreak?: boolean } | undefined;
+    const stdin = {
+      async read(_buffer: Uint8Array) {
+        return reads.shift() === null ? null : 0;
+      },
+      setRaw(_value: boolean, rawOptions?: { cbreak?: boolean }) {
+        observed = rawOptions;
+      },
+    } as unknown as Stdin;
+    await emitInputEvents(stdin, new EventEmitter<InputEventRecord>(), 0, options);
+    return observed;
+  };
+
+  // Default keeps cbreak on POSIX, so ordinary apps still exit on Ctrl+C.
+  assertEquals((await run({}))?.cbreak, Deno.build.os !== "windows");
+  // Full raw mode delivers Ctrl+C as a keypress for terminal multiplexers.
+  assertEquals((await run({ cbreak: false }))?.cbreak, false);
+});
+
 Deno.test("emitInputEvents does not throttle immediately available reads by default", async () => {
   const reads = [encoder.encode("a"), encoder.encode("b"), null];
   const timerObservedByRead: boolean[] = [];

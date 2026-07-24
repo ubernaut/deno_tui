@@ -414,6 +414,10 @@ export function createMuxstoneTerminalOptions(
     id: "muxstone",
     label: "Muxstone",
     exitOnSignal: false,
+    // Full raw mode: Ctrl+C and friends arrive as keypresses and route to the
+    // focused child terminal instead of the kernel killing the multiplexer.
+    // External signals (kill, closing the outer terminal) still shut down.
+    input: { captureKeyboardSignals: true },
     tuiOptions: { refreshRate: 1000 / 60 },
     commands: muxstoneCommands(),
     onAction: (action) => handleMuxstoneAction(action, mount),
@@ -1751,6 +1755,18 @@ export function mountMuxstoneDesktop(
       await syncWindows();
       return;
     }
+    // Ctrl+C belongs to the focused child terminal, exactly like tmux. Only
+    // when no running terminal can receive it does it fall back to the quit
+    // modal, so the chord is never silently swallowed.
+    if (event.ctrl && !event.meta && event.key.toLowerCase() === "c") {
+      const active = controller.activeRuntime();
+      if (!active || !active.attached.peek() || !active.summary.peek().running) {
+        controller.openQuitModal();
+        return;
+      }
+      await forwardTerminalInput(new Uint8Array([3]));
+      return;
+    }
     if (shouldRouteAsWorkbenchKey(controller, event)) {
       const activeWindowId = controller.windowHost.controller.inspect().activeWindowId;
       const hostResult = controller.windowHost.handleKey(event, bodyRect.peek(), projectionOptions());
@@ -1927,8 +1943,16 @@ export function mountMuxstoneDesktop(
       enqueueKeyBarrier(event);
       return;
     }
+    // Ctrl+C rides the raw fast path into a receptive terminal like any other
+    // byte, but with nowhere to deliver it the chord must not vanish into a
+    // silent no-op write — the barrier route turns it into the quit modal.
+    const interruptKey = event.ctrl && !event.meta && event.key.toLowerCase() === "c";
+    const activeRuntime = interruptKey ? controller.activeRuntime() : undefined;
+    const interruptUndeliverable = interruptKey &&
+      (!activeRuntime || !activeRuntime.attached.peek() || !activeRuntime.summary.peek().running);
     if (
-      prefixKey || modalOpen() || controller.prefixPending.peek() || shouldRouteAsWorkbenchKey(controller, event)
+      prefixKey || interruptUndeliverable || modalOpen() || controller.prefixPending.peek() ||
+      shouldRouteAsWorkbenchKey(controller, event)
     ) {
       enqueueKeyBarrier(event);
       return;

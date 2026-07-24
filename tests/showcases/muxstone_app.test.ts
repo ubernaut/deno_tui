@@ -2323,6 +2323,7 @@ class FakeMuxstoneClient implements MuxstoneClientPort {
   readonly #sessions = new Map<string, MuxstoneSessionSummary>();
   readonly #replay = new Map<string, MuxstoneOutputFrame[]>();
   readonly #listeners = new Map<string, (frame: MuxstoneOutputFrame) => void>();
+  readonly #sessionListeners = new Map<string, (session: MuxstoneSessionSummary) => void>();
   readonly #pendingInputAcks: Array<() => void> = [];
   #ordinal = 1;
 
@@ -2362,6 +2363,7 @@ class FakeMuxstoneClient implements MuxstoneClientPort {
     const current = this.#sessions.get(sessionId);
     if (!current) return Promise.reject(new Error("missing fake session"));
     this.#listeners.set(sessionId, options.onOutput);
+    if (options.onSession) this.#sessionListeners.set(sessionId, options.onSession);
     return Promise.resolve({
       session: current,
       replay: (this.#replay.get(sessionId) ?? []).filter((frame) => frame.sequence > (options.sinceSequence ?? 0)),
@@ -2404,6 +2406,21 @@ class FakeMuxstoneClient implements MuxstoneClientPort {
 
   emitOutput(frame: MuxstoneOutputFrame): void {
     this.#listeners.get(frame.sessionId)?.(frame);
+  }
+
+  /** Marks one session's child process as exited and notifies its attachment. */
+  markExited(sessionId: string, exitCode: number): void {
+    const current = this.#sessions.get(sessionId);
+    if (!current) return;
+    const exited: MuxstoneSessionSummary = {
+      ...current,
+      status: "exited",
+      running: false,
+      exitCode,
+      updatedAt: current.updatedAt + 1,
+    };
+    this.#sessions.set(sessionId, exited);
+    this.#sessionListeners.get(sessionId)?.(exited);
   }
 
   resize(_sessionId: string, _columns: number, _rows: number): Promise<boolean> {
@@ -3540,6 +3557,51 @@ Deno.test("Muxstone session panel header stays inside a narrow window", async ()
     // The removed blurb is gone.
     const rows = harness.pilot.snapshot();
     assert(!rows.includes("survive UI exit"), "the survive-UI-exit blurb should be removed");
+  } finally {
+    harness.destroy();
+    await controller.dispose();
+  }
+});
+
+Deno.test("Muxstone routes Ctrl+C to the focused terminal and quits only without one", async () => {
+  const initial = session("intr-shell", "intr shell", 0);
+  const client = new FakeMuxstoneClient([initial]);
+  const controller = await createMuxstoneController({ client, initialSessions: [initial] });
+  const mount: MuxstoneAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 100, rows: 28 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+    controller.windowHost.execute({ kind: "close", id: MUXSTONE_SESSIONS_WINDOW_ID }, mounted.bodyRect.peek());
+    controller.windowHost.execute({ kind: "focus", id: muxstoneWindowId(initial.id) }, mounted.bodyRect.peek());
+    await harness.pilot.settle();
+
+    // The muxstone app opts into full raw mode so the chord even reaches it.
+    const appInput = createMuxstoneTerminalOptions(controller).input;
+    assert(typeof appInput === "object" && appInput.captureKeyboardSignals === true);
+
+    // With a running terminal focused, Ctrl+C is ETX to the child, not an exit.
+    client.inputs.length = 0;
+    await harness.pilot.press("c", { ctrl: true, buffer: new Uint8Array([3]) });
+    await mounted.whenIdle();
+    assertEquals(controller.quitModalVisible.peek(), false);
+    assertEquals(client.inputs.length, 1);
+    assertEquals(client.inputs[0]!.sessionId, initial.id);
+    assertEquals(new TextEncoder().encode(client.inputs[0]!.data as string)[0], 3);
+
+    // Once the child exits, the same chord opens the quit modal instead of
+    // being silently swallowed.
+    client.markExited(initial.id, 0);
+    await mounted.whenIdle();
+    client.inputs.length = 0;
+    await harness.pilot.press("c", { ctrl: true, buffer: new Uint8Array([3]) });
+    await mounted.whenIdle();
+    assertEquals(controller.quitModalVisible.peek(), true);
+    assertEquals(client.inputs.length, 0);
+    controller.cancelQuitModal();
   } finally {
     harness.destroy();
     await controller.dispose();

@@ -37,10 +37,13 @@ export async function emitInputEvents(
   stdin: Stdin,
   emitter: EventEmitter<InputEventRecord>,
   minReadInterval = 0,
-  options: { signal?: AbortSignal } = {},
+  options: { signal?: AbortSignal; cbreak?: boolean } = {},
 ): Promise<void> {
   try {
-    stdin.setRaw(true, { cbreak: Deno.build.os !== "windows" });
+    // cbreak keeps ISIG enabled, so Ctrl+C/Ctrl+Z become process signals. Apps
+    // that must see those chords as keypresses (terminal multiplexers that
+    // forward them to a child PTY) pass cbreak: false for full raw mode.
+    stdin.setRaw(true, { cbreak: options.cbreak ?? (Deno.build.os !== "windows") });
   } catch {
     // omit
   }

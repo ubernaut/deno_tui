@@ -34,6 +34,14 @@ export interface TerminalAppInputOptions {
   /** Optional delay after a successful read; blocking terminal input defaults to no throttle. */
   minReadInterval?: number;
   restoreRawMode?: boolean;
+  /**
+   * Deliver signal-generating chords (Ctrl+C, Ctrl+Z, Ctrl+\) as ordinary
+   * keypresses instead of letting the kernel raise SIGINT/SIGTSTP/SIGQUIT.
+   * Terminal multiplexers enable this to forward the chords to a child PTY;
+   * signals sent from outside the terminal (e.g. `kill -INT`) still arrive.
+   * Defaults to off, preserving Ctrl+C-to-exit for ordinary apps.
+   */
+  captureKeyboardSignals?: boolean;
   onError?: (error: unknown) => void;
 }
 
@@ -218,7 +226,10 @@ function bindTerminalInput(tui: Tui, options: TerminalAppInputOptions): () => vo
     tui.stdin,
     tui,
     options.minReadInterval ?? 0,
-    { signal: controller.signal },
+    {
+      signal: controller.signal,
+      ...(options.captureKeyboardSignals ? { cbreak: false } : {}),
+    },
   ).catch((error) => {
     if (!controller.signal.aborted) options.onError?.(error);
   });
