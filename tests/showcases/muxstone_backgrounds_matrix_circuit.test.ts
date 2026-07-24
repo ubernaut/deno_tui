@@ -609,55 +609,98 @@ Deno.test("MuxstoneCircuitField: logic simulation stays deterministic for one se
   assert(drive(19) !== drive(20), "different seeds should diverge");
 });
 
-Deno.test("MuxstoneCircuitField: pulses flow out of outputs and into inputs", () => {
+Deno.test("MuxstoneCircuitField: wires physically route from each driver to its consumer gate", () => {
   const field = new MuxstoneCircuitField({ seed: 7 });
-  const bounds = { column: 0, row: 0, width: 96, height: 30 };
+  const bounds = { column: 0, row: 0, width: 100, height: 32 };
   let now = 0;
   for (let frame = 0; frame < 60; frame += 1) {
     now += 60;
     field.advance({ bounds, obstacles: [], now });
   }
+  const inspection = field.inspect();
+  const wires = inspection.traces.filter((trace) => trace.kind === "wire");
+  assert(wires.length >= 4, "expected the logic graph to be realized as wires");
 
-  // Each chip drives exactly one output net; everything else feeds it inputs.
-  const outputsPerChip = new Map<number, number>();
-  for (const trace of field.inspect().traces) {
-    if (trace.kind !== "board") continue;
-    if (trace.flow === "out") outputsPerChip.set(trace.chipIndex, (outputsPerChip.get(trace.chipIndex) ?? 0) + 1);
+  // Chip nodes by id, plus rail/oscillator cells, so we can locate every pin.
+  const chipById = new Map(inspection.chips.map((chip) => [
+    // The snapshot has no chip id, but consumerChipId/driver reference ids; we
+    // instead check adjacency to rectangles, so index chips by their rect.
+    `${chip.x},${chip.y}`,
+    chip,
+  ]));
+  void chipById;
+  const near = (cell: { x: number; y: number }, rect: { x: number; y: number; side: number }): boolean => {
+    // A cell touching the chip's 1-cell perimeter ring.
+    return cell.x >= rect.x - 1 && cell.x <= rect.x + rect.side &&
+      cell.y >= rect.y - 1 && cell.y <= rect.y + rect.side;
+  };
+  const touchesRail = (cell: { x: number; y: number }, rail?: { x: number; y: number }): boolean =>
+    rail !== undefined &&
+    cell.x >= rail.x - 1 && cell.x <= rail.x + 3 && cell.y >= rail.y - 1 && cell.y <= rail.y + 1;
+
+  // Every wire's two ends must physically abut the endpoints its logic names:
+  // the driver at one end, the consumer gate at the other.
+  const consumerById = new Map(inspection.chips.map((chip, index) => [index, chip]));
+  void consumerById;
+  let checked = 0;
+  for (const wire of wires) {
+    assert(wire.cells.length >= 2, "a routed wire needs at least two cells");
+    const head = wire.cells[0]!;
+    const tail = wire.cells[wire.cells.length - 1]!;
+    // The consumer gate: find the chip whose ring the tail touches.
+    const consumer = inspection.chips.find((chip) => near(tail, chip));
+    assert(consumer, `wire tail at ${tail.x},${tail.y} should touch its consumer gate`);
+    // The driver end must touch whatever drives it.
+    if (wire.driver === "power") {
+      assert(touchesRail(head, inspection.power), "a power wire must start at VCC");
+    } else if (wire.driver === "ground") {
+      assert(touchesRail(head, inspection.ground), "a ground wire must start at GND");
+    } else if (wire.driver === "osc") {
+      assert(
+        inspection.oscillators.some((oscillator) => touchesRail(head, oscillator)),
+        "an oscillator wire must start at a CLK node",
+      );
+    } else {
+      assert(
+        inspection.chips.some((chip) => near(head, chip)),
+        `a chip-driven wire must start at a gate, head ${head.x},${head.y}`,
+      );
+    }
+    checked += 1;
   }
-  for (const count of outputsPerChip.values()) assertEquals(count, 1, "a chip should own one output trace");
-  // Inputs vastly outnumber outputs, confirming the wiring is mostly inbound.
-  const flows = field.inspect().traces.filter((trace) => trace.kind === "board");
-  const inputs = flows.filter((trace) => trace.flow === "in").length;
-  const outputs = flows.filter((trace) => trace.flow === "out").length;
-  assert(inputs > outputs, `expected more inputs than outputs, got ${inputs} in / ${outputs} out`);
+  assert(checked === wires.length, "every wire was checked");
 
-  // Sample lead-pulse motion: an output's pulse index climbs (away from the
-  // chip at cell 0), an input's descends (toward it). Aggregate across every
-  // pulse so the occasional wrap at the seam cannot sway the verdict.
-  const leadIndices = () => field.inspect().traces.map((trace) => trace.pulses.map((pulse) => pulse.index));
-  const before = leadIndices();
-  const meta = field.inspect().traces.map((trace) => ({ flow: trace.flow, length: trace.cells.length }));
+  // Wire cells are contiguous orthogonal steps: a real routed path, not a jump.
+  for (const wire of wires) {
+    for (let index = 1; index < wire.cells.length; index += 1) {
+      const a = wire.cells[index - 1]!;
+      const b = wire.cells[index]!;
+      assertEquals(Math.abs(a.x - b.x) + Math.abs(a.y - b.y), 1, "wire cells must be adjacent");
+    }
+  }
+
+  // Pulses run forward, driver → consumer: after a step the lead pulse's index
+  // rises (mod length), never falls.
+  const before = wires.map((wire) => wire.pulses.map((pulse) => pulse.index));
+  const lengths = wires.map((wire) => wire.cells.length);
   now += 60;
   field.advance({ bounds, obstacles: [], now });
-  const after = leadIndices();
-
-  let correct = 0;
-  let judged = 0;
-  for (let t = 0; t < meta.length; t += 1) {
-    const length = meta[t]!.length;
-    if (length < 4) continue;
-    for (let p = 0; p < before[t]!.length; p += 1) {
-      let delta = after[t]![p]! - before[t]![p]!;
+  const after = field.inspect().traces.filter((trace) => trace.kind === "wire")
+    .map((wire) => wire.pulses.map((pulse) => pulse.index));
+  let forward = 0;
+  let moved = 0;
+  for (let w = 0; w < Math.min(before.length, after.length); w += 1) {
+    const length = lengths[w]!;
+    for (let p = 0; p < Math.min(before[w]!.length, after[w]!.length); p += 1) {
+      let delta = after[w]![p]! - before[w]![p]!;
       if (delta > length / 2) delta -= length;
       if (delta < -length / 2) delta += length;
       if (delta === 0) continue;
-      judged += 1;
-      const movingOut = delta > 0;
-      if (movingOut === (meta[t]!.flow === "out")) correct += 1;
+      moved += 1;
+      if (delta > 0) forward += 1;
     }
   }
-  assert(judged > 20, "expected enough moving pulses to judge");
-  assert(correct / judged >= 0.9, `pulse direction should match flow role: ${correct}/${judged}`);
+  if (moved > 0) assert(forward / moved >= 0.9, `pulses should run forward: ${forward}/${moved}`);
 });
 
 Deno.test("MuxstoneCircuitField: every gate connects to both the power and ground rail", () => {

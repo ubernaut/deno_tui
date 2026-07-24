@@ -27,9 +27,9 @@ const MIN_CHIP_SIDE = 5;
 const MAX_CHIP_SIDE = 9;
 const CHIP_MARGIN = 1;
 const CHIP_SPACING = 2;
-const MAX_TRACE_STEPS = 80;
-const TRACE_GROW_ATTEMPTS = 6;
 const CHIP_PLACE_ATTEMPTS = 40;
+/** Cap on cells one wire route may explore, so a blocked route fails cheaply. */
+const MAX_ROUTE_VISITS = 6_000;
 /** Keep-out padding, in cells, applied around every window obstacle rect. */
 const OBSTACLE_MARGIN = 1;
 /** Layout-reaction jobs (relocations, regrows, taps) processed per advance. */
@@ -40,7 +40,6 @@ const ACTIVE_TAP_PULSE_MULTIPLIER = 2;
 /** How far the base tap trace color shifts toward theme.accent when focused. */
 const ACTIVE_TAP_BASE_MIX = 0.6;
 
-const CHIP_LABEL_LETTERS = "ABCDEFGHJKLMNPRSTUVWXYZ";
 const VIA_GLYPH = "o";
 const CHIP_FILL_GLYPH = "▓";
 
@@ -145,12 +144,14 @@ export interface MuxstoneCircuitOscillatorSnapshot {
 /** One trace snapshot with its animated pulses, exposed for deterministic tests. */
 export interface MuxstoneCircuitTraceSnapshot {
   readonly chipIndex: number;
-  /** Ordinary board traces versus window tap traces. */
-  readonly kind: "board" | "tap";
-  /** Index into `obstacles` for tap traces; absent on board traces. */
+  /** Logic wires between pins versus decorative window tap traces. */
+  readonly kind: "wire" | "tap";
+  /** Index into `obstacles` for tap traces; absent on wires. */
   readonly obstacleIndex?: number;
-  /** Direction current flows relative to the chip: out of an output, into an input. */
-  readonly flow: "in" | "out";
+  /** What drives the trace; pulses flow from it toward the sink. */
+  readonly driver: "chip" | "osc" | "power" | "ground";
+  /** For wires, the gate id this wire feeds. */
+  readonly consumerChipId?: number;
   readonly cells: readonly Readonly<{ x: number; y: number; glyph: string }>[];
   readonly pulses: readonly Readonly<{ index: number }>[];
 }
@@ -224,14 +225,17 @@ interface CircuitPulse {
 }
 
 interface CircuitTrace {
-  chipIndex: number;
-  kind: "board" | "tap";
+  /** A logic wire between two pins, or a decorative tap onto a window border. */
+  kind: "wire" | "tap";
   /**
-   * Which way current runs relative to the chip: an "output" carries the gate's
-   * result outward (cell 0 sits on the chip, pulses climb the index), an "input"
-   * feeds a signal inward (pulses descend the index toward the chip).
+   * What drives current onto this trace. Cells run driver → consumer, so pulses
+   * always flow forward: out of the driver's output pin and into the sink pin.
    */
-  role: "output" | "input";
+  driver: LogicRef;
+  /** For wires: the gate this wire feeds. */
+  consumerChipId?: number;
+  /** Source chip index for taps; the driver's chip index for wires, else -1. */
+  chipIndex: number;
   /** Index into the current obstacle list; only meaningful on tap traces. */
   obstacleIndex?: number;
   /** Local rect of the window this tap terminates on; identity across moves. */
@@ -243,7 +247,6 @@ interface CircuitTrace {
 /** Deferred, deterministic layout reaction executed a few per frame. */
 type CircuitLayoutJob =
   | { readonly kind: "relocate-chip"; readonly chipId: number }
-  | { readonly kind: "grow-trace"; readonly chipId: number }
   | { readonly kind: "grow-taps"; readonly rect: Rectangle };
 
 interface CircuitPathPoint {
@@ -294,6 +297,14 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
   #nextOscId = 0;
   /** Chip count the logic graph was last wired for; a change forces a rewire. */
   #logicChipCount = -1;
+  /** Set when the physical wire routing no longer matches the logic or layout. */
+  #wiresDirty = false;
+  // Reused routing scratch: a generation stamp marks cells visited this route,
+  // so no per-route array reset or allocation is needed on the hot path.
+  #routeSeen = new Uint32Array();
+  #routePrev = new Int32Array();
+  #routeQueue = new Int32Array();
+  #routeGeneration = 0;
 
   constructor(options: MuxstoneCircuitFieldOptions = {}) {
     this.#randomState = (options.seed ?? 0x50_43_42_31) >>> 0;
@@ -342,7 +353,31 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     if (this.#processLayoutJobs(bounds)) changed = true;
     // Chips added or removed by the layout must join the logic graph before the
     // next evaluation, or their inputs would reference a stale population.
-    if (this.#chips.length !== this.#logicChipCount) this.#rewireLogic();
+    if (this.#chips.length !== this.#logicChipCount) {
+      this.#rewireLogic();
+      this.#wiresDirty = true;
+    }
+
+    // Slow evolution: periodically drift a chip, re-survey for space, and
+    // re-wire one gate's logic. Each dirties the routing so the wires re-route.
+    while (this.#driftTimerMs >= CHIP_DRIFT_INTERVAL_MS) {
+      this.#driftTimerMs -= CHIP_DRIFT_INTERVAL_MS;
+      if (this.#driftOneChip(bounds)) changed = true;
+    }
+    while (this.#reassessTimerMs >= BOARD_REASSESS_INTERVAL_MS) {
+      this.#reassessTimerMs -= BOARD_REASSESS_INTERVAL_MS;
+      if (this.#reassessBoard(bounds)) changed = true;
+    }
+    while (this.#rewireTimerMs >= TRACE_REWIRE_INTERVAL_MS) {
+      this.#rewireTimerMs -= TRACE_REWIRE_INTERVAL_MS;
+      if (this.#rewireOneGate()) changed = true;
+    }
+    // Route (or re-route) every wire once per structural change, not per frame.
+    if (this.#wiresDirty) {
+      this.#rebuildWires(bounds);
+      changed = true;
+    }
+
     while (this.#logicTimerMs >= LOGIC_TICK_MS) {
       this.#logicTimerMs -= LOGIC_TICK_MS;
       if (this.#tickLogic()) changed = true;
@@ -353,12 +388,11 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       const length = trace.cells.length;
       if (length === 0) continue;
       const activeTap = trace.kind === "tap" && activeIndex !== undefined && trace.obstacleIndex === activeIndex;
-      // A trace carries its source chip's output: energized traces run at full
-      // speed, idle ones only creep, so the logic state reads at a glance.
-      const energized = this.#chips[trace.chipIndex]?.state ?? true;
+      // Current flows driver → sink along the cells, so pulses always run
+      // forward. An energized trace (driver output high) runs at full speed; an
+      // idle one only creeps, so the logic state reads at a glance.
+      const energized = this.#driverState(trace.driver);
       const logicMultiplier = energized ? 1 : IDLE_PULSE_MULTIPLIER;
-      // Outputs run current outward (index up), inputs draw it inward (index down).
-      const direction = trace.role === "input" ? -1 : 1;
       for (const pulse of trace.pulses) {
         const cell = trace.cells[pulse.index % length]!;
         const near = this.#activePointer !== undefined &&
@@ -371,25 +405,26 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
         const steps = Math.floor(pulse.accumulator);
         if (steps > 0) {
           pulse.accumulator -= steps;
-          pulse.index = (pulse.index + direction * steps % length + length) % length;
+          pulse.index = (pulse.index + steps) % length;
           changed = true;
         }
       }
     }
-
-    while (this.#rewireTimerMs >= TRACE_REWIRE_INTERVAL_MS) {
-      this.#rewireTimerMs -= TRACE_REWIRE_INTERVAL_MS;
-      if (this.#rewireOneTrace(bounds)) changed = true;
-    }
-    while (this.#driftTimerMs >= CHIP_DRIFT_INTERVAL_MS) {
-      this.#driftTimerMs -= CHIP_DRIFT_INTERVAL_MS;
-      if (this.#driftOneChip(bounds)) changed = true;
-    }
-    while (this.#reassessTimerMs >= BOARD_REASSESS_INTERVAL_MS) {
-      this.#reassessTimerMs -= BOARD_REASSESS_INTERVAL_MS;
-      if (this.#reassessBoard(bounds)) changed = true;
-    }
     return changed;
+  }
+
+  /** Resolves the live output of whatever drives a trace. */
+  #driverState(driver: LogicRef): boolean {
+    switch (driver.kind) {
+      case "power":
+        return true;
+      case "ground":
+        return false;
+      case "osc":
+        return this.#oscillators.find((oscillator) => oscillator.id === driver.id)?.state ?? false;
+      case "chip":
+        return this.#chips.find((chip) => chip.id === driver.id)?.state ?? false;
+    }
   }
 
   /** Paints chips, traces, vias, and pulses into a reused row-major cell buffer. */
@@ -430,7 +465,8 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
 
     for (const trace of this.#traces) {
       const activeTap = trace.kind === "tap" && activeIndex !== undefined && trace.obstacleIndex === activeIndex;
-      const energized = this.#chips[trace.chipIndex]?.state ?? false;
+      // Energize a wire by whatever drives it (a rail, an oscillator, or a gate).
+      const energized = this.#driverState(trace.driver);
       const baseColor = activeTap ? activeTapBase : energized ? liveTrace : idleTrace;
       for (const cell of trace.cells) {
         if (cell.x < 0 || cell.x >= width || cell.y < 0 || cell.y >= height) continue;
@@ -445,12 +481,10 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       }
       const length = trace.cells.length;
       if (length === 0) continue;
-      // The trail lags the head opposite the travel direction: behind an
-      // outbound pulse it sits one cell lower, behind an inbound one, higher.
-      const trailOffset = trace.role === "input" ? 1 : -1;
+      // Current runs driver → sink (forward), so the trail lags one cell behind.
       for (const pulse of trace.pulses) {
         const headCell = trace.cells[pulse.index % length]!;
-        const trailCell = trace.cells[(pulse.index + trailOffset + length) % length]!;
+        const trailCell = trace.cells[(pulse.index - 1 + length) % length]!;
         if (trailCell.y >= 0 && trailCell.y < height && trailCell.x >= 0 && trailCell.x < width) {
           this.#cells[trailCell.y]![trailCell.x] = activeTap
             ? { char: trailCell.glyph, foreground: activeTapTrail, bold: true }
@@ -559,7 +593,8 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
         chipIndex: trace.chipIndex,
         kind: trace.kind,
         ...(trace.kind === "tap" && trace.obstacleIndex !== undefined ? { obstacleIndex: trace.obstacleIndex } : {}),
-        flow: trace.role === "input" ? "in" : "out",
+        driver: trace.driver.kind,
+        ...(trace.consumerChipId !== undefined ? { consumerChipId: trace.consumerChipId } : {}),
         cells: trace.cells.map((cell) => ({ ...cell })),
         pulses: trace.pulses.map((pulse) => ({ index: pulse.index })),
       })),
@@ -642,6 +677,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     this.#oscillators = [];
     this.#logicChipCount = -1;
     this.#logicTimerMs = 0;
+    this.#wiresDirty = false;
     const maxSide = Math.min(MAX_CHIP_SIDE, width - 2 * CHIP_MARGIN, height - 2 * CHIP_MARGIN);
     if (maxSide < 3) return;
     const minSide = Math.min(MIN_CHIP_SIDE, maxSide);
@@ -661,12 +697,211 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
         break;
       }
     }
-    for (let chipIndex = 0; chipIndex < this.#chips.length; chipIndex += 1) {
-      this.#growChipTraces(chipIndex, bounds);
-    }
     this.#placeRails(bounds);
     this.#placeOscillators(bounds);
     this.#rewireLogic();
+    // Route the physical wires that realize the logic graph, so they exist on
+    // the very first frame rather than after the first advance.
+    this.#rebuildWires(bounds);
+  }
+
+  /**
+   * Free perimeter cells just outside a chip's border, clockwise from the top
+   * edge. Wires anchor on these: a chip's first free port is its output pin, the
+   * rest are input pins.
+   */
+  #chipPorts(chip: CircuitChip, bounds: Rectangle): CircuitPathPoint[] {
+    const { width, height } = bounds;
+    const ports: CircuitPathPoint[] = [];
+    const push = (x: number, y: number): void => {
+      if (x < 0 || x >= width || y < 0 || y >= height) return;
+      const index = y * width + x;
+      if (this.#occupancy[index] === 1 || this.#keepOut[index] !== 0) return;
+      ports.push({ x, y });
+    };
+    for (let c = 0; c < chip.side; c += 1) push(chip.x + c, chip.y - 1);
+    for (let r = 0; r < chip.side; r += 1) push(chip.x + chip.side, chip.y + r);
+    for (let c = chip.side - 1; c >= 0; c -= 1) push(chip.x + c, chip.y + chip.side);
+    for (let r = chip.side - 1; r >= 0; r -= 1) push(chip.x - 1, chip.y + r);
+    return ports;
+  }
+
+  /**
+   * Routes every logic edge as a physical wire from its driver's output pin to
+   * the consuming gate's input pin, then keeps the window taps. Wires avoid
+   * chips and keep-out zones and may cross one another, so a route always
+   * exists while the endpoints share free space. Runs on any structural change.
+   */
+  #rebuildWires(bounds: Rectangle): void {
+    this.#wiresDirty = false;
+    this.#traces = this.#traces.filter((trace) => trace.kind === "tap");
+    if (this.#chips.length === 0) return;
+
+    const chipIndexById = new Map<number, number>();
+    const chipOutputPin = new Map<number, CircuitPathPoint>();
+    const chipPorts = new Map<number, CircuitPathPoint[]>();
+    for (let index = 0; index < this.#chips.length; index += 1) {
+      const chip = this.#chips[index]!;
+      chipIndexById.set(chip.id, index);
+      const ports = this.#chipPorts(chip, bounds);
+      chipPorts.set(chip.id, ports);
+      if (ports.length > 0) chipOutputPin.set(chip.id, ports[0]!);
+    }
+
+    const inputCursor = new Map<number, number>();
+
+    for (const chip of this.#chips) {
+      const ports = chipPorts.get(chip.id) ?? [];
+      for (const input of chip.inputs) {
+        const source = this.#driverPin(input, chipOutputPin, bounds);
+        if (!source) continue;
+        // Each input takes a distinct port past the output (index 0).
+        const cursor = inputCursor.get(chip.id) ?? 1;
+        inputCursor.set(chip.id, cursor + 1);
+        const sink = ports.length > 1 ? ports[1 + ((cursor - 1) % (ports.length - 1))]! : ports[0];
+        if (!sink) continue;
+        const cells = this.#routeWire(source, sink, bounds);
+        if (!cells) continue;
+        const pulseCount = 2 + Math.floor(this.#random() * 3);
+        const pulses: CircuitPulse[] = Array.from({ length: pulseCount }, () => ({
+          index: Math.floor(this.#random() * cells.length),
+          accumulator: 0,
+        }));
+        this.#traces.push({
+          kind: "wire",
+          driver: input,
+          consumerChipId: chip.id,
+          chipIndex: input.kind === "chip" ? chipIndexById.get(input.id) ?? -1 : -1,
+          cells,
+          pulses,
+        });
+      }
+    }
+  }
+
+  /** The output pin of whatever drives an input: a chip port, or a rail/osc cell. */
+  #driverPin(
+    ref: LogicRef,
+    chipOutputPin: Map<number, CircuitPathPoint>,
+    bounds: Rectangle,
+  ): CircuitPathPoint | undefined {
+    switch (ref.kind) {
+      case "chip":
+        return chipOutputPin.get(ref.id);
+      case "osc": {
+        const oscillator = this.#oscillators.find((entry) => entry.id === ref.id);
+        return oscillator ? this.#freeNear(oscillator.x, oscillator.y, bounds) : undefined;
+      }
+      case "power":
+        return this.#power ? this.#freeNear(this.#power.x, this.#power.y, bounds) : undefined;
+      case "ground":
+        return this.#ground ? this.#freeNear(this.#ground.x, this.#ground.y, bounds) : undefined;
+    }
+  }
+
+  /** A free cell at or beside a rail/oscillator label to anchor a wire on. */
+  #freeNear(x: number, y: number, bounds: Rectangle): CircuitPathPoint | undefined {
+    const { width, height } = bounds;
+    const candidates: CircuitPathPoint[] = [
+      { x, y },
+      { x, y: y + 1 },
+      { x, y: y - 1 },
+      { x: x - 1, y },
+      { x: x + 3, y },
+    ];
+    for (const candidate of candidates) {
+      if (candidate.x < 0 || candidate.x >= width || candidate.y < 0 || candidate.y >= height) continue;
+      const index = candidate.y * width + candidate.x;
+      if (this.#occupancy[index] !== 1 && this.#keepOut[index] === 0) return candidate;
+    }
+    return undefined;
+  }
+
+  /**
+   * Shortest orthogonal route from one pin to another over cells that are not
+   * chips or keep-out, bounded by a visit cap. Wires may cross one another, so a
+   * route exists whenever the endpoints share free space. Uses a generation
+   * -stamped BFS on reused buffers with a head-pointer queue, so no allocation
+   * or full-array reset happens per route on the hot re-routing path.
+   */
+  #routeWire(source: CircuitPathPoint, sink: CircuitPathPoint, bounds: Rectangle): CircuitTraceCell[] | undefined {
+    const { width, height } = bounds;
+    const size = width * height;
+    if (this.#routeSeen.length !== size) {
+      this.#routeSeen = new Uint32Array(size);
+      this.#routePrev = new Int32Array(size);
+      this.#routeQueue = new Int32Array(size);
+      this.#routeGeneration = 0;
+    }
+    const passable = (index: number): boolean => this.#occupancy[index] !== 1 && this.#keepOut[index] === 0;
+    const sourceIndex = source.y * width + source.x;
+    const sinkIndex = sink.y * width + sink.x;
+    if (!passable(sourceIndex) || !passable(sinkIndex)) return undefined;
+
+    const seen = this.#routeSeen;
+    const previous = this.#routePrev;
+    const queue = this.#routeQueue;
+    const generation = ++this.#routeGeneration;
+    const rotation = Math.floor(this.#random() * 4);
+    let head = 0;
+    let tail = 0;
+    queue[tail++] = sourceIndex;
+    seen[sourceIndex] = generation;
+    previous[sourceIndex] = -1;
+    let found = false;
+    while (head < tail && head <= MAX_ROUTE_VISITS) {
+      const index = queue[head++]!;
+      if (index === sinkIndex) {
+        found = true;
+        break;
+      }
+      const x = index % width;
+      const y = (index - x) / width;
+      for (let turn = 0; turn < 4; turn += 1) {
+        const direction = (turn + rotation) % 4;
+        const nx = x + DIR_DX[direction]!;
+        const ny = y + DIR_DY[direction]!;
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+        const neighbour = ny * width + nx;
+        if (seen[neighbour] === generation || !passable(neighbour)) continue;
+        seen[neighbour] = generation;
+        previous[neighbour] = index;
+        queue[tail++] = neighbour;
+      }
+    }
+    if (!found) return undefined;
+    const path: CircuitPathPoint[] = [];
+    for (let index = sinkIndex; index !== -1; index = previous[index]!) {
+      path.push({ x: index % width, y: Math.floor(index / width) });
+    }
+    path.reverse();
+    if (path.length < 2) return undefined;
+    return wirePathToCells(path);
+  }
+
+  /** Periodically re-wires one gate's inputs so the circuit slowly evolves. */
+  #rewireOneGate(): boolean {
+    if (this.#chips.length < 2) return false;
+    const chip = this.#chips[Math.floor(this.#random() * this.#chips.length)]!;
+    const neighbours = this.#chips
+      .filter((other) => other.id !== chip.id)
+      .sort((a, b) => chipDistance(chip, a) - chipDistance(chip, b));
+    const wantInputs = MIN_GATE_INPUTS + Math.floor(this.#random() * (MAX_GATE_INPUTS - MIN_GATE_INPUTS + 1));
+    const inputs: LogicRef[] = [];
+    const railRoll = this.#random();
+    if (railRoll < 0.34) inputs.push({ kind: "power" });
+    else if (railRoll < 0.62) inputs.push({ kind: "ground" });
+    const osc = this.#nearestOscillator(chip);
+    if (osc && inputs.length < wantInputs && this.#random() < 0.3) inputs.push({ kind: "osc", id: osc.id });
+    for (const neighbour of neighbours) {
+      if (inputs.length >= wantInputs) break;
+      inputs.push({ kind: "chip", id: neighbour.id });
+    }
+    while (inputs.length < MIN_GATE_INPUTS) inputs.push({ kind: this.#random() < 0.5 ? "power" : "ground" });
+    chip.inputs = inputs;
+    this.#groundEveryGate();
+    this.#wiresDirty = true;
+    return true;
   }
 
   /** Places one signal generator per patch of board, up to a small cap. */
@@ -728,7 +963,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     return this.#applyObstacleChange(bounds);
   }
 
-  /** Rebuilds the keep-out mask and queues staggered relocations, taps, and regrows. */
+  /** Rebuilds the keep-out mask, drops taps caught in it, and re-routes wires. */
   #applyObstacleChange(bounds: Rectangle): boolean {
     const { width, height } = bounds;
     if (this.#keepOut.length !== width * height) this.#keepOut = new Uint8Array(width * height);
@@ -741,28 +976,22 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       for (let y = y0; y <= y1; y += 1) this.#keepOut.fill(1, y * width + x0, y * width + x1 + 1);
     }
 
-    let changed = false;
-    const regrowChipIds: number[] = [];
+    // A window changed shape, so every wire has to be re-routed to weave around
+    // the new keep-out. Tap traces still recover in place when their route stays
+    // clear, and are dropped for regrowth otherwise.
+    this.#wiresDirty = true;
     for (let index = this.#traces.length - 1; index >= 0; index -= 1) {
       const trace = this.#traces[index]!;
-      if (trace.kind === "tap") {
-        const obstacleIndex = trace.obstacleRect
-          ? this.#obstacles.findIndex((rectangle) => sameRect(rectangle, trace.obstacleRect!))
-          : -1;
-        if (obstacleIndex >= 0 && this.#tapRouteClear(trace, bounds)) {
-          trace.obstacleIndex = obstacleIndex;
-          continue;
-        }
-      } else if (!this.#traceHitsKeepOut(trace, bounds)) {
+      if (trace.kind !== "tap") continue;
+      const obstacleIndex = trace.obstacleRect
+        ? this.#obstacles.findIndex((rectangle) => sameRect(rectangle, trace.obstacleRect!))
+        : -1;
+      if (obstacleIndex >= 0 && this.#tapRouteClear(trace, bounds)) {
+        trace.obstacleIndex = obstacleIndex;
         continue;
       }
       this.#clearTraceOccupancy(trace, bounds);
       this.#traces.splice(index, 1);
-      changed = true;
-      if (trace.kind === "board") {
-        const chip = this.#chips[trace.chipIndex];
-        if (chip) regrowChipIds.push(chip.id);
-      }
     }
 
     for (const chip of this.#chips) {
@@ -774,10 +1003,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       );
       if (!hasTap) this.#enqueueJob({ kind: "grow-taps", rect: { ...rectangle } });
     }
-    for (let index = regrowChipIds.length - 1; index >= 0; index -= 1) {
-      this.#enqueueJob({ kind: "grow-trace", chipId: regrowChipIds[index]! });
-    }
-    return changed;
+    return true;
   }
 
   /** Runs a bounded number of queued layout reactions so changes stagger deterministically. */
@@ -787,11 +1013,6 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       const job = this.#pendingJobs.shift()!;
       if (job.kind === "relocate-chip") {
         if (this.#relocateChip(job.chipId, bounds)) changed = true;
-      } else if (job.kind === "grow-trace") {
-        const chipIndex = this.#chips.findIndex((chip) => chip.id === job.chipId);
-        if (chipIndex >= 0 && this.#growTrace(chipIndex, bounds, this.#nextRoleForChip(chipIndex))) {
-          changed = true;
-        }
       } else {
         const obstacleIndex = this.#obstacles.findIndex((rectangle) => sameRect(rectangle, job.rect));
         if (obstacleIndex < 0) continue;
@@ -847,10 +1068,11 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     }
     if (placed) {
       this.#markChip(chipIndex, 1);
-      this.#growChipTraces(chipIndex, bounds);
     } else {
       this.#despawnChip(chipIndex, bounds);
     }
+    // The chip moved or vanished, so its wires no longer connect; re-route all.
+    this.#wiresDirty = true;
     for (const rectangle of tapRects) this.#enqueueJob({ kind: "grow-taps", rect: rectangle });
     return true;
   }
@@ -870,10 +1092,9 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
   }
 
   /**
-   * Periodic survey of the board. Free space — whether the board was always
-   * empty there or a window stopped being a keep-out zone — gets a new chip
-   * wired into the fabric, and one existing chip re-grows its traces so the
-   * layout keeps reconfiguring instead of settling permanently.
+   * Periodic survey of the board. Free space — whether it was always empty or a
+   * window stopped being a keep-out zone — gets a new gate, which joins the
+   * logic graph and dirties the routing so the wires re-weave to include it.
    */
   #reassessBoard(bounds: Rectangle): boolean {
     const { width, height } = bounds;
@@ -885,143 +1106,21 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       3,
       MAX_BOARD_CHIPS,
     );
-
-    let changed = false;
-    if (this.#chips.length < ceiling) {
-      for (let attempt = 0; attempt < EMPTY_REGION_SAMPLES; attempt += 1) {
-        const side = minSide + Math.floor(this.#random() * (maxSide - minSide + 1));
-        const spanX = width - side - 2 * CHIP_MARGIN + 1;
-        const spanY = height - side - 2 * CHIP_MARGIN + 1;
-        if (spanX <= 0 || spanY <= 0) continue;
-        const x = CHIP_MARGIN + Math.floor(this.#random() * spanX);
-        const y = CHIP_MARGIN + Math.floor(this.#random() * spanY);
-        if (!this.#chipFits(x, y, side, -1)) continue;
-        this.#chips.push(this.#createChip(x, y, side));
-        this.#markChip(this.#chips.length - 1, 1);
-        this.#growChipTraces(this.#chips.length - 1, bounds);
-        changed = true;
-        break;
-      }
-    }
-
-    if (this.#chips.length > 0) {
-      this.#growChipTraces(Math.floor(this.#random() * this.#chips.length), bounds);
-      changed = true;
-    }
-    return changed;
-  }
-
-  #growChipTraces(chipIndex: number, bounds: Rectangle): void {
-    const count = clampInteger(Math.round((3 + Math.floor(this.#random() * 3)) * this.#density), 2, 8);
-    for (let index = 0; index < count; index += 1) {
-      this.#growTrace(chipIndex, bounds, this.#nextRoleForChip(chipIndex));
-    }
-  }
-
-  /**
-   * A gate drives a single output net; every other wire feeds it an input. The
-   * first wire a chip grows becomes its output, the rest inputs, so on a fresh
-   * chip pulses leave through one trace and arrive on the others.
-   */
-  #nextRoleForChip(chipIndex: number): "output" | "input" {
-    const hasOutput = this.#traces.some((trace) => trace.chipIndex === chipIndex && trace.role === "output");
-    return hasOutput ? "input" : "output";
-  }
-
-  #growTrace(chipIndex: number, bounds: Rectangle, role: "output" | "input"): boolean {
-    const chip = this.#chips[chipIndex];
-    if (!chip) return false;
-    for (let attempt = 0; attempt < TRACE_GROW_ATTEMPTS; attempt += 1) {
-      const edge = Math.floor(this.#random() * 4);
-      const offset = 1 + Math.floor(this.#random() * Math.max(1, chip.side - 2));
-      let x: number, y: number;
-      if (edge === 0) {
-        x = chip.x + offset;
-        y = chip.y - 1;
-      } else if (edge === 1) {
-        x = chip.x + chip.side;
-        y = chip.y + offset;
-      } else if (edge === 2) {
-        x = chip.x + offset;
-        y = chip.y + chip.side;
-      } else {
-        x = chip.x - 1;
-        y = chip.y + offset;
-      }
-      const trace = this.#walkTrace(chipIndex, x, y, edge, bounds, role);
-      if (trace) {
-        this.#traces.push(trace);
-        return true;
-      }
+    if (this.#chips.length >= ceiling) return false;
+    for (let attempt = 0; attempt < EMPTY_REGION_SAMPLES; attempt += 1) {
+      const side = minSide + Math.floor(this.#random() * (maxSide - minSide + 1));
+      const spanX = width - side - 2 * CHIP_MARGIN + 1;
+      const spanY = height - side - 2 * CHIP_MARGIN + 1;
+      if (spanX <= 0 || spanY <= 0) continue;
+      const x = CHIP_MARGIN + Math.floor(this.#random() * spanX);
+      const y = CHIP_MARGIN + Math.floor(this.#random() * spanY);
+      if (!this.#chipFits(x, y, side, -1)) continue;
+      this.#chips.push(this.#createChip(x, y, side));
+      this.#markChip(this.#chips.length - 1, 1);
+      this.#wiresDirty = true;
+      return true;
     }
     return false;
-  }
-
-  #walkTrace(
-    chipIndex: number,
-    startX: number,
-    startY: number,
-    startDirection: number,
-    bounds: Rectangle,
-    role: "output" | "input",
-  ): CircuitTrace | undefined {
-    const { width, height } = bounds;
-    const xs: number[] = [];
-    const ys: number[] = [];
-    const arrivals: number[] = [];
-    const exits: number[] = [];
-    let x = startX;
-    let y = startY;
-    let direction = startDirection;
-    let arrival = startDirection;
-    let run = 3 + Math.floor(this.#random() * 8);
-    let endsAtVia = true;
-
-    for (let step = 0; step < MAX_TRACE_STEPS; step += 1) {
-      if (x < 0 || x >= width || y < 0 || y >= height) {
-        endsAtVia = false;
-        break;
-      }
-      const cellIndex = y * width + x;
-      if (this.#occupancy[cellIndex] !== 0 || this.#keepOut[cellIndex] !== 0) break;
-      xs.push(x);
-      ys.push(y);
-      arrivals.push(arrival);
-      this.#occupancy[cellIndex] = 2;
-      run -= 1;
-      let exitDirection = direction;
-      if (run <= 0) {
-        exitDirection = (direction + (this.#random() < 0.5 ? 1 : 3)) % 4;
-        direction = exitDirection;
-        run = 3 + Math.floor(this.#random() * 8);
-      }
-      exits.push(exitDirection);
-      x += DIR_DX[exitDirection]!;
-      y += DIR_DY[exitDirection]!;
-      arrival = exitDirection;
-    }
-
-    if (xs.length < 2) {
-      for (let index = 0; index < xs.length; index += 1) {
-        this.#occupancy[ys[index]! * width + xs[index]!] = 0;
-      }
-      return undefined;
-    }
-
-    const cells: CircuitTraceCell[] = [];
-    for (let index = 0; index < xs.length; index += 1) {
-      const lastCell = index === xs.length - 1;
-      const glyph = lastCell
-        ? (endsAtVia ? VIA_GLYPH : (arrivals[index]! % 2 === 0 ? "│" : "─"))
-        : TRACE_GLYPHS[arrivals[index]! * 4 + exits[index]!]!;
-      cells.push({ x: xs[index]!, y: ys[index]!, glyph });
-    }
-    const pulseCount = 2 + Math.floor(this.#random() * 3);
-    const pulses: CircuitPulse[] = Array.from({ length: pulseCount }, () => ({
-      index: Math.floor(this.#random() * cells.length),
-      accumulator: 0,
-    }));
-    return { chipIndex, kind: "board", role, cells, pulses };
   }
 
   /** Grows the 1-3 deterministic tap traces owed to one window obstacle. */
@@ -1142,7 +1241,8 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     this.#traces.push({
       chipIndex,
       kind: "tap",
-      role: "output",
+      // A tap carries the source gate's output onto the window border.
+      driver: { kind: "chip", id: chip.id },
       obstacleIndex,
       obstacleRect: { ...obstacle },
       cells,
@@ -1167,15 +1267,6 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     return true;
   }
 
-  #traceHitsKeepOut(trace: CircuitTrace, bounds: Rectangle): boolean {
-    const { width, height } = bounds;
-    for (const cell of trace.cells) {
-      if (cell.x < 0 || cell.x >= width || cell.y < 0 || cell.y >= height) continue;
-      if (this.#keepOut[cell.y * width + cell.x] !== 0) return true;
-    }
-    return false;
-  }
-
   #chipHitsKeepOut(chip: CircuitChip, bounds: Rectangle): boolean {
     const { width, height } = bounds;
     for (let row = chip.y; row < chip.y + chip.side; row += 1) {
@@ -1188,36 +1279,17 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     return false;
   }
 
-  #rewireOneTrace(bounds: Rectangle): boolean {
-    if (this.#chips.length === 0) return false;
-    const boardIndices: number[] = [];
-    for (let index = 0; index < this.#traces.length; index += 1) {
-      if (this.#traces[index]!.kind === "board") boardIndices.push(index);
-    }
-    if (boardIndices.length === 0) return false;
-    const traceIndex = boardIndices[Math.floor(this.#random() * boardIndices.length)]!;
-    const removed = this.#traces[traceIndex]!;
-    this.#clearTraceOccupancy(removed, bounds);
-    this.#traces.splice(traceIndex, 1);
-    const chipIndex = this.#chips.length > 1
-      ? (removed.chipIndex + 1 + Math.floor(this.#random() * (this.#chips.length - 1))) % this.#chips.length
-      : 0;
-    this.#growTrace(chipIndex, bounds, removed.role);
-    return true;
-  }
-
   #driftOneChip(bounds: Rectangle): boolean {
     if (this.#chips.length === 0) return false;
     const chipIndex = Math.floor(this.#random() * this.#chips.length);
     const chip = this.#chips[chipIndex]!;
     const direction = Math.floor(this.#random() * 4);
 
+    // The chip's taps must regrow from its new position; its wires re-route.
     for (let index = this.#traces.length - 1; index >= 0; index -= 1) {
       const trace = this.#traces[index]!;
-      if (trace.chipIndex !== chipIndex) continue;
-      if (trace.kind === "tap" && trace.obstacleRect) {
-        this.#enqueueJob({ kind: "grow-taps", rect: { ...trace.obstacleRect } });
-      }
+      if (trace.kind !== "tap" || trace.chipIndex !== chipIndex) continue;
+      if (trace.obstacleRect) this.#enqueueJob({ kind: "grow-taps", rect: { ...trace.obstacleRect } });
       this.#clearTraceOccupancy(trace, bounds);
       this.#traces.splice(index, 1);
     }
@@ -1229,7 +1301,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       chip.y = nextY;
     }
     this.#markChip(chipIndex, 1);
-    this.#growChipTraces(chipIndex, bounds);
+    this.#wiresDirty = true;
     return true;
   }
 
@@ -1503,12 +1575,6 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     return changed;
   }
 
-  #createLabel(): string {
-    const letter = CHIP_LABEL_LETTERS[Math.floor(this.#random() * CHIP_LABEL_LETTERS.length)]!;
-    const digit = Math.floor(this.#random() * 10);
-    return `${letter}${digit}`;
-  }
-
   #random(): number {
     this.#randomState = (Math.imul(this.#randomState, 1_664_525) + 1_013_904_223) >>> 0;
     return this.#randomState / 0x1_0000_0000;
@@ -1541,6 +1607,18 @@ function chipDistance(a: CircuitChip, b: CircuitChip): number {
   const bx = b.x + b.side / 2;
   const by = b.y + b.side / 2;
   return Math.abs(ax - bx) + Math.abs(ay - by);
+}
+
+/** Converts a routed wire path to drawn cells, with line glyphs at both ends. */
+function wirePathToCells(path: readonly CircuitPathPoint[]): CircuitTraceCell[] {
+  const cells: CircuitTraceCell[] = [];
+  for (let index = 0; index < path.length; index += 1) {
+    const point = path[index]!;
+    const arrival = index === 0 ? pathDirection(path[0]!, path[1]!) : pathDirection(path[index - 1]!, point);
+    const exit = index === path.length - 1 ? arrival : pathDirection(point, path[index + 1]!);
+    cells.push({ x: point.x, y: point.y, glyph: TRACE_GLYPHS[arrival * 4 + exit]! });
+  }
+  return cells;
 }
 
 function pathToTraceCells(path: readonly CircuitPathPoint[]): CircuitTraceCell[] {
