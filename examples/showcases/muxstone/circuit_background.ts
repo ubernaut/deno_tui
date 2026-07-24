@@ -55,9 +55,10 @@ const CHIP_FILL_GLYPH = "▓";
 const GATE_TYPES = ["AND", "OR", "NAND", "NOR", "XOR", "XNOR"] as const;
 type GateType = (typeof GATE_TYPES)[number];
 
-/** One wired input: another chip's output, or one of the two power rails. */
+/** One wired input: another chip's output, a free-running oscillator, or a rail. */
 type LogicRef =
   | { readonly kind: "chip"; readonly id: number }
+  | { readonly kind: "osc"; readonly id: number }
   | { readonly kind: "power" }
   | { readonly kind: "ground" };
 
@@ -70,6 +71,13 @@ const MAX_GATE_INPUTS = 3;
 const IDLE_PULSE_MULTIPLIER = 0.22;
 const POWER_LABEL = "VCC";
 const GROUND_LABEL = "GND";
+const OSCILLATOR_LABEL = "CLK";
+/** An oscillator flips its output every this-many-to-that-many logic ticks. */
+const OSC_MIN_PERIOD_TICKS = 2;
+const OSC_MAX_PERIOD_TICKS = 6;
+/** One signal generator per this-many-cells of board, at least one when there's room. */
+const OSC_CELLS_EACH = 2_400;
+const MAX_OSCILLATORS = 3;
 
 /** Direction order: up, right, down, left. */
 const DIR_DX = [0, 1, 0, -1] as const;
@@ -123,6 +131,17 @@ export interface MuxstoneCircuitRailSnapshot {
   readonly label: string;
 }
 
+/** A free-running oscillator (signal generator) exposed for deterministic tests. */
+export interface MuxstoneCircuitOscillatorSnapshot {
+  readonly x: number;
+  readonly y: number;
+  readonly label: string;
+  /** Logic ticks between output flips. */
+  readonly periodTicks: number;
+  /** Current square-wave output. */
+  readonly state: boolean;
+}
+
 /** One trace snapshot with its animated pulses, exposed for deterministic tests. */
 export interface MuxstoneCircuitTraceSnapshot {
   readonly chipIndex: number;
@@ -151,8 +170,12 @@ export interface MuxstoneCircuitInspection {
   readonly power?: MuxstoneCircuitRailSnapshot;
   /** The ground rail node, when placed. */
   readonly ground?: MuxstoneCircuitRailSnapshot;
+  /** Free-running signal generators placed on the board. */
+  readonly oscillators: readonly MuxstoneCircuitOscillatorSnapshot[];
   /** Count of chips whose output is currently high. */
   readonly liveChips: number;
+  /** Count of gates whose input cone reaches both the power and ground rail. */
+  readonly groundedChips: number;
 }
 
 interface CircuitChip {
@@ -174,6 +197,19 @@ interface CircuitRail {
   readonly x: number;
   readonly y: number;
   readonly label: string;
+}
+
+/** A free-running oscillator: a clock/signal source powered by both rails. */
+interface CircuitOscillator {
+  readonly id: number;
+  x: number;
+  y: number;
+  readonly label: string;
+  /** Logic ticks between flips. */
+  periodTicks: number;
+  /** Ticks since the last flip. */
+  phase: number;
+  state: boolean;
 }
 
 interface CircuitTraceCell {
@@ -254,6 +290,8 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
   #logicTimerMs = 0;
   #power?: CircuitRail;
   #ground?: CircuitRail;
+  #oscillators: CircuitOscillator[] = [];
+  #nextOscId = 0;
   /** Chip count the logic graph was last wired for; a change forces a rewire. */
   #logicChipCount = -1;
 
@@ -468,6 +506,22 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
 
     this.#paintRail(this.#power, theme, mixMuxstoneRgb(theme.warning, theme.text, 0.3), true, width, height);
     this.#paintRail(this.#ground, theme, mixMuxstoneRgb(theme.muted, theme.background, 0.2), false, width, height);
+
+    // Signal generators: an unboxed label that pulses bright/bold on its square
+    // wave's high phase and dims on the low, blinking at its own fixed rate. The
+    // last glyph carries the waveform so the state is legible when it is small.
+    const oscHigh = mixMuxstoneRgb(theme.accent, theme.text, 0.4);
+    const oscLow = mixMuxstoneRgb(theme.accent, theme.background, 0.35);
+    for (const oscillator of this.#oscillators) {
+      if (oscillator.y < 0 || oscillator.y >= height) continue;
+      const color = oscillator.state ? oscHigh : oscLow;
+      const glyphs = oscillator.state ? "CL^" : "CL_";
+      for (let index = 0; index < glyphs.length; index += 1) {
+        const gx = oscillator.x + index;
+        if (gx < 0 || gx >= width) continue;
+        this.#cells[oscillator.y]![gx] = { char: glyphs[index]!, foreground: color, bold: oscillator.state };
+      }
+    }
     return this.#cells;
   }
 
@@ -514,8 +568,53 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       pendingJobs: this.#pendingJobs.length,
       ...(this.#power ? { power: { ...this.#power } } : {}),
       ...(this.#ground ? { ground: { ...this.#ground } } : {}),
+      oscillators: this.#oscillators.map((oscillator) => ({
+        x: oscillator.x,
+        y: oscillator.y,
+        label: oscillator.label,
+        periodTicks: oscillator.periodTicks,
+        state: oscillator.state,
+      })),
       liveChips: this.#chips.reduce((count, chip) => count + (chip.state ? 1 : 0), 0),
+      groundedChips: this.#countGroundedGates(),
     };
+  }
+
+  /** Counts gates whose input cone reaches both the power and ground rail. */
+  #countGroundedGates(): number {
+    const chips = this.#chips;
+    if (chips.length === 0) return 0;
+    const power = new Map<number, boolean>();
+    const ground = new Map<number, boolean>();
+    for (const chip of chips) {
+      power.set(chip.id, false);
+      ground.set(chip.id, false);
+    }
+    for (let pass = 0; pass < chips.length + 1; pass += 1) {
+      let changed = false;
+      for (const chip of chips) {
+        for (const input of chip.inputs) {
+          const reachesPower = input.kind === "power" || input.kind === "osc" ||
+            (input.kind === "chip" && power.get(input.id) === true);
+          const reachesGround = input.kind === "ground" || input.kind === "osc" ||
+            (input.kind === "chip" && ground.get(input.id) === true);
+          if (reachesPower && !power.get(chip.id)) {
+            power.set(chip.id, true);
+            changed = true;
+          }
+          if (reachesGround && !ground.get(chip.id)) {
+            ground.set(chip.id, true);
+            changed = true;
+          }
+        }
+      }
+      if (!changed) break;
+    }
+    let count = 0;
+    for (const chip of chips) {
+      if (power.get(chip.id) && ground.get(chip.id)) count += 1;
+    }
+    return count;
   }
 
   #ensureLayout(bounds: Rectangle): void {
@@ -540,6 +639,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     this.#traces = [];
     this.#power = undefined;
     this.#ground = undefined;
+    this.#oscillators = [];
     this.#logicChipCount = -1;
     this.#logicTimerMs = 0;
     const maxSide = Math.min(MAX_CHIP_SIDE, width - 2 * CHIP_MARGIN, height - 2 * CHIP_MARGIN);
@@ -565,7 +665,31 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       this.#growChipTraces(chipIndex, bounds);
     }
     this.#placeRails(bounds);
+    this.#placeOscillators(bounds);
     this.#rewireLogic();
+  }
+
+  /** Places one signal generator per patch of board, up to a small cap. */
+  #placeOscillators(bounds: Rectangle): void {
+    const count = clampInteger(
+      Math.round((bounds.width * bounds.height) / OSC_CELLS_EACH),
+      bounds.width * bounds.height >= 400 ? 1 : 0,
+      MAX_OSCILLATORS,
+    );
+    for (let index = 0; index < count; index += 1) {
+      const spot = this.#placeRail(bounds, OSCILLATOR_LABEL, this.#random(), this.#random());
+      if (!spot) continue;
+      this.#oscillators.push({
+        id: this.#nextOscId++,
+        x: spot.x,
+        y: spot.y,
+        label: OSCILLATOR_LABEL,
+        periodTicks: OSC_MIN_PERIOD_TICKS +
+          Math.floor(this.#random() * (OSC_MAX_PERIOD_TICKS - OSC_MIN_PERIOD_TICKS + 1)),
+        phase: Math.floor(this.#random() * OSC_MAX_PERIOD_TICKS),
+        state: this.#random() < 0.5,
+      });
+    }
   }
 
   /** Applies the frame's obstacle list; tears down anything newly in a keep-out zone. */
@@ -1220,9 +1344,11 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
   }
 
   /**
-   * Wires every chip's inputs to its nearest neighbours plus, for a seeded
-   * share, the power or ground rail. Runs when the chip population changes so
-   * new gates join the network and stale references drop out.
+   * Wires every chip's inputs to its nearest neighbours and to the oscillators
+   * and rails, then patches the graph so every gate's input cone reaches both
+   * the power and the ground rail — a plausible circuit where nothing floats.
+   * Runs when the chip population changes so new gates join and stale references
+   * drop out.
    */
   #rewireLogic(): void {
     const chips = this.#chips;
@@ -1242,6 +1368,9 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       const railRoll = this.#random();
       if (railRoll < 0.34) inputs.push({ kind: "power" });
       else if (railRoll < 0.62) inputs.push({ kind: "ground" });
+      // A nearby signal generator sometimes clocks the gate directly.
+      const osc = this.#nearestOscillator(chip);
+      if (osc && inputs.length < wantInputs && this.#random() < 0.3) inputs.push({ kind: "osc", id: osc.id });
       for (const neighbour of neighbours) {
         if (inputs.length >= wantInputs) break;
         inputs.push({ kind: "chip", id: chips[neighbour.otherIndex]!.id });
@@ -1252,14 +1381,98 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       }
       chip.inputs = inputs;
     }
+    // Guarantee each oscillator drives at least its nearest gate, so no signal
+    // generator sits inert on the board.
+    for (const oscillator of this.#oscillators) {
+      const gate = this.#nearestChipTo(oscillator.x, oscillator.y);
+      if (gate && !gate.inputs.some((input) => input.kind === "osc" && input.id === oscillator.id)) {
+        gate.inputs.push({ kind: "osc", id: oscillator.id });
+      }
+    }
+    this.#groundEveryGate();
   }
 
-  /** Evaluates every gate synchronously from the previous tick's outputs. */
+  /**
+   * Ensures every gate's input cone reaches both rails. Computes what each gate
+   * connects to at fixpoint (rails, oscillators — which are themselves powered
+   * and grounded — and transitively other gates), then adds a direct rail input
+   * to any gate still missing one.
+   */
+  #groundEveryGate(): void {
+    const chips = this.#chips;
+    const power = new Map<number, boolean>();
+    const ground = new Map<number, boolean>();
+    for (const chip of chips) {
+      power.set(chip.id, false);
+      ground.set(chip.id, false);
+    }
+    // Fixpoint over the input graph; cycles converge because flags only ever set.
+    for (let pass = 0; pass < chips.length + 1; pass += 1) {
+      let changed = false;
+      for (const chip of chips) {
+        for (const input of chip.inputs) {
+          const reachesPower = input.kind === "power" || input.kind === "osc" ||
+            (input.kind === "chip" && power.get(input.id) === true);
+          const reachesGround = input.kind === "ground" || input.kind === "osc" ||
+            (input.kind === "chip" && ground.get(input.id) === true);
+          if (reachesPower && power.get(chip.id) === false) {
+            power.set(chip.id, true);
+            changed = true;
+          }
+          if (reachesGround && ground.get(chip.id) === false) {
+            ground.set(chip.id, true);
+            changed = true;
+          }
+        }
+      }
+      if (!changed) break;
+    }
+    for (const chip of chips) {
+      if (power.get(chip.id) !== true) chip.inputs.push({ kind: "power" });
+      if (ground.get(chip.id) !== true) chip.inputs.push({ kind: "ground" });
+    }
+  }
+
+  #nearestOscillator(chip: CircuitChip): CircuitOscillator | undefined {
+    let best: CircuitOscillator | undefined;
+    let bestDistance = Infinity;
+    for (const oscillator of this.#oscillators) {
+      const distance = Math.abs(oscillator.x - (chip.x + chip.side / 2)) +
+        Math.abs(oscillator.y - (chip.y + chip.side / 2));
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = oscillator;
+      }
+    }
+    return best;
+  }
+
+  #nearestChipTo(x: number, y: number): CircuitChip | undefined {
+    let best: CircuitChip | undefined;
+    let bestDistance = Infinity;
+    for (const chip of this.#chips) {
+      const distance = Math.abs(chip.x + chip.side / 2 - x) + Math.abs(chip.y + chip.side / 2 - y);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = chip;
+      }
+    }
+    return best;
+  }
+
+  /**
+   * One synchronous logic step: gates read the previous tick's outputs (of other
+   * gates and of the oscillators), then every output commits at once, and the
+   * oscillators advance for the next tick. Reading previous state everywhere is
+   * what lets feedback loops oscillate rather than race.
+   */
   #tickLogic(): boolean {
     const chips = this.#chips;
     if (chips.length === 0) return false;
-    const byId = new Map<number, CircuitChip>();
-    for (const chip of chips) byId.set(chip.id, chip);
+    const chipById = new Map<number, CircuitChip>();
+    for (const chip of chips) chipById.set(chip.id, chip);
+    const oscById = new Map<number, CircuitOscillator>();
+    for (const oscillator of this.#oscillators) oscById.set(oscillator.id, oscillator);
     for (const chip of chips) {
       let high = 0;
       let total = 0;
@@ -1267,7 +1480,9 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
         total += 1;
         if (input.kind === "power") high += 1;
         else if (input.kind === "ground") continue;
-        else if (byId.get(input.id)?.state) high += 1;
+        else if (input.kind === "osc") {
+          if (oscById.get(input.id)?.state) high += 1;
+        } else if (chipById.get(input.id)?.state) high += 1;
       }
       chip.nextState = evaluateGate(chip.gate, high, total);
     }
@@ -1275,6 +1490,15 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     for (const chip of chips) {
       if (chip.nextState !== chip.state) changed = true;
       chip.state = chip.nextState;
+    }
+    // Advance the free-running generators for the next tick.
+    for (const oscillator of this.#oscillators) {
+      oscillator.phase += 1;
+      if (oscillator.phase >= oscillator.periodTicks) {
+        oscillator.phase = 0;
+        oscillator.state = !oscillator.state;
+        changed = true;
+      }
     }
     return changed;
   }

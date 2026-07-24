@@ -659,3 +659,79 @@ Deno.test("MuxstoneCircuitField: pulses flow out of outputs and into inputs", ()
   assert(judged > 20, "expected enough moving pulses to judge");
   assert(correct / judged >= 0.9, `pulse direction should match flow role: ${correct}/${judged}`);
 });
+
+Deno.test("MuxstoneCircuitField: every gate connects to both the power and ground rail", () => {
+  // A plausible circuit leaves nothing floating: each gate's input cone must
+  // reach VCC and GND. Check across seeds and after obstacle churn re-wires.
+  for (const seed of [3, 7, 15, 31, 44]) {
+    const field = new MuxstoneCircuitField({ seed });
+    const bounds = { column: 0, row: 0, width: 100, height: 32 };
+    let now = 0;
+    for (let frame = 0; frame < 40; frame += 1) {
+      now += 60;
+      field.advance({ bounds, obstacles: [], now });
+    }
+    let inspection = field.inspect();
+    assertEquals(inspection.groundedChips, inspection.chips.length, `seed ${seed}: a gate is floating`);
+    assert(inspection.power && inspection.ground, "expected both rails");
+
+    // Move a window through the board so chips relocate/despawn and re-wire,
+    // then confirm the grounding invariant still holds.
+    for (const column of [10, 40, 70]) {
+      const obstacle = { column, row: 8, width: 24, height: 12 };
+      for (let frame = 0; frame < 40; frame += 1) {
+        now += 60;
+        field.advance({ bounds, obstacles: [obstacle], now });
+      }
+    }
+    for (let frame = 0; frame < 40; frame += 1) {
+      now += 60;
+      field.advance({ bounds, obstacles: [], now });
+    }
+    inspection = field.inspect();
+    assertEquals(
+      inspection.groundedChips,
+      inspection.chips.length,
+      `seed ${seed}: a gate floated after re-wiring`,
+    );
+  }
+});
+
+Deno.test("MuxstoneCircuitField: signal generators emit a steady square wave", () => {
+  const field = new MuxstoneCircuitField({ seed: 7 });
+  const bounds = { column: 0, row: 0, width: 96, height: 30 };
+  let now = 0;
+  for (let frame = 0; frame < 40; frame += 1) {
+    now += 60;
+    field.advance({ bounds, obstacles: [], now });
+  }
+  const oscillators = field.inspect().oscillators;
+  assert(oscillators.length >= 1, "a board this size should carry at least one oscillator");
+  for (const oscillator of oscillators) {
+    assertEquals(oscillator.label, "CLK");
+    assert(oscillator.periodTicks >= 2 && oscillator.periodTicks <= 6, "period within the declared range");
+  }
+
+  // Sample the first oscillator across many logic ticks: it should hold each
+  // level for its period then flip, producing a regular square wave — unlike a
+  // gate, whose output depends on its inputs.
+  const period = oscillators[0]!.periodTicks;
+  const wave: boolean[] = [];
+  for (let tick = 0; tick < period * 4; tick += 1) {
+    for (let frame = 0; frame < 11; frame += 1) {
+      now += 60;
+      field.advance({ bounds, obstacles: [], now });
+    }
+    wave.push(field.inspect().oscillators[0]!.state);
+  }
+  // It must both rise and fall over the window (it is not stuck).
+  assert(wave.some((level) => level) && wave.some((level) => !level), "the oscillator must toggle");
+  // Consecutive equal levels never exceed the period: each half-cycle is bounded.
+  let run = 1;
+  let maxRun = 1;
+  for (let index = 1; index < wave.length; index += 1) {
+    run = wave[index] === wave[index - 1] ? run + 1 : 1;
+    maxRun = Math.max(maxRun, run);
+  }
+  assert(maxRun <= period + 1, `half-cycle ${maxRun} should not exceed the period ${period}`);
+});
