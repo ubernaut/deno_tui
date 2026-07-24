@@ -2515,21 +2515,29 @@ function paintSessionManager(
   active: boolean,
 ): void {
   const theme = controller.theme.peek();
-  painter.write(rect.column + 1, rect.row, "Detached host sessions", {
+  // Both header lines clamp to the window so a narrow session panel never spills
+  // text past its border.
+  const headerWidth = Math.max(0, rect.width - 2);
+  painter.write(rect.column + 1, rect.row, fitText("Detached host sessions", headerWidth), {
     foreground: theme.accent,
     background: theme.surface,
     bold: true,
   });
-  painter.write(rect.column + 1, rect.row + 1, "Enter attach | Del kill | sessions survive UI exit", {
+  painter.write(rect.column + 1, rect.row + 1, fitText("Enter attach | Del kill", headerWidth), {
     foreground: theme.muted,
     background: theme.surface,
   });
   const sessions = controller.sessions.peek();
   if (sessions.length === 0) {
-    painter.write(rect.column + 1, rect.row + SESSION_LIST_START, "No terminals. Ctrl-N c creates one.", {
-      foreground: theme.muted,
-      background: theme.surface,
-    });
+    painter.write(
+      rect.column + 1,
+      rect.row + SESSION_LIST_START,
+      fitText("No terminals. Ctrl-N c creates one.", headerWidth),
+      {
+        foreground: theme.muted,
+        background: theme.surface,
+      },
+    );
     return;
   }
   const selected = clampIndex(selectedSessionIndex, sessions.length);

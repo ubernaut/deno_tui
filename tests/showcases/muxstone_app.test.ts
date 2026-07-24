@@ -3494,3 +3494,54 @@ Deno.test("Muxstone modal layouts stay within a cramped desktop", () => {
     within(start.panelRect, bounds, "start menu");
   }
 });
+
+Deno.test("Muxstone session panel header stays inside a narrow window", async () => {
+  const initial = session("panel-shell", "a-very-long-session-title-that-would-overflow", 0);
+  const client = new FakeMuxstoneClient([initial]);
+  const controller = await createMuxstoneController({ client, initialSessions: [initial] });
+  const mount: MuxstoneAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 90, rows: 26 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+    controller.openSessionManager(mounted.bodyRect.peek());
+    await mounted.whenIdle();
+
+    // Squeeze the manager window down so its header text would overflow if unclamped.
+    controller.windowHost.execute(
+      {
+        kind: "set-placement",
+        id: MUXSTONE_SESSIONS_WINDOW_ID,
+        placement: "floating",
+        rect: { column: 2, row: 3, width: 20, height: 12 },
+      },
+      mounted.bodyRect.peek(),
+    );
+    await mounted.whenIdle();
+    harness.app.tui.canvas.render();
+
+    const panel = mounted.windowProjection.peek().windows.find((window) => window.id === MUXSTONE_SESSIONS_WINDOW_ID)!;
+    const client_ = panel.clientRect;
+    // Nothing the panel paints may cross its right border.
+    const rightBorder = panel.rect.column + panel.rect.width - 1;
+    for (let row = client_.row; row < client_.row + client_.height; row += 1) {
+      const value = harness.canvas.frameBuffer[row]?.[rightBorder];
+      const glyph = stripAnsi(typeof value === "string" ? value : "");
+      const borderGlyphs = "│┃|+#"; // any frame vertical or ascii edge
+      assert(
+        glyph === " " || borderGlyphs.includes(glyph) || glyph === "",
+        `panel text crossed the right border at row ${row}: ${JSON.stringify(glyph)}`,
+      );
+    }
+
+    // The removed blurb is gone.
+    const rows = harness.pilot.snapshot();
+    assert(!rows.includes("survive UI exit"), "the survive-UI-exit blurb should be removed");
+  } finally {
+    harness.destroy();
+    await controller.dispose();
+  }
+});
