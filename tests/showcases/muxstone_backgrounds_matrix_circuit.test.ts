@@ -608,3 +608,54 @@ Deno.test("MuxstoneCircuitField: logic simulation stays deterministic for one se
   assertEquals(drive(19), drive(19));
   assert(drive(19) !== drive(20), "different seeds should diverge");
 });
+
+Deno.test("MuxstoneCircuitField: pulses flow out of outputs and into inputs", () => {
+  const field = new MuxstoneCircuitField({ seed: 7 });
+  const bounds = { column: 0, row: 0, width: 96, height: 30 };
+  let now = 0;
+  for (let frame = 0; frame < 60; frame += 1) {
+    now += 60;
+    field.advance({ bounds, obstacles: [], now });
+  }
+
+  // Each chip drives exactly one output net; everything else feeds it inputs.
+  const outputsPerChip = new Map<number, number>();
+  for (const trace of field.inspect().traces) {
+    if (trace.kind !== "board") continue;
+    if (trace.flow === "out") outputsPerChip.set(trace.chipIndex, (outputsPerChip.get(trace.chipIndex) ?? 0) + 1);
+  }
+  for (const count of outputsPerChip.values()) assertEquals(count, 1, "a chip should own one output trace");
+  // Inputs vastly outnumber outputs, confirming the wiring is mostly inbound.
+  const flows = field.inspect().traces.filter((trace) => trace.kind === "board");
+  const inputs = flows.filter((trace) => trace.flow === "in").length;
+  const outputs = flows.filter((trace) => trace.flow === "out").length;
+  assert(inputs > outputs, `expected more inputs than outputs, got ${inputs} in / ${outputs} out`);
+
+  // Sample lead-pulse motion: an output's pulse index climbs (away from the
+  // chip at cell 0), an input's descends (toward it). Aggregate across every
+  // pulse so the occasional wrap at the seam cannot sway the verdict.
+  const leadIndices = () => field.inspect().traces.map((trace) => trace.pulses.map((pulse) => pulse.index));
+  const before = leadIndices();
+  const meta = field.inspect().traces.map((trace) => ({ flow: trace.flow, length: trace.cells.length }));
+  now += 60;
+  field.advance({ bounds, obstacles: [], now });
+  const after = leadIndices();
+
+  let correct = 0;
+  let judged = 0;
+  for (let t = 0; t < meta.length; t += 1) {
+    const length = meta[t]!.length;
+    if (length < 4) continue;
+    for (let p = 0; p < before[t]!.length; p += 1) {
+      let delta = after[t]![p]! - before[t]![p]!;
+      if (delta > length / 2) delta -= length;
+      if (delta < -length / 2) delta += length;
+      if (delta === 0) continue;
+      judged += 1;
+      const movingOut = delta > 0;
+      if (movingOut === (meta[t]!.flow === "out")) correct += 1;
+    }
+  }
+  assert(judged > 20, "expected enough moving pulses to judge");
+  assert(correct / judged >= 0.9, `pulse direction should match flow role: ${correct}/${judged}`);
+});

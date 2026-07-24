@@ -130,6 +130,8 @@ export interface MuxstoneCircuitTraceSnapshot {
   readonly kind: "board" | "tap";
   /** Index into `obstacles` for tap traces; absent on board traces. */
   readonly obstacleIndex?: number;
+  /** Direction current flows relative to the chip: out of an output, into an input. */
+  readonly flow: "in" | "out";
   readonly cells: readonly Readonly<{ x: number; y: number; glyph: string }>[];
   readonly pulses: readonly Readonly<{ index: number }>[];
 }
@@ -188,6 +190,12 @@ interface CircuitPulse {
 interface CircuitTrace {
   chipIndex: number;
   kind: "board" | "tap";
+  /**
+   * Which way current runs relative to the chip: an "output" carries the gate's
+   * result outward (cell 0 sits on the chip, pulses climb the index), an "input"
+   * feeds a signal inward (pulses descend the index toward the chip).
+   */
+  role: "output" | "input";
   /** Index into the current obstacle list; only meaningful on tap traces. */
   obstacleIndex?: number;
   /** Local rect of the window this tap terminates on; identity across moves. */
@@ -311,6 +319,8 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       // speed, idle ones only creep, so the logic state reads at a glance.
       const energized = this.#chips[trace.chipIndex]?.state ?? true;
       const logicMultiplier = energized ? 1 : IDLE_PULSE_MULTIPLIER;
+      // Outputs run current outward (index up), inputs draw it inward (index down).
+      const direction = trace.role === "input" ? -1 : 1;
       for (const pulse of trace.pulses) {
         const cell = trace.cells[pulse.index % length]!;
         const near = this.#activePointer !== undefined &&
@@ -323,7 +333,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
         const steps = Math.floor(pulse.accumulator);
         if (steps > 0) {
           pulse.accumulator -= steps;
-          pulse.index = (pulse.index + steps) % length;
+          pulse.index = (pulse.index + direction * steps % length + length) % length;
           changed = true;
         }
       }
@@ -397,9 +407,12 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       }
       const length = trace.cells.length;
       if (length === 0) continue;
+      // The trail lags the head opposite the travel direction: behind an
+      // outbound pulse it sits one cell lower, behind an inbound one, higher.
+      const trailOffset = trace.role === "input" ? 1 : -1;
       for (const pulse of trace.pulses) {
         const headCell = trace.cells[pulse.index % length]!;
-        const trailCell = trace.cells[(pulse.index - 1 + length) % length]!;
+        const trailCell = trace.cells[(pulse.index + trailOffset + length) % length]!;
         if (trailCell.y >= 0 && trailCell.y < height && trailCell.x >= 0 && trailCell.x < width) {
           this.#cells[trailCell.y]![trailCell.x] = activeTap
             ? { char: trailCell.glyph, foreground: activeTapTrail, bold: true }
@@ -492,6 +505,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
         chipIndex: trace.chipIndex,
         kind: trace.kind,
         ...(trace.kind === "tap" && trace.obstacleIndex !== undefined ? { obstacleIndex: trace.obstacleIndex } : {}),
+        flow: trace.role === "input" ? "in" : "out",
         cells: trace.cells.map((cell) => ({ ...cell })),
         pulses: trace.pulses.map((pulse) => ({ index: pulse.index })),
       })),
@@ -651,7 +665,9 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
         if (this.#relocateChip(job.chipId, bounds)) changed = true;
       } else if (job.kind === "grow-trace") {
         const chipIndex = this.#chips.findIndex((chip) => chip.id === job.chipId);
-        if (chipIndex >= 0 && this.#growTrace(chipIndex, bounds)) changed = true;
+        if (chipIndex >= 0 && this.#growTrace(chipIndex, bounds, this.#nextRoleForChip(chipIndex))) {
+          changed = true;
+        }
       } else {
         const obstacleIndex = this.#obstacles.findIndex((rectangle) => sameRect(rectangle, job.rect));
         if (obstacleIndex < 0) continue;
@@ -774,11 +790,21 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
   #growChipTraces(chipIndex: number, bounds: Rectangle): void {
     const count = clampInteger(Math.round((3 + Math.floor(this.#random() * 3)) * this.#density), 2, 8);
     for (let index = 0; index < count; index += 1) {
-      this.#growTrace(chipIndex, bounds);
+      this.#growTrace(chipIndex, bounds, this.#nextRoleForChip(chipIndex));
     }
   }
 
-  #growTrace(chipIndex: number, bounds: Rectangle): boolean {
+  /**
+   * A gate drives a single output net; every other wire feeds it an input. The
+   * first wire a chip grows becomes its output, the rest inputs, so on a fresh
+   * chip pulses leave through one trace and arrive on the others.
+   */
+  #nextRoleForChip(chipIndex: number): "output" | "input" {
+    const hasOutput = this.#traces.some((trace) => trace.chipIndex === chipIndex && trace.role === "output");
+    return hasOutput ? "input" : "output";
+  }
+
+  #growTrace(chipIndex: number, bounds: Rectangle, role: "output" | "input"): boolean {
     const chip = this.#chips[chipIndex];
     if (!chip) return false;
     for (let attempt = 0; attempt < TRACE_GROW_ATTEMPTS; attempt += 1) {
@@ -798,7 +824,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
         x = chip.x - 1;
         y = chip.y + offset;
       }
-      const trace = this.#walkTrace(chipIndex, x, y, edge, bounds);
+      const trace = this.#walkTrace(chipIndex, x, y, edge, bounds, role);
       if (trace) {
         this.#traces.push(trace);
         return true;
@@ -813,6 +839,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     startY: number,
     startDirection: number,
     bounds: Rectangle,
+    role: "output" | "input",
   ): CircuitTrace | undefined {
     const { width, height } = bounds;
     const xs: number[] = [];
@@ -870,7 +897,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       index: Math.floor(this.#random() * cells.length),
       accumulator: 0,
     }));
-    return { chipIndex, kind: "board", cells, pulses };
+    return { chipIndex, kind: "board", role, cells, pulses };
   }
 
   /** Grows the 1-3 deterministic tap traces owed to one window obstacle. */
@@ -991,6 +1018,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     this.#traces.push({
       chipIndex,
       kind: "tap",
+      role: "output",
       obstacleIndex,
       obstacleRect: { ...obstacle },
       cells,
@@ -1050,7 +1078,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     const chipIndex = this.#chips.length > 1
       ? (removed.chipIndex + 1 + Math.floor(this.#random() * (this.#chips.length - 1))) % this.#chips.length
       : 0;
-    this.#growTrace(chipIndex, bounds);
+    this.#growTrace(chipIndex, bounds, removed.role);
     return true;
   }
 
