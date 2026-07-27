@@ -131,9 +131,11 @@ quickly, but the affected entrypoint or module family should be named here.
   a consumer heading east. VCC takes the top-left corner and GND the bottom-right, with a CLK generator in each of the
   other two corners and a third in the middle of a board large enough to warrant it; a source parked in a right-hand
   corner feeds west, and any source a window covers slides aside and returns to its corner when the window moves on.
-- Muxstone's circuit background drives an eight-lamp indicator array across the top of the desktop, wired one routed
-  wire per lamp and preferring a distinct gate per lamp. Every gate's output now reaches a gate or a lamp, so no node
-  is left with a dangling output.
+- Muxstone's circuit background drives an eight-lamp indicator array across the top of the desktop. Each lamp is a
+  complete circuit — a feed from a gate's output into its anode on the left, and a return out of its cathode back to
+  the GND rail — and lights only when both halves are physically routed, so a lamp a window has cut off goes dark
+  instead of glowing on nothing. Lamps prefer a distinct gate each, and every gate's output now reaches a gate or a
+  lamp, so no node is left with a dangling output.
 - Muxstone's circuit background now separates supply from signal. Both rails run to every gate on their own traces,
   reaching its VCC pin on the top edge and its GND pin on the bottom, and a gate counts as powered only because those
   runs exist — never because a logic path happens to pass through a rail. The CLK nodes are signal generators and no

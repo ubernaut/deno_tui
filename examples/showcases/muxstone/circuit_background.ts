@@ -182,8 +182,8 @@ export interface MuxstoneCircuitOscillatorSnapshot {
 /** One trace snapshot with its animated pulses, exposed for deterministic tests. */
 export interface MuxstoneCircuitTraceSnapshot {
   readonly chipIndex: number;
-  /** Signal wires, rail supply runs, and decorative window tap traces. */
-  readonly kind: "wire" | "rail" | "tap";
+  /** Signal wires, rail supply runs, lamp ground returns, and window tap traces. */
+  readonly kind: "wire" | "rail" | "return" | "tap";
   /** Index into `obstacles` for tap traces; absent on wires. */
   readonly obstacleIndex?: number;
   /** What drives the trace; pulses flow from it toward the sink. */
@@ -205,6 +205,8 @@ export interface MuxstoneCircuitLedSnapshot {
   readonly state: boolean;
   /** False only while the lamp is waiting for a gate to be wired to it. */
   readonly driven: boolean;
+  /** True once both its feed and its ground return are physically routed. */
+  readonly connected: boolean;
 }
 
 /** Inspection payload mirroring the metaball field's test hook. */
@@ -290,6 +292,8 @@ interface CircuitLed {
   readonly y: number;
   /** What the lamp displays; undefined only until a gate is wired to it. */
   driver?: LogicRef;
+  /** True once both the feed and the ground return are physically routed. */
+  connected: boolean;
   state: boolean;
 }
 
@@ -309,7 +313,7 @@ interface CircuitTrace {
    * A signal wire between two pins, a supply run from a rail into a gate's
    * power pin, or a decorative tap onto a window border.
    */
-  kind: "wire" | "rail" | "tap";
+  kind: "wire" | "rail" | "return" | "tap";
   /**
    * What drives current onto this trace. Cells run driver → consumer, so pulses
    * always flow forward: out of the driver's output pin and into the sink pin.
@@ -732,6 +736,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
         y: led.y,
         state: led.state,
         driven: led.driver !== undefined,
+        connected: led.connected,
       })),
       danglingChips: this.#countDanglingGates(),
       liveChips: this.#chips.reduce((count, chip) => count + (chip.state ? 1 : 0), 0),
@@ -912,7 +917,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
         const source = this.#driverPin(input, chipOutputPin, bounds);
         const sink = pins[index];
         if (!source || !sink) continue;
-        const cells = this.#routeWire(source.point, sink, bounds, source.exitDx);
+        const cells = this.#routeWire(source.point, sink, bounds, { x: source.exitDx, y: 0 });
         if (!cells) continue;
         const pulseCount = 2 + Math.floor(this.#random() * 3);
         const pulses: CircuitPulse[] = Array.from({ length: pulseCount }, () => ({
@@ -939,7 +944,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
         const sink = this.#chipRailPin(chip, rail, bounds);
         if (!source || !sink) continue;
         const approachFrom = rail === "power" ? { x: 0, y: -1 } : { x: 0, y: 1 };
-        const cells = this.#routeWire(source.point, sink, bounds, source.exitDx, approachFrom);
+        const cells = this.#routeWire(source.point, sink, bounds, { x: source.exitDx, y: 0 }, approachFrom);
         if (!cells) continue;
         this.#traces.push({
           kind: "rail",
@@ -952,30 +957,73 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       }
     }
 
-    // Indicator lamps are wired like any other consumer: driver's output pin on
-    // the right, lamp's input pin on its left.
+    // A lamp needs a complete path before it can conduct: the driving gate's
+    // output into its anode on the left, and a return out of its cathode below
+    // it back to the GND rail. It lights only when both halves actually routed —
+    // an unwired lamp is a dark lamp.
     for (const led of this.#leds) {
+      led.connected = false;
       const driver = led.driver;
       if (!driver) continue;
       const source = this.#driverPin(driver, chipOutputPin, bounds);
-      if (!source) continue;
-      const sink = { x: led.x - 1, y: led.y };
-      if (!this.#pinFree(sink.x, sink.y, bounds)) continue;
-      const cells = this.#routeWire(source.point, sink, bounds, source.exitDx);
-      if (!cells) continue;
+      const anode = { x: led.x - 1, y: led.y };
+      if (!source || !this.#pinFree(anode.x, anode.y, bounds)) continue;
+      const feed = this.#routeWire(source.point, anode, bounds, { x: source.exitDx, y: 0 });
+      if (!feed) continue;
+
+      const cathode = this.#ledCathodePin(led, bounds);
+      const terminal = this.#ground ? this.#sourcePin(this.#ground.x, this.#ground.y, bounds) : undefined;
+      if (!cathode || !terminal) continue;
+      const returnCells = this.#routeWire(cathode.point, terminal.point, bounds, cathode.exitTo, {
+        x: terminal.exitDx,
+        y: 0,
+      });
+      if (!returnCells) continue;
+
       const pulseCount = 1 + Math.floor(this.#random() * 2);
       this.#traces.push({
         kind: "wire",
         driver,
         consumerLedId: led.id,
         chipIndex: driver.kind === "chip" ? chipIndexById.get(driver.id) ?? -1 : -1,
-        cells,
+        cells: feed,
         pulses: Array.from({ length: pulseCount }, () => ({
-          index: Math.floor(this.#random() * cells.length),
+          index: Math.floor(this.#random() * feed.length),
           accumulator: 0,
         })),
       });
+      // The return carries the same signal, so it only runs bright while the
+      // lamp is actually conducting.
+      this.#traces.push({
+        kind: "return",
+        driver,
+        consumerLedId: led.id,
+        chipIndex: -1,
+        cells: returnCells,
+        pulses: [{ index: Math.floor(this.#random() * returnCells.length), accumulator: 0 }],
+      });
+      led.connected = true;
     }
+  }
+
+  /**
+   * A lamp's cathode: the cell below it, so the return drops away from the array
+   * the way a gate's ground pin hangs off its bottom edge. A blocked cell falls
+   * back to the row above or the far side.
+   */
+  #ledCathodePin(
+    led: CircuitLed,
+    bounds: Rectangle,
+  ): { point: CircuitPathPoint; exitTo: CircuitPathPoint } | undefined {
+    const candidates: Array<{ point: CircuitPathPoint; exitTo: CircuitPathPoint }> = [
+      { point: { x: led.x, y: led.y + 1 }, exitTo: { x: 0, y: 1 } },
+      { point: { x: led.x, y: led.y - 1 }, exitTo: { x: 0, y: -1 } },
+      { point: { x: led.x + 1, y: led.y }, exitTo: { x: 1, y: 0 } },
+    ];
+    for (const candidate of candidates) {
+      if (this.#pinFree(candidate.point.x, candidate.point.y, bounds)) return candidate;
+    }
+    return undefined;
   }
 
   /** The output pin of whatever drives an input: a gate's right edge, or a source's. */
@@ -1037,10 +1085,10 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     source: CircuitPathPoint,
     sink: CircuitPathPoint,
     bounds: Rectangle,
-    exitDx: 1 | -1 = 1,
+    exitTo: CircuitPathPoint = { x: 1, y: 0 },
     approachFrom: CircuitPathPoint = { x: -1, y: 0 },
   ): CircuitTraceCell[] | undefined {
-    const exit: CircuitPathPoint = { x: source.x + exitDx, y: source.y };
+    const exit: CircuitPathPoint = { x: source.x + exitTo.x, y: source.y + exitTo.y };
     const approach: CircuitPathPoint = { x: sink.x + approachFrom.x, y: sink.y + approachFrom.y };
     if (samePoint(source, sink)) return undefined;
     if (samePoint(exit, sink) || samePoint(approach, source)) {
@@ -1414,7 +1462,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       const cell = row * bounds.width + x;
       if (this.#occupancy[cell] !== 0) continue;
       this.#occupancy[cell] = 1;
-      this.#leds.push({ id: this.#nextLedId++, x, y: row, state: false });
+      this.#leds.push({ id: this.#nextLedId++, x, y: row, connected: false, state: false });
     }
   }
 
@@ -2049,6 +2097,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     for (const led of this.#leds) {
       if (led.driver?.kind === "chip" && !chipIds.has(led.driver.id)) {
         led.driver = undefined;
+        led.connected = false;
         led.state = false;
       }
     }
@@ -2182,7 +2231,8 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     // one coherent snapshot of the board rather than a half-updated one.
     let changed = false;
     for (const led of this.#leds) {
-      const next = led.driver ? this.#driverState(led.driver) : false;
+      // No complete path, no current: an unwired lamp cannot light.
+      const next = led.connected && led.driver !== undefined && this.#driverState(led.driver);
       if (next !== led.state) changed = true;
       led.state = next;
     }

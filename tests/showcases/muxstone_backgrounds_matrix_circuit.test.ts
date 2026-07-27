@@ -857,9 +857,26 @@ Deno.test("MuxstoneCircuitField: an eight-lamp array reads the circuit out acros
   const rightGap = bounds.width - (columns[0]! + span);
   assert(Math.abs(leftGap - rightGap) <= 1, `the array should be centred, gaps ${leftGap}/${rightGap}`);
 
-  // Every lamp is fed by a routed wire that ends on its own input pin.
-  const lampWires = opening.traces.filter((trace) => trace.consumerLedId !== undefined);
-  assertEquals(lampWires.length, 8, "expected one routed wire per lamp");
+  // Every lamp has a complete circuit: a feed into its anode and a return out
+  // of its cathode back to GND. A lamp with only half of that cannot conduct.
+  const feeds = opening.traces.filter((trace) => trace.kind === "wire" && trace.consumerLedId !== undefined);
+  const returns = opening.traces.filter((trace) => trace.kind === "return");
+  assertEquals(feeds.length, 8, "expected one feed per lamp");
+  assertEquals(returns.length, 8, "expected one ground return per lamp");
+  for (const led of opening.leds) {
+    assert(led.connected, `lamp ${led.id} should have a complete circuit`);
+    const feed = feeds.find((trace) => trace.consumerLedId === led.id);
+    const back = returns.find((trace) => trace.consumerLedId === led.id);
+    assert(feed && back, `lamp ${led.id} is missing half its circuit`);
+    // The return leaves the lamp's own cathode and ends at the GND rail.
+    const start = back!.cells[0]!;
+    assertEquals(Math.abs(start.x - led.x) + Math.abs(start.y - led.y), 1, "a return starts at the lamp's cathode");
+    const end = back!.cells[back!.cells.length - 1]!;
+    assert(
+      sourcePins(opening.ground!, bounds).some((pin) => pin.x === end.x && pin.y === end.y),
+      `lamp ${led.id}'s return ends at ${end.x},${end.y} rather than the GND rail`,
+    );
+  }
 
   // The array tracks the gates it watches: over time it shows more than one pattern.
   const patterns = new Set<string>();
@@ -870,13 +887,42 @@ Deno.test("MuxstoneCircuitField: an eight-lamp array reads the circuit out acros
     }
     const inspection = field.inspect();
     patterns.add(inspection.leds.map((led) => (led.state ? "1" : "0")).join(""));
-    // A lamp only ever shows the state of the gate driving it.
+    // A lit lamp always has both halves of its circuit on the grid; a lamp
+    // missing either half must be dark rather than glowing on nothing.
     for (const led of inspection.leds) {
-      const driver = inspection.traces.find((trace) => trace.consumerLedId === led.id);
-      assert(driver, `lamp ${led.id} lost its wire`);
+      const feed = inspection.traces.some((trace) => trace.kind === "wire" && trace.consumerLedId === led.id);
+      const back = inspection.traces.some((trace) => trace.kind === "return" && trace.consumerLedId === led.id);
+      assertEquals(led.connected, feed && back, `lamp ${led.id} disagrees with its wiring`);
+      if (!led.connected) assert(!led.state, `lamp ${led.id} lit up with no circuit`);
     }
   }
   assert(patterns.size >= 2, `expected the array to change, saw ${patterns.size} patterns`);
+});
+
+Deno.test("MuxstoneCircuitField: a lamp only lights when its circuit is complete", () => {
+  // Windows shove the board around and can cut a lamp off from its gate or from
+  // the rail. Whatever the layout does, an unlit path must never glow.
+  for (const seed of [7, 29, 53]) {
+    const field = new MuxstoneCircuitField({ seed });
+    const bounds = { column: 0, row: 0, width: 110, height: 30 };
+    let now = 0;
+    for (let sample = 0; sample < 12; sample += 1) {
+      const obstacle = sample % 3 === 0 ? [] : [{ column: 4 + sample * 6, row: 0, width: 30, height: 14 }];
+      for (let frame = 0; frame < 30; frame += 1) {
+        now += 62.5;
+        field.advance({ bounds, obstacles: obstacle, now });
+      }
+      const inspection = field.inspect();
+      for (const led of inspection.leds) {
+        const feed = inspection.traces.some((trace) => trace.kind === "wire" && trace.consumerLedId === led.id);
+        const back = inspection.traces.some((trace) => trace.kind === "return" && trace.consumerLedId === led.id);
+        if (led.state) {
+          assert(feed, `seed ${seed}: lamp ${led.id} is lit with no feed at sample ${sample}`);
+          assert(back, `seed ${seed}: lamp ${led.id} is lit with no return at sample ${sample}`);
+        }
+      }
+    }
+  }
 });
 
 Deno.test("MuxstoneCircuitField: every gate's output drives a gate or a lamp", () => {
