@@ -2872,6 +2872,59 @@ Deno.test("Muxstone background glyph vocabularies stay single-width", async () =
   }
 });
 
+Deno.test("Muxstone renders a character written over half a wide glyph", async () => {
+  // Regression: the renderer used to re-derive wide-glyph pairing by measuring
+  // the glyph, so a character written into the second column of a wide glyph was
+  // mistaken for its continuation and skipped — it vanished from the window. The
+  // screen model now erases the pair, and the renderer follows the model's mark.
+  const initial = session("broken-pair", "broken pair", 1);
+  const client = new FakeMuxstoneClient([initial], {
+    "broken-pair": [{ sessionId: "broken-pair", sequence: 1, data: "\x1b[1;1H日本AB\x1b[1;2HX" }],
+  });
+  const controller = await createMuxstoneController({ client, initialSessions: [initial] });
+  const mount: MuxstoneAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createMuxstoneTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 110, rows: 32 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+    controller.windowHost.execute({ kind: "close", id: MUXSTONE_SESSIONS_WINDOW_ID }, mounted.bodyRect.peek());
+    await harness.pilot.settle();
+
+    const terminal = mounted.windowProjection.peek().windows.find(
+      (window) => window.id === muxstoneWindowId("broken-pair"),
+    )!;
+    const row = harness.canvas.frameBuffer[terminal.clientRect.row] ?? [];
+    const start = terminal.clientRect.column;
+    const charAt = (offset: number): string => {
+      const value = row[start + offset];
+      const text = typeof value === "string" ? value : value ? new TextDecoder().decode(value) : "";
+      return stripAnsi(text);
+    };
+
+    // 日 was erased by the write into its second column, and the X is on screen.
+    assertEquals(charAt(0), " ");
+    assertEquals(charAt(1), "X");
+    // The surviving pair still owns two columns, so what follows keeps its place.
+    assertEquals(charAt(2), "本");
+    assertEquals(charAt(3), "");
+    assertEquals(charAt(4), "A");
+    assertEquals(charAt(5), "B");
+
+    let columns = 0;
+    for (let offset = 0; offset < 6; offset += 1) {
+      const glyph = charAt(offset);
+      if (glyph !== "") columns += muxstoneGlyphColumns(glyph);
+    }
+    assertEquals(columns, 6);
+  } finally {
+    harness.destroy();
+    await controller.dispose();
+  }
+});
+
 Deno.test("Muxstone pairs a wide terminal glyph with an empty follower cell", async () => {
   const initial = session("wide-shell", "wide shell", 1);
   const client = new FakeMuxstoneClient([initial], {

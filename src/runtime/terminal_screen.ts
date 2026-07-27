@@ -16,6 +16,13 @@ export interface TerminalScreenCell {
   foreground?: number;
   background?: number;
   hyperlink?: string;
+  /**
+   * Set on the blank that a double-width glyph parks in the column it also
+   * occupies. Renderers must skip it — the glyph to its left already covers that
+   * column — and the model keeps the pair honest: break either half and both are
+   * erased, exactly as a real terminal does.
+   */
+  continuation?: boolean;
 }
 
 /** Cursor position inside a terminal screen model. */
@@ -60,6 +67,8 @@ const DEFAULT_ROWS = 24;
 const DEFAULT_SCROLLBACK_LIMIT = 1000;
 const MAX_PENDING_CONTROL_LENGTH = 64 * 1024;
 const BLANK_CELL: TerminalScreenCell = Object.freeze({ char: " " });
+/** The blank a double-width glyph parks in the second column it occupies. */
+const CONTINUATION_CELL: TerminalScreenCell = Object.freeze({ char: " ", continuation: true });
 
 /** VT100 DEC Special Graphics set used by curses ACS line drawing (`ESC ( 0` / `ESC ) 0` + SO). */
 const DEC_SPECIAL_GRAPHICS: Readonly<Record<string, string>> = Object.freeze({
@@ -110,6 +119,13 @@ export class TerminalScreenController {
   #originMode = false;
   #autoWrap = true;
   #insertMode = false;
+  /**
+   * ANSI mode 20 (LNM). Off by default, as on every real terminal: a bare LF is
+   * an index — down one row, same column — and only the tty line discipline's
+   * ONLCR turns a cooked-mode `\n` into `\r\n`. Full-screen apps run the tty raw
+   * and use LF (terminfo `cud1`) precisely because it keeps the column.
+   */
+  #lineFeedNewline = false;
   #lastPrintableCell?: TerminalScreenCell;
   #lastPrintableWidth = 1;
   #tabStops: Set<number>;
@@ -201,6 +217,9 @@ export class TerminalScreenController {
     this.#rows = nextRows;
     this.#state = resizeState(this.#state, nextColumns, nextRows);
     if (this.#mainState) this.#mainState = resizeState(this.#mainState, nextColumns, nextRows);
+    // Narrowing can slice a wide glyph off at the new right edge.
+    for (const row of this.#state.cells) this.#repairRow(row);
+    if (this.#mainState) { for (const row of this.#mainState.cells) this.#repairRow(row); }
     this.#scrollRegion = fullScrollRegion(this.#rows);
     this.#tabStops = resizeTabStops(this.#tabStops, this.#columns);
     this.#pendingWrap = false;
@@ -267,9 +286,14 @@ export class TerminalScreenController {
   }
 
   #writeChar(char: string): void {
-    if (char === "\n") {
+    // LF, VT and FF all index. They return to column 0 only under LNM; treating
+    // them as newlines unconditionally drags every `cud1` cursor-down to the
+    // left edge, which corrupts any full-screen app that moves down a column at
+    // a time — and does it right where the app was drawing.
+    if (char === "\n" || char === "\v" || char === "\f") {
       this.#pendingWrap = false;
-      this.#newline();
+      if (this.#lineFeedNewline) this.#state.cursor.column = 0;
+      this.#index();
       return;
     }
     if (char === "\r") {
@@ -321,11 +345,17 @@ export class TerminalScreenController {
       this.#index();
     }
     const startColumn = this.#state.cursor.column;
+    // Landing on either half of an existing wide pair erases the whole pair, so
+    // no orphaned glyph or continuation is left behind to shift the row.
+    this.#breakPairAt(startColumn);
+    if (width === 2) this.#breakPairAt(startColumn + 1);
     this.#putCellAt(startColumn, cell, true);
     const lastColumn = Math.min(this.#columns - 1, startColumn + width - 1);
     for (let column = startColumn + 1; column <= lastColumn; column += 1) {
-      this.#putCellAt(column, BLANK_CELL, false);
+      this.#putCellAt(column, CONTINUATION_CELL, false);
     }
+    // Insert mode shifted the rest of the row, which can cut a pair further along.
+    if (this.#insertMode) this.#repairRow(this.#state.cells[this.#state.cursor.row]!);
     if (lastColumn >= this.#columns - 1) {
       // At the right edge park the cursor and defer the wrap; only the next
       // printable character (if autowrap is on) actually advances + scrolls.
@@ -334,6 +364,50 @@ export class TerminalScreenController {
     } else {
       this.#state.cursor.column = lastColumn + 1;
     }
+  }
+
+  /**
+   * Erases both halves of any double-width pair overlapping a column that is
+   * about to be overwritten. A real terminal cannot show half a wide glyph, and
+   * leaving one behind desynchronises every renderer that trusts the pairing.
+   */
+  #breakPairAt(column: number): void {
+    const row = this.#state.cells[this.#state.cursor.row];
+    if (!row || column < 0 || column >= this.#columns) return;
+    if (row[column]?.continuation && column > 0) row[column - 1] = this.#blankLike(row[column - 1]);
+    if (row[column + 1]?.continuation && terminalGraphicWidth(row[column]?.char ?? " ") === 2) {
+      row[column + 1] = this.#blankLike(row[column + 1]);
+    }
+  }
+
+  /**
+   * Restores the wide-pair invariant across one row after an edit that moved or
+   * cleared cells wholesale. A continuation with no glyph in front of it, and a
+   * wide glyph with no continuation behind it, are both erased.
+   */
+  #repairRow(row: TerminalScreenCell[]): void {
+    for (let column = 0; column < this.#columns;) {
+      const cell = row[column];
+      if (cell?.continuation) {
+        // Reached at the top of the loop, so no wide glyph claimed it.
+        row[column] = this.#blankLike(cell);
+        column += 1;
+        continue;
+      }
+      if (terminalGraphicWidth(cell?.char ?? " ") === 2) {
+        if (column + 1 < this.#columns && row[column + 1]?.continuation) {
+          column += 2;
+          continue;
+        }
+        row[column] = this.#blankLike(cell);
+      }
+      column += 1;
+    }
+  }
+
+  /** A blank that keeps the cell's background, so repairs leave no pale gap. */
+  #blankLike(cell: TerminalScreenCell | undefined): TerminalScreenCell {
+    return cell?.background === undefined ? BLANK_CELL : { char: " ", background: cell.background };
   }
 
   #putCellAt(column: number, cell: TerminalScreenCell, insert: boolean): void {
@@ -360,6 +434,7 @@ export class TerminalScreenController {
     return new Array<TerminalScreenCell>(this.#columns).fill(this.#eraseCell());
   }
 
+  /** NEL: unlike a bare LF this always returns to column 0. */
   #newline(): void {
     this.#state.cursor.column = 0;
     this.#index();
@@ -445,8 +520,7 @@ export class TerminalScreenController {
         break;
       case "E":
         if (sequence.kind === "esc") {
-          this.#state.cursor.column = 0;
-          this.#index();
+          this.#newline();
           break;
         }
         this.#state.cursor.row = clamp(this.#state.cursor.row + (params[0] || 1), 0, this.#rows - 1);
@@ -593,6 +667,7 @@ export class TerminalScreenController {
   #applyModes(params: number[], enabled: boolean): void {
     for (const mode of params) {
       if (mode === 4) this.#insertMode = enabled;
+      else if (mode === 20) this.#lineFeedNewline = enabled;
     }
   }
 
@@ -715,6 +790,7 @@ export class TerminalScreenController {
       for (let row = 0; row < this.#rows; row += 1) {
         fillCells(this.#state.cells[row]!, 0, this.#columns, this.#eraseCell());
       }
+      // A full-row fill cannot leave half a pair, so no repair is needed here.
       // ED 3 additionally drops saved lines, matching xterm.
       if (mode === 3) this.#scrollback = [];
       return;
@@ -723,12 +799,14 @@ export class TerminalScreenController {
       for (let row = 0; row <= this.#state.cursor.row; row += 1) {
         const end = row === this.#state.cursor.row ? this.#state.cursor.column + 1 : this.#columns;
         fillCells(this.#state.cells[row]!, 0, end, this.#eraseCell());
+        this.#repairRow(this.#state.cells[row]!);
       }
       return;
     }
     for (let row = this.#state.cursor.row; row < this.#rows; row += 1) {
       const start = row === this.#state.cursor.row ? this.#state.cursor.column : 0;
       fillCells(this.#state.cells[row]!, start, this.#columns - start, this.#eraseCell());
+      this.#repairRow(this.#state.cells[row]!);
     }
   }
 
@@ -737,6 +815,7 @@ export class TerminalScreenController {
     const start = mode === 1 || mode === 2 ? 0 : this.#state.cursor.column;
     const end = mode === 1 ? this.#state.cursor.column + 1 : this.#columns;
     fillCells(row, start, end - start, this.#eraseCell());
+    this.#repairRow(row);
   }
 
   #insertCharacters(count: number): void {
@@ -744,6 +823,7 @@ export class TerminalScreenController {
     const column = this.#state.cursor.column;
     const amount = clamp(Math.floor(count), 1, this.#columns - column);
     shiftCellsRight(row, column, amount, this.#columns, this.#eraseCell());
+    this.#repairRow(row);
   }
 
   #deleteCharacters(count: number): void {
@@ -751,6 +831,7 @@ export class TerminalScreenController {
     const column = this.#state.cursor.column;
     const amount = clamp(Math.floor(count), 1, this.#columns - column);
     shiftCellsLeft(row, column, amount, this.#columns, this.#eraseCell());
+    this.#repairRow(row);
   }
 
   #eraseCharacters(count: number): void {
@@ -758,6 +839,7 @@ export class TerminalScreenController {
     const column = this.#state.cursor.column;
     const amount = clamp(Math.floor(count), 1, this.#columns - column);
     fillCells(row, column, amount, this.#eraseCell());
+    this.#repairRow(row);
   }
 
   #insertLines(count: number): void {
@@ -838,6 +920,7 @@ export class TerminalScreenController {
     this.#originMode = false;
     this.#autoWrap = true;
     this.#insertMode = false;
+    this.#lineFeedNewline = false;
     this.#lastPrintableCell = undefined;
     this.#lastPrintableWidth = 1;
     this.clear();

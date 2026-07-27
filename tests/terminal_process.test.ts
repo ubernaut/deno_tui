@@ -754,6 +754,55 @@ Deno.test("ProcessTerminalBackend spawns inspectable non-PTY sessions", async ()
   await handle.dispose();
 });
 
+Deno.test("ProcessTerminalBackend supplies the ONLCR a pipe has no tty to provide", async () => {
+  // A PTY's line discipline turns the child's LF into CRLF on its way out. This
+  // backend has only a pipe, and a bare LF is an index — down a row, same column
+  // — so without the translation ordinary output would staircase.
+  const chunks: string[] = [];
+  const decoder = new TextDecoder();
+  const backend = createProcessTerminalBackend({
+    spawn: () => completedChild("one\ntwo\r\nthree\n", "", { code: 0, success: true }),
+  });
+  const handle = backend.spawn({
+    command: "demo",
+    onData: (data) => chunks.push(typeof data === "string" ? data : decoder.decode(data)),
+  });
+  await handle.closed;
+
+  // Every LF gains a CR; the one that already had a CR is left alone.
+  assertEquals(chunks.join(""), "one\r\ntwo\r\nthree\r\n");
+  await handle.dispose();
+});
+
+Deno.test("ProcessTerminalBackend does not double a CRLF split across two reads", async () => {
+  const chunks: string[] = [];
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+  const backend = createProcessTerminalBackend({
+    spawn: () => ({
+      stdout: new ReadableStream<Uint8Array>({
+        start(controller) {
+          // The CR ends one read and its LF opens the next.
+          controller.enqueue(encoder.encode("alpha\r"));
+          controller.enqueue(encoder.encode("\nbeta\n"));
+          controller.close();
+        },
+      }),
+      stderr: streamFromText(""),
+      status: Promise.resolve({ code: 0, success: true }),
+      kill: () => {},
+    }),
+  });
+  const handle = backend.spawn({
+    command: "demo",
+    onData: (data) => chunks.push(typeof data === "string" ? data : decoder.decode(data)),
+  });
+  await handle.closed;
+
+  assertEquals(chunks.join(""), "alpha\r\nbeta\r\n");
+  await handle.dispose();
+});
+
 function completedChild(
   stdout: string,
   stderr: string,

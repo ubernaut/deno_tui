@@ -1,4 +1,5 @@
 import { assertEquals } from "./deps.ts";
+import { textWidth } from "../src/utils/strings.ts";
 import { commandDisabledBoolean as commandDisabled } from "./test_commands.ts";
 import { CommandRegistry } from "../src/app/commands.ts";
 import {
@@ -113,7 +114,7 @@ Deno.test("terminal parameter parser handles semicolon colon and empty slots", (
 Deno.test("TerminalScreenController writes text and keeps clone-safe styled scrollback", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 2, scrollbackLimit: 2 });
 
-  screen.write("\x1b[31mhello\x1b[0m\nworld\nagain");
+  screen.write("\x1b[31mhello\x1b[0m\r\nworld\r\nagain");
 
   assertEquals(screen.scrollbackTextRows(), ["hello"]);
   const styled = screen.scrollbackCellRows();
@@ -305,7 +306,7 @@ Deno.test("TerminalScreenController preserves in-range tab stops after resize", 
 Deno.test("TerminalScreenController supports save and restore cursor sequences", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 3 });
 
-  screen.write("ab\x1b[s\ncd\x1b[uZ");
+  screen.write("ab\x1b[s\r\ncd\x1b[uZ");
   assertEquals(screen.textRows()[0], "abZ");
   assertEquals(screen.inspect().cursor, { column: 3, row: 0 });
 
@@ -383,6 +384,107 @@ Deno.test("TerminalScreenController supports repeat preceding graphic character"
   assertEquals(row![0], { char: "X", foreground: 31 });
   assertEquals(row![3], { char: "X", foreground: 31 });
   assertEquals(row![4], { char: "Y" });
+});
+
+Deno.test("TerminalScreenController keeps double-width glyphs paired with their continuation", () => {
+  // Regression: a wide glyph owns two columns, and the model marks the second so
+  // renderers can skip it. Breaking one half and leaving the other behind made a
+  // renderer that trusts the pairing skip a real character — it simply vanished.
+  const cells = (screen: TerminalScreenController): string[] =>
+    screen.cellRows()[0]!.slice(0, 6).map((cell) => (cell.continuation ? "<cont>" : cell.char));
+
+  const baseline = new TerminalScreenController({ columns: 12, rows: 2 });
+  baseline.write("日本AB");
+  assertEquals(cells(baseline), ["日", "<cont>", "本", "<cont>", "A", "B"]);
+
+  // Writing over the right half erases the glyph that owned it.
+  const rightHalf = new TerminalScreenController({ columns: 12, rows: 2 });
+  rightHalf.write("日本AB\x1b[1;2HX");
+  assertEquals(cells(rightHalf), [" ", "X", "本", "<cont>", "A", "B"]);
+
+  // Writing over the left half retires the orphaned continuation.
+  const leftHalf = new TerminalScreenController({ columns: 12, rows: 2 });
+  leftHalf.write("日本AB\x1b[1;1HX");
+  assertEquals(cells(leftHalf), ["X", " ", "本", "<cont>", "A", "B"]);
+
+  // Deleting a character through a pair takes the whole pair with it.
+  const deleted = new TerminalScreenController({ columns: 12, rows: 2 });
+  deleted.write("日本AB\x1b[1;2H\x1b[P");
+  assertEquals(cells(deleted), [" ", "本", "<cont>", "A", "B", " "]);
+
+  // As does inserting one into the middle of it.
+  const inserted = new TerminalScreenController({ columns: 12, rows: 2 });
+  inserted.write("日本AB\x1b[1;2H\x1b[@");
+  assertEquals(cells(inserted), [" ", " ", " ", "本", "<cont>", "A"]);
+
+  // Erasing either half erases both.
+  const erased = new TerminalScreenController({ columns: 12, rows: 2 });
+  erased.write("日本AB\x1b[1;4H\x1b[X");
+  assertEquals(cells(erased), ["日", "<cont>", " ", " ", "A", "B"]);
+
+  // Narrowing the screen through a pair drops it rather than leaving a half.
+  const narrowed = new TerminalScreenController({ columns: 6, rows: 2 });
+  narrowed.write("ab日cd");
+  narrowed.resize(3, 2);
+  assertEquals(narrowed.cellRows()[0]!.map((cell) => cell.char), ["a", "b", " "]);
+
+  // Whatever was done to the row, the invariant holds both ways: every wide
+  // glyph is followed by a continuation, and every continuation follows one.
+  for (const screen of [baseline, rightHalf, leftHalf, deleted, inserted, erased, narrowed]) {
+    for (const row of screen.cellRows()) {
+      for (let column = 0; column < row.length; column += 1) {
+        const wide = textWidth(row[column]!.char) > 1;
+        assertEquals(
+          wide,
+          row[column + 1]?.continuation === true,
+          `a wide glyph at column ${column} must own the column after it`,
+        );
+        if (!row[column]!.continuation) continue;
+        assertEquals(
+          column > 0 && textWidth(row[column - 1]!.char) > 1,
+          true,
+          `the continuation at column ${column} has no glyph in front of it`,
+        );
+      }
+    }
+  }
+});
+
+Deno.test("TerminalScreenController indexes on a bare line feed without returning to column 0", () => {
+  // Regression: LF is an index, not a newline. Full-screen apps run the tty raw,
+  // so no ONLCR rewrites it, and ncurses/tmux move down a row with terminfo
+  // `cud1` — a bare LF — expecting to keep the column. Treating it as a newline
+  // dragged every one of those moves to the left edge, corrupting whatever the
+  // app was drawing there.
+  const screen = new TerminalScreenController({ columns: 20, rows: 4 });
+  screen.write("\x1b[1;6Habc\ndef");
+  assertEquals(screen.textRows(), ["     abc", "        def", "", ""]);
+  assertEquals(screen.inspect().cursor, { column: 11, row: 1 });
+
+  // ESC D is the same operation spelled differently, so it must agree exactly.
+  const index = new TerminalScreenController({ columns: 20, rows: 4 });
+  index.write("\x1b[1;6Habc\x1bDdef");
+  assertEquals(index.textRows(), screen.textRows());
+
+  // VT and FF index too, rather than being swallowed as unknown controls.
+  const vertical = new TerminalScreenController({ columns: 20, rows: 4 });
+  vertical.write("\x1b[1;6Habc\vd\fe");
+  assertEquals(vertical.textRows(), ["     abc", "        d", "         e", ""]);
+
+  // Scrolling a region at its bottom row keeps the column as well, which is what
+  // tmux does when a pane scrolls under its status line.
+  const region = new TerminalScreenController({ columns: 20, rows: 5 });
+  region.write("\x1b[1;4r\x1b[4;1Hrow4\x1b[4;6Htail\nmore");
+  assertEquals(region.textRows(), ["", "", "row4 tail", "         more", ""]);
+
+  // LNM (ANSI mode 20) is the one case where LF also returns to column 0.
+  const newlineMode = new TerminalScreenController({ columns: 20, rows: 4 });
+  newlineMode.write("\x1b[20h\x1b[1;6Habc\ndef");
+  assertEquals(newlineMode.textRows(), ["     abc", "def", "", ""]);
+  // Clearing it puts LF back to indexing: `z` keeps the column `xy` left it on,
+  // landing past the `def` already on that row rather than over it.
+  newlineMode.write("\x1b[20l\x1b[1;6Hxy\nz");
+  assertEquals(newlineMode.textRows()[1], "def    z");
 });
 
 Deno.test("TerminalScreenController supports ESC index and next-line controls", () => {
@@ -613,7 +715,7 @@ Deno.test("TerminalScreenController inserts and deletes characters", () => {
 Deno.test("TerminalScreenController inserts and deletes lines", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 4 });
 
-  screen.write("row1\nrow2\nrow3\nrow4");
+  screen.write("row1\r\nrow2\r\nrow3\r\nrow4");
   screen.write("\x1b[2;1H\x1b[1Lnew");
   assertEquals(screen.textRows(), ["row1", "new", "row2", "row3"]);
 
@@ -625,7 +727,7 @@ Deno.test("TerminalScreenController scrolls inside configured scroll regions", (
   const screen = new TerminalScreenController({ columns: 8, rows: 4 });
 
   screen.write("aaaa\x1b[2;1Hbbbb\x1b[3;1Hcccc\x1b[4;1Hdddd");
-  screen.write("\x1b[2;3r\x1b[3;1Hxx\nYY");
+  screen.write("\x1b[2;3r\x1b[3;1Hxx\r\nYY");
 
   assertEquals(screen.textRows(), ["aaaa", "xxcc", "YY", "dddd"]);
   assertEquals(screen.scrollbackTextRows(), []);
@@ -636,7 +738,7 @@ Deno.test("TerminalScreenController resets scroll regions", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 3, scrollbackLimit: 4 });
 
   screen.write("one\x1b[2;1Htwo\x1b[3;1Hthree");
-  screen.write("\x1b[2;3r\x1b[r\x1b[3;1Hbottom\nnext");
+  screen.write("\x1b[2;3r\x1b[r\x1b[3;1Hbottom\r\nnext");
 
   assertEquals(screen.scrollbackTextRows(), ["one"]);
   assertEquals(screen.textRows(), ["two", "bottom", "next"]);
@@ -715,7 +817,7 @@ Deno.test("TerminalScreenController clamps restored cursor after resize", () => 
 Deno.test("TerminalScreenController resizes and clamps cursor", () => {
   const screen = new TerminalScreenController({ columns: 8, rows: 3 });
 
-  screen.write("abcdef\n123456\nxyz");
+  screen.write("abcdef\r\n123456\r\nxyz");
   screen.resize(4, 2);
 
   assertEquals(screen.textRows(), ["abcd", "1234"]);
@@ -807,7 +909,7 @@ Deno.test("TerminalScrollbackController snaps to live and hides main scrollback 
   // app (tmux) left the window in copy mode, painting stale pre-attach history
   // over the app and letting the wheel scroll through it.
   const screen = new TerminalScreenController({ columns: 12, rows: 3, scrollbackLimit: 20 });
-  screen.write("one\ntwo\nthree\nfour\nfive");
+  screen.write("one\r\ntwo\r\nthree\r\nfour\r\nfive");
   const scrollback = new TerminalScrollbackController({ screen, viewportRows: 3 });
 
   scrollback.scrollLines(-2);
@@ -838,7 +940,7 @@ Deno.test("TerminalScrollbackController snaps to live and hides main scrollback 
 
 Deno.test("TerminalScrollbackController follows live output and enters copy mode on scroll", () => {
   const screen = new TerminalScreenController({ columns: 12, rows: 3, scrollbackLimit: 5 });
-  screen.write("one\ntwo\nthree\nfour\nfive");
+  screen.write("one\r\ntwo\r\nthree\r\nfour\r\nfive");
   const scrollback = new TerminalScrollbackController({ screen, viewportRows: 3 });
 
   assertEquals(scrollback.inspect(), {
@@ -867,7 +969,7 @@ Deno.test("TerminalScrollbackController follows live output and enters copy mode
   assertEquals(scrollback.inspectViewport().offset, 1);
   assertEquals(scrollback.inspect().visibleRows, ["two", "three", "four"]);
 
-  screen.write("\nsix");
+  screen.write("\r\nsix");
   assertEquals(scrollback.inspect().mode, "copy");
   assertEquals(scrollback.inspect().visibleRows, ["two", "three", "four"]);
 
@@ -877,7 +979,7 @@ Deno.test("TerminalScrollbackController follows live output and enters copy mode
 
 Deno.test("TerminalScrollbackController pages clamps and searches", () => {
   const screen = new TerminalScreenController({ columns: 16, rows: 2, scrollbackLimit: 10 });
-  screen.write("alpha\nbeta\ngamma\nalphabet\nomega");
+  screen.write("alpha\r\nbeta\r\ngamma\r\nalphabet\r\nomega");
   const scrollback = new TerminalScrollbackController({ screen, viewportRows: 2 });
 
   assertEquals(scrollback.toTop(), 0);
@@ -895,7 +997,7 @@ Deno.test("TerminalScrollbackController pages clamps and searches", () => {
 
 Deno.test("TerminalScrollbackController selects and copies line ranges", () => {
   const screen = new TerminalScreenController({ columns: 10, rows: 2, scrollbackLimit: 10 });
-  screen.write("first\nsecond\nthird\nfourth");
+  screen.write("first\r\nsecond\r\nthird\r\nfourth");
   const scrollback = new TerminalScrollbackController({ screen, viewportRows: 2 });
 
   assertEquals(scrollback.setSelection(1, 3), { anchor: 1, focus: 3 });
@@ -911,7 +1013,7 @@ Deno.test("TerminalScrollbackController selects and copies line ranges", () => {
 
 Deno.test("TerminalScrollbackController supports interactive visible-row selection", () => {
   const screen = new TerminalScreenController({ columns: 10, rows: 2, scrollbackLimit: 10 });
-  screen.write("first\nsecond\nthird\nfourth\nfifth");
+  screen.write("first\r\nsecond\r\nthird\r\nfourth\r\nfifth");
   const scrollback = new TerminalScrollbackController({ screen, viewportRows: 2 });
 
   scrollback.toTop();
@@ -926,7 +1028,7 @@ Deno.test("TerminalScrollbackController supports interactive visible-row selecti
 
 Deno.test("terminal scrollback commands drive copy mode search and selection", async () => {
   const screen = new TerminalScreenController({ columns: 10, rows: 2, scrollbackLimit: 10 });
-  screen.write("alpha\nbeta\ngamma\nalphabet");
+  screen.write("alpha\r\nbeta\r\ngamma\r\nalphabet");
   const scrollback = new TerminalScrollbackController({ screen, viewportRows: 2 });
   let query = "alpha";
   const registry = new CommandRegistry<TerminalScrollbackCommandAction>();

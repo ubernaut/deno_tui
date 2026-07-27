@@ -81,9 +81,9 @@ function onBorder(x: number, y: number, zone: Rectangle): boolean {
 function assertClearOfZone(field: MuxstoneCircuitField, zone: Rectangle): void {
   const inspection = field.inspect();
   for (const chip of inspection.chips) {
-    const overlaps = chip.x <= zone.column + zone.width && zone.column - 1 <= chip.x + chip.side - 1 &&
-      chip.y <= zone.row + zone.height && zone.row - 1 <= chip.y + chip.side - 1;
-    assert(!overlaps, `chip at ${chip.x},${chip.y} side ${chip.side} intersects keep-out zone`);
+    const overlaps = chip.x <= zone.column + zone.width && zone.column - 1 <= chip.x + chip.width - 1 &&
+      chip.y <= zone.row + zone.height && zone.row - 1 <= chip.y + chip.height - 1;
+    assert(!overlaps, `chip at ${chip.x},${chip.y} ${chip.width}x${chip.height} intersects keep-out zone`);
   }
   for (const trace of inspection.traces) {
     const cells = trace.kind === "tap" ? trace.cells.slice(0, -2) : trace.cells;
@@ -311,8 +311,8 @@ Deno.test("MuxstoneCircuitField: obstacles receive tap traces terminating flush 
     const chip = inspection.chips[tap.chipIndex]!;
     const first = tap.cells[0]!;
     assert(
-      first.x >= chip.x - 1 && first.x <= chip.x + chip.side &&
-        first.y >= chip.y - 1 && first.y <= chip.y + chip.side,
+      first.x >= chip.x - 1 && first.x <= chip.x + chip.width &&
+        first.y >= chip.y - 1 && first.y <= chip.y + chip.height,
       "tap path must start at the source chip edge",
     );
   }
@@ -462,8 +462,8 @@ Deno.test("MuxstoneCircuitField: surveys the board and populates empty space ove
     for (let b = a + 1; b < chips.length; b += 1) {
       const first = chips[a]!;
       const second = chips[b]!;
-      const disjoint = first.x + first.side <= second.x || second.x + second.side <= first.x ||
-        first.y + first.side <= second.y || second.y + second.side <= first.y;
+      const disjoint = first.x + first.width <= second.x || second.x + second.width <= first.x ||
+        first.y + first.height <= second.y || second.y + second.height <= first.y;
       assert(disjoint, `chips ${a} and ${b} overlap after resurvey`);
     }
   }
@@ -629,10 +629,13 @@ Deno.test("MuxstoneCircuitField: wires physically route from each driver to its 
     chip,
   ]));
   void chipById;
-  const near = (cell: { x: number; y: number }, rect: { x: number; y: number; side: number }): boolean => {
+  const near = (
+    cell: { x: number; y: number },
+    rect: { x: number; y: number; width: number; height: number },
+  ): boolean => {
     // A cell touching the chip's 1-cell perimeter ring.
-    return cell.x >= rect.x - 1 && cell.x <= rect.x + rect.side &&
-      cell.y >= rect.y - 1 && cell.y <= rect.y + rect.side;
+    return cell.x >= rect.x - 1 && cell.x <= rect.x + rect.width &&
+      cell.y >= rect.y - 1 && cell.y <= rect.y + rect.height;
   };
   const touchesRail = (cell: { x: number; y: number }, rail?: { x: number; y: number }): boolean =>
     rail !== undefined &&
@@ -799,7 +802,7 @@ Deno.test("MuxstoneCircuitField: gate inputs enter on the left and outputs leave
       if (consumer) {
         assertEquals(tail.x, consumer.x - 1, `seed ${seed}: an input pin left the consumer's left edge`);
         assert(
-          tail.y >= consumer.y && tail.y < consumer.y + consumer.side,
+          tail.y >= consumer.y && tail.y < consumer.y + consumer.height,
           `seed ${seed}: input pin at row ${tail.y} sits off the consumer's left edge`,
         );
       } else {
@@ -811,7 +814,7 @@ Deno.test("MuxstoneCircuitField: gate inputs enter on the left and outputs leave
       const head = wire.cells[0]!;
       if (wire.driver === "chip") {
         const driver = inspection.chips.find((chip) =>
-          head.x === chip.x + chip.side && head.y >= chip.y && head.y < chip.y + chip.side
+          head.x === chip.x + chip.width && head.y >= chip.y && head.y < chip.y + chip.height
         );
         assert(driver, `seed ${seed}: a wire starts at ${head.x},${head.y}, off every gate's right edge`);
       } else {
@@ -947,13 +950,139 @@ Deno.test("MuxstoneCircuitField: every gate's output drives a gate or a lamp", (
       // leaving the gate's right edge, not just an entry in the netlist.
       for (const chip of inspection.chips) {
         const drives = inspection.traces.some((trace) =>
-          trace.kind === "wire" && trace.cells[0]!.x === chip.x + chip.side &&
-          trace.cells[0]!.y >= chip.y && trace.cells[0]!.y < chip.y + chip.side
+          trace.kind === "wire" && trace.cells[0]!.x === chip.x + chip.width &&
+          trace.cells[0]!.y >= chip.y && trace.cells[0]!.y < chip.y + chip.height
         );
         assert(drives, `seed ${seed}: gate ${chip.id} has no output wire at sample ${sample}`);
       }
     }
   }
+});
+
+Deno.test("MuxstoneCircuitField: every gate is the same small package", () => {
+  const field = new MuxstoneCircuitField({ seed: 7 });
+  const bounds = { column: 0, row: 0, width: 120, height: 34 };
+  let now = 0;
+  for (let frame = 0; frame < 900; frame += 1) {
+    now += 62.5;
+    field.advance({ bounds, obstacles: [], now });
+  }
+  const inspection = field.inspect();
+  assert(inspection.chips.length >= 8, "expected a populated board");
+  for (const chip of inspection.chips) {
+    assertEquals({ width: chip.width, height: chip.height }, { width: 8, height: 5 }, "gates are 8x5 packages");
+  }
+
+  // Borders included: the label sits inside, and the body is drawn edge to edge.
+  const grid = field.rasterizeCells(bounds, THEME);
+  const chip = inspection.chips[0]!;
+  assertEquals(grid[chip.y]?.[chip.x]?.char, "╔");
+  assertEquals(grid[chip.y]?.[chip.x + chip.width - 1]?.char, "╗");
+  assertEquals(grid[chip.y + chip.height - 1]?.[chip.x]?.char, "╚");
+  assertEquals(grid[chip.y + chip.height - 1]?.[chip.x + chip.width - 1]?.char, "╝");
+});
+
+Deno.test("MuxstoneCircuitField: clicking a gate traces out everything wired to it", () => {
+  const field = new MuxstoneCircuitField({ seed: 7 });
+  const bounds = { column: 0, row: 0, width: 120, height: 34 };
+  let now = 0;
+  for (let frame = 0; frame < 600; frame += 1) {
+    now += 62.5;
+    field.advance({ bounds, obstacles: [], now });
+  }
+  const before = field.inspect();
+  const target = before.chips[3]!;
+
+  // A click inside the package selects it; bare board is left to the desktop.
+  assertEquals(field.pick(target.x - 2, target.y - 2), false, "a click off the gates falls through");
+  assertEquals(field.pick(target.x + 2, target.y + 2), true, "a click inside a gate is claimed");
+  assertEquals(field.inspect().selectedChipId, target.id);
+
+  // Clicking bare board drops the highlight without swallowing the click.
+  assertEquals(field.pick(target.x - 2, target.y - 2), false, "clearing must not consume a desktop click");
+  assertEquals(field.inspect().selectedChipId, undefined);
+  assertEquals(field.pick(target.x + 2, target.y + 2), true);
+
+  // Every trace with that gate at either end is repainted, and nothing else is.
+  const plain = new MuxstoneCircuitField({ seed: 7 });
+  let plainNow = 0;
+  for (let frame = 0; frame < 600; frame += 1) {
+    plainNow += 62.5;
+    plain.advance({ bounds, obstacles: [], now: plainNow });
+  }
+  const selectedGrid = field.rasterizeCells(bounds, THEME);
+  const plainGrid = plain.rasterizeCells(bounds, THEME);
+
+  const inspection = field.inspect();
+  const connected = inspection.traces.filter((trace) =>
+    trace.consumerChipId === target.id ||
+    (trace.driver === "chip" &&
+      trace.cells[0]!.x === target.x + target.width &&
+      trace.cells[0]!.y >= target.y && trace.cells[0]!.y < target.y + target.height)
+  );
+  assert(connected.length >= 3, `expected the gate to be wired, saw ${connected.length} traces`);
+
+  let repainted = 0;
+  for (const trace of connected) {
+    for (const cell of trace.cells) {
+      const now = selectedGrid[cell.y]?.[cell.x];
+      const then = plainGrid[cell.y]?.[cell.x];
+      if (now && then && JSON.stringify(now.foreground) !== JSON.stringify(then.foreground)) repainted += 1;
+    }
+  }
+  assert(repainted > 0, "a selected gate's wiring must be drawn differently");
+
+  // Clicking it again releases the selection.
+  assertEquals(field.pick(target.x + 2, target.y + 2), true);
+  assertEquals(field.inspect().selectedChipId, undefined);
+});
+
+Deno.test("MuxstoneCircuitField: a net's forks are dotted as junctions", () => {
+  const field = new MuxstoneCircuitField({ seed: 7 });
+  const bounds = { column: 0, row: 0, width: 120, height: 34 };
+  let now = 0;
+  for (let frame = 0; frame < 600; frame += 1) {
+    now += 62.5;
+    field.advance({ bounds, obstacles: [], now });
+  }
+  const inspection = field.inspect();
+  assert(inspection.junctions > 0, "a board this size fans nets out and so must fork");
+
+  // A junction is a branch in one net, so the cell has three or more neighbours
+  // along that net's own traces — not merely three neighbours on the grid.
+  const nets = new Map<string, Map<string, Set<string>>>();
+  for (const trace of inspection.traces) {
+    if (trace.kind === "tap") continue;
+    const key = trace.driver === "chip" || trace.driver === "osc"
+      ? `${trace.driver}:${trace.consumerChipId ?? trace.consumerLedId ?? "?"}:${trace.cells[0]!.x},${
+        trace.cells[0]!.y
+      }`
+      : trace.driver;
+    const net = nets.get(key) ?? new Map<string, Set<string>>();
+    nets.set(key, net);
+    for (let index = 0; index < trace.cells.length; index += 1) {
+      const at = `${trace.cells[index]!.x},${trace.cells[index]!.y}`;
+      const neighbours = net.get(at) ?? new Set<string>();
+      net.set(at, neighbours);
+      for (const step of [index - 1, index + 1]) {
+        const cell = trace.cells[step];
+        if (cell) neighbours.add(`${cell.x},${cell.y}`);
+      }
+    }
+  }
+  // Rail nets alone are enough to prove the shape: they fan out to every gate.
+  const railForks = [...(nets.get("ground") ?? new Map()).values()].filter((set) => set.size >= 3).length;
+  assert(railForks > 0, "the ground net runs to every gate, so it must branch");
+
+  const grid = field.rasterizeCells(bounds, THEME);
+  let dots = 0;
+  for (const row of grid) {
+    for (const cell of row) {
+      if (cell?.char === "●") dots += 1;
+    }
+  }
+  assert(dots > 0, "junction dots must reach the grid");
+  assert(dots <= inspection.junctions, "no more dots than junctions were found");
 });
 
 Deno.test("MuxstoneCircuitField: the circuit grows to cover the whole board", () => {
@@ -973,8 +1102,8 @@ Deno.test("MuxstoneCircuitField: the circuit grows to cover the whole board", ()
     // Every quadrant carries part of the circuit, rather than it bunching up.
     const quadrants = [0, 0, 0, 0];
     for (const chip of inspection.chips) {
-      const column = chip.x + chip.side / 2 < bounds.width / 2 ? 0 : 1;
-      const row = chip.y + chip.side / 2 < bounds.height / 2 ? 0 : 2;
+      const column = chip.x + chip.width / 2 < bounds.width / 2 ? 0 : 1;
+      const row = chip.y + chip.height / 2 < bounds.height / 2 ? 0 : 2;
       quadrants[row + column] += 1;
     }
     for (let index = 0; index < quadrants.length; index += 1) {
@@ -982,7 +1111,7 @@ Deno.test("MuxstoneCircuitField: the circuit grows to cover the whole board", ()
     }
 
     // And they take up a real share of the desktop, not a token few cells.
-    const covered = inspection.chips.reduce((cells, chip) => cells + chip.side * chip.side, 0);
+    const covered = inspection.chips.reduce((cells, chip) => cells + chip.width * chip.height, 0);
     const share = covered / (bounds.width * bounds.height);
     assert(share >= 0.2, `seed ${seed}: gates cover only ${(share * 100).toFixed(1)}% of the board`);
   }
@@ -1042,8 +1171,8 @@ Deno.test("MuxstoneCircuitField: gate-to-gate wiring never closes a loop", () =>
     for (const wire of inspection.traces) {
       if (wire.kind !== "wire" || wire.driver !== "chip" || wire.consumerChipId === undefined) continue;
       const driver = inspection.chips.find((chip) =>
-        wire.cells[0]!.x === chip.x + chip.side &&
-        wire.cells[0]!.y >= chip.y && wire.cells[0]!.y < chip.y + chip.side
+        wire.cells[0]!.x === chip.x + chip.width &&
+        wire.cells[0]!.y >= chip.y && wire.cells[0]!.y < chip.y + chip.height
       );
       if (!driver) continue;
       edges.set(driver.id, [...(edges.get(driver.id) ?? []), wire.consumerChipId]);
@@ -1088,26 +1217,31 @@ Deno.test("MuxstoneCircuitField: both rails run to every gate as supply, not as 
       assert(run.consumerChipId !== undefined, `seed ${seed}: a supply run names no gate`);
       const gate = inspection.chips.find((chip) => chip.id === run.consumerChipId)!;
       assert(gate, `seed ${seed}: a supply run names a gate that is not on the board`);
+      const head = run.cells[0]!;
       const tail = run.cells[run.cells.length - 1]!;
-      assert(
-        tail.x >= gate.x && tail.x < gate.x + gate.side,
-        `seed ${seed}: supply pin at column ${tail.x} sits off the gate`,
-      );
+
+      // Each run is laid the way its current flows, so pulses never stream out
+      // of ground: VCC drives down into the gate, and the gate sinks out to GND.
+      const railEnd = run.driver === "power" ? head : tail;
+      const gateEnd = run.driver === "power" ? tail : head;
       if (run.driver === "power") {
-        assertEquals(tail.y, gate.y - 1, `seed ${seed}: VCC must land on the gate's top edge`);
+        assertEquals(gateEnd.y, gate.y - 1, `seed ${seed}: VCC must land on the gate's top edge`);
         powered.add(gate.id);
       } else if (run.driver === "ground") {
-        assertEquals(tail.y, gate.y + gate.side, `seed ${seed}: GND must land on the gate's bottom edge`);
+        assertEquals(gateEnd.y, gate.y + gate.height, `seed ${seed}: GND must leave the gate's bottom edge`);
         grounded.add(gate.id);
       } else {
         throw new Error(`seed ${seed}: a supply run is driven by ${run.driver}`);
       }
-      // And it starts at the rail it claims to come from.
-      const rail = run.driver === "power" ? inspection.power! : inspection.ground!;
-      const head = run.cells[0]!;
       assert(
-        sourcePins(rail, bounds).some((pin) => pin.x === head.x && pin.y === head.y),
-        `seed ${seed}: a ${run.driver} run starts at ${head.x},${head.y}, not at the rail`,
+        gateEnd.x >= gate.x && gateEnd.x < gate.x + gate.width,
+        `seed ${seed}: supply pin at column ${gateEnd.x} sits off the gate`,
+      );
+      // And the other end is on the rail it claims to connect.
+      const rail = run.driver === "power" ? inspection.power! : inspection.ground!;
+      assert(
+        sourcePins(rail, bounds).some((pin) => pin.x === railEnd.x && pin.y === railEnd.y),
+        `seed ${seed}: a ${run.driver} run meets the rail at ${railEnd.x},${railEnd.y}, off its terminals`,
       );
     }
 
@@ -1119,6 +1253,35 @@ Deno.test("MuxstoneCircuitField: both rails run to every gate as supply, not as 
     }
     assertEquals(inspection.groundedChips, inspection.chips.length, `seed ${seed}: a gate lost a rail`);
     assertEquals(rails.length, inspection.chips.length * 2, `seed ${seed}: expected two supply runs per gate`);
+
+    // Current runs toward ground, never out of it. Cells are ordered gate → GND
+    // on a ground run, so its pulses advancing forward is what proves the
+    // direction on screen. Runs of three cells or fewer are skipped: on a cycle
+    // that short a forward wrap and a step back are the same index delta.
+    const groundRuns = rails.filter((run) => run.driver === "ground" && run.cells.length >= 4);
+    const before = groundRuns.map((run) => run.pulses.map((pulse) => pulse.index));
+    now += 62.5;
+    field.advance({ bounds, obstacles: [], now });
+    const after = field.inspect().traces.filter((trace) =>
+      trace.kind === "rail" && trace.driver === "ground" && trace.cells.length >= 4
+    ).map((run) => run.pulses.map((pulse) => pulse.index));
+
+    let moved = 0;
+    let towardGround = 0;
+    for (let run = 0; run < Math.min(before.length, after.length); run += 1) {
+      const length = groundRuns[run]!.cells.length;
+      for (let pulse = 0; pulse < Math.min(before[run]!.length, after[run]!.length); pulse += 1) {
+        let delta = after[run]![pulse]! - before[run]![pulse]!;
+        if (delta > length / 2) delta -= length;
+        if (delta < -length / 2) delta += length;
+        if (delta === 0) continue;
+        moved += 1;
+        if (delta > 0) towardGround += 1;
+      }
+    }
+    if (moved > 0) {
+      assertEquals(towardGround, moved, `seed ${seed}: current ran away from GND on ${moved - towardGround} runs`);
+    }
   }
 });
 

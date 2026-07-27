@@ -113,7 +113,7 @@ Deno.test("TerminalShellController exposes copy-mode scrollback inspection", asy
   });
 
   await shell.start();
-  backend.emit("one\ntwo\nthree\nfour\nfive");
+  backend.emit("one\r\ntwo\r\nthree\r\nfour\r\nfive");
 
   assertEquals(shell.inspect().scrollback.visibleRows, ["three", "four", "five"]);
   shell.scrollback.scrollLines(-1);

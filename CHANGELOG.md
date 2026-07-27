@@ -126,6 +126,11 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Changed
 
+- Muxstone's circuit gates are now a uniform 8x5 package rather than squares of varying size, so more of them fit and
+  the board reads as one part family. Clicking a gate traces its whole net out in the highlight colour — every wire
+  into it, its output wires, and both supply runs — and clicking it again, or clicking bare board, releases it. Cells
+  where a net forks are drawn as a junction dot, so a branch reads as a connection rather than two wires that happen
+  to cross.
 - Muxstone's circuit background now reads as a directed schematic: every gate takes its inputs on its left edge and
   drives its single output pin off its right edge, and wires are pinned through stubs so they leave a driver and reach
   a consumer heading east. VCC takes the top-left corner and GND the bottom-right, with a CLK generator in each of the
@@ -138,7 +143,9 @@ quickly, but the affected entrypoint or module family should be named here.
   lamp, so no node is left with a dangling output.
 - Muxstone's circuit background now separates supply from signal. Both rails run to every gate on their own traces,
   reaching its VCC pin on the top edge and its GND pin on the bottom, and a gate counts as powered only because those
-  runs exist — never because a logic path happens to pass through a rail. The CLK nodes are signal generators and no
+  runs exist — never because a logic path happens to pass through a rail. Each run is laid in the direction its current
+  actually flows, down from VCC into the gate and out of the gate away to GND, so nothing ever reads as streaming out
+  of ground; a gate's VCC run carries current while its output is high and its GND run while the output is low. The CLK nodes are signal generators and no
   longer stand in for a rail connection, and gate inputs carry signals only, so every gate's cone traces back to a
   generator.
 - Muxstone's circuit background now grows to cover the desktop instead of bunching into one corner: the gate ceiling
@@ -165,6 +172,17 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Fixed
 
+- Double-width glyphs keep their two columns paired. The screen model marks the column a wide glyph also occupies, and
+  breaking either half — writing over one of them, deleting or inserting a character through the pair, erasing part of
+  it, or narrowing the screen across it — now erases both, as a real terminal does. Muxstone's renderer follows that
+  mark instead of re-deriving the pairing by measuring the glyph, so a character written into the second column of a
+  wide glyph is drawn rather than mistaken for its continuation and skipped.
+- A bare line feed is an index again — down one row, same column — rather than a newline. Full-screen applications run
+  the tty raw, so no ONLCR rewrites their output, and ncurses and tmux move down a row with terminfo `cud1`, a bare LF,
+  expecting to keep the column. Treating it as a newline dragged every such move to column 0, which corrupted the left
+  edge of a scrolling tmux pane exactly where it was drawing. VT and FF now index as well, ANSI mode 20 (LNM) restores
+  the newline behaviour when an application asks for it, and the non-PTY process backend supplies the ONLCR its pipe
+  has no tty to provide.
 - The terminal screen model now consumes ECMA-35 charset designations (`ESC ( B`, `ESC ) 0`), keypad mode selects,
   and SO/SI shifts, rendering DEC Special Graphics as box-drawing glyphs; curses apps such as nano no longer leak
   `(B`-style artifacts or draw ACS borders as letters, including across chunk-split writes.

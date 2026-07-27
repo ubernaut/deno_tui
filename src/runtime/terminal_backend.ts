@@ -118,6 +118,11 @@ export class ProcessTerminalBackend implements TerminalBackend {
   }
 
   spawn(options: TerminalBackendSpawnOptions): TerminalSessionHandle {
+    // A PTY hands its child a tty, whose line discipline maps LF to CRLF on the
+    // way out (OPOST|ONLCR). This backend has only a pipe, so it stands in for
+    // that discipline itself; without it a bare LF is an index — down a row, same
+    // column — and ordinary piped output would staircase down the screen.
+    const translateNewlines = onlcrTranslator();
     const controllerOptions: ProcessSessionControllerOptions = {
       command: options.command,
       args: options.args,
@@ -125,7 +130,7 @@ export class ProcessTerminalBackend implements TerminalBackend {
       env: options.env,
       output: options.output,
       spawn: this.#spawn,
-      onOutputData: options.onData ? (source, data) => options.onData?.(data, source) : undefined,
+      onOutputData: options.onData ? (source, data) => options.onData?.(translateNewlines(data), source) : undefined,
     };
     const session = new ProcessSessionController(controllerOptions);
     return new ProcessTerminalSessionHandle({
@@ -197,4 +202,37 @@ class ProcessTerminalSessionHandle implements TerminalSessionHandle {
   dispose(): Promise<void> {
     return this.#session.dispose();
   }
+}
+
+const CARRIAGE_RETURN = 0x0d;
+const LINE_FEED = 0x0a;
+
+/**
+ * Stateful ONLCR translation: every LF not already preceded by a CR gains one.
+ * The carry across calls matters because a CRLF can straddle two reads, and
+ * inserting a second CR there would send the line back to column zero twice.
+ */
+function onlcrTranslator(): (data: Uint8Array) => Uint8Array {
+  let precededByCarriageReturn = false;
+  return (data) => {
+    if (data.length === 0) return data;
+    const openedAfterCarriageReturn = precededByCarriageReturn;
+    let bare = 0;
+    let previous = openedAfterCarriageReturn;
+    for (const byte of data) {
+      if (byte === LINE_FEED && !previous) bare += 1;
+      previous = byte === CARRIAGE_RETURN;
+    }
+    precededByCarriageReturn = previous;
+    if (bare === 0) return data;
+    const translated = new Uint8Array(data.length + bare);
+    let cursor = 0;
+    let afterCarriageReturn = openedAfterCarriageReturn;
+    for (const byte of data) {
+      if (byte === LINE_FEED && !afterCarriageReturn) translated[cursor++] = CARRIAGE_RETURN;
+      translated[cursor++] = byte;
+      afterCarriageReturn = byte === CARRIAGE_RETURN;
+    }
+    return translated;
+  };
 }

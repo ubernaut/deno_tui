@@ -2635,6 +2635,11 @@ function paintTerminal(
     const cells = rows[row] ?? [];
     for (let column = 0; column < rect.width; column += 1) {
       const cell = cells[column] ?? { char: " " };
+      // The screen model marks the column a double-width glyph also occupies.
+      // Skipping it here — rather than re-deriving the pairing by measuring the
+      // glyph — is what keeps the render in step with the model when something
+      // has overwritten or shifted one half of a pair.
+      if (cell.continuation) continue;
       const cursor = cursorActive && inspection.cursor.row === row && inspection.cursor.column === column;
       let background = cursor ? theme.accent : muxstoneTerminalRgb(cell.background, true) ?? defaultBackground;
       let foreground = cursor
@@ -2655,10 +2660,6 @@ function paintTerminal(
         background,
         bold: cursor || cell.bold,
       });
-      // The screen model stores a blank in the second column of a wide glyph.
-      // Painting it would retire the glyph we just placed, so step over it and
-      // let the painter own both columns.
-      if (muxstoneGlyphColumns(glyph) === 2) column += 1;
     }
   }
   const warning = runtime.warning.peek();
