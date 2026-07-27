@@ -134,11 +134,15 @@ quickly, but the affected entrypoint or module family should be named here.
 - Muxstone's circuit background drives an eight-lamp indicator array across the top of the desktop, wired one routed
   wire per lamp and preferring a distinct gate per lamp. Every gate's output now reaches a gate or a lamp, so no node
   is left with a dangling output.
+- Muxstone's circuit background now separates supply from signal. Both rails run to every gate on their own traces,
+  reaching its VCC pin on the top edge and its GND pin on the bottom, and a gate counts as powered only because those
+  runs exist — never because a logic path happens to pass through a rail. The CLK nodes are signal generators and no
+  longer stand in for a rail connection, and gate inputs carry signals only, so every gate's cone traces back to a
+  generator.
 - Muxstone's circuit background now evolves instead of re-wiring itself. The board opens as a small circuit that is
-  already valid — no floating inputs, every gate's input cone reaching all three sources — and grows one gate at a
-  time, either appended to an existing output or spliced into an existing wire; both moves preserve the invariant and
-  keep the netlist acyclic. Gate kinds are chosen so a new gate's output is not pinned constant by its own inputs, and
-  a repair pass runs only when a window despawns or relocates a gate.
+  already valid — every gate supplied by both rails, driven by a signal, and read by something — and grows one gate at
+  a time, either appended to an existing output or spliced into an existing wire; both moves preserve the invariant and
+  keep the netlist acyclic. A repair pass runs only when a window despawns or relocates a gate.
 - The Muxstone showcase prefix key moved from tmux-conflicting Ctrl-B to Ctrl-N; double Ctrl-N forwards a literal
   Ctrl-N byte to the focused terminal.
 - The Muxstone network panel browses hosts and tailnet machines through the shared workbench `TreeController`

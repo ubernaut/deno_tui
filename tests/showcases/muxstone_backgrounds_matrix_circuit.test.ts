@@ -657,12 +657,10 @@ Deno.test("MuxstoneCircuitField: wires physically route from each driver to its 
     }
     const consumer = inspection.chips.find((chip) => near(tail, chip));
     assert(consumer, `wire tail at ${tail.x},${tail.y} should touch its consumer gate`);
-    // The driver end must touch whatever drives it.
-    if (wire.driver === "power") {
-      assert(touchesRail(head, inspection.power), "a power wire must start at VCC");
-    } else if (wire.driver === "ground") {
-      assert(touchesRail(head, inspection.ground), "a ground wire must start at GND");
-    } else if (wire.driver === "osc") {
+    // The driver end must touch whatever drives it. A signal wire is never
+    // driven by a rail: VCC and GND reach a gate as supply, not as logic.
+    assert(wire.driver !== "power" && wire.driver !== "ground", "a rail must not drive a signal wire");
+    if (wire.driver === "osc") {
       assert(
         inspection.oscillators.some((oscillator) => touchesRail(head, oscillator)),
         "an oscillator wire must start at a CLK node",
@@ -714,8 +712,8 @@ Deno.test("MuxstoneCircuitField: wires physically route from each driver to its 
 });
 
 Deno.test("MuxstoneCircuitField: the board opens as a small valid circuit", () => {
-  // "Simple but valid": a handful of gates, nothing floating, and every gate's
-  // input cone already reaching VCC, GND and CLK before any evolution runs.
+  // "Simple but valid": a handful of gates, every one supplied by both rails and
+  // driven by a signal traced back to a generator, before any evolution runs.
   for (const seed of [3, 7, 15, 31, 44]) {
     const field = new MuxstoneCircuitField({ seed });
     const bounds = { column: 0, row: 0, width: 110, height: 30 };
@@ -724,8 +722,8 @@ Deno.test("MuxstoneCircuitField: the board opens as a small valid circuit", () =
 
     assertEquals(inspection.chips.length, 3, `seed ${seed}: the opening circuit should be small`);
     assertEquals(inspection.floatingChips, 0, `seed ${seed}: an opening gate has too few inputs`);
-    assertEquals(inspection.groundedChips, 3, `seed ${seed}: an opening gate misses a rail`);
-    assertEquals(inspection.clockedChips, 3, `seed ${seed}: an opening gate misses the clock`);
+    assertEquals(inspection.groundedChips, 3, `seed ${seed}: an opening gate is missing a supply rail`);
+    assertEquals(inspection.clockedChips, 3, `seed ${seed}: an opening gate traces back to no generator`);
     assert(inspection.power && inspection.ground, `seed ${seed}: expected both rails`);
     assert(inspection.oscillators.length >= 1, `seed ${seed}: expected a clock`);
 
@@ -991,9 +989,65 @@ Deno.test("MuxstoneCircuitField: gate-to-gate wiring never closes a loop", () =>
   }
 });
 
+Deno.test("MuxstoneCircuitField: both rails run to every gate as supply, not as signal", () => {
+  // Power is a connection, not a logic level: each gate must have VCC reaching
+  // its top edge and GND its bottom edge, on its own run back to the rail. A
+  // gate is never "grounded" because some logic path happens to pass a rail.
+  for (const seed of [3, 7, 15, 31, 44]) {
+    const field = new MuxstoneCircuitField({ seed });
+    const bounds = { column: 0, row: 0, width: 120, height: 34 };
+    let now = 0;
+    for (let frame = 0; frame < 600; frame += 1) {
+      now += 62.5;
+      field.advance({ bounds, obstacles: [], now });
+    }
+    const inspection = field.inspect();
+    const rails = inspection.traces.filter((trace) => trace.kind === "rail");
+    const powered = new Set<number>();
+    const grounded = new Set<number>();
+
+    for (const run of rails) {
+      assert(run.consumerChipId !== undefined, `seed ${seed}: a supply run names no gate`);
+      const gate = inspection.chips.find((chip) => chip.id === run.consumerChipId)!;
+      assert(gate, `seed ${seed}: a supply run names a gate that is not on the board`);
+      const tail = run.cells[run.cells.length - 1]!;
+      assert(
+        tail.x >= gate.x && tail.x < gate.x + gate.side,
+        `seed ${seed}: supply pin at column ${tail.x} sits off the gate`,
+      );
+      if (run.driver === "power") {
+        assertEquals(tail.y, gate.y - 1, `seed ${seed}: VCC must land on the gate's top edge`);
+        powered.add(gate.id);
+      } else if (run.driver === "ground") {
+        assertEquals(tail.y, gate.y + gate.side, `seed ${seed}: GND must land on the gate's bottom edge`);
+        grounded.add(gate.id);
+      } else {
+        throw new Error(`seed ${seed}: a supply run is driven by ${run.driver}`);
+      }
+      // And it starts at the rail it claims to come from.
+      const rail = run.driver === "power" ? inspection.power! : inspection.ground!;
+      const head = run.cells[0]!;
+      assert(
+        sourcePins(rail, bounds).some((pin) => pin.x === head.x && pin.y === head.y),
+        `seed ${seed}: a ${run.driver} run starts at ${head.x},${head.y}, not at the rail`,
+      );
+    }
+
+    // Every gate, not a lucky few: one VCC run and one GND run each.
+    assert(inspection.chips.length >= 3, `seed ${seed}: expected a populated board`);
+    for (const chip of inspection.chips) {
+      assert(powered.has(chip.id), `seed ${seed}: gate ${chip.id} is unpowered`);
+      assert(grounded.has(chip.id), `seed ${seed}: gate ${chip.id} is ungrounded`);
+    }
+    assertEquals(inspection.groundedChips, inspection.chips.length, `seed ${seed}: a gate lost a rail`);
+    assertEquals(rails.length, inspection.chips.length * 2, `seed ${seed}: expected two supply runs per gate`);
+  }
+});
+
 Deno.test("MuxstoneCircuitField: every gate connects to the power, ground and clock sources", () => {
-  // A plausible circuit leaves nothing floating: each gate's input cone must
-  // reach VCC, GND and CLK. Check across seeds and after obstacle churn.
+  // A plausible circuit leaves nothing floating: each gate is supplied by both
+  // rails and driven by a signal traced back to a generator. Check across seeds
+  // and after obstacle churn.
   for (const seed of [3, 7, 15, 31, 44]) {
     const field = new MuxstoneCircuitField({ seed });
     const bounds = { column: 0, row: 0, width: 100, height: 32 };
@@ -1003,13 +1057,13 @@ Deno.test("MuxstoneCircuitField: every gate connects to the power, ground and cl
       field.advance({ bounds, obstacles: [], now });
     }
     let inspection = field.inspect();
-    assertEquals(inspection.groundedChips, inspection.chips.length, `seed ${seed}: a gate is floating`);
-    assertEquals(inspection.clockedChips, inspection.chips.length, `seed ${seed}: a gate is unclocked`);
-    assertEquals(inspection.floatingChips, 0, `seed ${seed}: a gate is short of inputs`);
+    assertEquals(inspection.groundedChips, inspection.chips.length, `seed ${seed}: a gate lost a supply rail`);
+    assertEquals(inspection.clockedChips, inspection.chips.length, `seed ${seed}: a gate traces back to no generator`);
+    assertEquals(inspection.floatingChips, 0, `seed ${seed}: a gate has no signal driving it`);
     assert(inspection.power && inspection.ground, "expected both rails");
 
     // Move a window through the board so chips relocate/despawn and re-wire,
-    // then confirm the grounding invariant still holds.
+    // then confirm supply and signal both survived it.
     for (const column of [10, 40, 70]) {
       const obstacle = { column, row: 8, width: 24, height: 12 };
       for (let frame = 0; frame < 40; frame += 1) {
@@ -1025,7 +1079,7 @@ Deno.test("MuxstoneCircuitField: every gate connects to the power, ground and cl
     assertEquals(
       inspection.groundedChips,
       inspection.chips.length,
-      `seed ${seed}: a gate floated after a window churned the board`,
+      `seed ${seed}: a gate lost a supply rail after a window churned the board`,
     );
     assertEquals(
       inspection.clockedChips,
