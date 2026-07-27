@@ -126,6 +126,14 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Changed
 
+- Muxstone's circuit background now reads as a directed schematic: every gate takes its inputs on its left edge and
+  drives its single output pin off its right edge, wires are pinned through stubs so they leave a driver and reach a
+  consumer heading east, and the VCC, CLK and GND sources stack in a reserved left column.
+- Muxstone's circuit background now evolves instead of re-wiring itself. The board opens as a small circuit that is
+  already valid — no floating inputs, every gate's input cone reaching all three sources — and grows one gate at a
+  time, either appended to an existing output or spliced into an existing wire; both moves preserve the invariant and
+  keep the netlist acyclic. Gate kinds are chosen so a new gate's output is not pinned constant by its own inputs, and
+  a repair pass runs only when a window despawns or relocates a gate.
 - The Muxstone showcase prefix key moved from tmux-conflicting Ctrl-B to Ctrl-N; double Ctrl-N forwards a literal
   Ctrl-N byte to the focused terminal.
 - The Muxstone network panel browses hosts and tailnet machines through the shared workbench `TreeController`

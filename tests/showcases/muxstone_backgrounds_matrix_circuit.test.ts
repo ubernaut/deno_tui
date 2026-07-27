@@ -680,7 +680,9 @@ Deno.test("MuxstoneCircuitField: wires physically route from each driver to its 
   }
 
   // Pulses run forward, driver → consumer: after a step the lead pulse's index
-  // rises (mod length), never falls.
+  // rises (mod length), never falls. Wires of three cells or fewer are skipped:
+  // a driver pin directly beside its consumer pin makes a cycle so short that a
+  // forward wrap and a backward step are the same index delta.
   const before = wires.map((wire) => wire.pulses.map((pulse) => pulse.index));
   const lengths = wires.map((wire) => wire.cells.length);
   now += 60;
@@ -691,6 +693,7 @@ Deno.test("MuxstoneCircuitField: wires physically route from each driver to its 
   let moved = 0;
   for (let w = 0; w < Math.min(before.length, after.length); w += 1) {
     const length = lengths[w]!;
+    if (length < 4) continue;
     for (let p = 0; p < Math.min(before[w]!.length, after[w]!.length); p += 1) {
       let delta = after[w]![p]! - before[w]![p]!;
       if (delta > length / 2) delta -= length;
@@ -703,9 +706,174 @@ Deno.test("MuxstoneCircuitField: wires physically route from each driver to its 
   if (moved > 0) assert(forward / moved >= 0.9, `pulses should run forward: ${forward}/${moved}`);
 });
 
-Deno.test("MuxstoneCircuitField: every gate connects to both the power and ground rail", () => {
+Deno.test("MuxstoneCircuitField: the board opens as a small valid circuit", () => {
+  // "Simple but valid": a handful of gates, nothing floating, and every gate's
+  // input cone already reaching VCC, GND and CLK before any evolution runs.
+  for (const seed of [3, 7, 15, 31, 44]) {
+    const field = new MuxstoneCircuitField({ seed });
+    const bounds = { column: 0, row: 0, width: 110, height: 30 };
+    field.advance({ bounds, obstacles: [], now: 0 });
+    const inspection = field.inspect();
+
+    assertEquals(inspection.chips.length, 3, `seed ${seed}: the opening circuit should be small`);
+    assertEquals(inspection.floatingChips, 0, `seed ${seed}: an opening gate has too few inputs`);
+    assertEquals(inspection.groundedChips, 3, `seed ${seed}: an opening gate misses a rail`);
+    assertEquals(inspection.clockedChips, 3, `seed ${seed}: an opening gate misses the clock`);
+    assert(inspection.power && inspection.ground, `seed ${seed}: expected both rails`);
+    assert(inspection.oscillators.length >= 1, `seed ${seed}: expected a clock`);
+
+    // The three sources own the left column, ahead of every gate.
+    const sources = [inspection.power!, inspection.ground!, ...inspection.oscillators];
+    for (const source of sources) {
+      assert(source.x < 5, `seed ${seed}: source ${source.label} at x=${source.x} should sit in the left column`);
+    }
+    for (const chip of inspection.chips) {
+      assert(chip.x >= 5, `seed ${seed}: gate at x=${chip.x} should sit clear of the source column`);
+    }
+    // Every gate is wired, and each wire ends on the gate it claims to feed.
+    const wires = inspection.traces.filter((trace) => trace.kind === "wire");
+    assert(wires.length >= 6, `seed ${seed}: expected the opening netlist to be routed, saw ${wires.length}`);
+  }
+});
+
+Deno.test("MuxstoneCircuitField: gate inputs enter on the left and outputs leave on the right", () => {
+  let wireCount = 0;
+  let enteringEast = 0;
+  for (const seed of [3, 7, 11, 19, 31]) {
+    const field = new MuxstoneCircuitField({ seed });
+    const bounds = { column: 0, row: 0, width: 120, height: 34 };
+    let now = 0;
+    // Long enough that growth, splices and drift have all reshaped the board.
+    for (let frame = 0; frame < 900; frame += 1) {
+      now += 62.5;
+      field.advance({ bounds, obstacles: [], now });
+    }
+    const inspection = field.inspect();
+    const chipById = new Map(inspection.chips.map((chip) => [chip.id, chip]));
+    const sources = [inspection.power!, inspection.ground!, ...inspection.oscillators];
+
+    for (const wire of inspection.traces) {
+      if (wire.kind !== "wire" || wire.consumerChipId === undefined) continue;
+      const consumer = chipById.get(wire.consumerChipId);
+      assert(consumer, `seed ${seed}: a wire names a consumer that is not on the board`);
+      wireCount += 1;
+
+      // The wire ends on the consumer's left edge: that is its input pin.
+      const tail = wire.cells[wire.cells.length - 1]!;
+      assertEquals(tail.x, consumer.x - 1, `seed ${seed}: an input pin left the consumer's left edge`);
+      assert(
+        tail.y >= consumer.y && tail.y < consumer.y + consumer.side,
+        `seed ${seed}: input pin at row ${tail.y} sits off the consumer's left edge`,
+      );
+      if (wire.cells[wire.cells.length - 2]!.x === tail.x - 1) enteringEast += 1;
+
+      // And it starts on the driver's right edge: that is its output pin.
+      const head = wire.cells[0]!;
+      if (wire.driver === "chip") {
+        const driver = inspection.chips.find((chip) =>
+          head.x === chip.x + chip.side && head.y >= chip.y && head.y < chip.y + chip.side
+        );
+        assert(driver, `seed ${seed}: a wire starts at ${head.x},${head.y}, off every gate's right edge`);
+      } else {
+        assert(
+          sources.some((source) => head.x === source.x + 3 && head.y === source.y),
+          `seed ${seed}: a source wire starts at ${head.x},${head.y}, not at a source's output pin`,
+        );
+      }
+    }
+  }
+  assert(wireCount >= 50, `expected plenty of wires to check, saw ${wireCount}`);
+  // Wires are routed through stubs that force them out of the driver eastward
+  // and into the consumer eastward; only a board too tight for the stub falls
+  // back to a direct route, which still lands on the correct pins.
+  assert(
+    enteringEast / wireCount >= 0.95,
+    `wires should approach their consumer heading east: ${enteringEast}/${wireCount}`,
+  );
+});
+
+Deno.test("MuxstoneCircuitField: evolution adds gates without ever invalidating the circuit", () => {
+  // Growth is the only thing that changes the netlist, and it may only extend
+  // it: at every sample the board must be larger-or-equal and still valid.
+  for (const seed of [5, 23, 61]) {
+    const field = new MuxstoneCircuitField({ seed });
+    const bounds = { column: 0, row: 0, width: 140, height: 40 };
+    let now = 0;
+    field.advance({ bounds, obstacles: [], now });
+    const opening = field.inspect().chips.length;
+    let previous = opening;
+    for (let sample = 0; sample < 24; sample += 1) {
+      for (let frame = 0; frame < 40; frame += 1) {
+        now += 62.5;
+        field.advance({ bounds, obstacles: [], now });
+      }
+      const inspection = field.inspect();
+      assert(
+        inspection.chips.length >= previous,
+        `seed ${seed}: the circuit shrank from ${previous} to ${inspection.chips.length}`,
+      );
+      previous = inspection.chips.length;
+      assertEquals(inspection.floatingChips, 0, `seed ${seed}: a gate lost its inputs at sample ${sample}`);
+      assertEquals(
+        inspection.groundedChips,
+        inspection.chips.length,
+        `seed ${seed}: a gate lost a rail at sample ${sample}`,
+      );
+      assertEquals(
+        inspection.clockedChips,
+        inspection.chips.length,
+        `seed ${seed}: a gate lost the clock at sample ${sample}`,
+      );
+    }
+    assert(previous > opening, `seed ${seed}: expected the circuit to evolve past ${opening} gates`);
+  }
+});
+
+Deno.test("MuxstoneCircuitField: gate-to-gate wiring never closes a loop", () => {
+  // Signal flows one way, so the routed netlist must stay acyclic however many
+  // gates have been appended or spliced into it.
+  for (const seed of [7, 29, 53]) {
+    const field = new MuxstoneCircuitField({ seed });
+    const bounds = { column: 0, row: 0, width: 130, height: 36 };
+    let now = 0;
+    for (let frame = 0; frame < 800; frame += 1) {
+      now += 62.5;
+      field.advance({ bounds, obstacles: [], now });
+    }
+    const inspection = field.inspect();
+    // driver id -> consumer ids, read off the routed wires themselves.
+    const edges = new Map<number, number[]>();
+    for (const wire of inspection.traces) {
+      if (wire.kind !== "wire" || wire.driver !== "chip" || wire.consumerChipId === undefined) continue;
+      const driver = inspection.chips.find((chip) =>
+        wire.cells[0]!.x === chip.x + chip.side &&
+        wire.cells[0]!.y >= chip.y && wire.cells[0]!.y < chip.y + chip.side
+      );
+      if (!driver) continue;
+      edges.set(driver.id, [...(edges.get(driver.id) ?? []), wire.consumerChipId]);
+    }
+    assert(edges.size >= 2, `seed ${seed}: expected gates to feed one another`);
+
+    const state = new Map<number, "open" | "closed">();
+    const walk = (id: number): boolean => {
+      if (state.get(id) === "open") return true;
+      if (state.get(id) === "closed") return false;
+      state.set(id, "open");
+      for (const next of edges.get(id) ?? []) {
+        if (walk(next)) return true;
+      }
+      state.set(id, "closed");
+      return false;
+    };
+    for (const chip of inspection.chips) {
+      assert(!walk(chip.id), `seed ${seed}: the netlist closed a loop through gate ${chip.id}`);
+    }
+  }
+});
+
+Deno.test("MuxstoneCircuitField: every gate connects to the power, ground and clock sources", () => {
   // A plausible circuit leaves nothing floating: each gate's input cone must
-  // reach VCC and GND. Check across seeds and after obstacle churn re-wires.
+  // reach VCC, GND and CLK. Check across seeds and after obstacle churn.
   for (const seed of [3, 7, 15, 31, 44]) {
     const field = new MuxstoneCircuitField({ seed });
     const bounds = { column: 0, row: 0, width: 100, height: 32 };
@@ -716,6 +884,8 @@ Deno.test("MuxstoneCircuitField: every gate connects to both the power and groun
     }
     let inspection = field.inspect();
     assertEquals(inspection.groundedChips, inspection.chips.length, `seed ${seed}: a gate is floating`);
+    assertEquals(inspection.clockedChips, inspection.chips.length, `seed ${seed}: a gate is unclocked`);
+    assertEquals(inspection.floatingChips, 0, `seed ${seed}: a gate is short of inputs`);
     assert(inspection.power && inspection.ground, "expected both rails");
 
     // Move a window through the board so chips relocate/despawn and re-wire,
@@ -735,8 +905,14 @@ Deno.test("MuxstoneCircuitField: every gate connects to both the power and groun
     assertEquals(
       inspection.groundedChips,
       inspection.chips.length,
-      `seed ${seed}: a gate floated after re-wiring`,
+      `seed ${seed}: a gate floated after a window churned the board`,
     );
+    assertEquals(
+      inspection.clockedChips,
+      inspection.chips.length,
+      `seed ${seed}: a gate lost its clock after a window churned the board`,
+    );
+    assertEquals(inspection.floatingChips, 0, `seed ${seed}: a gate lost its inputs after a window churned the board`);
   }
 });
 
