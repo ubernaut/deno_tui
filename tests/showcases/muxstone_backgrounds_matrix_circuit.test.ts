@@ -468,7 +468,7 @@ Deno.test("MuxstoneCircuitField: surveys the board and populates empty space ove
     }
   }
   // And the board stays bounded rather than growing without limit.
-  assert(chips.length <= 18, `chip count should stay bounded, got ${chips.length}`);
+  assert(chips.length <= 40, `chip count should stay bounded, got ${chips.length}`);
 });
 
 Deno.test("MuxstoneCircuitField: routes over windows that are no longer obstacles", () => {
@@ -755,18 +755,18 @@ Deno.test("MuxstoneCircuitField: the board opens as a small valid circuit", () =
   }
 });
 
-/** The cells a source node may anchor a wire on, in the field's own order. */
+/** The terminals a source node may anchor a wire on, in the field's own order. */
 function sourcePins(source: { x: number; y: number }, bounds: Rectangle): Array<{ x: number; y: number }> {
   const westward = source.x + 3 / 2 > bounds.width / 2;
-  const exitDx = westward ? -1 : 1;
   const inner = westward ? source.x - 1 : source.x + 3;
+  const faceX = westward ? -1 : 1;
+  const inwardY = source.y * 2 < bounds.height ? 1 : -1;
   return [
     { x: inner, y: source.y },
-    { x: inner, y: source.y + 1 },
-    { x: inner, y: source.y - 1 },
-    { x: inner + exitDx, y: source.y },
-    { x: source.x, y: source.y + 1 },
-    { x: source.x, y: source.y - 1 },
+    { x: source.x + 1, y: source.y + inwardY },
+    { x: inner, y: source.y + inwardY },
+    { x: source.x + 3 - 1 - (westward ? 0 : 2), y: source.y + inwardY },
+    { x: inner + faceX, y: source.y },
   ];
 }
 
@@ -953,6 +953,38 @@ Deno.test("MuxstoneCircuitField: every gate's output drives a gate or a lamp", (
         assert(drives, `seed ${seed}: gate ${chip.id} has no output wire at sample ${sample}`);
       }
     }
+  }
+});
+
+Deno.test("MuxstoneCircuitField: the circuit grows to cover the whole board", () => {
+  // A board that fills one corner and leaves the rest bare reads as broken, so
+  // growth has to keep working the empty space until the desktop is populated.
+  const bounds = { column: 0, row: 0, width: 140, height: 40 };
+  for (const seed of [3, 7, 19, 44]) {
+    const field = new MuxstoneCircuitField({ seed });
+    let now = 0;
+    for (let frame = 0; frame < 2_400; frame += 1) {
+      now += 62.5;
+      field.advance({ bounds, obstacles: [], now });
+    }
+    const inspection = field.inspect();
+    assert(inspection.chips.length >= 20, `seed ${seed}: only ${inspection.chips.length} gates grew`);
+
+    // Every quadrant carries part of the circuit, rather than it bunching up.
+    const quadrants = [0, 0, 0, 0];
+    for (const chip of inspection.chips) {
+      const column = chip.x + chip.side / 2 < bounds.width / 2 ? 0 : 1;
+      const row = chip.y + chip.side / 2 < bounds.height / 2 ? 0 : 2;
+      quadrants[row + column] += 1;
+    }
+    for (let index = 0; index < quadrants.length; index += 1) {
+      assert(quadrants[index]! >= 3, `seed ${seed}: quadrant ${index} holds only ${quadrants[index]} gates`);
+    }
+
+    // And they take up a real share of the desktop, not a token few cells.
+    const covered = inspection.chips.reduce((cells, chip) => cells + chip.side * chip.side, 0);
+    const share = covered / (bounds.width * bounds.height);
+    assert(share >= 0.2, `seed ${seed}: gates cover only ${(share * 100).toFixed(1)}% of the board`);
   }
 });
 

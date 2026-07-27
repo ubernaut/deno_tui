@@ -141,6 +141,12 @@ quickly, but the affected entrypoint or module family should be named here.
   runs exist — never because a logic path happens to pass through a rail. The CLK nodes are signal generators and no
   longer stand in for a rail connection, and gate inputs carry signals only, so every gate's cone traces back to a
   generator.
+- Muxstone's circuit background now grows to cover the desktop instead of bunching into one corner: the gate ceiling
+  scales with the board area, growth runs faster while the board is bare and settles as it fills, a new gate is seated
+  just downstream of the gate it extends, and a gate that cannot fit there goes to the emptiest part of the board. Each
+  rail hands its runs out across several terminals around its label rather than one cell, so VCC and GND read as wired
+  into the circuit. Re-routing now coalesces while a window is still being dragged, which more than pays for the denser
+  board.
 - Muxstone's circuit background now evolves instead of re-wiring itself. The board opens as a small circuit that is
   already valid — every gate supplied by both rails, driven by a signal, and read by something — and grows one gate at
   a time, either appended to an existing output or spliced into an existing wire; both moves preserve the invariant and
