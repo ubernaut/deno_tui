@@ -127,8 +127,13 @@ quickly, but the affected entrypoint or module family should be named here.
 ### Changed
 
 - Muxstone's circuit background now reads as a directed schematic: every gate takes its inputs on its left edge and
-  drives its single output pin off its right edge, wires are pinned through stubs so they leave a driver and reach a
-  consumer heading east, and the VCC, CLK and GND sources stack in a reserved left column.
+  drives its single output pin off its right edge, and wires are pinned through stubs so they leave a driver and reach
+  a consumer heading east. VCC takes the top-left corner and GND the bottom-right, with a CLK generator in each of the
+  other two corners and a third in the middle of a board large enough to warrant it; a source parked in a right-hand
+  corner feeds west, and any source a window covers slides aside and returns to its corner when the window moves on.
+- Muxstone's circuit background drives an eight-lamp indicator array across the top of the desktop, wired one routed
+  wire per lamp and preferring a distinct gate per lamp. Every gate's output now reaches a gate or a lamp, so no node
+  is left with a dangling output.
 - Muxstone's circuit background now evolves instead of re-wiring itself. The board opens as a small circuit that is
   already valid — no floating inputs, every gate's input cone reaching all three sources — and grows one gate at a
   time, either appended to an existing output or spliced into an existing wire; both moves preserve the invariant and

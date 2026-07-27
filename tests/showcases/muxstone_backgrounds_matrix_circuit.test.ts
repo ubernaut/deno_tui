@@ -647,7 +647,14 @@ Deno.test("MuxstoneCircuitField: wires physically route from each driver to its 
     assert(wire.cells.length >= 2, "a routed wire needs at least two cells");
     const head = wire.cells[0]!;
     const tail = wire.cells[wire.cells.length - 1]!;
-    // The consumer gate: find the chip whose ring the tail touches.
+    // The consumer: the chip whose ring the tail touches, or the lamp it feeds.
+    if (wire.consumerLedId !== undefined) {
+      const lamp = inspection.leds.find((led) => led.id === wire.consumerLedId);
+      assert(lamp, "a lamp wire names a lamp that is not on the board");
+      assertEquals({ x: tail.x, y: tail.y }, { x: lamp!.x - 1, y: lamp!.y }, "a lamp wire ends on the lamp's pin");
+      checked += 1;
+      continue;
+    }
     const consumer = inspection.chips.find((chip) => near(tail, chip));
     assert(consumer, `wire tail at ${tail.x},${tail.y} should touch its consumer gate`);
     // The driver end must touch whatever drives it.
@@ -722,19 +729,48 @@ Deno.test("MuxstoneCircuitField: the board opens as a small valid circuit", () =
     assert(inspection.power && inspection.ground, `seed ${seed}: expected both rails`);
     assert(inspection.oscillators.length >= 1, `seed ${seed}: expected a clock`);
 
-    // The three sources own the left column, ahead of every gate.
-    const sources = [inspection.power!, inspection.ground!, ...inspection.oscillators];
-    for (const source of sources) {
-      assert(source.x < 5, `seed ${seed}: source ${source.label} at x=${source.x} should sit in the left column`);
-    }
-    for (const chip of inspection.chips) {
-      assert(chip.x >= 5, `seed ${seed}: gate at x=${chip.x} should sit clear of the source column`);
-    }
+    // VCC takes the top-left corner and GND the bottom-right, with a clock in
+    // each of the other two and the odd one out in the middle of the board.
+    assertEquals({ x: inspection.power!.x, y: inspection.power!.y }, { x: 0, y: 0 }, `seed ${seed}: VCC off-corner`);
+    assertEquals(
+      { x: inspection.ground!.x, y: inspection.ground!.y },
+      { x: bounds.width - 3, y: bounds.height - 1 },
+      `seed ${seed}: GND off-corner`,
+    );
+    const clocks = inspection.oscillators.map((clock) => `${clock.x},${clock.y}`);
+    assert(clocks.includes(`${bounds.width - 3},0`), `seed ${seed}: no clock in the top-right corner`);
+    assert(clocks.includes(`0,${bounds.height - 1}`), `seed ${seed}: no clock in the bottom-left corner`);
+    assert(
+      clocks.includes(`${Math.floor((bounds.width - 3) / 2)},${Math.floor(bounds.height / 2)}`),
+      `seed ${seed}: a board this size should carry a central clock too`,
+    );
+    // Every generator drives something rather than blinking on its own.
+    const driven = new Set(
+      inspection.traces.filter((trace) => trace.driver === "osc").map((trace) =>
+        `${trace.cells[0]!.x},${trace.cells[0]!.y}`
+      ),
+    );
+    assert(driven.size >= 2, `seed ${seed}: expected the clocks to be wired, saw ${driven.size}`);
     // Every gate is wired, and each wire ends on the gate it claims to feed.
     const wires = inspection.traces.filter((trace) => trace.kind === "wire");
     assert(wires.length >= 6, `seed ${seed}: expected the opening netlist to be routed, saw ${wires.length}`);
   }
 });
+
+/** The cells a source node may anchor a wire on, in the field's own order. */
+function sourcePins(source: { x: number; y: number }, bounds: Rectangle): Array<{ x: number; y: number }> {
+  const westward = source.x + 3 / 2 > bounds.width / 2;
+  const exitDx = westward ? -1 : 1;
+  const inner = westward ? source.x - 1 : source.x + 3;
+  return [
+    { x: inner, y: source.y },
+    { x: inner, y: source.y + 1 },
+    { x: inner, y: source.y - 1 },
+    { x: inner + exitDx, y: source.y },
+    { x: source.x, y: source.y + 1 },
+    { x: source.x, y: source.y - 1 },
+  ];
+}
 
 Deno.test("MuxstoneCircuitField: gate inputs enter on the left and outputs leave on the right", () => {
   let wireCount = 0;
@@ -750,21 +786,27 @@ Deno.test("MuxstoneCircuitField: gate inputs enter on the left and outputs leave
     }
     const inspection = field.inspect();
     const chipById = new Map(inspection.chips.map((chip) => [chip.id, chip]));
+    const ledById = new Map(inspection.leds.map((led) => [led.id, led]));
     const sources = [inspection.power!, inspection.ground!, ...inspection.oscillators];
 
     for (const wire of inspection.traces) {
-      if (wire.kind !== "wire" || wire.consumerChipId === undefined) continue;
-      const consumer = chipById.get(wire.consumerChipId);
-      assert(consumer, `seed ${seed}: a wire names a consumer that is not on the board`);
+      if (wire.kind !== "wire") continue;
+      const consumer = wire.consumerChipId !== undefined ? chipById.get(wire.consumerChipId) : undefined;
+      const lamp = wire.consumerLedId !== undefined ? ledById.get(wire.consumerLedId) : undefined;
+      assert(consumer ?? lamp, `seed ${seed}: a wire names a consumer that is not on the board`);
       wireCount += 1;
 
-      // The wire ends on the consumer's left edge: that is its input pin.
+      // The wire ends on the consumer's left: that is its input pin.
       const tail = wire.cells[wire.cells.length - 1]!;
-      assertEquals(tail.x, consumer.x - 1, `seed ${seed}: an input pin left the consumer's left edge`);
-      assert(
-        tail.y >= consumer.y && tail.y < consumer.y + consumer.side,
-        `seed ${seed}: input pin at row ${tail.y} sits off the consumer's left edge`,
-      );
+      if (consumer) {
+        assertEquals(tail.x, consumer.x - 1, `seed ${seed}: an input pin left the consumer's left edge`);
+        assert(
+          tail.y >= consumer.y && tail.y < consumer.y + consumer.side,
+          `seed ${seed}: input pin at row ${tail.y} sits off the consumer's left edge`,
+        );
+      } else {
+        assertEquals({ x: tail.x, y: tail.y }, { x: lamp!.x - 1, y: lamp!.y }, `seed ${seed}: lamp pin off its left`);
+      }
       if (wire.cells[wire.cells.length - 2]!.x === tail.x - 1) enteringEast += 1;
 
       // And it starts on the driver's right edge: that is its output pin.
@@ -775,8 +817,11 @@ Deno.test("MuxstoneCircuitField: gate inputs enter on the left and outputs leave
         );
         assert(driver, `seed ${seed}: a wire starts at ${head.x},${head.y}, off every gate's right edge`);
       } else {
+        // A source drives out of the face pointing into the board — east for one
+        // in the left half, west for a right-hand corner — sliding a row up or
+        // down when the pin itself is taken.
         assert(
-          sources.some((source) => head.x === source.x + 3 && head.y === source.y),
+          sources.some((source) => sourcePins(source, bounds).some((pin) => pin.x === head.x && pin.y === head.y)),
           `seed ${seed}: a source wire starts at ${head.x},${head.y}, not at a source's output pin`,
         );
       }
@@ -790,6 +835,81 @@ Deno.test("MuxstoneCircuitField: gate inputs enter on the left and outputs leave
     enteringEast / wireCount >= 0.95,
     `wires should approach their consumer heading east: ${enteringEast}/${wireCount}`,
   );
+});
+
+Deno.test("MuxstoneCircuitField: an eight-lamp array reads the circuit out across the top", () => {
+  const field = new MuxstoneCircuitField({ seed: 7 });
+  const bounds = { column: 0, row: 0, width: 110, height: 30 };
+  let now = 0;
+  field.advance({ bounds, obstacles: [], now });
+  const opening = field.inspect();
+
+  assertEquals(opening.leds.length, 8, "expected the full lamp array on a board this wide");
+  for (const led of opening.leds) {
+    assertEquals(led.y, 1, "the array sits on the second row, clear of the corner wiring");
+    assert(led.driven, `lamp ${led.id} should be wired to a gate`);
+  }
+  // Evenly spaced, and centred on the board.
+  const columns = opening.leds.map((led) => led.x);
+  for (let index = 1; index < columns.length; index += 1) {
+    assertEquals(columns[index]! - columns[index - 1]!, 3, "lamps are evenly spaced");
+  }
+  const span = columns[columns.length - 1]! - columns[0]! + 1;
+  const leftGap = columns[0]!;
+  const rightGap = bounds.width - (columns[0]! + span);
+  assert(Math.abs(leftGap - rightGap) <= 1, `the array should be centred, gaps ${leftGap}/${rightGap}`);
+
+  // Every lamp is fed by a routed wire that ends on its own input pin.
+  const lampWires = opening.traces.filter((trace) => trace.consumerLedId !== undefined);
+  assertEquals(lampWires.length, 8, "expected one routed wire per lamp");
+
+  // The array tracks the gates it watches: over time it shows more than one pattern.
+  const patterns = new Set<string>();
+  for (let sample = 0; sample < 14; sample += 1) {
+    for (let frame = 0; frame < 12; frame += 1) {
+      now += 60;
+      field.advance({ bounds, obstacles: [], now });
+    }
+    const inspection = field.inspect();
+    patterns.add(inspection.leds.map((led) => (led.state ? "1" : "0")).join(""));
+    // A lamp only ever shows the state of the gate driving it.
+    for (const led of inspection.leds) {
+      const driver = inspection.traces.find((trace) => trace.consumerLedId === led.id);
+      assert(driver, `lamp ${led.id} lost its wire`);
+    }
+  }
+  assert(patterns.size >= 2, `expected the array to change, saw ${patterns.size} patterns`);
+});
+
+Deno.test("MuxstoneCircuitField: every gate's output drives a gate or a lamp", () => {
+  for (const seed of [7, 23, 61]) {
+    const field = new MuxstoneCircuitField({ seed });
+    const bounds = { column: 0, row: 0, width: 130, height: 34 };
+    let now = 0;
+    field.advance({ bounds, obstacles: [], now });
+    assertEquals(field.inspect().danglingChips, 0, `seed ${seed}: the opening circuit left an output dangling`);
+    // Hold through growth, and through a window shoving the board around.
+    for (let sample = 0; sample < 16; sample += 1) {
+      const obstacle = sample % 2 === 0 ? [] : [{ column: 20 + sample * 4, row: 10, width: 26, height: 12 }];
+      for (let frame = 0; frame < 40; frame += 1) {
+        now += 62.5;
+        field.advance({ bounds, obstacles: obstacle, now });
+      }
+      const inspection = field.inspect();
+      assertEquals(inspection.danglingChips, 0, `seed ${seed}: a gate output dangled at sample ${sample}`);
+      for (const led of inspection.leds) assert(led.driven, `seed ${seed}: lamp ${led.id} went unwired`);
+      if (obstacle.length > 0) continue;
+      // With the board clear, every one of those outputs is a wire on the grid
+      // leaving the gate's right edge, not just an entry in the netlist.
+      for (const chip of inspection.chips) {
+        const drives = inspection.traces.some((trace) =>
+          trace.kind === "wire" && trace.cells[0]!.x === chip.x + chip.side &&
+          trace.cells[0]!.y >= chip.y && trace.cells[0]!.y < chip.y + chip.side
+        );
+        assert(drives, `seed ${seed}: gate ${chip.id} has no output wire at sample ${sample}`);
+      }
+    }
+  }
 });
 
 Deno.test("MuxstoneCircuitField: evolution adds gates without ever invalidating the circuit", () => {

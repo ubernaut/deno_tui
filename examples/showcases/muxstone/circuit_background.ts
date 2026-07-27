@@ -29,8 +29,10 @@ const CHIP_SPACING = 2;
 const CHIP_PLACE_ATTEMPTS = 40;
 /** Gates the board opens with: a small circuit that is already complete. */
 const SEED_GATE_COUNT = 3;
-/** Columns reserved at the left edge for the VCC / CLK / GND source labels. */
+/** Columns the first stage band leaves clear for the left-hand sources to fan out. */
 const SOURCE_COLUMN_WIDTH = 5;
+/** Columns kept free left of a gate: its input pins, plus room to turn into them. */
+const INPUT_APPROACH_COLUMNS = 2;
 /** Horizontal pitch between successive logic stages, so signals read left to right. */
 const STAGE_PITCH = MIN_CHIP_SIDE + CHIP_SPACING + 4;
 /** Chance that growth splices a gate into an existing wire instead of appending one. */
@@ -49,6 +51,15 @@ const ACTIVE_TAP_BASE_MIX = 0.6;
 
 const VIA_GLYPH = "o";
 const CHIP_FILL_GLYPH = "▓";
+
+/** Lamps in the indicator array across the top of the board. */
+const LED_COUNT = 8;
+/** Columns between lamps: one for the next lamp's input pin, one to turn into it. */
+const LED_SPACING = 3;
+/** Row the array sits on, clear of the wires the top corners run along row 0. */
+const LED_ROW = 1;
+const LED_ON_GLYPH = "█";
+const LED_OFF_GLYPH = "░";
 
 /**
  * Each chip is a logic gate drawn as a node with its inputs on the left edge and
@@ -84,8 +95,8 @@ const SOURCE_LABEL_WIDTH = 3;
 /** An oscillator flips its output every this-many-to-that-many logic ticks. */
 const OSC_MIN_PERIOD_TICKS = 2;
 const OSC_MAX_PERIOD_TICKS = 6;
-/** One signal generator per this-many-cells of board, at least one when there's room. */
-const OSC_CELLS_EACH = 2_400;
+/** A board this large is big enough to warrant the third, central generator. */
+const CENTER_CLOCK_CELLS = 2_400;
 const MAX_OSCILLATORS = 3;
 
 /** Direction order: up, right, down, left. */
@@ -166,8 +177,21 @@ export interface MuxstoneCircuitTraceSnapshot {
   readonly driver: "chip" | "osc" | "power" | "ground";
   /** For wires, the gate id this wire feeds. */
   readonly consumerChipId?: number;
+  /** For wires into the indicator array, the lamp id this wire feeds. */
+  readonly consumerLedId?: number;
   readonly cells: readonly Readonly<{ x: number; y: number; glyph: string }>[];
   readonly pulses: readonly Readonly<{ index: number }>[];
+}
+
+/** One indicator lamp exposed for deterministic tests. */
+export interface MuxstoneCircuitLedSnapshot {
+  readonly id: number;
+  readonly x: number;
+  readonly y: number;
+  /** True while the gate driving the lamp is high. */
+  readonly state: boolean;
+  /** False only while the lamp is waiting for a gate to be wired to it. */
+  readonly driven: boolean;
 }
 
 /** Inspection payload mirroring the metaball field's test hook. */
@@ -187,6 +211,10 @@ export interface MuxstoneCircuitInspection {
   readonly ground?: MuxstoneCircuitRailSnapshot;
   /** Free-running signal generators placed on the board. */
   readonly oscillators: readonly MuxstoneCircuitOscillatorSnapshot[];
+  /** The indicator lamp array across the top of the board. */
+  readonly leds: readonly MuxstoneCircuitLedSnapshot[];
+  /** Count of gates whose output drives no gate and no lamp. */
+  readonly danglingChips: number;
   /** Count of chips whose output is currently high. */
   readonly liveChips: number;
   /** Count of gates whose input cone reaches both the power and ground rail. */
@@ -216,8 +244,11 @@ interface CircuitChip {
 
 /** A power or ground rail node placed on the board. */
 interface CircuitRail {
-  readonly x: number;
-  readonly y: number;
+  x: number;
+  y: number;
+  /** Corner the node belongs at; it returns here whenever the spot is free. */
+  readonly homeX: number;
+  readonly homeY: number;
   readonly label: string;
 }
 
@@ -226,11 +257,26 @@ interface CircuitOscillator {
   readonly id: number;
   x: number;
   y: number;
+  readonly homeX: number;
+  readonly homeY: number;
   readonly label: string;
   /** Logic ticks between flips. */
   periodTicks: number;
   /** Ticks since the last flip. */
   phase: number;
+  state: boolean;
+}
+
+/**
+ * One lamp in the indicator array. A pure sink: it takes a single input on its
+ * left and shows that signal, so the board's output is legible at a glance.
+ */
+interface CircuitLed {
+  readonly id: number;
+  readonly x: number;
+  readonly y: number;
+  /** What the lamp displays; undefined only until a gate is wired to it. */
+  driver?: LogicRef;
   state: boolean;
 }
 
@@ -255,6 +301,8 @@ interface CircuitTrace {
   driver: LogicRef;
   /** For wires: the gate this wire feeds. */
   consumerChipId?: number;
+  /** For wires into the indicator array: the lamp this wire feeds. */
+  consumerLedId?: number;
   /** Source chip index for taps; the driver's chip index for wires, else -1. */
   chipIndex: number;
   /** Index into the current obstacle list; only meaningful on tap traces. */
@@ -273,6 +321,12 @@ type CircuitLayoutJob =
 interface CircuitPathPoint {
   readonly x: number;
   readonly y: number;
+}
+
+/** An output pin plus the direction a wire leaves it: east for gates and left-hand sources. */
+interface CircuitDriverPin {
+  readonly point: CircuitPathPoint;
+  readonly exitDx: 1 | -1;
 }
 
 /** Which of the three sources one gate's input cone can reach. */
@@ -329,6 +383,8 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
   #ground?: CircuitRail;
   #oscillators: CircuitOscillator[] = [];
   #nextOscId = 0;
+  #leds: CircuitLed[] = [];
+  #nextLedId = 0;
   /** Chip count the logic graph was last wired for; a change forces a rewire. */
   #logicChipCount = -1;
   /** Set when the physical wire routing no longer matches the logic or layout. */
@@ -582,13 +638,32 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       for (let index = 0; index < glyphs.length; index += 1) {
         const gx = oscillator.x + index;
         if (gx < 0 || gx >= width) continue;
+        if (this.#keepOut[oscillator.y * width + gx] !== 0) continue;
         this.#cells[oscillator.y]![gx] = { char: glyphs[index]!, foreground: color, bold: oscillator.state };
       }
+    }
+
+    // The indicator array: a lit lamp burns in the theme's success colour, an
+    // unlit one recedes toward the board so the pattern reads at a glance.
+    const ledOn = mixMuxstoneRgb(theme.success, theme.text, 0.35);
+    const ledOff = mixMuxstoneRgb(theme.muted, theme.background, 0.55);
+    for (const led of this.#leds) {
+      if (led.x < 0 || led.x >= width || led.y < 0 || led.y >= height) continue;
+      if (this.#keepOut[led.y * width + led.x] !== 0) continue;
+      this.#cells[led.y]![led.x] = {
+        char: led.state ? LED_ON_GLYPH : LED_OFF_GLYPH,
+        foreground: led.state ? ledOn : ledOff,
+        bold: led.state,
+      };
     }
     return this.#cells;
   }
 
-  /** Draws one rail node as a bold 3-cell label. */
+  /**
+   * Draws one rail node as a bold 3-cell label. A cell inside a window keep-out
+   * is left blank: a source that has nowhere free to slide to still must not
+   * paint itself over a terminal.
+   */
   #paintRail(
     rail: CircuitRail | undefined,
     _theme: MuxstoneThemeSpec,
@@ -601,6 +676,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     for (let index = 0; index < rail.label.length; index += 1) {
       const gx = rail.x + index;
       if (gx < 0 || gx >= width) continue;
+      if (this.#keepOut[rail.y * width + gx] !== 0) continue;
       this.#cells[rail.y]![gx] = { char: rail.label[index]!, foreground: color, bold };
     }
   }
@@ -628,6 +704,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
         ...(trace.kind === "tap" && trace.obstacleIndex !== undefined ? { obstacleIndex: trace.obstacleIndex } : {}),
         driver: trace.driver.kind,
         ...(trace.consumerChipId !== undefined ? { consumerChipId: trace.consumerChipId } : {}),
+        ...(trace.consumerLedId !== undefined ? { consumerLedId: trace.consumerLedId } : {}),
         cells: trace.cells.map((cell) => ({ ...cell })),
         pulses: trace.pulses.map((pulse) => ({ index: pulse.index })),
       })),
@@ -643,6 +720,14 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
         periodTicks: oscillator.periodTicks,
         state: oscillator.state,
       })),
+      leds: this.#leds.map((led) => ({
+        id: led.id,
+        x: led.x,
+        y: led.y,
+        state: led.state,
+        driven: led.driver !== undefined,
+      })),
+      danglingChips: this.#countDanglingGates(),
       liveChips: this.#chips.reduce((count, chip) => count + (chip.state ? 1 : 0), 0),
       groundedChips: reach.reduce((count, entry) => count + (entry.power && entry.ground ? 1 : 0), 0),
       clockedChips: reach.reduce((count, entry) => count + (entry.clock ? 1 : 0), 0),
@@ -651,6 +736,20 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
         0,
       ),
     };
+  }
+
+  /** Counts gates whose output feeds neither another gate nor a lamp. */
+  #countDanglingGates(): number {
+    const consumed = new Set<number>();
+    for (const chip of this.#chips) {
+      for (const input of chip.inputs) {
+        if (input.kind === "chip") consumed.add(input.id);
+      }
+    }
+    for (const led of this.#leds) {
+      if (led.driver?.kind === "chip") consumed.add(led.driver.id);
+    }
+    return this.#chips.reduce((count, chip) => count + (consumed.has(chip.id) ? 0 : 1), 0);
   }
 
   #ensureLayout(bounds: Rectangle): void {
@@ -676,6 +775,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     this.#power = undefined;
     this.#ground = undefined;
     this.#oscillators = [];
+    this.#leds = [];
     this.#logicChipCount = -1;
     this.#logicTimerMs = 0;
     this.#growTimerMs = 0;
@@ -685,7 +785,10 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     // Sources own the left column before anything else claims it, so every gate
     // downstream of them can be reached by a wire that runs left to right.
     this.#placeSources(bounds);
+    this.#placeLeds(bounds);
     this.#buildSeedCircuit(bounds);
+    this.#connectIdleClocks();
+    this.#wireOutputs();
     this.#logicChipCount = this.#chips.length;
     // Route the physical wires that realize the logic graph, so they exist on
     // the very first frame rather than after the first advance.
@@ -789,7 +892,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
         const source = this.#driverPin(input, chipOutputPin, bounds);
         const sink = pins[index];
         if (!source || !sink) continue;
-        const cells = this.#routeWire(source, sink, bounds);
+        const cells = this.#routeWire(source.point, sink, bounds, source.exitDx);
         if (!cells) continue;
         const pulseCount = 2 + Math.floor(this.#random() * 3);
         const pulses: CircuitPulse[] = Array.from({ length: pulseCount }, () => ({
@@ -806,6 +909,31 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
         });
       }
     }
+
+    // Indicator lamps are wired like any other consumer: driver's output pin on
+    // the right, lamp's input pin on its left.
+    for (const led of this.#leds) {
+      const driver = led.driver;
+      if (!driver) continue;
+      const source = this.#driverPin(driver, chipOutputPin, bounds);
+      if (!source) continue;
+      const sink = { x: led.x - 1, y: led.y };
+      if (!this.#pinFree(sink.x, sink.y, bounds)) continue;
+      const cells = this.#routeWire(source.point, sink, bounds, source.exitDx);
+      if (!cells) continue;
+      const pulseCount = 1 + Math.floor(this.#random() * 2);
+      this.#traces.push({
+        kind: "wire",
+        driver,
+        consumerLedId: led.id,
+        chipIndex: driver.kind === "chip" ? chipIndexById.get(driver.id) ?? -1 : -1,
+        cells,
+        pulses: Array.from({ length: pulseCount }, () => ({
+          index: Math.floor(this.#random() * cells.length),
+          accumulator: 0,
+        })),
+      });
+    }
   }
 
   /** The output pin of whatever drives an input: a gate's right edge, or a source's. */
@@ -813,10 +941,12 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     ref: LogicRef,
     chipOutputPin: Map<number, CircuitPathPoint>,
     bounds: Rectangle,
-  ): CircuitPathPoint | undefined {
+  ): CircuitDriverPin | undefined {
     switch (ref.kind) {
-      case "chip":
-        return chipOutputPin.get(ref.id);
+      case "chip": {
+        const point = chipOutputPin.get(ref.id);
+        return point ? { point, exitDx: 1 } : undefined;
+      }
       case "osc": {
         const oscillator = this.#oscillators.find((entry) => entry.id === ref.id);
         return oscillator ? this.#sourcePin(oscillator.x, oscillator.y, bounds) : undefined;
@@ -829,33 +959,44 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
   }
 
   /**
-   * A source node's output pin: the cell just past the right of its 3-cell
-   * label, so VCC, CLK and GND drive east into the board like any other node.
+   * A source node's output pin, on whichever side of its 3-cell label faces the
+   * board. A source in the left half drives east like a gate does; one parked in
+   * a right-hand corner has nothing to its east, so it feeds west instead.
    */
-  #sourcePin(x: number, y: number, bounds: Rectangle): CircuitPathPoint | undefined {
+  #sourcePin(x: number, y: number, bounds: Rectangle): CircuitDriverPin | undefined {
+    const westward = x + SOURCE_LABEL_WIDTH / 2 > bounds.width / 2;
+    const exitDx = westward ? -1 : 1;
+    const inner = westward ? x - 1 : x + SOURCE_LABEL_WIDTH;
     const candidates: CircuitPathPoint[] = [
-      { x: x + SOURCE_LABEL_WIDTH, y },
-      { x: x + SOURCE_LABEL_WIDTH, y: y + 1 },
-      { x: x + SOURCE_LABEL_WIDTH, y: y - 1 },
+      { x: inner, y },
+      { x: inner, y: y + 1 },
+      { x: inner, y: y - 1 },
+      { x: inner + exitDx, y },
       { x, y: y + 1 },
       { x, y: y - 1 },
     ];
     for (const candidate of candidates) {
-      if (this.#pinFree(candidate.x, candidate.y, bounds)) return candidate;
+      if (this.#pinFree(candidate.x, candidate.y, bounds)) return { point: candidate, exitDx };
     }
     return undefined;
   }
 
   /**
-   * Routes one wire so it leaves its driver heading east and enters its consumer
-   * heading east: the path is pinned through a stub one cell right of the output
-   * pin and a stub one cell left of the input pin, and both pins are blocked for
-   * the search so the route cannot double back through them. A board too tight
-   * for the stubs falls back to a direct route, which still lands on the correct
+   * Routes one wire so it leaves its driver through the pin's own face and
+   * enters its consumer heading east: the path is pinned through a stub one cell
+   * beyond the output pin (east for a gate, west for a right-hand source) and a
+   * stub one cell left of the input pin, and both pins are blocked for the search
+   * so the route cannot double back through them. A board too tight for the
+   * stubs falls back to a direct route, which still lands on the correct
    * left/right pins.
    */
-  #routeWire(source: CircuitPathPoint, sink: CircuitPathPoint, bounds: Rectangle): CircuitTraceCell[] | undefined {
-    const exit: CircuitPathPoint = { x: source.x + 1, y: source.y };
+  #routeWire(
+    source: CircuitPathPoint,
+    sink: CircuitPathPoint,
+    bounds: Rectangle,
+    exitDx: 1 | -1 = 1,
+  ): CircuitTraceCell[] | undefined {
+    const exit: CircuitPathPoint = { x: source.x + exitDx, y: source.y };
     const approach: CircuitPathPoint = { x: sink.x - 1, y: sink.y };
     if (samePoint(source, sink)) return undefined;
     if (samePoint(exit, sink) || samePoint(approach, source)) {
@@ -993,6 +1134,8 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       const before = this.#chips.length;
       this.#buildSeedCircuit(bounds);
       if (this.#chips.length === before) return false;
+      this.#connectIdleClocks();
+      this.#wireOutputs();
       this.#logicChipCount = this.#chips.length;
       this.#wiresDirty = true;
       return true;
@@ -1005,6 +1148,8 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     // A gate hung off another gate inherits its whole cone, but one spliced onto
     // a bare clock or rail may not, so re-tie anything the move left short.
     this.#ensureSourceCoverage();
+    this.#connectIdleClocks();
+    this.#wireOutputs();
     for (const chip of this.#chips) this.#refreshGateType(chip);
     this.#logicChipCount = this.#chips.length;
     this.#wiresDirty = true;
@@ -1158,7 +1303,9 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     bounds: Rectangle,
     ignoreChipIndex: number,
   ): CircuitPathPoint | undefined {
-    const minX = Math.max(CHIP_MARGIN, SOURCE_COLUMN_WIDTH);
+    // Gates keep two columns to their left: one for the input pins themselves and
+    // one for the wires to turn into them from the west.
+    const minX = Math.max(CHIP_MARGIN, INPUT_APPROACH_COLUMNS);
     const maxX = bounds.width - side - CHIP_MARGIN;
     const maxY = bounds.height - side - CHIP_MARGIN;
     if (maxX < minX || maxY < CHIP_MARGIN) return undefined;
@@ -1182,52 +1329,227 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
   }
 
   /**
-   * Stacks VCC, the CLK generators and GND down the left column and reserves
-   * their cells, so every source drives east into the board and nothing else can
-   * claim the column the circuit is rooted on.
+   * Pins the sources to the corners of the board: VCC top-left, GND bottom-right
+   * and a CLK generator in each of the other two, so power spans the diagonal and
+   * the clock arrives from both sides. A board with room for a third generator
+   * gets it dead centre. Their cells are reserved so nothing else claims them.
    */
   #placeSources(bounds: Rectangle): void {
-    const clocks = clampInteger(
-      Math.round((bounds.width * bounds.height) / OSC_CELLS_EACH),
-      bounds.width * bounds.height >= 400 ? 1 : 0,
-      MAX_OSCILLATORS,
-    );
-    const slots = 2 + clocks;
-    this.#power = this.#placeSourceNode(bounds, POWER_LABEL, 0.5 / slots);
-    for (let index = 0; index < clocks; index += 1) {
-      const spot = this.#placeSourceNode(bounds, OSCILLATOR_LABEL, (index + 1.5) / slots);
-      if (!spot) continue;
-      this.#oscillators.push({
-        id: this.#nextOscId++,
-        x: spot.x,
-        y: spot.y,
-        label: OSCILLATOR_LABEL,
-        periodTicks: OSC_MIN_PERIOD_TICKS +
-          Math.floor(this.#random() * (OSC_MAX_PERIOD_TICKS - OSC_MIN_PERIOD_TICKS + 1)),
-        phase: Math.floor(this.#random() * OSC_MAX_PERIOD_TICKS),
-        state: this.#random() < 0.5,
-      });
+    const area = bounds.width * bounds.height;
+    const corners = bounds.width >= 2 * SOURCE_LABEL_WIDTH + 4 && bounds.height >= 4;
+    const right = Math.max(0, bounds.width - SOURCE_LABEL_WIDTH);
+    const bottom = Math.max(0, bounds.height - 1);
+    this.#power = this.#placeSourceNode(bounds, POWER_LABEL, 0, 0) ??
+      { x: 0, y: 0, homeX: 0, homeY: 0, label: POWER_LABEL };
+    if (corners) {
+      this.#addOscillator(bounds, right, 0);
+      this.#addOscillator(bounds, 0, bottom);
+    } else if (area >= 400) {
+      this.#addOscillator(bounds, 0, bottom);
     }
-    this.#ground = this.#placeSourceNode(bounds, GROUND_LABEL, (slots - 0.5) / slots);
+    // The odd generator out sits in the middle of the board rather than doubling
+    // up a corner, so a large board is clocked from its centre as well as its edges.
+    if (corners && area >= CENTER_CLOCK_CELLS && this.#oscillators.length < MAX_OSCILLATORS) {
+      this.#addOscillator(
+        bounds,
+        Math.floor((bounds.width - SOURCE_LABEL_WIDTH) / 2),
+        Math.floor(bounds.height / 2),
+      );
+    }
+    this.#ground = this.#placeSourceNode(bounds, GROUND_LABEL, right, bottom) ??
+      { x: right, y: bottom, homeX: right, homeY: bottom, label: GROUND_LABEL };
   }
 
-  /** Reserves one 3-cell source label near the left edge at the given vertical bias. */
-  #placeSourceNode(bounds: Rectangle, label: string, biasY: number): CircuitRail | undefined {
-    const targetY = clampInteger(biasY * bounds.height, 0, Math.max(0, bounds.height - 1));
-    const maxX = Math.max(0, Math.min(SOURCE_COLUMN_WIDTH - SOURCE_LABEL_WIDTH, bounds.width - SOURCE_LABEL_WIDTH));
-    for (let offset = 0; offset < bounds.height; offset += 1) {
-      const y = offset % 2 === 0 ? targetY + (offset >> 1) : targetY - ((offset + 1) >> 1);
+  /**
+   * Lays the indicator array across the top middle of the board: evenly spaced
+   * lamps, each with two free columns to its left for its own input pin and the
+   * turn into it. A board too narrow for the full row carries fewer lamps.
+   */
+  #placeLeds(bounds: Rectangle): void {
+    const row = bounds.height > LED_ROW + 2 ? LED_ROW : 0;
+    const usable = bounds.width - 2 * INPUT_APPROACH_COLUMNS;
+    const count = clampInteger(Math.floor((usable + LED_SPACING - 1) / LED_SPACING), 0, LED_COUNT);
+    if (count <= 0) return;
+    const span = (count - 1) * LED_SPACING + 1;
+    const start = Math.max(INPUT_APPROACH_COLUMNS, Math.floor((bounds.width - span) / 2));
+    for (let index = 0; index < count; index += 1) {
+      const x = start + index * LED_SPACING;
+      if (x < 0 || x >= bounds.width) continue;
+      const cell = row * bounds.width + x;
+      if (this.#occupancy[cell] !== 0) continue;
+      this.#occupancy[cell] = 1;
+      this.#leds.push({ id: this.#nextLedId++, x, y: row, state: false });
+    }
+  }
+
+  /**
+   * Gives every gate somewhere for its output to go and every lamp something to
+   * show. A gate nothing listens to takes a free lamp when there is one, and
+   * otherwise feeds the nearest gate downstream of it that has a spare input and
+   * cannot loop back; a lamp nobody drives adopts the nearest gate's output.
+   */
+  #wireOutputs(): void {
+    if (this.#chips.length === 0) return;
+    const consumed = new Set<number>();
+    for (const chip of this.#chips) {
+      for (const input of chip.inputs) {
+        if (input.kind === "chip") consumed.add(input.id);
+      }
+    }
+    for (const led of this.#leds) {
+      if (led.driver?.kind === "chip") consumed.add(led.driver.id);
+    }
+
+    for (const chip of this.#chips) {
+      if (consumed.has(chip.id)) continue;
+      const lamp = this.#leds.find((led) => led.driver === undefined);
+      if (lamp) {
+        lamp.driver = { kind: "chip", id: chip.id };
+        consumed.add(chip.id);
+        continue;
+      }
+      // No free lamp, so hand the output to a gate that cannot feed back into it.
+      const sink = this.#chips
+        .filter((other) =>
+          other.id !== chip.id && other.inputs.length < MAX_GATE_INPUTS && !this.#dependsOn(chip.id, other.id) &&
+          !other.inputs.some((input) => input.kind === "chip" && input.id === chip.id)
+        )
+        .sort((a, b) => gateDistance(a, chip) - gateDistance(b, chip))[0];
+      if (sink) {
+        sink.inputs.push({ kind: "chip", id: chip.id });
+        this.#refreshGateType(sink);
+        consumed.add(chip.id);
+        continue;
+      }
+      // Every gate is full too, so take over a lamp that is only echoing a
+      // signal another lamp already shows. The array keeps eight distinct
+      // readouts and the new gate still drives something.
+      const duplicate = this.#duplicateLamp();
+      if (!duplicate) continue;
+      duplicate.driver = { kind: "chip", id: chip.id };
+      duplicate.state = false;
+      consumed.add(chip.id);
+    }
+
+    // Remaining lamps adopt the nearest gate that is not already on show, so the
+    // array reads as eight signals rather than eight copies of one. With fewer
+    // gates than lamps the cycle simply starts over.
+    const shown = new Set<number>();
+    for (const led of this.#leds) {
+      if (led.driver?.kind === "chip") shown.add(led.driver.id);
+    }
+    for (const led of this.#leds) {
+      if (led.driver !== undefined) continue;
+      const ordered = this.#chips.slice().sort((a, b) => sourceDistance(a, led) - sourceDistance(b, led));
+      if (ordered.length === 0) continue;
+      if (ordered.every((chip) => shown.has(chip.id))) shown.clear();
+      const driver = ordered.find((chip) => !shown.has(chip.id)) ?? ordered[0]!;
+      led.driver = { kind: "chip", id: driver.id };
+      shown.add(driver.id);
+    }
+  }
+
+  /** The last lamp showing a signal another lamp already displays, if any. */
+  #duplicateLamp(): CircuitLed | undefined {
+    const seen = new Set<number>();
+    let duplicate: CircuitLed | undefined;
+    for (const led of this.#leds) {
+      if (led.driver?.kind !== "chip") continue;
+      if (seen.has(led.driver.id)) duplicate = led;
+      else seen.add(led.driver.id);
+    }
+    return duplicate;
+  }
+
+  /** Places one CLK generator at a target cell, if the board has room for it. */
+  #addOscillator(bounds: Rectangle, targetX: number, targetY: number): void {
+    const spot = this.#placeSourceNode(bounds, OSCILLATOR_LABEL, targetX, targetY);
+    if (!spot) return;
+    this.#oscillators.push({
+      id: this.#nextOscId++,
+      x: spot.x,
+      y: spot.y,
+      homeX: targetX,
+      homeY: targetY,
+      label: OSCILLATOR_LABEL,
+      periodTicks: OSC_MIN_PERIOD_TICKS +
+        Math.floor(this.#random() * (OSC_MAX_PERIOD_TICKS - OSC_MIN_PERIOD_TICKS + 1)),
+      phase: Math.floor(this.#random() * OSC_MAX_PERIOD_TICKS),
+      state: this.#random() < 0.5,
+    });
+  }
+
+  /**
+   * Reserves one 3-cell source label as close to a target cell as it fits,
+   * searching outward row by row so a blocked corner slides inward rather than
+   * dropping the source entirely.
+   */
+  #placeSourceNode(bounds: Rectangle, label: string, targetX: number, targetY: number): CircuitRail | undefined {
+    const seat = this.#findSourceSeat(bounds, targetX, targetY);
+    if (!seat) return undefined;
+    this.#markSource(bounds, seat.x, seat.y, 1);
+    return { x: seat.x, y: seat.y, homeX: targetX, homeY: targetY, label };
+  }
+
+  /** Nearest free 3-cell seat to a target, searched outward row by row. */
+  #findSourceSeat(bounds: Rectangle, targetX: number, targetY: number): CircuitPathPoint | undefined {
+    const maxX = Math.max(0, bounds.width - SOURCE_LABEL_WIDTH);
+    for (let rowOffset = 0; rowOffset < bounds.height; rowOffset += 1) {
+      const y = rowOffset % 2 === 0 ? targetY + (rowOffset >> 1) : targetY - ((rowOffset + 1) >> 1);
       if (y < 0 || y >= bounds.height) continue;
-      for (let x = 0; x <= maxX; x += 1) {
-        if (!this.#railFits(x, y, bounds)) continue;
-        const rail: CircuitRail = { x, y, label };
-        for (let column = x; column < x + SOURCE_LABEL_WIDTH; column += 1) {
-          this.#occupancy[y * bounds.width + column] = 1;
-        }
-        return rail;
+      for (let columnOffset = 0; columnOffset <= maxX; columnOffset += 1) {
+        const x = columnOffset % 2 === 0 ? targetX + (columnOffset >> 1) : targetX - ((columnOffset + 1) >> 1);
+        if (x < 0 || x > maxX) continue;
+        if (this.#railFits(x, y, bounds)) return { x, y };
       }
     }
     return undefined;
+  }
+
+  /** Reserves or releases the cells one source label occupies. */
+  #markSource(bounds: Rectangle, x: number, y: number, value: number): void {
+    if (y < 0 || y >= bounds.height) return;
+    for (let column = x; column < x + SOURCE_LABEL_WIDTH; column += 1) {
+      if (column < 0 || column >= bounds.width) continue;
+      this.#occupancy[y * bounds.width + column] = value;
+    }
+  }
+
+  /**
+   * Keeps the source nodes out of the windows. One covered by a keep-out zone
+   * slides to the nearest free seat, and one that had to move earlier returns to
+   * its corner as soon as the window releases it.
+   */
+  #reseatSources(bounds: Rectangle): boolean {
+    let moved = false;
+    const nodes: Array<CircuitRail | CircuitOscillator> = [
+      ...(this.#power ? [this.#power] : []),
+      ...(this.#ground ? [this.#ground] : []),
+      ...this.#oscillators,
+    ];
+    for (const node of nodes) {
+      const home = node.x === node.homeX && node.y === node.homeY;
+      if (home && !this.#sourceCovered(bounds, node.x, node.y)) continue;
+      this.#markSource(bounds, node.x, node.y, 0);
+      const seat = this.#findSourceSeat(bounds, node.homeX, node.homeY);
+      if (seat && (seat.x !== node.x || seat.y !== node.y)) {
+        node.x = seat.x;
+        node.y = seat.y;
+        moved = true;
+      }
+      this.#markSource(bounds, node.x, node.y, 1);
+    }
+    return moved;
+  }
+
+  /** True while any cell of a source label sits inside a window keep-out zone. */
+  #sourceCovered(bounds: Rectangle, x: number, y: number): boolean {
+    if (y < 0 || y >= bounds.height) return false;
+    for (let column = x; column < x + SOURCE_LABEL_WIDTH; column += 1) {
+      if (column < 0 || column >= bounds.width) continue;
+      if (this.#keepOut[y * bounds.width + column] !== 0) return true;
+    }
+    return false;
   }
 
   /** Applies the frame's obstacle list; tears down anything newly in a keep-out zone. */
@@ -1281,7 +1603,9 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
 
     // A window changed shape, so every wire has to be re-routed to weave around
     // the new keep-out. Tap traces still recover in place when their route stays
-    // clear, and are dropped for regrowth otherwise.
+    // clear, and are dropped for regrowth otherwise. The source nodes move out
+    // of the way first, so the wires re-route to wherever they end up.
+    this.#reseatSources(bounds);
     this.#wiresDirty = true;
     for (let index = this.#traces.length - 1; index >= 0; index -= 1) {
       const trace = this.#traces[index]!;
@@ -1570,8 +1894,10 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
   #chipFits(x: number, y: number, side: number, ignoreChipIndex: number): boolean {
     const bounds = this.#bounds;
     if (!bounds) return false;
+    // Every gate keeps two columns to its left, whether it was placed there or
+    // drifted there: one for its input pins, one for wires to turn into them.
     if (
-      x < CHIP_MARGIN || y < CHIP_MARGIN ||
+      x < Math.max(CHIP_MARGIN, INPUT_APPROACH_COLUMNS) || y < CHIP_MARGIN ||
       x + side > bounds.width - CHIP_MARGIN || y + side > bounds.height - CHIP_MARGIN
     ) return false;
     for (let index = 0; index < this.#chips.length; index += 1) {
@@ -1698,6 +2024,13 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       }
       chip.inputs = kept;
     }
+    // A lamp whose gate despawned goes dark until `#wireOutputs` adopts another.
+    for (const led of this.#leds) {
+      if (led.driver?.kind === "chip" && !chipIds.has(led.driver.id)) {
+        led.driver = undefined;
+        led.state = false;
+      }
+    }
     for (const chip of chips) {
       while (chip.inputs.length < MIN_GATE_INPUTS) {
         const extra = this.#pickDriver(
@@ -1711,6 +2044,8 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       }
     }
     this.#ensureSourceCoverage();
+    this.#connectIdleClocks();
+    this.#wireOutputs();
     for (const chip of chips) this.#refreshGateType(chip);
     this.#restage();
   }
@@ -1812,17 +2147,24 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     return best;
   }
 
-  #nearestChipTo(x: number, y: number): CircuitChip | undefined {
-    let best: CircuitChip | undefined;
-    let bestDistance = Infinity;
-    for (const chip of this.#chips) {
-      const distance = Math.abs(chip.x + chip.side / 2 - x) + Math.abs(chip.y + chip.side / 2 - y);
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        best = chip;
-      }
+  /**
+   * Wires any generator nothing listens to into the nearest gate with a spare
+   * input, so a corner or centre CLK never sits blinking on its own with no
+   * trace leaving it.
+   */
+  #connectIdleClocks(): void {
+    if (this.#chips.length === 0) return;
+    for (const oscillator of this.#oscillators) {
+      const ref: LogicRef = { kind: "osc", id: oscillator.id };
+      if (this.#chips.some((chip) => chip.inputs.some((input) => sameLogicRef(input, ref)))) continue;
+      const candidates = this.#chips
+        .filter((chip) => chip.inputs.length < MAX_GATE_INPUTS)
+        .sort((a, b) => sourceDistance(a, oscillator) - sourceDistance(b, oscillator));
+      const gate = candidates[0];
+      if (!gate) continue;
+      gate.inputs.push(ref);
+      this.#refreshGateType(gate);
     }
-    return best;
   }
 
   /**
@@ -1851,7 +2193,14 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       }
       chip.nextState = evaluateGate(chip.gate, high, total);
     }
+    // Lamps read the same previous-tick state the gates do, so the array shows
+    // one coherent snapshot of the board rather than a half-updated one.
     let changed = false;
+    for (const led of this.#leds) {
+      const next = led.driver ? this.#driverState(led.driver) : false;
+      if (next !== led.state) changed = true;
+      led.state = next;
+    }
     for (const chip of chips) {
       if (chip.nextState !== chip.state) changed = true;
       chip.state = chip.nextState;
@@ -1898,6 +2247,17 @@ function gateVaries(gate: GateType, inputs: readonly LogicRef[]): boolean {
     if (evaluateGate(gate, high + live, total) !== first) return true;
   }
   return false;
+}
+
+/** Manhattan distance from a gate's centre to a source node. */
+function sourceDistance(chip: CircuitChip, source: { x: number; y: number }): number {
+  return Math.abs(chip.x + chip.side / 2 - source.x) + Math.abs(chip.y + chip.side / 2 - source.y);
+}
+
+/** Manhattan distance between two gate centres, penalising a sink to the west. */
+function gateDistance(sink: CircuitChip, driver: CircuitChip): number {
+  const westward = sink.x < driver.x ? STAGE_PITCH * 4 : 0;
+  return Math.abs(sink.x - driver.x) + Math.abs(sink.y - driver.y) + westward;
 }
 
 function samePoint(a: CircuitPathPoint, b: CircuitPathPoint): boolean {
