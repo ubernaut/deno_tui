@@ -17,6 +17,44 @@ const POINTER_REACH_COLUMNS = 6;
 const POINTER_SPEED_MULTIPLIER = 2;
 const MIN_TAIL_CELLS = 4;
 const MAX_TAIL_CELLS = 18;
+/** Speed multiplier when a drop is inside an inactive window. */
+const INACTIVE_WINDOW_SPEED_FACTOR = 0.35;
+const SPLASH_LIFETIME_MS = 550;
+const GUTTER_H_SPEED_LOW = 0.7;
+const GUTTER_H_SPEED_HIGH = 1.4;
+const GUTTER_V_SPEED_LOW = 0.12;
+const GUTTER_V_SPEED_HIGH = 0.35;
+const GUTTER_SLIDE_TAIL = 2;
+const GUTTER_FALL_TAIL_MIN = 2;
+const GUTTER_FALL_TAIL_MAX = 4;
+
+/**
+ * Characters ordered by height above the surface. Index 0 sits right on the
+ * window border; higher indices float further above it, forming the crown of
+ * a side-view droplet splash.
+ */
+const SPLASH_HEIGHT_CHARS: readonly string[] = [".", ",", "'", '"', "`", "~"];
+
+/**
+ * Fixed particle arcs for every splash. Each entry describes one droplet
+ * fragment: its horizontal offset from the impact column, the peak height
+ * of its parabolic arc (in cell rows), and a start-delay as a fraction of
+ * the total lifetime so outer fragments lag behind the center.
+ */
+const SPLASH_ARC_PARTICLES: readonly { readonly dx: number; readonly peak: number; readonly delay: number }[] =
+  Object.freeze([
+    // Center column — tallest bounce.
+    Object.freeze({ dx: 0, peak: 2.8, delay: 0 }),
+    // Inner pair.
+    Object.freeze({ dx: -1, peak: 2.1, delay: 0.06 }),
+    Object.freeze({ dx: 1, peak: 2.1, delay: 0.06 }),
+    // Mid pair — lower arc, more lateral.
+    Object.freeze({ dx: -2, peak: 1.3, delay: 0.13 }),
+    Object.freeze({ dx: 2, peak: 1.3, delay: 0.13 }),
+    // Outer spray — barely lifts off.
+    Object.freeze({ dx: -3, peak: 0.6, delay: 0.20 }),
+    Object.freeze({ dx: 3, peak: 0.6, delay: 0.20 }),
+  ]);
 
 /**
  * Speed classes for falling columns. A uniform spread made every column drift
@@ -70,6 +108,34 @@ interface MatrixDrop {
   boost: number;
 }
 
+interface MatrixSplash {
+  column: number;
+  /** Top-edge row of the window (in local coordinates). */
+  row: number;
+  spawnedAt: number;
+}
+
+interface MatrixGutterDrop {
+  /** Fractional column position (slides horizontally then locks to edge). */
+  x: number;
+  /** Fractional row position (locks to window top while sliding, then falls). */
+  y: number;
+  /** -1 heading left, +1 heading right. */
+  direction: number;
+  hSpeed: number;
+  vSpeed: number;
+  /** True once the drop reached the window edge and is drizzling down. */
+  falling: boolean;
+  /** The column of the window edge this drop drizzles along. */
+  edgeColumn: number;
+  /** Window top row (local coords). */
+  windowTop: number;
+  /** Window bottom row (local coords, exclusive). */
+  windowBottom: number;
+  /** Vertical tail length while falling. */
+  tail: number;
+}
+
 interface MatrixPointer extends MuxstoneBackgroundPoint {
   readonly updatedAt: number;
 }
@@ -86,6 +152,10 @@ export class MuxstoneMatrixRainField implements MuxstoneAnimatedBackground {
   #pointer?: MatrixPointer;
   #lastFrameAt?: number;
   #drops: MatrixDrop[] = [];
+  #splashes: MatrixSplash[] = [];
+  #gutterDrops: MatrixGutterDrop[] = [];
+  #activeObstacle?: Rectangle;
+  #inactiveObstacles: Rectangle[] = [];
   #glyphs = new Uint8Array();
   #cells: (MuxstoneBackgroundCell | undefined)[][] = [];
 
@@ -123,19 +193,107 @@ export class MuxstoneMatrixRainField implements MuxstoneAnimatedBackground {
     const pointer = this.#pointer && now - this.#pointer.updatedAt <= POINTER_LIFETIME_MS ? this.#pointer : undefined;
     const pointerColumn = pointer ? pointer.column - bounds.column : undefined;
 
+    // Resolve active obstacle to local coordinates (relative to bounds origin).
+    const active = options.activeObstacle ? normalizeBounds(options.activeObstacle) : undefined;
+    if (active) {
+      this.#activeObstacle = {
+        column: active.column - bounds.column,
+        row: active.row - bounds.row,
+        width: active.width,
+        height: active.height,
+      };
+    } else {
+      this.#activeObstacle = undefined;
+    }
+
+    // Build inactive obstacle list (all obstacles minus the active one).
+    this.#inactiveObstacles = [];
+    if (options.obstacles) {
+      for (const raw of options.obstacles) {
+        const obs = normalizeBounds(raw);
+        if (!obs) continue;
+        if (active && obs.column === active.column && obs.row === active.row &&
+          obs.width === active.width && obs.height === active.height) continue;
+        this.#inactiveObstacles.push({
+          column: obs.column - bounds.column,
+          row: obs.row - bounds.row,
+          width: obs.width,
+          height: obs.height,
+        });
+      }
+    }
+
     let changed = false;
+    const obstacle = this.#activeObstacle;
+    const inactives = this.#inactiveObstacles;
     for (const drop of this.#drops) {
       const boosted = pointerColumn !== undefined &&
         Math.abs(drop.column - pointerColumn) <= POINTER_REACH_COLUMNS;
       drop.boost = boosted ? 1 : Math.max(0, drop.boost - 0.12 * delta);
-      const previousHead = Math.floor(drop.y);
-      drop.y += drop.speed * (boosted ? POINTER_SPEED_MULTIPLIER : 1) * delta;
-      if (Math.floor(drop.y) !== previousHead) changed = true;
+      // Slow the drop when it is streaking over an inactive window.
+      const headRow = Math.floor(drop.y);
+      let speedFactor = boosted ? POINTER_SPEED_MULTIPLIER : 1;
+      for (const rect of inactives) {
+        if (
+          drop.column >= rect.column && drop.column < rect.column + rect.width &&
+          headRow >= rect.row && headRow < rect.row + rect.height
+        ) {
+          speedFactor *= INACTIVE_WINDOW_SPEED_FACTOR;
+          break;
+        }
+      }
+      const previousHead = headRow;
+      drop.y += drop.speed * speedFactor * delta;
+      const currentHead = Math.floor(drop.y);
+      if (currentHead !== previousHead) changed = true;
+
+      // Splash and gutter drop when the leading head crosses the top edge of the active window.
+      if (
+        obstacle && currentHead !== previousHead &&
+        previousHead < obstacle.row && currentHead >= obstacle.row &&
+        drop.column >= obstacle.column && drop.column < obstacle.column + obstacle.width
+      ) {
+        this.#spawnSplash(drop.column, obstacle.row, now);
+        this.#spawnGutterDrop(drop.column, obstacle);
+        changed = true;
+      }
+
       if (drop.y - drop.tail > bounds.height) {
         this.#respawnDrop(drop, bounds);
         changed = true;
       }
     }
+
+    // Advance gutter drops: slide horizontally then fall down the side.
+    for (const gutter of this.#gutterDrops) {
+      if (!gutter.falling) {
+        gutter.x += gutter.direction * gutter.hSpeed * delta;
+        const reachedEdge = gutter.direction < 0
+          ? gutter.x <= gutter.edgeColumn
+          : gutter.x >= gutter.edgeColumn;
+        if (reachedEdge) {
+          gutter.x = gutter.edgeColumn;
+          gutter.y = gutter.windowTop;
+          gutter.falling = true;
+        }
+        changed = true;
+      } else {
+        const prevRow = Math.floor(gutter.y);
+        gutter.y += gutter.vSpeed * delta;
+        if (Math.floor(gutter.y) !== prevRow) changed = true;
+      }
+    }
+    // Expire gutter drops that fell past the window bottom + their tail.
+    const guttersBefore = this.#gutterDrops.length;
+    this.#gutterDrops = this.#gutterDrops.filter((g) => g.y - g.tail < g.windowBottom);
+    if (this.#gutterDrops.length !== guttersBefore) changed = true;
+    if (this.#gutterDrops.length > 0) changed = true;
+
+    // Expire dead splashes.
+    const splashesBefore = this.#splashes.length;
+    this.#splashes = this.#splashes.filter((splash) => now - splash.spawnedAt < SPLASH_LIFETIME_MS);
+    if (this.#splashes.length !== splashesBefore) changed = true;
+    if (this.#splashes.length > 0) changed = true;
 
     const mutations = Math.max(1, Math.floor((bounds.width * bounds.height) / CELLS_PER_GLYPH_MUTATION));
     for (let index = 0; index < mutations; index += 1) {
@@ -161,13 +319,19 @@ export class MuxstoneMatrixRainField implements MuxstoneAnimatedBackground {
     this.#ensureCellBuffer(width, height);
 
     const headBase = mixMuxstoneRgb(theme.text, theme.accent, 0.35);
+    const obstacle = this.#activeObstacle;
     for (const drop of this.#drops) {
       const { column } = drop;
       if (column < 0 || column >= width) continue;
+      // When the drop's column is inside the active window, the window blocks
+      // all cells at or below its top edge — rain lands on the roof.
+      const blocked = obstacle !== undefined &&
+        column >= obstacle.column && column < obstacle.column + obstacle.width;
       const head = Math.floor(drop.y);
       for (let offset = 0; offset <= drop.tail; offset += 1) {
         const row = head - offset;
         if (row < 0 || row >= height) continue;
+        if (blocked && row >= obstacle!.row) continue;
         const glyph = MATRIX_GLYPHS[this.#glyphs[row * width + column] ?? 0] ?? MATRIX_GLYPHS[0]!;
         if (offset === 0) {
           const foreground = drop.boost > 0 ? mixMuxstoneRgb(headBase, theme.text, 0.45 * drop.boost) : headBase;
@@ -178,6 +342,73 @@ export class MuxstoneMatrixRainField implements MuxstoneAnimatedBackground {
         this.#cells[row]![column] = { char: glyph, foreground: mixMuxstoneRgb(theme.accent, theme.background, fade) };
       }
     }
+
+    // Render splash particles: each follows a parabolic arc above the window
+    // top edge, using small punctuation chars sized to height.
+    const now = this.#lastFrameAt ?? 0;
+    for (const splash of this.#splashes) {
+      const globalLife = (now - splash.spawnedAt) / SPLASH_LIFETIME_MS;
+      if (globalLife >= 1) continue;
+      for (const arc of SPLASH_ARC_PARTICLES) {
+        // Each particle starts after its delay and fills the remaining time.
+        const localT = (globalLife - arc.delay) / (1 - arc.delay);
+        if (localT < 0 || localT > 1) continue;
+        // Parabolic arc: sin gives a smooth rise-and-fall.
+        const heightCells = arc.peak * Math.sin(Math.PI * localT);
+        const cellRow = splash.row - 1 - Math.round(heightCells);
+        if (cellRow < 0 || cellRow >= height) continue;
+        const col = splash.column + arc.dx;
+        if (col < 0 || col >= width) continue;
+        // Pick character by height — taller = further into the sequence.
+        const charIndex = Math.min(
+          SPLASH_HEIGHT_CHARS.length - 1,
+          Math.floor(heightCells / arc.peak * (SPLASH_HEIGHT_CHARS.length - 0.01)),
+        );
+        const char = SPLASH_HEIGHT_CHARS[charIndex] ?? SPLASH_HEIGHT_CHARS[0]!;
+        // Fade: full brightness at peak, dim near start and end of arc.
+        const arcFade = Math.sin(Math.PI * localT);
+        // Outer particles are dimmer overall.
+        const distanceDim = 1 - Math.abs(arc.dx) * 0.12;
+        const alpha = arcFade * distanceDim;
+        if (alpha <= 0.05) continue;
+        const foreground = mixMuxstoneRgb(theme.background, headBase, alpha);
+        this.#cells[cellRow]![col] = { char, foreground, bold: alpha > 0.6 };
+      }
+    }
+
+    // Render gutter drops: horizontal slide along the window top, then
+    // vertical drizzle down the side.
+    const gutterColor = mixMuxstoneRgb(theme.accent, theme.background, 0.25);
+    for (const gutter of this.#gutterDrops) {
+      if (!gutter.falling) {
+        // Horizontal slide: short tail trailing behind the head.
+        const headCol = Math.floor(gutter.x);
+        const slideRow = gutter.windowTop - 1;
+        if (slideRow < 0 || slideRow >= height) continue;
+        for (let t = 0; t <= GUTTER_SLIDE_TAIL; t += 1) {
+          const col = headCol - gutter.direction * t;
+          if (col < 0 || col >= width) continue;
+          const fade = t / (GUTTER_SLIDE_TAIL + 1);
+          const fg = mixMuxstoneRgb(gutterColor, theme.background, fade);
+          const glyph = MATRIX_GLYPHS[this.#glyphs[slideRow * width + col] ?? 0] ?? MATRIX_GLYPHS[0]!;
+          this.#cells[slideRow]![col] = { char: glyph, foreground: fg, bold: t === 0 };
+        }
+      } else {
+        // Vertical drizzle down the side of the window.
+        const col = gutter.edgeColumn;
+        if (col < 0 || col >= width) continue;
+        const head = Math.floor(gutter.y);
+        for (let t = 0; t <= gutter.tail; t += 1) {
+          const row = head - t;
+          if (row < 0 || row >= height) continue;
+          const fade = t / (gutter.tail + 1);
+          const fg = mixMuxstoneRgb(gutterColor, theme.background, fade);
+          const glyph = MATRIX_GLYPHS[this.#glyphs[row * width + col] ?? 0] ?? MATRIX_GLYPHS[0]!;
+          this.#cells[row]![col] = { char: glyph, foreground: fg, bold: t === 0 };
+        }
+      }
+    }
+
     return this.#cells;
   }
 
@@ -225,6 +456,31 @@ export class MuxstoneMatrixRainField implements MuxstoneAnimatedBackground {
       tail: this.#rollTail(speed),
       boost: 0,
     };
+  }
+
+  #spawnSplash(column: number, row: number, now: number): void {
+    this.#splashes.push({ column, row, spawnedAt: now });
+  }
+
+  #spawnGutterDrop(column: number, obstacle: Rectangle): void {
+    const leftDist = column - obstacle.column;
+    const rightDist = (obstacle.column + obstacle.width - 1) - column;
+    // Head toward the nearest edge; break ties with the RNG.
+    const goLeft = leftDist < rightDist || (leftDist === rightDist && this.#random() < 0.5);
+    const direction = goLeft ? -1 : 1;
+    const edgeColumn = goLeft ? obstacle.column - 1 : obstacle.column + obstacle.width;
+    this.#gutterDrops.push({
+      x: column,
+      y: obstacle.row,
+      direction,
+      hSpeed: GUTTER_H_SPEED_LOW + this.#random() * (GUTTER_H_SPEED_HIGH - GUTTER_H_SPEED_LOW),
+      vSpeed: GUTTER_V_SPEED_LOW + this.#random() * (GUTTER_V_SPEED_HIGH - GUTTER_V_SPEED_LOW),
+      falling: false,
+      edgeColumn,
+      windowTop: obstacle.row,
+      windowBottom: obstacle.row + obstacle.height,
+      tail: Math.round(GUTTER_FALL_TAIL_MIN + this.#random() * (GUTTER_FALL_TAIL_MAX - GUTTER_FALL_TAIL_MIN)),
+    });
   }
 
   #respawnDrop(drop: MatrixDrop, bounds: Rectangle): void {

@@ -46,6 +46,34 @@ export interface MuxstoneAnimatedBackground {
   ): ReadonlyArray<ReadonlyArray<MuxstoneBackgroundCell | undefined>>;
 }
 
+/** A single positioned cell for post-window overlay painting. */
+export interface MuxstoneOverlayCell {
+  /** Column relative to the bounds origin. */
+  readonly column: number;
+  /** Row relative to the bounds origin. */
+  readonly row: number;
+  readonly cell: MuxstoneBackgroundCell;
+}
+
+/**
+ * Backgrounds that paint effects on top of window chrome (puddles, drizzle,
+ * splashes). The overlay is rendered after all windows so it stays visible
+ * even when tiled windows cover the background grid.
+ */
+export interface MuxstoneOverlayBackground extends MuxstoneAnimatedBackground {
+  rasterizeOverlayCells(
+    bounds: Rectangle,
+    theme: MuxstoneThemeSpec,
+  ): readonly MuxstoneOverlayCell[];
+}
+
+/** Narrows a background to one that paints post-window overlays. */
+export function muxstoneBackgroundHasOverlay(
+  field: MuxstoneAnimatedBackground | undefined,
+): field is MuxstoneOverlayBackground {
+  return typeof (field as MuxstoneOverlayBackground | undefined)?.rasterizeOverlayCells === "function";
+}
+
 /**
  * Backgrounds that answer clicks on bare desktop. Implementations return true
  * when the click landed on something they own, which claims the event.

@@ -71,14 +71,20 @@ import {
   MuxstoneTerminalMouseRouter,
 } from "./terminal_mouse.ts";
 import { muxstoneTerminalForegroundRgb, muxstoneTerminalRgb } from "./terminal_palette.ts";
-import { type MuxstoneAnimatedBackground, muxstoneBackgroundAcceptsPicks } from "./background.ts";
+import {
+  type MuxstoneAnimatedBackground,
+  muxstoneBackgroundAcceptsPicks,
+  muxstoneBackgroundHasOverlay,
+} from "./background.ts";
 import { MuxstoneBiomechField } from "./biomech_background.ts";
 import { MuxstoneCircuitField } from "./circuit_background.ts";
 import { MuxstoneJungleField } from "./jungle_background.ts";
 import { MuxstoneMatrixRainField } from "./matrix_background.ts";
+import { MuxstoneRainyWindowsField } from "./rainy_windows_background.ts";
 import { MuxstoneFireField } from "./fire_background.ts";
 import { MuxstoneIvyField } from "./ivy_background.ts";
 import { MuxstoneSkullField } from "./skull_background.ts";
+import { MuxstoneTurbulenceField } from "./turbulence_background.ts";
 import { MuxstoneVaporwaveField } from "./vaporwave_background.ts";
 import {
   MUXSTONE_METABALL_FRAME_INTERVAL_MS,
@@ -456,6 +462,8 @@ export function mountMuxstoneDesktop(
     if (!field) {
       field = id === "matrix"
         ? new MuxstoneMatrixRainField()
+        : id === "rainy windows"
+        ? new MuxstoneRainyWindowsField()
         : id === "circuit"
         ? new MuxstoneCircuitField()
         : id === "biomech"
@@ -468,6 +476,8 @@ export function mountMuxstoneDesktop(
         ? new MuxstoneIvyField()
         : id === "fire"
         ? new MuxstoneFireField()
+        : id === "turbulence"
+        ? new MuxstoneTurbulenceField()
         : new MuxstoneJungleField();
       backgroundFields.set(id, field);
     }
@@ -2253,6 +2263,17 @@ function renderMuxstoneDesktop(options: RenderMuxstoneDesktopOptions): string[][
   }
   for (const window of projection.floatingWindows) {
     paintWindow(painter, window, controller, options.selectedSessionIndex);
+  }
+  // Post-window overlay: effects that sit on top of window chrome (puddles,
+  // drizzle, splashes) so they remain visible even in tiled layouts.
+  if (options.backgroundField && muxstoneBackgroundHasOverlay(options.backgroundField)) {
+    for (const entry of options.backgroundField.rasterizeOverlayCells(body, theme)) {
+      painter.write(body.column + entry.column, body.row + entry.row, entry.cell.char, {
+        foreground: entry.cell.foreground,
+        background: theme.background,
+        ...(entry.cell.bold ? { bold: true } : {}),
+      });
+    }
   }
   if (backgroundGrid && options.overgrowth) {
     paintOvergrowth(painter, body, backgroundGrid, theme, projection, options.overgrowth);

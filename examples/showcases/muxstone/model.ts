@@ -240,6 +240,7 @@ export interface MuxstoneClientPort {
 export const MUXSTONE_BACKGROUND_IDS = [
   "metaballs",
   "matrix",
+  "rainy windows",
   "circuit",
   "biomech",
   "jungle",
@@ -247,6 +248,7 @@ export const MUXSTONE_BACKGROUND_IDS = [
   "skull",
   "ivy",
   "fire",
+  "turbulence",
 ] as const;
 export type MuxstoneBackgroundId = (typeof MUXSTONE_BACKGROUND_IDS)[number];
 
