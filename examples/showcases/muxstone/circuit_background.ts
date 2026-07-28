@@ -47,8 +47,13 @@ const INPUT_APPROACH_COLUMNS = 2;
 const STAGE_PITCH = CHIP_WIDTH + CHIP_SPACING + 4;
 /** Chance that growth splices a gate into an existing wire instead of appending one. */
 const SPLICE_CHANCE = 0.35;
-/** Cap on cells one wire route may explore, so a blocked route fails cheaply. */
-const MAX_ROUTE_VISITS = 6_000;
+/**
+ * The generation-stamped search visits each cell at most once, so the board's own
+ * cell count is the real bound and a blocked route still fails in one sweep. A
+ * fixed cap below that silently truncates the search on any desktop larger than
+ * it — the route is abandoned and its wire never drawn.
+ */
+const routeVisitCap = (bounds: Rectangle): number => bounds.width * bounds.height;
 /** Keep-out padding, in cells, applied around every window obstacle rect. */
 const OBSTACLE_MARGIN = 1;
 /**
@@ -114,6 +119,12 @@ const LOGIC_TICK_MS = 620;
 /** Inputs wired into each gate. */
 const MIN_GATE_INPUTS = 2;
 const MAX_GATE_INPUTS = 3;
+/**
+ * Hard ceiling on a gate's input pins — one per row of its left edge. Growth
+ * aims for `MAX_GATE_INPUTS`; only the pass that guarantees every output reaches
+ * something goes past it, and a 4- or 5-input gate is an ordinary part anyway.
+ */
+const MAX_GATE_FANIN = CHIP_HEIGHT;
 /** Pulse-speed multiplier for a de-energized (output-low) trace; it idles slow. */
 const IDLE_PULSE_MULTIPLIER = 0.22;
 /** The two supply rails, in the order they are run to every gate. */
@@ -1353,7 +1364,8 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     seen[sourceIndex] = generation;
     previous[sourceIndex] = -1;
     let found = false;
-    while (head < tail && head <= MAX_ROUTE_VISITS) {
+    const visitCap = routeVisitCap(bounds);
+    while (head < tail && head <= visitCap) {
       const index = queue[head++]!;
       if (index === sinkIndex) {
         found = true;
@@ -1730,7 +1742,7 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
       // No free lamp, so hand the output to a gate that cannot feed back into it.
       const sink = this.#chips
         .filter((other) =>
-          other.id !== chip.id && other.inputs.length < MAX_GATE_INPUTS && !this.#dependsOn(chip.id, other.id) &&
+          other.id !== chip.id && other.inputs.length < MAX_GATE_FANIN && !this.#dependsOn(chip.id, other.id) &&
           !other.inputs.some((input) => input.kind === "chip" && input.id === chip.id)
         )
         .sort((a, b) => gateDistance(a, chip) - gateDistance(b, chip))[0];
@@ -1739,13 +1751,14 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
         consumed.add(chip.id);
         continue;
       }
-      // Every gate is full too, so take over a lamp that is only echoing a
-      // signal another lamp already shows. The array keeps eight distinct
-      // readouts and the new gate still drives something.
-      const duplicate = this.#duplicateLamp();
-      if (!duplicate) continue;
-      duplicate.driver = { kind: "chip", id: chip.id };
-      duplicate.state = false;
+      // Every gate is full or would loop back, so take over a lamp whose signal
+      // is already visible elsewhere. Nothing goes dark and the new gate drives
+      // something, which is the invariant that matters.
+      const reassignable = this.#reassignableLamp();
+      if (!reassignable) continue;
+      reassignable.driver = { kind: "chip", id: chip.id };
+      reassignable.connected = false;
+      reassignable.state = false;
       consumed.add(chip.id);
     }
 
@@ -1767,16 +1780,30 @@ export class MuxstoneCircuitField implements MuxstoneAnimatedBackground {
     }
   }
 
-  /** The last lamp showing a signal another lamp already displays, if any. */
-  #duplicateLamp(): CircuitLed | undefined {
-    const seen = new Set<number>();
-    let duplicate: CircuitLed | undefined;
+  /**
+   * A lamp that can be handed to another gate without losing a signal: its
+   * current driver is watched by a second lamp or feeds a gate, so re-pointing
+   * this one leaves nothing unobserved.
+   */
+  #reassignableLamp(): CircuitLed | undefined {
+    const lampCounts = new Map<number, number>();
     for (const led of this.#leds) {
       if (led.driver?.kind !== "chip") continue;
-      if (seen.has(led.driver.id)) duplicate = led;
-      else seen.add(led.driver.id);
+      lampCounts.set(led.driver.id, (lampCounts.get(led.driver.id) ?? 0) + 1);
     }
-    return duplicate;
+    const feedsGate = new Set<number>();
+    for (const chip of this.#chips) {
+      for (const input of chip.inputs) {
+        if (input.kind === "chip") feedsGate.add(input.id);
+      }
+    }
+    let fallback: CircuitLed | undefined;
+    for (const led of this.#leds) {
+      if (led.driver?.kind !== "chip") continue;
+      if ((lampCounts.get(led.driver.id) ?? 0) > 1) return led;
+      if (feedsGate.has(led.driver.id)) fallback ??= led;
+    }
+    return fallback;
   }
 
   /** Places one CLK generator at a target cell, if the board has room for it. */

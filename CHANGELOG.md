@@ -172,6 +172,12 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Fixed
 
+- Muxstone's circuit wires are drawn on large desktops again. The route search gave up after a fixed number of cells,
+  which is fewer than a full-screen desktop holds, so it abandoned routes it could have found and the wire was never
+  drawn — gates appeared with no inputs. The search visits each cell at most once, so it is now bounded by the board's
+  own size, which both finds every route and lets a genuinely blocked one still fail in a single sweep. The pass that
+  guarantees every gate output reaches a gate or a lamp may now use a gate's fourth and fifth input pins, or hand over
+  a lamp whose signal is already visible elsewhere, so no output is left dangling on a board full of gates.
 - Double-width glyphs keep their two columns paired. The screen model marks the column a wide glyph also occupies, and
   breaking either half — writing over one of them, deleting or inserting a character through the pair, erasing part of
   it, or narrowing the screen across it — now erases both, as a real terminal does. Muxstone's renderer follows that

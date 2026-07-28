@@ -959,6 +959,40 @@ Deno.test("MuxstoneCircuitField: every gate's output drives a gate or a lamp", (
   }
 });
 
+Deno.test("MuxstoneCircuitField: every wired input is drawn, on boards of any size", () => {
+  // Regression: the route search gave up after a fixed number of cells, so on a
+  // desktop with more cells than that it abandoned routes it could have found
+  // and the wire was simply never drawn — gates appeared with no inputs at all.
+  // The largest size here is deliberately well past the old cap.
+  for (const [width, height] of [[110, 30], [140, 40], [200, 60]]) {
+    for (const seed of [3, 19]) {
+      const field = new MuxstoneCircuitField({ seed });
+      const bounds = { column: 0, row: 0, width, height };
+      let now = 0;
+      for (let frame = 0; frame < 2_000; frame += 1) {
+        now += 62.5;
+        field.advance({ bounds, obstacles: [], now });
+      }
+      const inspection = field.inspect();
+      assert(inspection.chips.length >= 8, `${width}x${height}: expected a populated board`);
+      for (const chip of inspection.chips) {
+        const wires = inspection.traces.filter((trace) =>
+          trace.kind === "wire" && trace.consumerChipId === chip.id
+        ).length;
+        assertEquals(
+          wires,
+          chip.inputCount,
+          `${width}x${height} seed ${seed}: gate ${chip.id} has ${chip.inputCount} inputs but ${wires} wires`,
+        );
+      }
+      // And the supply runs and lamp circuits survive the same search.
+      assertEquals(inspection.groundedChips, inspection.chips.length, `${width}x${height}: a gate lost a rail`);
+      assertEquals(inspection.danglingChips, 0, `${width}x${height}: a gate output dangled`);
+      for (const led of inspection.leds) assert(led.connected, `${width}x${height}: lamp ${led.id} lost its circuit`);
+    }
+  }
+});
+
 Deno.test("MuxstoneCircuitField: every gate is the same small package", () => {
   const field = new MuxstoneCircuitField({ seed: 7 });
   const bounds = { column: 0, row: 0, width: 120, height: 34 };
