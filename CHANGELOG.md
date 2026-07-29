@@ -25,17 +25,17 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Added
 
-- Added the Muxstone `[ Network ]` menu and left-docked panel with remembered SSH hosts (persisted, deletable) and
+- Added the Exomux `[ Network ]` menu and left-docked panel with remembered SSH hosts (persisted, deletable) and
   live Tailscale devices from a strict LocalAPI-with-CLI-fallback status source, with visibility-gated jittered
   polling and one-keystroke SSH session spawning through the detached host.
-- Added a Muxstone end-session control: a header `[ ✕ ]` button opening a Cancel / Detach / Terminate modal, where
+- Added a Exomux end-session control: a header `[ ✕ ]` button opening a Cancel / Detach / Terminate modal, where
   detach exits the client leaving the daemon running and terminate shuts the daemon down first.
-- Added five selectable animated Muxstone desktop backgrounds — dense matrix glyph rain, a window-aware procedural
+- Added five selectable animated Exomux desktop backgrounds — dense matrix glyph rain, a window-aware procedural
   circuitboard whose wires route around windows, tap into their borders, and glow brighter toward the focused
   window, a full-coverage Giger-style biomechanical wall, a dense breeze-reactive palm-frond canopy, and a
   block-style vaporwave/outrun sunset with a rising/setting scanline sun and a grid that drives toward the viewer —
   all theme-derived, deterministic, pointer-aware, persisted, and cycled with prefix `b`.
-- Muxstone's network panel lists each host's open shells beneath it (persisted session→host mapping); activating a
+- Exomux's network panel lists each host's open shells beneath it (persisted session→host mapping); activating a
   shell focuses its window.
 - Added the beta `./app` entrypoint with `TerminalApp`, declarative app definitions, default interaction/lifecycle
   wiring, disposable input handling, component registration, and a focused runnable example.
@@ -126,41 +126,41 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Changed
 
-- Muxstone's circuit gates are now a uniform 8x5 package rather than squares of varying size, so more of them fit and
+- Exomux's circuit gates are now a uniform 8x5 package rather than squares of varying size, so more of them fit and
   the board reads as one part family. Clicking a gate traces its whole net out in the highlight colour — every wire
   into it, its output wires, and both supply runs — and clicking it again, or clicking bare board, releases it. Cells
   where a net forks are drawn as a junction dot, so a branch reads as a connection rather than two wires that happen
   to cross.
-- Muxstone's circuit background now reads as a directed schematic: every gate takes its inputs on its left edge and
+- Exomux's circuit background now reads as a directed schematic: every gate takes its inputs on its left edge and
   drives its single output pin off its right edge, and wires are pinned through stubs so they leave a driver and reach
   a consumer heading east. VCC takes the top-left corner and GND the bottom-right, with a CLK generator in each of the
   other two corners and a third in the middle of a board large enough to warrant it; a source parked in a right-hand
   corner feeds west, and any source a window covers slides aside and returns to its corner when the window moves on.
-- Muxstone's circuit background drives an eight-lamp indicator array across the top of the desktop. Each lamp is a
+- Exomux's circuit background drives an eight-lamp indicator array across the top of the desktop. Each lamp is a
   complete circuit — a feed from a gate's output into its anode on the left, and a return out of its cathode back to
   the GND rail — and lights only when both halves are physically routed, so a lamp a window has cut off goes dark
   instead of glowing on nothing. Lamps prefer a distinct gate each, and every gate's output now reaches a gate or a
   lamp, so no node is left with a dangling output.
-- Muxstone's circuit background now separates supply from signal. Both rails run to every gate on their own traces,
+- Exomux's circuit background now separates supply from signal. Both rails run to every gate on their own traces,
   reaching its VCC pin on the top edge and its GND pin on the bottom, and a gate counts as powered only because those
   runs exist — never because a logic path happens to pass through a rail. Each run is laid in the direction its current
   actually flows, down from VCC into the gate and out of the gate away to GND, so nothing ever reads as streaming out
   of ground; a gate's VCC run carries current while its output is high and its GND run while the output is low. The CLK nodes are signal generators and no
   longer stand in for a rail connection, and gate inputs carry signals only, so every gate's cone traces back to a
   generator.
-- Muxstone's circuit background now grows to cover the desktop instead of bunching into one corner: the gate ceiling
+- Exomux's circuit background now grows to cover the desktop instead of bunching into one corner: the gate ceiling
   scales with the board area, growth runs faster while the board is bare and settles as it fills, a new gate is seated
   just downstream of the gate it extends, and a gate that cannot fit there goes to the emptiest part of the board. Each
   rail hands its runs out across several terminals around its label rather than one cell, so VCC and GND read as wired
   into the circuit. Re-routing now coalesces while a window is still being dragged, which more than pays for the denser
   board.
-- Muxstone's circuit background now evolves instead of re-wiring itself. The board opens as a small circuit that is
+- Exomux's circuit background now evolves instead of re-wiring itself. The board opens as a small circuit that is
   already valid — every gate supplied by both rails, driven by a signal, and read by something — and grows one gate at
   a time, either appended to an existing output or spliced into an existing wire; both moves preserve the invariant and
   keep the netlist acyclic. A repair pass runs only when a window despawns or relocates a gate.
-- The Muxstone showcase prefix key moved from tmux-conflicting Ctrl-B to Ctrl-N; double Ctrl-N forwards a literal
+- The Exomux showcase prefix key moved from tmux-conflicting Ctrl-B to Ctrl-N; double Ctrl-N forwards a literal
   Ctrl-N byte to the focused terminal.
-- The Muxstone network panel browses hosts and tailnet machines through the shared workbench `TreeController`
+- The Exomux network panel browses hosts and tailnet machines through the shared workbench `TreeController`
   hierarchy, and freshly spawned floating terminals open centered and focused above the panel.
 - Text-row components now allocate and retire visible rows as their terminal height changes, including styled ANSI rows.
 - Tightened the contributor API inventory gate to require duplicate-free public exports and 100% JSDoc coverage.
@@ -172,7 +172,7 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Fixed
 
-- Muxstone's circuit wires are drawn on large desktops again. The route search gave up after a fixed number of cells,
+- Exomux's circuit wires are drawn on large desktops again. The route search gave up after a fixed number of cells,
   which is fewer than a full-screen desktop holds, so it abandoned routes it could have found and the wire was never
   drawn — gates appeared with no inputs. The search visits each cell at most once, so it is now bounded by the board's
   own size, which both finds every route and lets a genuinely blocked one still fail in a single sweep. The pass that
@@ -180,7 +180,7 @@ quickly, but the affected entrypoint or module family should be named here.
   a lamp whose signal is already visible elsewhere, so no output is left dangling on a board full of gates.
 - Double-width glyphs keep their two columns paired. The screen model marks the column a wide glyph also occupies, and
   breaking either half — writing over one of them, deleting or inserting a character through the pair, erasing part of
-  it, or narrowing the screen across it — now erases both, as a real terminal does. Muxstone's renderer follows that
+  it, or narrowing the screen across it — now erases both, as a real terminal does. Exomux's renderer follows that
   mark instead of re-deriving the pairing by measuring the glyph, so a character written into the second column of a
   wide glyph is drawn rather than mistaken for its continuation and skipped.
 - A bare line feed is an index again — down one row, same column — rather than a newline. Full-screen applications run
@@ -194,7 +194,7 @@ quickly, but the affected entrypoint or module family should be named here.
   `(B`-style artifacts or draw ACS borders as letters, including across chunk-split writes.
 - The input reader no longer decodes SGR or legacy X10 horizontal-wheel codes as vertical scrolls, and legacy X10
   wheel-up bytes now decode as scroll events instead of drags.
-- Muxstone wheel input over an alternate-screen child without mouse tracking now sends cursor-key fallback bytes to
+- Exomux wheel input over an alternate-screen child without mouse tracking now sends cursor-key fallback bytes to
   the child instead of trapping the window in workbench copy mode, so full-screen apps scroll naturally.
 - Three ASCII now verifies mapped GPU readback before selecting an adapter and falls back to a compatible software
   adapter when the primary device cannot support terminal readback.

@@ -85,11 +85,11 @@ export const workspaceDemoItems: readonly WorkspaceDemoItem[] = [
     ],
   },
   {
-    id: "muxstone",
-    path: "apps/muxstone.tui",
-    title: "Muxstone Terminal Multiplexer",
+    id: "exomux",
+    path: "apps/exomux.tui",
+    title: "Exomux Terminal Multiplexer",
     kind: "app",
-    task: "muxstone",
+    task: "exomux",
     summary: "Persistent local PTY host with detachable, draggable, themeable, and tileable terminal windows.",
     features: [
       "real PTY shells",
@@ -102,7 +102,7 @@ export const workspaceDemoItems: readonly WorkspaceDemoItem[] = [
       'Ctrl-B c creates a terminal; Ctrl-B % and " tile beside or below.',
       "Closing a window detaches its view while the local host keeps the process alive.",
       "Drag floating title bars and borders, resize tiled separators, cycle four themes, and reattach later.",
-      "Use L to launch Muxstone. Ordinary quit detaches; only a confirmed Kill destroys a session.",
+      "Use L to launch Exomux. Ordinary quit detaches; only a confirmed Kill destroys a session.",
     ],
   },
   {

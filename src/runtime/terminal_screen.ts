@@ -132,7 +132,7 @@ export class TerminalScreenController {
   #pendingControl = "";
   // VT100 deferred-wrap latch: after a glyph fills the last column the cursor
   // parks there and only the *next* printable character wraps + scrolls. Full
-  // -screen TUIs (e.g. nested Muxstone) paint the bottom row edge-to-edge every
+  // -screen TUIs (e.g. nested Exomux) paint the bottom row edge-to-edge every
   // frame; without this latch each paint would spuriously scroll the screen up.
   #pendingWrap = false;
   readonly #charsetDecGraphics = [false, false];

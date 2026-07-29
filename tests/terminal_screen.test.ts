@@ -531,7 +531,7 @@ Deno.test("TerminalScreenController clips insert mode at the row edge", () => {
 });
 
 Deno.test("TerminalScreenController does not scroll when a full-screen paint fills the last row edge-to-edge", () => {
-  // Reproduces the nested-Muxstone symptom: a full-screen TUI cursor-addresses
+  // Reproduces the nested-Exomux symptom: a full-screen TUI cursor-addresses
   // the bottom row and paints it to the final column every frame. With immediate
   // autowrap this scrolled the whole screen up on each frame; deferred wrap keeps
   // the addressed content stable.
