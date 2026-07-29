@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 
 import type { Rectangle } from "../../../src/types.ts";
-import type { ExomuxRgb, ExomuxThemeSpec } from "./model.ts";
+import type { ExomuxThemeSpec } from "./model.ts";
 import {
   mixExomuxRgb,
   type ExomuxAnimatedBackground,

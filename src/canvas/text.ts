@@ -1,12 +1,12 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { DrawObject, DrawObjectOptions } from "./draw_object.ts";
+import { DrawObject, type DrawObjectOptions } from "./draw_object.ts";
 
 import { getMultiCodePointCharacters, textWidth } from "../utils/strings.ts";
 import { fitsInRectangle, rectangleEquals, rectangleIntersection } from "../utils/numbers.ts";
-import { Effect, Signal, SignalOfObject } from "../signals/mod.ts";
-import { Rectangle } from "../types.ts";
+import { Effect, type Signal, type SignalOfObject } from "../signals/mod.ts";
+import type { Rectangle } from "../types.ts";
 import { signalify } from "../utils/signals.ts";
-import { Subscription } from "../signals/types.ts";
+import type { Subscription } from "../signals/types.ts";
 import { type DirtyRowSegment, mergeDirtyRowSegmentsInPlace } from "./dirty_region.ts";
 
 /**

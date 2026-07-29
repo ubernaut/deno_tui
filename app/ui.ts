@@ -1,6 +1,6 @@
 import { BoxObject } from "../src/canvas/box.ts";
 import { TextObject, type TextRectangle } from "../src/canvas/text.ts";
-import { Canvas } from "../src/canvas/canvas.ts";
+import type { Canvas } from "../src/canvas/canvas.ts";
 import { Computed, Signal, type SignalOfObject } from "../src/signals/mod.ts";
 import { cropToWidth, textWidth } from "../src/utils/strings.ts";
 import type { Style } from "../src/theme.ts";

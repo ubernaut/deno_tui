@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Computed, Signal, SignalOfObject } from "../signals/mod.ts";
+import { Computed, Signal, type SignalOfObject } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
-import { Button, ButtonOptions } from "./button.ts";
+import { Button, type ButtonOptions } from "./button.ts";
 import { stackedRowIndexAt } from "./interaction.ts";
 
 /** Options for configuring combo Box. */

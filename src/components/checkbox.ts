@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { ComponentOptions } from "../component.ts";
+import type { ComponentOptions } from "../component.ts";
 import { Computed, Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import { Button } from "./button.ts";

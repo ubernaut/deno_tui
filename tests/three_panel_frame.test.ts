@@ -4,7 +4,8 @@ import { createDefaultAsciiOptions } from "../src/three_ascii/options.ts";
 import { ThreePanelFrameView, type ThreePanelGridRenderer, type ThreeSceneState } from "../app/three_panel.ts";
 import { type ThreePanelFrameUpdate, ThreePanelRenderQueue } from "../src/app/three_panel_core.ts";
 import { resolveThreePanelRenderSize } from "../src/app/three_panel_policy.ts";
-import { Canvas, MemoryCanvasSink, type ThreeAsciiGridRenderer, ThreeAsciiObject } from "../src/canvas/mod.ts";
+import { Canvas, MemoryCanvasSink } from "../src/canvas/mod.ts";
+import { type ThreeAsciiGridRenderer, ThreeAsciiObject } from "../src/canvas/three_ascii.ts";
 import type {
   GraphicsDeleteMode,
   GraphicsHandle,

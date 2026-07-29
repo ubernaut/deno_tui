@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Signal, SignalOptions } from "../signals/mod.ts";
+import { Signal, type SignalOptions } from "../signals/mod.ts";
 
 /** Creates signal from input if it's not already a signal */
 export function signalify<T>(input: T | Signal<T>, options?: SignalOptions<T>): Signal<T> {

@@ -1,10 +1,10 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { DrawObject, DrawObjectOptions } from "./draw_object.ts";
-import { Signal, SignalOfObject } from "../signals/mod.ts";
+import { DrawObject, type DrawObjectOptions } from "./draw_object.ts";
+import type { Signal, SignalOfObject } from "../signals/mod.ts";
 
 import type { Rectangle } from "../types.ts";
 import { signalify } from "../utils/signals.ts";
-import { Subscription } from "../signals/types.ts";
+import type { Subscription } from "../signals/types.ts";
 import { type DirtyRowSegment, mergeDirtyRowSegmentsInPlace } from "./dirty_region.ts";
 
 /** Options for configuring box Object. */

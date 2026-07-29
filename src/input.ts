@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Tui } from "./tui.ts";
+import type { Tui } from "./tui.ts";
 import { emitInputEvents } from "./input_reader/mod.ts";
 
 /** Emit input events to Tui  */

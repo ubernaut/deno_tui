@@ -24,6 +24,9 @@
     ]
   },
   "imports": {
+    // Optional PTY adapter, imported dynamically by src/runtime/pty_backend.ts.
+    // Mapped here so the version is pinned in one place and covered by deno.lock.
+    "@sigma/pty-ffi": "jsr:@sigma/pty-ffi@0.42.0",
     "crayon": "https://deno.land/x/crayon@3.3.3/mod.ts",
     "esbuild": "npm:esbuild@0.24.2",
     "jpeg-js": "npm:jpeg-js@0.4.4",
@@ -129,5 +132,9 @@
     "exclude": ["docs/screenshots", "docs/assets", "docs/api-stable-baseline.json"],
     "lineWidth": 120
   },
-  "lock": false
+  // `docs/assets` holds generated bundles; linting them buries the handful of
+  // real findings under thousands of diagnostics from emitted code.
+  "lint": {
+    "exclude": ["docs"]
+  }
 }

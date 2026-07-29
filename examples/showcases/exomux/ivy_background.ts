@@ -14,7 +14,6 @@ const TAU = Math.PI * 2;
 const FRAME_BASELINE_MS = 16.7;
 const MAX_FRAME_DELTA_MS = 48;
 const POINTER_LIFETIME_MS = 1_600;
-const POINTER_REACH_CELLS = 6;
 
 /** Cells a strand extends per baseline frame while it is still growing. */
 const GROWTH_CELLS_PER_FRAME = 0.16;
@@ -728,11 +727,6 @@ function headingStep(heading: number): { dx: number; dy: number } {
     default:
       return { dx: 1, dy: -1 };
   }
-}
-
-function quadrant(heading: number): 0 | 1 | 2 | 3 {
-  const normalized = ((heading % TAU) + TAU) % TAU;
-  return Math.floor(normalized / (TAU / 4)) as 0 | 1 | 2 | 3;
 }
 
 function clampInteger(value: number, low: number, high: number): number {

@@ -36,7 +36,8 @@ export * from "./tabs.ts";
 export * from "./terminal_output.ts";
 export * from "./text.ts";
 export * from "./textbox.ts";
-export * from "./three_ascii.ts";
+// `./three_ascii.ts` is deliberately absent; see `src/canvas/mod.ts`. The
+// ThreeAscii component ships from the `./three-ascii` entry point.
 export * from "./toast.ts";
 export * from "./tree.ts";
 export * from "./virtual_list.ts";

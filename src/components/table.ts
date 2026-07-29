@@ -1,11 +1,11 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Component, ComponentOptions } from "../component.ts";
+import { Component, type ComponentOptions } from "../component.ts";
 
 import { BoxObject } from "../canvas/box.ts";
 import { TextObject } from "../canvas/text.ts";
 
 import type { DeepPartial, Rectangle } from "../types.ts";
-import { Theme } from "../theme.ts";
+import type { Theme } from "../theme.ts";
 import { textWidth } from "../utils/strings.ts";
 import { clamp } from "../utils/numbers.ts";
 import { Computed, Effect, Signal } from "../signals/mod.ts";

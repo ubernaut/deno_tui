@@ -1,11 +1,11 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { BoxObject, Canvas } from "./canvas/mod.ts";
-import { Component } from "./component.ts";
-import { EmitterEvent, EventEmitter } from "./event_emitter.ts";
-import { InputEventRecord } from "./input_reader/mod.ts";
-import { Computed, Signal } from "./signals/mod.ts";
-import { Style } from "./theme.ts";
-import { Rectangle, Stdin, Stdout } from "./types.ts";
+import type { Component } from "./component.ts";
+import { type EmitterEvent, EventEmitter } from "./event_emitter.ts";
+import type { InputEventRecord } from "./input_reader/mod.ts";
+import { Computed, type Signal } from "./signals/mod.ts";
+import type { Style } from "./theme.ts";
+import type { Rectangle, Stdin, Stdout } from "./types.ts";
 import {
   DISABLE_BRACKETED_PASTE,
   DISABLE_FOCUS_EVENTS,

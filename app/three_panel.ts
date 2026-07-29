@@ -1,4 +1,4 @@
-import { type Canvas } from "../src/canvas/canvas.ts";
+import type { Canvas } from "../src/canvas/canvas.ts";
 import { buildFallbackGrid, formatThreeAsciiFallbackDetail, ThreeAsciiObject } from "../src/canvas/three_ascii.ts";
 import { Effect, Signal, SignalBatchScheduler, type SignalOfObject } from "../src/signals/mod.ts";
 import { emptyStyle } from "../src/theme.ts";
@@ -40,7 +40,7 @@ import {
   type ThreePanelLifecycleState,
   threePanelRendererStateMatches,
   type ThreePanelRendererStateSnapshot,
-  ThreePanelRenderQueue,
+  type ThreePanelRenderQueue,
   threePanelSlowFrameDiagnostic,
 } from "../src/app/three_panel_core.ts";
 import {

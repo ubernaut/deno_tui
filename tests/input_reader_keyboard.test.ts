@@ -38,11 +38,11 @@ Deno.test("emitInputEvents drains input until EOF and restores event boundaries"
   const reads = [encoder.encode("ab"), encoder.encode("\x1b[A"), null];
   const rawModes: boolean[] = [];
   const stdin = {
-    async read(buffer: Uint8Array) {
+    read(buffer: Uint8Array) {
       const next = reads.shift();
-      if (next == null) return null;
+      if (next == null) return Promise.resolve(null);
       buffer.set(next);
-      return next.length;
+      return Promise.resolve(next.length);
     },
     setRaw(value: boolean) {
       rawModes.push(value);
@@ -65,8 +65,8 @@ Deno.test("emitInputEvents honours the cbreak option so multiplexers capture Ctr
     const reads: (Uint8Array | null)[] = [null];
     let observed: { cbreak?: boolean } | undefined;
     const stdin = {
-      async read(_buffer: Uint8Array) {
-        return reads.shift() === null ? null : 0;
+      read(_buffer: Uint8Array) {
+        return Promise.resolve(reads.shift() === null ? null : 0);
       },
       setRaw(_value: boolean, rawOptions?: { cbreak?: boolean }) {
         observed = rawOptions;
@@ -90,12 +90,12 @@ Deno.test("emitInputEvents does not throttle immediately available reads by defa
     timerFired = true;
   }, 0);
   const stdin = {
-    async read(buffer: Uint8Array) {
+    read(buffer: Uint8Array) {
       timerObservedByRead.push(timerFired);
       const next = reads.shift();
-      if (next == null) return null;
+      if (next == null) return Promise.resolve(null);
       buffer.set(next);
-      return next.length;
+      return Promise.resolve(next.length);
     },
     setRaw() {},
   } as unknown as Stdin;
@@ -120,12 +120,12 @@ Deno.test("emitInputEvents yields after a zero-byte adapter read", async () => {
     timerFired = true;
   }, 0);
   const stdin = {
-    async read(buffer: Uint8Array) {
+    read(buffer: Uint8Array) {
       timerObservedByRead.push(timerFired);
       const next = reads.shift();
-      if (next == null || next === 0) return next;
+      if (next == null || next === 0) return Promise.resolve(next);
       buffer.set(next);
-      return next.length;
+      return Promise.resolve(next.length);
     },
     setRaw() {},
   } as unknown as Stdin;

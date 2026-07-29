@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Component, ComponentOptions } from "../component.ts";
-import { TextObject, TextRectangle } from "../canvas/text.ts";
-import { Computed, Effect, Signal, SignalOfObject } from "../signals/mod.ts";
+import { Component, type ComponentOptions } from "../component.ts";
+import { TextObject, type TextRectangle } from "../canvas/text.ts";
+import { Computed, Effect, type Signal, type SignalOfObject } from "../signals/mod.ts";
 
 import { signalify } from "../utils/signals.ts";
 import { cropToWidth, textWidth } from "../utils/strings.ts";

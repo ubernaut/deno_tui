@@ -185,7 +185,7 @@ export async function probeSigmaPtyAvailability(
 }
 
 async function importSigmaPtyModule(): Promise<SigmaPtyModule> {
-  return await import("jsr:@sigma/pty-ffi@0.42.0") as SigmaPtyModule;
+  return await import("@sigma/pty-ffi") as SigmaPtyModule;
 }
 
 class SigmaPtyTerminalBackend implements TerminalBackend {

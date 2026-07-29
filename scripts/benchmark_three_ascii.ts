@@ -1,16 +1,12 @@
 import { PerspectiveCamera, Scene } from "three";
+import { type BenchmarkCase, Canvas, emptyStyle, MemoryCanvasSink, renderFrameRow } from "../mod.ts";
 import {
-  BenchmarkCase,
   buildThreeAsciiAnsiGrid,
-  Canvas,
-  emptyStyle,
-  MemoryCanvasSink,
-  renderFrameRow,
   ThreeAsciiAnsiGridAssembler,
   type ThreeAsciiGridRenderer,
   ThreeAsciiObject,
   ThreeAsciiRenderer,
-} from "../mod.ts";
+} from "../mod.three_ascii.ts";
 import { compactMappedRgbaRows } from "../src/three_ascii/headless_canvas.ts";
 import { defaultThreeAsciiProbeOptions, threeAsciiProbeReport } from "../src/three_ascii/probe.ts";
 import type { ThreeAsciiRendererPerformance } from "../src/three_ascii/performance.ts";

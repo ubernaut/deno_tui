@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Box } from "./box.ts";
-import { Theme } from "../theme.ts";
-import { ComponentOptions } from "../component.ts";
+import type { Theme } from "../theme.ts";
+import type { ComponentOptions } from "../component.ts";
 
 import { BoxObject } from "../canvas/box.ts";
 

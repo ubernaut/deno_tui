@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Color } from "three";
+import type { Color } from "three";
 
 import type { AcerolaAsciiNodeOptions } from "./AcerolaAsciiNode.ts";
 import { colorValue } from "./colors.ts";

@@ -50,9 +50,9 @@ export function createTestStdout(): TestStdout {
   const chunks: Uint8Array[] = [];
   return {
     chunks,
-    async write(data: Uint8Array) {
+    write(data: Uint8Array) {
       chunks.push(data.slice());
-      return data.byteLength;
+      return Promise.resolve(data.byteLength);
     },
     writeSync(data: Uint8Array) {
       chunks.push(data.slice());

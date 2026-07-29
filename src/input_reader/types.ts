@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Range } from "../types.ts";
+import type { Range } from "../types.ts";
 
 /** Interface defining key press issued to stdin */
 export interface KeyPressEvent {

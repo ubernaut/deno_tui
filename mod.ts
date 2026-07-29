@@ -36,7 +36,8 @@ export * from "./src/markup/mod.ts";
 
 export * from "./src/components/mod.ts";
 export * from "./src/canvas/mod.ts";
-export * from "./src/three_ascii/mod.ts";
+// The Three.js ASCII renderer is reached through the `./three-ascii` entry
+// point so the default export stays free of `npm:three`.
 
 export * from "./src/utils/mod.ts";
 

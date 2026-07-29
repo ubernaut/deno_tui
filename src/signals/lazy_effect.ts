@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Effect, Effectable } from "./effect.ts";
+import { Effect, type Effectable } from "./effect.ts";
 import { Flusher } from "./flusher.ts";
 
 import type { Dependant, Dependency, LazyDependant } from "./types.ts";

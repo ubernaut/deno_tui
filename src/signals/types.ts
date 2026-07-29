@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Flusher } from "./flusher.ts";
+import type { Flusher } from "./flusher.ts";
 
 /** Type describing function that gets called each time signal changes */
 export interface Subscription<T> {

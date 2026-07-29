@@ -1,6 +1,6 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Computable, Computed } from "./computed.ts";
-import { Dependency } from "./types.ts";
+import { type Computable, Computed } from "./computed.ts";
+import type { Dependency } from "./types.ts";
 import { Flusher } from "./flusher.ts";
 
 import type { LazyDependant } from "./types.ts";

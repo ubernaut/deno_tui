@@ -1,5 +1,5 @@
 import {
-  Camera,
+  type Camera,
   Color,
   HalfFloatType,
   LinearFilter,
@@ -9,7 +9,7 @@ import {
   RendererUtils,
   RenderTarget,
   TempNode,
-  Texture,
+  type Texture,
   type UniformNode,
   Vector2,
 } from "three/webgpu";

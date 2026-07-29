@@ -6,4 +6,6 @@ export * from "./dirty_region.ts";
 export * from "./draw_object.ts";
 export * from "./sink.ts";
 export * from "./spatial_index.ts";
-export * from "./three_ascii.ts";
+// `./three_ascii.ts` is deliberately absent: it imports `npm:three`, and
+// re-exporting it here put a WebGPU renderer in the dependency graph of every
+// canvas consumer. It ships from the `./three-ascii` entry point instead.

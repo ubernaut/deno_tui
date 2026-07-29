@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { type SelectionController } from "../selection.ts";
+import type { SelectionController } from "../selection.ts";
 import { Signal } from "../signals/mod.ts";
 import type { Action } from "./actions.ts";
 import { CommandGroupBuilder, type LabeledCommandGroupOptions } from "./command_helpers.ts";

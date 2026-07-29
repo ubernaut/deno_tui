@@ -8,6 +8,12 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Breaking changes (pre-1.0)
 
+- The Three.js-backed ASCII renderer moved off the default `.` entrypoint and now ships only from `./three-ascii`
+  (`mod.three_ascii.ts`). `src/canvas/mod.ts` and `src/components/mod.ts` no longer re-export `./three_ascii.ts`, and
+  `mod.ts` no longer re-exports `src/three_ascii/mod.ts`, so 83 stable symbols — `ThreeAsciiObject`, `ThreeAscii`,
+  `AcerolaAsciiNode`, the renderer, glyph, readback, and probe families — must now be imported from `./three-ascii`.
+  Those modules import `npm:three`, which put a WebGPU renderer in the dependency graph of every consumer of the default
+  entrypoint; `mod.ts`, `mod.app.ts`, and `src/canvas/mod.ts` now resolve without `npm:three` at all.
 - The pre-1.0 `MarkupWindowSnapshot` shape advances from V1 to V2 to persist floating rectangles, restore/snap metadata,
   groups, focus tiers, and active identity. Restore accepts and deterministically migrates supported V1 payloads;
   persisted writers and TypeScript consumers should emit the V2 shape.
@@ -25,18 +31,18 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Added
 
-- Added the Exomux `[ Network ]` menu and left-docked panel with remembered SSH hosts (persisted, deletable) and
-  live Tailscale devices from a strict LocalAPI-with-CLI-fallback status source, with visibility-gated jittered
-  polling and one-keystroke SSH session spawning through the detached host.
-- Added a Exomux end-session control: a header `[ ✕ ]` button opening a Cancel / Detach / Terminate modal, where
-  detach exits the client leaving the daemon running and terminate shuts the daemon down first.
+- Added the Exomux `[ Network ]` menu and left-docked panel with remembered SSH hosts (persisted, deletable) and live
+  Tailscale devices from a strict LocalAPI-with-CLI-fallback status source, with visibility-gated jittered polling and
+  one-keystroke SSH session spawning through the detached host.
+- Added a Exomux end-session control: a header `[ ✕ ]` button opening a Cancel / Detach / Terminate modal, where detach
+  exits the client leaving the daemon running and terminate shuts the daemon down first.
 - Added five selectable animated Exomux desktop backgrounds — dense matrix glyph rain, a window-aware procedural
-  circuitboard whose wires route around windows, tap into their borders, and glow brighter toward the focused
-  window, a full-coverage Giger-style biomechanical wall, a dense breeze-reactive palm-frond canopy, and a
-  block-style vaporwave/outrun sunset with a rising/setting scanline sun and a grid that drives toward the viewer —
-  all theme-derived, deterministic, pointer-aware, persisted, and cycled with prefix `b`.
-- Exomux's network panel lists each host's open shells beneath it (persisted session→host mapping); activating a
-  shell focuses its window.
+  circuitboard whose wires route around windows, tap into their borders, and glow brighter toward the focused window, a
+  full-coverage Giger-style biomechanical wall, a dense breeze-reactive palm-frond canopy, and a block-style
+  vaporwave/outrun sunset with a rising/setting scanline sun and a grid that drives toward the viewer — all
+  theme-derived, deterministic, pointer-aware, persisted, and cycled with prefix `b`.
+- Exomux's network panel lists each host's open shells beneath it (persisted session→host mapping); activating a shell
+  focuses its window.
 - Added the beta `./app` entrypoint with `TerminalApp`, declarative app definitions, default interaction/lifecycle
   wiring, disposable input handling, component registration, and a focused runnable example.
 - Added a headless `TerminalAppPilot` through `./testing` for deterministic key, pointer, paste, focus, resize, command,
@@ -126,28 +132,35 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Changed
 
-- Exomux's circuit gates are now a uniform 8x5 package rather than squares of varying size, so more of them fit and
-  the board reads as one part family. Clicking a gate traces its whole net out in the highlight colour — every wire
-  into it, its output wires, and both supply runs — and clicking it again, or clicking bare board, releases it. Cells
-  where a net forks are drawn as a junction dot, so a branch reads as a connection rather than two wires that happen
-  to cross.
-- Exomux's circuit background now reads as a directed schematic: every gate takes its inputs on its left edge and
-  drives its single output pin off its right edge, and wires are pinned through stubs so they leave a driver and reach
-  a consumer heading east. VCC takes the top-left corner and GND the bottom-right, with a CLK generator in each of the
+- The repository now commits a `deno.lock`. Every remote dependency — 10 JSR packages, 37 npm packages, and the
+  `deno.land/x/crayon` modules — is integrity-checked instead of being re-resolved unpinned on each build. The optional
+  PTY adapter moved from an inline `jsr:@sigma/pty-ffi@0.42.0` dynamic-import specifier to a `@sigma/pty-ffi` import-map
+  entry so its version is pinned in one place.
+- `deno lint` now excludes `docs`. Generated bundles under `docs/assets` were producing 4,187 of 4,276 diagnostics,
+  which buried the 89 real findings in first-party code; those 89 are now fixed and the lint run is clean.
+- Removed the stray `package.json` and `package-lock.json`. They declared an unrelated `@openai/codex` dependency, were
+  ignored under `nodeModulesDir: "none"`, and caused `deno install` to seed `deno.lock` from npm metadata.
+- Exomux's circuit gates are now a uniform 8x5 package rather than squares of varying size, so more of them fit and the
+  board reads as one part family. Clicking a gate traces its whole net out in the highlight colour — every wire into it,
+  its output wires, and both supply runs — and clicking it again, or clicking bare board, releases it. Cells where a net
+  forks are drawn as a junction dot, so a branch reads as a connection rather than two wires that happen to cross.
+- Exomux's circuit background now reads as a directed schematic: every gate takes its inputs on its left edge and drives
+  its single output pin off its right edge, and wires are pinned through stubs so they leave a driver and reach a
+  consumer heading east. VCC takes the top-left corner and GND the bottom-right, with a CLK generator in each of the
   other two corners and a third in the middle of a board large enough to warrant it; a source parked in a right-hand
   corner feeds west, and any source a window covers slides aside and returns to its corner when the window moves on.
 - Exomux's circuit background drives an eight-lamp indicator array across the top of the desktop. Each lamp is a
-  complete circuit — a feed from a gate's output into its anode on the left, and a return out of its cathode back to
-  the GND rail — and lights only when both halves are physically routed, so a lamp a window has cut off goes dark
-  instead of glowing on nothing. Lamps prefer a distinct gate each, and every gate's output now reaches a gate or a
-  lamp, so no node is left with a dangling output.
+  complete circuit — a feed from a gate's output into its anode on the left, and a return out of its cathode back to the
+  GND rail — and lights only when both halves are physically routed, so a lamp a window has cut off goes dark instead of
+  glowing on nothing. Lamps prefer a distinct gate each, and every gate's output now reaches a gate or a lamp, so no
+  node is left with a dangling output.
 - Exomux's circuit background now separates supply from signal. Both rails run to every gate on their own traces,
   reaching its VCC pin on the top edge and its GND pin on the bottom, and a gate counts as powered only because those
   runs exist — never because a logic path happens to pass through a rail. Each run is laid in the direction its current
-  actually flows, down from VCC into the gate and out of the gate away to GND, so nothing ever reads as streaming out
-  of ground; a gate's VCC run carries current while its output is high and its GND run while the output is low. The CLK nodes are signal generators and no
-  longer stand in for a rail connection, and gate inputs carry signals only, so every gate's cone traces back to a
-  generator.
+  actually flows, down from VCC into the gate and out of the gate away to GND, so nothing ever reads as streaming out of
+  ground; a gate's VCC run carries current while its output is high and its GND run while the output is low. The CLK
+  nodes are signal generators and no longer stand in for a rail connection, and gate inputs carry signals only, so every
+  gate's cone traces back to a generator.
 - Exomux's circuit background now grows to cover the desktop instead of bunching into one corner: the gate ceiling
   scales with the board area, growth runs faster while the board is bare and settles as it fills, a new gate is seated
   just downstream of the gate it extends, and a gate that cannot fit there goes to the emptiest part of the board. Each
@@ -155,13 +168,13 @@ quickly, but the affected entrypoint or module family should be named here.
   into the circuit. Re-routing now coalesces while a window is still being dragged, which more than pays for the denser
   board.
 - Exomux's circuit background now evolves instead of re-wiring itself. The board opens as a small circuit that is
-  already valid — every gate supplied by both rails, driven by a signal, and read by something — and grows one gate at
-  a time, either appended to an existing output or spliced into an existing wire; both moves preserve the invariant and
+  already valid — every gate supplied by both rails, driven by a signal, and read by something — and grows one gate at a
+  time, either appended to an existing output or spliced into an existing wire; both moves preserve the invariant and
   keep the netlist acyclic. A repair pass runs only when a window despawns or relocates a gate.
-- The Exomux showcase prefix key moved from tmux-conflicting Ctrl-B to Ctrl-N; double Ctrl-N forwards a literal
-  Ctrl-N byte to the focused terminal.
-- The Exomux network panel browses hosts and tailnet machines through the shared workbench `TreeController`
-  hierarchy, and freshly spawned floating terminals open centered and focused above the panel.
+- The Exomux showcase prefix key moved from tmux-conflicting Ctrl-B to Ctrl-N; double Ctrl-N forwards a literal Ctrl-N
+  byte to the focused terminal.
+- The Exomux network panel browses hosts and tailnet machines through the shared workbench `TreeController` hierarchy,
+  and freshly spawned floating terminals open centered and focused above the panel.
 - Text-row components now allocate and retire visible rows as their terminal height changes, including styled ANSI rows.
 - Tightened the contributor API inventory gate to require duplicate-free public exports and 100% JSDoc coverage.
 - Made every published entrypoint pass JSR fast-type and declaration-output validation without `--allow-slow-types`.
@@ -176,26 +189,26 @@ quickly, but the affected entrypoint or module family should be named here.
   which is fewer than a full-screen desktop holds, so it abandoned routes it could have found and the wire was never
   drawn — gates appeared with no inputs. The search visits each cell at most once, so it is now bounded by the board's
   own size, which both finds every route and lets a genuinely blocked one still fail in a single sweep. The pass that
-  guarantees every gate output reaches a gate or a lamp may now use a gate's fourth and fifth input pins, or hand over
-  a lamp whose signal is already visible elsewhere, so no output is left dangling on a board full of gates.
+  guarantees every gate output reaches a gate or a lamp may now use a gate's fourth and fifth input pins, or hand over a
+  lamp whose signal is already visible elsewhere, so no output is left dangling on a board full of gates.
 - Double-width glyphs keep their two columns paired. The screen model marks the column a wide glyph also occupies, and
   breaking either half — writing over one of them, deleting or inserting a character through the pair, erasing part of
-  it, or narrowing the screen across it — now erases both, as a real terminal does. Exomux's renderer follows that
-  mark instead of re-deriving the pairing by measuring the glyph, so a character written into the second column of a
-  wide glyph is drawn rather than mistaken for its continuation and skipped.
+  it, or narrowing the screen across it — now erases both, as a real terminal does. Exomux's renderer follows that mark
+  instead of re-deriving the pairing by measuring the glyph, so a character written into the second column of a wide
+  glyph is drawn rather than mistaken for its continuation and skipped.
 - A bare line feed is an index again — down one row, same column — rather than a newline. Full-screen applications run
   the tty raw, so no ONLCR rewrites their output, and ncurses and tmux move down a row with terminfo `cud1`, a bare LF,
   expecting to keep the column. Treating it as a newline dragged every such move to column 0, which corrupted the left
   edge of a scrolling tmux pane exactly where it was drawing. VT and FF now index as well, ANSI mode 20 (LNM) restores
-  the newline behaviour when an application asks for it, and the non-PTY process backend supplies the ONLCR its pipe
-  has no tty to provide.
-- The terminal screen model now consumes ECMA-35 charset designations (`ESC ( B`, `ESC ) 0`), keypad mode selects,
-  and SO/SI shifts, rendering DEC Special Graphics as box-drawing glyphs; curses apps such as nano no longer leak
-  `(B`-style artifacts or draw ACS borders as letters, including across chunk-split writes.
+  the newline behaviour when an application asks for it, and the non-PTY process backend supplies the ONLCR its pipe has
+  no tty to provide.
+- The terminal screen model now consumes ECMA-35 charset designations (`ESC ( B`, `ESC ) 0`), keypad mode selects, and
+  SO/SI shifts, rendering DEC Special Graphics as box-drawing glyphs; curses apps such as nano no longer leak `(B`-style
+  artifacts or draw ACS borders as letters, including across chunk-split writes.
 - The input reader no longer decodes SGR or legacy X10 horizontal-wheel codes as vertical scrolls, and legacy X10
   wheel-up bytes now decode as scroll events instead of drags.
-- Exomux wheel input over an alternate-screen child without mouse tracking now sends cursor-key fallback bytes to
-  the child instead of trapping the window in workbench copy mode, so full-screen apps scroll naturally.
+- Exomux wheel input over an alternate-screen child without mouse tracking now sends cursor-key fallback bytes to the
+  child instead of trapping the window in workbench copy mode, so full-screen apps scroll naturally.
 - Three ASCII now verifies mapped GPU readback before selecting an adapter and falls back to a compatible software
   adapter when the primary device cannot support terminal readback.
 - Three ASCII canvas objects keep their startup or last complete grid visible while deferred readback warms, including

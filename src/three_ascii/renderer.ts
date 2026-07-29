@@ -1,11 +1,11 @@
 import {
-  Camera,
+  type Camera,
   ClampToEdgeWrapping,
   type Color,
   LinearFilter,
   NoColorSpace,
   PerspectiveCamera,
-  Scene,
+  type Scene,
   Texture,
 } from "three";
 import { RenderPipeline, WebGPURenderer } from "three/webgpu";

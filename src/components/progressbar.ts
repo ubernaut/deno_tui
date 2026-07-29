@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import { Box } from "./box.ts";
-import { Theme } from "../theme.ts";
-import { ComponentOptions } from "../component.ts";
+import type { Theme } from "../theme.ts";
+import type { ComponentOptions } from "../component.ts";
 
 import { BoxObject } from "../canvas/box.ts";
 import { TextObject } from "../canvas/text.ts";
@@ -9,7 +9,7 @@ import { TextObject } from "../canvas/text.ts";
 import { normalize } from "../utils/numbers.ts";
 
 import type { DeepPartial } from "../types.ts";
-import { Computed, Signal, SignalOfObject } from "../signals/mod.ts";
+import { Computed, Signal, type SignalOfObject } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 
 /** Public type alias for a progress Bar Char Map Type. */

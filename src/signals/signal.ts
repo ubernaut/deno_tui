@@ -6,9 +6,9 @@ import {
   makeObjectPropertiesReactive,
   makeSetMethodsReactive,
   ORIGINAL_REF,
-  Reactive,
+  type Reactive,
 } from "./reactivity.ts";
-import { Dependant, Dependency, Subscription } from "./types.ts";
+import type { Dependant, Dependency, Subscription } from "./types.ts";
 
 /** Thrown whenever `deepObserve` is set and `typeof value !== "object"` */
 export class SignalDeepObserveTypeofError extends Error {

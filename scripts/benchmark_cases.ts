@@ -1,7 +1,7 @@
 import {
   AnsiCanvasSink,
   AsyncScheduler,
-  BenchmarkCase,
+  type BenchmarkCase,
   blitWorkbenchFrameCells,
   BoxObject,
   Canvas,
@@ -36,7 +36,6 @@ import {
   terminalWorkspacePaneRects,
   TextObject,
   textWidth,
-  ThreeAsciiObject,
   tileRects,
   updateWorkbenchLineSignals,
   updateWorkbenchStringLineSignals,
@@ -54,6 +53,7 @@ import {
   writeFrameCells,
   writeStringFrameRow,
 } from "../mod.ts";
+import { ThreeAsciiObject } from "../mod.three_ascii.ts";
 import { createHtmlCssLayoutDemo } from "../src/markup/demo_fixtures.ts";
 import { AudioRegistry, resolveSourceFramesInto } from "../app/sources.ts";
 import {

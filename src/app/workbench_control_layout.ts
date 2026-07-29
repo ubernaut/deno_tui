@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 import type { Rectangle } from "../types.ts";
 import { setRectangle } from "../utils/rectangles.ts";
-import { type WorkbenchButtonState, type WorkbenchButtonTone } from "./workbench_button_style.ts";
+import type { WorkbenchButtonState, WorkbenchButtonTone } from "./workbench_button_style.ts";
 import { buttonText, fitCellText } from "./workbench_frame.ts";
 import { textWidth } from "../utils/strings.ts";
 

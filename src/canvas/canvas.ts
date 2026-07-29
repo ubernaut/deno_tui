@@ -1,15 +1,15 @@
 // Copyright 2023 Im-Beast. MIT license.
 
-import { EmitterEvent, EventEmitter } from "../event_emitter.ts";
+import { type EmitterEvent, EventEmitter } from "../event_emitter.ts";
 
 import { SortedArray } from "../utils/sorted_array.ts";
 import { rectangleEquals, rectangleIntersection } from "../utils/numbers.ts";
 
 import type { ConsoleSize, Rectangle, Stdout } from "../types.ts";
-import { DrawObject } from "./draw_object.ts";
+import type { DrawObject } from "./draw_object.ts";
 import { DirtyRegion, mergeDirtyRowSegmentsInPlace } from "./dirty_region.ts";
 import { DrawObjectSpatialIndex } from "./spatial_index.ts";
-import { Signal, SignalOfObject } from "../signals/mod.ts";
+import type { Signal, SignalOfObject } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 import {
   AnsiCanvasSink,

@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { neonColors as colors } from "./styles.ts";
-import { type ThreeSceneMode, type ThreeSceneSignal } from "./types.ts";
+import type { ThreeSceneMode, ThreeSceneSignal } from "./types.ts";
 
 function neonLine(color: string) {
   return new THREE.LineBasicMaterial({ color });

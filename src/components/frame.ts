@@ -1,10 +1,10 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { Component, ComponentOptions } from "../component.ts";
+import { Component, type ComponentOptions } from "../component.ts";
 
 import { BoxObject } from "../canvas/box.ts";
 import { TextObject } from "../canvas/text.ts";
 
-import { Computed, Signal } from "../signals/mod.ts";
+import { Computed, type Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 
 /** Public constant for a frame Unicode Characters. */

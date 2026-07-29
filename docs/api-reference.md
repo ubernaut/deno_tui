@@ -7,12 +7,12 @@ separate while shared module declarations are listed once with explicit entrypoi
 
 - Entrypoints: 11
 - Unique modules: 281
-- Module visits: 619
-- Unique re-export declarations: 405
-- Re-export declaration visits: 619
-- Unique symbol declarations: 3318
-- Symbol declaration visits: 7209
-- Documented symbol declarations: 3318
+- Module visits: 608
+- Unique re-export declarations: 404
+- Re-export declaration visits: 608
+- Unique symbol declarations: 3319
+- Symbol declaration visits: 7136
+- Documented symbol declarations: 3319
 - Documentation coverage: 100.00%
 - Duplicate symbol groups: 0
 - Missing targets: 0
@@ -21,14 +21,14 @@ separate while shared module declarations are listed once with explicit entrypoi
 
 | Specifier        | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | ---------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`              | `./mod.ts`                     | terminal | stable       |     256 |    3149 | 100.00% |
+| `.`              | `./mod.ts`                     | terminal | stable       |     244 |    3067 | 100.00% |
 | `./app`          | `./mod.app.ts`                 | terminal | beta         |      51 |      93 | 100.00% |
-| `./web`          | `./mod.web.ts`                 | browser  | beta         |     223 |    2776 | 100.00% |
+| `./web`          | `./mod.web.ts`                 | browser  | beta         |     222 |    2775 | 100.00% |
 | `./remote`       | `./mod.remote.ts`              | remote   | experimental |       5 |      67 | 100.00% |
-| `./three-ascii`  | `./mod.three_ascii.ts`         | shared   | experimental |      11 |      75 | 100.00% |
+| `./three-ascii`  | `./mod.three_ascii.ts`         | shared   | experimental |      13 |      83 | 100.00% |
 | `./theme`        | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
-| `./runtime`      | `./mod.runtime.ts`             | shared   | beta         |      40 |     614 | 100.00% |
-| `./terminal`     | `./mod.terminal.ts`            | terminal | beta         |      16 |     178 | 100.00% |
+| `./runtime`      | `./mod.runtime.ts`             | shared   | beta         |      40 |     615 | 100.00% |
+| `./terminal`     | `./mod.terminal.ts`            | terminal | beta         |      16 |     179 | 100.00% |
 | `./testing`      | `./mod.testing.ts`             | terminal | beta         |       4 |      31 | 100.00% |
 | `./layout/yoga`  | `./src/layout/solvers/yoga.ts` | shared   | experimental |       1 |       4 | 100.00% |
 | `./layout/taffy` | `./src/layout/taffy.ts`        | shared   | experimental |       2 |      24 | 100.00% |
@@ -40,10 +40,10 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Path: `./mod.ts`
 - Runtime: terminal
 - Stability: stable
-- Modules: 256
-- Re-export declarations: 256
-- Exported symbols: 3149
-- Documented symbols: 3149
+- Modules: 244
+- Re-export declarations: 244
+- Exported symbols: 3067
+- Documented symbols: 3067
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -70,10 +70,10 @@ Standalone browser-safe package for shared controllers, themes, layout, canvas s
 - Path: `./mod.web.ts`
 - Runtime: browser
 - Stability: beta
-- Modules: 223
-- Re-export declarations: 224
-- Exported symbols: 2776
-- Documented symbols: 2776
+- Modules: 222
+- Re-export declarations: 223
+- Exported symbols: 2775
+- Documented symbols: 2775
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -100,10 +100,10 @@ Focused Three.js/WebGPU ASCII renderer package for glyph, block, mixed, and Kitt
 - Path: `./mod.three_ascii.ts`
 - Runtime: shared
 - Stability: experimental
-- Modules: 11
-- Re-export declarations: 10
-- Exported symbols: 75
-- Documented symbols: 75
+- Modules: 13
+- Re-export declarations: 12
+- Exported symbols: 83
+- Documented symbols: 83
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -132,8 +132,8 @@ Shared runtime primitives for scheduling, storage, workers, resources, diagnosti
 - Stability: beta
 - Modules: 40
 - Re-export declarations: 39
-- Exported symbols: 614
-- Documented symbols: 614
+- Exported symbols: 615
+- Documented symbols: 615
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -147,8 +147,8 @@ Terminal parser, screen, shell, backend, PTY, workspace, and input-reader primit
 - Stability: beta
 - Modules: 16
 - Re-export declarations: 15
-- Exported symbols: 178
-- Documented symbols: 178
+- Exported symbols: 179
+- Documented symbols: 179
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -208,8 +208,8 @@ Validated opt-in adapter boundary for caller-supplied Taffy 0.12.x WASM bridges.
 | [`mod.terminal.ts`](#mod-terminal-ts)                                                           | `./terminal`                            |         15 |       0 |          0 |
 | [`mod.testing.ts`](#mod-testing-ts)                                                             | `./testing`                             |          3 |       0 |          0 |
 | [`mod.theme.ts`](#mod-theme-ts)                                                                 | `./theme`                               |          9 |       0 |          0 |
-| [`mod.three_ascii.ts`](#mod-three-ascii-ts)                                                     | `./three-ascii`                         |          1 |       0 |          0 |
-| [`mod.ts`](#mod-ts)                                                                             | `.`                                     |         42 |       0 |          0 |
+| [`mod.three_ascii.ts`](#mod-three-ascii-ts)                                                     | `./three-ascii`                         |          3 |       0 |          0 |
+| [`mod.ts`](#mod-ts)                                                                             | `.`                                     |         41 |       0 |          0 |
 | [`mod.web.ts`](#mod-web-ts)                                                                     | `./web`                                 |         61 |       0 |          0 |
 | [`src/api_stability.ts`](#src-api-stability-ts)                                                 | `.`, `./web`                            |          0 |      14 |         14 |
 | [`src/app/action_journal_checkpoints.ts`](#src-app-action-journal-checkpoints-ts)               | `.`, `./web`                            |          0 |      24 |         24 |
@@ -286,11 +286,11 @@ Validated opt-in adapter boundary for caller-supplied Taffy 0.12.x WASM bridges.
 | [`src/canvas/canvas.ts`](#src-canvas-canvas-ts)                                                 | `.`, `./web`                            |          0 |       4 |          4 |
 | [`src/canvas/dirty_region.ts`](#src-canvas-dirty-region-ts)                                     | `.`                                     |          0 |       3 |          3 |
 | [`src/canvas/draw_object.ts`](#src-canvas-draw-object-ts)                                       | `.`, `./web`                            |          0 |       2 |          2 |
-| [`src/canvas/mod.ts`](#src-canvas-mod-ts)                                                       | `.`                                     |          8 |       0 |          0 |
+| [`src/canvas/mod.ts`](#src-canvas-mod-ts)                                                       | `.`                                     |          7 |       0 |          0 |
 | [`src/canvas/sink.ts`](#src-canvas-sink-ts)                                                     | `.`, `./web`                            |          0 |       8 |          8 |
 | [`src/canvas/spatial_index.ts`](#src-canvas-spatial-index-ts)                                   | `.`                                     |          0 |       2 |          2 |
 | [`src/canvas/text.ts`](#src-canvas-text-ts)                                                     | `.`, `./web`                            |          0 |       3 |          3 |
-| [`src/canvas/three_ascii.ts`](#src-canvas-three-ascii-ts)                                       | `.`, `./web`                            |          0 |       6 |          6 |
+| [`src/canvas/three_ascii.ts`](#src-canvas-three-ascii-ts)                                       | `./web`, `./three-ascii`                |          0 |       6 |          6 |
 | [`src/component.ts`](#src-component-ts)                                                         | `.`                                     |          0 |       4 |          4 |
 | [`src/components/box.ts`](#src-components-box-ts)                                               | `.`, `./app`, `./web`                   |          0 |       1 |          1 |
 | [`src/components/breadcrumbs.ts`](#src-components-breadcrumbs-ts)                               | `.`, `./web`                            |          0 |       4 |          4 |
@@ -315,7 +315,7 @@ Validated opt-in adapter boundary for caller-supplied Taffy 0.12.x WASM bridges.
 | [`src/components/markdown.ts`](#src-components-markdown-ts)                                     | `./app`                                 |          0 |       9 |          9 |
 | [`src/components/menu_bar.ts`](#src-components-menu-bar-ts)                                     | `.`, `./web`                            |          0 |      10 |         10 |
 | [`src/components/metric_series.ts`](#src-components-metric-series-ts)                           | `.`, `./web`                            |          0 |      10 |         10 |
-| [`src/components/mod.ts`](#src-components-mod-ts)                                               | `.`, `./web`                            |         41 |       0 |          0 |
+| [`src/components/mod.ts`](#src-components-mod-ts)                                               | `.`, `./web`                            |         40 |       0 |          0 |
 | [`src/components/modal.ts`](#src-components-modal-ts)                                           | `.`, `./app`, `./web`                   |          0 |      11 |         11 |
 | [`src/components/pad.ts`](#src-components-pad-ts)                                               | `.`, `./web`                            |          0 |      13 |         13 |
 | [`src/components/progressbar.ts`](#src-components-progressbar-ts)                               | `.`, `./app`, `./web`                   |          0 |      15 |         15 |
@@ -331,7 +331,7 @@ Validated opt-in adapter boundary for caller-supplied Taffy 0.12.x WASM bridges.
 | [`src/components/terminal_output.ts`](#src-components-terminal-output-ts)                       | `.`, `./web`                            |          0 |       7 |          7 |
 | [`src/components/text.ts`](#src-components-text-ts)                                             | `.`, `./app`, `./web`                   |          0 |       2 |          2 |
 | [`src/components/textbox.ts`](#src-components-textbox-ts)                                       | `.`, `./app`, `./web`                   |          0 |      23 |         23 |
-| [`src/components/three_ascii.ts`](#src-components-three-ascii-ts)                               | `.`, `./web`                            |          0 |       2 |          2 |
+| [`src/components/three_ascii.ts`](#src-components-three-ascii-ts)                               | `./three-ascii`                         |          0 |       2 |          2 |
 | [`src/components/toast.ts`](#src-components-toast-ts)                                           | `.`, `./app`, `./web`                   |          0 |       8 |          8 |
 | [`src/components/tree.ts`](#src-components-tree-ts)                                             | `.`, `./app`, `./web`                   |          0 |      11 |         11 |
 | [`src/components/virtual_list.ts`](#src-components-virtual-list-ts)                             | `.`, `./app`, `./web`                   |          0 |       9 |          9 |
@@ -417,7 +417,7 @@ Validated opt-in adapter boundary for caller-supplied Taffy 0.12.x WASM bridges.
 | [`src/runtime/terminal_backend.ts`](#src-runtime-terminal-backend-ts)                           | `.`, `./runtime`, `./terminal`          |          0 |       9 |          9 |
 | [`src/runtime/terminal_capabilities.ts`](#src-runtime-terminal-capabilities-ts)                 | `.`, `./runtime`, `./terminal`          |          0 |      27 |         27 |
 | [`src/runtime/terminal_screen.ts`](#src-runtime-terminal-screen-ts)                             | `.`, `./web`, `./runtime`, `./terminal` |          0 |       6 |          6 |
-| [`src/runtime/terminal_scrollback.ts`](#src-runtime-terminal-scrollback-ts)                     | `.`, `./web`, `./runtime`, `./terminal` |          0 |       5 |          5 |
+| [`src/runtime/terminal_scrollback.ts`](#src-runtime-terminal-scrollback-ts)                     | `.`, `./web`, `./runtime`, `./terminal` |          0 |       6 |          6 |
 | [`src/runtime/terminal_sequences.ts`](#src-runtime-terminal-sequences-ts)                       | `./terminal`                            |          0 |       3 |          3 |
 | [`src/runtime/terminal_services.ts`](#src-runtime-terminal-services-ts)                         | `.`, `./runtime`                        |          0 |      32 |         32 |
 | [`src/runtime/terminal_session.ts`](#src-runtime-terminal-session-ts)                           | `.`, `./runtime`, `./terminal`          |          0 |       8 |          8 |
@@ -450,16 +450,16 @@ Validated opt-in adapter boundary for caller-supplied Taffy 0.12.x WASM bridges.
 | [`src/theme_resolver.ts`](#src-theme-resolver-ts)                                               | `.`, `./web`, `./theme`                 |          0 |      15 |         15 |
 | [`src/theme_workspace.ts`](#src-theme-workspace-ts)                                             | `.`, `./web`, `./theme`                 |          0 |       7 |          7 |
 | [`src/theme.ts`](#src-theme-ts)                                                                 | `.`, `./app`, `./web`, `./theme`        |          0 |     115 |        115 |
-| [`src/three_ascii/AcerolaAsciiNode.ts`](#src-three-ascii-acerolaasciinode-ts)                   | `.`, `./web`, `./three-ascii`           |          0 |       3 |          3 |
-| [`src/three_ascii/demo_presets.ts`](#src-three-ascii-demo-presets-ts)                           | `.`, `./web`, `./three-ascii`           |          0 |      14 |         14 |
-| [`src/three_ascii/frame_options.ts`](#src-three-ascii-frame-options-ts)                         | `.`, `./web`, `./three-ascii`           |          0 |       1 |          1 |
-| [`src/three_ascii/glyphs.ts`](#src-three-ascii-glyphs-ts)                                       | `.`, `./web`, `./three-ascii`           |          0 |      13 |         13 |
-| [`src/three_ascii/mod.ts`](#src-three-ascii-mod-ts)                                             | `.`, `./web`, `./three-ascii`           |          7 |       0 |          0 |
-| [`src/three_ascii/options.ts`](#src-three-ascii-options-ts)                                     | `.`, `./web`, `./three-ascii`           |          0 |      15 |         15 |
-| [`src/three_ascii/performance.ts`](#src-three-ascii-performance-ts)                             | `.`, `./web`, `./three-ascii`           |          0 |       1 |          1 |
-| [`src/three_ascii/render_profile.ts`](#src-three-ascii-render-profile-ts)                       | `.`, `./web`, `./three-ascii`           |          0 |       3 |          3 |
-| [`src/three_ascii/renderer.ts`](#src-three-ascii-renderer-ts)                                   | `.`, `./web`, `./three-ascii`           |          2 |      22 |         22 |
-| [`src/three_ascii/webgpu_compat.ts`](#src-three-ascii-webgpu-compat-ts)                         | `.`, `./web`, `./three-ascii`           |          0 |       3 |          3 |
+| [`src/three_ascii/AcerolaAsciiNode.ts`](#src-three-ascii-acerolaasciinode-ts)                   | `./web`, `./three-ascii`                |          0 |       3 |          3 |
+| [`src/three_ascii/demo_presets.ts`](#src-three-ascii-demo-presets-ts)                           | `./web`, `./three-ascii`                |          0 |      14 |         14 |
+| [`src/three_ascii/frame_options.ts`](#src-three-ascii-frame-options-ts)                         | `./web`, `./three-ascii`                |          0 |       1 |          1 |
+| [`src/three_ascii/glyphs.ts`](#src-three-ascii-glyphs-ts)                                       | `./web`, `./three-ascii`                |          0 |      13 |         13 |
+| [`src/three_ascii/mod.ts`](#src-three-ascii-mod-ts)                                             | `./web`, `./three-ascii`                |          7 |       0 |          0 |
+| [`src/three_ascii/options.ts`](#src-three-ascii-options-ts)                                     | `./web`, `./three-ascii`                |          0 |      15 |         15 |
+| [`src/three_ascii/performance.ts`](#src-three-ascii-performance-ts)                             | `./web`, `./three-ascii`                |          0 |       1 |          1 |
+| [`src/three_ascii/render_profile.ts`](#src-three-ascii-render-profile-ts)                       | `./web`, `./three-ascii`                |          0 |       3 |          3 |
+| [`src/three_ascii/renderer.ts`](#src-three-ascii-renderer-ts)                                   | `./web`, `./three-ascii`                |          2 |      22 |         22 |
+| [`src/three_ascii/webgpu_compat.ts`](#src-three-ascii-webgpu-compat-ts)                         | `./web`, `./three-ascii`                |          0 |       3 |          3 |
 | [`src/tui.ts`](#src-tui-ts)                                                                     | `.`, `./app`                            |          0 |       3 |          3 |
 | [`src/types.ts`](#src-types-ts)                                                                 | `.`, `./app`, `./remote`                |          0 |       8 |          8 |
 | [`src/unicode/builtin.ts`](#src-unicode-builtin-ts)                                             | `.`                                     |          0 |       4 |          4 |
@@ -625,9 +625,11 @@ _No direct exported symbols._
 
 _Entrypoints: `./three-ascii`_
 
-| Re-export Target         | Kind | Names |
-| ------------------------ | ---- | ----- |
-| `src/three_ascii/mod.ts` | star | -     |
+| Re-export Target                | Kind | Names |
+| ------------------------------- | ---- | ----- |
+| `src/three_ascii/mod.ts`        | star | -     |
+| `src/canvas/three_ascii.ts`     | star | -     |
+| `src/components/three_ascii.ts` | star | -     |
 
 _No direct exported symbols._
 
@@ -671,7 +673,6 @@ _Entrypoints: `.`_
 | `src/markup/mod.ts`            | star | -     |
 | `src/components/mod.ts`        | star | -     |
 | `src/canvas/mod.ts`            | star | -     |
-| `src/three_ascii/mod.ts`       | star | -     |
 | `src/utils/mod.ts`             | star | -     |
 | `src/input_reader/mod.ts`      | star | -     |
 | `src/app/mod.ts`               | star | -     |
@@ -2504,7 +2505,6 @@ _Entrypoints: `.`_
 | `src/canvas/draw_object.ts`   | star | -     |
 | `src/canvas/sink.ts`          | star | -     |
 | `src/canvas/spatial_index.ts` | star | -     |
-| `src/canvas/three_ascii.ts`   | star | -     |
 
 _No direct exported symbols._
 
@@ -2544,7 +2544,7 @@ _Entrypoints: `.`, `./web`_
 
 ### src/canvas/three_ascii.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `./web`, `./three-ascii`_
 
 | Symbol                           | Kind      | Type Only | JSDoc |
 | -------------------------------- | --------- | --------- | ----- |
@@ -2940,7 +2940,6 @@ _Entrypoints: `.`, `./web`_
 | `src/components/terminal_output.ts` | star | -     |
 | `src/components/text.ts`            | star | -     |
 | `src/components/textbox.ts`         | star | -     |
-| `src/components/three_ascii.ts`     | star | -     |
 | `src/components/toast.ts`           | star | -     |
 | `src/components/tree.ts`            | star | -     |
 | `src/components/virtual_list.ts`    | star | -     |
@@ -3210,7 +3209,7 @@ _Entrypoints: `.`, `./app`, `./web`_
 
 ### src/components/three_ascii.ts
 
-_Entrypoints: `.`, `./web`_
+_Entrypoints: `./three-ascii`_
 
 | Symbol              | Kind      | Type Only | JSDoc |
 | ------------------- | --------- | --------- | ----- |
@@ -5020,13 +5019,14 @@ _Entrypoints: `.`, `./web`, `./runtime`, `./terminal`_
 
 _Entrypoints: `.`, `./web`, `./runtime`, `./terminal`_
 
-| Symbol                                | Kind      | Type Only | JSDoc |
-| ------------------------------------- | --------- | --------- | ----- |
-| `TerminalScrollbackController`        | class     | no        | yes   |
-| `TerminalScrollbackControllerOptions` | interface | yes       | yes   |
-| `TerminalScrollbackInspection`        | interface | yes       | yes   |
-| `TerminalScrollbackMode`              | type      | yes       | yes   |
-| `TerminalScrollbackSelection`         | interface | yes       | yes   |
+| Symbol                                 | Kind      | Type Only | JSDoc |
+| -------------------------------------- | --------- | --------- | ----- |
+| `TerminalScrollbackController`         | class     | no        | yes   |
+| `TerminalScrollbackControllerOptions`  | interface | yes       | yes   |
+| `TerminalScrollbackInspection`         | interface | yes       | yes   |
+| `TerminalScrollbackMode`               | type      | yes       | yes   |
+| `TerminalScrollbackSelection`          | interface | yes       | yes   |
+| `TerminalScrollbackViewportInspection` | interface | yes       | yes   |
 
 ### src/runtime/terminal_sequences.ts
 
@@ -5694,7 +5694,7 @@ _Entrypoints: `.`, `./app`, `./web`, `./theme`_
 
 ### src/three_ascii/AcerolaAsciiNode.ts
 
-_Entrypoints: `.`, `./web`, `./three-ascii`_
+_Entrypoints: `./web`, `./three-ascii`_
 
 | Symbol                      | Kind      | Type Only | JSDoc |
 | --------------------------- | --------- | --------- | ----- |
@@ -5704,7 +5704,7 @@ _Entrypoints: `.`, `./web`, `./three-ascii`_
 
 ### src/three_ascii/demo_presets.ts
 
-_Entrypoints: `.`, `./web`, `./three-ascii`_
+_Entrypoints: `./web`, `./three-ascii`_
 
 | Symbol                          | Kind      | Type Only | JSDoc |
 | ------------------------------- | --------- | --------- | ----- |
@@ -5725,7 +5725,7 @@ _Entrypoints: `.`, `./web`, `./three-ascii`_
 
 ### src/three_ascii/frame_options.ts
 
-_Entrypoints: `.`, `./web`, `./three-ascii`_
+_Entrypoints: `./web`, `./three-ascii`_
 
 | Symbol                         | Kind      | Type Only | JSDoc |
 | ------------------------------ | --------- | --------- | ----- |
@@ -5733,7 +5733,7 @@ _Entrypoints: `.`, `./web`, `./three-ascii`_
 
 ### src/three_ascii/glyphs.ts
 
-_Entrypoints: `.`, `./web`, `./three-ascii`_
+_Entrypoints: `./web`, `./three-ascii`_
 
 | Symbol                      | Kind     | Type Only | JSDoc |
 | --------------------------- | -------- | --------- | ----- |
@@ -5753,7 +5753,7 @@ _Entrypoints: `.`, `./web`, `./three-ascii`_
 
 ### src/three_ascii/mod.ts
 
-_Entrypoints: `.`, `./web`, `./three-ascii`_
+_Entrypoints: `./web`, `./three-ascii`_
 
 | Re-export Target                      | Kind | Names |
 | ------------------------------------- | ---- | ----- |
@@ -5769,7 +5769,7 @@ _No direct exported symbols._
 
 ### src/three_ascii/options.ts
 
-_Entrypoints: `.`, `./web`, `./three-ascii`_
+_Entrypoints: `./web`, `./three-ascii`_
 
 | Symbol                              | Kind      | Type Only | JSDoc |
 | ----------------------------------- | --------- | --------- | ----- |
@@ -5791,7 +5791,7 @@ _Entrypoints: `.`, `./web`, `./three-ascii`_
 
 ### src/three_ascii/performance.ts
 
-_Entrypoints: `.`, `./web`, `./three-ascii`_
+_Entrypoints: `./web`, `./three-ascii`_
 
 | Symbol                          | Kind      | Type Only | JSDoc |
 | ------------------------------- | --------- | --------- | ----- |
@@ -5799,7 +5799,7 @@ _Entrypoints: `.`, `./web`, `./three-ascii`_
 
 ### src/three_ascii/render_profile.ts
 
-_Entrypoints: `.`, `./web`, `./three-ascii`_
+_Entrypoints: `./web`, `./three-ascii`_
 
 | Symbol                               | Kind      | Type Only | JSDoc |
 | ------------------------------------ | --------- | --------- | ----- |
@@ -5809,7 +5809,7 @@ _Entrypoints: `.`, `./web`, `./three-ascii`_
 
 ### src/three_ascii/renderer.ts
 
-_Entrypoints: `.`, `./web`, `./three-ascii`_
+_Entrypoints: `./web`, `./three-ascii`_
 
 | Re-export Target                   | Kind  | Names                                |
 | ---------------------------------- | ----- | ------------------------------------ |
@@ -5843,7 +5843,7 @@ _Entrypoints: `.`, `./web`, `./three-ascii`_
 
 ### src/three_ascii/webgpu_compat.ts
 
-_Entrypoints: `.`, `./web`, `./three-ascii`_
+_Entrypoints: `./web`, `./three-ascii`_
 
 | Symbol                             | Kind     | Type Only | JSDoc |
 | ---------------------------------- | -------- | --------- | ----- |

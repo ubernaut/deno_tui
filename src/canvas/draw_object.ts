@@ -7,10 +7,10 @@ import type { Style } from "../theme.ts";
 import type { Canvas } from "./canvas.ts";
 import type { Offset, Rectangle } from "../types.ts";
 import { queueRerenderRangeInto } from "./rerender_queue.ts";
-import { View } from "../view.ts";
-import { Signal, SignalOfObject } from "../signals/mod.ts";
+import type { View } from "../view.ts";
+import type { Signal, SignalOfObject } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
-import { Subscription } from "../signals/types.ts";
+import type { Subscription } from "../signals/types.ts";
 
 /** Options for configuring draw Object. */
 export interface DrawObjectOptions {

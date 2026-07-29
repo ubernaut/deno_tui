@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { TextObject, TextRectangle } from "../canvas/text.ts";
-import { Component, ComponentOptions } from "../component.ts";
-import { Signal, SignalOfObject } from "../signals/mod.ts";
+import { TextObject, type TextRectangle } from "../canvas/text.ts";
+import { Component, type ComponentOptions } from "../component.ts";
+import type { Signal, SignalOfObject } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 
 /** Options for configuring text. */

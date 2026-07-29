@@ -33,7 +33,6 @@ import {
   EXOMUX_SESSIONS_WINDOW_ID,
   ExomuxController,
   type ExomuxControllerOptions,
-  exomuxNetworkNodeDeviceId,
   exomuxNetworkNodeHostShellTarget,
   exomuxNetworkNodeHostTarget,
   exomuxNetworkNodeSessionId,
@@ -3673,16 +3672,6 @@ function touchWindowCommandAt(
     return undefined;
   }
   return undefined;
-}
-
-function expandedRect(rect: Rectangle, amount: number): Rectangle {
-  const safeAmount = Math.max(0, Math.floor(amount));
-  return {
-    column: rect.column - safeAmount,
-    row: rect.row - safeAmount,
-    width: rect.width + safeAmount * 2,
-    height: rect.height + safeAmount * 2,
-  };
 }
 
 function rememberTouchGesture(

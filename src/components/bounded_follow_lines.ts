@@ -1,5 +1,5 @@
 // Copyright 2023 Im-Beast. MIT license.
-import { type Signal } from "../signals/mod.ts";
+import type { Signal } from "../signals/mod.ts";
 import { signalify } from "../utils/signals.ts";
 
 export interface BoundedFollowLinesOptions<T> {
