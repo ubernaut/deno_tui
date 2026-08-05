@@ -1,7 +1,7 @@
 // Copyright 2023 Im-Beast. MIT license.
 
 import type { Rectangle } from "@ubernaut/deno-tui";
-import type { ExomuxRgb, ExomuxThemeSpec } from "./model.ts";
+import type { ExomuxBackgroundId, ExomuxRgb, ExomuxThemeSpec } from "./model.ts";
 
 /** Shared cadence for every animated desktop background. */
 export const EXOMUX_BACKGROUND_FRAME_INTERVAL_MS = 125;
@@ -101,6 +101,39 @@ export function exomuxBackgroundAcceptsPicks(
   field: ExomuxAnimatedBackground | undefined,
 ): field is ExomuxInteractiveBackground {
   return typeof (field as ExomuxInteractiveBackground | undefined)?.pick === "function";
+}
+
+/** A background field that holds a resource it must give back when idle. */
+export interface ExomuxDisposableBackground extends ExomuxAnimatedBackground {
+  dispose(): void;
+}
+
+/** Narrows a background to one that owns a releasable resource. */
+export function exomuxBackgroundIsDisposable(
+  field: ExomuxAnimatedBackground | undefined,
+): field is ExomuxDisposableBackground {
+  return typeof (field as ExomuxDisposableBackground | undefined)?.dispose === "function";
+}
+
+/**
+ * Disposes and drops every cached field except `keep`, in place.
+ *
+ * The desktop caches one field per background so switching away and back
+ * resumes the same simulation rather than restarting it. That is only safe for
+ * fields made of plain arithmetic: one that owns an operating-system handle —
+ * the butterchurn field opens the microphone — has to give it back the moment
+ * the desktop stops drawing it, which is what this enforces. Fields with no
+ * `dispose` are left cached, so the resume behavior is unchanged for them.
+ */
+export function releaseExomuxIdleBackgrounds(
+  fields: Map<ExomuxBackgroundId, ExomuxAnimatedBackground>,
+  keep?: ExomuxBackgroundId,
+): void {
+  for (const [id, field] of fields) {
+    if (id === keep || !exomuxBackgroundIsDisposable(field)) continue;
+    field.dispose();
+    fields.delete(id);
+  }
 }
 
 /** Linear blend between two theme colors; `mix` is clamped to [0, 1]. */

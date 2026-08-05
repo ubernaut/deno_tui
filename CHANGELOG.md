@@ -31,6 +31,20 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Added
 
+- Exomux gains a `butterchurn` desktop background: a microphone-reactive MilkDrop-style visualizer, and the twelfth
+  selectable field. It is the ASCII port of butterchurnxr's `asciichurn` rendered natively — the same frame-feedback
+  pipeline (warp the previous frame through a zoom/rotate/drift/sine-warp mesh, draw the waveform over it, quantize to
+  the `░▒▓█` ramp) with the MilkDrop equations reimplemented on the CPU at terminal cell resolution. `asciichurn`
+  proxies its pixels out to Butterchurn's WebGL2 renderer in headless Chromium, which a single compiled binary running
+  over a tailnet cannot do, so the eight presets ship hand-written rather than the real catalog's 293. Presets cycle
+  every 15 s across a 2.7 s crossfade that blends every numeric knob and dissolves one wave figure into the next.
+- `packages/exomux/audio.ts` captures the system microphone through the first of `parec`, `pw-record` or `arecord` that
+  produces samples, and reduces it per frame to 24 log-spaced spectrum bands, bass/mid/treble energy, a 256-sample
+  waveform, and beat pulses. Capture is refcounted and lazy: nothing spawns until a reactive background is selected, and
+  the recorder is killed when the last reader releases it, so switching backgrounds stops recording. `deno task audio`
+  prints live levels; `EXOMUX_AUDIO_DEVICE` overrides the capture device, which matters because the system default is
+  often an output monitor rather than an input. With no working recorder the analyser synthesizes a signal so the field
+  still moves instead of freezing on a blank desktop.
 - `ExomuxBackgroundAdvanceOptions.solidObstacles` carries every window rect, including ones the desktop has begun
   reclaiming and therefore dropped from `obstacles`. Fields that model physical collision read it, so water pooled on an
   idle window's roof does not fall through the moment overgrowth starts.
@@ -137,6 +151,9 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Changed
 
+- Exomux's desktop drops a cached background field when it stops being the selected one, provided the field exposes
+  `dispose`. Fields are otherwise retained so switching away and back resumes the same simulation; the butterchurn field
+  owns the microphone handle and must not keep it once the desktop stops drawing it.
 - Exomux's "rainy windows" background is now a rain-and-flood simulation rather than tinted matrix rain. Drops are drawn
   as vertical streaks — a leading head over a trail that thins from a solid line to a dotted thread by speed class —
   instead of katakana glyphs, and each one breaks on whatever it lands on. The water they leave behind is a 2-D

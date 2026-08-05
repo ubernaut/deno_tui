@@ -76,8 +76,10 @@ import {
   type ExomuxAnimatedBackground,
   exomuxBackgroundAcceptsPicks,
   exomuxBackgroundHasOverlay,
+  releaseExomuxIdleBackgrounds,
 } from "./background.ts";
 import { ExomuxBiomechField } from "./biomech_background.ts";
+import { ExomuxButterchurnField } from "./butterchurn_background.ts";
 import { ExomuxCircuitField } from "./circuit_background.ts";
 import { ExomuxJungleField } from "./jungle_background.ts";
 import { ExomuxMatrixRainField } from "./matrix_background.ts";
@@ -456,9 +458,14 @@ export function mountExomuxDesktop(
   const metaballRevision = own(new Signal(0));
   const metaballs = new ExomuxMetaballField();
   const backgroundFields = new Map<ExomuxBackgroundId, ExomuxAnimatedBackground>();
+  const releaseIdleBackgroundFields = (keep?: ExomuxBackgroundId): void =>
+    releaseExomuxIdleBackgrounds(backgroundFields, keep);
   const activeBackgroundField = (): ExomuxAnimatedBackground | undefined => {
     const id = controller.backgroundId.peek();
-    if (id === "metaballs") return undefined;
+    if (id === "metaballs") {
+      releaseIdleBackgroundFields();
+      return undefined;
+    }
     let field = backgroundFields.get(id);
     if (!field) {
       field = id === "matrix"
@@ -479,9 +486,12 @@ export function mountExomuxDesktop(
         ? new ExomuxFireField()
         : id === "turbulence"
         ? new ExomuxTurbulenceField()
+        : id === "butterchurn"
+        ? new ExomuxButterchurnField()
         : new ExomuxJungleField();
       backgroundFields.set(id, field);
     }
+    releaseIdleBackgroundFields(id);
     return field;
   };
   const backgroundSetPointer = (point: { column: number; row: number }): void => {
@@ -2070,6 +2080,7 @@ export function mountExomuxDesktop(
         pendingPointerMove = undefined;
       }
       operationQueue.dispose();
+      releaseIdleBackgroundFields();
       subscriptions.abort();
       for (let index = unsubscribers.length - 1; index >= 0; index -= 1) unsubscribers[index]!();
       for (let index = owned.length - 1; index >= 0; index -= 1) owned[index]!.dispose();

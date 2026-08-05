@@ -249,6 +249,7 @@ export const EXOMUX_BACKGROUND_IDS = [
   "ivy",
   "fire",
   "turbulence",
+  "butterchurn",
 ] as const;
 export type ExomuxBackgroundId = (typeof EXOMUX_BACKGROUND_IDS)[number];
 

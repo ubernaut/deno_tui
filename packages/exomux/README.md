@@ -13,6 +13,28 @@ deno task --cwd packages/exomux start   # from the repository root
 `deno task exomux` at the repository root delegates here. `--memory` skips layout persistence, `--daemon` runs the host
 alone (it requires a valid `EXOMUX_TOKEN` and is normally started for you by the client).
 
+## The butterchurn background
+
+`butterchurn_background.ts` is a MilkDrop-style audio visualizer, selected like any other background with prefix `b`. It
+is the ASCII port of [butterchurnxr](https://github.com/ubernaut/butterchurnxr)'s `asciichurn` rendered natively: the
+same frame-feedback pipeline (warp the previous frame, draw the waveform on top, quantize to shaded blocks) with the
+MilkDrop equations reimplemented on the CPU. `asciichurn` proxies its pixels out to Butterchurn's WebGL2 renderer in
+headless Chromium; that is not available to a single compiled binary running over a tailnet, so the eight presets here
+are hand-written rather than the real catalog's 293.
+
+`audio.ts` captures the microphone through the first of `parec`, `pw-record` or `arecord` that produces samples, and
+reduces it to spectrum bands, bass/mid/treble energy, a waveform and beat pulses. Capture is refcounted and lazy:
+nothing spawns until the background is selected, and the recorder is killed when you switch away.
+
+```sh
+deno task audio          # print 3s of live levels and a spectrum strip
+```
+
+Each recorder defaults to the system default source, which is **not** always a microphone — on a PipeWire desktop it is
+often the monitor of an output, which records digital silence on an idle machine. `EXOMUX_AUDIO_DEVICE` overrides it
+with a name from `pactl list sources short`; point it at a real input, or at an output monitor to visualize whatever is
+playing. With no working recorder at all the analyser synthesizes a signal so the field still moves.
+
 ## Why this is a separate package
 
 Exomux has its own `deno.json` and its own `deno.lock`, and it is deliberately **not** a Deno workspace member. A

@@ -25,6 +25,7 @@
   "tasks": {
     "start": "deno run -A ./main.ts",
     "memory": "deno run -A ./main.ts --memory",
+    "audio": "deno run --allow-env=EXOMUX_AUDIO_DEVICE --allow-run=parec,pw-record,arecord ./audio.ts",
     "check": "deno check ./main.ts",
     "test": "deno test -A ./tests/",
     "compile": "deno compile -A --output ./exomux ./main.ts"
