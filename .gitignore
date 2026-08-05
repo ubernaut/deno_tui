@@ -4,3 +4,5 @@ node_modules/
 plan/NeonExodus/
 .api-workbench-workspaces.json
 docs/assets/*.map
+# `deno task exomux:compile` output.
+packages/exomux/exomux

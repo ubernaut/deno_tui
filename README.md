@@ -8,6 +8,42 @@ A reactive, composable, Deno-first toolkit for terminal user interfaces. This fo
 component foundation plus controller-first widgets, app and runtime primitives, browser and remote-terminal entrypoints,
 an optional Three.js ASCII renderer, and full-screen visualization demos.
 
+**[Exomux](#exomux) is the flagship application** — a terminal multiplexer built entirely on this toolkit, and the
+reference for what a production-shaped adopter looks like.
+
+## Exomux
+
+A terminal multiplexer with a detachable host. Shells live in a daemon that outlives the UI, so the client can exit and
+reattach without disturbing a single running process.
+
+```sh
+deno task exomux            # or: ./visualization exomux
+```
+
+`Ctrl-N` is the prefix key; `Ctrl-N ?` lists every command.
+
+| Capability           | Detail                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------- |
+| Detachable host      | Loopback WebSocket daemon, token-authenticated, survives client exit and relaunch           |
+| Real terminals       | PTY-backed shells through the optional `@sigma/pty-ffi` adapter, with a pipe fallback       |
+| Floating workbench   | Draggable, resizable, snapping windows over a live desktop, with session and network panels |
+| Animated backgrounds | Eleven deterministic theme-derived fields, cycled with prefix `b`                           |
+| Rain and flood       | The rain field runs a 2-D fluid sim; the desktop floods, and the drain plug is clickable    |
+| Overgrowth           | Organic backgrounds slowly reclaim idle windows and retreat when focused                    |
+| Network panel        | Remembered SSH hosts and live Tailscale devices, one keystroke to spawn a shell             |
+
+It is a real package rather than an example: `packages/exomux` carries its own `deno.json`, its own `deno.lock`, and 227
+tests, and it reaches the toolkit only through the public entrypoints listed below — nothing in it imports `src/`. That
+constraint is the point; Exomux is the standing proof that the published API is sufficient to build a non-trivial
+application, and every gap it hit became a library export.
+
+```sh
+deno task exomux:test       # the package suite
+deno task exomux:compile    # a self-contained binary
+```
+
+Exomux's detached host currently requires Linux or Windows; see [OS Support](#os-support).
+
 ## Quick Start
 
 New applications should use the focused `./app` entrypoint:
@@ -74,6 +110,7 @@ deno task demo
 | Runtime and concurrency      | `src/runtime/`                                                                           |
 | Theme system                 | `src/theme*.ts`                                                                          |
 | Three.js ASCII renderer      | `src/three_ascii/`                                                                       |
+| Flagship application         | `packages/exomux/` (standalone package, own config and lockfile)                         |
 | Full-screen applications     | `app/`                                                                                   |
 | Focused examples and tooling | `examples/`, `scripts/`                                                                  |
 
@@ -104,6 +141,8 @@ stability policy and release checks are documented in
 
 ## Documentation
 
+- [Exomux](https://github.com/ubernaut/deno_tui/blob/main/packages/exomux/README.md) documents the flagship multiplexer,
+  why it is packaged separately, and how it depends on the toolkit.
 - [Repository Overview](https://github.com/ubernaut/deno_tui/blob/main/docs/repo-overview.md) maps module families,
   integration surfaces, demos, and quality gates.
 - [API Reference](https://github.com/ubernaut/deno_tui/blob/main/docs/api-reference.md) is generated from the public
@@ -293,6 +332,7 @@ catalog. Common entrypoints are:
 
 | Command                              | Surface                                                                    |
 | ------------------------------------ | -------------------------------------------------------------------------- |
+| `./visualization exomux`             | Terminal multiplexer with a detachable host — the flagship application     |
 | `./visualization portfolio`          | API Workbench with managed windows, controls, terminal panes, and Three.js |
 | `./visualization showcase`           | Expanded widget and visualization showcase                                 |
 | `./visualization neon`               | Neon Exodus-compatible and extended demo decks                             |
@@ -335,15 +375,20 @@ deno task health
 ```
 
 It verifies formatting, public API and package policy, generated docs, examples, browser and remote entrypoints,
-benchmarks, the main test matrix, browser tests, and worker tests. Useful focused commands include:
+benchmarks, the main test matrix, the Exomux package suite, browser tests, and worker tests. Useful focused commands
+include:
 
 ```sh
 deno test
+deno task exomux:test
 deno task package-check
 deno task api-inventory -- --check
 deno task benchmark
 deno task e2e
 ```
+
+Exomux resolves against its own config, so a bare `deno test` at the repository root does not reach it — run
+`deno task exomux:test` (or `deno task health`, which includes it) when changing anything it depends on.
 
 Renderer and workbench changes also require the matching live probe or PTY/browser visual smoke. See
 [Testing and Performance](https://github.com/ubernaut/deno_tui/blob/main/docs/testing-and-performance.md) for the
@@ -351,13 +396,19 @@ current matrix and thresholds.
 
 ## OS Support
 
-| Operating system | Linux | macOS | Windows* | WSL |
-| ---------------- | ----- | ----- | -------- | --- |
-| Base             | yes   | yes   | yes      | yes |
-| Keyboard support | yes   | yes   | yes      | yes |
-| Mouse support    | yes   | yes   | yes      | yes |
+| Operating system     | Linux | macOS | Windows* | WSL |
+| -------------------- | ----- | ----- | -------- | --- |
+| Base                 | yes   | yes   | yes      | yes |
+| Keyboard support     | yes   | yes   | yes      | yes |
+| Mouse support        | yes   | yes   | yes      | yes |
+| Exomux detached host | yes   | no    | yes      | yes |
 
 On Windows, run `chcp 65001` if Unicode characters display incorrectly.
+
+Exomux's detached host needs to place its daemon in its own session. On Linux that uses `setsid`, which must be present
+as a regular file at `/usr/bin/setsid` or `/bin/setsid`; on Windows detaching the standard handles is sufficient. macOS
+has no equivalent path yet, so the host reports `daemon-detach-unavailable` there. Everything else in Exomux — the
+workbench, backgrounds, and protocol — is platform-neutral.
 
 ## Contributing
 

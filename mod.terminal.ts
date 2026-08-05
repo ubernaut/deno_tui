@@ -3,6 +3,7 @@ export * from "./src/input_reader/mod.ts";
 export * from "./src/runtime/process_session.ts";
 export * from "./src/runtime/pty_backend.ts";
 export * from "./src/runtime/terminal_backend.ts";
+export * from "./src/runtime/terminal_color.ts";
 export * from "./src/runtime/terminal_backend_registry.ts";
 export * from "./src/runtime/terminal_capabilities.ts";
 export * from "./src/runtime/terminal_screen.ts";

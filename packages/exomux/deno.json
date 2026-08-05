@@ -1,0 +1,32 @@
+{
+  "name": "@ubernaut/exomux",
+  "version": "0.1.0",
+  "exports": {
+    ".": "./mod.ts",
+    "./main": "./main.ts"
+  },
+  "imports": {
+    "@ubernaut/deno-tui": "../../mod.ts",
+    "@ubernaut/deno-tui/app": "../../mod.app.ts",
+    "@ubernaut/deno-tui/terminal": "../../mod.terminal.ts",
+    "@ubernaut/deno-tui/testing": "../../mod.testing.ts",
+    "@showcase/kit": "../../examples/showcases/shared/mod.ts",
+    "@sigma/pty-ffi": "jsr:@sigma/pty-ffi@0.42.0",
+    "markdown-it": "npm:markdown-it@14.3.0",
+    "std/assert": "https://deno.land/std@0.192.0/testing/asserts.ts"
+  },
+  "compilerOptions": {
+    "lib": ["deno.window", "dom", "dom.iterable"]
+  },
+  "nodeModulesDir": "none",
+  "fmt": {
+    "lineWidth": 120
+  },
+  "tasks": {
+    "start": "deno run -A ./main.ts",
+    "memory": "deno run -A ./main.ts --memory",
+    "check": "deno check ./main.ts",
+    "test": "deno test -A ./tests/",
+    "compile": "deno compile -A --output ./exomux ./main.ts"
+  }
+}

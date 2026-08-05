@@ -49,10 +49,15 @@
     "inkstone": "deno run ./examples/showcases/inkstone/main.ts",
     "inkstone:persistent": "sh -c 'state_dir=\"${XDG_STATE_HOME:-$HOME/.local/state}/deno-tui\"; exec deno run --allow-read=\"$state_dir\" --allow-write=\"$state_dir\" ./examples/showcases/inkstone/main.ts --persist --state-file=\"$state_dir/inkstone-session.json\"'",
     "inkstone:check": "deno check ./examples/showcases/inkstone/main.ts",
-    "exomux": "deno run -A ./examples/showcases/exomux/main.ts",
-    "exomux:memory": "deno run -A ./examples/showcases/exomux/main.ts --memory",
-    "exomux:check": "deno check ./examples/showcases/exomux/main.ts",
-    "exomux:test": "deno test -A ./tests/showcases/exomux_host.test.ts ./tests/showcases/exomux_client.test.ts ./tests/showcases/exomux_controller.test.ts ./tests/showcases/exomux_app.test.ts ./tests/showcases/exomux_tailnet.test.ts ./tests/showcases/exomux_terminal_modes.test.ts ./tests/showcases/exomux_overgrowth.test.ts ./tests/showcases/exomux_backgrounds_matrix_circuit.test.ts ./tests/showcases/exomux_backgrounds_biomech_jungle.test.ts ./tests/showcases/exomux_backgrounds_vaporwave.test.ts ./tests/showcases/exomux_backgrounds_skull.test.ts ./tests/showcases/exomux_backgrounds_ivy.test.ts ./tests/showcases/exomux_backgrounds_fire.test.ts",
+    // Exomux is a standalone package with its own import map and lockfile —
+    // deliberately not a workspace member, because a Deno workspace shares one
+    // npm resolution and `deno compile` materializes all of it, which put ~48MB
+    // of unrelated packages into its binary. These delegate to that config.
+    "exomux": "deno task --cwd packages/exomux start",
+    "exomux:memory": "deno task --cwd packages/exomux memory",
+    "exomux:check": "deno task --cwd packages/exomux check",
+    "exomux:test": "deno task --cwd packages/exomux test",
+    "exomux:compile": "deno task --cwd packages/exomux compile",
     "command-search": "deno run -A ./examples/command_search_index.ts",
     "dashboard": "deno run -A ./examples/dashboard.ts",
     "layout-recipe": "deno run -A ./examples/layout_recipe_report.ts",

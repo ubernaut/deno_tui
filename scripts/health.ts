@@ -72,6 +72,9 @@ export const defaultHealthSteps: readonly HealthStep[] = [
   { name: "api-workbench", command: ["deno", "task", "api-workbench:check"] },
   { name: "benchmarks", command: ["deno", "task", "benchmark"] },
   { name: "tests", command: ["deno", "test", "-A"] },
+  // Exomux resolves against its own config, so the root `deno test` no longer
+  // reaches it; without this the gate would silently stop covering its 227 tests.
+  { name: "exomux-tests", command: ["deno", "task", "exomux:test"] },
   { name: "web-tests", command: ["deno", "task", "web:test"] },
   { name: "worker-tests", command: ["deno", "task", "test:workers"] },
 ];

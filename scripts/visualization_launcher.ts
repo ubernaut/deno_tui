@@ -41,6 +41,13 @@ export interface VisualizationLaunchMarkdownOptions extends VisualizationLaunchR
 
 export const visualizationLaunchTargets: readonly VisualizationLaunchTarget[] = [
   {
+    task: "exomux",
+    aliases: ["exomux", "mux", "multiplexer", "terminals"],
+    description: "terminal multiplexer with a detachable host floating shells and animated desktop backgrounds",
+    category: "app",
+    tags: ["terminal", "pty", "windows", "multiplexer", "interactive"],
+  },
+  {
     task: "showcase",
     aliases: ["showcase", "demo"],
     description: "full widget showcase",

@@ -3,6 +3,10 @@ import { resolve } from "node:path";
 
 const outdir = "docs/assets";
 const webExternalSpecifiers = new Map([
+  // The optional PTY adapter is reached through an import-map alias and is only
+  // ever dynamically imported on the server. Keep the specifier intact and
+  // external so the browser bundle never tries to resolve a native FFI package.
+  ["@sigma/pty-ffi", "jsr:@sigma/pty-ffi@0.42.0"],
   ["crayon", "https://deno.land/x/crayon@3.3.3/mod.ts"],
   ["jpeg-js", "https://esm.sh/jpeg-js@0.4.4"],
   ["pngjs", "https://esm.sh/pngjs@7.0.0"],
@@ -10,7 +14,7 @@ const webExternalSpecifiers = new Map([
   ["three/tsl", "https://esm.sh/three@0.183.2/tsl"],
   ["three/webgpu", "https://esm.sh/three@0.183.2/webgpu"],
 ]);
-const webExternalSpecifierPattern = /^(?:crayon|jpeg-js|pngjs|three(?:\/(?:tsl|webgpu))?)$/;
+const webExternalSpecifierPattern = /^(?:@sigma\/pty-ffi|crayon|jpeg-js|pngjs|three(?:\/(?:tsl|webgpu))?)$/;
 const treeShakeSafeLibraryModules = new Set([
   resolve("src/unicode/width.ts"),
 ]);

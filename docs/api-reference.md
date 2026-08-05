@@ -6,14 +6,14 @@ separate while shared module declarations are listed once with explicit entrypoi
 ## Summary
 
 - Entrypoints: 11
-- Unique modules: 281
-- Module visits: 608
-- Unique re-export declarations: 404
-- Re-export declaration visits: 608
-- Unique symbol declarations: 3319
-- Symbol declaration visits: 7136
-- Documented symbol declarations: 3319
-- Documentation coverage: 100.00%
+- Unique modules: 282
+- Module visits: 611
+- Unique re-export declarations: 406
+- Re-export declaration visits: 611
+- Unique symbol declarations: 3329
+- Symbol declaration visits: 7162
+- Documented symbol declarations: 3328
+- Documentation coverage: 99.97%
 - Duplicate symbol groups: 0
 - Missing targets: 0
 
@@ -21,14 +21,14 @@ separate while shared module declarations are listed once with explicit entrypoi
 
 | Specifier        | Path                           | Runtime  | Stability    | Modules | Symbols |    Docs |
 | ---------------- | ------------------------------ | -------- | ------------ | ------: | ------: | ------: |
-| `.`              | `./mod.ts`                     | terminal | stable       |     244 |    3067 | 100.00% |
+| `.`              | `./mod.ts`                     | terminal | stable       |     245 |    3078 | 100.00% |
 | `./app`          | `./mod.app.ts`                 | terminal | beta         |      51 |      93 | 100.00% |
 | `./web`          | `./mod.web.ts`                 | browser  | beta         |     222 |    2775 | 100.00% |
 | `./remote`       | `./mod.remote.ts`              | remote   | experimental |       5 |      67 | 100.00% |
 | `./three-ascii`  | `./mod.three_ascii.ts`         | shared   | experimental |      13 |      83 | 100.00% |
 | `./theme`        | `./mod.theme.ts`               | shared   | beta         |      10 |     198 | 100.00% |
 | `./runtime`      | `./mod.runtime.ts`             | shared   | beta         |      40 |     615 | 100.00% |
-| `./terminal`     | `./mod.terminal.ts`            | terminal | beta         |      16 |     179 | 100.00% |
+| `./terminal`     | `./mod.terminal.ts`            | terminal | beta         |      18 |     194 |  99.48% |
 | `./testing`      | `./mod.testing.ts`             | terminal | beta         |       4 |      31 | 100.00% |
 | `./layout/yoga`  | `./src/layout/solvers/yoga.ts` | shared   | experimental |       1 |       4 | 100.00% |
 | `./layout/taffy` | `./src/layout/taffy.ts`        | shared   | experimental |       2 |      24 | 100.00% |
@@ -40,10 +40,10 @@ Full terminal package with core TUI runtime, widgets, app primitives, themes, ru
 - Path: `./mod.ts`
 - Runtime: terminal
 - Stability: stable
-- Modules: 244
-- Re-export declarations: 244
-- Exported symbols: 3067
-- Documented symbols: 3067
+- Modules: 245
+- Re-export declarations: 245
+- Exported symbols: 3078
+- Documented symbols: 3078
 - Documentation coverage: 100.00%
 - Duplicate symbols: 0
 - Missing targets: 0
@@ -145,11 +145,11 @@ Terminal parser, screen, shell, backend, PTY, workspace, and input-reader primit
 - Path: `./mod.terminal.ts`
 - Runtime: terminal
 - Stability: beta
-- Modules: 16
-- Re-export declarations: 15
-- Exported symbols: 179
-- Documented symbols: 179
-- Documentation coverage: 100.00%
+- Modules: 18
+- Re-export declarations: 17
+- Exported symbols: 194
+- Documented symbols: 193
+- Documentation coverage: 99.48%
 - Duplicate symbols: 0
 - Missing targets: 0
 
@@ -205,7 +205,7 @@ Validated opt-in adapter boundary for caller-supplied Taffy 0.12.x WASM bridges.
 | [`mod.app.ts`](#mod-app-ts)                                                                     | `./app`                                 |         49 |       0 |          0 |
 | [`mod.remote.ts`](#mod-remote-ts)                                                               | `./remote`                              |          4 |       0 |          0 |
 | [`mod.runtime.ts`](#mod-runtime-ts)                                                             | `./runtime`                             |          1 |       0 |          0 |
-| [`mod.terminal.ts`](#mod-terminal-ts)                                                           | `./terminal`                            |         15 |       0 |          0 |
+| [`mod.terminal.ts`](#mod-terminal-ts)                                                           | `./terminal`                            |         16 |       0 |          0 |
 | [`mod.testing.ts`](#mod-testing-ts)                                                             | `./testing`                             |          3 |       0 |          0 |
 | [`mod.theme.ts`](#mod-theme-ts)                                                                 | `./theme`                               |          9 |       0 |          0 |
 | [`mod.three_ascii.ts`](#mod-three-ascii-ts)                                                     | `./three-ascii`                         |          3 |       0 |          0 |
@@ -342,8 +342,8 @@ Validated opt-in adapter boundary for caller-supplied Taffy 0.12.x WASM bridges.
 | [`src/grwizard_themes.ts`](#src-grwizard-themes-ts)                                             | `.`, `./web`, `./theme`                 |          0 |       5 |          5 |
 | [`src/input_envelope.ts`](#src-input-envelope-ts)                                               | `.`, `./web`                            |          0 |      28 |         28 |
 | [`src/input_lifecycle.ts`](#src-input-lifecycle-ts)                                             | `.`                                     |          0 |      24 |         24 |
-| [`src/input_reader/mod.ts`](#src-input-reader-mod-ts)                                           | `.`, `./terminal`                       |          0 |       2 |          2 |
-| [`src/input_reader/types.ts`](#src-input-reader-types-ts)                                       | `./remote`                              |          0 |       5 |          5 |
+| [`src/input_reader/mod.ts`](#src-input-reader-mod-ts)                                           | `.`, `./terminal`                       |          1 |       2 |          2 |
+| [`src/input_reader/types.ts`](#src-input-reader-types-ts)                                       | `.`, `./remote`, `./terminal`           |          0 |      11 |         11 |
 | [`src/input.ts`](#src-input-ts)                                                                 | `.`                                     |          0 |       1 |          1 |
 | [`src/key_sequences.ts`](#src-key-sequences-ts)                                                 | `.`                                     |          0 |      24 |         24 |
 | [`src/keymap_layers.ts`](#src-keymap-layers-ts)                                                 | `.`                                     |          0 |      20 |         20 |
@@ -416,6 +416,7 @@ Validated opt-in adapter boundary for caller-supplied Taffy 0.12.x WASM bridges.
 | [`src/runtime/terminal_backend_registry.ts`](#src-runtime-terminal-backend-registry-ts)         | `.`, `./runtime`, `./terminal`          |          0 |       9 |          9 |
 | [`src/runtime/terminal_backend.ts`](#src-runtime-terminal-backend-ts)                           | `.`, `./runtime`, `./terminal`          |          0 |       9 |          9 |
 | [`src/runtime/terminal_capabilities.ts`](#src-runtime-terminal-capabilities-ts)                 | `.`, `./runtime`, `./terminal`          |          0 |      27 |         27 |
+| [`src/runtime/terminal_color.ts`](#src-runtime-terminal-color-ts)                               | `./terminal`                            |          0 |       4 |          3 |
 | [`src/runtime/terminal_screen.ts`](#src-runtime-terminal-screen-ts)                             | `.`, `./web`, `./runtime`, `./terminal` |          0 |       6 |          6 |
 | [`src/runtime/terminal_scrollback.ts`](#src-runtime-terminal-scrollback-ts)                     | `.`, `./web`, `./runtime`, `./terminal` |          0 |       6 |          6 |
 | [`src/runtime/terminal_sequences.ts`](#src-runtime-terminal-sequences-ts)                       | `./terminal`                            |          0 |       3 |          3 |
@@ -577,6 +578,7 @@ _Entrypoints: `./terminal`_
 | `src/runtime/process_session.ts`           | star | -     |
 | `src/runtime/pty_backend.ts`               | star | -     |
 | `src/runtime/terminal_backend.ts`          | star | -     |
+| `src/runtime/terminal_color.ts`            | star | -     |
 | `src/runtime/terminal_backend_registry.ts` | star | -     |
 | `src/runtime/terminal_capabilities.ts`     | star | -     |
 | `src/runtime/terminal_screen.ts`           | star | -     |
@@ -3405,6 +3407,10 @@ _Entrypoints: `.`_
 
 _Entrypoints: `.`, `./terminal`_
 
+| Re-export Target            | Kind | Names |
+| --------------------------- | ---- | ----- |
+| `src/input_reader/types.ts` | star | -     |
+
 | Symbol             | Kind     | Type Only | JSDoc |
 | ------------------ | -------- | --------- | ----- |
 | `emitInputEvents`  | function | no        | yes   |
@@ -3412,14 +3418,20 @@ _Entrypoints: `.`, `./terminal`_
 
 ### src/input_reader/types.ts
 
-_Entrypoints: `./remote`_
+_Entrypoints: `.`, `./remote`, `./terminal`_
 
 | Symbol               | Kind      | Type Only | JSDoc |
 | -------------------- | --------- | --------- | ----- |
+| `Alphabet`           | type      | yes       | yes   |
+| `Chars`              | type      | yes       | yes   |
+| `InputEvent`         | type      | yes       | yes   |
+| `Key`                | type      | yes       | yes   |
 | `KeyPressEvent`      | interface | yes       | yes   |
+| `MouseEvent`         | interface | yes       | yes   |
 | `MousePressEvent`    | interface | yes       | yes   |
 | `MouseScrollEvent`   | interface | yes       | yes   |
 | `PasteEvent`         | interface | yes       | yes   |
+| `SpecialKeys`        | type      | yes       | yes   |
 | `TerminalFocusEvent` | interface | yes       | yes   |
 
 ### src/input.ts
@@ -5001,6 +5013,17 @@ _Entrypoints: `.`, `./runtime`, `./terminal`_
 | `TerminalPortabilityReport`          | interface | yes       | yes   |
 | `TerminalPortabilityReportOptions`   | interface | yes       | yes   |
 | `TerminalTextMode`                   | type      | yes       | yes   |
+
+### src/runtime/terminal_color.ts
+
+_Entrypoints: `./terminal`_
+
+| Symbol                       | Kind     | Type Only | JSDoc |
+| ---------------------------- | -------- | --------- | ----- |
+| `DecodedTerminalColor`       | type     | yes       | no    |
+| `decodeTerminalColor`        | function | no        | yes   |
+| `encodeTerminalIndexedColor` | function | no        | yes   |
+| `encodeTerminalRgbColor`     | function | no        | yes   |
 
 ### src/runtime/terminal_screen.ts
 

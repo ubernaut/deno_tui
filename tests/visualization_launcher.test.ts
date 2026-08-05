@@ -253,6 +253,7 @@ Deno.test("visualization launcher help includes all primary aliases", () => {
 Deno.test("visualization launch catalog filters targets by category tag and search", () => {
   assertEquals(queryVisualizationLaunchTargets({ category: "app" }).map((entry) => entry.task), [
     "api-workbench",
+    "exomux",
     "viz",
     "neon-exodus",
     "showcase",

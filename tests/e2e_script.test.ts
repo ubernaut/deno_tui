@@ -201,6 +201,7 @@ Deno.test("health script exposes the expected contributor gates", () => {
     "api-workbench",
     "benchmarks",
     "tests",
+    "exomux-tests",
     "web-tests",
     "worker-tests",
   ]);

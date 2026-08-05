@@ -31,6 +31,11 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Added
 
+- `ExomuxBackgroundAdvanceOptions.solidObstacles` carries every window rect, including ones the desktop has begun
+  reclaiming and therefore dropped from `obstacles`. Fields that model physical collision read it, so water pooled on an
+  idle window's roof does not fall through the moment overgrowth starts.
+- `ExomuxInteractiveBackground.picksOverWindows` lets a field claim clicks on cells it paints into the post-window
+  overlay. Without it the rain drain plug, which sits on the bottom row, would be unreachable behind a tiled window.
 - Added the Exomux `[ Network ]` menu and left-docked panel with remembered SSH hosts (persisted, deletable) and live
   Tailscale devices from a strict LocalAPI-with-CLI-fallback status source, with visibility-gated jittered polling and
   one-keystroke SSH session spawning through the detached host.
@@ -132,6 +137,36 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Changed
 
+- Exomux's "rainy windows" background is now a rain-and-flood simulation rather than tinted matrix rain. Drops are drawn
+  as vertical streaks — a leading head over a trail that thins from a solid line to a dotted thread by speed class —
+  instead of katakana glyphs, and each one breaks on whatever it lands on. The water they leave behind is a 2-D
+  compressible shallow-water field over the whole desktop: it flows, finds one level, presses back up under its own
+  weight, and will flood the screen if left alone. Windows are solid to the water and transparent to the rain, so the
+  pool never paints over terminal text but does pool on a window roof and pour off its edges, which subsumes the old 1-D
+  window-edge puddle and side drizzle. A clickable drain plug sits in the bottom middle; pulling it opens a sump that
+  empties a flooded desktop in about a dozen seconds, and clicking again closes it. Rain density is now per cell rather
+  than per column, so a tall terminal no longer looks sparse or fills at a different rate from a short one.
+- The waterline carries a damped 1-D wave field, so a landing drop sends a ring travelling outward and a settled pool
+  keeps moving. The height solver is diffusive and therefore has no momentum — however fast it is made it can only
+  smooth a disturbance away in place — so waves are integrated separately along the surface and rendered by displacing
+  the sub-cell waterline, including crests that spill into the row above and troughs that drop it a row.
+- Exomux's overgrowth frontier is now per-background. Rain reclaims an idle window from the top edge only, as ragged
+  streaks running down the glass at varying lengths; every other organic background keeps closing in from all four
+  borders. `exomuxOvergrowthThreshold`, `exomuxOvergrowthCovers` and `exomuxOvergrowthVisible` take an optional
+  `ExomuxOvergrowthEdges` argument that defaults to the previous behaviour.
+- Exomux moved out of `examples/showcases/exomux` into `packages/exomux`, a standalone package with its own `deno.json`
+  and `deno.lock`. It now reaches the library only through its public entrypoints, aliased in its import map as
+  `@ubernaut/deno-tui`, `/app`, `/terminal` and `/testing`; no file in the package imports `src/` any more, so
+  publishing later means repointing four import-map values rather than rewriting imports. It is deliberately not a Deno
+  workspace member: a workspace shares one npm resolution and `deno compile` materializes all of it rather than just the
+  module graph, which is why the in-workspace binary carried ~48MB of packages Exomux never imports. Compiled against
+  its own config it is 122.5MB rather than 170.4MB, with dependencies still fully locked. The root `exomux`,
+  `exomux:memory`, `exomux:check` and `exomux:test` tasks delegate to it, and `exomux:compile` is new.
+- `KeyPressEvent`, `MousePressEvent`, `MouseScrollEvent` and the rest of `src/input_reader/types.ts` are exported from
+  the default entrypoint, and `decodeTerminalColor`/`encodeTerminalIndexedColor`/`encodeTerminalRgbColor` from
+  `./terminal`. Nothing could write a key or mouse handler without naming the event shapes, but they had been reachable
+  only by deep-importing an internal module; extracting Exomux surfaced them as the last things it could not express
+  against the public API.
 - The repository now commits a `deno.lock`. Every remote dependency — 10 JSR packages, 37 npm packages, and the
   `deno.land/x/crayon` modules — is integrity-checked instead of being re-resolved unpinned on each build. The optional
   PTY adapter moved from an inline `jsr:@sigma/pty-ffi@0.42.0` dynamic-import specifier to a `@sigma/pty-ffi` import-map
@@ -185,6 +220,27 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Fixed
 
+- Exomux's desktop repaint no longer saturates the render loop, which was making every animated background stutter —
+  advancing, stalling, advancing — a few times a second, and worsening the longer a session ran as overgrowth and
+  accumulated effects added painted cells. Measured on a 200x50 desktop, one full repaint cost 33ms on average (73ms at
+  the tail); it now costs 7.7ms. Three things dominated, all of them per painted cell: the style cache lived on the
+  painter, which is rebuilt every frame, so `createAnsiStyle` re-ran for every colour on every frame and its key
+  allocated three throwaway strings; `exomuxGlyphColumns` measured the width of every non-ASCII glyph on every cell, and
+  backgrounds are made entirely of non-ASCII glyphs; and `fill` resolved the style and glyph width separately for each
+  cell it covered, including the full-desktop body fill. The style cache is now shared across frames and keyed by a
+  packed integer, glyph widths are memoized, and a single-column `fill` resolves its painted string once for the whole
+  rectangle.
+
+- A compiled Exomux binary can start its own detached host. The launcher always built `deno run -A <main.ts> --daemon`
+  and ran it through `Deno.execPath()`, but in a standalone binary `execPath()` is Exomux itself — it parses only
+  Exomux's own flags and rejected the leading `run` with `Unknown Exomux option: run`, while `import.meta.url` resolved
+  inside the virtual compile root to a path with no file behind it. Standalone builds now re-exec themselves with just
+  the daemon flags, via the exported `exomuxDaemonLaunchArgs`.
+- The Exomux host no longer hides a failed PTY. The optional PTY adapter loads a native library on first use, so it can
+  fail for environmental reasons — no `--allow-ffi`, an offline or proxied machine, an unsupported platform — and the
+  fallback to pipes was reached through an empty `catch`, leaving no way to tell a pipe-backed host from a real one. The
+  selection is now reported by `ExomuxHostController.inspect().backend` with the rejection reason, and the host resolves
+  it at startup instead of on the first spawn so a degraded host is observable before a terminal is opened.
 - Exomux's circuit wires are drawn on large desktops again. The route search gave up after a fixed number of cells,
   which is fewer than a full-screen desktop holds, so it abandoned routes it could have found and the wire was never
   drawn — gates appeared with no inputs. The search visits each cell at most once, so it is now bounded by the board's

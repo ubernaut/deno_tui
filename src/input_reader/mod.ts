@@ -1,5 +1,10 @@
 // Copyright 2023 Im-Beast. MIT license.
 
+// The event shapes are part of the contract: nothing can write a key or mouse
+// handler without naming them, so they belong on the public barrel rather than
+// only on the internal module.
+export type * from "./types.ts";
+
 import type {
   Alphabet,
   InputEvent,
