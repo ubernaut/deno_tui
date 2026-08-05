@@ -15,12 +15,34 @@ alone (it requires a valid `EXOMUX_TOKEN` and is normally started for you by the
 
 ## The butterchurn background
 
-`butterchurn_background.ts` is a MilkDrop-style audio visualizer, selected like any other background with prefix `b`. It
-is the ASCII port of [butterchurnxr](https://github.com/ubernaut/butterchurnxr)'s `asciichurn` rendered natively: the
-same frame-feedback pipeline (warp the previous frame, draw the waveform on top, quantize to shaded blocks) with the
-MilkDrop equations reimplemented on the CPU. `asciichurn` proxies its pixels out to Butterchurn's WebGL2 renderer in
-headless Chromium; that is not available to a single compiled binary running over a tailnet, so the eight presets here
-are hand-written rather than the real catalog's 293.
+`butterchurn_background.ts` is a MilkDrop audio visualizer, selected like any other background with prefix `b`. It is
+the ASCII port of [butterchurnxr](https://github.com/ubernaut/butterchurnxr)'s `asciichurn` rendered natively:
+`asciichurn` proxies its pixels out to Butterchurn's WebGL2 renderer in headless Chromium, which a single compiled
+binary running over a tailnet cannot do, so the pipeline is reimplemented on the CPU at cell resolution.
+
+The presets are the real ones, not imitations. `butterchurn_catalog.ts` vendors the upstream `base` + `extra` packs —
+the same 293 MilkDrop presets asciichurn reports — with each preset's base values and its three EEL equation blocks.
+`eel.ts` is an interpreter for EEL2, the language those equations are written in; `butterchurn_preset.ts` runs them
+through Butterchurn's own pipeline, restoring base values every frame, resetting `q1..q32` while letting user variables
+persist, and building MilkDrop's warp mesh from the per-vertex equations. That mesh is what the previous frame is
+resampled through, so each preset moves the way it does upstream rather than being approximated.
+
+Three parts of a preset cannot come along: the HLSL warp and composite shaders, custom waves and custom shapes, and the
+blur chain. They need a GPU and a shader translator. A preset's motion is therefore faithful while its colour grading
+and fine texture are approximate — and since two thirds of the catalog draws its image with exactly those features,
+`butterchurn_rotation.ts` narrows auto-cycling to the 171 presets that resolve to a moving image here. The other 122 are
+still reachable by index through `EXOMUX_BUTTERCHURN_CATALOG`.
+
+Both generated files are checked in and rebuilt with:
+
+```sh
+# Re-vendor the catalog from a butterchurn-presets install, then re-render every
+# preset to rewrite the rotation. Neither is needed for a normal build.
+deno task exomux:presets --presets ~/projects/butterchurnxr/node_modules/butterchurn-presets
+deno task exomux:audit
+```
+
+`butterchurn-presets` is MIT licensed, Copyright (c) 2013-2018 Jordan Berg.
 
 `audio.ts` captures the microphone through the first of `parec`, `pw-record` or `arecord` that produces samples, and
 reduces it to spectrum bands, bass/mid/treble energy, a waveform and beat pulses. Capture is refcounted and lazy:

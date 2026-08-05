@@ -31,13 +31,28 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Added
 
-- Exomux gains a `butterchurn` desktop background: a microphone-reactive MilkDrop-style visualizer, and the twelfth
-  selectable field. It is the ASCII port of butterchurnxr's `asciichurn` rendered natively — the same frame-feedback
-  pipeline (warp the previous frame through a zoom/rotate/drift/sine-warp mesh, draw the waveform over it, quantize to
-  the `░▒▓█` ramp) with the MilkDrop equations reimplemented on the CPU at terminal cell resolution. `asciichurn`
-  proxies its pixels out to Butterchurn's WebGL2 renderer in headless Chromium, which a single compiled binary running
-  over a tailnet cannot do, so the eight presets ship hand-written rather than the real catalog's 293. Presets cycle
-  every 15 s across a 2.7 s crossfade that blends every numeric knob and dissolves one wave figure into the next.
+- Exomux gains a `butterchurn` desktop background: a microphone-reactive MilkDrop visualizer, and the twelfth selectable
+  field. It is the ASCII port of butterchurnxr's `asciichurn` rendered natively — `asciichurn` proxies its pixels out to
+  Butterchurn's WebGL2 renderer in headless Chromium, which a single compiled binary running over a tailnet cannot do,
+  so the pipeline is reimplemented on the CPU at terminal cell resolution. Presets cycle every 15 s across a 2.7 s
+  crossfade during which both are evaluated and drawn.
+- `packages/exomux/eel.ts` is an interpreter for EEL2, the expression language MilkDrop preset equations are written in:
+  a tokenizer, a precedence parser and a closure compiler over a slot-allocated variable pool, covering the roughly
+  thirty builtins the catalog uses along with `megabuf`/`gmegabuf` memory and the `loop`/`while`/`exec2` forms. 576 of
+  the catalog's 579 equation blocks compile; the three that do not have an identifier split across a newline in the
+  upstream JSON, which Butterchurn cannot parse either, and are skipped rather than failing the preset.
+- `packages/exomux/butterchurn_catalog.ts` vendors the upstream `base` + `extra` preset packs — the same 293 MilkDrop
+  presets asciichurn reports — as base values plus equation source. `butterchurn_preset.ts` runs them through
+  Butterchurn's own pipeline: base values are restored every frame, which is what makes the catalog's ubiquitous
+  self-referential oscillator idiom oscillate instead of diverging; `q1..q32` reset to their post-init values while user
+  variables and registers persist; and MilkDrop's exact per-vertex warp composition drives the mesh the previous frame
+  is resampled through. Each preset therefore moves the way it does upstream rather than being approximated.
+- `packages/exomux/butterchurn_rotation.ts` narrows auto-cycling to the 171 presets that resolve to a moving image at
+  cell resolution, chosen by rendering every preset. The excluded 122 are not broken: they draw with custom waves,
+  custom shapes and a composite shader, none of which this renderer runs, so they resolve to an empty screen. They stay
+  reachable by index through `EXOMUX_BUTTERCHURN_CATALOG`. Both generated files are checked in and rebuilt with
+  `deno task exomux:presets` and `deno task exomux:audit`. `butterchurn-presets` is MIT licensed, Copyright (c)
+  2013-2018 Jordan Berg.
 - `packages/exomux/audio.ts` captures the system microphone through the first of `parec`, `pw-record` or `arecord` that
   produces samples, and reduces it per frame to 24 log-spaced spectrum bands, bass/mid/treble energy, a 256-sample
   waveform, and beat pulses. Capture is refcounted and lazy: nothing spawns until a reactive background is selected, and

@@ -1,24 +1,28 @@
 // Copyright 2023 Im-Beast. MIT license.
 
-// Microphone-reactive MilkDrop-style desktop background.
+// Microphone-reactive MilkDrop desktop background.
 //
-// This is the ASCII port of butterchurnxr's `asciichurn` rendered natively: the
-// same idea — an audio-driven frame-feedback visualizer resolved at terminal
-// cell resolution and painted as colored blocks — with the MilkDrop pipeline
-// reimplemented on the CPU instead of proxied out to Butterchurn's WebGL2
-// renderer in headless Chromium. Exomux ships as a single compiled binary and
-// runs over a tailnet, so a browser dependency is not available to it.
+// This is the ASCII port of butterchurnxr's `asciichurn`: the real MilkDrop
+// preset catalog, resolved at terminal cell resolution and painted as shaded
+// blocks. `asciichurn` proxies its pixels out to Butterchurn's WebGL2 renderer
+// in headless Chromium; Exomux ships as a single compiled binary and runs over
+// a tailnet, so the pipeline is reimplemented on the CPU instead.
 //
-// The pipeline per frame is MilkDrop's:
+// Each frame:
 //
-//   1. resample the previous frame through a warp mesh (zoom, rotate, drift,
-//      and a separable sine warp), attenuated by the preset's decay and tint;
-//   2. draw this frame's waveform and spectrum on top as fresh ink;
-//   3. quantize the accumulated RGB field to shaded block glyphs.
+//   1. `ExomuxButterchurnPreset` evaluates the preset's own EEL equations and
+//      produces MilkDrop's warp mesh — the source coordinate every mesh vertex
+//      samples from — plus the waveform figure for this frame;
+//   2. the previous frame is resampled through that mesh and attenuated by the
+//      preset's decay, which is the feedback that makes MilkDrop look like
+//      MilkDrop rather than like an equalizer;
+//   3. the waveform is drawn over it in the preset's colour;
+//   4. the accumulated field is quantized to the `░▒▓█` ramp.
 //
-// Step 1 is what makes the output read as MilkDrop rather than as an equalizer:
-// every frame's ink is dragged, spun and faded by all subsequent frames, so a
-// single drum hit leaves a spiral behind it.
+// What the terminal cannot carry over is each preset's HLSL warp and composite
+// shaders, its custom waves and shapes, and the blur chain. Those need a GPU
+// and a shader translator. The motion of a preset is therefore faithful; its
+// colour grading and fine texture are approximated.
 
 import type { Rectangle } from "@ubernaut/deno-tui";
 import type {
@@ -28,6 +32,9 @@ import type {
   ExomuxBackgroundPoint,
 } from "./background.ts";
 import { acquireExomuxAudio, type ExomuxAudioFrame, type ExomuxAudioSource } from "./audio.ts";
+import { EXOMUX_BUTTERCHURN_CATALOG, type ExomuxButterchurnPresetSource } from "./butterchurn_catalog.ts";
+import { EXOMUX_BUTTERCHURN_ROTATION } from "./butterchurn_rotation.ts";
+import { type ExomuxButterchurnAudio, ExomuxButterchurnPreset } from "./butterchurn_preset.ts";
 import type { ExomuxRgb, ExomuxThemeSpec } from "./model.ts";
 
 // ── constants ───────────────────────────────────────────────────────────────
@@ -41,28 +48,38 @@ const PRESET_HOLD_SECONDS = 15;
 /** Seconds spent crossfading between two presets, matching asciichurn. */
 const PRESET_BLEND_SECONDS = 2.7;
 
-/** Terminal cells are about twice as tall as they are wide. */
-const CELL_ASPECT = 2;
-/** Ceiling on accumulated ink, so a sustained loud passage cannot saturate flat. */
+/**
+ * Frames per second the catalog's decay values were authored against.
+ *
+ * MilkDrop runs at 30-60 fps; the desktop advances at 8. A decay applied once
+ * per 125 ms instead of once per 33 ms leaves a bright ghost that never fades,
+ * so every preset's per-frame decay is raised to the frame-count ratio.
+ */
+const AUTHORED_FPS = 30;
+
+/** Warp mesh resolution. Vertices are one more than this in each axis. */
+const MESH_WIDTH = 24;
+const MESH_HEIGHT = 18;
+
+/** Ceiling on accumulated ink, so a loud passage cannot saturate flat. */
 const MAX_INK = 1.6;
 /** Cells dimmer than this show the desktop theme instead of a block. */
 const MIN_INK = 0.1;
-/** Shade ramp, dimmest first; the block carries what the color cannot. */
+/** Shade ramp, dimmest first; the block carries what the colour cannot. */
 const SHADES: readonly string[] = ["░", "▒", "▓", "█"];
 /** Upper ink bound of each shade in `SHADES`; the last entry is open-ended. */
 const SHADE_STOPS: readonly number[] = [0.2, 0.42, 0.75];
 /** Output gamma. Below 1 it lifts midtones so dim feedback trails stay visible. */
 const INK_GAMMA = 1 / 1.35;
 /**
- * Output colors are snapped to this per-channel grid, bounding the palette at
- * 17³ = 4913 colors.
+ * Output colours are snapped to this per-channel grid, bounding the palette at
+ * 17³ = 4913 colours.
  *
  * The desktop painter caches one ANSI style per (foreground, background, bold)
  * triple and clears the whole cache at 8192 entries. Unquantized, this field
- * mints roughly 490 new colors every frame — it would flush that cache every
+ * mints hundreds of new colours every frame — it would flush that cache every
  * couple of seconds and then miss on nearly every cell, which is precisely the
- * repaint saturation the painter's cache exists to prevent. A step of 16 is
- * about 6% of range; the shade ramp breaks up what banding is left.
+ * repaint saturation the painter's cache exists to prevent.
  */
 const COLOR_STEP = 16;
 /** Strongest pull of the theme accent, applied to the faintest ink only. */
@@ -70,25 +87,35 @@ const MAX_ACCENT_TINT = 0.45;
 /** Ink level at which the accent pull has faded to nothing. */
 const ACCENT_TINT_LIMIT = 0.35;
 
-/** Samples plotted along a closed wave figure. */
-const WAVE_SAMPLES = 240;
+/** Ink one waveform figure deposits per frame, spread over its vertices. */
+const WAVE_INK = 300;
 /**
- * Ink deposited by the waveform before per-preset color and mode density.
+ * Floor under a preset's `wave_a`, and the only deliberate deviation from the
+ * catalog's own numbers.
  *
- * The field runs at 8 Hz, so both this and the preset decays are an order of
- * magnitude away from MilkDrop's own numbers: a frame here is worth roughly
- * four of MilkDrop's, and a feedback loop that deposits faster than it fades
- * fills the whole desktop with white inside a few seconds.
+ * Two thirds of the catalog sets `wave_a` near zero — the median is 0.001 —
+ * because those presets draw with custom waves, custom shapes and their
+ * composite shader, and the basic waveform is only a seed. None of that runs
+ * here, so honouring `wave_a` literally leaves 202 of 293 presets rendering an
+ * empty screen. The warp mesh is the faithful, strongly preset-specific part of
+ * this port; it needs ink to act on, and this is where the ink comes from.
  */
-const WAVE_INK = 0.5;
+const MIN_WAVE_ALPHA = 0.5;
+/**
+ * Ceiling on a preset's decay.
+ *
+ * MilkDrop presets may set `decay` to 1 and rely on their composite shader,
+ * `darken`, or the blur chain to pull brightness back down. With none of those
+ * present a lossless feedback loop only ever accumulates, so the field is
+ * forced to forget a little each frame.
+ */
+const MAX_DECAY = 0.99;
 /**
  * Share of full ink the wave still deposits at zero level.
  *
  * MilkDrop draws its waveform at full brightness on silence, as a flat trace.
  * A desktop background should not: a quiet room is the common case, and a
- * static ring smeared across a third of the screen is worse than nothing. This
- * floor keeps the figure faintly alive so the field has something to react
- * from, without lighting up an idle desktop.
+ * static figure smeared across the screen is worse than nothing.
  */
 const SILENT_INK = 0.12;
 /** Extra ink deposited on the frame a beat is detected. */
@@ -97,238 +124,38 @@ const BEAT_INK = 0.45;
 const POINTER_INK = 0.9;
 
 /**
- * Per-mode deposit scale. Modes differ by more than an order of magnitude in
- * how many cells they touch — a waveform line plots one point per column, a
- * spectrum fills bars — so without this the dense modes wash out.
+ * Smoothing for the running band averages that normalize audio.
+ *
+ * MilkDrop's `bass`/`mid`/`treb` are relative: roughly 1.0 at a track's typical
+ * level, above on a hit. Presets are written against that — `zoom = 1.01 +
+ * 0.02*treb_att` barely moves if fed a raw 0..1 energy. Dividing by a slow
+ * running average reproduces the scale the catalog expects.
  */
-const WAVE_DENSITY: Readonly<Record<ExomuxButterchurnWave, number>> = Object.freeze({
-  line: 1,
-  dual: 0.6,
-  circle: 1,
-  figure: 0.9,
-  radial: 0.55,
-  spectrum: 0.7,
-});
+const LEVEL_AVERAGE_RATE = 0.02;
+/** Attack-follower rate for the `*_att` variables. */
+const ATTACK_RATE = 0.25;
+/** Floor on a running average, so silence cannot divide by ~0. */
+const MIN_AVERAGE = 0.02;
 
-/** Ink a spike or bar lays along its length, relative to its tip. */
-const STEM_INK = 0.08;
-
-// ── presets ─────────────────────────────────────────────────────────────────
-
-/** How a preset lays this frame's audio onto the canvas. */
-export type ExomuxButterchurnWave = "circle" | "line" | "dual" | "spectrum" | "radial" | "figure";
-
-/** One MilkDrop-style parameter set. Every numeric field crossfades on cycle. */
-export interface ExomuxButterchurnPreset {
-  readonly name: string;
-  /** Fraction of the previous frame that survives resampling. */
-  readonly decay: number;
-  /** Per-frame channel multiplier on the feedback; unequal values drift hue. */
-  readonly tint: readonly [number, number, number];
-  /** Feedback scale per frame. Above 1 the image flows outward. */
-  readonly zoom: number;
-  /** Feedback scale added per unit of bass energy. */
-  readonly zoomBass: number;
-  /** Feedback rotation per frame, in radians. */
-  readonly rotate: number;
-  /** Rotation added per unit of treble energy. */
-  readonly rotateTreble: number;
-  /** Feedback translation per frame, in normalized screen units. */
-  readonly driftX: number;
-  readonly driftY: number;
-  /** Amplitude of the sine warp mesh. */
-  readonly warp: number;
-  /** Amplitude added per unit of mid energy. */
-  readonly warpMid: number;
-  /** Spatial frequency of the warp mesh. */
-  readonly warpScale: number;
-  /** Angular speed of the warp mesh. */
-  readonly warpSpeed: number;
-  readonly wave: ExomuxButterchurnWave;
-  /** Waveform ink color, linear 0..1 per channel. */
-  readonly waveColor: readonly [number, number, number];
-  /** Ink color flashed on a detected beat. */
-  readonly beatColor: readonly [number, number, number];
-  /** Radius of the wave figure, in normalized screen units. */
-  readonly waveSize: number;
-}
+// ── field ───────────────────────────────────────────────────────────────────
 
 /**
- * The shipped preset catalog. These are hand-written rather than imported: the
- * real Butterchurn catalog is 293 MilkDrop presets of compiled EEL equations,
- * which needs the engine this field deliberately does without.
+ * The presets this background cycles through: the vendored MilkDrop catalog
+ * narrowed to the ones that resolve to a moving image at cell resolution.
+ *
+ * See `scripts/audit_butterchurn_catalog.ts` for how the rotation is chosen and
+ * why the rest are excluded. The full catalog remains available as
+ * `EXOMUX_BUTTERCHURN_CATALOG`.
  */
-export const EXOMUX_BUTTERCHURN_PRESETS: readonly ExomuxButterchurnPreset[] = Object.freeze([
-  Object.freeze({
-    name: "Geiss — Reaction Diffusion",
-    decay: 0.855,
-    tint: [1.0, 0.985, 0.96] as const,
-    zoom: 1.035,
-    zoomBass: 0.05,
-    rotate: 0.012,
-    rotateTreble: 0.03,
-    driftX: 0,
-    driftY: 0,
-    warp: 0.02,
-    warpMid: 0.05,
-    warpScale: 4.2,
-    warpSpeed: 0.9,
-    wave: "circle",
-    waveColor: [0.25, 0.85, 1.0] as const,
-    beatColor: [1.0, 0.75, 0.35] as const,
-    waveSize: 0.42,
-  }),
-  Object.freeze({
-    name: "Rovastar — Hyperspace Tunnel",
-    decay: 0.880,
-    tint: [0.99, 0.97, 1.0] as const,
-    zoom: 1.06,
-    zoomBass: 0.09,
-    rotate: -0.008,
-    rotateTreble: -0.05,
-    driftX: 0,
-    driftY: 0,
-    warp: 0.006,
-    warpMid: 0.02,
-    warpScale: 2.1,
-    warpSpeed: 0.4,
-    wave: "radial",
-    waveColor: [0.95, 0.35, 0.9] as const,
-    beatColor: [0.4, 1.0, 0.95] as const,
-    waveSize: 0.22,
-  }),
-  Object.freeze({
-    name: "Flexi — Bass Kick Mandala",
-    decay: 0.815,
-    tint: [1.0, 0.95, 0.9] as const,
-    zoom: 0.985,
-    zoomBass: 0.14,
-    rotate: 0.04,
-    rotateTreble: 0.02,
-    driftX: 0,
-    driftY: 0,
-    warp: 0.03,
-    warpMid: 0.04,
-    warpScale: 6.5,
-    warpSpeed: 1.4,
-    wave: "figure",
-    waveColor: [1.0, 0.6, 0.2] as const,
-    beatColor: [1.0, 1.0, 0.9] as const,
-    waveSize: 0.5,
-  }),
-  Object.freeze({
-    name: "Aderrasi — Undersea Drift",
-    decay: 0.900,
-    tint: [0.95, 1.0, 0.99] as const,
-    zoom: 1.012,
-    zoomBass: 0.03,
-    rotate: 0.004,
-    rotateTreble: 0.008,
-    driftX: 0.004,
-    driftY: -0.006,
-    warp: 0.045,
-    warpMid: 0.06,
-    warpScale: 2.8,
-    warpSpeed: 0.35,
-    wave: "dual",
-    waveColor: [0.2, 0.95, 0.65] as const,
-    beatColor: [0.85, 1.0, 0.4] as const,
-    waveSize: 0.55,
-  }),
-  Object.freeze({
-    name: "Krash — Spectrum Comb",
-    decay: 0.720,
-    tint: [1.0, 0.98, 1.0] as const,
-    zoom: 1.0,
-    zoomBass: 0.02,
-    rotate: 0,
-    rotateTreble: 0,
-    driftX: 0,
-    driftY: -0.035,
-    warp: 0.012,
-    warpMid: 0.03,
-    warpScale: 8.0,
-    warpSpeed: 2.2,
-    wave: "spectrum",
-    waveColor: [0.55, 0.35, 1.0] as const,
-    beatColor: [1.0, 0.35, 0.55] as const,
-    waveSize: 0.55,
-  }),
-  Object.freeze({
-    name: "Idiot — Slow Rotor",
-    decay: 0.918,
-    tint: [1.0, 0.93, 0.97] as const,
-    zoom: 1.004,
-    zoomBass: 0.06,
-    rotate: 0.055,
-    rotateTreble: -0.04,
-    driftX: 0,
-    driftY: 0,
-    warp: 0.008,
-    warpMid: 0.015,
-    warpScale: 3.3,
-    warpSpeed: 0.18,
-    wave: "line",
-    waveColor: [1.0, 0.25, 0.35] as const,
-    beatColor: [0.3, 0.6, 1.0] as const,
-    waveSize: 0.6,
-  }),
-  Object.freeze({
-    name: "Unchained — Electric Sheep",
-    decay: 0.835,
-    tint: [0.97, 1.0, 0.94] as const,
-    zoom: 1.055,
-    zoomBass: 0.09,
-    rotate: 0.022,
-    rotateTreble: 0.06,
-    driftX: -0.008,
-    driftY: 0,
-    warp: 0.055,
-    warpMid: 0.09,
-    warpScale: 5.1,
-    warpSpeed: 1.1,
-    wave: "circle",
-    waveColor: [0.85, 1.0, 0.3] as const,
-    beatColor: [1.0, 0.2, 0.8] as const,
-    waveSize: 0.3,
-  }),
-  Object.freeze({
-    name: "Fvese — Quiet Nebula",
-    decay: 0.945,
-    tint: [0.99, 0.99, 1.0] as const,
-    zoom: 1.018,
-    zoomBass: 0.04,
-    rotate: -0.006,
-    rotateTreble: 0.012,
-    driftX: 0.003,
-    driftY: 0.004,
-    warp: 0.035,
-    warpMid: 0.04,
-    warpScale: 1.6,
-    warpSpeed: 0.22,
-    wave: "figure",
-    waveColor: [0.45, 0.55, 1.0] as const,
-    beatColor: [1.0, 0.9, 0.6] as const,
-    waveSize: 0.45,
-  }),
-]) as readonly ExomuxButterchurnPreset[];
-
-/** Every numeric knob crossfaded between two presets during a blend. */
-interface BlendedPreset {
-  decay: number;
-  tint: [number, number, number];
-  zoom: number;
-  zoomBass: number;
-  rotate: number;
-  rotateTreble: number;
-  driftX: number;
-  driftY: number;
-  warp: number;
-  warpMid: number;
-  warpScale: number;
-  warpSpeed: number;
-  waveSize: number;
-}
+export const EXOMUX_BUTTERCHURN_PRESETS: readonly ExomuxButterchurnPresetSource[] = Object.freeze(
+  ((): ExomuxButterchurnPresetSource[] => {
+    const wanted = new Set(EXOMUX_BUTTERCHURN_ROTATION);
+    const rotation = EXOMUX_BUTTERCHURN_CATALOG.filter((preset) => wanted.has(preset.name));
+    // A rotation that failed to match anything would leave the desktop with no
+    // background at all, so fall back to the whole catalog.
+    return rotation.length > 0 ? rotation : [...EXOMUX_BUTTERCHURN_CATALOG];
+  })(),
+);
 
 export interface ExomuxButterchurnFieldOptions {
   /**
@@ -336,10 +163,14 @@ export interface ExomuxButterchurnFieldOptions {
    * which is opened on the first advance and released by `dispose`.
    */
   readonly audio?: ExomuxAudioSource;
-  /** Preset the field opens on. */
+  /** Preset the field opens on, as an index into the catalog. */
   readonly presetIndex?: number;
   /** Cycle presets on a timer; off leaves the opening preset in place. */
   readonly autoCycle?: boolean;
+  /** Catalog override, for tests. */
+  readonly catalog?: readonly ExomuxButterchurnPresetSource[];
+  /** Seed for the deterministic `rand` presets see. */
+  readonly seed?: number;
 }
 
 interface ButterchurnPointer {
@@ -349,9 +180,9 @@ interface ButterchurnPointer {
 }
 
 /**
- * Audio-reactive MilkDrop-style background. Simulation state is a pair of RGB
- * accumulation buffers at cell resolution; everything else is derived, so the
- * field is deterministic for a given audio source and frame timeline.
+ * Audio-reactive MilkDrop background. Simulation state is a pair of RGB
+ * accumulation buffers at cell resolution plus the active preset's variable
+ * pool, so the field is deterministic for a given audio source and timeline.
  */
 export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
   #width = 0;
@@ -360,57 +191,82 @@ export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
   #ink = new Float32Array(0);
   /** Warp destination, swapped with `#ink` each frame. */
   #inkNext = new Float32Array(0);
-  /** Per-row and per-column warp offsets; the mesh is separable by design. */
-  #warpRows = new Float32Array(0);
-  #warpColumns = new Float32Array(0);
 
   #audio: ExomuxAudioSource | undefined;
   readonly #ownsAudio: boolean;
   #audioLabel = "starting";
 
+  readonly #catalog: readonly ExomuxButterchurnPresetSource[];
+  readonly #seed: number;
   #presetIndex: number;
-  #previousIndex: number;
+  #preset: ExomuxButterchurnPreset;
+  /** Outgoing preset during a crossfade; both are evaluated and drawn. */
+  #previous: ExomuxButterchurnPreset | undefined;
   #blend = 1;
   readonly #autoCycle: boolean;
   #heldSeconds = 0;
-  readonly #blended: BlendedPreset = {
-    decay: 0,
-    tint: [1, 1, 1],
-    zoom: 1,
-    zoomBass: 0,
-    rotate: 0,
-    rotateTreble: 0,
-    driftX: 0,
-    driftY: 0,
-    warp: 0,
-    warpMid: 0,
-    warpScale: 1,
-    warpSpeed: 0,
-    waveSize: 0.5,
-  };
 
   #time = 0;
+  #frame = 0;
   #lastFrameAt: number | undefined;
   #pointer: ButterchurnPointer | undefined;
   #cells: (ExomuxBackgroundCell | undefined)[][] = [];
 
+  // Running averages that turn raw band energy into MilkDrop's relative scale.
+  #bassAverage = 0.2;
+  #midAverage = 0.2;
+  #trebleAverage = 0.2;
+  #bassAttack = 1;
+  #midAttack = 1;
+  #trebleAttack = 1;
+  readonly #audioInput: {
+    bass: number;
+    mid: number;
+    treb: number;
+    bassAttack: number;
+    midAttack: number;
+    trebleAttack: number;
+    waveform: Float32Array;
+  } = {
+    bass: 1,
+    mid: 1,
+    treb: 1,
+    bassAttack: 1,
+    midAttack: 1,
+    trebleAttack: 1,
+    waveform: new Float32Array(0),
+  };
+
   constructor(options: ExomuxButterchurnFieldOptions = {}) {
     this.#audio = options.audio;
     this.#ownsAudio = options.audio === undefined;
-    const count = EXOMUX_BUTTERCHURN_PRESETS.length;
+    this.#catalog = options.catalog ?? EXOMUX_BUTTERCHURN_PRESETS;
+    if (this.#catalog.length === 0) throw new RangeError("The butterchurn catalog is empty.");
+    this.#seed = Math.trunc(options.seed ?? 1);
     const requested = Math.trunc(options.presetIndex ?? 0);
-    this.#presetIndex = Number.isFinite(requested) ? ((requested % count) + count) % count : 0;
-    this.#previousIndex = this.#presetIndex;
+    this.#presetIndex = Number.isFinite(requested)
+      ? ((requested % this.#catalog.length) + this.#catalog.length) % this.#catalog.length
+      : 0;
     this.#autoCycle = options.autoCycle ?? true;
+    this.#preset = this.#load(this.#presetIndex);
   }
 
   /** Preset currently in front; during a blend this is the incoming one. */
   get preset(): ExomuxButterchurnPreset {
-    return EXOMUX_BUTTERCHURN_PRESETS[this.#presetIndex]!;
+    return this.#preset;
   }
 
   get presetIndex(): number {
     return this.#presetIndex;
+  }
+
+  get presetName(): string {
+    return this.#preset.name;
+  }
+
+  /** Number of presets in the catalog this field is cycling. */
+  get presetCount(): number {
+    return this.#catalog.length;
   }
 
   /** Status label for the audio source, e.g. `mic:parec`, `synth`. */
@@ -420,8 +276,17 @@ export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
 
   /** Advances to the next preset, starting a crossfade. */
   nextPreset(): void {
-    this.#previousIndex = this.#presetIndex;
-    this.#presetIndex = (this.#presetIndex + 1) % EXOMUX_BUTTERCHURN_PRESETS.length;
+    this.selectPreset(this.#presetIndex + 1);
+  }
+
+  /** Selects a preset by catalog index, wrapping, and starts a crossfade. */
+  selectPreset(index: number): void {
+    const count = this.#catalog.length;
+    const next = ((Math.trunc(index) % count) + count) % count;
+    this.#previous = this.#preset;
+    this.#presetIndex = next;
+    this.#preset = this.#load(next);
+    if (this.#width > 0) this.#preset.setSize(this.#width, this.#height);
     this.#blend = 0;
     this.#heldSeconds = 0;
   }
@@ -460,14 +325,19 @@ export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
     this.#audioLabel = this.#audio?.label() ?? "silent";
 
     this.#time += dt;
+    this.#frame += 1;
     this.#advancePreset(dt);
-    this.#resolvePreset();
 
-    // Frames are 125 ms apart, so per-frame deltas are scaled to keep motion
+    const input = this.#prepareAudio(audio, dt);
+    const fps = 1000 / FRAME_BASELINE_MS;
+    this.#preset.advance(input, this.#time, this.#frame, fps);
+    this.#previous?.advance(input, this.#time, this.#frame, fps);
+
+    // Frames are 125 ms apart; scaling by the real delta keeps motion
     // rate-independent when the desktop stalls or the terminal resizes.
     const frames = elapsedMs / FRAME_BASELINE_MS;
-    this.#warpPass(audio, frames);
-    this.#drawWave(audio, frames);
+    this.#warpPass(frames);
+    this.#drawWaves(audio, frames);
     this.#drawPointer(bounds, now, frames);
     return true;
   }
@@ -515,15 +385,31 @@ export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
 
   // ── simulation ────────────────────────────────────────────────────────────
 
+  #load(index: number): ExomuxButterchurnPreset {
+    const source = this.#catalog[index]!;
+    // Seeded per preset so `rand` is reproducible for a given field and index,
+    // which is what keeps the whole field deterministic under test.
+    let state = (this.#seed * 2_654_435_761 + index * 40_503) >>> 0;
+    const random = (): number => {
+      state = (Math.imul(state, 1_664_525) + 1_013_904_223) >>> 0;
+      return state / 4_294_967_296;
+    };
+    return new ExomuxButterchurnPreset(source, {
+      meshWidth: MESH_WIDTH,
+      meshHeight: MESH_HEIGHT,
+      random,
+    });
+  }
+
   #resize(width: number, height: number): void {
     if (width === this.#width && height === this.#height) return;
     this.#width = width;
     this.#height = height;
     this.#ink = new Float32Array(width * height * 3);
     this.#inkNext = new Float32Array(width * height * 3);
-    this.#warpRows = new Float32Array(height);
-    this.#warpColumns = new Float32Array(width);
     this.#cells = [];
+    this.#preset.setSize(width, height);
+    this.#previous?.setSize(width, height);
   }
 
   #ensureCellBuffer(width: number, height: number): void {
@@ -537,6 +423,7 @@ export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
   #advancePreset(dt: number): void {
     if (this.#blend < 1) {
       this.#blend = Math.min(1, this.#blend + dt / PRESET_BLEND_SECONDS);
+      if (this.#blend >= 1) this.#previous = undefined;
       return;
     }
     if (!this.#autoCycle) return;
@@ -544,96 +431,90 @@ export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
     if (this.#heldSeconds >= PRESET_HOLD_SECONDS) this.nextPreset();
   }
 
-  /** Crossfades every numeric knob into `#blended` for this frame. */
-  #resolvePreset(): void {
-    const to = EXOMUX_BUTTERCHURN_PRESETS[this.#presetIndex]!;
-    const from = EXOMUX_BUTTERCHURN_PRESETS[this.#previousIndex]!;
-    // Smoothstep, so a cycle eases in and out instead of snapping to a new
-    // rotation rate at both ends of the blend.
-    const raw = this.#blend;
-    const mix = raw * raw * (3 - 2 * raw);
-    const blended = this.#blended;
-    blended.decay = lerp(from.decay, to.decay, mix);
-    blended.tint[0] = lerp(from.tint[0], to.tint[0], mix);
-    blended.tint[1] = lerp(from.tint[1], to.tint[1], mix);
-    blended.tint[2] = lerp(from.tint[2], to.tint[2], mix);
-    blended.zoom = lerp(from.zoom, to.zoom, mix);
-    blended.zoomBass = lerp(from.zoomBass, to.zoomBass, mix);
-    blended.rotate = lerp(from.rotate, to.rotate, mix);
-    blended.rotateTreble = lerp(from.rotateTreble, to.rotateTreble, mix);
-    blended.driftX = lerp(from.driftX, to.driftX, mix);
-    blended.driftY = lerp(from.driftY, to.driftY, mix);
-    blended.warp = lerp(from.warp, to.warp, mix);
-    blended.warpMid = lerp(from.warpMid, to.warpMid, mix);
-    blended.warpScale = lerp(from.warpScale, to.warpScale, mix);
-    blended.warpSpeed = lerp(from.warpSpeed, to.warpSpeed, mix);
-    blended.waveSize = lerp(from.waveSize, to.waveSize, mix);
+  /** Converts one analyser frame into the relative scale presets expect. */
+  #prepareAudio(audio: ExomuxAudioFrame, dt: number): ExomuxButterchurnAudio {
+    const rate = Math.min(1, LEVEL_AVERAGE_RATE * dt * 60);
+    this.#bassAverage += (audio.bass - this.#bassAverage) * rate;
+    this.#midAverage += (audio.mid - this.#midAverage) * rate;
+    this.#trebleAverage += (audio.treble - this.#trebleAverage) * rate;
+
+    const bass = audio.bass / Math.max(MIN_AVERAGE, this.#bassAverage);
+    const mid = audio.mid / Math.max(MIN_AVERAGE, this.#midAverage);
+    const treble = audio.treble / Math.max(MIN_AVERAGE, this.#trebleAverage);
+
+    const attack = Math.min(1, ATTACK_RATE * dt * 60);
+    this.#bassAttack += (bass - this.#bassAttack) * attack;
+    this.#midAttack += (mid - this.#midAttack) * attack;
+    this.#trebleAttack += (treble - this.#trebleAttack) * attack;
+
+    const input = this.#audioInput;
+    input.bass = clampEnergy(bass);
+    input.mid = clampEnergy(mid);
+    input.treb = clampEnergy(treble);
+    input.bassAttack = clampEnergy(this.#bassAttack);
+    input.midAttack = clampEnergy(this.#midAttack);
+    input.trebleAttack = clampEnergy(this.#trebleAttack);
+    input.waveform = audio.waveform;
+    return input;
   }
 
   /**
-   * MilkDrop's per-pixel motion pass: every destination cell pulls its color
-   * from a warped, rotated, zoomed position in the previous frame. The warp
-   * mesh is separable — horizontal displacement depends only on the row and
-   * vertical only on the column — which keeps two sine calls per row/column
-   * instead of three per cell.
+   * Resamples the previous frame through the active preset's warp mesh.
+   *
+   * The mesh is coarse — 25x19 vertices against up to 220x55 cells — exactly as
+   * in MilkDrop, where the GPU interpolates between them. Here that
+   * interpolation is done per cell in the same bilinear form.
    */
-  #warpPass(audio: ExomuxAudioFrame, frames: number): void {
+  #warpPass(frames: number): void {
     const width = this.#width;
     const height = this.#height;
-    const preset = this.#blended;
-    const aspect = width / (height * CELL_ASPECT);
-    const time = this.#time;
+    const preset = this.#preset;
+    const mesh = preset.mesh;
+    const gridX = preset.meshWidth;
+    const gridY = preset.meshHeight;
+    const rowStride = (gridX + 1) * 2;
 
-    const warp = preset.warp + preset.warpMid * audio.mid;
-    const scale = preset.warpScale;
-    const speed = preset.warpSpeed * time;
-    for (let row = 0; row < height; row += 1) {
-      const v = (row + 0.5) / height * 2 - 1;
-      this.#warpRows[row] = warp * (Math.sin(v * scale + speed) + 0.5 * Math.sin(v * scale * 2.13 - speed * 0.7));
-    }
-    for (let column = 0; column < width; column += 1) {
-      const u = ((column + 0.5) / width * 2 - 1) * aspect;
-      this.#warpColumns[column] = warp *
-        (Math.sin(u * scale * 0.93 - speed * 1.1) + 0.5 * Math.sin(u * scale * 1.77 + speed * 0.6));
-    }
-
-    const zoom = Math.max(0.5, preset.zoom + preset.zoomBass * audio.bass);
-    const angle = (preset.rotate + preset.rotateTreble * audio.treble) * frames;
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-    const driftX = preset.driftX * frames;
-    const driftY = preset.driftY * frames;
-    // Per-frame constants raised to the elapsed frame count keep decay honest
-    // across a stalled tick instead of leaving a bright ghost behind.
-    const decay = Math.pow(preset.decay, frames);
-    const tintRed = Math.pow(preset.tint[0], frames) * decay;
-    const tintGreen = Math.pow(preset.tint[1], frames) * decay;
-    const tintBlue = Math.pow(preset.tint[2], frames) * decay;
+    // A per-frame decay authored for 30 fps, re-based onto this frame's length.
+    const decay = Math.pow(
+      clamp(preset.values.decay, 0, MAX_DECAY),
+      (AUTHORED_FPS / (1000 / FRAME_BASELINE_MS)) * frames,
+    );
 
     const source = this.#ink;
     const target = this.#inkNext;
-    const toPixelX = 0.5 * width;
-    const toPixelY = 0.5 * height;
+    const scaleX = width > 1 ? gridX / (width - 1) : 0;
+    const scaleY = height > 1 ? gridY / (height - 1) : 0;
 
     for (let row = 0; row < height; row += 1) {
-      const v = (row + 0.5) / height * 2 - 1;
-      const warpU = this.#warpRows[row]!;
+      const my = row * scaleY;
+      const my0 = Math.min(gridY, Math.floor(my));
+      const my1 = Math.min(gridY, my0 + 1);
+      const fy = my - my0;
+      const rowBase0 = my0 * rowStride;
+      const rowBase1 = my1 * rowStride;
       for (let column = 0; column < width; column += 1) {
-        const u = ((column + 0.5) / width * 2 - 1) * aspect;
-        const su = u + warpU;
-        const sv = v + this.#warpColumns[column]!;
-        const ru = su * cos - sv * sin;
-        const rv = su * sin + sv * cos;
-        const sampleU = ru / zoom + driftX;
-        const sampleV = rv / zoom + driftY;
+        const mx = column * scaleX;
+        const mx0 = Math.min(gridX, Math.floor(mx));
+        const mx1 = Math.min(gridX, mx0 + 1);
+        const fx = mx - mx0;
 
-        const x = (sampleU / aspect + 1) * toPixelX - 0.5;
-        const y = (sampleV + 1) * toPixelY - 0.5;
+        const a = rowBase0 + mx0 * 2;
+        const b = rowBase0 + mx1 * 2;
+        const c = rowBase1 + mx0 * 2;
+        const d = rowBase1 + mx1 * 2;
+        const w00 = (1 - fx) * (1 - fy);
+        const w10 = fx * (1 - fy);
+        const w01 = (1 - fx) * fy;
+        const w11 = fx * fy;
+
+        const u = mesh[a]! * w00 + mesh[b]! * w10 + mesh[c]! * w01 + mesh[d]! * w11;
+        const v = mesh[a + 1]! * w00 + mesh[b + 1]! * w10 + mesh[c + 1]! * w01 + mesh[d + 1]! * w11;
+
         const offset = (row * width + column) * 3;
-        sampleBilinear(source, width, height, x, y, SAMPLE);
-        target[offset] = SAMPLE[0]! * tintRed;
-        target[offset + 1] = SAMPLE[1]! * tintGreen;
-        target[offset + 2] = SAMPLE[2]! * tintBlue;
+        sampleBilinear(source, width, height, u * width - 0.5, v * height - 0.5, SAMPLE);
+        target[offset] = SAMPLE[0]! * decay;
+        target[offset + 1] = SAMPLE[1]! * decay;
+        target[offset + 2] = SAMPLE[2]! * decay;
       }
     }
 
@@ -641,135 +522,39 @@ export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
     this.#inkNext = source;
   }
 
-  /** Lays this frame's audio onto the canvas in the preset's wave mode. */
-  #drawWave(audio: ExomuxAudioFrame, frames: number): void {
-    const to = EXOMUX_BUTTERCHURN_PRESETS[this.#presetIndex]!;
-    const from = EXOMUX_BUTTERCHURN_PRESETS[this.#previousIndex]!;
+  /** Draws the active preset's waveform, and the outgoing one mid-blend. */
+  #drawWaves(audio: ExomuxAudioFrame, frames: number): void {
     const raw = this.#blend;
+    // Smoothstep, so a cycle eases in and out instead of snapping.
     const mix = raw * raw * (3 - 2 * raw);
-    // Both figures are drawn during a blend, each at its own weight, which is
-    // what makes a cycle read as one shape dissolving into another.
-    if (mix < 1) this.#drawWaveMode(from, audio, frames * (1 - mix));
-    if (mix > 0) this.#drawWaveMode(to, audio, frames * mix);
+    if (this.#previous && mix < 1) this.#drawWave(this.#previous, audio, frames * (1 - mix));
+    this.#drawWave(this.#preset, audio, frames * mix);
   }
 
-  #drawWaveMode(preset: ExomuxButterchurnPreset, audio: ExomuxAudioFrame, weight: number): void {
-    if (weight <= 0) return;
-    const density = WAVE_DENSITY[preset.wave];
-    const gain = WAVE_INK * density * weight * (SILENT_INK + (1 - SILENT_INK) * audio.level);
-    const beat = audio.beat ? BEAT_INK * density * weight : 0;
-    const red = preset.waveColor[0] * gain + preset.beatColor[0] * beat;
-    const green = preset.waveColor[1] * gain + preset.beatColor[1] * beat;
-    const blue = preset.waveColor[2] * gain + preset.beatColor[2] * beat;
-    const size = this.#blended.waveSize;
-    const wave = audio.waveform;
-    const bands = audio.bands;
-
-    switch (preset.wave) {
-      case "line":
-        this.#plotLine(wave, 0, size, red, green, blue);
-        break;
-      case "dual":
-        this.#plotLine(wave, -0.35, size * 0.6, red, green, blue);
-        this.#plotLine(wave, 0.35, -size * 0.6, red, green, blue);
-        break;
-      case "circle":
-        this.#plotRing(wave, size, 1, red, green, blue);
-        break;
-      case "figure":
-        // A Lissajous knot: the waveform modulates radius on one harmonic and
-        // angle on another, which is MilkDrop's "custom shape" look.
-        this.#plotRing(wave, size, 3, red, green, blue);
-        break;
-      case "radial":
-        this.#plotRadial(bands, size, red, green, blue);
-        break;
-      case "spectrum":
-        this.#plotSpectrum(bands, size, red, green, blue);
-        break;
-    }
-  }
-
-  /** Horizontal waveform trace at `centre` (normalized), scaled by `amplitude`. */
-  #plotLine(wave: Float32Array, centre: number, amplitude: number, red: number, green: number, blue: number): void {
+  #drawWave(preset: ExomuxButterchurnPreset, audio: ExomuxAudioFrame, weight: number): void {
+    const count = preset.waveCount;
+    if (weight <= 0 || count === 0) return;
+    const values = preset.values;
     const width = this.#width;
     const height = this.#height;
-    for (let column = 0; column < width; column += 1) {
-      const sample = wave[Math.min(wave.length - 1, Math.floor(column / width * wave.length))]!;
-      const v = centre + sample * amplitude;
-      this.#splat(column, (v + 1) * 0.5 * height - 0.5, red, green, blue);
-    }
-  }
 
-  /** Closed figure around the centre; `harmonic` folds the waveform into it. */
-  #plotRing(
-    wave: Float32Array,
-    size: number,
-    harmonic: number,
-    red: number,
-    green: number,
-    blue: number,
-  ): void {
-    const width = this.#width;
-    const height = this.#height;
-    const aspect = width / (height * CELL_ASPECT);
-    for (let i = 0; i < WAVE_SAMPLES; i += 1) {
-      const t = i / WAVE_SAMPLES;
-      const sample = wave[Math.min(wave.length - 1, Math.floor(t * wave.length))]!;
-      const angle = t * Math.PI * 2 * harmonic;
-      const radius = size * (1 + sample * 0.85);
-      const u = Math.cos(angle) * radius;
-      const v = Math.sin(angle) * radius;
-      this.#splat((u / aspect + 1) * 0.5 * width - 0.5, (v + 1) * 0.5 * height - 0.5, red, green, blue);
-    }
-  }
+    // Ink is a fixed budget spread over however many vertices the mode plots,
+    // so a 256-point ring and a 64-point line deposit the same total energy.
+    const alpha = Math.max(MIN_WAVE_ALPHA, clamp(values.waveAlpha, 0, 1));
+    const level = SILENT_INK + (1 - SILENT_INK) * audio.level;
+    const beat = audio.beat ? BEAT_INK : 0;
+    const gain = (WAVE_INK / count) * weight * level * (alpha + beat);
+    if (gain <= 0) return;
 
-  /**
-   * Spikes radiating from the centre, one per spectrum band, mirrored so the
-   * figure is symmetric. Ink is concentrated at each spike's tip: a spoke drawn
-   * at even weight fills a solid disc that the feedback pass then smears into a
-   * flat wash, which is the one failure mode a feedback visualizer cannot
-   * recover from.
-   */
-  #plotRadial(bands: Float32Array, size: number, red: number, green: number, blue: number): void {
-    const width = this.#width;
-    const height = this.#height;
-    const aspect = width / (height * CELL_ASPECT);
-    const spokes = bands.length * 2;
-    for (let spoke = 0; spoke < spokes; spoke += 1) {
-      const band = spoke < bands.length ? spoke : spokes - 1 - spoke;
-      const energy = bands[Math.max(0, band)]!;
-      const angle = spoke / spokes * Math.PI * 2;
-      const cos = Math.cos(angle);
-      const sin = Math.sin(angle);
-      const reach = size * (1 + energy * 2.2);
-      const steps = Math.max(2, Math.round(reach * height));
-      for (let step = 0; step <= steps; step += 1) {
-        const along = step / steps;
-        const weight = energy * (STEM_INK + (1 - STEM_INK) * Math.pow(along, 6));
-        const radius = reach * along;
-        this.#splat(
-          (radius * cos / aspect + 1) * 0.5 * width - 0.5,
-          (radius * sin + 1) * 0.5 * height - 0.5,
-          red * weight,
-          green * weight,
-          blue * weight,
-        );
-      }
-    }
-  }
-
-  /** Spectrum bars rising from the bottom edge, brightest at the bar tip. */
-  #plotSpectrum(bands: Float32Array, size: number, red: number, green: number, blue: number): void {
-    const width = this.#width;
-    const height = this.#height;
-    for (let column = 0; column < width; column += 1) {
-      const energy = bands[Math.min(bands.length - 1, Math.floor(column / width * bands.length))]!;
-      const bar = Math.round(energy * size * height);
-      for (let step = 0; step <= bar; step += 1) {
-        const weight = bar === 0 ? 1 : STEM_INK + (1 - STEM_INK) * Math.pow(step / bar, 6);
-        this.#splat(column, height - 1 - step, red * weight, green * weight, blue * weight);
-      }
+    const red = clamp(values.waveR, 0, 1) * gain;
+    const green = clamp(values.waveG, 0, 1) * gain;
+    const blue = clamp(values.waveB, 0, 1) * gain;
+    const wave = preset.wave;
+    for (let index = 0; index < count; index += 1) {
+      // Wave vertices are in [-1, 1] with y up; cells run top-down.
+      const x = (wave[index * 2]! + 1) * 0.5 * width - 0.5;
+      const y = (1 - (wave[index * 2 + 1]! + 1) * 0.5) * height - 0.5;
+      this.#splat(x, y, red, green, blue);
     }
   }
 
@@ -830,6 +615,15 @@ const SILENCE: ExomuxAudioFrame = Object.freeze({
   source: "starting",
 });
 
+/** Keeps a normalized band energy inside the range presets were written for. */
+function clampEnergy(value: number): number {
+  return Number.isFinite(value) ? Math.min(6, Math.max(0, value)) : 0;
+}
+
+function clamp(value: number, low: number, high: number): number {
+  return Number.isFinite(value) ? (value < low ? low : value > high ? high : value) : low;
+}
+
 /** Clamp-to-edge bilinear read of a three-channel field, written into `out`. */
 function sampleBilinear(
   field: Float32Array,
@@ -878,10 +672,6 @@ function channel(value: number, accent: number, tint: number): number {
   const lifted = Math.pow(Math.min(1, Math.max(0, value)), INK_GAMMA) * 255;
   const blended = lifted + (accent - lifted) * tint;
   return Math.min(255, Math.round(blended / COLOR_STEP) * COLOR_STEP);
-}
-
-function lerp(from: number, to: number, mix: number): number {
-  return from + (to - from) * mix;
 }
 
 function finite(value: number | undefined, fallback: number): number {
