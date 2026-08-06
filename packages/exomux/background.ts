@@ -103,6 +103,28 @@ export function exomuxBackgroundAcceptsPicks(
   return typeof (field as ExomuxInteractiveBackground | undefined)?.pick === "function";
 }
 
+/**
+ * Backgrounds built from a catalog of presets the user can step through.
+ *
+ * Auto-cycling is the default, but a field with hundreds of presets needs a way
+ * to move on from one you do not like without waiting out its slot.
+ */
+export interface ExomuxPresetBackground extends ExomuxAnimatedBackground {
+  /** Index of the preset on screen, within this field's own rotation. */
+  readonly presetIndex: number;
+  readonly presetName: string;
+  readonly presetCount: number;
+  /** Selects a preset by rotation index, wrapping in both directions. */
+  selectPreset(index: number): void;
+}
+
+/** Narrows a background to one the user can step through. */
+export function exomuxBackgroundHasPresets(
+  field: ExomuxAnimatedBackground | undefined,
+): field is ExomuxPresetBackground {
+  return typeof (field as ExomuxPresetBackground | undefined)?.selectPreset === "function";
+}
+
 /** A background field that holds a resource it must give back when idle. */
 export interface ExomuxDisposableBackground extends ExomuxAnimatedBackground {
   dispose(): void;

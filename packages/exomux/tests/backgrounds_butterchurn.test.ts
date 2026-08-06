@@ -341,6 +341,42 @@ Deno.test("butterchurn: presets cycle on a timer and crossfade rather than snap"
   assertEquals(wrapping.presetIndex, 2);
 });
 
+Deno.test("butterchurn: clicking the bare desktop skips to the next preset", () => {
+  const field = new ExomuxButterchurnField({ gpu: false, audio: scriptedAudio(), presetIndex: 4, autoCycle: false });
+  run(field, 20);
+  assertEquals(field.presetIndex, 4);
+
+  // The click is claimed, which is what stops the desktop treating it as a
+  // plain background click, and it lands on the next preset.
+  assertEquals(field.pick(10, 10), true);
+  assertEquals(field.presetIndex, 5);
+  assertEquals(field.pick(0, 0), true);
+  assertEquals(field.presetIndex, 6);
+
+  // It works with auto-cycling off, which is the case where waiting is not an
+  // option, and it wraps at the end of the rotation.
+  const last = new ExomuxButterchurnField({
+    gpu: false,
+    audio: scriptedAudio(),
+    presetIndex: EXOMUX_BUTTERCHURN_PRESETS.length - 1,
+    autoCycle: false,
+  });
+  last.pick(1, 1);
+  assertEquals(last.presetIndex, 0);
+});
+
+Deno.test("butterchurn: presets can be stepped in both directions", () => {
+  const field = new ExomuxButterchurnField({ gpu: false, audio: scriptedAudio(), presetIndex: 3, autoCycle: false });
+  field.selectPreset(field.presetIndex + 1);
+  assertEquals(field.presetIndex, 4);
+  field.selectPreset(field.presetIndex - 1);
+  assertEquals(field.presetIndex, 3);
+  field.selectPreset(field.presetIndex - 1);
+  assertEquals(field.presetIndex, 2);
+  assertEquals(field.presetName, EXOMUX_BUTTERCHURN_PRESETS[2]!.name);
+  assertEquals(field.presetCount, EXOMUX_BUTTERCHURN_PRESETS.length);
+});
+
 Deno.test("butterchurn: a crossfade draws both presets before settling on the new one", () => {
   const blending = new ExomuxButterchurnField({
     gpu: false,

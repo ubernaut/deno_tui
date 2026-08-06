@@ -39,6 +39,9 @@ through the preset's warp shader, a three-level blur chain (295 presets sample `
 composite shader where most presets do their colour grading. The finished frame is downsampled to the cell grid and read
 back asynchronously, landing one frame late.
 
+**Skipping presets.** Clicking bare desktop advances to the next preset; `Ctrl-N [` and `Ctrl-N ]` step backwards and
+forwards. Presets otherwise auto-cycle every fifteen seconds, and one that renders nothing is skipped after two.
+
 **Software fallback.** With no GPU adapter — a headless tailnet host, or `--unstable-webgpu` absent — the field falls
 back to a CPU renderer that runs the equations but not the shaders. It still works, but resolves far fewer presets to an
 image, and a brightness governor stands in for the composite shader that would otherwise keep the feedback loop bounded.

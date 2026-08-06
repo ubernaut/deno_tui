@@ -78,6 +78,7 @@ import {
   exomuxBackgroundAcceptsPicks,
   type ExomuxBackgroundCell,
   exomuxBackgroundHasOverlay,
+  exomuxBackgroundHasPresets,
   releaseExomuxIdleBackgrounds,
 } from "./background.ts";
 import { ExomuxBiomechField } from "./biomech_background.ts";
@@ -504,6 +505,23 @@ export function mountExomuxDesktop(
     metaballs.clearPointer();
     activeBackgroundField()?.clearPointer();
   };
+  // Preset stepping is requested on the controller, which does not own the
+  // fields, so the delta is applied here to whichever background is on screen.
+  let appliedPresetStep = controller.backgroundPresetStep.peek();
+  controller.backgroundPresetStep.subscribe((step) => {
+    const delta = step - appliedPresetStep;
+    appliedPresetStep = step;
+    if (delta === 0) return;
+    const field = activeBackgroundField();
+    if (!exomuxBackgroundHasPresets(field)) {
+      controller.status.value = "This background has no presets.";
+      return;
+    }
+    field.selectPreset(field.presetIndex + delta);
+    controller.status.value = `Preset ${field.presetIndex + 1}/${field.presetCount}: ${field.presetName}`;
+    metaballRevision.value += 1;
+  }, subscriptions.signal);
+
   let lastInputActivityAt = performance.now();
   const bodyRect = own(
     new Computed<Rectangle>(() => ({
@@ -2872,7 +2890,8 @@ function paintHelp(
     "Ctrl-N n / p    next / previous    Ctrl-N w         window switcher",
     "Ctrl-N s        session manager    Ctrl-N r         refresh and recover",
     "Ctrl-N t        cycle theme        Ctrl-N Ctrl-N    send literal prefix",
-    "Ctrl-N b        cycle background   Start menu       every command lives there",
+    "Ctrl-N b        cycle background   Ctrl-N [ / ]     previous / next preset",
+    "Click desktop   skip preset        Start menu       every command lives there",
     "Ctrl-N d / x    detach window      Ctrl-N &         request terminal kill",
     "Wheel terminals or swipe vertically for styled history; [SCROLL] marks copy mode.",
     "Title-bar X / Meta-C kills that terminal; Ctrl-N d/x and quitting only detach.",

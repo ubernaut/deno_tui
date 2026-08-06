@@ -31,6 +31,11 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Added
 
+- Butterchurn presets can be skipped by hand. Clicking bare desktop advances to the next one, and `Ctrl-N [` /
+  `Ctrl-N ]` step backwards and forwards; both wrap. The catalog is 289 presets deep and each holds the screen for
+  fifteen seconds, so waiting one out was the only way past it. `ExomuxPresetBackground` is the contract a field opts
+  into to be steppable, and the controller records the request for the desktop to apply, since preset catalogs live with
+  the fields rather than the controller.
 - Terminal windows can be transparent. `opacity` is a new desktop-wide setting and a new per-window override, the latter
   defaulting to `Desktop` so a window follows the global value until it is pinned. At `Opaque` a window paints its own
   surface, as before; below that, every cell the program has not given a background of its own is blended from the

@@ -11,6 +11,7 @@ import {
   normalizeExomuxGlobalSettings,
   normalizeExomuxWindowSettings,
 } from "../model.ts";
+import { exomuxBackgroundHasPresets, type ExomuxPresetBackground } from "../background.ts";
 
 Deno.test("opacity: a window defers to the desktop until it overrides it", () => {
   const global = { ...defaultExomuxGlobalSettings(), opacity: 0.7 };
@@ -102,4 +103,22 @@ Deno.test("opacity: darkens toward the surface as it rises", () => {
   for (let index = 1; index < steps.length; index += 1) {
     assert(steps[index]! < steps[index - 1]!, `opacity step ${index} did not darken`);
   }
+});
+
+Deno.test("preset stepping: only preset backgrounds answer, and both keys reach the controller", () => {
+  const stub = {
+    setPointer: () => {},
+    clearPointer: () => {},
+    advance: () => true,
+    rasterizeCells: () => [],
+  };
+  assertEquals(exomuxBackgroundHasPresets(stub), false, "a plain field has nothing to step");
+  const withPresets: ExomuxPresetBackground = {
+    ...stub,
+    presetIndex: 0,
+    presetName: "x",
+    presetCount: 1,
+    selectPreset: () => {},
+  };
+  assertEquals(exomuxBackgroundHasPresets(withPresets), true);
 });

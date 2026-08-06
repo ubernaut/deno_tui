@@ -26,10 +26,11 @@
 
 import type { Rectangle } from "@ubernaut/deno-tui";
 import type {
-  ExomuxAnimatedBackground,
   ExomuxBackgroundAdvanceOptions,
   ExomuxBackgroundCell,
   ExomuxBackgroundPoint,
+  ExomuxInteractiveBackground,
+  ExomuxPresetBackground,
 } from "./background.ts";
 import { acquireExomuxAudio, type ExomuxAudioFrame, type ExomuxAudioSource } from "./audio.ts";
 import { EXOMUX_BUTTERCHURN_CATALOG, type ExomuxButterchurnPresetSource } from "./butterchurn_catalog.ts";
@@ -222,7 +223,7 @@ interface ButterchurnPointer {
  * accumulation buffers at cell resolution plus the active preset's variable
  * pool, so the field is deterministic for a given audio source and timeline.
  */
-export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
+export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInteractiveBackground {
   #width = 0;
   #height = 0;
   /** Accumulated RGB ink, three floats per cell. */
@@ -346,6 +347,19 @@ export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
     this.#blend = 0;
     this.#heldSeconds = 0;
     this.#deadFrames = 0;
+  }
+
+  /**
+   * Skips to the next preset when the bare desktop is clicked.
+   *
+   * The catalog is 289 presets deep and each holds the screen for fifteen
+   * seconds, so the fastest way past one you do not want is a click where
+   * there is nothing else to hit. The desktop only routes a click here when no
+   * window is under it, so this cannot swallow anything else.
+   */
+  pick(_column: number, _row: number, _now = performance.now()): boolean {
+    this.nextPreset();
+    return true;
   }
 
   setPointer(point: ExomuxBackgroundPoint, now = performance.now()): void {

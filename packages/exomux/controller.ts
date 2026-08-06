@@ -341,6 +341,8 @@ export class ExomuxController {
   readonly savedHosts = new Signal<readonly string[]>([]);
   readonly sessionHosts = new Signal<Readonly<Record<string, string>>>({});
   readonly backgroundId = new Signal<ExomuxBackgroundId>("metaballs");
+  /** Running total of preset steps requested; the desktop applies the delta. */
+  readonly backgroundPresetStep: Signal<number> = new Signal(0);
   /** Session id → per-window shell settings edited from the titlebar config button. */
   readonly windowSettings = new Signal<Readonly<Record<string, ExomuxWindowSettings>>>({});
   /** Session whose per-window config modal is open, when any. */
@@ -748,6 +750,12 @@ export class ExomuxController {
         return true;
       case "b":
         this.cycleBackground();
+        return true;
+      case "]":
+        this.stepBackgroundPreset(1);
+        return true;
+      case "[":
+        this.stepBackgroundPreset(-1);
         return true;
       case "f":
       case "space":
@@ -1353,6 +1361,18 @@ export class ExomuxController {
   }
 
   /** Cycles the animated desktop background and persists the selection. */
+  /**
+   * Asks the active background to move to another preset.
+   *
+   * The preset catalogs live with the fields, which the controller does not
+   * own, so this records the request and the desktop applies it to whichever
+   * field is on screen — the same shape as the other background signals.
+   */
+  stepBackgroundPreset(direction: -1 | 1 = 1): void {
+    if (this.#disposed) return;
+    this.backgroundPresetStep.value += direction;
+  }
+
   cycleBackground(direction: -1 | 1 = 1): ExomuxBackgroundId {
     this.#assertActive();
     const current = EXOMUX_BACKGROUND_IDS.indexOf(this.backgroundId.peek());
@@ -1791,6 +1811,7 @@ export class ExomuxController {
     this.savedHosts.dispose();
     this.sessionHosts.dispose();
     this.backgroundId.dispose();
+    this.backgroundPresetStep.dispose();
     this.pendingScp.dispose();
     this.status.value = "disposed";
     this.status.dispose();
