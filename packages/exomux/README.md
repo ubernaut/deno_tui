@@ -49,6 +49,10 @@ means preset shaders are not running.
 One WebGPU device serves the whole client, from `gpu_device.ts`. Deno allows exactly one per process, and the turbulence
 background wants one too, so a private device meant whichever field initialised second never got one.
 
+Preset transitions are prepared ahead of time: the next preset's equations are compiled and its shader pipelines built
+three seconds before its slot starts, the pipelines asynchronously. Both were previously done on the frame of the
+switch, where they stalled the desktop.
+
 **Software fallback.** With no GPU adapter — a headless tailnet host, or `--unstable-webgpu` absent — the field falls
 back to a CPU renderer that runs the equations but not the shaders. It still works, but resolves far fewer presets to an
 image, and a brightness governor stands in for the composite shader that would otherwise keep the feedback loop bounded.

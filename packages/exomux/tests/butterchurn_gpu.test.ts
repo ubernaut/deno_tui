@@ -72,6 +72,10 @@ function stubDevice(counts: Counts) {
       counts.pipeline += 1;
       return { getBindGroupLayout: () => ({}) };
     },
+    createRenderPipelineAsync: () => {
+      counts.pipeline += 1;
+      return Promise.resolve({ getBindGroupLayout: () => ({}) });
+    },
     createBindGroup: () => {
       counts.bindGroup += 1;
       return {};
@@ -80,7 +84,7 @@ function stubDevice(counts: Counts) {
   } as unknown as GPUDevice;
 }
 
-Deno.test("butterchurn gpu: a steady frame creates no new GPU objects", () => {
+Deno.test("butterchurn gpu: a steady frame creates no new GPU objects", async () => {
   // The render path once created roughly ten bind groups and twenty-five
   // texture views per frame. At 8 Hz that exhausted the driver's object budget
   // within minutes, after which every allocation failed, readback stopped, and
@@ -90,7 +94,14 @@ Deno.test("butterchurn gpu: a steady frame creates no new GPU objects", () => {
   const counts: Counts = { bindGroup: 0, view: 0, texture: 0, buffer: 0, pipeline: 0, destroyed: 0 };
   const gpu = new ExomuxButterchurnGpu(stubDevice(counts), { width: 80, height: 24, random: () => 0.5 });
   const entry = EXOMUX_BUTTERCHURN_CATALOG[0]!;
-  assert(gpu.prepare(entry.name, entry.warp, entry.comp), "the first preset should compile");
+  // Pipelines build off the main thread, so the measurement has to wait for
+  // them — otherwise render() draws nothing and the counts stay at zero for
+  // the wrong reason.
+  assertEquals(gpu.prepare(entry.name, entry.warp, entry.comp), "pending");
+  for (let attempt = 0; attempt < 50 && gpu.prepare(entry.name, entry.warp, entry.comp) === "pending"; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  assertEquals(gpu.prepare(entry.name, entry.warp, entry.comp), "ready", "the first preset should compile");
 
   const preset = new ExomuxButterchurnPreset(entry, { random: () => 0.5 });
   preset.setSize(80, 24);
@@ -130,6 +141,7 @@ Deno.test("butterchurn gpu: a steady frame creates no new GPU objects", () => {
   // targets ping-pong so each needs its own set.
   for (let index = 0; index < 8; index += 1) frame(index);
   const warm = { ...counts };
+  assert(warm.bindGroup > 0, "the warm-up must actually have drawn, or this measures nothing");
 
   for (let index = 8; index < 48; index += 1) frame(index);
   assertEquals(counts.bindGroup, warm.bindGroup, "bind groups must be cached, not rebuilt per frame");

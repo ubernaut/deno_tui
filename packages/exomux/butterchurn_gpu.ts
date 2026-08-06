@@ -368,6 +368,8 @@ export class ExomuxButterchurnGpu {
   readonly #utilityLayout: GPUBindGroupLayout;
 
   readonly #pipelines = new Map<string, PresetPipelines | null>();
+  /** Presets whose pipelines are still being built, so work is not duplicated. */
+  readonly #compiling = new Set<string>();
   #meshBuffer: GPUBuffer | undefined;
   #meshVertices = 0;
   #meshData = new Float32Array(0);
@@ -505,24 +507,34 @@ export class ExomuxButterchurnGpu {
   }
 
   /**
-   * Compiles a preset's shaders, returning false when either fails.
+   * Builds a preset's pipelines, off the main thread.
    *
-   * A failure is cached so a preset that cannot compile is not retried every
-   * frame; the caller falls back to the CPU renderer for it.
+   * `createRenderPipeline` is synchronous and compiles a shader, which for a
+   * MilkDrop composite shader can block for long enough to stall the desktop —
+   * a visible lock-up on every preset change. The async form lets the driver
+   * compile in the background while the software renderer carries the frame.
+   *
+   * A failure is remembered so a preset that cannot compile is not retried
+   * every frame; the caller renders it on the CPU instead.
    */
-  prepare(name: string, warpSource: string, compSource: string): boolean {
+  prepare(name: string, warpSource: string, compSource: string): "ready" | "pending" | "failed" {
     const cached = this.#pipelines.get(name);
-    if (cached !== undefined) return cached !== null;
-    try {
-      const pipelines = this.#compile(warpSource, compSource);
-      this.#pipelines.set(name, pipelines);
-      return true;
-    } catch {
-      // Either the GLSL used something unsupported or the generated WGSL was
-      // rejected; both mean this preset renders on the CPU path instead.
-      this.#pipelines.set(name, null);
-      return false;
-    }
+    if (cached !== undefined) return cached === null ? "failed" : "ready";
+    if (this.#compiling.has(name)) return "pending";
+    this.#compiling.add(name);
+    this.#compileAsync(warpSource, compSource)
+      .then((pipelines) => {
+        this.#pipelines.set(name, pipelines);
+      })
+      .catch(() => {
+        // Either the GLSL used something unsupported, the generated WGSL was
+        // rejected, or the device is gone; all mean the CPU path for this one.
+        this.#pipelines.set(name, null);
+      })
+      .finally(() => {
+        this.#compiling.delete(name);
+      });
+    return "pending";
   }
 
   /** Renders one frame and queues the resolved result for readback. */
@@ -1048,9 +1060,9 @@ struct WaveOut { @builtin(position) position: vec4<f32>, @location(0) color: vec
 
   // ── compilation ───────────────────────────────────────────────────────────
 
-  #compile(warpSource: string, compSource: string): PresetPipelines {
-    const warp = this.#compileStage(warpSource, "warp");
-    const comp = this.#compileStage(compSource, "comp");
+  async #compileAsync(warpSource: string, compSource: string): Promise<PresetPipelines> {
+    const warp = await this.#compileStage(warpSource, "warp");
+    const comp = await this.#compileStage(compSource, "comp");
     return {
       warp: warp.pipeline,
       warpSamplers: warp.samplers,
@@ -1059,7 +1071,10 @@ struct WaveOut { @builtin(position) position: vec4<f32>, @location(0) color: vec
     };
   }
 
-  #compileStage(source: string, stage: "warp" | "comp"): { pipeline: GPURenderPipeline; samplers: string[] } {
+  async #compileStage(
+    source: string,
+    stage: "warp" | "comp",
+  ): Promise<{ pipeline: GPURenderPipeline; samplers: string[] }> {
     const translated = source.trim()
       ? translateShaderBody(source)
       // A preset with no shader of its own gets MilkDrop's default: pass the
@@ -1083,7 +1098,7 @@ struct WaveOut { @builtin(position) position: vec4<f32>, @location(0) color: vec
 
     const vertex = stage === "warp" ? WARP_VERTEX : COMP_VERTEX;
     const module = this.#device.createShaderModule({ code: `${fragmentSource(body, samplers)}\n${vertex}` });
-    const pipeline = this.#device.createRenderPipeline({
+    const pipeline = await this.#device.createRenderPipelineAsync({
       layout: "auto",
       vertex: stage === "warp" ? { module, entryPoint: "vs", buffers: [MESH_LAYOUT] } : { module, entryPoint: "vs" },
       fragment: { module, entryPoint: "fs", targets: [{ format: MAIN_FORMAT }] },

@@ -49,6 +49,14 @@ const POINTER_LIFETIME_MS = 1_500;
 const PRESET_HOLD_SECONDS = 15;
 /** Seconds spent crossfading between two presets, matching asciichurn. */
 const PRESET_BLEND_SECONDS = 2.7;
+/**
+ * Seconds before a preset's slot ends that the next one starts compiling.
+ *
+ * Shader compilation is the expensive part of a transition. Doing it while the
+ * outgoing preset is still on screen means the incoming one is ready the
+ * moment it is wanted.
+ */
+const PRESET_PREWARM_SECONDS = 3;
 
 /**
  * Frames per second the catalog's decay values were authored against.
@@ -263,6 +271,8 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
   #deadFrames = 0;
   /** Set once a GPU frame has actually been read back and shown. */
   #gpuEverDrew = false;
+  /** The next preset, compiled ahead of its slot so a transition is cheap. */
+  #prewarmed: { readonly index: number; readonly preset: ExomuxButterchurnPreset } | undefined;
   readonly #q = new Float32Array(32);
 
   #time = 0;
@@ -350,7 +360,11 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
     const next = ((Math.trunc(index) % count) + count) % count;
     this.#previous = this.#preset;
     this.#presetIndex = next;
-    this.#preset = this.#load(next);
+    // Built during the outgoing preset's slot when possible: compiling a
+    // preset's equations costs tens of milliseconds, which lands as a visible
+    // stutter if it happens on the frame the switch is made.
+    this.#preset = this.#prewarmed?.index === next ? this.#prewarmed.preset : this.#load(next);
+    this.#prewarmed = undefined;
     if (this.#width > 0) this.#preset.setSize(this.#width, this.#height);
     this.#blend = 0;
     this.#heldSeconds = 0;
@@ -547,7 +561,17 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
     }
     if (!this.#autoCycle) return;
     this.#heldSeconds += dt;
+    if (this.#heldSeconds > PRESET_HOLD_SECONDS - PRESET_PREWARM_SECONDS) this.#prewarmNext();
     if (this.#heldSeconds >= PRESET_HOLD_SECONDS) this.nextPreset();
+  }
+
+  /** Compiles the preset after this one, spread across the frames before it. */
+  #prewarmNext(): void {
+    const next = (this.#presetIndex + 1) % this.#catalog.length;
+    if (this.#prewarmed?.index === next) return;
+    const preset = this.#load(next);
+    if (this.#width > 0) preset.setSize(this.#width, this.#height);
+    this.#prewarmed = { index: next, preset };
   }
 
   /** Converts one analyser frame into the relative scale presets expect. */
@@ -605,12 +629,23 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
 
     const preset = this.#preset;
     const source = this.#catalog[this.#presetIndex]!;
-    let usable = this.#gpuPresets.get(preset.name);
-    if (usable === undefined) {
-      usable = gpu.prepare(preset.name, source.warp, source.comp);
-      this.#gpuPresets.set(preset.name, usable);
+    // Pipelines build in the background. "pending" is not cached: the preset
+    // renders on the CPU for the frames it takes, then picks up the GPU.
+    const state = this.#gpuPresets.get(preset.name) === false
+      ? "failed"
+      : gpu.prepare(preset.name, source.warp, source.comp);
+    if (state === "failed") {
+      this.#gpuPresets.set(preset.name, false);
+      return false;
     }
-    if (!usable) return false;
+    if (state === "pending") return false;
+
+    // Start the next preset compiling before it is needed, so a transition
+    // does not begin with several frames of software rendering.
+    if (this.#autoCycle && this.#heldSeconds > PRESET_HOLD_SECONDS - PRESET_PREWARM_SECONDS) {
+      const next = this.#catalog[(this.#presetIndex + 1) % this.#catalog.length]!;
+      if (this.#gpuPresets.get(next.name) !== false) gpu.prepare(next.name, next.warp, next.comp);
+    }
 
     gpu.setSize(this.#width, this.#height);
     for (let index = 0; index < 32; index += 1) this.#q[index] = preset.variable(`q${index + 1}`);

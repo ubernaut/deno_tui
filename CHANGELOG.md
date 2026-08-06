@@ -286,6 +286,13 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Fixed
 
+- The butterchurn background stalled the desktop on preset transitions. Two costs landed on the frame of the switch:
+  `createRenderPipeline` is synchronous and compiles a shader, which for a MilkDrop composite shader can block for
+  hundreds of milliseconds, and compiling the incoming preset's equations costs up to 45 ms on its own. Pipelines now
+  build through `createRenderPipelineAsync` while the software renderer carries the frame, and both the shaders and the
+  equations of the next preset are prepared three seconds before its slot begins. Measured over 900 frames, no frame
+  except the first exceeds the 125 ms tick, and the worst preset-change frame fell from 45 ms to 9 ms.
+
 - The butterchurn background could sit on a black desktop. It handed the frame to the GPU as soon as a device was ready,
   before any GPU frame had been read back, so everything the software renderer had drawn stopped updating at that moment
   — leaving nothing painted for as long as the device took to answer, and indefinitely if it never did. The software
