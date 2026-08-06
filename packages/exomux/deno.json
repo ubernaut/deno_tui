@@ -23,11 +23,11 @@
     "lineWidth": 120
   },
   "tasks": {
-    "start": "deno run -A ./main.ts",
-    "memory": "deno run -A ./main.ts --memory",
+    "start": "deno run -A --unstable-webgpu ./main.ts",
+    "memory": "deno run -A --unstable-webgpu ./main.ts --memory",
     "audio": "deno run --allow-env=EXOMUX_AUDIO_DEVICE --allow-run=parec,pw-record,arecord ./audio.ts",
     "check": "deno check ./main.ts",
-    "test": "deno test -A ./tests/",
-    "compile": "deno compile -A --output ./exomux ./main.ts"
+    "test": "deno test -A --unstable-webgpu ./tests/",
+    "compile": "deno compile -A --unstable-webgpu --output ./exomux ./main.ts"
   }
 }

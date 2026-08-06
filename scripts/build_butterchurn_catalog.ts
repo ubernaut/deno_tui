@@ -7,9 +7,10 @@
  * The catalog is vendored rather than fetched at runtime: Exomux ships as a
  * single compiled binary with no npm dependencies, and the presets are static
  * data. Only what the terminal renderer can actually use is carried over —
- * each preset's base values and its three EEL equation blocks. The HLSL warp
- * and composite shaders, custom waves and custom shapes are dropped, because
- * running them would mean a GPU and a shader translator.
+ * each preset's base values, its three EEL equation blocks, and its warp and
+ * composite shaders. The shaders ship as GLSL — upstream already converted them
+ * from MilkDrop's HLSL — and `glsl_wgsl.ts` translates them to WGSL for the
+ * WebGPU renderer. Custom waves and custom shapes are still dropped.
  *
  * Usage, pointed at a checkout that has the package installed:
  *
@@ -27,6 +28,8 @@ interface PresetSource {
   readonly init: string;
   readonly frame: string;
   readonly pixel: string;
+  readonly warp: string;
+  readonly comp: string;
 }
 
 /** Reads `presets["name"] = require("./path")` pairs out of a pack index. */
@@ -68,6 +71,8 @@ if (import.meta.main) {
       init: (preset.init_eqs_eel as string | undefined) ?? "",
       frame: (preset.frame_eqs_eel as string | undefined) ?? "",
       pixel: (preset.pixel_eqs_eel as string | undefined) ?? "",
+      warp: (preset.warp as string | undefined) ?? "",
+      comp: (preset.comp as string | undefined) ?? "",
     });
   }
 
@@ -92,8 +97,8 @@ if (import.meta.main) {
 // The MilkDrop preset catalog used by the butterchurn desktop background,
 // vendored from the \`butterchurn-presets\` npm package (MIT, Copyright (c)
 // 2013-2018 Jordan Berg). Each entry carries a preset's base values and its
-// three EEL equation blocks; the HLSL shaders, custom waves and custom shapes
-// upstream also stores are omitted, as this renderer cannot run them.
+// three EEL equation blocks, plus its warp and composite shaders as GLSL.
+// Custom waves and custom shapes are omitted.
 
 /** One preset as authored: base values plus unparsed EEL equation blocks. */
 export interface ExomuxButterchurnPresetSource {
@@ -105,6 +110,10 @@ export interface ExomuxButterchurnPresetSource {
   readonly frame: string;
   /** Equations run once per warp-mesh vertex per frame. */
   readonly pixel: string;
+  /** GLSL body of the warp shader, run per fragment of the feedback pass. */
+  readonly warp: string;
+  /** GLSL body of the composite shader, run per fragment of the output pass. */
+  readonly comp: string;
 }
 
 // Parsed rather than written as a literal so typechecking stays cheap; see

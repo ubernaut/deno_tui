@@ -29,11 +29,11 @@ deno task exomux            # or: ./visualization exomux
 | Floating workbench   | Draggable, resizable, snapping windows over a live desktop, with session and network panels   |
 | Animated backgrounds | Twelve theme-derived fields, cycled with prefix `b`; all deterministic bar the mic-driven one |
 | Rain and flood       | The rain field runs a 2-D fluid sim; the desktop floods, and the drain plug is clickable      |
-| Audio visualizer     | The butterchurn field runs 171 real MilkDrop presets, equations and all, off the microphone   |
+| Audio visualizer     | The butterchurn field runs 289 real MilkDrop presets — equations and shaders — off the mic    |
 | Overgrowth           | Organic backgrounds slowly reclaim idle windows and retreat when focused                      |
 | Network panel        | Remembered SSH hosts and live Tailscale devices, one keystroke to spawn a shell               |
 
-It is a real package rather than an example: `packages/exomux` carries its own `deno.json`, its own `deno.lock`, and 263
+It is a real package rather than an example: `packages/exomux` carries its own `deno.json`, its own `deno.lock`, and 269
 tests, and it reaches the toolkit only through the public entrypoints listed below — nothing in it imports `src/`. That
 constraint is the point; Exomux is the standing proof that the published API is sufficient to build a non-trivial
 application, and every gap it hit became a library export.

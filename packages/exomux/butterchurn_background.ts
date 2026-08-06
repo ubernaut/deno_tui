@@ -35,6 +35,7 @@ import { acquireExomuxAudio, type ExomuxAudioFrame, type ExomuxAudioSource } fro
 import { EXOMUX_BUTTERCHURN_CATALOG, type ExomuxButterchurnPresetSource } from "./butterchurn_catalog.ts";
 import { EXOMUX_BUTTERCHURN_ROTATION } from "./butterchurn_rotation.ts";
 import { type ExomuxButterchurnAudio, ExomuxButterchurnPreset } from "./butterchurn_preset.ts";
+import { ExomuxButterchurnGpu, requestExomuxGpuDevice } from "./butterchurn_gpu.ts";
 import type { ExomuxRgb, ExomuxThemeSpec } from "./model.ts";
 
 // ── constants ───────────────────────────────────────────────────────────────
@@ -111,6 +112,17 @@ const MIN_WAVE_ALPHA = 0.5;
  */
 const MAX_DECAY = 0.99;
 /**
+ * Mean ink the software path steers the field toward.
+ *
+ * MilkDrop keeps a feedback loop bounded through its composite shader, its
+ * `darken` flag and the blur chain. The software path runs none of those, and
+ * ten catalog presets consequently accumulate without limit until the desktop
+ * is a flat white field — unreadable, and unrecoverable because the loop is
+ * self-feeding. This governor pulls decay down for exactly those frames where
+ * the field has run too bright, and leaves well-behaved presets untouched.
+ */
+const TARGET_MEAN_INK = 0.45;
+/**
  * Share of full ink the wave still deposits at zero level.
  *
  * MilkDrop draws its waveform at full brightness on silence, as a flat trace.
@@ -171,6 +183,11 @@ export interface ExomuxButterchurnFieldOptions {
   readonly catalog?: readonly ExomuxButterchurnPresetSource[];
   /** Seed for the deterministic `rand` presets see. */
   readonly seed?: number;
+  /**
+   * Run preset shaders on the GPU when one is available. Off forces the CPU
+   * renderer, which is what tests use so frames stay reproducible.
+   */
+  readonly gpu?: boolean;
 }
 
 interface ButterchurnPointer {
@@ -206,11 +223,23 @@ export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
   readonly #autoCycle: boolean;
   #heldSeconds = 0;
 
+  // GPU path. Presets keep rendering on the CPU until a device and the
+  // preset's own shaders are both ready, so a missing adapter or a shader that
+  // will not compile degrades to the software renderer rather than to nothing.
+  readonly #wantsGpu: boolean;
+  #gpu: ExomuxButterchurnGpu | undefined;
+  #gpuState: "idle" | "starting" | "ready" | "unavailable" = "idle";
+  #gpuPresets = new Map<string, boolean>();
+  readonly #q = new Float32Array(32);
+
   #time = 0;
   #frame = 0;
   #lastFrameAt: number | undefined;
   #pointer: ButterchurnPointer | undefined;
   #cells: (ExomuxBackgroundCell | undefined)[][] = [];
+
+  /** Mean ink of the previous frame, feeding the brightness governor. */
+  #meanInk = 0;
 
   // Running averages that turn raw band energy into MilkDrop's relative scale.
   #bassAverage = 0.2;
@@ -248,6 +277,7 @@ export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
       ? ((requested % this.#catalog.length) + this.#catalog.length) % this.#catalog.length
       : 0;
     this.#autoCycle = options.autoCycle ?? true;
+    this.#wantsGpu = options.gpu ?? true;
     this.#preset = this.#load(this.#presetIndex);
   }
 
@@ -300,10 +330,18 @@ export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
     this.#pointer = undefined;
   }
 
-  /** Releases the shared microphone capture, if this field opened it. */
+  /** True when the active preset is being rendered by its own shaders. */
+  get gpuActive(): boolean {
+    return this.#gpuState === "ready" && this.#gpuPresets.get(this.#preset.name) === true;
+  }
+
+  /** Releases the shared microphone capture and any GPU resources. */
   dispose(): void {
     if (this.#ownsAudio) this.#audio?.close();
     this.#audio = undefined;
+    this.#gpu?.destroy();
+    this.#gpu = undefined;
+    this.#gpuState = "unavailable";
   }
 
   advance(options: ExomuxBackgroundAdvanceOptions): boolean {
@@ -336,6 +374,7 @@ export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
     // Frames are 125 ms apart; scaling by the real delta keeps motion
     // rate-independent when the desktop stalls or the terminal resizes.
     const frames = elapsedMs / FRAME_BASELINE_MS;
+    if (this.#renderOnGpu(input, audio)) return true;
     this.#warpPass(frames);
     this.#drawWaves(audio, frames);
     this.#drawPointer(bounds, now, frames);
@@ -459,6 +498,89 @@ export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
   }
 
   /**
+   * Renders this frame with the preset's own shaders, returning true when it
+   * did. The GPU device is requested once, lazily, and a preset whose shaders
+   * will not compile is remembered so it is not retried every frame.
+   */
+  #renderOnGpu(input: ExomuxButterchurnAudio, audio: ExomuxAudioFrame): boolean {
+    if (!this.#wantsGpu || this.#gpuState === "unavailable") return false;
+    if (this.#gpuState === "idle") {
+      this.#gpuState = "starting";
+      requestExomuxGpuDevice()
+        .then((device) => {
+          if (!device || this.#gpuState !== "starting") {
+            this.#gpuState = "unavailable";
+            return;
+          }
+          this.#gpu = new ExomuxButterchurnGpu(device, { width: this.#width, height: this.#height });
+          this.#gpuState = "ready";
+        })
+        .catch(() => {
+          this.#gpuState = "unavailable";
+        });
+      return false;
+    }
+    const gpu = this.#gpu;
+    if (this.#gpuState !== "ready" || !gpu) return false;
+
+    const preset = this.#preset;
+    const source = this.#catalog[this.#presetIndex]!;
+    let usable = this.#gpuPresets.get(preset.name);
+    if (usable === undefined) {
+      usable = gpu.prepare(preset.name, source.warp, source.comp);
+      this.#gpuPresets.set(preset.name, usable);
+    }
+    if (!usable) return false;
+
+    gpu.setSize(this.#width, this.#height);
+    for (let index = 0; index < 32; index += 1) this.#q[index] = preset.variable(`q${index + 1}`);
+    const values = preset.values;
+    gpu.render(preset.name, {
+      mesh: preset.mesh,
+      meshWidth: preset.meshWidth,
+      meshHeight: preset.meshHeight,
+      wave: preset.wave,
+      waveCount: preset.waveCount,
+      waveColor: [
+        clamp(values.waveR, 0, 1),
+        clamp(values.waveG, 0, 1),
+        clamp(values.waveB, 0, 1),
+        Math.max(MIN_WAVE_ALPHA, clamp(values.waveAlpha, 0, 1)) * (SILENT_INK + (1 - SILENT_INK) * audio.level),
+      ],
+      q: this.#q,
+      time: this.#time,
+      frame: this.#frame,
+      fps: 1000 / FRAME_BASELINE_MS,
+      decay: clamp(values.decay, 0, MAX_DECAY),
+      bass: input.bass,
+      mid: input.mid,
+      treb: input.treb,
+      bassAttack: input.bassAttack,
+      midAttack: input.midAttack,
+      trebleAttack: input.trebleAttack,
+      aspectX: this.#width / Math.max(1, this.#height * 2),
+      aspectY: 1,
+    });
+
+    // The readback lands a frame late, so the ink buffer keeps the last
+    // resolved image until the next one arrives.
+    const pixels = gpu.latest;
+    if (pixels) this.#absorb(pixels);
+    return true;
+  }
+
+  /** Copies a resolved GPU frame into the ink buffer the rasterizer reads. */
+  #absorb(pixels: Uint8Array): void {
+    const ink = this.#ink;
+    const count = Math.min(ink.length / 3, pixels.length / 4);
+    for (let index = 0; index < count; index += 1) {
+      ink[index * 3] = pixels[index * 4]! / 255;
+      ink[index * 3 + 1] = pixels[index * 4 + 1]! / 255;
+      ink[index * 3 + 2] = pixels[index * 4 + 2]! / 255;
+    }
+  }
+
+  /**
    * Resamples the previous frame through the active preset's warp mesh.
    *
    * The mesh is coarse — 25x19 vertices against up to 220x55 cells — exactly as
@@ -475,8 +597,11 @@ export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
     const rowStride = (gridX + 1) * 2;
 
     // A per-frame decay authored for 30 fps, re-based onto this frame's length.
+    // Pulled down when the previous frame came out too bright, which is the
+    // only brake the software path has without a composite shader.
+    const governor = this.#meanInk > TARGET_MEAN_INK ? TARGET_MEAN_INK / this.#meanInk : 1;
     const decay = Math.pow(
-      clamp(preset.values.decay, 0, MAX_DECAY),
+      clamp(preset.values.decay, 0, MAX_DECAY) * governor,
       (AUTHORED_FPS / (1000 / FRAME_BASELINE_MS)) * frames,
     );
 
@@ -484,6 +609,7 @@ export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
     const target = this.#inkNext;
     const scaleX = width > 1 ? gridX / (width - 1) : 0;
     const scaleY = height > 1 ? gridY / (height - 1) : 0;
+    let total = 0;
 
     for (let row = 0; row < height; row += 1) {
       const my = row * scaleY;
@@ -512,12 +638,17 @@ export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
 
         const offset = (row * width + column) * 3;
         sampleBilinear(source, width, height, u * width - 0.5, v * height - 0.5, SAMPLE);
-        target[offset] = SAMPLE[0]! * decay;
-        target[offset + 1] = SAMPLE[1]! * decay;
-        target[offset + 2] = SAMPLE[2]! * decay;
+        const red = SAMPLE[0]! * decay;
+        const green = SAMPLE[1]! * decay;
+        const blue = SAMPLE[2]! * decay;
+        target[offset] = red;
+        target[offset + 1] = green;
+        target[offset + 2] = blue;
+        total += red > green ? (red > blue ? red : blue) : (green > blue ? green : blue);
       }
     }
 
+    this.#meanInk = total / Math.max(1, width * height);
     this.#ink = target;
     this.#inkNext = source;
   }

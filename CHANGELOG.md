@@ -34,8 +34,8 @@ quickly, but the affected entrypoint or module family should be named here.
 - Exomux gains a `butterchurn` desktop background: a microphone-reactive MilkDrop visualizer, and the twelfth selectable
   field. It is the ASCII port of butterchurnxr's `asciichurn` rendered natively — `asciichurn` proxies its pixels out to
   Butterchurn's WebGL2 renderer in headless Chromium, which a single compiled binary running over a tailnet cannot do,
-  so the pipeline is reimplemented on the CPU at terminal cell resolution. Presets cycle every 15 s across a 2.7 s
-  crossfade during which both are evaluated and drawn.
+  so the renderer is rebuilt here against `navigator.gpu` and resolved to terminal cell resolution. Presets cycle every
+  15 s. Custom waves and custom shapes are the one part of a preset still not carried over.
 - `packages/exomux/eel.ts` is an interpreter for EEL2, the expression language MilkDrop preset equations are written in:
   a tokenizer, a precedence parser and a closure compiler over a slot-allocated variable pool, covering the roughly
   thirty builtins the catalog uses along with `megabuf`/`gmegabuf` memory and the `loop`/`while`/`exec2` forms. 576 of
@@ -47,12 +47,22 @@ quickly, but the affected entrypoint or module family should be named here.
   self-referential oscillator idiom oscillate instead of diverging; `q1..q32` reset to their post-init values while user
   variables and registers persist; and MilkDrop's exact per-vertex warp composition drives the mesh the previous frame
   is resampled through. Each preset therefore moves the way it does upstream rather than being approximated.
-- `packages/exomux/butterchurn_rotation.ts` narrows auto-cycling to the 171 presets that resolve to a moving image at
-  cell resolution, chosen by rendering every preset. The excluded 122 are not broken: they draw with custom waves,
-  custom shapes and a composite shader, none of which this renderer runs, so they resolve to an empty screen. They stay
-  reachable by index through `EXOMUX_BUTTERCHURN_CATALOG`. Both generated files are checked in and rebuilt with
-  `deno task exomux:presets` and `deno task exomux:audit`. `butterchurn-presets` is MIT licensed, Copyright (c)
-  2013-2018 Jordan Berg.
+- `packages/exomux/glsl_wgsl.ts` translates MilkDrop preset shaders from GLSL to WGSL. Preset shaders ship as GLSL —
+  upstream already converted them from MilkDrop's HLSL — and all 500 shader bodies in the vendored catalog translate.
+  The subset needed is small: declarations, swizzles, `if`/`else`, nineteen `for` loops across the whole catalog, and
+  about twenty builtins. The one structural difference is swizzle assignment, which WGSL forbids beyond a single
+  component and which is expanded into per-component writes.
+- `packages/exomux/butterchurn_gpu.ts` is MilkDrop's render graph on WebGPU, so preset shaders actually run: the
+  `pixel_eqs` mesh drawn over the previous frame through the preset's warp shader, a three-level separable blur chain
+  (295 of the catalog's presets sample `sampler_blur1`), the waveform as line geometry, and the composite shader where
+  most presets do their colour grading. The result is downsampled to the cell grid and read back asynchronously, landing
+  one frame late the way `turbulence_background` does. `butterchurn_noise.ts` reproduces the 2-D noise textures and 3-D
+  noise volumes those shaders sample, including MilkDrop's Catmull-Rom smoothing pass, without which the 173 presets
+  that read noise render as static instead of flowing texture.
+- `packages/exomux/butterchurn_rotation.ts` is now selected against the GPU renderer, where 289 of 293 presets resolve
+  to a moving image — up from 171 on the software path. Every preset stays reachable by index through
+  `EXOMUX_BUTTERCHURN_CATALOG`. Both generated files are checked in and rebuilt with `deno task exomux:presets` and
+  `deno task exomux:audit`. `butterchurn-presets` is MIT licensed, Copyright (c) 2013-2018 Jordan Berg.
 - `packages/exomux/audio.ts` captures the system microphone through the first of `parec`, `pw-record` or `arecord` that
   produces samples, and reduces it per frame to 24 log-spaced spectrum bands, bass/mid/treble energy, a 256-sample
   waveform, and beat pulses. Capture is refcounted and lazy: nothing spawns until a reactive background is selected, and
@@ -166,6 +176,11 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Changed
 
+- The butterchurn background renders through the preset's own shaders when a WebGPU adapter is available, and falls back
+  to a software renderer that runs the equations but not the shaders when one is not — a headless tailnet host, or
+  `--unstable-webgpu` absent. The fallback resolves far fewer presets to an image, and gains a brightness governor
+  standing in for the composite shader that would otherwise bound the feedback loop; without it ten presets accumulate
+  into a flat white field. The exomux `start`, `memory`, `test` and `compile` tasks now pass `--unstable-webgpu`.
 - Exomux's desktop drops a cached background field when it stops being the selected one, provided the field exposes
   `dispose`. Fields are otherwise retained so switching away and back resumes the same simulation; the butterchurn field
   owns the microphone handle and must not keep it once the desktop stops drawing it.

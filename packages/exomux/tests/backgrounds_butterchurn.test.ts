@@ -91,7 +91,7 @@ function frameText(field: ExomuxButterchurnField): string {
 
 /** A preset source with everything defaulted, for pipeline tests. */
 function source(overrides: Partial<ExomuxButterchurnPresetSource>): ExomuxButterchurnPresetSource {
-  return { name: "test", baseVals: {}, init: "", frame: "", pixel: "", ...overrides };
+  return { name: "test", baseVals: {}, init: "", frame: "", pixel: "", warp: "", comp: "", ...overrides };
 }
 
 // ── catalog ─────────────────────────────────────────────────────────────────
@@ -118,7 +118,7 @@ Deno.test("butterchurn: the vendored catalog is the upstream base+extra packs", 
 
 Deno.test("butterchurn: the rotation is a curated subset of the catalog", () => {
   const catalog = new Set(EXOMUX_BUTTERCHURN_CATALOG.map((preset) => preset.name));
-  assert(EXOMUX_BUTTERCHURN_ROTATION.length > 100, `rotation is too small: ${EXOMUX_BUTTERCHURN_ROTATION.length}`);
+  assert(EXOMUX_BUTTERCHURN_ROTATION.length > 250, `rotation is too small: ${EXOMUX_BUTTERCHURN_ROTATION.length}`);
   assert(EXOMUX_BUTTERCHURN_ROTATION.length <= catalog.size);
   for (const name of EXOMUX_BUTTERCHURN_ROTATION) {
     assert(catalog.has(name), `rotation names a preset the catalog does not have: ${name}`);
@@ -263,7 +263,7 @@ Deno.test("butterchurn: registered as a desktop background that does not overgro
 });
 
 Deno.test("butterchurn: paints only the block shade ramp", () => {
-  const field = new ExomuxButterchurnField({ audio: scriptedAudio() });
+  const field = new ExomuxButterchurnField({ gpu: false, audio: scriptedAudio() });
   run(field, 60);
   const chars = new Set<string>();
   for (const row of field.rasterizeCells(BOUNDS, THEME)) {
@@ -277,7 +277,7 @@ Deno.test("butterchurn: paints only the block shade ramp", () => {
 
 Deno.test("butterchurn: brightness tracks the microphone level", () => {
   const readings = [0.15, 0.5, 0.95].map((level) => {
-    const field = new ExomuxButterchurnField({ audio: scriptedAudio({ level }), autoCycle: false });
+    const field = new ExomuxButterchurnField({ gpu: false, audio: scriptedAudio({ level }), autoCycle: false });
     run(field, 90);
     return { level, ...inkStats(field) };
   });
@@ -292,19 +292,34 @@ Deno.test("butterchurn: brightness tracks the microphone level", () => {
 });
 
 Deno.test("butterchurn: same audio and frame timeline replay identically", () => {
-  const left = new ExomuxButterchurnField({ audio: scriptedAudio({ beatEvery: 5 }), presetIndex: 3, seed: 9 });
-  const right = new ExomuxButterchurnField({ audio: scriptedAudio({ beatEvery: 5 }), presetIndex: 3, seed: 9 });
+  const left = new ExomuxButterchurnField({
+    gpu: false,
+    audio: scriptedAudio({ beatEvery: 5 }),
+    presetIndex: 3,
+    seed: 9,
+  });
+  const right = new ExomuxButterchurnField({
+    gpu: false,
+    audio: scriptedAudio({ beatEvery: 5 }),
+    presetIndex: 3,
+    seed: 9,
+  });
   run(left, 120);
   run(right, 120);
   assertEquals(frameText(left), frameText(right));
 
-  const other = new ExomuxButterchurnField({ audio: scriptedAudio({ beatEvery: 5 }), presetIndex: 11, seed: 9 });
+  const other = new ExomuxButterchurnField({
+    gpu: false,
+    audio: scriptedAudio({ beatEvery: 5 }),
+    presetIndex: 11,
+    seed: 9,
+  });
   run(other, 120);
   assert(frameText(other) !== frameText(left), "a different preset should look different");
 });
 
 Deno.test("butterchurn: presets cycle on a timer and crossfade rather than snap", () => {
-  const field = new ExomuxButterchurnField({ audio: scriptedAudio(), presetIndex: 0 });
+  const field = new ExomuxButterchurnField({ gpu: false, audio: scriptedAudio(), presetIndex: 0 });
   assertEquals(field.presetIndex, 0);
   assertEquals(field.presetName, EXOMUX_BUTTERCHURN_PRESETS[0]!.name);
 
@@ -314,12 +329,12 @@ Deno.test("butterchurn: presets cycle on a timer and crossfade rather than snap"
   run(field, 40, 100 * 125);
   assertEquals(field.presetIndex, 1, "the field should have advanced one preset");
 
-  const held = new ExomuxButterchurnField({ audio: scriptedAudio(), presetIndex: 0, autoCycle: false });
+  const held = new ExomuxButterchurnField({ gpu: false, audio: scriptedAudio(), presetIndex: 0, autoCycle: false });
   run(held, 400);
   assertEquals(held.presetIndex, 0, "auto-cycle off must leave the opening preset alone");
 
   // Selection wraps in both directions rather than throwing.
-  const wrapping = new ExomuxButterchurnField({ audio: scriptedAudio(), autoCycle: false });
+  const wrapping = new ExomuxButterchurnField({ gpu: false, audio: scriptedAudio(), autoCycle: false });
   wrapping.selectPreset(-1);
   assertEquals(wrapping.presetIndex, EXOMUX_BUTTERCHURN_PRESETS.length - 1);
   wrapping.selectPreset(EXOMUX_BUTTERCHURN_PRESETS.length + 2);
@@ -327,46 +342,72 @@ Deno.test("butterchurn: presets cycle on a timer and crossfade rather than snap"
 });
 
 Deno.test("butterchurn: a crossfade draws both presets before settling on the new one", () => {
-  const blending = new ExomuxButterchurnField({ audio: scriptedAudio(), presetIndex: 0, autoCycle: false, seed: 4 });
+  const blending = new ExomuxButterchurnField({
+    gpu: false,
+    audio: scriptedAudio(),
+    presetIndex: 0,
+    autoCycle: false,
+    seed: 4,
+  });
   run(blending, 60);
   blending.nextPreset();
   run(blending, 6, 60 * 125);
   assertEquals(blending.presetIndex, 1);
 
-  const straight = new ExomuxButterchurnField({ audio: scriptedAudio(), presetIndex: 1, autoCycle: false, seed: 4 });
+  const straight = new ExomuxButterchurnField({
+    gpu: false,
+    audio: scriptedAudio(),
+    presetIndex: 1,
+    autoCycle: false,
+    seed: 4,
+  });
   run(straight, 66);
   assert(frameText(blending) !== frameText(straight), "a blend in progress is not the destination preset alone");
 });
 
-Deno.test("butterchurn: no preset in the rotation blanks or saturates the desktop", () => {
-  // The rotation exists so auto-cycling never parks on an empty screen for
-  // fifteen seconds; this is the invariant the audit script selects for.
-  let blank = 0;
+Deno.test("butterchurn: the software fallback never saturates the desktop", () => {
+  // The rotation is selected against the GPU renderer, which resolves nearly
+  // the whole catalog. The software fallback resolves far fewer of them to an
+  // image, so blanks here are expected rather than a defect. What must not
+  // happen is a preset whose feedback loop runs away and floods the desktop,
+  // because that is both unreadable and unrecoverable.
   let saturated = 0;
+  let rendered = 0;
   const cells = BOUNDS.width * BOUNDS.height;
   for (let index = 0; index < EXOMUX_BUTTERCHURN_PRESETS.length; index += 1) {
     const field = new ExomuxButterchurnField({
+      gpu: false,
       audio: scriptedAudio({ level: 0.9 }),
       presetIndex: index,
       autoCycle: false,
     });
-    run(field, 70);
-    const share = inkStats(field).painted / cells;
-    if (share < 0.01) blank += 1;
-    if (share > 0.99) saturated += 1;
+    run(field, 50);
+    // Full coverage is normal — MilkDrop fills the frame. The failure is a
+    // flat field of the brightest shade, which carries no image at all.
+    let full = 0;
+    let painted = 0;
+    for (const row of field.rasterizeCells(BOUNDS, THEME)) {
+      for (const cell of row) {
+        if (!cell) continue;
+        painted += 1;
+        if (cell.char === "█") full += 1;
+      }
+    }
+    if (full / cells > 0.9) saturated += 1;
+    if (painted / cells > 0.02) rendered += 1;
   }
-  // The audit selects at 100x28 and this runs at 60x20, where a preset's own
-  // aspect handling can push it slightly past either bound. The allowance is
-  // for that difference, not for a preset the audit should have rejected.
-  assert(blank <= 5, `${blank} rotation presets rendered a blank desktop`);
-  assert(saturated <= 1, `${saturated} rotation presets saturated the desktop`);
+  // The brightness governor is what makes this zero: without it ten presets
+  // accumulate into a flat white field, having lost the composite shader that
+  // would have held them down.
+  assertEquals(saturated, 0, `${saturated} presets saturated the desktop on the software path`);
+  assert(rendered > 100, `the software fallback should still render many presets, got ${rendered}`);
 });
 
 Deno.test("butterchurn: the output palette stays inside the painter's style cache", () => {
   // The desktop painter caches ANSI styles per colour and drops the whole cache
   // at 8192 entries. Unquantized this field mints hundreds of new colours per
   // tick, which would flush that cache every couple of seconds.
-  const field = new ExomuxButterchurnField({ audio: scriptedAudio({ level: 0.9 }) });
+  const field = new ExomuxButterchurnField({ gpu: false, audio: scriptedAudio({ level: 0.9 }) });
   const palette = new Set<number>();
   let now = 0;
   for (let frame = 0; frame < 600; frame += 1) {
@@ -385,7 +426,7 @@ Deno.test("butterchurn: the output palette stays inside the painter's style cach
 });
 
 Deno.test("butterchurn: survives resizing and rejects an empty rect", () => {
-  const field = new ExomuxButterchurnField({ audio: scriptedAudio() });
+  const field = new ExomuxButterchurnField({ gpu: false, audio: scriptedAudio() });
   run(field, 40);
 
   let now = 40 * 125;
@@ -407,7 +448,7 @@ Deno.test("butterchurn: survives resizing and rejects an empty rect", () => {
 Deno.test("butterchurn: the pointer leaves a mark and dispose leaves an injected source alone", () => {
   let closed = false;
   const tracked: ExomuxAudioSource = { ...scriptedAudio({ level: 0.2 }), close: () => (closed = true) };
-  const withPointer = new ExomuxButterchurnField({ audio: tracked, autoCycle: false, presetIndex: 0 });
+  const withPointer = new ExomuxButterchurnField({ gpu: false, audio: tracked, autoCycle: false, presetIndex: 0 });
   for (let frame = 0; frame < 30; frame += 1) {
     const now = (frame + 1) * 125;
     withPointer.setPointer({ column: BOUNDS.column + 1, row: BOUNDS.row + 1 }, now);
@@ -422,7 +463,7 @@ Deno.test("butterchurn: the pointer leaves a mark and dispose leaves an injected
 });
 
 Deno.test("butterchurn: a stalled desktop tick fades rather than freezing", () => {
-  const steady = new ExomuxButterchurnField({ audio: scriptedAudio(), autoCycle: false });
+  const steady = new ExomuxButterchurnField({ gpu: false, audio: scriptedAudio(), autoCycle: false });
   run(steady, 40);
   const before = inkStats(steady).brightness;
   // One 400 ms tick is worth several frames of decay; the field must apply it

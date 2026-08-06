@@ -63,7 +63,7 @@
     // upstream `butterchurn-presets`, or after changing the renderer enough to
     // shift which presets resolve to an image.
     "exomux:presets": "deno run -A ./scripts/build_butterchurn_catalog.ts",
-    "exomux:audit": "deno run -A --config ./packages/exomux/deno.json ./scripts/audit_butterchurn_catalog.ts",
+    "exomux:audit": "deno run -A --unstable-webgpu --config ./packages/exomux/deno.json ./scripts/audit_butterchurn_catalog.ts",
     "command-search": "deno run -A ./examples/command_search_index.ts",
     "dashboard": "deno run -A ./examples/dashboard.ts",
     "layout-recipe": "deno run -A ./examples/layout_recipe_report.ts",

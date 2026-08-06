@@ -18,31 +18,33 @@ alone (it requires a valid `EXOMUX_TOKEN` and is normally started for you by the
 `butterchurn_background.ts` is a MilkDrop audio visualizer, selected like any other background with prefix `b`. It is
 the ASCII port of [butterchurnxr](https://github.com/ubernaut/butterchurnxr)'s `asciichurn` rendered natively:
 `asciichurn` proxies its pixels out to Butterchurn's WebGL2 renderer in headless Chromium, which a single compiled
-binary running over a tailnet cannot do, so the pipeline is reimplemented on the CPU at cell resolution.
+binary running over a tailnet cannot do, so the renderer is rebuilt here against `navigator.gpu`.
 
-The presets are the real ones, not imitations. `butterchurn_catalog.ts` vendors the upstream `base` + `extra` packs —
-the same 293 MilkDrop presets asciichurn reports — with each preset's base values and its three EEL equation blocks.
-`eel.ts` is an interpreter for EEL2, the language those equations are written in; `butterchurn_preset.ts` runs them
-through Butterchurn's own pipeline, restoring base values every frame, resetting `q1..q32` while letting user variables
-persist, and building MilkDrop's warp mesh from the per-vertex equations. That mesh is what the previous frame is
-resampled through, so each preset moves the way it does upstream rather than being approximated.
+The presets are the real ones. `butterchurn_catalog.ts` vendors the upstream `base` + `extra` packs — the same 293
+MilkDrop presets asciichurn reports — with each preset's base values, its three EEL equation blocks, and its warp and
+composite shaders.
 
-Three parts of a preset cannot come along: the HLSL warp and composite shaders, custom waves and custom shapes, and the
-blur chain. They need a GPU and a shader translator. A preset's motion is therefore faithful while its colour grading
-and fine texture are approximate — and since two thirds of the catalog draws its image with exactly those features,
-`butterchurn_rotation.ts` narrows auto-cycling to the 171 presets that resolve to a moving image here. The other 122 are
-still reachable by index through `EXOMUX_BUTTERCHURN_CATALOG`.
+| Module                      | Role                                                                          |
+| --------------------------- | ----------------------------------------------------------------------------- |
+| `eel.ts`                    | Interpreter for EEL2, the language preset equations are written in            |
+| `butterchurn_preset.ts`     | Butterchurn's frame pipeline: base-value restore, `q` handling, the warp mesh |
+| `glsl_wgsl.ts`              | Translates preset shaders from GLSL to WGSL                                   |
+| `butterchurn_noise.ts`      | The noise textures and volumes preset shaders sample                          |
+| `butterchurn_gpu.ts`        | The render graph: warp pass, blur chain, waveform, composite, readback        |
+| `butterchurn_background.ts` | The desktop field: audio, preset cycling, and the software fallback           |
 
-Both generated files are checked in and rebuilt with:
+Preset shaders ship as GLSL — upstream already converted them from MilkDrop's HLSL — and all 500 shader bodies in the
+catalog translate to WGSL. The graph then runs what MilkDrop runs: the `pixel_eqs` mesh drawn over the previous frame
+through the preset's warp shader, a three-level blur chain (295 presets sample `sampler_blur1`), the waveform, and the
+composite shader where most presets do their colour grading. The finished frame is downsampled to the cell grid and read
+back asynchronously, landing one frame late.
 
-```sh
-# Re-vendor the catalog from a butterchurn-presets install, then re-render every
-# preset to rewrite the rotation. Neither is needed for a normal build.
-deno task exomux:presets --presets ~/projects/butterchurnxr/node_modules/butterchurn-presets
-deno task exomux:audit
-```
+**Software fallback.** With no GPU adapter — a headless tailnet host, or `--unstable-webgpu` absent — the field falls
+back to a CPU renderer that runs the equations but not the shaders. It still works, but resolves far fewer presets to an
+image, and a brightness governor stands in for the composite shader that would otherwise keep the feedback loop bounded.
+`butterchurn_rotation.ts` is selected against the GPU renderer, where 289 of 293 presets resolve.
 
-`butterchurn-presets` is MIT licensed, Copyright (c) 2013-2018 Jordan Berg.
+Custom waves and custom shapes are the one part of a preset still not carried over.
 
 `audio.ts` captures the microphone through the first of `parec`, `pw-record` or `arecord` that produces samples, and
 reduces it to spectrum bands, bass/mid/treble energy, a waveform and beat pulses. Capture is refcounted and lazy:
@@ -56,6 +58,15 @@ Each recorder defaults to the system default source, which is **not** always a m
 often the monitor of an output, which records digital silence on an idle machine. `EXOMUX_AUDIO_DEVICE` overrides it
 with a name from `pactl list sources short`; point it at a real input, or at an output monitor to visualize whatever is
 playing. With no working recorder at all the analyser synthesizes a signal so the field still moves.
+
+Both generated files are checked in and rebuilt with:
+
+```sh
+deno task exomux:presets --presets ~/projects/butterchurnxr/node_modules/butterchurn-presets
+deno task exomux:audit
+```
+
+`butterchurn-presets` is MIT licensed, Copyright (c) 2013-2018 Jordan Berg.
 
 ## Why this is a separate package
 

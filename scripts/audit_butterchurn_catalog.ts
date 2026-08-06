@@ -12,6 +12,10 @@
  * or freeze. Cycling through them would show a blank desktop for fifteen
  * seconds at a time.
  *
+ * The audit runs against whichever renderer the field selects, which on a
+ * machine with a GPU means the preset's own shaders. Rerun it if that changes:
+ * the software fallback resolves far fewer presets to an image.
+ *
  * Every preset stays available by index in `EXOMUX_BUTTERCHURN_CATALOG`; this
  * only decides what auto-cycling walks.
  *
@@ -43,7 +47,7 @@ const MAX_COVERAGE = 0.9;
 /** Share of cells that must change over `MOTION_GAP` frames. */
 const MIN_MOTION = 0.02;
 /** Per-frame budget at this size; the desktop tick is 125 ms. */
-const MAX_FRAME_MS = 12;
+const MAX_FRAME_MS = 40;
 
 /** Deterministic stand-in for a track: a steady beat with moving harmonics. */
 function auditAudio(): ExomuxAudioSource {
@@ -92,20 +96,21 @@ function snapshot(field: ExomuxButterchurnField): string[] {
   return field.rasterizeCells(BOUNDS, THEME).map((row) => row.map((cell) => cell?.char ?? " ").join(""));
 }
 
-function audit(index: number): Verdict {
+async function audit(index: number): Promise<Verdict> {
   const name = EXOMUX_BUTTERCHURN_CATALOG[index]!.name;
   const field = new ExomuxButterchurnField({ audio: auditAudio(), presetIndex: index, autoCycle: false });
   let now = 0;
   const started = performance.now();
-  for (let frame = 0; frame < WARMUP_FRAMES; frame += 1) {
+  // The GPU path reads back asynchronously, so each frame needs a turn of the
+  // event loop to land. Auditing without that would measure an empty buffer.
+  const step = async (): Promise<void> => {
     now += 125;
     field.advance({ bounds: BOUNDS, now });
-  }
+    await new Promise((resolve) => setTimeout(resolve, 2));
+  };
+  for (let frame = 0; frame < WARMUP_FRAMES; frame += 1) await step();
   const before = snapshot(field);
-  for (let frame = 0; frame < MOTION_GAP; frame += 1) {
-    now += 125;
-    field.advance({ bounds: BOUNDS, now });
-  }
+  for (let frame = 0; frame < MOTION_GAP; frame += 1) await step();
   const frameMs = (performance.now() - started) / (WARMUP_FRAMES + MOTION_GAP);
   const after = snapshot(field);
 
@@ -122,6 +127,7 @@ function audit(index: number): Verdict {
   const coverage = painted / CELLS;
   const motion = changed / CELLS;
 
+  field.dispose();
   let reason = "ok";
   if (coverage < MIN_COVERAGE) reason = "blank";
   else if (coverage > MAX_COVERAGE) reason = "saturated";
@@ -133,7 +139,7 @@ function audit(index: number): Verdict {
 if (import.meta.main) {
   const verdicts: Verdict[] = [];
   for (let index = 0; index < EXOMUX_BUTTERCHURN_CATALOG.length; index += 1) {
-    verdicts.push(audit(index));
+    verdicts.push(await audit(index));
     if ((index + 1) % 40 === 0) console.error(`  audited ${index + 1}/${EXOMUX_BUTTERCHURN_CATALOG.length}`);
   }
 
