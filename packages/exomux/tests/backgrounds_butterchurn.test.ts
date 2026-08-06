@@ -594,3 +594,27 @@ Deno.test("butterchurn: reports which renderer is drawing", () => {
   assertEquals(wanting.gpuActive, false);
   wanting.dispose();
 });
+
+Deno.test("butterchurn: never blanks the desktop while waiting on the GPU", () => {
+  // The field used to hand the frame to the GPU as soon as a device was ready,
+  // before any GPU frame had actually been read back. Everything the software
+  // renderer had drawn stopped updating at that moment, so the desktop sat
+  // black for as long as the device took to answer — and indefinitely if it
+  // never did. The software renderer keeps drawing until the GPU has proved it
+  // can produce a frame, so there is no window where nothing is painted.
+  const field = new ExomuxButterchurnField({ gpu: false, audio: scriptedAudio({ level: 0.9 }), autoCycle: true });
+  const cells = BOUNDS.width * BOUNDS.height;
+  let darkest = cells;
+  let now = 0;
+  for (let frame = 0; frame < 240; frame += 1) {
+    now += 125;
+    field.advance({ bounds: BOUNDS, now });
+    let painted = 0;
+    for (const row of field.rasterizeCells(BOUNDS, THEME)) {
+      for (const cell of row) if (cell) painted += 1;
+    }
+    // The first frames legitimately start from an empty field.
+    if (frame > 4) darkest = Math.min(darkest, painted);
+  }
+  assert(darkest > 0, "the desktop went completely black");
+});

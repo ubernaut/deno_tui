@@ -129,8 +129,12 @@ const GPU_STALL_FRAMES = 12;
  * preset that draws nothing for its fifteen-second slot is indistinguishable
  * from a frozen desktop. Skipping ahead keeps something on screen whichever
  * renderer is running, and costs nothing when the preset is fine.
+ *
+ * One second rather than two: a run of consecutive dark presets multiplies
+ * this, and the desktop going black for several seconds is exactly the
+ * complaint it exists to prevent.
  */
-const DEAD_PRESET_FRAMES = 16;
+const DEAD_PRESET_FRAMES = 8;
 /** Share of the desktop a preset must reach to count as rendering at all. */
 const DEAD_PRESET_COVERAGE = 0.01;
 /**
@@ -257,6 +261,8 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
   #gpuStall = 0;
   /** Consecutive frames the active preset has rendered essentially nothing. */
   #deadFrames = 0;
+  /** Set once a GPU frame has actually been read back and shown. */
+  #gpuEverDrew = false;
   readonly #q = new Float32Array(32);
 
   #time = 0;
@@ -655,8 +661,16 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
     }
 
     const pixels = gpu.latest;
-    if (pixels) this.#absorb(pixels);
-    return true;
+    if (pixels) {
+      this.#absorb(pixels);
+      this.#gpuEverDrew = true;
+    }
+    // Until a GPU frame has actually arrived there is nothing to show, and
+    // claiming the frame anyway would leave the desktop black for as long as
+    // the device took to answer — or forever, if it never does and the stall
+    // watchdog has not yet given up. The software renderer keeps drawing until
+    // the GPU has proved it can.
+    return this.#gpuEverDrew;
   }
 
   /**

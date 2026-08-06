@@ -286,6 +286,12 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Fixed
 
+- The butterchurn background could sit on a black desktop. It handed the frame to the GPU as soon as a device was ready,
+  before any GPU frame had been read back, so everything the software renderer had drawn stopped updating at that moment
+  — leaving nothing painted for as long as the device took to answer, and indefinitely if it never did. The software
+  renderer now keeps drawing until the GPU has produced a frame. A preset that renders nothing is also skipped after one
+  second rather than two, since a run of consecutive dark presets multiplies that wait.
+
 - The butterchurn background was permanently stuck on its software renderer whenever the background key was used to
   reach it. Deno allows one WebGPU device per process — a second `requestDevice` throws "Not enough memory left"
   whatever the GPU has spare — and the turbulence background requested its own and never released it. Turbulence sits
