@@ -31,6 +31,13 @@ const RENDER_WIDTH = 512;
 /** Chosen per size so the render aspect matches the cell grid's. */
 const MIN_RENDER_HEIGHT = 128;
 const MAX_RENDER_HEIGHT = 512;
+/** Floor the budget probe may shrink the render width to before giving up. */
+const MIN_RENDER_WIDTH = 64;
+/**
+ * Target sizes the budget probe tries, in texels, largest first. The first that
+ * allocates becomes the ceiling every render target is fitted under.
+ */
+const BUDGET_LADDER = [512 * 512, 512 * 256, 512 * 128, 256 * 128, 256 * 64, 128 * 64];
 /** Feedback format. Half floats keep highlights from clipping between passes. */
 const MAIN_FORMAT: GPUTextureFormat = "rgba16float";
 /** Uniform block, as vec4 slots; see `UNIFORM_SLOTS` for the layout. */
@@ -332,7 +339,10 @@ export class ExomuxButterchurnGpu {
   readonly #device: GPUDevice;
   #width: number;
   #height: number;
+  #renderWidth: number;
   #renderHeight: number;
+  /** Texels a single render target may cost, as answered by the device. */
+  readonly #budget: number;
 
   /** Ping-ponged feedback pair. `#mainIndex` selects the one holding the frame. */
   readonly #main: GPUTexture[] = [];
@@ -355,6 +365,8 @@ export class ExomuxButterchurnGpu {
   readonly #views = new WeakMap<GPUTexture, Map<string, GPUTextureView>>();
   /** Bind groups, cached by the resources they point at. Cleared on resize. */
   readonly #bindGroups = new Map<string, GPUBindGroup>();
+  /** Bind group layouts, cached by the sampler list they describe. */
+  readonly #presetLayouts = new Map<string, GPUBindGroupLayout>();
 
   readonly #noise = new Map<string, GPUTexture>();
   readonly #samplers = new Map<string, GPUSampler>();
@@ -385,18 +397,34 @@ export class ExomuxButterchurnGpu {
   #latest: Uint8Array | undefined;
   #mapping = false;
 
-  constructor(device: GPUDevice, options: ExomuxButterchurnGpuOptions) {
+  /**
+   * Builds a renderer, or nothing when the device cannot supply one.
+   *
+   * Preferred over the constructor: the budget probe it runs first is what
+   * keeps the graph from rendering into textures that failed to allocate.
+   */
+  static async create(
+    device: GPUDevice,
+    options: ExomuxButterchurnGpuOptions,
+  ): Promise<ExomuxButterchurnGpu | undefined> {
+    const budget = await probeTargetBudget(device);
+    if (budget === 0) return undefined;
+    return new ExomuxButterchurnGpu(device, options, budget);
+  }
+
+  constructor(device: GPUDevice, options: ExomuxButterchurnGpuOptions, budget = BUDGET_LADDER[0]!) {
     this.#device = device;
     this.#width = Math.max(1, options.width);
     this.#height = Math.max(1, options.height);
-    this.#renderHeight = renderHeightFor(this.#width, this.#height);
+    this.#budget = budget;
+    [this.#renderWidth, this.#renderHeight] = renderSizeFor(this.#width, this.#height, budget);
     const random = options.random ?? Math.random;
 
     for (let index = 0; index < 2; index += 1) {
-      this.#main.push(this.#createTarget(RENDER_WIDTH, this.#renderHeight));
+      this.#main.push(this.#createTarget(this.#renderWidth, this.#renderHeight));
     }
     for (let level = 0; level < 3; level += 1) {
-      const width = Math.max(1, RENDER_WIDTH >> (level + 1));
+      const width = Math.max(1, this.#renderWidth >> (level + 1));
       const height = Math.max(1, this.#renderHeight >> (level + 1));
       this.#blur.push(this.#createTarget(width, height));
       this.#blurTemp.push(this.#createTarget(width, height));
@@ -479,15 +507,16 @@ export class ExomuxButterchurnGpu {
     if (nextWidth === this.#width && nextHeight === this.#height) return;
     this.#width = nextWidth;
     this.#height = nextHeight;
-    const renderHeight = renderHeightFor(nextWidth, nextHeight);
-    if (renderHeight !== this.#renderHeight) {
+    const [renderWidth, renderHeight] = renderSizeFor(nextWidth, nextHeight, this.#budget);
+    if (renderWidth !== this.#renderWidth || renderHeight !== this.#renderHeight) {
+      this.#renderWidth = renderWidth;
       this.#renderHeight = renderHeight;
       for (let index = 0; index < this.#main.length; index += 1) {
         this.#main[index]!.destroy();
-        this.#main[index] = this.#createTarget(RENDER_WIDTH, renderHeight);
+        this.#main[index] = this.#createTarget(renderWidth, renderHeight);
       }
       for (let level = 0; level < this.#blur.length; level += 1) {
-        const width = Math.max(1, RENDER_WIDTH >> (level + 1));
+        const width = Math.max(1, renderWidth >> (level + 1));
         const height = Math.max(1, renderHeight >> (level + 1));
         this.#blur[level]!.destroy();
         this.#blurTemp[level]!.destroy();
@@ -564,7 +593,7 @@ export class ExomuxButterchurnGpu {
     warpPass.setPipeline(pipelines.warp);
     warpPass.setBindGroup(
       0,
-      this.#presetBindGroup(`${name}:warp:${this.#mainIndex}`, pipelines.warp, pipelines.warpSamplers, source),
+      this.#presetBindGroup(`${name}:warp:${this.#mainIndex}`, pipelines.warpSamplers, source),
     );
     warpPass.setVertexBuffer(0, this.#meshBuffer!);
     warpPass.draw(this.#meshVertices);
@@ -601,7 +630,7 @@ export class ExomuxButterchurnGpu {
     compPass.setPipeline(pipelines.comp);
     compPass.setBindGroup(
       0,
-      this.#presetBindGroup(`${name}:comp:${1 - this.#mainIndex}`, pipelines.comp, pipelines.compSamplers, target),
+      this.#presetBindGroup(`${name}:comp:${1 - this.#mainIndex}`, pipelines.compSamplers, target),
     );
     compPass.draw(3);
     compPass.end();
@@ -674,7 +703,7 @@ export class ExomuxButterchurnGpu {
 
   /** Full-resolution target the composite pass writes before downsampling. */
   #resolveIntermediate(): GPUTexture {
-    this.#compositeTexture ??= this.#createTarget(RENDER_WIDTH, this.#renderHeight);
+    this.#compositeTexture ??= this.#createTarget(this.#renderWidth, this.#renderHeight);
     return this.#compositeTexture;
   }
 
@@ -711,9 +740,43 @@ export class ExomuxButterchurnGpu {
     }
   }
 
+  /**
+   * Bind group layout for one sampler list, shared by the pipeline and the
+   * groups bound to it.
+   *
+   * Declared rather than taken from `layout: "auto"`, which derives the layout
+   * from the bindings the entry point is seen to use and prunes the rest. A
+   * preset that declares a sampler it does not reach — behind a branch, or in
+   * an expression the optimiser dropped — then got a layout with fewer entries
+   * than the graph binds, and every draw for that preset failed validation for
+   * the rest of the session, because the invalid group is cached.
+   */
+  #presetLayout(samplers: readonly string[]): GPUBindGroupLayout {
+    const key = samplers.join(",");
+    const cached = this.#presetLayouts.get(key);
+    if (cached) return cached;
+    const entries: GPUBindGroupLayoutEntry[] = [
+      { binding: 0, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
+    ];
+    samplers.forEach((name, index) => {
+      entries.push({
+        binding: index * 2 + 1,
+        visibility: GPUShaderStage.FRAGMENT,
+        texture: { sampleType: "float", viewDimension: SAMPLER_BINDINGS[name]!.dimension },
+      });
+      entries.push({
+        binding: index * 2 + 2,
+        visibility: GPUShaderStage.FRAGMENT,
+        sampler: { type: "filtering" },
+      });
+    });
+    const layout = this.#device.createBindGroupLayout({ entries });
+    this.#presetLayouts.set(key, layout);
+    return layout;
+  }
+
   #presetBindGroup(
     key: string,
-    pipeline: GPURenderPipeline,
     samplers: readonly string[],
     main: GPUTexture,
   ): GPUBindGroup {
@@ -731,7 +794,7 @@ export class ExomuxButterchurnGpu {
         resource: this.#samplers.get(`${binding.address}:${binding.filter}`)!,
       });
     });
-    const group = this.#device.createBindGroup({ layout: pipeline.getBindGroupLayout(0), entries });
+    const group = this.#device.createBindGroup({ layout: this.#presetLayout(samplers), entries });
     this.#bindGroups.set(key, group);
     return group;
   }
@@ -876,9 +939,9 @@ export class ExomuxButterchurnGpu {
       frame.trebleAttack,
       (frame.bassAttack + frame.midAttack + frame.trebleAttack) / 3,
     );
-    put(UNIFORM_SLOTS.resolution, RENDER_WIDTH, this.#renderHeight);
+    put(UNIFORM_SLOTS.resolution, this.#renderWidth, this.#renderHeight);
     put(UNIFORM_SLOTS.aspect, 1 / frame.aspectX, 1 / frame.aspectY, frame.aspectX, frame.aspectY);
-    put(UNIFORM_SLOTS.texsize, RENDER_WIDTH, this.#renderHeight, 1 / RENDER_WIDTH, 1 / this.#renderHeight);
+    put(UNIFORM_SLOTS.texsize, this.#renderWidth, this.#renderHeight, 1 / this.#renderWidth, 1 / this.#renderHeight);
     for (
       const [slot, size] of [
         [UNIFORM_SLOTS.texsizeNoiseLq, 256],
@@ -1099,7 +1162,7 @@ struct WaveOut { @builtin(position) position: vec4<f32>, @location(0) color: vec
     const vertex = stage === "warp" ? WARP_VERTEX : COMP_VERTEX;
     const module = this.#device.createShaderModule({ code: `${fragmentSource(body, samplers)}\n${vertex}` });
     const pipeline = await this.#device.createRenderPipelineAsync({
-      layout: "auto",
+      layout: this.#device.createPipelineLayout({ bindGroupLayouts: [this.#presetLayout(samplers)] }),
       vertex: stage === "warp" ? { module, entryPoint: "vs", buffers: [MESH_LAYOUT] } : { module, entryPoint: "vs" },
       fragment: { module, entryPoint: "fs", targets: [{ format: MAIN_FORMAT }] },
       primitive: { topology: "triangle-list" },
@@ -1119,14 +1182,53 @@ const MESH_LAYOUT: GPUVertexBufferLayout = {
 };
 
 /**
- * Render height for a cell grid, keeping the render aspect equal to the
- * desktop's. Terminal cells are about twice as tall as they are wide, so a grid
- * of 88x22 covers the same shape as 88x44 pixels.
+ * Render target size for a cell grid: the desktop's aspect at the highest
+ * resolution `budget` texels allows. Terminal cells are about twice as tall as
+ * they are wide, so a grid of 88x22 covers the same shape as 88x44 pixels.
+ *
+ * Both axes scale by one factor, which keeps the aspect the desktop's, and both
+ * land on a multiple of eight so the blur chain's three halvings stay whole.
  */
-function renderHeightFor(width: number, height: number): number {
+function renderSizeFor(width: number, height: number, budget: number): [number, number] {
   const ratio = (height * 2) / Math.max(1, width);
   const target = Math.round(RENDER_WIDTH * ratio / 8) * 8;
-  return Math.min(MAX_RENDER_HEIGHT, Math.max(MIN_RENDER_HEIGHT, target));
+  const idealHeight = Math.min(MAX_RENDER_HEIGHT, Math.max(MIN_RENDER_HEIGHT, target));
+  if (RENDER_WIDTH * idealHeight <= budget) return [RENDER_WIDTH, idealHeight];
+  const scale = Math.sqrt(budget / (RENDER_WIDTH * idealHeight));
+  const round = (value: number) => Math.max(8, Math.floor(value * scale / 8) * 8);
+  return [Math.max(MIN_RENDER_WIDTH, round(RENDER_WIDTH)), round(idealHeight)];
+}
+
+/**
+ * Largest main render target this device will actually allocate, in texels.
+ *
+ * The adapter's advertised limits are not to be trusted: this driver reports
+ * fourteen gigabytes free and then refuses every allocation of a megabyte or
+ * more, which is under half of what a full-size target costs. Allocating
+ * regardless yielded invalid textures that still completed their readbacks, so
+ * the stall watchdog never fired and the desktop sat black indefinitely —
+ * asking first, and rendering smaller, is the difference between a slightly
+ * softer background and no background at all.
+ *
+ * A device without error scopes — the test stub — is taken at its word.
+ */
+async function probeTargetBudget(device: GPUDevice): Promise<number> {
+  for (const budget of BUDGET_LADDER) {
+    try {
+      device.pushErrorScope("out-of-memory");
+      const probe = device.createTexture({
+        size: [RENDER_WIDTH, Math.max(1, Math.ceil(budget / RENDER_WIDTH))],
+        format: MAIN_FORMAT,
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_SRC,
+      });
+      const failure = await device.popErrorScope();
+      probe.destroy();
+      if (!failure) return budget;
+    } catch {
+      return BUDGET_LADDER[0]!;
+    }
+  }
+  return 0;
 }
 
 function fractional(value: number): number {

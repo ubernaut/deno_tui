@@ -12,6 +12,14 @@ interface Counts {
   pipeline: number;
   /** Textures and buffers explicitly released, so leaks can be told from churn. */
   destroyed: number;
+  /** Bind groups whose entry count disagreed with their layout's. */
+  mismatched: number;
+  /** Texel counts of the textures still alive; the budget probe's are not. */
+  sizes: number[];
+}
+
+function emptyCounts(): Counts {
+  return { bindGroup: 0, view: 0, texture: 0, buffer: 0, pipeline: 0, destroyed: 0, mismatched: 0, sizes: [] };
 }
 
 /**
@@ -20,7 +28,10 @@ interface Counts {
  * A real device is not available in CI, and the property under test — how many
  * GPU objects a frame creates — is observable without one.
  */
-function stubDevice(counts: Counts) {
+function stubDevice(counts: Counts, maxTexels = Infinity) {
+  // One error-scope slot is enough: the budget probe never nests them.
+  let scope: { message: string } | undefined;
+  let scoped = false;
   const pass = {
     setPipeline: () => {},
     setBindGroup: () => {},
@@ -35,11 +46,16 @@ function stubDevice(counts: Counts) {
   };
   const makeTexture = (width: number, height: number) => {
     counts.texture += 1;
+    const texels = width * height;
+    counts.sizes.push(texels);
+    if (texels > maxTexels && scoped) scope ??= { message: "not enough memory left" };
     return {
       width,
       height,
       destroy: () => {
         counts.destroyed += 1;
+        const at = counts.sizes.indexOf(texels);
+        if (at >= 0) counts.sizes.splice(at, 1);
       },
       createView: () => {
         counts.view += 1;
@@ -64,20 +80,38 @@ function stubDevice(counts: Counts) {
         unmap: () => {},
       };
     },
+    pushErrorScope: () => {
+      scoped = true;
+      scope = undefined;
+    },
+    popErrorScope: () => {
+      scoped = false;
+      const error = scope;
+      scope = undefined;
+      return Promise.resolve(error);
+    },
     createSampler: () => ({}),
     createShaderModule: () => ({}),
-    createBindGroupLayout: () => ({}),
+    createBindGroupLayout: (descriptor: { entries: unknown[] }) => ({ entries: descriptor.entries.length }),
     createPipelineLayout: () => ({}),
     createRenderPipeline: () => {
       counts.pipeline += 1;
-      return { getBindGroupLayout: () => ({}) };
+      return { getBindGroupLayout: () => ({ auto: true }) };
     },
     createRenderPipelineAsync: () => {
       counts.pipeline += 1;
-      return Promise.resolve({ getBindGroupLayout: () => ({}) });
+      return Promise.resolve({ getBindGroupLayout: () => ({ auto: true }) });
     },
-    createBindGroup: () => {
+    createBindGroup: (descriptor: { layout: { entries?: number; auto?: boolean }; entries: unknown[] }) => {
       counts.bindGroup += 1;
+      // What a real device checks, and what `layout: "auto"` used to get wrong:
+      // a group must supply exactly the bindings its layout declares. A derived
+      // layout counts as a mismatch outright — it prunes what the shader does
+      // not reach, which is unknowable here and was the original bug.
+      const derived = descriptor.layout.auto === true && descriptor.entries.length > 0;
+      if (derived || (descriptor.layout.entries ?? descriptor.entries.length) !== descriptor.entries.length) {
+        counts.mismatched += 1;
+      }
       return {};
     },
     createCommandEncoder: () => encoder,
@@ -91,7 +125,7 @@ Deno.test("butterchurn gpu: a steady frame creates no new GPU objects", async ()
   // the background froze on its last frame — taking the GPU down for other
   // processes with it. Views and bind groups are cached now, and this is the
   // guard that keeps them that way.
-  const counts: Counts = { bindGroup: 0, view: 0, texture: 0, buffer: 0, pipeline: 0, destroyed: 0 };
+  const counts = emptyCounts();
   const gpu = new ExomuxButterchurnGpu(stubDevice(counts), { width: 80, height: 24, random: () => 0.5 });
   const entry = EXOMUX_BUTTERCHURN_CATALOG[0]!;
   // Pipelines build off the main thread, so the measurement has to wait for
@@ -152,7 +186,7 @@ Deno.test("butterchurn gpu: a steady frame creates no new GPU objects", async ()
 });
 
 Deno.test("butterchurn gpu: resizing replaces its targets rather than accumulating them", () => {
-  const counts: Counts = { bindGroup: 0, view: 0, texture: 0, buffer: 0, pipeline: 0, destroyed: 0 };
+  const counts = emptyCounts();
   const gpu = new ExomuxButterchurnGpu(stubDevice(counts), { width: 80, height: 24, random: () => 0.5 });
   const afterConstruction = counts.texture + counts.buffer - counts.destroyed;
 
@@ -166,4 +200,84 @@ Deno.test("butterchurn gpu: resizing replaces its targets rather than accumulati
     `resizing left ${live} live GPU objects, up from ${afterConstruction} after construction`,
   );
   gpu.destroy();
+});
+
+Deno.test("butterchurn gpu: every bind group matches the layout its pipeline was built with", async () => {
+  // `layout: "auto"` derives a layout from the bindings the shader is seen to
+  // use, dropping any the preset declared but never reached. The graph binds
+  // all of them, so those presets produced an invalid bind group — and because
+  // groups are cached, every later frame for that preset failed too. Declaring
+  // the layout is what keeps the two in step.
+  const counts = emptyCounts();
+  const gpu = new ExomuxButterchurnGpu(stubDevice(counts), { width: 80, height: 24, random: () => 0.5 });
+  const waveform = new Float32Array(256);
+  const q = new Float32Array(32);
+  let drawn = 0;
+  for (const entry of EXOMUX_BUTTERCHURN_CATALOG.slice(0, 24)) {
+    for (let attempt = 0; attempt < 50 && gpu.prepare(entry.name, entry.warp, entry.comp) === "pending"; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    if (gpu.prepare(entry.name, entry.warp, entry.comp) !== "ready") continue;
+    const preset = new ExomuxButterchurnPreset(entry, { random: () => 0.5 });
+    preset.setSize(80, 24);
+    const audio = { bass: 1, mid: 1, treb: 1, bassAttack: 1, midAttack: 1, trebleAttack: 1, waveform };
+    preset.advance(audio, 0, 0, 8);
+    const rendered = gpu.render(entry.name, {
+      mesh: preset.mesh,
+      meshWidth: preset.meshWidth,
+      meshHeight: preset.meshHeight,
+      wave: preset.wave,
+      waveCount: preset.waveCount,
+      waveColor: [1, 1, 1, 1],
+      q,
+      time: 0,
+      frame: 0,
+      fps: 8,
+      decay: 0.95,
+      bass: 1,
+      mid: 1,
+      treb: 1,
+      bassAttack: 1,
+      midAttack: 1,
+      trebleAttack: 1,
+      aspectX: 1,
+      aspectY: 1,
+    });
+    if (rendered) drawn += 1;
+  }
+  assert(drawn > 8, `only ${drawn} presets drew; this measures nothing`);
+  assertEquals(counts.mismatched, 0, "a bind group disagreed with its layout");
+  gpu.destroy();
+});
+
+Deno.test("butterchurn gpu: render targets are fitted to what the device will allocate", async () => {
+  // This driver reports fourteen gigabytes free and refuses anything over a
+  // megabyte. Allocating regardless left invalid textures that still completed
+  // readbacks, so the stall watchdog never fired and the desktop stayed black.
+  const generous = emptyCounts();
+  const full = await ExomuxButterchurnGpu.create(stubDevice(generous), { width: 220, height: 55, random: () => 0.5 });
+  assert(full, "an unconstrained device should yield a renderer");
+  const largest = Math.max(...generous.sizes);
+
+  const tight = emptyCounts();
+  const limit = 512 * 128;
+  const fitted = await ExomuxButterchurnGpu.create(stubDevice(tight, limit), {
+    width: 220,
+    height: 55,
+    random: () => 0.5,
+  });
+  assert(fitted, "a device that can allocate something should still yield a renderer");
+  const biggest = Math.max(...tight.sizes);
+  assert(biggest <= limit, `allocated ${biggest} texels against a ${limit} budget`);
+  assert(biggest < largest, "a constrained device should render smaller than an unconstrained one");
+  full.destroy();
+  fitted.destroy();
+});
+
+Deno.test("butterchurn gpu: a device that can allocate nothing yields no renderer", async () => {
+  // Better no GPU renderer at all than one drawing into textures that failed:
+  // the field keeps its software path only while `create` admits defeat.
+  const counts = emptyCounts();
+  const gpu = await ExomuxButterchurnGpu.create(stubDevice(counts, 0), { width: 220, height: 55, random: () => 0.5 });
+  assertEquals(gpu, undefined);
 });

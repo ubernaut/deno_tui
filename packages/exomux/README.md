@@ -34,17 +34,21 @@ composite shaders.
 | `butterchurn_background.ts` | The desktop field: audio, preset cycling, and the software fallback           |
 
 Preset shaders ship as GLSL — upstream already converted them from MilkDrop's HLSL — and all 500 shader bodies in the
-catalog translate to WGSL. The graph then runs what MilkDrop runs: the `pixel_eqs` mesh drawn over the previous frame
-through the preset's warp shader, a three-level blur chain (295 presets sample `sampler_blur1`), the waveform, and the
-composite shader where most presets do their colour grading. The finished frame is downsampled to the cell grid and read
-back asynchronously, landing one frame late.
+catalog translate to WGSL, 292 of the 293 presets to shaders the driver accepts. WGSL is the stricter language of the
+two, so the translator infers a type for every expression it builds: GLSL's `clamp(uv, 0.0, 1.0)` applies a scalar
+across a vector and WGSL demands all three agree, and a literal subscript or an `int` counter must stay integral where
+every other literal becomes a float. The graph then runs what MilkDrop runs: the `pixel_eqs` mesh drawn over the
+previous frame through the preset's warp shader, a three-level blur chain (295 presets sample `sampler_blur1`), the
+waveform, and the composite shader where most presets do their colour grading. The finished frame is downsampled to the
+cell grid and read back asynchronously, landing one frame late.
 
 **Skipping presets.** Clicking bare desktop advances to the next preset; `Ctrl-N [` and `Ctrl-N ]` step backwards and
 forwards. Presets otherwise auto-cycle every fifteen seconds, and one that renders nothing is skipped after two.
 
 **Telling which renderer is running.** The status line announces the renderer whenever it changes, and stepping a preset
 reports it alongside the preset name — `Preset 47/289 · gpu · mic:parec: Geiss - Cauldron`. `software renderer` there
-means preset shaders are not running.
+means preset shaders are not running. The label is only earned once a frame has actually come back from the GPU; it used
+to be unreachable, and reported `software` however well the GPU was doing.
 
 One WebGPU device serves the whole client, from `gpu_device.ts`. Deno allows exactly one per process, and the turbulence
 background wants one too, so a private device meant whichever field initialised second never got one.
@@ -53,10 +57,26 @@ Preset transitions are prepared ahead of time: the next preset's equations are c
 three seconds before its slot starts, the pipelines asynchronously. Both were previously done on the frame of the
 switch, where they stalled the desktop.
 
+**The device is asked what it will allocate**, rather than trusted. One driver here advertises fourteen gigabytes free
+and then refuses every allocation over a megabyte — which is less than one full-size render target, so at any ordinary
+terminal shape every target failed at once. WebGPU hands back invalid textures rather than throwing, and those still
+completed their readbacks, so the stall watchdog never fired and the desktop sat black indefinitely. `create` now probes
+for the largest target the device will really give, fits the render size under it at the desktop's aspect, and returns
+nothing at all if even the smallest fails — which leaves the software renderer running instead of a black screen.
+
+Bind group layouts are declared rather than derived. `layout: "auto"` builds a layout from the bindings the shader is
+seen to reach and prunes the rest, so a preset declaring a sampler it never gets to produced a group with more entries
+than its layout — invalid, cached, and therefore broken for every later frame of that preset.
+
 **Software fallback.** With no GPU adapter — a headless tailnet host, or `--unstable-webgpu` absent — the field falls
 back to a CPU renderer that runs the equations but not the shaders. It still works, but resolves far fewer presets to an
 image, and a brightness governor stands in for the composite shader that would otherwise keep the feedback loop bounded.
-`butterchurn_rotation.ts` is selected against the GPU renderer, where 289 of 293 presets resolve.
+`butterchurn_rotation.ts` holds the 289 presets the audit accepted; it predates the fixes above and is worth
+regenerating.
+
+Measured against a real device at a 220x55 grid, 292 of 293 presets compile and 228 resolve to an image. The count that
+do not is taken under a synthetic constant-audio signal over eight frames, which is unkind to presets that build up
+slowly, so it reads low.
 
 Custom waves and custom shapes are the one part of a preset still not carried over.
 

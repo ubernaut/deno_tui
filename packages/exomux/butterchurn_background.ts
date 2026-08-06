@@ -611,12 +611,21 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
     if (this.#gpuState === "idle") {
       this.#gpuState = "starting";
       requestExomuxGpuDevice()
-        .then((device) => {
+        .then(async (device) => {
           if (!device || this.#gpuState !== "starting") {
             this.#gpuState = "unavailable";
             return;
           }
-          this.#gpu = new ExomuxButterchurnGpu(device, { width: this.#width, height: this.#height });
+          // `create` refuses a device that cannot allocate render targets,
+          // which is the difference between the software renderer carrying the
+          // desktop and a black screen that never recovers.
+          const gpu = await ExomuxButterchurnGpu.create(device, { width: this.#width, height: this.#height });
+          if (!gpu || this.#gpuState !== "starting") {
+            gpu?.destroy();
+            this.#gpuState = "unavailable";
+            return;
+          }
+          this.#gpu = gpu;
           this.#gpuState = "ready";
         })
         .catch(() => {
@@ -699,6 +708,10 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
     if (pixels) {
       this.#absorb(pixels);
       this.#gpuEverDrew = true;
+      // A resolved frame is the only proof that this preset's own shaders are
+      // what is on screen, which is what `renderer` reports. Without it the
+      // status line claimed "software" however well the GPU was doing.
+      this.#gpuPresets.set(preset.name, true);
     }
     // Until a GPU frame has actually arrived there is nothing to show, and
     // claiming the frame anyway would leave the desktop black for as long as

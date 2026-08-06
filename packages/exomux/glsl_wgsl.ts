@@ -4,9 +4,18 @@
 // the surviving subset is small: declarations, assignments, swizzles, if/else,
 // a handful of for loops, and about twenty builtins. This covers that surface.
 //
-// The one structural difference that matters is swizzle assignment. GLSL allows
-// `v.xyz = e;`; WGSL only permits assigning a single component, so those are
-// expanded into per-component writes through a temporary.
+// Two structural differences matter.
+//
+// Swizzle assignment: GLSL allows `v.xyz = e;`; WGSL only permits assigning a
+// single component, so those are expanded into per-component writes through a
+// temporary.
+//
+// Mixed scalar and vector arguments: `clamp(uv, 0.0, 1.0)` is ordinary GLSL,
+// where the scalar overloads apply componentwise, and a compile error in WGSL,
+// which demands all three arguments share one type. A third of the catalog
+// writes it, so expressions carry their WGSL type as they are built and the
+// scalars are splatted to match. Types are inferred, not checked — anything
+// unrecognised is left alone rather than guessed at.
 
 type Kind = "name" | "number" | "punct" | "end";
 interface Token {
@@ -197,6 +206,118 @@ export const SAMPLERS = [
 ];
 const SAMPLER_SET = new Set(SAMPLERS);
 
+/** A translated expression and the WGSL type it evaluates to; `""` when unknown. */
+interface Expr {
+  readonly code: string;
+  readonly type: string;
+  /**
+   * The same literal spelled as an integer, when it was one in GLSL.
+   *
+   * Literals are emitted as floats because that is what nearly every position
+   * wants, but `int n = 0;`, `n < 5` and `v[1]` all need the integer spelling
+   * back, and only the token itself knows it had one.
+   */
+  readonly integer?: string;
+}
+
+/** An expression in the integer spelling WGSL needs for counters and indices. */
+function asInt(expr: Expr): string {
+  return expr.integer ??
+    (element(expr.type) === "i32" || element(expr.type) === "u32" ? expr.code : `i32(${expr.code})`);
+}
+
+/** Component count of a WGSL type: 1 for scalars, N for `vecN`, 0 when unknown. */
+function width(type: string): number {
+  if (type === "f32" || type === "i32" || type === "u32" || type === "bool") return 1;
+  const match = /^vec([234])<(.+)>$/.exec(type);
+  return match ? Number(match[1]) : 0;
+}
+
+/** The component type of a vector, or the type itself when it is scalar. */
+function element(type: string): string {
+  return /^vec([234])<(.+)>$/.exec(type)?.[2] ?? type;
+}
+
+function vector(size: number, of: string): string {
+  if (of === "") return "";
+  return size <= 1 ? of : `vec${size}<${of}>`;
+}
+
+/**
+ * Arguments that must share one type in WGSL but may be scalars in GLSL.
+ *
+ * `mix`'s third argument is absent deliberately: WGSL does overload it for a
+ * scalar interpolant, so splatting it would be noise.
+ */
+const UNIFY: Record<string, readonly number[]> = {
+  atan2: [0, 1],
+  clamp: [0, 1, 2],
+  distance: [0, 1],
+  dot: [0, 1],
+  max: [0, 1],
+  min: [0, 1],
+  mix: [0, 1],
+  pow: [0, 1],
+  reflect: [0, 1],
+  smoothstep: [0, 1, 2],
+  step: [0, 1],
+};
+
+/** Builtins returning a scalar whatever their arguments are. */
+const SCALAR_RESULT = new Set(["length", "distance", "dot", "determinant"]);
+
+/** Operators yielding a boolean rather than the type of their operands. */
+const COMPARE = new Set(["==", "!=", "<", "<=", ">", ">=", "&&", "||"]);
+
+/** GLSL's vector comparison functions and the WGSL operator each becomes. */
+const COMPARISON: Record<string, string> = {
+  greaterThan: ">",
+  greaterThanEqual: ">=",
+  lessThan: "<",
+  lessThanEqual: "<=",
+  equal: "==",
+  notEqual: "!=",
+};
+
+/**
+ * Types of the names the shader prelude puts in scope.
+ *
+ * These must stay in step with `shaderPrelude` in `butterchurn_gpu.ts`, which
+ * declares them. A name missing here is not an error — it simply translates
+ * with an unknown type, which costs the splatting above and nothing else.
+ */
+const PRELUDE_TYPES: Record<string, string> = (() => {
+  const types: Record<string, string> = {
+    PI: "f32",
+    uv: "vec2<f32>",
+    uv_orig: "vec2<f32>",
+    vColor: "vec4<f32>",
+    resolution: "vec2<f32>",
+    hue_shader: "vec3<f32>",
+    ret: "vec3<f32>",
+    rad: "f32",
+    ang: "f32",
+  };
+  const scalars = [
+    "time,fps,frame,decay",
+    "bass,mid,treb,vol",
+    "bass_att,mid_att,treb_att,vol_att",
+    "blur1_min,blur2_min,blur3_min,blur1_max,blur2_max,blur3_max",
+    "scale1,scale2,scale3,bias1,bias2,bias3",
+  ].join(",").split(",");
+  for (const name of scalars) types[name] = "f32";
+  const vec4s = [
+    "aspect,texsize",
+    "texsize_noise_lq,texsize_noise_mq,texsize_noise_hq,texsize_noise_lq_lite",
+    "texsize_noisevol_lq,texsize_noisevol_hq",
+    "roam_cos,roam_sin,slow_roam_cos,slow_roam_sin",
+    "rand_frame,rand_preset",
+  ].join(",").split(",");
+  for (const name of vec4s) types[name] = "vec4<f32>";
+  for (let index = 1; index <= 32; index += 1) types[`q${index}`] = "f32";
+  return types;
+})();
+
 class Translator {
   #tokens: Token[];
   #i = 0;
@@ -205,6 +326,8 @@ class Translator {
   readonly used = new Set<string>();
   /** Samplers the preset declared itself, which need a placeholder texture. */
   readonly custom = new Set<string>();
+  /** WGSL type of every name in scope, for the scalar splatting above. */
+  readonly #vars = new Map<string, string>(Object.entries(PRELUDE_TYPES));
 
   constructor(src: string) {
     this.#tokens = lex(src);
@@ -276,7 +399,7 @@ class Translator {
       if (word === "if") {
         this.#i += 1;
         this.#expect("(");
-        const cond = this.#expression(0);
+        const cond = this.#expression(0).code;
         this.#expect(")");
         const then = this.#statement();
         if (this.#tok.kind === "name" && this.#tok.text === "else") {
@@ -289,7 +412,7 @@ class Translator {
         this.#i += 1;
         this.#expect("(");
         const init = this.#take(";") ? "" : this.#statement();
-        const cond = this.#peek(";") ? "true" : this.#expression(0);
+        const cond = this.#peek(";") ? "true" : this.#expression(0).code;
         this.#expect(";");
         const step = this.#peek(")") ? "" : this.#simpleStatement();
         this.#expect(")");
@@ -298,14 +421,14 @@ class Translator {
       if (word === "while") {
         this.#i += 1;
         this.#expect("(");
-        const cond = this.#expression(0);
+        const cond = this.#expression(0).code;
         this.#expect(")");
         return `loop {\n  if (!(${cond})) { break; }\n${this.#statement()}\n}`;
       }
       if (word === "return") {
         this.#i += 1;
         if (this.#take(";")) return "return;";
-        const value = this.#expression(0);
+        const value = this.#expression(0).code;
         this.#expect(";");
         return `return ${value};`;
       }
@@ -344,19 +467,21 @@ class Translator {
     if (this.#isType()) {
       const glslType = this.#tok.text;
       this.#i += 1;
+      const type = TYPES[glslType]!;
       const parts: string[] = [];
       do {
         const name = this.#tok.text;
         this.#i += 1;
-        if (this.#take("=")) parts.push(`var ${name}: ${TYPES[glslType]!} = ${this.#expression(0)};`);
-        else parts.push(`var ${name}: ${TYPES[glslType]!};`);
+        this.#vars.set(name, type);
+        if (this.#take("=")) parts.push(`var ${name}: ${type} = ${this.#coerce(this.#expression(0), type)};`);
+        else parts.push(`var ${name}: ${type};`);
       } while (this.#take(","));
       return parts.join("\n");
     }
 
     // Assignment, possibly to a swizzle.
     const start = this.#i;
-    const target = this.#unary();
+    const target = this.#unary().code;
     if (this.#peek("++") || this.#peek("--")) {
       const step = this.#tokens[this.#i]!.text === "++" ? "+" : "-";
       this.#i += 1;
@@ -365,12 +490,12 @@ class Translator {
     const op = this.#tok;
     if (op.kind === "punct" && ["=", "+=", "-=", "*=", "/="].includes(op.text)) {
       this.#i += 1;
-      const value = this.#expression(0);
+      const value = this.#coerce(this.#expression(0), this.#vars.get(target) ?? "");
       return this.#assign(target, op.text, value);
     }
     this.#i = start;
     // A bare expression statement; WGSL needs it bound to something.
-    const expr = this.#expression(0);
+    const expr = this.#expression(0).code;
     return `_ = ${expr};`;
   }
 
@@ -392,7 +517,19 @@ class Translator {
     return lines.join("\n");
   }
 
-  #expression(min: number): string {
+  /**
+   * Spells `value` the way a slot of type `type` needs it.
+   *
+   * Only literals are respelled. Converting anything else would be inventing a
+   * cast GLSL did not ask for, and GLSL promotes integers to floats where the
+   * two meet rather than truncating.
+   */
+  #coerce(value: Expr, type: string): string {
+    const of = element(type);
+    return value.integer !== undefined && (of === "i32" || of === "u32") ? value.integer : value.code;
+  }
+
+  #expression(min: number): Expr {
     let left = this.#unary();
     for (;;) {
       const tok = this.#tok;
@@ -401,39 +538,49 @@ class Translator {
       if (prec === undefined || prec < min) break;
       this.#i += 1;
       const right = this.#expression(prec + 1);
-      left = `(${left} ${tok.text} ${right})`;
+      // WGSL allows vector-scalar arithmetic, so a mixed operation takes the
+      // wider of the two operands rather than needing either splatted. It does
+      // not mix integers with floats at all, though, so a literal beside an
+      // integer counter goes back to its integer spelling.
+      const size = Math.max(width(left.type), width(right.type));
+      const of = width(left.type) >= width(right.type) ? element(left.type) : element(right.type);
+      const code = `(${this.#coerce(left, right.type)} ${tok.text} ${this.#coerce(right, left.type)})`;
+      left = { code, type: COMPARE.has(tok.text) ? vector(size, "bool") : vector(size, of) };
     }
     if (min <= 1 && this.#take("?")) {
       const yes = this.#expression(0);
       this.#expect(":");
       const no = this.#expression(1);
-      return `select(${no}, ${yes}, ${left})`;
+      return { code: `select(${no.code}, ${yes.code}, ${left.code})`, type: yes.type || no.type };
     }
     return left;
   }
 
-  #unary(): string {
+  #unary(): Expr {
     const tok = this.#tok;
     if (tok.kind === "punct" && (tok.text === "-" || tok.text === "!" || tok.text === "+" || tok.text === "~")) {
       this.#i += 1;
       const operand = this.#unary();
-      return tok.text === "+" ? operand : `${tok.text}(${operand})`;
+      if (tok.text === "+") return operand;
+      return { code: `${tok.text}(${operand.code})`, type: operand.type };
     }
     return this.#postfix(this.#primary());
   }
 
-  #postfix(base: string): string {
+  #postfix(base: Expr): Expr {
     for (;;) {
       if (this.#take(".")) {
         const field = this.#tok.text;
         this.#i += 1;
-        base = `${base}.${[...field].map((c) => NORMALIZE[c] ?? c).join("")}`;
+        const swizzle = [...field].map((c) => NORMALIZE[c] ?? c).join("");
+        base = { code: `${base.code}.${swizzle}`, type: vector(swizzle.length, element(base.type)) };
         continue;
       }
       if (this.#take("[")) {
         const index = this.#expression(0);
         this.#expect("]");
-        base = `${base}[${index}]`;
+        // WGSL will not index with anything but an integer.
+        base = { code: `${base.code}[${asInt(index)}]`, type: element(base.type) };
         continue;
       }
       break;
@@ -441,62 +588,102 @@ class Translator {
     return base;
   }
 
-  #primary(): string {
+  #primary(): Expr {
     const tok = this.#tok;
     if (tok.kind === "number") {
       this.#i += 1;
       // WGSL will not implicitly widen an integer literal in every position, so
       // anything that was a float in GLSL stays a float here.
-      return tok.text.includes(".") || /[eE]/.test(tok.text) ? tok.text : `${tok.text}.0`;
+      const whole = !tok.text.includes(".") && !/[eE]/.test(tok.text);
+      return whole ? { code: `${tok.text}.0`, type: "f32", integer: tok.text } : { code: tok.text, type: "f32" };
     }
     if (tok.kind === "punct" && tok.text === "(") {
       this.#i += 1;
       const inner = this.#expression(0);
       this.#expect(")");
-      return `(${inner})`;
+      return { code: `(${inner.code})`, type: inner.type };
     }
     if (tok.kind === "name") {
       const name = tok.text;
       this.#i += 1;
       if (this.#take("(")) return this.#call(name);
-      if (name === "true" || name === "false") return name;
+      if (name === "true" || name === "false") return { code: name, type: "bool" };
       if (SAMPLER_SET.has(name)) this.used.add(name);
-      return name;
+      return { code: name, type: this.#vars.get(name) ?? "" };
     }
     throw new SyntaxError(`glsl: unexpected ${JSON.stringify(tok.text)} at ${tok.at}`);
   }
 
-  #call(name: string): string {
-    const args: string[] = [];
+  /**
+   * Splats scalar arguments to match the widest vector among the ones that
+   * WGSL requires to agree. Arguments of unknown type are left alone: guessing
+   * would turn a shader that compiles into one that does not.
+   */
+  #unify(name: string, args: Expr[]): Expr[] {
+    const indices = UNIFY[name];
+    if (!indices) return args;
+    let size = 0;
+    for (const index of indices) {
+      const type = args[index]?.type ?? "";
+      if (element(type) === "f32") size = Math.max(size, width(type));
+    }
+    if (size < 2) return args;
+    const wide = vector(size, "f32");
+    return args.map((arg, index) => {
+      if (!indices.includes(index) || arg.type !== "f32") return arg;
+      return { code: `${wide}(${arg.code})`, type: wide };
+    });
+  }
+
+  #call(called: string): Expr {
+    const args: Expr[] = [];
     if (!this.#take(")")) {
       do args.push(this.#expression(0)); while (this.#take(","));
       this.#expect(")");
     }
 
-    if (name === "texture" || name === "texture2D" || name === "texture3D") {
-      const sampler = args[0]!.trim();
+    if (called === "texture" || called === "texture2D" || called === "texture3D") {
+      const sampler = args[0]!.code.trim();
       this.used.add(sampler);
       // Sampling in a fragment shader with an explicit level keeps the call
       // uniform-safe inside the conditionals presets like to wrap it in.
-      return `textureSampleLevel(${sampler}_tex, ${sampler}_smp, ${args[1]}, 0.0)`;
+      return {
+        code: `textureSampleLevel(${sampler}_tex, ${sampler}_smp, ${args[1]?.code}, 0.0)`,
+        type: "vec4<f32>",
+      };
     }
-    if (name === "textureLod") {
-      const sampler = args[0]!.trim();
+    if (called === "textureLod") {
+      const sampler = args[0]!.code.trim();
       this.used.add(sampler);
-      return `textureSampleLevel(${sampler}_tex, ${sampler}_smp, ${args[1]}, ${args[2] ?? "0.0"})`;
+      return {
+        code: `textureSampleLevel(${sampler}_tex, ${sampler}_smp, ${args[1]?.code}, ${args[2]?.code ?? "0.0"})`,
+        type: "vec4<f32>",
+      };
     }
-    if (name in TYPES) return `${TYPES[name]!}(${args.join(", ")})`;
-    if (name === "mod") return `((${args[0]}) - (${args[1]}) * floor((${args[0]}) / (${args[1]})))`;
-    if (name === "atan") return args.length === 2 ? `atan2(${args[0]}, ${args[1]})` : `atan(${args[0]})`;
-    if (name === "greaterThan") return `((${args[0]}) > (${args[1]}))`;
-    if (name === "greaterThanEqual") return `((${args[0]}) >= (${args[1]}))`;
-    if (name === "lessThan") return `((${args[0]}) < (${args[1]}))`;
-    if (name === "lessThanEqual") return `((${args[0]}) <= (${args[1]}))`;
-    if (name === "equal") return `((${args[0]}) == (${args[1]}))`;
-    if (name === "notEqual") return `((${args[0]}) != (${args[1]}))`;
-    if (name === "any" || name === "all") return `${name}(${args.join(", ")})`;
-    if (name in RENAMED) return `${RENAMED[name]!}(${args.join(", ")})`;
-    if (PASSTHROUGH.has(name)) return `${name}(${args.join(", ")})`;
+    if (called in TYPES) {
+      return { code: `${TYPES[called]!}(${args.map((arg) => arg.code).join(", ")})`, type: TYPES[called]! };
+    }
+    if (called === "mod") {
+      const [left, right] = [args[0]!, args[1]!];
+      const size = Math.max(width(left.type), width(right.type));
+      return {
+        code: `((${left.code}) - (${right.code}) * floor((${left.code}) / (${right.code})))`,
+        type: vector(size, width(left.type) >= width(right.type) ? element(left.type) : element(right.type)),
+      };
+    }
+    if (called in COMPARISON) {
+      const size = Math.max(width(args[0]!.type), width(args[1]!.type));
+      return { code: `((${args[0]!.code}) ${COMPARISON[called]} (${args[1]!.code}))`, type: vector(size, "bool") };
+    }
+    if (called === "any" || called === "all") return { code: `${called}(${args[0]!.code})`, type: "bool" };
+
+    // `atan` is the one builtin whose arity picks the WGSL name.
+    const name = called === "atan" && args.length === 2 ? "atan2" : called;
+    const unified = this.#unify(name, args);
+    const joined = unified.map((arg) => arg.code).join(", ");
+    const type = SCALAR_RESULT.has(name) ? "f32" : name === "cross" ? "vec3<f32>" : unified[0]?.type ?? "";
+    if (name in RENAMED) return { code: `${RENAMED[name]!}(${joined})`, type };
+    if (PASSTHROUGH.has(name)) return { code: `${name}(${joined})`, type };
     throw new SyntaxError(`glsl: unsupported function ${name}`);
   }
 }
