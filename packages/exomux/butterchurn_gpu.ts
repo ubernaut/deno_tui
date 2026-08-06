@@ -342,6 +342,19 @@ export class ExomuxButterchurnGpu {
   #readback: GPUBuffer;
   #readbackBytesPerRow: number;
 
+  /**
+   * Texture views, cached per texture.
+   *
+   * Views and bind groups are GPU resources that only come back on garbage
+   * collection, and the render path needs roughly twenty-five views and ten
+   * bind groups a frame. Recreating them every frame accumulated faster than
+   * collection freed them until the device ran out of memory and stopped
+   * producing frames — which showed up as the background freezing.
+   */
+  readonly #views = new WeakMap<GPUTexture, Map<string, GPUTextureView>>();
+  /** Bind groups, cached by the resources they point at. Cleared on resize. */
+  readonly #bindGroups = new Map<string, GPUBindGroup>();
+
   readonly #noise = new Map<string, GPUTexture>();
   readonly #samplers = new Map<string, GPUSampler>();
   readonly #uniform: GPUBuffer;
@@ -356,7 +369,14 @@ export class ExomuxButterchurnGpu {
   readonly #pipelines = new Map<string, PresetPipelines | null>();
   #meshBuffer: GPUBuffer | undefined;
   #meshVertices = 0;
+  #meshData = new Float32Array(0);
   #waveBuffer: GPUBuffer | undefined;
+  #waveData = new Float32Array(0);
+  readonly #directionData = new Float32Array(4);
+  /** Increments each time a resolved frame lands, so callers can spot a stall. */
+  #readbacks = 0;
+  /** Set when the device is lost; every later render is refused. */
+  #lost = false;
 
   /** Latest resolved frame as RGBA bytes, or undefined until one lands. */
   #latest: Uint8Array | undefined;
@@ -428,11 +448,26 @@ export class ExomuxButterchurnGpu {
     this.#resolveTexture = this.#createResolveTarget();
     this.#readbackBytesPerRow = alignBytesPerRow(this.#width * 4);
     this.#readback = this.#createReadback();
+    device.lost.then(() => {
+      this.#lost = true;
+    }).catch(() => {
+      this.#lost = true;
+    });
   }
 
   /** Latest resolved frame, RGBA per cell, row-major. Undefined before the first. */
   get latest(): Uint8Array | undefined {
     return this.#latest;
+  }
+
+  /** Frames that have made it back from the GPU; a stalled count means trouble. */
+  get readbacks(): number {
+    return this.#readbacks;
+  }
+
+  /** True once the device is gone and this renderer can no longer produce frames. */
+  get lost(): boolean {
+    return this.#lost;
   }
 
   setSize(width: number, height: number): void {
@@ -464,6 +499,7 @@ export class ExomuxButterchurnGpu {
     this.#readback.destroy();
     this.#readbackBytesPerRow = alignBytesPerRow(this.#width * 4);
     this.#readback = this.#createReadback();
+    this.#bindGroups.clear();
     this.#latest = undefined;
   }
 
@@ -490,6 +526,7 @@ export class ExomuxButterchurnGpu {
 
   /** Renders one frame and queues the resolved result for readback. */
   render(name: string, frame: ExomuxButterchurnGpuFrame): boolean {
+    if (this.#lost) return false;
     const pipelines = this.#pipelines.get(name);
     if (!pipelines) return false;
     const device = this.#device;
@@ -505,14 +542,17 @@ export class ExomuxButterchurnGpu {
     // 1. Warp: the previous frame resampled through the mesh and warp shader.
     const warpPass = encoder.beginRenderPass({
       colorAttachments: [{
-        view: target.createView(),
+        view: this.#view(target),
         loadOp: "clear",
         storeOp: "store",
         clearValue: { r: 0, g: 0, b: 0, a: 1 },
       }],
     });
     warpPass.setPipeline(pipelines.warp);
-    warpPass.setBindGroup(0, this.#presetBindGroup(pipelines.warp, pipelines.warpSamplers, source));
+    warpPass.setBindGroup(
+      0,
+      this.#presetBindGroup(`${name}:warp:${this.#mainIndex}`, pipelines.warp, pipelines.warpSamplers, source),
+    );
     warpPass.setVertexBuffer(0, this.#meshBuffer!);
     warpPass.draw(this.#meshVertices);
     warpPass.end();
@@ -520,7 +560,7 @@ export class ExomuxButterchurnGpu {
     // 2. Waveform, drawn straight onto the warped frame.
     if (frame.waveCount > 1) {
       const wavePass = encoder.beginRenderPass({
-        colorAttachments: [{ view: target.createView(), loadOp: "load", storeOp: "store" }],
+        colorAttachments: [{ view: this.#view(target), loadOp: "load", storeOp: "store" }],
       });
       wavePass.setPipeline(this.#wavePipeline());
       wavePass.setBindGroup(0, this.#waveBindGroup());
@@ -539,14 +579,17 @@ export class ExomuxButterchurnGpu {
     // 4. Composite through the preset's own shader.
     const compPass = encoder.beginRenderPass({
       colorAttachments: [{
-        view: this.#resolveIntermediate().createView(),
+        view: this.#view(this.#resolveIntermediate()),
         loadOp: "clear",
         storeOp: "store",
         clearValue: { r: 0, g: 0, b: 0, a: 1 },
       }],
     });
     compPass.setPipeline(pipelines.comp);
-    compPass.setBindGroup(0, this.#presetBindGroup(pipelines.comp, pipelines.compSamplers, target));
+    compPass.setBindGroup(
+      0,
+      this.#presetBindGroup(`${name}:comp:${1 - this.#mainIndex}`, pipelines.comp, pipelines.compSamplers, target),
+    );
     compPass.draw(3);
     compPass.end();
 
@@ -575,6 +618,21 @@ export class ExomuxButterchurnGpu {
   }
 
   // ── resources ─────────────────────────────────────────────────────────────
+
+  /** A cached view of one texture; the cache is keyed by view dimension. */
+  #view(texture: GPUTexture, dimension: GPUTextureViewDimension = "2d"): GPUTextureView {
+    let byDimension = this.#views.get(texture);
+    if (!byDimension) {
+      byDimension = new Map();
+      this.#views.set(texture, byDimension);
+    }
+    let view = byDimension.get(dimension);
+    if (!view) {
+      view = texture.createView({ dimension });
+      byDimension.set(dimension, view);
+    }
+    return view;
+  }
 
   #createTarget(width: number, height: number): GPUTexture {
     return this.#device.createTexture({
@@ -640,20 +698,29 @@ export class ExomuxButterchurnGpu {
     }
   }
 
-  #presetBindGroup(pipeline: GPURenderPipeline, samplers: readonly string[], main: GPUTexture): GPUBindGroup {
+  #presetBindGroup(
+    key: string,
+    pipeline: GPURenderPipeline,
+    samplers: readonly string[],
+    main: GPUTexture,
+  ): GPUBindGroup {
+    const cached = this.#bindGroups.get(key);
+    if (cached) return cached;
     const entries: GPUBindGroupEntry[] = [{ binding: 0, resource: { buffer: this.#uniform } }];
     samplers.forEach((name, index) => {
       const binding = SAMPLER_BINDINGS[name]!;
       entries.push({
         binding: index * 2 + 1,
-        resource: this.#textureFor(name, main).createView({ dimension: binding.dimension }),
+        resource: this.#view(this.#textureFor(name, main), binding.dimension),
       });
       entries.push({
         binding: index * 2 + 2,
         resource: this.#samplers.get(`${binding.address}:${binding.filter}`)!,
       });
     });
-    return this.#device.createBindGroup({ layout: pipeline.getBindGroupLayout(0), entries });
+    const group = this.#device.createBindGroup({ layout: pipeline.getBindGroupLayout(0), entries });
+    this.#bindGroups.set(key, group);
+    return group;
   }
 
   // ── passes ────────────────────────────────────────────────────────────────
@@ -667,8 +734,25 @@ export class ExomuxButterchurnGpu {
       });
       this.#directionBuffers[index] = buffer;
     }
-    this.#device.queue.writeBuffer(buffer, 0, new Float32Array(values));
+    for (let index = 0; index < 4; index += 1) this.#directionData[index] = values[index] ?? 0;
+    this.#device.queue.writeBuffer(buffer, 0, this.#directionData);
     return buffer;
+  }
+
+  /** Cached bind group for the blur and resolve passes. */
+  #utilityBindGroup(key: string, input: GPUTexture, sampler: GPUSampler, buffer: GPUBuffer): GPUBindGroup {
+    const cached = this.#bindGroups.get(key);
+    if (cached) return cached;
+    const group = this.#device.createBindGroup({
+      layout: this.#utilityLayout,
+      entries: [
+        { binding: 0, resource: this.#view(input) },
+        { binding: 1, resource: sampler },
+        { binding: 2, resource: { buffer } },
+      ],
+    });
+    this.#bindGroups.set(key, group);
+    return group;
   }
 
   #blurLevel(encoder: GPUCommandEncoder, source: GPUTexture, level: number): void {
@@ -688,17 +772,10 @@ export class ExomuxButterchurnGpu {
         level * 2 + pass,
         [direction[0]!, direction[1]!, 1 / width, 1 / height],
       );
-      const bindGroup = this.#device.createBindGroup({
-        layout: this.#utilityLayout,
-        entries: [
-          { binding: 0, resource: input.createView() },
-          { binding: 1, resource: sampler },
-          { binding: 2, resource: { buffer } },
-        ],
-      });
+      const bindGroup = this.#utilityBindGroup(`blur:${level}:${pass}:${this.#mainIndex}`, input, sampler, buffer);
       const renderPass = encoder.beginRenderPass({
         colorAttachments: [{
-          view: output.createView(),
+          view: this.#view(output),
           loadOp: "clear",
           storeOp: "store",
           clearValue: { r: 0, g: 0, b: 0, a: 1 },
@@ -714,17 +791,15 @@ export class ExomuxButterchurnGpu {
   #resolveToCells(encoder: GPUCommandEncoder, copyOut: boolean): void {
     // xy is the source footprint one output cell covers; zw the output texel.
     const buffer = this.#directionBuffer(6, [1 / this.#width, 1 / this.#height, 1 / this.#width, 1 / this.#height]);
-    const bindGroup = this.#device.createBindGroup({
-      layout: this.#utilityLayout,
-      entries: [
-        { binding: 0, resource: this.#resolveIntermediate().createView() },
-        { binding: 1, resource: this.#samplers.get("clamp:linear")! },
-        { binding: 2, resource: { buffer } },
-      ],
-    });
+    const bindGroup = this.#utilityBindGroup(
+      "resolve",
+      this.#resolveIntermediate(),
+      this.#samplers.get("clamp:linear")!,
+      buffer,
+    );
     const pass = encoder.beginRenderPass({
       colorAttachments: [{
-        view: this.#resolveTexture.createView(),
+        view: this.#view(this.#resolveTexture),
         loadOp: "clear",
         storeOp: "store",
         clearValue: { r: 0, g: 0, b: 0, a: 1 },
@@ -759,6 +834,7 @@ export class ExomuxButterchurnGpu {
         }
         buffer.unmap();
         this.#latest = out;
+        this.#readbacks += 1;
       })
       .catch(() => {
         // A destroyed buffer or a lost device; the caller falls back.
@@ -860,7 +936,8 @@ export class ExomuxButterchurnGpu {
     const gridY = frame.meshHeight;
     const vertices = gridX * gridY * 6;
     const stride = 8; // x, y, u, v, r, g, b, a
-    const data = new Float32Array(vertices * stride);
+    if (this.#meshData.length < vertices * stride) this.#meshData = new Float32Array(vertices * stride);
+    const data = this.#meshData;
     let offset = 0;
     const emit = (ix: number, iy: number): void => {
       const meshOffset = (iy * (gridX + 1) + ix) * 2;
@@ -884,20 +961,22 @@ export class ExomuxButterchurnGpu {
         emit(ix, iy + 1);
       }
     }
-    if (!this.#meshBuffer || this.#meshBuffer.size < data.byteLength) {
+    const meshBytes = vertices * stride * 4;
+    if (!this.#meshBuffer || this.#meshBuffer.size < meshBytes) {
       this.#meshBuffer?.destroy();
       this.#meshBuffer = this.#device.createBuffer({
-        size: data.byteLength,
+        size: meshBytes,
         usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
       });
     }
-    this.#device.queue.writeBuffer(this.#meshBuffer, 0, data);
+    this.#device.queue.writeBuffer(this.#meshBuffer, 0, data, 0, vertices * stride);
     this.#meshVertices = vertices;
   }
 
   #writeWave(frame: ExomuxButterchurnGpuFrame): void {
     const count = Math.max(2, frame.waveCount);
-    const data = new Float32Array(count * 8);
+    if (this.#waveData.length < count * 8) this.#waveData = new Float32Array(count * 8);
+    const data = this.#waveData;
     for (let index = 0; index < count; index += 1) {
       const at = index * 8;
       data[at] = frame.wave[index * 2] ?? 0;
@@ -909,14 +988,15 @@ export class ExomuxButterchurnGpu {
       data[at + 6] = frame.waveColor[2];
       data[at + 7] = frame.waveColor[3];
     }
-    if (!this.#waveBuffer || this.#waveBuffer.size < data.byteLength) {
+    const waveBytes = count * 8 * 4;
+    if (!this.#waveBuffer || this.#waveBuffer.size < waveBytes) {
       this.#waveBuffer?.destroy();
       this.#waveBuffer = this.#device.createBuffer({
-        size: data.byteLength,
+        size: waveBytes,
         usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
       });
     }
-    this.#device.queue.writeBuffer(this.#waveBuffer, 0, data);
+    this.#device.queue.writeBuffer(this.#waveBuffer, 0, data, 0, count * 8);
   }
 
   #wavePipelineCache: GPURenderPipeline | undefined;

@@ -277,6 +277,18 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Fixed
 
+- The butterchurn background froze after a few minutes on the GPU path. Its render graph created a texture view and a
+  bind group for every resource it touched on every frame — roughly thirty-five GPU objects at 8 Hz — and those are only
+  released on garbage collection. The driver's object budget ran out, after which every allocation failed, readback
+  stopped, and the desktop sat on whatever frame it had last resolved. Because the budget is device-wide, it also left
+  the GPU unusable for other processes on the machine until the client was restarted. Views and bind groups are cached
+  now, and the per-frame vertex staging arrays are reused rather than reallocated; a steady frame allocates nothing.
+- A GPU that stops delivering frames now falls back to the software renderer instead of leaving a still image on the
+  desktop, and a lost device is detected rather than retried forever.
+- A preset that renders nothing is skipped after two seconds rather than holding its fifteen-second slot. The rotation
+  is selected against the GPU renderer, so on the software fallback a fair number of its presets resolve to an empty
+  field, which was indistinguishable from a frozen desktop.
+
 - Exomux's desktop repaint no longer saturates the render loop, which was making every animated background stutter —
   advancing, stalling, advancing — a few times a second, and worsening the longer a session ran as overgrowth and
   accumulated effects added painted cells. Measured on a 200x50 desktop, one full repaint cost 33ms on average (73ms at

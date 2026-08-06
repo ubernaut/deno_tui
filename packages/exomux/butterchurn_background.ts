@@ -112,6 +112,27 @@ const MIN_WAVE_ALPHA = 0.5;
  */
 const MAX_DECAY = 0.99;
 /**
+ * Frames without a resolved GPU frame before the field gives up on the device.
+ *
+ * Readback is asynchronous and skips a frame whenever the previous map is still
+ * in flight, so a couple of still frames is normal. Several seconds of them is
+ * not, and the alternative to noticing is a background frozen on whatever it
+ * last managed to draw.
+ */
+const GPU_STALL_FRAMES = 12;
+/**
+ * Frames a preset may render almost nothing before the field moves on.
+ *
+ * The rotation is selected against the GPU renderer, so on the software
+ * fallback a good number of its presets resolve to nothing at all — and a
+ * preset that draws nothing for its fifteen-second slot is indistinguishable
+ * from a frozen desktop. Skipping ahead keeps something on screen whichever
+ * renderer is running, and costs nothing when the preset is fine.
+ */
+const DEAD_PRESET_FRAMES = 16;
+/** Share of the desktop a preset must reach to count as rendering at all. */
+const DEAD_PRESET_COVERAGE = 0.01;
+/**
  * Mean ink the software path steers the field toward.
  *
  * MilkDrop keeps a feedback loop bounded through its composite shader, its
@@ -230,6 +251,11 @@ export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
   #gpu: ExomuxButterchurnGpu | undefined;
   #gpuState: "idle" | "starting" | "ready" | "unavailable" = "idle";
   #gpuPresets = new Map<string, boolean>();
+  /** Readback count last seen, and how many frames it has sat still. */
+  #gpuReadbacks = -1;
+  #gpuStall = 0;
+  /** Consecutive frames the active preset has rendered essentially nothing. */
+  #deadFrames = 0;
   readonly #q = new Float32Array(32);
 
   #time = 0;
@@ -319,6 +345,7 @@ export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
     if (this.#width > 0) this.#preset.setSize(this.#width, this.#height);
     this.#blend = 0;
     this.#heldSeconds = 0;
+    this.#deadFrames = 0;
   }
 
   setPointer(point: ExomuxBackgroundPoint, now = performance.now()): void {
@@ -374,10 +401,12 @@ export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
     // Frames are 125 ms apart; scaling by the real delta keeps motion
     // rate-independent when the desktop stalls or the terminal resizes.
     const frames = elapsedMs / FRAME_BASELINE_MS;
-    if (this.#renderOnGpu(input, audio)) return true;
-    this.#warpPass(frames);
-    this.#drawWaves(audio, frames);
-    this.#drawPointer(bounds, now, frames);
+    if (!this.#renderOnGpu(input, audio)) {
+      this.#warpPass(frames);
+      this.#drawWaves(audio, frames);
+      this.#drawPointer(bounds, now, frames);
+    }
+    this.#skipDeadPreset();
     return true;
   }
 
@@ -563,10 +592,50 @@ export class ExomuxButterchurnField implements ExomuxAnimatedBackground {
     });
 
     // The readback lands a frame late, so the ink buffer keeps the last
-    // resolved image until the next one arrives.
+    // resolved image until the next one arrives. A count that stops moving
+    // means no frame is ever arriving again — a lost device, a rejected map —
+    // and continuing would leave a still image on the desktop indefinitely.
+    // Falling back to the software renderer keeps the background alive.
+    if (gpu.readbacks === this.#gpuReadbacks) {
+      this.#gpuStall += 1;
+      if (this.#gpuStall > GPU_STALL_FRAMES || gpu.lost) {
+        this.#gpu = undefined;
+        this.#gpuState = "unavailable";
+        gpu.destroy();
+        return false;
+      }
+    } else {
+      this.#gpuReadbacks = gpu.readbacks;
+      this.#gpuStall = 0;
+    }
+
     const pixels = gpu.latest;
     if (pixels) this.#absorb(pixels);
     return true;
+  }
+
+  /**
+   * Moves on from a preset that is drawing nothing.
+   *
+   * Measured on the ink buffer rather than the rendered cells so it costs one
+   * pass over the field and reflects whichever renderer produced it.
+   */
+  #skipDeadPreset(): void {
+    if (!this.#autoCycle) return;
+    const ink = this.#ink;
+    const cells = this.#width * this.#height;
+    if (cells === 0) return;
+    let lit = 0;
+    for (let index = 0; index < cells; index += 1) {
+      const offset = index * 3;
+      if (ink[offset]! > MIN_INK || ink[offset + 1]! > MIN_INK || ink[offset + 2]! > MIN_INK) lit += 1;
+    }
+    if (lit / cells >= DEAD_PRESET_COVERAGE) {
+      this.#deadFrames = 0;
+      return;
+    }
+    this.#deadFrames += 1;
+    if (this.#deadFrames >= DEAD_PRESET_FRAMES) this.nextPreset();
   }
 
   /** Copies a resolved GPU frame into the ink buffer the rasterizer reads. */

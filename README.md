@@ -34,7 +34,7 @@ deno task exomux            # or: ./visualization exomux
 | Overgrowth           | Organic backgrounds slowly reclaim idle windows and retreat when focused                      |
 | Network panel        | Remembered SSH hosts and live Tailscale devices, one keystroke to spawn a shell               |
 
-It is a real package rather than an example: `packages/exomux` carries its own `deno.json`, its own `deno.lock`, and 275
+It is a real package rather than an example: `packages/exomux` carries its own `deno.json`, its own `deno.lock`, and 277
 tests, and it reaches the toolkit only through the public entrypoints listed below — nothing in it imports `src/`. That
 constraint is the point; Exomux is the standing proof that the published API is sufficient to build a non-trivial
 application, and every gap it hit became a library export.
