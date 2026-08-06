@@ -42,6 +42,10 @@ back asynchronously, landing one frame late.
 **Skipping presets.** Clicking bare desktop advances to the next preset; `Ctrl-N [` and `Ctrl-N ]` step backwards and
 forwards. Presets otherwise auto-cycle every fifteen seconds, and one that renders nothing is skipped after two.
 
+**Telling which renderer is running.** The status line announces the renderer whenever it changes, and stepping a preset
+reports it alongside the preset name — `Preset 47/289 · gpu · mic:parec: Geiss - Cauldron`. `software renderer` there
+means preset shaders are not running.
+
 **Software fallback.** With no GPU adapter — a headless tailnet host, or `--unstable-webgpu` absent — the field falls
 back to a CPU renderer that runs the equations but not the shaders. It still works, but resolves far fewer presets to an
 image, and a brightness governor stands in for the composite shader that would otherwise keep the feedback loop bounded.

@@ -14,6 +14,8 @@ import {
 
 const THEME = exomuxTheme("midnight");
 const BOUNDS = { column: 4, row: 3, width: 60, height: 20 };
+/** A window rect inside `BOUNDS`, for the click-routing tests. */
+const WINDOW = { column: BOUNDS.column + 10, row: BOUNDS.row + 4, width: 24, height: 8 };
 
 /** Every glyph the field is allowed to paint. */
 const SHADES = new Set(["░", "▒", "▓", "█"]);
@@ -60,11 +62,16 @@ function scriptedAudio(options: ScriptOptions = {}): ExomuxAudioSource {
   };
 }
 
-function run(field: ExomuxButterchurnField, frames: number, startAt = 0): number {
-  let now = startAt;
+function run(
+  field: ExomuxButterchurnField,
+  frames: number,
+  options: { readonly startAt?: number; readonly obstacles?: readonly typeof WINDOW[] } = {},
+): number {
+  let now = options.startAt ?? 0;
+  const obstacles = options.obstacles ?? [];
   for (let frame = 0; frame < frames; frame += 1) {
     now += 125;
-    field.advance({ bounds: BOUNDS, now });
+    field.advance({ bounds: BOUNDS, obstacles, solidObstacles: obstacles, now });
   }
   return now;
 }
@@ -326,7 +333,7 @@ Deno.test("butterchurn: presets cycle on a timer and crossfade rather than snap"
   // The hold is 15 s; at 125 ms a frame that is 120 frames.
   run(field, 100);
   assertEquals(field.presetIndex, 0, "the first preset should still be holding");
-  run(field, 40, 100 * 125);
+  run(field, 40, { startAt: 100 * 125 });
   assertEquals(field.presetIndex, 1, "the field should have advanced one preset");
 
   const held = new ExomuxButterchurnField({ gpu: false, audio: scriptedAudio(), presetIndex: 0, autoCycle: false });
@@ -339,6 +346,26 @@ Deno.test("butterchurn: presets cycle on a timer and crossfade rather than snap"
   assertEquals(wrapping.presetIndex, EXOMUX_BUTTERCHURN_PRESETS.length - 1);
   wrapping.selectPreset(EXOMUX_BUTTERCHURN_PRESETS.length + 2);
   assertEquals(wrapping.presetIndex, 2);
+});
+
+Deno.test("butterchurn: clicking a window is not claimed, so its chrome still works", () => {
+  // The desktop only withholds clicks that land on a window's client area, so
+  // a field claiming everything else eats title bars, borders and their
+  // buttons — and with them dragging, resizing and closing windows.
+  const field = new ExomuxButterchurnField({ gpu: false, audio: scriptedAudio(), presetIndex: 2, autoCycle: false });
+  run(field, 10, { obstacles: [WINDOW] });
+
+  const titleBar = { column: WINDOW.column + 3, row: WINDOW.row };
+  const border = { column: WINDOW.column, row: WINDOW.row + WINDOW.height - 1 };
+  const inside = { column: WINDOW.column + 2, row: WINDOW.row + 2 };
+  for (const point of [titleBar, border, inside]) {
+    assertEquals(field.pick(point.column, point.row), false, `claimed a click at ${point.column},${point.row}`);
+  }
+  assertEquals(field.presetIndex, 2, "and no click over a window changed the preset");
+
+  // Bare desktop beside the window is still claimed.
+  assertEquals(field.pick(BOUNDS.column, BOUNDS.row), true);
+  assertEquals(field.presetIndex, 3);
 });
 
 Deno.test("butterchurn: clicking the bare desktop skips to the next preset", () => {
@@ -387,7 +414,7 @@ Deno.test("butterchurn: a crossfade draws both presets before settling on the ne
   });
   run(blending, 60);
   blending.nextPreset();
-  run(blending, 6, 60 * 125);
+  run(blending, 6, { startAt: 60 * 125 });
   assertEquals(blending.presetIndex, 1);
 
   const straight = new ExomuxButterchurnField({
@@ -548,4 +575,22 @@ Deno.test("releaseExomuxIdleBackgrounds: frees the microphone when another backg
   releaseExomuxIdleBackgrounds(fields);
   assertEquals(disposals, ["butterchurn", "again"]);
   assertEquals([...fields.keys()], ["jungle"]);
+});
+
+Deno.test("butterchurn: reports which renderer is drawing", () => {
+  // The software fallback resolves far fewer presets than the GPU path, so its
+  // symptom — most presets rendering nothing — looks exactly like a broken
+  // background. The field has to be able to say which one it is on.
+  const software = new ExomuxButterchurnField({ gpu: false, audio: scriptedAudio(), autoCycle: false });
+  assertEquals(software.renderer, "software", "gpu off resolves immediately, with no starting window");
+  assertEquals(software.gpuActive, false);
+  run(software, 5);
+  assertEquals(software.renderer, "software", "and stays there");
+
+  // With the GPU wanted, the field reports "starting" until the device request
+  // is answered, rather than claiming a renderer it does not have yet.
+  const wanting = new ExomuxButterchurnField({ audio: scriptedAudio(), autoCycle: false });
+  assertEquals(wanting.renderer, "starting");
+  assertEquals(wanting.gpuActive, false);
+  wanting.dispose();
 });

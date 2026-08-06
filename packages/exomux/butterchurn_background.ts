@@ -263,6 +263,8 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
   #frame = 0;
   #lastFrameAt: number | undefined;
   #pointer: ButterchurnPointer | undefined;
+  /** Window rects from the last advance, so clicks on chrome are not claimed. */
+  #windows: readonly Rectangle[] = [];
   #cells: (ExomuxBackgroundCell | undefined)[][] = [];
 
   /** Mean ink of the previous frame, feeding the brightness governor. */
@@ -354,10 +356,22 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
    *
    * The catalog is 289 presets deep and each holds the screen for fifteen
    * seconds, so the fastest way past one you do not want is a click where
-   * there is nothing else to hit. The desktop only routes a click here when no
-   * window is under it, so this cannot swallow anything else.
+   * there is nothing else to hit.
+   *
+   * Window rects are checked here rather than left to the desktop. The desktop
+   * only withholds a click that landed on a window's *client area*, so a field
+   * that claimed everything else would swallow title bars, borders and their
+   * buttons — taking window dragging, resizing and closing with them.
    */
-  pick(_column: number, _row: number, _now = performance.now()): boolean {
+  pick(column: number, row: number, _now = performance.now()): boolean {
+    for (const rect of this.#windows) {
+      if (
+        column >= rect.column && column < rect.column + rect.width &&
+        row >= rect.row && row < rect.row + rect.height
+      ) {
+        return false;
+      }
+    }
     this.nextPreset();
     return true;
   }
@@ -374,6 +388,22 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
   /** True when the active preset is being rendered by its own shaders. */
   get gpuActive(): boolean {
     return this.#gpuState === "ready" && this.#gpuPresets.get(this.#preset.name) === true;
+  }
+
+  /**
+   * Which renderer is drawing right now.
+   *
+   * Worth surfacing because the two are not equivalent: the software path runs
+   * preset equations but not preset shaders, so it resolves far fewer of the
+   * rotation to an image and drops each preset's colour grading. "starting" is
+   * the brief window before the GPU device has been answered for.
+   */
+  get renderer(): "gpu" | "software" | "starting" {
+    if (this.gpuActive) return "gpu";
+    // A field told not to use the GPU is on the software path from the outset;
+    // only one still waiting on a device request is undecided.
+    if (!this.#wantsGpu) return "software";
+    return this.#gpuState === "idle" || this.#gpuState === "starting" ? "starting" : "software";
   }
 
   /** Releases the shared microphone capture and any GPU resources. */
@@ -398,6 +428,7 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
 
     this.#resize(bounds.width, bounds.height);
     if (this.#width === 0 || this.#height === 0) return false;
+    this.#windows = options.solidObstacles ?? options.obstacles ?? [];
 
     if (!this.#audio && this.#ownsAudio) this.#audio = acquireExomuxAudio();
     const audio = this.#audio?.frame(now) ?? SILENCE;

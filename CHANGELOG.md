@@ -31,6 +31,10 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Added
 
+- The butterchurn background reports which renderer is drawing it. Falling back to the software renderer used to be
+  silent, and its symptom — most of the rotation resolving to nothing — is indistinguishable from a broken background.
+  The desktop now says so in the status line when the renderer changes, and the preset name shown when stepping presets
+  carries the renderer and audio source alongside it.
 - Butterchurn presets can be skipped by hand. Clicking bare desktop advances to the next one, and `Ctrl-N [` /
   `Ctrl-N ]` step backwards and forwards; both wrap. The catalog is 289 presets deep and each holds the screen for
   fifteen seconds, so waiting one out was the only way past it. `ExomuxPresetBackground` is the contract a field opts
@@ -281,6 +285,12 @@ quickly, but the affected entrypoint or module family should be named here.
   asynchronous capture handlers while dropping disabled or removed captured gestures without retargeting releases.
 
 ### Fixed
+
+- Clicking a window's title bar, border or title-bar buttons stopped working while the butterchurn background was
+  selected, taking window dragging, resizing and closing with it. The desktop offers a background first refusal on
+  clicks and only withholds those landing on a window's _client area_, so a field is responsible for not claiming window
+  chrome; butterchurn's skip-preset click claimed everything. It now checks the window rects it already receives each
+  frame and claims only genuinely bare desktop.
 
 - The butterchurn background froze after a few minutes on the GPU path. Its render graph created a texture view and a
   bind group for every resource it touched on every frame — roughly thirty-five GPU objects at 8 Hz — and those are only

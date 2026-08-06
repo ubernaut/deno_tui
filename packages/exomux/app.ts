@@ -518,9 +518,30 @@ export function mountExomuxDesktop(
       return;
     }
     field.selectPreset(field.presetIndex + delta);
-    controller.status.value = `Preset ${field.presetIndex + 1}/${field.presetCount}: ${field.presetName}`;
+    controller.status.value = `Preset ${field.presetIndex + 1}/${field.presetCount} · ${
+      describeBackgroundSource(field)
+    }: ${field.presetName}`;
     metaballRevision.value += 1;
   }, subscriptions.signal);
+
+  // A fallback to the software renderer is the one thing about this that a
+  // user needs told: it happens silently, and its symptom — most presets
+  // rendering nothing — is indistinguishable from the background being broken.
+  let reportedRenderer: string | undefined;
+  const reportBackgroundRenderer = (field: ExomuxAnimatedBackground | undefined): void => {
+    const renderer = (field as ExomuxReportingBackground | undefined)?.renderer;
+    if (renderer === undefined || renderer === "starting") return;
+    if (renderer === reportedRenderer) return;
+    const first = reportedRenderer === undefined;
+    reportedRenderer = renderer;
+    if (renderer === "gpu") {
+      if (!first) controller.status.value = "Butterchurn: preset shaders running on the GPU.";
+      return;
+    }
+    controller.status.value = first
+      ? "Butterchurn: software renderer — no GPU, so fewer presets render."
+      : "Butterchurn: fell back to the software renderer — fewer presets render.";
+  };
 
   let lastInputActivityAt = performance.now();
   const bodyRect = own(
@@ -746,7 +767,9 @@ export function mountExomuxDesktop(
       ...(activeRect ? { activeObstacle: activeRect } : {}),
       now,
     };
-    const advanced = activeBackgroundField()?.advance(frame) ?? metaballs.advance(frame);
+    const active = activeBackgroundField();
+    const advanced = active?.advance(frame) ?? metaballs.advance(frame);
+    reportBackgroundRenderer(active);
     // Both sides must run every tick: `||` would short-circuit the overgrowth
     // sync away on the (near-universal) frames where the field also advanced.
     const overgrew = syncOvergrowth(projection, activeWindowId, now);
@@ -2308,6 +2331,28 @@ function exomuxBackdropColor(cell: ExomuxBackgroundCell | undefined, theme: Exom
 
 /** Reads the desktop background colour behind one absolute desktop cell. */
 type ExomuxBackdrop = (column: number, row: number) => ExomuxRgb;
+
+/**
+ * A background that can say which renderer and audio source it is using.
+ *
+ * Both are worth reporting: the software renderer resolves far fewer presets
+ * than the GPU one, and a field listening to a silent monitor rather than a
+ * microphone looks broken in exactly the same way as one that has frozen.
+ */
+interface ExomuxReportingBackground {
+  readonly renderer?: "gpu" | "software" | "starting";
+  readonly audioLabel?: string;
+}
+
+/** One short phrase naming the renderer and audio source, for the status line. */
+function describeBackgroundSource(field: unknown): string {
+  const reporting = field as ExomuxReportingBackground | undefined;
+  const parts: string[] = [];
+  if (reporting?.renderer === "software") parts.push("software renderer");
+  else if (reporting?.renderer === "gpu") parts.push("gpu");
+  if (reporting?.audioLabel) parts.push(reporting.audioLabel);
+  return parts.length > 0 ? parts.join(" · ") : "background";
+}
 
 /** Paints one complete desktop into pre-styled terminal-cell strings. */
 function renderExomuxDesktop(options: RenderExomuxDesktopOptions): string[][] {
