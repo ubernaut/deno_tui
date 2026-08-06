@@ -287,6 +287,41 @@ export interface ExomuxWindowSettings {
   readonly dimInactive: boolean;
   /** Ask before killing this terminal. */
   readonly confirmClose: boolean;
+  /**
+   * How opaque this window's terminal background is, or
+   * `EXOMUX_OPACITY_INHERIT` to follow the desktop-wide setting.
+   *
+   * At 1 the window paints its own surface colour, as it always has. Below
+   * that, cells the program has not given a background of its own show the
+   * desktop background behind the window, darkened toward the surface colour.
+   */
+  readonly opacity: number;
+}
+
+/** Per-window opacity value meaning "use the desktop-wide setting". */
+export const EXOMUX_OPACITY_INHERIT = -1;
+
+/** Opacity steps offered by both config modals, most opaque first. */
+export const EXOMUX_OPACITY_VALUES: readonly number[] = Object.freeze([1, 0.85, 0.7, 0.55, 0.4, 0.25]);
+
+/** Formats an opacity for a config modal row. */
+function formatOpacity(value: ExomuxSettingValue): string {
+  const opacity = Number(value);
+  if (opacity === EXOMUX_OPACITY_INHERIT) return "Desktop";
+  return opacity >= 1 ? "Opaque" : `${Math.round(opacity * 100)}%`;
+}
+
+/**
+ * Resolves the opacity one window renders at.
+ *
+ * A window may override the desktop-wide value or defer to it, so this is the
+ * single place the two are combined; anything reading `settings.opacity`
+ * directly would render an unresolved sentinel.
+ */
+export function exomuxResolvedOpacity(global: ExomuxGlobalSettings, window?: ExomuxWindowSettings): number {
+  const own = window?.opacity ?? EXOMUX_OPACITY_INHERIT;
+  const resolved = own === EXOMUX_OPACITY_INHERIT ? global.opacity : own;
+  return Number.isFinite(resolved) ? Math.min(1, Math.max(0, resolved)) : 1;
 }
 
 /** Identity of one configurable per-window setting. */
@@ -353,6 +388,13 @@ export const EXOMUX_WINDOW_SETTING_SPECS: readonly ExomuxWindowSettingSpec[] = O
     values: Object.freeze([true, false]),
     format: onOff,
   }),
+  Object.freeze({
+    id: "opacity" as const,
+    label: "Opacity",
+    detail: "Desktop follows the global setting; lower shows the background through this window.",
+    values: Object.freeze([EXOMUX_OPACITY_INHERIT, ...EXOMUX_OPACITY_VALUES]),
+    format: formatOpacity,
+  }),
 ]) as readonly ExomuxWindowSettingSpec[];
 
 /** Factory defaults applied to every terminal window. */
@@ -364,6 +406,7 @@ export function defaultExomuxWindowSettings(): ExomuxWindowSettings {
     wheelLines: 3,
     dimInactive: false,
     confirmClose: true,
+    opacity: EXOMUX_OPACITY_INHERIT,
   });
 }
 
@@ -499,6 +542,15 @@ export interface ExomuxGlobalSettings {
   readonly overgrowFullMs: number;
   /** Window frame vocabulary. */
   readonly borderStyle: ExomuxBorderStyleId;
+  /**
+   * How opaque terminal windows are by default.
+   *
+   * At 1 windows paint their own surface colour. Below that, cells the program
+   * has not given a background of its own show the desktop background behind
+   * the window, darkened toward the surface colour. Individual windows may
+   * override this.
+   */
+  readonly opacity: number;
 }
 
 /** Identity of one configurable desktop-wide setting. */
@@ -530,11 +582,23 @@ export const EXOMUX_GLOBAL_SETTING_SPECS: readonly ExomuxGlobalSettingSpec[] = O
     values: Object.freeze([...EXOMUX_BORDER_STYLE_IDS]),
     format: (value: ExomuxSettingValue) => String(value),
   }),
+  Object.freeze({
+    id: "opacity" as const,
+    label: "Window opacity",
+    detail: "Below opaque, terminal windows show the desktop background through their text.",
+    values: Object.freeze([...EXOMUX_OPACITY_VALUES]),
+    format: formatOpacity,
+  }),
 ]) as readonly ExomuxGlobalSettingSpec[];
 
 /** Factory defaults for desktop-wide settings. */
 export function defaultExomuxGlobalSettings(): ExomuxGlobalSettings {
-  return Object.freeze({ overgrowInactive: true, overgrowFullMs: 120_000, borderStyle: "thin" as const });
+  return Object.freeze({
+    overgrowInactive: true,
+    overgrowFullMs: 120_000,
+    borderStyle: "thin" as const,
+    opacity: 1,
+  });
 }
 
 /** Strictly normalizes persisted desktop-wide settings. */

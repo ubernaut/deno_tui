@@ -2822,7 +2822,7 @@ Deno.test("Exomux global settings normalize and reject unknown values", () => {
   assertEquals(normalizeExomuxGlobalSettings({ overgrowInactive: "yes" }), defaults);
   assertEquals(
     normalizeExomuxGlobalSettings({ overgrowInactive: false, overgrowFullMs: 30_000 }),
-    { overgrowInactive: false, overgrowFullMs: 30_000, borderStyle: "thin" },
+    { overgrowInactive: false, overgrowFullMs: 30_000, borderStyle: "thin", opacity: 1 },
   );
   // Unlisted durations fall back rather than being trusted.
   assertEquals(normalizeExomuxGlobalSettings({ overgrowFullMs: 7 }).overgrowFullMs, defaults.overgrowFullMs);
@@ -3651,6 +3651,115 @@ Deno.test("Exomux routes Ctrl+C to the focused terminal and quits only without o
     assertEquals(controller.quitModalVisible.peek(), true);
     assertEquals(client.inputs.length, 0);
     controller.cancelQuitModal();
+  } finally {
+    harness.destroy();
+    await controller.dispose();
+  }
+});
+
+/** Background colour of one painted cell, read out of the frame buffer. */
+function cellBackground(harness: { canvas: { frameBuffer: (string | Uint8Array)[][] } }, column: number, row: number) {
+  const value = harness.canvas.frameBuffer[row]?.[column] ?? "";
+  const text = typeof value === "string" ? value : new TextDecoder().decode(value);
+  const match = /48;2;(\d+);(\d+);(\d+)/.exec(text);
+  return match ? [Number(match[1]), Number(match[2]), Number(match[3])] as const : undefined;
+}
+
+Deno.test("Exomux paints the desktop background through a transparent terminal window", async () => {
+  const shell = session("shell-1", "shell", 1);
+  const client = new FakeExomuxClient([shell]);
+  const controller = await createExomuxController({ client, initialSessions: [shell] });
+  const mount: ExomuxAppMountRef = {};
+  const { tuiOptions: _tuiOptions, ...headlessOptions } = createExomuxTerminalOptions(controller, mount);
+  const harness = await createTestTerminalApp({ ...headlessOptions, size: { columns: 110, rows: 32 } });
+
+  try {
+    const mounted = mount.current;
+    assert(mounted);
+    await mounted.whenIdle();
+    // Biomech is deterministic and covers the whole desktop, so the window has
+    // something to show through it at every cell rather than the sparse hits a
+    // rain field would leave.
+    controller.setBackground("biomech");
+    harness.app.start();
+    await mounted.whenIdle();
+
+    const terminal = mounted.windowProjection.peek().windows.find((window) => window.id === exomuxWindowId("shell-1"));
+    assert(terminal);
+    const theme = controller.theme.peek();
+    // Sampled inside the client rect, skipping anything another window is
+    // floating over — the session manager sits on top of this one — so only
+    // this terminal's own ground is measured.
+    const others = mounted.windowProjection.peek().windows.filter((window) => window.id !== terminal.id);
+    const covered = (column: number, row: number): boolean =>
+      others.some((window) =>
+        column >= window.rect.column && column < window.rect.column + window.rect.width &&
+        row >= window.rect.row && row < window.rect.row + window.rect.height
+      );
+    const sample = (): (readonly number[] | undefined)[] => {
+      const out: (readonly number[] | undefined)[] = [];
+      const { column: left, row: top, width, height } = terminal.clientRect;
+      for (let row = top + 1; row < top + height - 1; row += 1) {
+        for (let column = left + 1; column < left + width - 1; column += 1) {
+          if (covered(column, row)) continue;
+          out.push(cellBackground(harness, column, row));
+        }
+      }
+      return out;
+    };
+
+    // Opaque is the shipped default: client cells are the window surface, bar
+    // the cursor, which paints the accent colour wherever it happens to sit.
+    const opaque = sample().filter(Boolean);
+    assert(opaque.length > 0, "the terminal client area should be painted");
+    const opaqueColours = new Set(opaque.map((rgb) => String(rgb)));
+    opaqueColours.delete(String([...theme.accent]));
+    assertEquals(
+      [...opaqueColours],
+      [String([...theme.surface])],
+      "an opaque window must not show the desktop",
+    );
+
+    // Turn the desktop translucent and the same cells pick up the background.
+    // This also exercises the animation gate: a focal background stops
+    // advancing once windows cover the desktop, and transparency is exactly
+    // the case where it must keep going.
+    while (controller.globalSettings.peek().opacity === 1) controller.cycleGlobalSetting("opacity");
+    const opacity = controller.globalSettings.peek().opacity;
+    assert(opacity < 1);
+    await waitForCondition(() => mounted.metaballFrameRevision() > 2, 5_000);
+    await waitForCondition(() => {
+      const colours = new Set(sample().filter(Boolean).map((rgb) => String(rgb)));
+      colours.delete(String([...theme.accent]));
+      return colours.size > 1;
+    }, 5_000);
+
+    const translucent = sample().filter(Boolean);
+    const distinct = new Set(translucent.map((rgb) => String(rgb)));
+    assert(distinct.size > 1, `a transparent window should vary with the background, saw ${distinct.size} colours`);
+    // Every cell still sits between the desktop background and the window
+    // surface: transparency tints toward the backdrop, it does not invent
+    // colours or blow past either end.
+    for (const background of translucent) {
+      for (let channel = 0; channel < 3; channel += 1) {
+        const low = Math.min(theme.background[channel]!, theme.surface[channel]!) - 1;
+        const high = Math.max(255, theme.surface[channel]!);
+        assert(background![channel]! >= low && background![channel]! <= high, `channel ${channel} out of range`);
+      }
+    }
+
+    // A window may opt back out on its own, independent of the desktop.
+    while (controller.windowSettingsFor("shell-1").opacity !== 1) {
+      controller.cycleWindowSetting("shell-1", "opacity");
+    }
+    const restored = new Set<string>();
+    await waitForCondition(() => {
+      restored.clear();
+      for (const rgb of sample()) if (rgb) restored.add(String(rgb));
+      restored.delete(String([...theme.accent]));
+      return restored.size === 1 && restored.has(String([...theme.surface]));
+    }, 3_000);
+    assertEquals([...restored], [String([...theme.surface])], "an overridden window returns to opaque");
   } finally {
     harness.destroy();
     await controller.dispose();

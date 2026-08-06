@@ -31,6 +31,13 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Added
 
+- Terminal windows can be transparent. `opacity` is a new desktop-wide setting and a new per-window override, the latter
+  defaulting to `Desktop` so a window follows the global value until it is pinned. At `Opaque` a window paints its own
+  surface, as before; below that, every cell the program has not given a background of its own is blended from the
+  desktop background toward the surface colour, so characters stay fully legible while their ground shows what is behind
+  the window. Cells a program deliberately coloured are left alone. What shows through is the background field's glyph
+  and colour collapsed to one colour, weighted by the glyph's coverage, since a terminal cell has only one background.
+  Any window below `Opaque` also keeps the desktop background animating, which otherwise stops once windows cover it.
 - Exomux gains a `butterchurn` desktop background: a microphone-reactive MilkDrop visualizer, and the twelfth selectable
   field. It is the ASCII port of butterchurnxr's `asciichurn` rendered natively — `asciichurn` proxies its pixels out to
   Butterchurn's WebGL2 renderer in headless Chromium, which a single compiled binary running over a tailnet cannot do,
@@ -176,6 +183,9 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Changed
 
+- Exomux's desktop repaint now invalidates on desktop-wide and per-window settings changes. Both reach the painter
+  directly — border glyphs, window opacity — and previously only repainted because cycling a setting also rewrote the
+  status line.
 - The butterchurn background renders through the preset's own shaders when a WebGPU adapter is available, and falls back
   to a software renderer that runs the equations but not the shaders when one is not — a headless tailnet host, or
   `--unstable-webgpu` absent. The fallback resolves far fewer presets to an image, and gains a brightness governor

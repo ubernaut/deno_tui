@@ -68,6 +68,25 @@ deno task exomux:audit
 
 `butterchurn-presets` is MIT licensed, Copyright (c) 2013-2018 Jordan Berg.
 
+## Transparent windows
+
+Terminal windows can show the desktop background through their text. `opacity` is a desktop-wide setting in the global
+config modal and a per-window override in the titlebar one; a window ships on `Desktop`, meaning it follows the global
+value, and can be pinned to its own instead.
+
+At `Opaque` a window paints its own surface colour, as it always has. Below that, every cell the program has **not**
+given a background of its own is blended from the desktop background toward the surface colour — so lower opacity means
+a lighter, more see-through window, and higher means darker and more solid. Characters themselves always render at full
+strength; only their ground changes. Cells a program deliberately coloured keep that colour, because a transparent
+window that erased them would wipe out every block of colour on screen.
+
+A terminal cell carries one background colour, so what shows through is the background field's glyph and colour
+collapsed into a single colour, weighted by how much of the cell that glyph covers — the `░▒▓█` ramp the fields use is a
+coverage ramp already.
+
+One consequence worth knowing: the desktop background normally stops animating once windows cover it, which is a real
+saving. Any window below `Opaque` keeps it running, since that is exactly when the background is still on screen.
+
 ## Why this is a separate package
 
 Exomux has its own `deno.json` and its own `deno.lock`, and it is deliberately **not** a Deno workspace member. A

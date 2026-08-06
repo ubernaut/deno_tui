@@ -49,6 +49,7 @@ import {
   type ExomuxBackgroundId,
   type ExomuxBorderGlyphs,
   exomuxBorderGlyphs,
+  exomuxResolvedOpacity,
   type ExomuxRgb,
   exomuxSessionIdFromWindow,
   type ExomuxSessionSummary,
@@ -75,6 +76,7 @@ import { exomuxTerminalForegroundRgb, exomuxTerminalRgb } from "./terminal_palet
 import {
   type ExomuxAnimatedBackground,
   exomuxBackgroundAcceptsPicks,
+  type ExomuxBackgroundCell,
   exomuxBackgroundHasOverlay,
   releaseExomuxIdleBackgrounds,
 } from "./background.ts";
@@ -646,6 +648,24 @@ export function mountExomuxDesktop(
     controller.globalSettings.peek().overgrowInactive &&
     exomuxBackgroundOvergrows(controller.backgroundId.peek());
 
+  /**
+   * True when any window shows the desktop through it.
+   *
+   * The background stops advancing once windows cover the desktop, which is a
+   * real saving — but a transparent window is exactly the case where the
+   * background is still on screen while nothing of it is left uncovered, and
+   * freezing it there would leave a still image behind every terminal.
+   */
+  const transparencyEnabled = (): boolean => {
+    const global = controller.globalSettings.peek();
+    if (global.opacity < 1) return true;
+    for (const window of windowProjection.peek().windows) {
+      const sessionId = exomuxSessionIdFromWindow(window.id);
+      if (sessionId && exomuxResolvedOpacity(global, controller.windowSettingsFor(sessionId)) < 1) return true;
+    }
+    return false;
+  };
+
   /** Recomputes per-window reclaim ratios; returns true when any of them moved. */
   const syncOvergrowth = (
     projection: WorkbenchWindowHostProjection,
@@ -679,7 +699,7 @@ export function mountExomuxDesktop(
     const now = performance.now();
     // Overgrowth keeps advancing even when windows fully occlude the desktop —
     // that is precisely the case where the background is creeping over them.
-    const backdropVisible = exomuxMetaballBackgroundVisible(projection, bodyRect.peek());
+    const backdropVisible = exomuxMetaballBackgroundVisible(projection, bodyRect.peek()) || transparencyEnabled();
     if (!backdropVisible && !overgrowthEnabled()) {
       // Nothing left to animate, but reclaim state from a previous background
       // must still be retired or those windows stay overgrown forever.
@@ -736,6 +756,11 @@ export function mountExomuxDesktop(
         controller.windowHost.commitRevision.value,
         terminalRenderRevision.value,
         metaballRevision.value,
+        // Settings reach the painter directly — border glyphs, window opacity —
+        // so a change to either has to invalidate the frame. Without this the
+        // desktop only repaints because the status line happens to change too.
+        JSON.stringify(controller.globalSettings.value),
+        JSON.stringify(controller.windowSettings.value),
       ];
       for (const session of sessions) {
         const runtime = controller.runtime(session.id);
@@ -2239,6 +2264,33 @@ export function exomuxMetaballBackgroundVisible(
   return false;
 }
 
+/**
+ * Approximate ink coverage of a background glyph.
+ *
+ * A terminal cell holds one background colour, so showing the desktop through a
+ * window means collapsing the background's glyph-plus-colour into a single
+ * colour. The shade ramp the fields use is a coverage ramp already; everything
+ * else — box drawing, letters, streaks — is treated as roughly half covered.
+ */
+const BACKDROP_COVERAGE: Readonly<Record<string, number>> = Object.freeze({
+  " ": 0,
+  "░": 0.25,
+  "▒": 0.5,
+  "▓": 0.75,
+  "█": 1,
+});
+const DEFAULT_BACKDROP_COVERAGE = 0.55;
+
+/** The single colour a background cell reads as beneath a transparent window. */
+function exomuxBackdropColor(cell: ExomuxBackgroundCell | undefined, theme: ExomuxThemeSpec): ExomuxRgb {
+  if (!cell) return theme.background;
+  const coverage = BACKDROP_COVERAGE[cell.char] ?? DEFAULT_BACKDROP_COVERAGE;
+  return mixExomuxRgb(theme.background, cell.foreground, coverage);
+}
+
+/** Reads the desktop background colour behind one absolute desktop cell. */
+type ExomuxBackdrop = (column: number, row: number) => ExomuxRgb;
+
 /** Paints one complete desktop into pre-styled terminal-cell strings. */
 function renderExomuxDesktop(options: RenderExomuxDesktopOptions): string[][] {
   const { bounds, body, projection, controller } = options;
@@ -2273,13 +2325,17 @@ function renderExomuxDesktop(options: RenderExomuxDesktopOptions): string[][] {
   // One rasterization serves both the desktop backdrop and the overgrowth pass,
   // so reclaimed cells line up exactly with the background behind the window.
   const backgroundGrid = options.backgroundField?.rasterizeCells(body, theme);
+  // Transparent windows read the same grid the backdrop is painted from, so
+  // what shows through a window is exactly what surrounds it.
+  const backdrop: ExomuxBackdrop = (column, row) =>
+    exomuxBackdropColor(backgroundGrid?.[row - body.row]?.[column - body.column], theme);
   if (exomuxMetaballBackgroundVisible(projection, body)) {
     if (backgroundGrid) paintBackgroundGrid(painter, body, backgroundGrid, theme);
     else paintMetaballBackground(painter, body, options.metaballs, theme);
   }
 
   for (const window of projection.tiledWindows) {
-    paintWindow(painter, window, controller, options.selectedSessionIndex);
+    paintWindow(painter, window, controller, options.selectedSessionIndex, backdrop);
   }
   const borderGlyphs = exomuxBorderGlyphs(controller.globalSettings.peek().borderStyle);
   for (const separator of projection.separators) {
@@ -2290,7 +2346,7 @@ function renderExomuxDesktop(options: RenderExomuxDesktopOptions): string[][] {
     );
   }
   for (const window of projection.floatingWindows) {
-    paintWindow(painter, window, controller, options.selectedSessionIndex);
+    paintWindow(painter, window, controller, options.selectedSessionIndex, backdrop);
   }
   // Post-window overlay: effects that sit on top of window chrome (puddles,
   // drizzle, splashes) so they remain visible even in tiled layouts.
@@ -2468,6 +2524,7 @@ function paintWindow(
   window: WorkbenchWindowChromeProjection,
   controller: ExomuxController,
   selectedSessionIndex: number,
+  backdrop?: ExomuxBackdrop,
 ): void {
   const theme = controller.theme.peek();
   const border = window.active ? theme.accent : theme.border;
@@ -2528,7 +2585,17 @@ function paintWindow(
     return;
   }
   if (runtime && sessionId) {
-    paintTerminal(painter, window.clientRect, runtime, theme, window.active, controller.windowSettingsFor(sessionId));
+    const settings = controller.windowSettingsFor(sessionId);
+    paintTerminal(
+      painter,
+      window.clientRect,
+      runtime,
+      theme,
+      window.active,
+      settings,
+      exomuxResolvedOpacity(controller.globalSettings.peek(), settings),
+      backdrop,
+    );
   }
 }
 
@@ -2668,6 +2735,8 @@ function paintTerminal(
   theme: ExomuxThemeSpec,
   active: boolean,
   settings: ExomuxWindowSettings,
+  opacity = 1,
+  backdrop?: ExomuxBackdrop,
 ): void {
   const inspection = runtime.screen.inspect();
   const scrollback = runtime.scrollback.inspectViewport();
@@ -2682,6 +2751,10 @@ function paintTerminal(
   const defaultBackground = themed ? theme.surface : RAW_TERMINAL_BACKGROUND;
   const defaultForeground = themed ? theme.text : RAW_TERMINAL_FOREGROUND;
   const dim = settings.dimInactive && !active;
+  // Only cells the program left at its default background become see-through.
+  // A program that painted a background chose that colour, and a transparent
+  // window would otherwise erase every deliberate block of colour on screen.
+  const transparent = backdrop !== undefined && opacity < 1;
   for (let row = 0; row < rect.height; row += 1) {
     const cells = rows[row] ?? [];
     for (let column = 0; column < rect.width; column += 1) {
@@ -2692,7 +2765,12 @@ function paintTerminal(
       // has overwritten or shifted one half of a pair.
       if (cell.continuation) continue;
       const cursor = cursorActive && inspection.cursor.row === row && inspection.cursor.column === column;
-      let background = cursor ? theme.accent : exomuxTerminalRgb(cell.background, true) ?? defaultBackground;
+      const explicit = exomuxTerminalRgb(cell.background, true);
+      const ground = explicit ??
+        (transparent
+          ? mixExomuxRgb(backdrop(rect.column + column, rect.row + row), defaultBackground, opacity)
+          : defaultBackground);
+      let background = cursor ? theme.accent : ground;
       let foreground = cursor
         ? theme.background
         : cell.background === undefined && themed
