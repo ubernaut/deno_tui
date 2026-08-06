@@ -46,6 +46,9 @@ forwards. Presets otherwise auto-cycle every fifteen seconds, and one that rende
 reports it alongside the preset name — `Preset 47/289 · gpu · mic:parec: Geiss - Cauldron`. `software renderer` there
 means preset shaders are not running.
 
+One WebGPU device serves the whole client, from `gpu_device.ts`. Deno allows exactly one per process, and the turbulence
+background wants one too, so a private device meant whichever field initialised second never got one.
+
 **Software fallback.** With no GPU adapter — a headless tailnet host, or `--unstable-webgpu` absent — the field falls
 back to a CPU renderer that runs the equations but not the shaders. It still works, but resolves far fewer presets to an
 image, and a brightness governor stands in for the composite shader that would otherwise keep the feedback loop bounded.

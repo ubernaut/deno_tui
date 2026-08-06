@@ -9,6 +9,7 @@ import {
   mixExomuxRgb,
 } from "./background.ts";
 import type { ExomuxRgb, ExomuxThemeSpec } from "./model.ts";
+import { exomuxGpuDevice } from "./gpu_device.ts";
 
 // ── constants ───────────────────────────────────────────────────────────────
 
@@ -361,12 +362,11 @@ interface TurbulenceGpuContext {
 
 async function createTurbulenceGpu(width: number, height: number): Promise<TurbulenceGpuContext | null> {
   try {
-    // deno-lint-ignore no-explicit-any
-    const nav = (globalThis as any).navigator;
-    if (!nav?.gpu) return null;
-    const adapter: GPUAdapter | null = await nav.gpu.requestAdapter();
-    if (!adapter) return null;
-    const device: GPUDevice = await adapter.requestDevice();
+    // Shared rather than requested here: Deno allows one device per process,
+    // and the butterchurn background needs one as well. Taking a private device
+    // left whichever field initialised second permanently without a GPU.
+    const device = await exomuxGpuDevice();
+    if (!device) return null;
 
     const N = width * height;
     const fSize = N * Q * 4;

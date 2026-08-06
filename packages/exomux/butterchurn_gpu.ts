@@ -24,6 +24,7 @@
 
 import { SAMPLERS, translateShaderBody } from "./glsl_wgsl.ts";
 import { exomuxNoiseSet, type ExomuxNoiseTexture } from "./butterchurn_noise.ts";
+import { exomuxGpuDevice } from "./gpu_device.ts";
 
 /** Internal render size. Chosen so `texsize`-relative offsets behave as authored. */
 const RENDER_WIDTH = 512;
@@ -1125,13 +1126,12 @@ function alignBytesPerRow(bytes: number): number {
 /** All sampler names the shader template exposes. */
 export const EXOMUX_BUTTERCHURN_SAMPLERS: readonly string[] = SAMPLERS;
 
-/** Requests a WebGPU device, returning undefined when none is available. */
-export async function requestExomuxGpuDevice(): Promise<GPUDevice | undefined> {
-  try {
-    const adapter = await navigator.gpu?.requestAdapter();
-    if (!adapter) return undefined;
-    return await adapter.requestDevice();
-  } catch {
-    return undefined;
-  }
+/**
+ * The device this renderer draws with.
+ *
+ * Shared process-wide: Deno allows one device per process, and the turbulence
+ * background wants one too.
+ */
+export function requestExomuxGpuDevice(): Promise<GPUDevice | undefined> {
+  return exomuxGpuDevice();
 }

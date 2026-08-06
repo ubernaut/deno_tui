@@ -286,6 +286,13 @@ quickly, but the affected entrypoint or module family should be named here.
 
 ### Fixed
 
+- The butterchurn background was permanently stuck on its software renderer whenever the background key was used to
+  reach it. Deno allows one WebGPU device per process — a second `requestDevice` throws "Not enough memory left"
+  whatever the GPU has spare — and the turbulence background requested its own and never released it. Turbulence sits
+  immediately before butterchurn in the cycle order, so cycling to butterchurn always went through it first, leaving
+  butterchurn without a device for the rest of the session. Both now share one device through
+  `packages/exomux/gpu_device.ts`, which is how WebGPU is meant to be used regardless.
+
 - Clicking a window's title bar, border or title-bar buttons stopped working while the butterchurn background was
   selected, taking window dragging, resizing and closing with it. The desktop offers a background first refusal on
   clicks and only withholds those landing on a window's _client area_, so a field is responsible for not claiming window
