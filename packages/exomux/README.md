@@ -20,9 +20,9 @@ the ASCII port of [butterchurnxr](https://github.com/ubernaut/butterchurnxr)'s `
 `asciichurn` proxies its pixels out to Butterchurn's WebGL2 renderer in headless Chromium, which a single compiled
 binary running over a tailnet cannot do, so the renderer is rebuilt here against `navigator.gpu`.
 
-The presets are the real ones. `butterchurn_catalog.ts` vendors the upstream `base` + `extra` packs — the same 293
-MilkDrop presets asciichurn reports — with each preset's base values, its three EEL equation blocks, and its warp and
-composite shaders.
+The presets are the real ones. `butterchurn_catalog.ts` vendors every pack the upstream `butterchurn-presets` package
+ships — 472 distinct MilkDrop presets — with each preset's base values, its three EEL equation blocks, and its warp and
+composite shaders already translated to WGSL at build time.
 
 | Module                      | Role                                                                          |
 | --------------------------- | ----------------------------------------------------------------------------- |
@@ -33,14 +33,14 @@ composite shaders.
 | `butterchurn_gpu.ts`        | The render graph: warp pass, blur chain, waveform, composite, readback        |
 | `butterchurn_background.ts` | The desktop field: audio, preset cycling, and the software fallback           |
 
-Preset shaders ship as GLSL — upstream already converted them from MilkDrop's HLSL — and all 500 shader bodies in the
-catalog translate to WGSL, 292 of the 293 presets to shaders the driver accepts. WGSL is the stricter language of the
-two, so the translator infers a type for every expression it builds: GLSL's `clamp(uv, 0.0, 1.0)` applies a scalar
-across a vector and WGSL demands all three agree, and a literal subscript or an `int` counter must stay integral where
-every other literal becomes a float. The graph then runs what MilkDrop runs: the `pixel_eqs` mesh drawn over the
-previous frame through the preset's warp shader, a three-level blur chain (295 presets sample `sampler_blur1`), the
-waveform, and the composite shader where most presets do their colour grading. The finished frame is downsampled to the
-cell grid and read back asynchronously, landing one frame late.
+Preset shaders ship as GLSL — upstream already converted them from MilkDrop's HLSL — and all 724 shader bodies in the
+catalog translate to WGSL at catalog-build time, so an untranslatable shader is a number the build prints rather than a
+silent runtime fallback. WGSL is the stricter language of the two, so the translator infers a type for every expression
+it builds: GLSL's `clamp(uv, 0.0, 1.0)` applies a scalar across a vector and WGSL demands all three agree, and a literal
+subscript or an `int` counter must stay integral where every other literal becomes a float. The graph then runs what
+MilkDrop runs: the `pixel_eqs` mesh drawn over the previous frame through the preset's warp shader, a three-level blur
+chain (295 presets sample `sampler_blur1`), the waveform, and the composite shader where most presets do their colour
+grading. The finished frame is downsampled to the cell grid and read back asynchronously, landing one frame late.
 
 **Skipping presets.** Clicking bare desktop advances to the next preset; `Ctrl-N [` and `Ctrl-N ]` step backwards and
 forwards. Presets otherwise auto-cycle every fifteen seconds, and one that renders nothing is skipped after one.
