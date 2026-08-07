@@ -143,8 +143,26 @@ const GPU_STALL_FRAMES = 12;
  * complaint it exists to prevent.
  */
 const DEAD_PRESET_FRAMES = 8;
+/** Presets kept behind the cursor, so `Ctrl-N [` can retrace a session. */
+const PRESET_HISTORY = 64;
 /** Share of the desktop a preset must reach to count as rendering at all. */
 const DEAD_PRESET_COVERAGE = 0.01;
+/**
+ * A preset covering more than this share of the desktop with less than
+ * `FLAT_PRESET_VARIANCE` of ink variation is a solid colour, not a picture.
+ *
+ * The runaway ones settle into flat white, which every coverage test passes
+ * with full marks. Variance is what tells a rendered frame from a wash.
+ */
+const FLAT_PRESET_COVERAGE = 0.9;
+/**
+ * Measured, not guessed: across the twenty presets that settle into a solid
+ * colour, this leaves sixteen of them, against five without the rule at all.
+ * Tenfold looser catches one more and costs one more good preset, so the
+ * conservative end is taken — a preset wrongly skipped comes round again, and
+ * this is a threshold on other people's art.
+ */
+const FLAT_PRESET_VARIANCE = 0.002;
 /**
  * Mean ink the software path steers the field toward.
  *
@@ -203,6 +221,25 @@ export const EXOMUX_BUTTERCHURN_PRESETS: readonly ExomuxButterchurnPresetSource[
   })(),
 );
 
+/**
+ * Whether a rendered field is worth staying on, from three statistics of its
+ * ink: the share of lit cells, the mean level, and the mean square.
+ *
+ * Two ways to fail. Empty is the obvious one. Flat is the other — twenty of the
+ * catalog settle into a single solid colour, usually blown-out white where the
+ * feedback loop has run away — and a solid field covers the whole desktop, so
+ * it scores perfectly on coverage alone. Variance is what tells a rendered
+ * frame from a wash.
+ *
+ * Separated from the field so the thresholds can be exercised directly; they
+ * were fitted against the catalog and are easy to regress by eye.
+ */
+export function exomuxPresetLooksBlank(coverage: number, mean: number, meanSquare: number): boolean {
+  if (coverage < DEAD_PRESET_COVERAGE) return true;
+  const variance = Math.max(0, meanSquare - mean * mean);
+  return coverage > FLAT_PRESET_COVERAGE && variance < FLAT_PRESET_VARIANCE;
+}
+
 export interface ExomuxButterchurnFieldOptions {
   /**
    * Audio to visualize. Omit to share the process-wide microphone capture,
@@ -249,6 +286,23 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
 
   readonly #catalog: readonly ExomuxButterchurnPresetSource[];
   readonly #seed: number;
+  /**
+   * Play order: presets already shown, then the ones queued up.
+   *
+   * Shuffled rather than sequential. Walking a 289-preset catalog in catalog
+   * order means the same handful every session, in the same order, and the
+   * catalog is alphabetical so those neighbours tend to be variations on one
+   * another. A permutation is appended whenever the queue runs short, so every
+   * preset is seen once before any repeats — which random picking would not
+   * give.
+   *
+   * Keeping the history in the same array is what lets `Ctrl-N [` go back to
+   * what was actually on screen rather than to a catalog neighbour.
+   */
+  #order: number[] = [];
+  #cursor = 0;
+  /** State for the order shuffle, so a seeded field is reproducible. */
+  #shuffleState: number;
   #presetIndex: number;
   #preset: ExomuxButterchurnPreset;
   /** Outgoing preset during a crossfade; both are evaluated and drawn. */
@@ -323,7 +377,9 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
       : 0;
     this.#autoCycle = options.autoCycle ?? true;
     this.#wantsGpu = options.gpu ?? true;
+    this.#shuffleState = (this.#seed * 2_246_822_519 + 374_761_393) >>> 0;
     this.#preset = this.#load(this.#presetIndex);
+    this.#order = [this.#presetIndex];
   }
 
   /** Preset currently in front; during a blend this is the incoming one. */
@@ -349,15 +405,45 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
     return this.#audioLabel;
   }
 
-  /** Advances to the next preset, starting a crossfade. */
+  /** Advances to the next preset in the shuffled order, starting a crossfade. */
   nextPreset(): void {
-    this.selectPreset(this.#presetIndex + 1);
+    this.stepPreset(1);
   }
 
-  /** Selects a preset by catalog index, wrapping, and starts a crossfade. */
+  /**
+   * Moves through the play order: forwards into the shuffle, backwards through
+   * what has already been shown.
+   */
+  stepPreset(delta: number): void {
+    const step = Math.trunc(delta);
+    if (!Number.isFinite(step) || step === 0) return;
+    this.#extendOrder();
+    const at = Math.min(this.#order.length - 1, Math.max(0, this.#cursor + step));
+    if (at === this.#cursor) return;
+    this.#cursor = at;
+    this.#activate(this.#order[at]!);
+    this.#trimHistory();
+  }
+
+  /**
+   * Selects a preset by catalog index, wrapping, and starts a crossfade.
+   *
+   * An explicit choice becomes the new head of the play order: whatever was
+   * queued behind it is dropped, so stepping forward afterwards shuffles on
+   * from here rather than resuming an order the choice interrupted.
+   */
   selectPreset(index: number): void {
     const count = this.#catalog.length;
     const next = ((Math.trunc(index) % count) + count) % count;
+    this.#order.length = this.#cursor + 1;
+    this.#order.push(next);
+    this.#cursor += 1;
+    this.#activate(next);
+    this.#trimHistory();
+  }
+
+  /** Puts a preset on screen, prewarmed if it is the one that was expected. */
+  #activate(next: number): void {
     this.#previous = this.#preset;
     this.#presetIndex = next;
     // Built during the outgoing preset's slot when possible: compiling a
@@ -369,6 +455,46 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
     this.#blend = 0;
     this.#heldSeconds = 0;
     this.#deadFrames = 0;
+  }
+
+  /** The preset `nextPreset` would move to, so it can be prepared early. */
+  #peekNext(): number {
+    this.#extendOrder();
+    return this.#order[Math.min(this.#order.length - 1, this.#cursor + 1)]!;
+  }
+
+  /** Queues another permutation whenever fewer than two presets remain ahead. */
+  #extendOrder(): void {
+    if (this.#order.length - this.#cursor > 1) return;
+    const count = this.#catalog.length;
+    const shuffled = Array.from({ length: count }, (_, index) => index);
+    for (let index = count - 1; index > 0; index -= 1) {
+      const swap = Math.floor(this.#shuffle() * (index + 1));
+      [shuffled[index], shuffled[swap]] = [shuffled[swap]!, shuffled[index]!];
+    }
+    // Without this the seam between two permutations can show the same preset
+    // twice running, which is the one repeat the shuffle exists to avoid.
+    if (count > 1 && shuffled[0] === this.#order[this.#order.length - 1]) {
+      [shuffled[0], shuffled[1]] = [shuffled[1]!, shuffled[0]!];
+    }
+    this.#order.push(...shuffled);
+  }
+
+  /** Keeps the history long enough to step back through, and no longer. */
+  #trimHistory(): void {
+    if (this.#cursor <= PRESET_HISTORY) return;
+    const drop = this.#cursor - PRESET_HISTORY;
+    this.#order.splice(0, drop);
+    this.#cursor -= drop;
+  }
+
+  /** Mulberry32, so a seeded field shuffles the same way twice. */
+  #shuffle(): number {
+    this.#shuffleState = (this.#shuffleState + 0x6d2b79f5) >>> 0;
+    let value = this.#shuffleState;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4_294_967_296;
   }
 
   /**
@@ -567,7 +693,7 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
 
   /** Compiles the preset after this one, spread across the frames before it. */
   #prewarmNext(): void {
-    const next = (this.#presetIndex + 1) % this.#catalog.length;
+    const next = this.#peekNext();
     if (this.#prewarmed?.index === next) return;
     const preset = this.#load(next);
     if (this.#width > 0) preset.setSize(this.#width, this.#height);
@@ -733,11 +859,19 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
     const cells = this.#width * this.#height;
     if (cells === 0) return;
     let lit = 0;
+    let sum = 0;
+    let squares = 0;
     for (let index = 0; index < cells; index += 1) {
       const offset = index * 3;
-      if (ink[offset]! > MIN_INK || ink[offset + 1]! > MIN_INK || ink[offset + 2]! > MIN_INK) lit += 1;
+      const red = ink[offset]!;
+      const green = ink[offset + 1]!;
+      const blue = ink[offset + 2]!;
+      if (red > MIN_INK || green > MIN_INK || blue > MIN_INK) lit += 1;
+      const level = (red + green + blue) / 3;
+      sum += level;
+      squares += level * level;
     }
-    if (lit / cells >= DEAD_PRESET_COVERAGE) {
+    if (!exomuxPresetLooksBlank(lit / cells, sum / cells, squares / cells)) {
       this.#deadFrames = 0;
       return;
     }

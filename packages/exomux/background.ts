@@ -116,6 +116,14 @@ export interface ExomuxPresetBackground extends ExomuxAnimatedBackground {
   readonly presetCount: number;
   /** Selects a preset by rotation index, wrapping in both directions. */
   selectPreset(index: number): void;
+  /**
+   * Moves through the field's own play order by `delta`.
+   *
+   * Distinct from `selectPreset(presetIndex + delta)`, which assumes the order
+   * is the catalog's. A field that shuffles steps back through what it actually
+   * showed, not to a catalog neighbour nobody has seen.
+   */
+  stepPreset?(delta: number): void;
 }
 
 /** Narrows a background to one the user can step through. */

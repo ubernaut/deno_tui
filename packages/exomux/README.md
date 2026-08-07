@@ -43,7 +43,13 @@ waveform, and the composite shader where most presets do their colour grading. T
 cell grid and read back asynchronously, landing one frame late.
 
 **Skipping presets.** Clicking bare desktop advances to the next preset; `Ctrl-N [` and `Ctrl-N ]` step backwards and
-forwards. Presets otherwise auto-cycle every fifteen seconds, and one that renders nothing is skipped after two.
+forwards. Presets otherwise auto-cycle every fifteen seconds, and one that renders nothing is skipped after one.
+
+**The order is shuffled, not sequential.** A catalog walk shows the same handful of presets every session in the same
+order, and the catalog is alphabetical, so those neighbours tend to be variations on one another. The field appends a
+fresh permutation whenever its queue runs short, which means everything is seen once before anything repeats — not what
+picking at random would give. History is kept alongside the queue, so `Ctrl-N [` retraces what was actually on screen
+rather than landing on a catalog neighbour nobody has seen. A field built with a seed shuffles reproducibly.
 
 **Telling which renderer is running.** The status line announces the renderer whenever it changes, and stepping a preset
 reports it alongside the preset name — `Preset 47/289 · gpu · mic:parec: Geiss - Cauldron`. `software renderer` there
@@ -57,12 +63,15 @@ Preset transitions are prepared ahead of time: the next preset's equations are c
 three seconds before its slot starts, the pipelines asynchronously. Both were previously done on the frame of the
 switch, where they stalled the desktop.
 
-**The device is asked what it will allocate**, rather than trusted. One driver here advertises fourteen gigabytes free
-and then refuses every allocation over a megabyte — which is less than one full-size render target, so at any ordinary
-terminal shape every target failed at once. WebGPU hands back invalid textures rather than throwing, and those still
-completed their readbacks, so the stall watchdog never fired and the desktop sat black indefinitely. `create` now probes
-for the largest target the device will really give, fits the render size under it at the desktop's aspect, and returns
+**The device is asked what it will allocate**, rather than trusted. An exhausted driver goes on advertising fourteen
+gigabytes free while refusing allocations of a megabyte — less than one full-size render target, so every target failed
+at once, at any ordinary terminal shape. WebGPU hands back invalid textures rather than throwing, and those still
+completed their readbacks, so the stall watchdog never fired and the desktop sat black indefinitely. `create` probes for
+the largest target the device will really give, fits the render size under it at the desktop's aspect, and returns
 nothing at all if even the smallest fails — which leaves the software renderer running instead of a black screen.
+
+What exhausted the driver was this background: see the pipeline cache below. The probe is the guard that keeps any such
+shortage, whatever its cause, from turning into a desktop that never comes back.
 
 **Compiled pipelines are kept for six presets only.** One entry is two render pipelines and the shader modules behind
 them, and the rotation visits 289 presets; cached without a bound, a long session accumulated all of them and exhausted
@@ -79,9 +88,15 @@ image, and a brightness governor stands in for the composite shader that would o
 `butterchurn_rotation.ts` holds the 289 presets the audit accepted; it predates the fixes above and is worth
 regenerating.
 
-Measured against a real device at a 220x55 grid, 292 of 293 presets compile and 228 resolve to an image. The count that
-do not is taken under a synthetic constant-audio signal over eight frames, which is unkind to presets that build up
-slowly, so it reads low.
+Measured against a real device at a 220x55 grid, each preset given its own render graph and twenty-four frames of
+varying audio: **199 of 293 resolve to an image**, 73 stay black, 13 blow out to white, 7 settle into a flat wash, and
+one will not compile. The blank ones are skipped after a second rather than held for their slot — both kinds, since a
+solid colour covers the whole desktop and passes a coverage test with full marks.
+
+`MIN_WAVE_ALPHA` was worth re-testing on the GPU path, where the composite shader and blur chain do run and might have
+made the floor unnecessary. Honouring each preset's own `wave_a` instead takes the count that render from 199 down to
+119, so the floor stays: the presets that set it near zero really are relying on custom waves and shapes, and those are
+still the missing piece.
 
 Custom waves and custom shapes are the one part of a preset still not carried over.
 

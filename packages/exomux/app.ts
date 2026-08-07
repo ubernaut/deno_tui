@@ -517,7 +517,10 @@ export function mountExomuxDesktop(
       controller.status.value = "This background has no presets.";
       return;
     }
-    field.selectPreset(field.presetIndex + delta);
+    // A shuffling field steps through what it has shown; one without an order
+    // of its own falls back to walking the catalog.
+    if (field.stepPreset) field.stepPreset(delta);
+    else field.selectPreset(field.presetIndex + delta);
     controller.status.value = `Preset ${field.presetIndex + 1}/${field.presetCount} · ${
       describeBackgroundSource(field)
     }: ${field.presetName}`;

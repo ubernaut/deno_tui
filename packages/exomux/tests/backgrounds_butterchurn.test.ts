@@ -1,5 +1,9 @@
 import { assert, assertAlmostEquals, assertEquals } from "./deps.ts";
-import { EXOMUX_BUTTERCHURN_PRESETS, ExomuxButterchurnField } from "../butterchurn_background.ts";
+import {
+  EXOMUX_BUTTERCHURN_PRESETS,
+  ExomuxButterchurnField,
+  exomuxPresetLooksBlank,
+} from "../butterchurn_background.ts";
 import { EXOMUX_BUTTERCHURN_CATALOG, type ExomuxButterchurnPresetSource } from "../butterchurn_catalog.ts";
 import { EXOMUX_BUTTERCHURN_ROTATION } from "../butterchurn_rotation.ts";
 import { ExomuxButterchurnPreset, MILKDROP_DEFAULTS } from "../butterchurn_preset.ts";
@@ -334,7 +338,7 @@ Deno.test("butterchurn: presets cycle on a timer and crossfade rather than snap"
   run(field, 100);
   assertEquals(field.presetIndex, 0, "the first preset should still be holding");
   run(field, 40, { startAt: 100 * 125 });
-  assertEquals(field.presetIndex, 1, "the field should have advanced one preset");
+  assert(field.presetIndex !== 0, "the field should have advanced off the opening preset");
 
   const held = new ExomuxButterchurnField({ gpu: false, audio: scriptedAudio(), presetIndex: 0, autoCycle: false });
   run(held, 400);
@@ -365,7 +369,7 @@ Deno.test("butterchurn: clicking a window is not claimed, so its chrome still wo
 
   // Bare desktop beside the window is still claimed.
   assertEquals(field.pick(BOUNDS.column, BOUNDS.row), true);
-  assertEquals(field.presetIndex, 3);
+  assert(field.presetIndex !== 2, "a claimed click should have moved the preset on");
 });
 
 Deno.test("butterchurn: clicking the bare desktop skips to the next preset", () => {
@@ -374,14 +378,16 @@ Deno.test("butterchurn: clicking the bare desktop skips to the next preset", () 
   assertEquals(field.presetIndex, 4);
 
   // The click is claimed, which is what stops the desktop treating it as a
-  // plain background click, and it lands on the next preset.
+  // plain background click, and it moves the preset on.
+  const seen = [field.presetIndex];
   assertEquals(field.pick(10, 10), true);
-  assertEquals(field.presetIndex, 5);
+  seen.push(field.presetIndex);
   assertEquals(field.pick(0, 0), true);
-  assertEquals(field.presetIndex, 6);
+  seen.push(field.presetIndex);
+  assertEquals(new Set(seen).size, 3, `clicks should each land somewhere new, got ${seen}`);
 
   // It works with auto-cycling off, which is the case where waiting is not an
-  // option, and it wraps at the end of the rotation.
+  // option, and from the end of the catalog as readily as anywhere else.
   const last = new ExomuxButterchurnField({
     gpu: false,
     audio: scriptedAudio(),
@@ -389,19 +395,75 @@ Deno.test("butterchurn: clicking the bare desktop skips to the next preset", () 
     autoCycle: false,
   });
   last.pick(1, 1);
-  assertEquals(last.presetIndex, 0);
+  assert(last.presetIndex !== EXOMUX_BUTTERCHURN_PRESETS.length - 1);
 });
 
-Deno.test("butterchurn: presets can be stepped in both directions", () => {
+Deno.test("butterchurn: stepping back retraces what was shown, not the catalog", () => {
+  // The play order is shuffled, so stepping back by catalog index would land on
+  // a preset nobody has seen. Going back must undo the last step.
   const field = new ExomuxButterchurnField({ gpu: false, audio: scriptedAudio(), presetIndex: 3, autoCycle: false });
-  field.selectPreset(field.presetIndex + 1);
-  assertEquals(field.presetIndex, 4);
-  field.selectPreset(field.presetIndex - 1);
-  assertEquals(field.presetIndex, 3);
-  field.selectPreset(field.presetIndex - 1);
-  assertEquals(field.presetIndex, 2);
-  assertEquals(field.presetName, EXOMUX_BUTTERCHURN_PRESETS[2]!.name);
+  const visited = [field.presetIndex];
+  for (let step = 0; step < 5; step += 1) {
+    field.stepPreset(1);
+    visited.push(field.presetIndex);
+  }
+  for (let step = visited.length - 2; step >= 0; step -= 1) {
+    field.stepPreset(-1);
+    assertEquals(field.presetIndex, visited[step], `step back ${step} left the retraced order`);
+  }
+  // Already at the oldest entry, another step back stays put rather than wrapping
+  // into presets that were never on screen.
+  field.stepPreset(-1);
+  assertEquals(field.presetIndex, visited[0]);
   assertEquals(field.presetCount, EXOMUX_BUTTERCHURN_PRESETS.length);
+});
+
+Deno.test("butterchurn: the order is shuffled but covers everything before repeating", () => {
+  // Sequential order means the same handful of presets every session, and the
+  // catalog is alphabetical so those neighbours are variations on each other.
+  // Picking at random instead would repeat and starve in equal measure, so the
+  // order is a permutation.
+  const count = EXOMUX_BUTTERCHURN_PRESETS.length;
+  const field = new ExomuxButterchurnField({ gpu: false, audio: scriptedAudio(), presetIndex: 0, autoCycle: false });
+  const seen: number[] = [field.presetIndex];
+  for (let step = 1; step < count; step += 1) {
+    field.stepPreset(1);
+    seen.push(field.presetIndex);
+  }
+  // The opening preset is chosen by the caller and sits outside the shuffle;
+  // the permutation is what follows it.
+  field.stepPreset(1);
+  seen.push(field.presetIndex);
+  assertEquals(new Set(seen.slice(1)).size, count, "a full pass should visit every preset exactly once");
+  assert(
+    seen.slice(1, 13).some((index, at) => index !== seen[1]! + at),
+    "the order should not simply be the catalog's",
+  );
+  for (let step = 1; step < seen.length; step += 1) {
+    assert(seen[step] !== seen[step - 1], "no preset should follow itself");
+  }
+
+  // A seeded field is reproducible, which is what keeps these tests meaningful.
+  const same = new ExomuxButterchurnField({ gpu: false, audio: scriptedAudio(), presetIndex: 0, autoCycle: false });
+  const repeat: number[] = [same.presetIndex];
+  for (let step = 1; step < 20; step += 1) {
+    same.stepPreset(1);
+    repeat.push(same.presetIndex);
+  }
+  assertEquals(repeat, seen.slice(0, 20));
+  const different = new ExomuxButterchurnField({
+    gpu: false,
+    audio: scriptedAudio(),
+    presetIndex: 0,
+    autoCycle: false,
+    seed: 99,
+  });
+  const other: number[] = [different.presetIndex];
+  for (let step = 1; step < 20; step += 1) {
+    different.stepPreset(1);
+    other.push(different.presetIndex);
+  }
+  assert(other.join() !== repeat.join(), "a different seed should shuffle differently");
 });
 
 Deno.test("butterchurn: a crossfade draws both presets before settling on the new one", () => {
@@ -413,7 +475,9 @@ Deno.test("butterchurn: a crossfade draws both presets before settling on the ne
     seed: 4,
   });
   run(blending, 60);
-  blending.nextPreset();
+  // Selected rather than stepped: the play order is shuffled, and this test is
+  // about the crossfade, not about which preset comes next.
+  blending.selectPreset(1);
   run(blending, 6, { startAt: 60 * 125 });
   assertEquals(blending.presetIndex, 1);
 
@@ -603,8 +667,8 @@ Deno.test("butterchurn: never blanks the desktop while waiting on the GPU", () =
   // never did. The software renderer keeps drawing until the GPU has proved it
   // can produce a frame, so there is no window where nothing is painted.
   const field = new ExomuxButterchurnField({ gpu: false, audio: scriptedAudio({ level: 0.9 }), autoCycle: true });
-  const cells = BOUNDS.width * BOUNDS.height;
-  let darkest = cells;
+  let blankRun = 0;
+  let longestBlank = 0;
   let now = 0;
   for (let frame = 0; frame < 240; frame += 1) {
     now += 125;
@@ -614,7 +678,40 @@ Deno.test("butterchurn: never blanks the desktop while waiting on the GPU", () =
       for (const cell of row) if (cell) painted += 1;
     }
     // The first frames legitimately start from an empty field.
-    if (frame > 4) darkest = Math.min(darkest, painted);
+    if (frame <= 4) continue;
+    blankRun = painted === 0 ? blankRun + 1 : 0;
+    longestBlank = Math.max(longestBlank, blankRun);
   }
-  assert(darkest > 0, "the desktop went completely black");
+  // Not "never blank": the software path cannot resolve every preset, and the
+  // order is shuffled, so landing on one that draws nothing is expected. What
+  // must hold is that the field notices and moves on quickly — the regression
+  // this guards left the desktop black for every remaining frame.
+  // `DEAD_PRESET_FRAMES` is 8; a couple of frames of slack for the crossfade.
+  assert(
+    longestBlank <= 10,
+    `the desktop stayed black for ${longestBlank} frames running`,
+  );
+});
+
+Deno.test("butterchurn: a preset that settles into one solid colour counts as blank", () => {
+  // Coverage alone cannot see this: a solid field covers the whole desktop and
+  // scores perfectly. Twenty of the catalog resolve to a flat wash, usually
+  // blown-out white where the feedback loop has run away, and sitting on one
+  // for its full fifteen seconds is indistinguishable from a frozen desktop.
+  const solid = (level: number) => exomuxPresetLooksBlank(1, level, level * level);
+  assert(solid(1.6), "a saturated white field is blank");
+  assert(solid(0.5), "so is a mid-grey one");
+
+  // Nothing drawn at all, the case that was already handled.
+  assert(exomuxPresetLooksBlank(0, 0, 0));
+  assert(exomuxPresetLooksBlank(0.005, 0.01, 0.0001));
+
+  // A rendered frame has structure. Half the cells dark and half bright is a
+  // variance of 0.25 — two orders of magnitude above the threshold.
+  assert(!exomuxPresetLooksBlank(1, 0.5, 0.5), "a field with real contrast is not blank");
+  assert(!exomuxPresetLooksBlank(0.5, 0.3, 0.2), "nor is a sparse but varied one");
+
+  // A mostly-empty desktop with a bright figure on it is the shape almost every
+  // working preset takes here, and must never be mistaken for a wash.
+  assert(!exomuxPresetLooksBlank(0.2, 0.2, 0.16));
 });
