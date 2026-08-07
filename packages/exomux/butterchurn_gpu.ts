@@ -22,7 +22,7 @@
 // Readback lands one frame late, the same arrangement `turbulence_background`
 // uses: mapping a buffer needs an await, and `advance` is synchronous.
 
-import { SAMPLERS, translateShaderBody } from "./glsl_wgsl.ts";
+import { SAMPLERS } from "./glsl_wgsl.ts";
 import { exomuxNoiseSet, type ExomuxNoiseTexture } from "./butterchurn_noise.ts";
 import { exomuxGpuDevice } from "./gpu_device.ts";
 
@@ -31,13 +31,6 @@ const RENDER_WIDTH = 512;
 /** Chosen per size so the render aspect matches the cell grid's. */
 const MIN_RENDER_HEIGHT = 128;
 const MAX_RENDER_HEIGHT = 512;
-/** Floor the budget probe may shrink the render width to before giving up. */
-const MIN_RENDER_WIDTH = 64;
-/**
- * Target sizes the budget probe tries, in texels, largest first. The first that
- * allocates becomes the ceiling every render target is fitted under.
- */
-const BUDGET_LADDER = [512 * 512, 512 * 256, 512 * 128, 256 * 128, 256 * 64, 128 * 64];
 /**
  * Presets whose compiled pipelines are kept.
  *
@@ -295,6 +288,16 @@ const UTILITY_WGSL = `
 }
 `;
 
+/** The precompiled shader bodies one preset needs, as stored in the catalog. */
+export interface ExomuxButterchurnGpuShaders {
+  readonly name: string;
+  /** WGSL body, already translated at build time; empty for MilkDrop's default. */
+  readonly warp: string;
+  readonly warpSamplers: readonly string[];
+  readonly comp: string;
+  readonly compSamplers: readonly string[];
+}
+
 /** One preset's compiled GPU pipelines. */
 interface PresetPipelines {
   readonly warp: GPURenderPipeline;
@@ -350,8 +353,6 @@ export class ExomuxButterchurnGpu {
   #height: number;
   #renderWidth: number;
   #renderHeight: number;
-  /** Texels a single render target may cost, as answered by the device. */
-  readonly #budget: number;
 
   /** Ping-ponged feedback pair. `#mainIndex` selects the one holding the frame. */
   readonly #main: GPUTexture[] = [];
@@ -433,17 +434,23 @@ export class ExomuxButterchurnGpu {
     device: GPUDevice,
     options: ExomuxButterchurnGpuOptions,
   ): Promise<ExomuxButterchurnGpu | undefined> {
-    const budget = await probeTargetBudget(device);
-    if (budget === 0) return undefined;
-    return new ExomuxButterchurnGpu(device, options, budget);
+    try {
+      device.pushErrorScope("out-of-memory");
+    } catch {
+      // No error scopes to check against; take the device at its word.
+      return new ExomuxButterchurnGpu(device, options);
+    }
+    const gpu = new ExomuxButterchurnGpu(device, options);
+    if (await allocationSucceeded(device)) return gpu;
+    gpu.destroy();
+    return undefined;
   }
 
-  constructor(device: GPUDevice, options: ExomuxButterchurnGpuOptions, budget = BUDGET_LADDER[0]!) {
+  constructor(device: GPUDevice, options: ExomuxButterchurnGpuOptions) {
     this.#device = device;
     this.#width = Math.max(1, options.width);
     this.#height = Math.max(1, options.height);
-    this.#budget = budget;
-    [this.#renderWidth, this.#renderHeight] = renderSizeFor(this.#width, this.#height, budget);
+    [this.#renderWidth, this.#renderHeight] = renderSizeFor(this.#width, this.#height);
     const random = options.random ?? Math.random;
 
     for (let index = 0; index < 2; index += 1) {
@@ -538,7 +545,7 @@ export class ExomuxButterchurnGpu {
     if (nextWidth === this.#width && nextHeight === this.#height) return;
     this.#width = nextWidth;
     this.#height = nextHeight;
-    const [renderWidth, renderHeight] = renderSizeFor(nextWidth, nextHeight, this.#budget);
+    const [renderWidth, renderHeight] = renderSizeFor(nextWidth, nextHeight);
     if (renderWidth !== this.#renderWidth || renderHeight !== this.#renderHeight) {
       this.#renderWidth = renderWidth;
       this.#renderHeight = renderHeight;
@@ -578,7 +585,8 @@ export class ExomuxButterchurnGpu {
    * A failure is remembered so a preset that cannot compile is not retried
    * every frame; the caller renders it on the CPU instead.
    */
-  prepare(name: string, warpSource: string, compSource: string): "ready" | "pending" | "failed" {
+  prepare(shaders: ExomuxButterchurnGpuShaders): "ready" | "pending" | "failed" {
+    const name = shaders.name;
     if (this.#failed.has(name)) return "failed";
     const cached = this.#pipelines.get(name);
     if (cached) {
@@ -589,7 +597,7 @@ export class ExomuxButterchurnGpu {
     }
     if (this.#compiling.has(name)) return "pending";
     this.#compiling.add(name);
-    this.#compileAsync(warpSource, compSource)
+    this.#compileAsync(shaders)
       .then((pipelines) => {
         this.#pipelines.set(name, pipelines);
         this.#evict();
@@ -1180,9 +1188,9 @@ struct WaveOut { @builtin(position) position: vec4<f32>, @location(0) color: vec
 
   // ── compilation ───────────────────────────────────────────────────────────
 
-  async #compileAsync(warpSource: string, compSource: string): Promise<PresetPipelines> {
-    const warp = await this.#compileStage(warpSource, "warp");
-    const comp = await this.#compileStage(compSource, "comp");
+  async #compileAsync(shaders: ExomuxButterchurnGpuShaders): Promise<PresetPipelines> {
+    const warp = await this.#compileStage(shaders.warp, shaders.warpSamplers, "warp");
+    const comp = await this.#compileStage(shaders.comp, shaders.compSamplers, "comp");
     return {
       warp: warp.pipeline,
       warpSamplers: warp.samplers,
@@ -1193,28 +1201,21 @@ struct WaveOut { @builtin(position) position: vec4<f32>, @location(0) color: vec
 
   async #compileStage(
     source: string,
+    declared: readonly string[],
     stage: "warp" | "comp",
   ): Promise<{ pipeline: GPURenderPipeline; samplers: string[] }> {
-    const translated = source.trim()
-      ? translateShaderBody(source)
-      // A preset with no shader of its own gets MilkDrop's default: pass the
-      // warped frame through unchanged.
-      : {
-        body: "ret = textureSampleLevel(sampler_main_tex, sampler_main_smp, uv, 0.0).xyz;",
-        samplers: ["sampler_main"],
-        custom: [],
-      };
-
-    const samplers = [...new Set([...translated.samplers, "sampler_main"])]
+    // A preset with no shader of its own — or one whose GLSL the build could
+    // not translate — gets MilkDrop's default: the warped frame unchanged.
+    // MilkDrop's default warp shader attenuates by `decay`; its default
+    // composite does not. Leaving the decay off made the feedback loop of every
+    // preset without a warp shader of its own lossless, so it could only ever
+    // accumulate — which is what a preset blowing out to flat white looks like.
+    const fallback = stage === "warp"
+      ? "ret = textureSampleLevel(sampler_main_tex, sampler_main_smp, uv, 0.0).xyz * decay;"
+      : "ret = textureSampleLevel(sampler_main_tex, sampler_main_smp, uv, 0.0).xyz;";
+    const body = source.trim() ? source : fallback;
+    const samplers = [...new Set([...(source.trim() ? declared : []), "sampler_main"])]
       .filter((name) => name in SAMPLER_BINDINGS);
-    // A preset asking for an image-pack texture we do not have reads the noise
-    // table instead, which is what Butterchurn falls back to without the pack.
-    const body = translated.custom.reduce(
-      (text, name) =>
-        text.replaceAll(`${name}_tex`, "sampler_noise_lq_tex").replaceAll(`${name}_smp`, "sampler_noise_lq_smp"),
-      translated.body,
-    );
-    if (translated.custom.length > 0 && !samplers.includes("sampler_noise_lq")) samplers.push("sampler_noise_lq");
 
     const vertex = stage === "warp" ? WARP_VERTEX : COMP_VERTEX;
     const module = this.#device.createShaderModule({ code: `${fragmentSource(body, samplers)}\n${vertex}` });
@@ -1239,53 +1240,41 @@ const MESH_LAYOUT: GPUVertexBufferLayout = {
 };
 
 /**
- * Render target size for a cell grid: the desktop's aspect at the highest
- * resolution `budget` texels allows. Terminal cells are about twice as tall as
- * they are wide, so a grid of 88x22 covers the same shape as 88x44 pixels.
- *
- * Both axes scale by one factor, which keeps the aspect the desktop's, and both
- * land on a multiple of eight so the blur chain's three halvings stay whole.
+ * Render target size for a cell grid, keeping the render aspect the desktop's.
+ * Terminal cells are about twice as tall as they are wide, so a grid of 88x22
+ * covers the same shape as 88x44 pixels.
  */
-function renderSizeFor(width: number, height: number, budget: number): [number, number] {
+function renderSizeFor(width: number, height: number): [number, number] {
   const ratio = (height * 2) / Math.max(1, width);
   const target = Math.round(RENDER_WIDTH * ratio / 8) * 8;
-  const idealHeight = Math.min(MAX_RENDER_HEIGHT, Math.max(MIN_RENDER_HEIGHT, target));
-  if (RENDER_WIDTH * idealHeight <= budget) return [RENDER_WIDTH, idealHeight];
-  const scale = Math.sqrt(budget / (RENDER_WIDTH * idealHeight));
-  const round = (value: number) => Math.max(8, Math.floor(value * scale / 8) * 8);
-  return [Math.max(MIN_RENDER_WIDTH, round(RENDER_WIDTH)), round(idealHeight)];
+  return [RENDER_WIDTH, Math.min(MAX_RENDER_HEIGHT, Math.max(MIN_RENDER_HEIGHT, target))];
 }
 
 /**
- * Largest main render target this device will actually allocate, in texels.
+ * Whether every allocation the renderer just made actually succeeded.
  *
- * The adapter's advertised limits are not to be trusted: this driver reports
- * fourteen gigabytes free and then refuses every allocation of a megabyte or
- * more, which is under half of what a full-size target costs. Allocating
- * regardless yielded invalid textures that still completed their readbacks, so
- * the stall watchdog never fired and the desktop sat black indefinitely —
- * asking first, and rendering smaller, is the difference between a slightly
- * softer background and no background at all.
+ * WebGPU reports a refused allocation through the error scope and hands back a
+ * texture object regardless; using it produces an invalid-texture error on
+ * every pass, while readbacks keep completing, so the stall watchdog never
+ * fires and the desktop sits black indefinitely. Asking is what turns that into
+ * a clean fall back to the software renderer.
+ *
+ * This replaced a ladder that probed for the largest target the device would
+ * give, from the largest size down. That was worse than useless: the ladder's
+ * own first, deliberately oversized probe was itself an allocation failure, and
+ * on an exhausted driver every subsequent request fails too — so the probe
+ * reported a budget of zero on a device that could have rendered perfectly
+ * well. Allocating what is actually wanted and checking once has no such
+ * failure mode.
  *
  * A device without error scopes — the test stub — is taken at its word.
  */
-async function probeTargetBudget(device: GPUDevice): Promise<number> {
-  for (const budget of BUDGET_LADDER) {
-    try {
-      device.pushErrorScope("out-of-memory");
-      const probe = device.createTexture({
-        size: [RENDER_WIDTH, Math.max(1, Math.ceil(budget / RENDER_WIDTH))],
-        format: MAIN_FORMAT,
-        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_SRC,
-      });
-      const failure = await device.popErrorScope();
-      probe.destroy();
-      if (!failure) return budget;
-    } catch {
-      return BUDGET_LADDER[0]!;
-    }
+async function allocationSucceeded(device: GPUDevice): Promise<boolean> {
+  try {
+    return !(await device.popErrorScope());
+  } catch {
+    return true;
   }
-  return 0;
 }
 
 function fractional(value: number): number {

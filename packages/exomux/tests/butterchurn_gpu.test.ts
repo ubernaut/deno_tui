@@ -131,11 +131,11 @@ Deno.test("butterchurn gpu: a steady frame creates no new GPU objects", async ()
   // Pipelines build off the main thread, so the measurement has to wait for
   // them — otherwise render() draws nothing and the counts stay at zero for
   // the wrong reason.
-  assertEquals(gpu.prepare(entry.name, entry.warp, entry.comp), "pending");
-  for (let attempt = 0; attempt < 50 && gpu.prepare(entry.name, entry.warp, entry.comp) === "pending"; attempt += 1) {
+  assertEquals(gpu.prepare(entry), "pending");
+  for (let attempt = 0; attempt < 50 && gpu.prepare(entry) === "pending"; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 5));
   }
-  assertEquals(gpu.prepare(entry.name, entry.warp, entry.comp), "ready", "the first preset should compile");
+  assertEquals(gpu.prepare(entry), "ready", "the first preset should compile");
 
   const preset = new ExomuxButterchurnPreset(entry, { random: () => 0.5 });
   preset.setSize(80, 24);
@@ -214,10 +214,10 @@ Deno.test("butterchurn gpu: every bind group matches the layout its pipeline was
   const q = new Float32Array(32);
   let drawn = 0;
   for (const entry of EXOMUX_BUTTERCHURN_CATALOG.slice(0, 24)) {
-    for (let attempt = 0; attempt < 50 && gpu.prepare(entry.name, entry.warp, entry.comp) === "pending"; attempt += 1) {
+    for (let attempt = 0; attempt < 50 && gpu.prepare(entry) === "pending"; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 5));
     }
-    if (gpu.prepare(entry.name, entry.warp, entry.comp) !== "ready") continue;
+    if (gpu.prepare(entry) !== "ready") continue;
     const preset = new ExomuxButterchurnPreset(entry, { random: () => 0.5 });
     preset.setSize(80, 24);
     const audio = { bass: 1, mid: 1, treb: 1, bassAttack: 1, midAttack: 1, trebleAttack: 1, waveform };
@@ -250,36 +250,26 @@ Deno.test("butterchurn gpu: every bind group matches the layout its pipeline was
   gpu.destroy();
 });
 
-Deno.test("butterchurn gpu: render targets are fitted to what the device will allocate", async () => {
-  // This driver reports fourteen gigabytes free and refuses anything over a
-  // megabyte. Allocating regardless left invalid textures that still completed
-  // readbacks, so the stall watchdog never fired and the desktop stayed black.
-  const generous = emptyCounts();
-  const full = await ExomuxButterchurnGpu.create(stubDevice(generous), { width: 220, height: 55, random: () => 0.5 });
-  assert(full, "an unconstrained device should yield a renderer");
-  const largest = Math.max(...generous.sizes);
+Deno.test("butterchurn gpu: a device that refuses an allocation yields no renderer", async () => {
+  // WebGPU reports a refused allocation through the error scope and returns a
+  // texture object anyway. Rendering into those produced an invalid-texture
+  // error every pass while readbacks kept completing, so the stall watchdog
+  // never fired and the desktop sat black. Better no GPU renderer at all: the
+  // field keeps its software path only while `create` admits defeat.
+  const healthy = emptyCounts();
+  const ok = await ExomuxButterchurnGpu.create(stubDevice(healthy), { width: 220, height: 55, random: () => 0.5 });
+  assert(ok, "a device that allocates should yield a renderer");
+  ok.destroy();
 
-  const tight = emptyCounts();
-  const limit = 512 * 128;
-  const fitted = await ExomuxButterchurnGpu.create(stubDevice(tight, limit), {
+  const starved = emptyCounts();
+  const none = await ExomuxButterchurnGpu.create(stubDevice(starved, 0), {
     width: 220,
     height: 55,
     random: () => 0.5,
   });
-  assert(fitted, "a device that can allocate something should still yield a renderer");
-  const biggest = Math.max(...tight.sizes);
-  assert(biggest <= limit, `allocated ${biggest} texels against a ${limit} budget`);
-  assert(biggest < largest, "a constrained device should render smaller than an unconstrained one");
-  full.destroy();
-  fitted.destroy();
-});
-
-Deno.test("butterchurn gpu: a device that can allocate nothing yields no renderer", async () => {
-  // Better no GPU renderer at all than one drawing into textures that failed:
-  // the field keeps its software path only while `create` admits defeat.
-  const counts = emptyCounts();
-  const gpu = await ExomuxButterchurnGpu.create(stubDevice(counts, 0), { width: 220, height: 55, random: () => 0.5 });
-  assertEquals(gpu, undefined);
+  assertEquals(none, undefined);
+  // And it gave back what it had managed to take before finding out.
+  assert(starved.destroyed > 0, "a refused renderer must still release its textures");
 });
 
 Deno.test("butterchurn gpu: cycling the whole rotation does not accumulate pipelines", async () => {
@@ -294,10 +284,10 @@ Deno.test("butterchurn gpu: cycling the whole rotation does not accumulate pipel
   const q = new Float32Array(32);
   const visited = EXOMUX_BUTTERCHURN_CATALOG.slice(0, 60);
   for (const entry of visited) {
-    for (let attempt = 0; attempt < 50 && gpu.prepare(entry.name, entry.warp, entry.comp) === "pending"; attempt += 1) {
+    for (let attempt = 0; attempt < 50 && gpu.prepare(entry) === "pending"; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 5));
     }
-    if (gpu.prepare(entry.name, entry.warp, entry.comp) !== "ready") continue;
+    if (gpu.prepare(entry) !== "ready") continue;
     const preset = new ExomuxButterchurnPreset(entry, { random: () => 0.5 });
     preset.setSize(80, 24);
     preset.advance({ bass: 1, mid: 1, treb: 1, bassAttack: 1, midAttack: 1, trebleAttack: 1, waveform }, 0, 0, 8);
@@ -331,7 +321,7 @@ Deno.test("butterchurn gpu: cycling the whole rotation does not accumulate pipel
   // the first preset visited should need recompiling to come back.
   const first = visited[0]!;
   assertEquals(
-    gpu.prepare(first.name, first.warp, first.comp),
+    gpu.prepare(first),
     "pending",
     "the earliest preset should have been evicted, not still resident",
   );

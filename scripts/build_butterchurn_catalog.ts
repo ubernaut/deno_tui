@@ -8,9 +8,18 @@
  * single compiled binary with no npm dependencies, and the presets are static
  * data. Only what the terminal renderer can actually use is carried over —
  * each preset's base values, its three EEL equation blocks, and its warp and
- * composite shaders. The shaders ship as GLSL — upstream already converted them
- * from MilkDrop's HLSL — and `glsl_wgsl.ts` translates them to WGSL for the
- * WebGPU renderer. Custom waves and custom shapes are still dropped.
+ * composite shaders. Custom waves and custom shapes are still dropped.
+ *
+ * Every pack the package ships is merged, not just `base` and `extra`: 472
+ * distinct presets, against the 293 the parent ButterchurnXR demo shows.
+ *
+ * **Shaders are translated here, not at runtime.** Upstream already converted
+ * them from MilkDrop's HLSL to GLSL; this script runs `glsl_wgsl.ts` over them
+ * and stores the WGSL, along with the samplers each body turned out to need.
+ * That keeps translation off the frame path entirely, and — more usefully —
+ * turns "this preset silently fell back to the CPU" into a number printed at
+ * build time. The one thing that cannot be done ahead is building the GPU
+ * pipelines: those belong to a device that does not exist yet.
  *
  * Usage, pointed at a checkout that has the package installed:
  *
@@ -20,7 +29,14 @@
  * `butterchurn-presets` is MIT licensed, Copyright (c) 2013-2018 Jordan Berg.
  */
 
+import { SAMPLERS, translateShaderBody } from "../packages/exomux/glsl_wgsl.ts";
+
 const OUTPUT = new URL("../packages/exomux/butterchurn_catalog.ts", import.meta.url);
+
+/** Every pack in the package. `all.js` is just these spread together. */
+const PACKS = ["base.js", "extra.js", "image.js", "md1.js", "minimal.js", "nonMinimal.js"];
+
+const SAMPLER_SET = new Set(SAMPLERS);
 
 interface PresetSource {
   readonly name: string;
@@ -28,8 +44,36 @@ interface PresetSource {
   readonly init: string;
   readonly frame: string;
   readonly pixel: string;
+  /** WGSL body of the warp shader; empty when the preset has none. */
   readonly warp: string;
+  readonly warpSamplers: readonly string[];
   readonly comp: string;
+  readonly compSamplers: readonly string[];
+}
+
+/**
+ * Translates one GLSL body, resolving the samplers it needs.
+ *
+ * A preset may declare a texture from an image pack this build does not ship.
+ * Those read the noise table instead, which is what Butterchurn falls back to
+ * without the pack — done here so the runtime has nothing left to patch.
+ */
+function translate(source: string): { body: string; samplers: string[] } | undefined {
+  if (!source.trim()) return undefined;
+  let translated;
+  try {
+    translated = translateShaderBody(source);
+  } catch {
+    return undefined;
+  }
+  const samplers = [...new Set([...translated.samplers, "sampler_main"])].filter((name) => SAMPLER_SET.has(name));
+  const body = translated.custom.reduce(
+    (text, name) =>
+      text.replaceAll(`${name}_tex`, "sampler_noise_lq_tex").replaceAll(`${name}_smp`, "sampler_noise_lq_smp"),
+    translated.body,
+  );
+  if (translated.custom.length > 0 && !samplers.includes("sampler_noise_lq")) samplers.push("sampler_noise_lq");
+  return { body, samplers };
 }
 
 /** Reads `presets["name"] = require("./path")` pairs out of a pack index. */
@@ -54,25 +98,34 @@ if (import.meta.main) {
     Deno.exit(2);
   }
 
-  // base + extra is the pack pair the parent ButterchurnXR demo merges, and so
-  // the set asciichurn reports as its 293-preset catalog.
   const entries = new Map<string, string>();
-  for (const pack of ["base.js", "extra.js"]) {
+  for (const pack of PACKS) {
     for (const [name, path] of await readPack(root, pack)) entries.set(name, path);
   }
 
   const presets: PresetSource[] = [];
+  let authored = 0;
+  const untranslatable: string[] = [];
   for (const [name, path] of entries) {
     const resolved = `${root}/${path.replace(/^\.\//, "")}`;
     const preset = JSON.parse(await Deno.readTextFile(resolved)) as Record<string, unknown>;
+    const warpSource = (preset.warp as string | undefined) ?? "";
+    const compSource = (preset.comp as string | undefined) ?? "";
+    for (const source of [warpSource, compSource]) if (source.trim()) authored += 1;
+    const warp = translate(warpSource);
+    const comp = translate(compSource);
+    if (warpSource.trim() && !warp) untranslatable.push(`${name} (warp)`);
+    if (compSource.trim() && !comp) untranslatable.push(`${name} (comp)`);
     presets.push({
       name,
       baseVals: (preset.baseVals ?? {}) as Record<string, number>,
       init: (preset.init_eqs_eel as string | undefined) ?? "",
       frame: (preset.frame_eqs_eel as string | undefined) ?? "",
       pixel: (preset.pixel_eqs_eel as string | undefined) ?? "",
-      warp: (preset.warp as string | undefined) ?? "",
-      comp: (preset.comp as string | undefined) ?? "",
+      warp: warp?.body ?? "",
+      warpSamplers: warp?.samplers ?? [],
+      comp: comp?.body ?? "",
+      compSamplers: comp?.samplers ?? [],
     });
   }
 
@@ -96,9 +149,10 @@ if (import.meta.main) {
 //
 // The MilkDrop preset catalog used by the butterchurn desktop background,
 // vendored from the \`butterchurn-presets\` npm package (MIT, Copyright (c)
-// 2013-2018 Jordan Berg). Each entry carries a preset's base values and its
-// three EEL equation blocks, plus its warp and composite shaders as GLSL.
-// Custom waves and custom shapes are omitted.
+// 2013-2018 Jordan Berg), merging every pack it ships. Each entry carries a
+// preset's base values, its three EEL equation blocks, and its warp and
+// composite shaders already translated to WGSL. Custom waves and custom shapes
+// are omitted.
 
 /** One preset as authored: base values plus unparsed EEL equation blocks. */
 export interface ExomuxButterchurnPresetSource {
@@ -110,10 +164,19 @@ export interface ExomuxButterchurnPresetSource {
   readonly frame: string;
   /** Equations run once per warp-mesh vertex per frame. */
   readonly pixel: string;
-  /** GLSL body of the warp shader, run per fragment of the feedback pass. */
+  /**
+   * WGSL body of the warp shader, run per fragment of the feedback pass.
+   *
+   * Empty when the preset has no warp shader, or when its GLSL could not be
+   * translated — in both cases the graph substitutes MilkDrop's default.
+   */
   readonly warp: string;
-  /** GLSL body of the composite shader, run per fragment of the output pass. */
+  /** Samplers the warp body binds, in binding order. */
+  readonly warpSamplers: readonly string[];
+  /** WGSL body of the composite shader, run per fragment of the output pass. */
   readonly comp: string;
+  /** Samplers the composite body binds, in binding order. */
+  readonly compSamplers: readonly string[];
 }
 
 // Parsed rather than written as a literal so typechecking stays cheap; see
@@ -126,5 +189,14 @@ export const EXOMUX_BUTTERCHURN_CATALOG: readonly ExomuxButterchurnPresetSource[
   // Formatted here so regenerating never leaves the tree failing `deno fmt`.
   await new Deno.Command(Deno.execPath(), { args: ["fmt", OUTPUT.pathname], stdout: "null", stderr: "null" }).output();
   const bytes = new TextEncoder().encode(module).length;
+  const translated = presets.reduce(
+    (total, preset) => total + (preset.warp ? 1 : 0) + (preset.comp ? 1 : 0),
+    0,
+  );
   console.log(`wrote ${presets.length} presets to ${OUTPUT.pathname} (${(bytes / 1024).toFixed(0)} KB)`);
+  console.log(`shaders: ${translated}/${authored} translated to WGSL`);
+  if (untranslatable.length > 0) {
+    console.log(`untranslatable (${untranslatable.length}):`);
+    for (const entry of untranslatable) console.log(`  ${entry}`);
+  }
 }

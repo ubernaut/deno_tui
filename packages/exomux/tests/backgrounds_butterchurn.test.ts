@@ -102,13 +102,26 @@ function frameText(field: ExomuxButterchurnField): string {
 
 /** A preset source with everything defaulted, for pipeline tests. */
 function source(overrides: Partial<ExomuxButterchurnPresetSource>): ExomuxButterchurnPresetSource {
-  return { name: "test", baseVals: {}, init: "", frame: "", pixel: "", warp: "", comp: "", ...overrides };
+  return {
+    name: "test",
+    baseVals: {},
+    init: "",
+    frame: "",
+    pixel: "",
+    warp: "",
+    warpSamplers: [],
+    comp: "",
+    compSamplers: [],
+    ...overrides,
+  };
 }
 
 // ── catalog ─────────────────────────────────────────────────────────────────
 
-Deno.test("butterchurn: the vendored catalog is the upstream base+extra packs", () => {
-  assertEquals(EXOMUX_BUTTERCHURN_CATALOG.length, 293, "base (107) + extra (186) is what asciichurn reports");
+Deno.test("butterchurn: the vendored catalog is every upstream pack merged", () => {
+  // base (107) + extra (186) is what the parent demo shows; image, md1, minimal
+  // and nonMinimal bring the rest.
+  assertEquals(EXOMUX_BUTTERCHURN_CATALOG.length, 472);
   const names = new Set(EXOMUX_BUTTERCHURN_CATALOG.map((preset) => preset.name));
   assertEquals(names.size, EXOMUX_BUTTERCHURN_CATALOG.length, "preset names identify entries, so they must be unique");
 
@@ -124,18 +137,21 @@ Deno.test("butterchurn: the vendored catalog is the upstream base+extra packs", 
   // Equations are what make presets differ; a catalog of bare parameters would
   // render 293 variations of the same picture.
   const withFrame = EXOMUX_BUTTERCHURN_CATALOG.filter((preset) => preset.frame.trim().length > 0);
-  assert(withFrame.length > 250, `expected most presets to carry frame equations, got ${withFrame.length}`);
+  assert(withFrame.length > 400, `expected most presets to carry frame equations, got ${withFrame.length}`);
 });
 
-Deno.test("butterchurn: the rotation is a curated subset of the catalog", () => {
+Deno.test("butterchurn: the field cycles the whole catalog", () => {
+  // The curated rotation is no longer the filter. It was audited against a
+  // renderer that could not compile a third of the catalog, and predates the
+  // catalog growing to 472, so applying it would hide the presets just added.
+  assertEquals(EXOMUX_BUTTERCHURN_PRESETS.length, EXOMUX_BUTTERCHURN_CATALOG.length);
+
+  // It is still a valid list of names, and still worth regenerating.
   const catalog = new Set(EXOMUX_BUTTERCHURN_CATALOG.map((preset) => preset.name));
-  assert(EXOMUX_BUTTERCHURN_ROTATION.length > 250, `rotation is too small: ${EXOMUX_BUTTERCHURN_ROTATION.length}`);
-  assert(EXOMUX_BUTTERCHURN_ROTATION.length <= catalog.size);
   for (const name of EXOMUX_BUTTERCHURN_ROTATION) {
     assert(catalog.has(name), `rotation names a preset the catalog does not have: ${name}`);
   }
   assertEquals(new Set(EXOMUX_BUTTERCHURN_ROTATION).size, EXOMUX_BUTTERCHURN_ROTATION.length, "no duplicates");
-  assertEquals(EXOMUX_BUTTERCHURN_PRESETS.length, EXOMUX_BUTTERCHURN_ROTATION.length);
 });
 
 Deno.test("butterchurn: every preset in the catalog loads without throwing", () => {
@@ -167,7 +183,7 @@ Deno.test("butterchurn: every preset in the catalog loads without throwing", () 
   // source Butterchurn cannot parse either. Those five load as static parameter
   // dumps instead of failing. Pinned exactly so a parser regression that
   // silently drops presets shows up here.
-  assertEquals(animated, 288, "the number of presets with usable frame equations changed");
+  assertEquals(animated, 460, "the number of presets with usable frame equations changed");
 });
 
 // ── the MilkDrop pipeline ───────────────────────────────────────────────────
@@ -467,29 +483,43 @@ Deno.test("butterchurn: the order is shuffled but covers everything before repea
 });
 
 Deno.test("butterchurn: a crossfade draws both presets before settling on the new one", () => {
+  // Two presets that actually look different, found rather than assumed: the
+  // catalog is regenerated from upstream packs, so fixed indices drift.
+  const settled = (index: number) => {
+    const field = new ExomuxButterchurnField({
+      gpu: false,
+      audio: scriptedAudio(),
+      presetIndex: index,
+      autoCycle: false,
+      seed: 4,
+    });
+    run(field, 66);
+    return frameText(field);
+  };
+  let from = -1;
+  let to = -1;
+  for (let index = 0; index < 40 && to < 0; index += 1) {
+    const text = settled(index);
+    if (!text.trim()) continue;
+    if (from < 0) from = index;
+    else if (text !== settled(from)) to = index;
+  }
+  assert(from >= 0 && to >= 0, "expected two presets that render differently");
+
   const blending = new ExomuxButterchurnField({
     gpu: false,
     audio: scriptedAudio(),
-    presetIndex: 0,
+    presetIndex: from,
     autoCycle: false,
     seed: 4,
   });
   run(blending, 60);
   // Selected rather than stepped: the play order is shuffled, and this test is
   // about the crossfade, not about which preset comes next.
-  blending.selectPreset(1);
+  blending.selectPreset(to);
   run(blending, 6, { startAt: 60 * 125 });
-  assertEquals(blending.presetIndex, 1);
-
-  const straight = new ExomuxButterchurnField({
-    gpu: false,
-    audio: scriptedAudio(),
-    presetIndex: 1,
-    autoCycle: false,
-    seed: 4,
-  });
-  run(straight, 66);
-  assert(frameText(blending) !== frameText(straight), "a blend in progress is not the destination preset alone");
+  assertEquals(blending.presetIndex, to);
+  assert(frameText(blending) !== settled(to), "a blend in progress is not the destination preset alone");
 });
 
 Deno.test("butterchurn: the software fallback never saturates the desktop", () => {

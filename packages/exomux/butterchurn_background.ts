@@ -211,14 +211,18 @@ const MIN_AVERAGE = 0.02;
  * why the rest are excluded. The full catalog remains available as
  * `EXOMUX_BUTTERCHURN_CATALOG`.
  */
+/**
+ * The presets the field cycles: all of them.
+ *
+ * `butterchurn_rotation.ts` is a curated subset, and it is stale — it was
+ * audited against a renderer that could not compile a third of the catalog,
+ * before the catalog grew from 293 presets to 472. Filtering by it now would
+ * hide the 179 presets that were just added, which is the opposite of what it
+ * is for. A preset that renders nothing is skipped within a second at runtime,
+ * so the curation buys less than it did.
+ */
 export const EXOMUX_BUTTERCHURN_PRESETS: readonly ExomuxButterchurnPresetSource[] = Object.freeze(
-  ((): ExomuxButterchurnPresetSource[] => {
-    const wanted = new Set(EXOMUX_BUTTERCHURN_ROTATION);
-    const rotation = EXOMUX_BUTTERCHURN_CATALOG.filter((preset) => wanted.has(preset.name));
-    // A rotation that failed to match anything would leave the desktop with no
-    // background at all, so fall back to the whole catalog.
-    return rotation.length > 0 ? rotation : [...EXOMUX_BUTTERCHURN_CATALOG];
-  })(),
+  [...EXOMUX_BUTTERCHURN_CATALOG],
 );
 
 /**
@@ -592,7 +596,7 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
     // Frames are 125 ms apart; scaling by the real delta keeps motion
     // rate-independent when the desktop stalls or the terminal resizes.
     const frames = elapsedMs / FRAME_BASELINE_MS;
-    if (!this.#renderOnGpu(input, audio)) {
+    if (!this.#renderOnGpu(input, audio, frames)) {
       this.#warpPass(frames);
       this.#drawWaves(audio, frames);
       this.#drawPointer(bounds, now, frames);
@@ -732,7 +736,7 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
    * did. The GPU device is requested once, lazily, and a preset whose shaders
    * will not compile is remembered so it is not retried every frame.
    */
-  #renderOnGpu(input: ExomuxButterchurnAudio, audio: ExomuxAudioFrame): boolean {
+  #renderOnGpu(input: ExomuxButterchurnAudio, audio: ExomuxAudioFrame, frames: number): boolean {
     if (!this.#wantsGpu || this.#gpuState === "unavailable") return false;
     if (this.#gpuState === "idle") {
       this.#gpuState = "starting";
@@ -766,9 +770,7 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
     const source = this.#catalog[this.#presetIndex]!;
     // Pipelines build in the background. "pending" is not cached: the preset
     // renders on the CPU for the frames it takes, then picks up the GPU.
-    const state = this.#gpuPresets.get(preset.name) === false
-      ? "failed"
-      : gpu.prepare(preset.name, source.warp, source.comp);
+    const state = this.#gpuPresets.get(preset.name) === false ? "failed" : gpu.prepare(source);
     if (state === "failed") {
       this.#gpuPresets.set(preset.name, false);
       return false;
@@ -779,7 +781,7 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
     // does not begin with several frames of software rendering.
     if (this.#autoCycle && this.#heldSeconds > PRESET_HOLD_SECONDS - PRESET_PREWARM_SECONDS) {
       const next = this.#catalog[(this.#presetIndex + 1) % this.#catalog.length]!;
-      if (this.#gpuPresets.get(next.name) !== false) gpu.prepare(next.name, next.warp, next.comp);
+      if (this.#gpuPresets.get(next.name) !== false) gpu.prepare(next);
     }
 
     gpu.setSize(this.#width, this.#height);
@@ -801,7 +803,11 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
       time: this.#time,
       frame: this.#frame,
       fps: 1000 / FRAME_BASELINE_MS,
-      decay: clamp(values.decay, 0, MAX_DECAY),
+      // Re-based from the 30 fps the catalog was authored against onto this
+      // frame's length, exactly as the software path does. Passed raw, a decay
+      // of 0.98 retains 85% of the frame after a second here instead of 54%,
+      // and the presets that lean on it to stay bounded never come back down.
+      decay: Math.pow(clamp(values.decay, 0, MAX_DECAY), (AUTHORED_FPS / (1000 / FRAME_BASELINE_MS)) * frames),
       bass: input.bass,
       mid: input.mid,
       treb: input.treb,

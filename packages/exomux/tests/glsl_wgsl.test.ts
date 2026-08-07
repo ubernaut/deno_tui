@@ -2,20 +2,28 @@ import { assert, assertEquals, assertStringIncludes, assertThrows } from "./deps
 import { translateShaderBody } from "../glsl_wgsl.ts";
 import { EXOMUX_BUTTERCHURN_CATALOG } from "../butterchurn_catalog.ts";
 
-Deno.test("glsl→wgsl: translates the whole shipped shader corpus", () => {
-  // The corpus is the point: a translator that handles the easy shaders and
-  // throws on the rest would silently drop presets to the software path.
+Deno.test("glsl→wgsl: every shader in the catalog arrived as usable WGSL", () => {
+  // Translation happens in the catalog build, not at runtime, so the corpus
+  // check is on the generated artifact: a preset whose GLSL failed would ship
+  // with an empty body and fall silently to MilkDrop's default pass-through.
+  // The build script prints the same count and is where a regression is caught
+  // first; this is what stops one being committed.
   let bodies = 0;
   for (const preset of EXOMUX_BUTTERCHURN_CATALOG) {
-    for (const source of [preset.warp, preset.comp]) {
-      if (!source.trim()) continue;
+    for (const [body, samplers] of [[preset.warp, preset.warpSamplers], [preset.comp, preset.compSamplers]] as const) {
+      if (!body) {
+        assertEquals(samplers.length, 0, `${preset.name} declares samplers for a shader it does not have`);
+        continue;
+      }
       bodies += 1;
-      translateShaderBody(source);
+      assert(samplers.includes("sampler_main"), `${preset.name} does not bind sampler_main`);
+      assert(!/\bvec[234]\s*\(/.test(body), `${preset.name} still contains GLSL constructors`);
+      assert(!body.includes("texture2D"), `${preset.name} still contains GLSL sampling`);
     }
   }
-  // 500 across the 293 vendored presets; most carry both a warp and a comp
-  // shader, a handful only one.
-  assertEquals(bodies, 500, "the shipped shader count changed");
+  // 724 across the 472 vendored presets; most carry both a warp and a comp
+  // shader, a good number only one, and the MilkDrop 1 packs neither.
+  assertEquals(bodies, 724, "the shipped shader count changed");
 });
 
 Deno.test("glsl→wgsl: expands multi-component swizzle assignment", () => {
