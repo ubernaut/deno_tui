@@ -98,7 +98,21 @@ made the floor unnecessary. Honouring each preset's own `wave_a` instead takes t
 119, so the floor stays: the presets that set it near zero really are relying on custom waves and shapes, and those are
 still the missing piece.
 
-Custom waves and custom shapes are the one part of a preset still not carried over.
+**Custom waves and custom shapes are ported.** Each enabled wave and shape carries its EEL blocks through the catalog
+and gets its own variable pool — seeded from the preset's globals and `q`s each frame, `t1..t8` restored to their
+post-init values, user variables persisting per wave, which is MilkDrop's scoping. Waves run their point equations over
+the smoothed time or spectrum arrays at MilkDrop's byte scales; shapes run their frame equations per instance and become
+triangle fans with a border strip. On the GPU they draw between the warp and the basic waveform — line strips, dots and
+triangle lists with additive or alpha blending; on the software path they splat into the ink buffer under one shared
+budget, so a hundred-instance shape cannot saturate the desktop.
+
+Honest caveat from measurement: porting them did not flip the formerly-black presets at the classifier's thresholds — a
+sample of sixty re-tested at 5-9 renders both before and after, within run noise. The mechanism is verified directly (a
+shapes-only preset now paints, and a synthetic fan through the real graph reads back at the expected brightness); what
+keeps those presets dark is their composite grading and slow build-up under short synthetic audio, not missing geometry.
+What the port buys is fidelity on the presets that already render, and texture for the software path.
+
+Shape texturing (`textured: 1`, sampling the previous frame into the fan) is carried as untextured colour for now.
 
 `audio.ts` captures the microphone through the first of `parec`, `pw-record` or `arecord` that produces samples, and
 reduces it to spectrum bands, bass/mid/treble energy, a waveform and beat pulses. Capture is refcounted and lazy:

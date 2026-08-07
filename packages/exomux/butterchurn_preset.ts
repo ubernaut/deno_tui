@@ -145,6 +145,8 @@ export interface ExomuxButterchurnAudio {
   readonly trebleAttack: number;
   /** Time-domain samples in -1..1 driving the waveform figure. */
   readonly waveform: Float32Array;
+  /** Log-spaced spectrum bands in 0..1, for spectrum-driven custom waves. */
+  readonly bands?: Float32Array;
 }
 
 export interface ExomuxButterchurnPresetOptions {
@@ -190,6 +192,148 @@ export const BUTTERCHURN_WAVE_SAMPLES = 256;
  * expensive step; `advance` is then a frame-equation run plus one pixel-equation
  * run per mesh vertex.
  */
+/**
+ * One drawable produced by a custom wave or shape, in the vertex layout the
+ * GPU pass consumes directly: (x, y, u, v, r, g, b, a) per vertex, positions
+ * in NDC with y up, colours premultiplied by nothing — alpha rides along.
+ */
+export interface ExomuxButterchurnPrim {
+  readonly kind: "line" | "dots" | "triangles";
+  readonly additive: boolean;
+  /** Triangles only: modulate each vertex by the previous frame at its uv. */
+  readonly textured: boolean;
+  readonly vertices: Float32Array;
+  readonly vertexCount: number;
+}
+
+const PRIM_STRIDE = 8;
+const MAX_WAVE_SAMPLES = 512;
+/** MilkDrop time-domain samples are signed bytes; ours arrive in -1..1. */
+const TIME_ARRAY_SCALE = 128;
+/** Rough magnitude of upstream's equalized FFT bins, from a signed-byte signal. */
+const FREQ_ARRAY_SCALE = 96;
+
+const WAVE_DEFAULTS: Readonly<Record<string, number>> = Object.freeze({
+  enabled: 0,
+  samples: 512,
+  sep: 0,
+  scaling: 1,
+  smoothing: 0.5,
+  r: 1,
+  g: 1,
+  b: 1,
+  a: 1,
+  spectrum: 0,
+  usedots: 0,
+  thick: 0,
+  additive: 0,
+});
+
+const SHAPE_DEFAULTS: Readonly<Record<string, number>> = Object.freeze({
+  enabled: 0,
+  sides: 4,
+  additive: 0,
+  thickoutline: 0,
+  textured: 0,
+  num_inst: 1,
+  x: 0.5,
+  y: 0.5,
+  rad: 0.1,
+  ang: 0,
+  tex_ang: 0,
+  tex_zoom: 1,
+  r: 1,
+  g: 0,
+  b: 0,
+  a: 1,
+  r2: 0,
+  g2: 1,
+  b2: 0,
+  a2: 0,
+  border_r: 1,
+  border_g: 1,
+  border_b: 1,
+  border_a: 0.1,
+});
+
+/** Globals mirrored into every wave and shape scope each frame. */
+const PRIM_GLOBALS: readonly string[] = Object.freeze([
+  "time",
+  "frame",
+  "fps",
+  "bass",
+  "mid",
+  "treb",
+  "bass_att",
+  "mid_att",
+  "treb_att",
+  "vol",
+  "meshx",
+  "meshy",
+  "pixelsx",
+  "pixelsy",
+  "aspectx",
+  "aspecty",
+]);
+
+const T_VARIABLES: readonly string[] = Object.freeze(
+  Array.from({ length: 8 }, (_, index) => `t${index + 1}`),
+);
+
+/**
+ * One custom wave or shape: its own variable pool, seeded from the preset's
+ * globals and `q`s each frame, with `t1..t8` restored to their post-init
+ * values — MilkDrop's scoping, where user variables persist per wave.
+ */
+interface PrimState {
+  readonly scope: EelScope;
+  readonly frame: EelProgram | undefined;
+  readonly point: EelProgram | undefined;
+  readonly baseVals: Readonly<Record<string, number>>;
+  readonly tInits: Float64Array;
+}
+
+function createPrimState(
+  random: () => number,
+  baseVals: Readonly<Record<string, number>>,
+  defaults: Readonly<Record<string, number>>,
+  init: string,
+  frame: string,
+  point: string,
+): PrimState {
+  const scope = new EelScope(random);
+  const values = { ...defaults, ...baseVals };
+  for (const name of PRIM_GLOBALS) scope.slot(name);
+  for (const name of Q_VARIABLES) scope.slot(name);
+  for (const name of T_VARIABLES) scope.slot(name);
+  for (const name of Object.keys(values)) scope.slot(name);
+  for (const name of ["sample", "value1", "value2", "x", "y", "instance"]) scope.slot(name);
+  const initProgram = tryCompileEel(init, scope);
+  const frameProgram = tryCompileEel(frame, scope);
+  const pointProgram = tryCompileEel(point, scope);
+  for (const [name, value] of Object.entries(values)) scope.set(name, value);
+  initProgram?.run();
+  const tInits = new Float64Array(T_VARIABLES.length);
+  for (let index = 0; index < T_VARIABLES.length; index += 1) tInits[index] = scope.get(T_VARIABLES[index]!);
+  return { scope, frame: frameProgram, point: pointProgram, baseVals: values, tInits };
+}
+
+/** Seeds a prim scope with this frame's globals, `q`s and its own `t`s. */
+function seedPrimScope(state: PrimState, main: EelScope, mainSlots: Map<string, number>): void {
+  const scope = state.scope;
+  for (const name of PRIM_GLOBALS) {
+    const slot = mainSlots.get(name);
+    if (slot !== undefined) scope.set(name, main.memory[slot]!);
+  }
+  for (const name of Q_VARIABLES) {
+    const slot = mainSlots.get(name);
+    if (slot !== undefined) scope.set(name, main.memory[slot]!);
+  }
+  for (let index = 0; index < T_VARIABLES.length; index += 1) {
+    scope.set(T_VARIABLES[index]!, state.tInits[index]!);
+  }
+}
+
 export class ExomuxButterchurnPreset {
   readonly name: string;
   readonly meshWidth: number;
@@ -214,6 +358,12 @@ export class ExomuxButterchurnPreset {
   #aspectX = 1;
   #aspectY = 1;
   #values: ExomuxButterchurnFrameValues = ZERO_VALUES;
+  readonly #waves: PrimState[] = [];
+  readonly #shapes: PrimState[] = [];
+  #prims: ExomuxButterchurnPrim[] = [];
+  readonly #timeArray = new Float32Array(MAX_WAVE_SAMPLES);
+  readonly #freqArray = new Float32Array(MAX_WAVE_SAMPLES);
+  readonly #pointData = new Float32Array(MAX_WAVE_SAMPLES);
 
   constructor(source: ExomuxButterchurnPresetSource, options: ExomuxButterchurnPresetOptions = {}) {
     this.name = source.name;
@@ -255,6 +405,14 @@ export class ExomuxButterchurnPreset {
     this.#vertexValues = new Float64Array(VERTEX_VARIABLES.length);
     for (const name of [...RUNTIME_VARIABLES, ...Q_VARIABLES, ...Object.keys(baseValues)]) {
       this.#slots.set(name, scope.slot(name));
+    }
+
+    const random = options.random ?? Math.random;
+    for (const wave of source.waves ?? []) {
+      this.#waves.push(createPrimState(random, wave.baseVals, WAVE_DEFAULTS, wave.init, wave.frame, wave.point));
+    }
+    for (const shape of source.shapes ?? []) {
+      this.#shapes.push(createPrimState(random, shape.baseVals, SHAPE_DEFAULTS, shape.init, shape.frame, ""));
     }
   }
 
@@ -319,6 +477,218 @@ export class ExomuxButterchurnPreset {
     this.#readValues();
     this.#buildMesh(time);
     this.#buildWave(audio, time);
+    this.#buildPrims(audio);
+  }
+
+  /** Custom waves and shapes for this frame, in draw order: shapes first. */
+  get prims(): readonly ExomuxButterchurnPrim[] {
+    return this.#prims;
+  }
+
+  #buildPrims(audio: ExomuxButterchurnAudio): void {
+    this.#prims = [];
+    if (this.#waves.length === 0 && this.#shapes.length === 0) return;
+
+    // MilkDrop draws shapes under waves.
+    for (const shape of this.#shapes) this.#buildShape(shape);
+    if (this.#waves.length > 0) {
+      this.#prepareWaveAudio(audio);
+      for (const wave of this.#waves) this.#buildCustomWave(wave);
+    }
+  }
+
+  /** Time and spectrum arrays at MilkDrop's scales: signed bytes, FFT bins. */
+  #prepareWaveAudio(audio: ExomuxButterchurnAudio): void {
+    const source = audio.waveform;
+    for (let index = 0; index < MAX_WAVE_SAMPLES; index += 1) {
+      const at = (index / MAX_WAVE_SAMPLES) * (source.length - 1);
+      const low = Math.floor(at);
+      const t = at - low;
+      const value = (source[low] ?? 0) * (1 - t) + (source[Math.min(source.length - 1, low + 1)] ?? 0) * t;
+      this.#timeArray[index] = value * TIME_ARRAY_SCALE;
+    }
+    const bands = audio.bands;
+    for (let index = 0; index < MAX_WAVE_SAMPLES; index += 1) {
+      if (!bands || bands.length === 0) {
+        this.#freqArray[index] = Math.abs(this.#timeArray[index]!) * 0.5;
+        continue;
+      }
+      const at = (index / MAX_WAVE_SAMPLES) * (bands.length - 1);
+      const low = Math.floor(at);
+      const t = at - low;
+      const value = (bands[low] ?? 0) * (1 - t) + (bands[Math.min(bands.length - 1, low + 1)] ?? 0) * t;
+      this.#freqArray[index] = value * FREQ_ARRAY_SCALE;
+    }
+  }
+
+  #buildCustomWave(state: PrimState): void {
+    seedPrimScope(state, this.#scope, this.#slots);
+    const scope = state.scope;
+    const base = state.baseVals;
+    for (const name of ["samples", "sep", "scaling", "smoothing", "spectrum", "r", "g", "b", "a"]) {
+      scope.set(name, base[name]!);
+    }
+    state.frame?.run();
+
+    const usedots = base.usedots !== 0;
+    const sep = Math.floor(scope.get("sep"));
+    const samples = Math.floor(Math.min(MAX_WAVE_SAMPLES, scope.get("samples"))) - sep;
+    if (!(samples >= 2 || (usedots && samples >= 1))) return;
+
+    const spectrum = scope.get("spectrum") !== 0;
+    const smoothing = scope.get("smoothing");
+    const scale = (spectrum ? 0.15 : 0.004) * scope.get("scaling") * this.#get("wave_scale");
+    const source = spectrum ? this.#freqArray : this.#timeArray;
+    const j0 = spectrum ? 0 : Math.floor((MAX_WAVE_SAMPLES - samples) / 2 - sep / 2);
+    const j1 = spectrum ? 0 : Math.floor((MAX_WAVE_SAMPLES - samples) / 2 + sep / 2);
+    const stride = spectrum ? (MAX_WAVE_SAMPLES - sep) / samples : 1;
+    const mix1 = Math.sqrt(smoothing * 0.98);
+    const mix2 = 1 - mix1;
+
+    // MilkDrop smooths the source forward, then backward, then scales.
+    const data = this.#pointData;
+    data[0] = source[Math.min(MAX_WAVE_SAMPLES - 1, Math.max(0, j0))] ?? 0;
+    for (let j = 1; j < samples; j += 1) {
+      const value = source[Math.min(MAX_WAVE_SAMPLES - 1, Math.max(0, Math.floor(j * stride + j0)))] ?? 0;
+      data[j] = value * mix2 + data[j - 1]! * mix1;
+    }
+    for (let j = samples - 2; j >= 0; j -= 1) data[j] = data[j]! * mix2 + data[j + 1]! * mix1;
+    // Mono capture: the second channel reads the same samples offset by `sep`.
+    const secondAt = (j: number): number =>
+      (source[Math.min(MAX_WAVE_SAMPLES - 1, Math.max(0, Math.floor(j * stride + j1)))] ?? 0) * scale;
+
+    const frameR = scope.get("r");
+    const frameG = scope.get("g");
+    const frameB = scope.get("b");
+    const frameA = scope.get("a");
+    // Naming here and upstream disagree: Butterchurn's `aspectx` is 1 on a
+    // landscape target where ours is height/width. Its wave transform divides
+    // x by its aspectx and y by its aspecty, which in our terms is this pair.
+    const invAspectX = 1 / this.#aspectY;
+    const invAspectY = 1 / this.#aspectX;
+
+    const vertices = new Float32Array(samples * PRIM_STRIDE);
+    for (let j = 0; j < samples; j += 1) {
+      const value1 = data[j]! * scale;
+      const value2 = secondAt(j);
+      scope.set("sample", samples > 1 ? j / (samples - 1) : 0);
+      scope.set("value1", value1);
+      scope.set("value2", value2);
+      scope.set("x", 0.5 + value1);
+      scope.set("y", 0.5 + value2);
+      scope.set("r", frameR);
+      scope.set("g", frameG);
+      scope.set("b", frameB);
+      scope.set("a", frameA);
+      state.point?.run();
+      const at = j * PRIM_STRIDE;
+      vertices[at] = (scope.get("x") * 2 - 1) * invAspectX;
+      vertices[at + 1] = (scope.get("y") * -2 + 1) * invAspectY;
+      vertices[at + 4] = scope.get("r");
+      vertices[at + 5] = scope.get("g");
+      vertices[at + 6] = scope.get("b");
+      vertices[at + 7] = scope.get("a");
+    }
+    this.#prims.push({
+      kind: usedots ? "dots" : "line",
+      additive: base.additive !== 0,
+      textured: false,
+      vertices,
+      vertexCount: samples,
+    });
+  }
+
+  #buildShape(state: PrimState): void {
+    const scope = state.scope;
+    const base = state.baseVals;
+    const instances = Math.max(1, Math.min(1024, Math.floor(base.num_inst ?? 1)));
+    for (let instance = 0; instance < instances; instance += 1) {
+      seedPrimScope(state, this.#scope, this.#slots);
+      scope.set("instance", instance);
+      for (
+        const name of [
+          "sides",
+          "additive",
+          "thickoutline",
+          "textured",
+          "num_inst",
+          "x",
+          "y",
+          "rad",
+          "ang",
+          "tex_ang",
+          "tex_zoom",
+          "r",
+          "g",
+          "b",
+          "a",
+          "r2",
+          "g2",
+          "b2",
+          "a2",
+          "border_r",
+          "border_g",
+          "border_b",
+          "border_a",
+        ]
+      ) scope.set(name, base[name]!);
+      state.frame?.run();
+
+      const sides = Math.max(3, Math.min(100, Math.floor(scope.get("sides"))));
+      const rad = scope.get("rad");
+      const ang = scope.get("ang");
+      const x = scope.get("x") * 2 - 1;
+      const y = scope.get("y") * -2 + 1;
+      const textured = Math.abs(scope.get("textured")) >= 1;
+      const additive = Math.abs(scope.get("additive")) >= 1;
+      const texZoom = Math.max(1e-3, scope.get("tex_zoom"));
+      const texAng = scope.get("tex_ang");
+      const centre = [scope.get("r"), scope.get("g"), scope.get("b"), scope.get("a")] as const;
+      const edge = [scope.get("r2"), scope.get("g2"), scope.get("b2"), scope.get("a2")] as const;
+      // Butterchurn multiplies the horizontal radius by its `aspecty` — the
+      // height/width ratio on a landscape target — which is our `#aspectX`.
+      const aspectY = this.#aspectX;
+
+      const quarterPi = Math.PI / 4;
+      const ring: number[] = [];
+      for (let k = 0; k <= sides; k += 1) {
+        const angle = (k / sides) * Math.PI * 2 + ang + quarterPi;
+        ring.push(x + rad * Math.cos(angle) * aspectY, y + rad * Math.sin(angle));
+      }
+      const fan = new Float32Array(sides * 3 * PRIM_STRIDE);
+      const writeVertex = (
+        at: number,
+        px: number,
+        py: number,
+        colour: readonly [number, number, number, number] | readonly number[],
+      ): void => {
+        fan[at] = px;
+        fan[at + 1] = py;
+        fan[at + 2] = 0.5 + (px - x) / (2 * texZoom) * Math.cos(texAng) - (py - y) / (2 * texZoom) * Math.sin(texAng);
+        fan[at + 3] = 0.5 - (px - x) / (2 * texZoom) * Math.sin(texAng) - (py - y) / (2 * texZoom) * Math.cos(texAng);
+        fan[at + 4] = colour[0]!;
+        fan[at + 5] = colour[1]!;
+        fan[at + 6] = colour[2]!;
+        fan[at + 7] = colour[3]!;
+      };
+      for (let k = 0; k < sides; k += 1) {
+        const at = k * 3 * PRIM_STRIDE;
+        writeVertex(at, x, y, centre);
+        writeVertex(at + PRIM_STRIDE, ring[k * 2]!, ring[k * 2 + 1]!, edge);
+        writeVertex(at + PRIM_STRIDE * 2, ring[(k + 1) * 2]!, ring[(k + 1) * 2 + 1]!, edge);
+      }
+      this.#prims.push({ kind: "triangles", additive, textured, vertices: fan, vertexCount: sides * 3 });
+
+      const borderAlpha = scope.get("border_a");
+      if (borderAlpha > 0) {
+        const border = new Float32Array((sides + 1) * PRIM_STRIDE);
+        const colour = [scope.get("border_r"), scope.get("border_g"), scope.get("border_b"), borderAlpha];
+        for (let k = 0; k <= sides; k += 1) {
+          writeBorderVertex(border, k * PRIM_STRIDE, ring[k * 2]!, ring[k * 2 + 1]!, colour);
+        }
+        this.#prims.push({ kind: "line", additive, textured: false, vertices: border, vertexCount: sides + 1 });
+      }
+    }
   }
 
   #set(name: string, value: number): void {
@@ -596,3 +966,12 @@ const ZERO_VALUES: ExomuxButterchurnFrameValues = Object.freeze({
   gammaAdjust: 1.25,
   echoAlpha: 0,
 });
+
+function writeBorderVertex(target: Float32Array, at: number, x: number, y: number, colour: readonly number[]): void {
+  target[at] = x;
+  target[at + 1] = y;
+  target[at + 4] = colour[0]!;
+  target[at + 5] = colour[1]!;
+  target[at + 6] = colour[2]!;
+  target[at + 7] = colour[3]!;
+}

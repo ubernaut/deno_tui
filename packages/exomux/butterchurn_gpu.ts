@@ -23,6 +23,7 @@
 // uses: mapping a buffer needs an await, and `advance` is synchronous.
 
 import { SAMPLERS } from "./glsl_wgsl.ts";
+import type { ExomuxButterchurnPrim } from "./butterchurn_preset.ts";
 import { exomuxNoiseSet, type ExomuxNoiseTexture } from "./butterchurn_noise.ts";
 import { exomuxGpuDevice } from "./gpu_device.ts";
 
@@ -338,6 +339,8 @@ export interface ExomuxButterchurnGpuFrame {
   readonly trebleAttack: number;
   readonly aspectX: number;
   readonly aspectY: number;
+  /** Custom waves and shapes for this frame; empty when the preset has none. */
+  readonly prims?: readonly ExomuxButterchurnPrim[];
 }
 
 /**
@@ -414,6 +417,14 @@ export class ExomuxButterchurnGpu {
   #meshData = new Float32Array(0);
   #waveBuffer: GPUBuffer | undefined;
   #waveData = new Float32Array(0);
+  #primBuffer: GPUBuffer | undefined;
+  #primData = new Float32Array(0);
+  /** Pipelines for custom waves and shapes, keyed by topology, blend, texture. */
+  readonly #primPipelines = new Map<string, GPURenderPipeline>();
+  #primModule: GPUShaderModule | undefined;
+  #primLayout: GPUBindGroupLayout | undefined;
+  /** Bind groups for textured prims; the source ping-pongs, so two at most. */
+  readonly #primBindGroups = new WeakMap<GPUTexture, GPUBindGroup>();
   readonly #directionData = new Float32Array(4);
   /** Increments each time a resolved frame lands, so callers can spot a stall. */
   #readbacks = 0;
@@ -658,7 +669,12 @@ export class ExomuxButterchurnGpu {
     warpPass.draw(this.#meshVertices);
     warpPass.end();
 
-    // 2. Waveform, drawn straight onto the warped frame.
+    // 2. Custom shapes and waves — MilkDrop draws them onto the warped frame,
+    //    shapes under waves, all before the basic waveform.
+    const prims = frame.prims ?? [];
+    if (prims.length > 0) this.#drawPrims(encoder, target, source, prims);
+
+    // 3. Basic waveform, drawn straight onto the warped frame.
     if (frame.waveCount > 1) {
       const wavePass = encoder.beginRenderPass({
         colorAttachments: [{ view: this.#view(target), loadOp: "load", storeOp: "store" }],
@@ -715,6 +731,7 @@ export class ExomuxButterchurnGpu {
     this.#uniform.destroy();
     this.#meshBuffer?.destroy();
     this.#waveBuffer?.destroy();
+    this.#primBuffer?.destroy();
     for (const buffer of this.#directionBuffers) buffer.destroy();
   }
 
@@ -1176,6 +1193,136 @@ struct WaveOut { @builtin(position) position: vec4<f32>, @location(0) color: vec
       primitive: { topology: "line-strip" },
     });
     return this.#wavePipelineCache;
+  }
+
+  /** Shader for custom waves and shapes: vertex colour, optionally textured. */
+  #primShader(): GPUShaderModule {
+    this.#primModule ??= this.#device.createShaderModule({
+      code: `
+struct PrimOut { @builtin(position) position: vec4<f32>, @location(0) uv: vec2<f32>, @location(1) color: vec4<f32> };
+@group(0) @binding(0) var prim_tex: texture_2d<f32>;
+@group(0) @binding(1) var prim_smp: sampler;
+@vertex fn vs(@location(0) pos: vec2<f32>, @location(1) uv: vec2<f32>, @location(2) color: vec4<f32>) -> PrimOut {
+  var out: PrimOut;
+  out.position = vec4<f32>(pos, 0.0, 1.0);
+  out.uv = uv;
+  out.color = color;
+  return out;
+}
+@fragment fn fs(input: PrimOut) -> @location(0) vec4<f32> { return input.color; }
+@fragment fn fsTextured(input: PrimOut) -> @location(0) vec4<f32> {
+  return textureSampleLevel(prim_tex, prim_smp, input.uv, 0.0) * input.color;
+}
+`,
+    });
+    return this.#primModule;
+  }
+
+  #ensurePrimLayout(): GPUBindGroupLayout {
+    const existing = this.#primLayout;
+    if (existing) return existing;
+    const layout = this.#device.createBindGroupLayout({
+      entries: [
+        { binding: 0, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
+        { binding: 1, visibility: GPUShaderStage.FRAGMENT, sampler: { type: "filtering" } },
+      ],
+    });
+    this.#primLayout = layout;
+    return layout;
+  }
+
+  #primPipeline(topology: GPUPrimitiveTopology, additive: boolean, textured: boolean): GPURenderPipeline {
+    const key = `${topology}:${additive ? "add" : "mix"}:${textured ? "tex" : "flat"}`;
+    const cached = this.#primPipelines.get(key);
+    if (cached) return cached;
+    const layout = this.#ensurePrimLayout();
+    const module = this.#primShader();
+    const pipeline = this.#device.createRenderPipeline({
+      layout: this.#device.createPipelineLayout({ bindGroupLayouts: [layout] }),
+      vertex: { module, entryPoint: "vs", buffers: [MESH_LAYOUT] },
+      fragment: {
+        module,
+        entryPoint: textured ? "fsTextured" : "fs",
+        targets: [{
+          format: MAIN_FORMAT,
+          blend: {
+            color: {
+              srcFactor: "src-alpha",
+              dstFactor: additive ? "one" : "one-minus-src-alpha",
+              operation: "add",
+            },
+            alpha: { srcFactor: "zero", dstFactor: "one", operation: "add" },
+          },
+        }],
+      },
+      primitive: { topology },
+    });
+    this.#primPipelines.set(key, pipeline);
+    return pipeline;
+  }
+
+  /** Bind group for the prim passes; the texture slot ping-pongs, so two live. */
+  #primBindGroup(source: GPUTexture): GPUBindGroup {
+    const cached = this.#primBindGroups.get(source);
+    if (cached) return cached;
+    const group = this.#device.createBindGroup({
+      layout: this.#ensurePrimLayout(),
+      entries: [
+        { binding: 0, resource: this.#view(source) },
+        { binding: 1, resource: this.#samplers.get("clamp:linear")! },
+      ],
+    });
+    this.#primBindGroups.set(source, group);
+    return group;
+  }
+
+  /** Draws this frame's custom shapes and waves onto the warped frame. */
+  #drawPrims(
+    encoder: GPUCommandEncoder,
+    target: GPUTexture,
+    source: GPUTexture,
+    prims: readonly ExomuxButterchurnPrim[],
+  ): void {
+    let total = 0;
+    for (const prim of prims) total += prim.vertexCount;
+    if (total === 0) return;
+    const floats = total * 8;
+    if (this.#primData.length < floats) this.#primData = new Float32Array(floats);
+    let cursor = 0;
+    for (const prim of prims) {
+      this.#primData.set(prim.vertices.subarray(0, prim.vertexCount * 8), cursor);
+      cursor += prim.vertexCount * 8;
+    }
+    const bytes = floats * 4;
+    if (!this.#primBuffer || this.#primBuffer.size < bytes) {
+      this.#primBuffer?.destroy();
+      this.#primBuffer = this.#device.createBuffer({
+        size: Math.max(4096, bytes),
+        usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+      });
+    }
+    this.#device.queue.writeBuffer(this.#primBuffer, 0, this.#primData, 0, floats);
+
+    // Build pipelines and the bind group before the pass opens; both may
+    // allocate, and a pass encoder must not be interleaved with that.
+    const group = this.#primBindGroup(source);
+    const pass = encoder.beginRenderPass({
+      colorAttachments: [{ view: this.#view(target), loadOp: "load", storeOp: "store" }],
+    });
+    pass.setBindGroup(0, group);
+    pass.setVertexBuffer(0, this.#primBuffer);
+    let first = 0;
+    for (const prim of prims) {
+      const topology: GPUPrimitiveTopology = prim.kind === "dots"
+        ? "point-list"
+        : prim.kind === "line"
+        ? "line-strip"
+        : "triangle-list";
+      pass.setPipeline(this.#primPipeline(topology, prim.additive, prim.textured));
+      pass.draw(prim.vertexCount, 1, first);
+      first += prim.vertexCount;
+    }
+    pass.end();
   }
 
   #waveBindGroup(): GPUBindGroup {

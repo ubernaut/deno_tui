@@ -104,6 +104,15 @@ const ACCENT_TINT_LIMIT = 0.35;
 /** Ink one waveform figure deposits per frame, spread over its vertices. */
 const WAVE_INK = 300;
 /**
+ * Total ink all custom waves and shapes may deposit per frame, shared.
+ *
+ * Per-prim budgets let a hundred-instance shape deposit a hundred budgets and
+ * saturate the desktop; MilkDrop relies on alpha blending, which the additive
+ * ink buffer does not have. One shared budget keeps the software path bounded
+ * however much geometry a preset draws.
+ */
+const PRIM_INK = 500;
+/**
  * Floor under a preset's `wave_a`, and the only deliberate deviation from the
  * catalog's own numbers.
  *
@@ -374,6 +383,7 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
     midAttack: number;
     trebleAttack: number;
     waveform: Float32Array;
+    bands?: Float32Array;
   } = {
     bass: 1,
     mid: 1,
@@ -748,6 +758,7 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
     input.midAttack = clampEnergy(this.#midAttack);
     input.trebleAttack = clampEnergy(this.#trebleAttack);
     input.waveform = audio.waveform;
+    input.bands = audio.bands;
     return input;
   }
 
@@ -836,6 +847,7 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
       trebleAttack: input.trebleAttack,
       aspectX: this.#width / Math.max(1, this.#height * 2),
       aspectY: 1,
+      prims: preset.prims,
     });
 
     // The readback lands a frame late, so the ink buffer keeps the last
@@ -996,8 +1008,66 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
     const raw = this.#blend;
     // Smoothstep, so a cycle eases in and out instead of snapping.
     const mix = raw * raw * (3 - 2 * raw);
-    if (this.#previous && mix < 1) this.#drawWave(this.#previous, audio, frames * (1 - mix));
+    if (this.#previous && mix < 1) {
+      this.#drawWave(this.#previous, audio, frames * (1 - mix));
+      this.#drawPrims(this.#previous, frames * (1 - mix));
+    }
     this.#drawWave(this.#preset, audio, frames * mix);
+    this.#drawPrims(this.#preset, frames * mix);
+  }
+
+  /**
+   * Custom waves and shapes on the software path: line strips and dots are
+   * splatted along their vertices, shape fans as a handful of interior rings.
+   * Coarse next to the GPU pass, but these carry most of what many presets
+   * draw, and without them those presets are a black screen here.
+   */
+  #drawPrims(preset: ExomuxButterchurnPreset, weight: number): void {
+    if (weight <= 0) return;
+    const width = this.#width;
+    const height = this.#height;
+    const toCell = (nx: number, ny: number): [number, number] => [
+      (nx + 1) * 0.5 * width - 0.5,
+      (1 - (ny + 1) * 0.5) * height - 0.5,
+    ];
+    let totalVertices = 0;
+    for (const prim of preset.prims) totalVertices += prim.vertexCount;
+    if (totalVertices === 0) return;
+    for (const prim of preset.prims) {
+      const vertices = prim.vertices;
+      const count = prim.vertexCount;
+      if (count === 0) continue;
+      const gain = (PRIM_INK / totalVertices) * weight;
+      if (prim.kind === "triangles") {
+        // The fan is (centre, edge, edge) triples; splat centre once and walk
+        // the rim, pulling a few samples inward so the fill reads as a body.
+        for (let vertex = 0; vertex < count; vertex += 3) {
+          const at = vertex * 8;
+          const [cx, cy] = toCell(vertices[at]!, vertices[at + 1]!);
+          const [ex, ey] = toCell(vertices[at + 8]!, vertices[at + 9]!);
+          for (const t of [0.33, 0.66, 1]) {
+            const alpha = (vertex === 0 ? vertices[at + 7]! : 0) * (1 - t) + vertices[at + 15]! * t;
+            const inkGain = gain * 3 * clamp(alpha, 0, 1);
+            if (inkGain <= 0) continue;
+            this.#splat(
+              cx + (ex - cx) * t,
+              cy + (ey - cy) * t,
+              vertices[at + 12]! * inkGain,
+              vertices[at + 13]! * inkGain,
+              vertices[at + 14]! * inkGain,
+            );
+          }
+        }
+        continue;
+      }
+      for (let vertex = 0; vertex < count; vertex += 1) {
+        const at = vertex * 8;
+        const inkGain = gain * clamp(vertices[at + 7]!, 0, 1);
+        if (inkGain <= 0) continue;
+        const [x, y] = toCell(vertices[at]!, vertices[at + 1]!);
+        this.#splat(x, y, vertices[at + 4]! * inkGain, vertices[at + 5]! * inkGain, vertices[at + 6]! * inkGain);
+      }
+    }
   }
 
   #drawWave(preset: ExomuxButterchurnPreset, audio: ExomuxAudioFrame, weight: number): void {

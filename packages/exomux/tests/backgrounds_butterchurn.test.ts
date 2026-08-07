@@ -112,6 +112,8 @@ function source(overrides: Partial<ExomuxButterchurnPresetSource>): ExomuxButter
     warpSamplers: [],
     comp: "",
     compSamplers: [],
+    waves: [],
+    shapes: [],
     ...overrides,
   };
 }
@@ -744,4 +746,74 @@ Deno.test("butterchurn: a preset that settles into one solid colour counts as bl
   // A mostly-empty desktop with a bright figure on it is the shape almost every
   // working preset takes here, and must never be mistaken for a wash.
   assert(!exomuxPresetLooksBlank(0.2, 0.2, 0.16));
+});
+
+Deno.test("butterchurn: custom waves and shapes produce drawable geometry", () => {
+  const withPrims = source({
+    name: "prims",
+    waves: [{
+      baseVals: { enabled: 1, samples: 64, a: 1, r: 1, g: 1, b: 1 },
+      init: "t1 = 0.25;",
+      frame: "",
+      point: "x = sample; y = t1;",
+    }],
+    shapes: [{
+      baseVals: { enabled: 1, sides: 6, rad: 0.4, x: 0.5, y: 0.5, a: 1, a2: 1, r: 1, g2: 1, border_a: 0.5 },
+      init: "",
+      frame: "rad = rad + 0.1 * bass;",
+    }],
+  });
+  const preset = new ExomuxButterchurnPreset(withPrims, { random: () => 0.5 });
+  preset.setSize(60, 20);
+  const waveform = new Float32Array(256).map((_, i) => Math.sin(i / 9));
+  preset.advance(
+    { bass: 1, mid: 1, treb: 1, bassAttack: 1, midAttack: 1, trebleAttack: 1, waveform },
+    0.5,
+    2,
+    8,
+  );
+
+  const kinds = preset.prims.map((prim) => prim.kind);
+  assertEquals(kinds, ["triangles", "line", "line"], "a shape fan, its border, then the wave");
+
+  const fan = preset.prims[0]!;
+  assertEquals(fan.vertexCount, 6 * 3);
+  // The frame equations ran: rad grew from 0.4 by 0.1 * bass, so a rim vertex
+  // sits half the grown radius from centre on x (times the aspect correction).
+  const rim = Math.hypot(fan.vertices[8]! - fan.vertices[0]!, fan.vertices[9]! - fan.vertices[1]!);
+  assert(rim > 0.3, `rim radius ${rim} should reflect the equation-grown 0.5`);
+
+  const wave = preset.prims[2]!;
+  assertEquals(wave.vertexCount, 64);
+  // point_eqs read t1 from init: y = 0.25 in [0,1] space is +0.5 NDC, then
+  // stretched by MilkDrop's inverse aspect (width over doubled height, 1.5).
+  assertAlmostEquals(wave.vertices[1]!, 0.75, 0.01);
+  // sample sweeps 0..1, so x sweeps -1..1.
+  assertAlmostEquals(wave.vertices[0]!, -1, 0.01);
+  assertAlmostEquals(wave.vertices[(63) * 8]!, 1, 0.01);
+});
+
+Deno.test("butterchurn: a shapes-only preset is no longer a black screen", () => {
+  // Two thirds of the catalog draws with custom waves and shapes; before they
+  // were ported, a preset with no basic waveform rendered nothing at all on
+  // the software path.
+  const shapesOnly = source({
+    name: "shapes only",
+    baseVals: { wave_a: 0.001 },
+    shapes: [{
+      baseVals: { enabled: 1, sides: 8, rad: 0.5, x: 0.5, y: 0.5, a: 1, a2: 1, r: 1, g: 0.5, border_a: 0 },
+      init: "",
+      frame: "",
+    }],
+  });
+  const field = new ExomuxButterchurnField({
+    gpu: false,
+    audio: scriptedAudio(),
+    autoCycle: false,
+    catalog: [shapesOnly],
+  });
+  run(field, 16);
+  let painted = 0;
+  for (const row of field.rasterizeCells(BOUNDS, THEME)) for (const cell of row) if (cell) painted += 1;
+  assert(painted > 10, `a preset drawing only shapes painted ${painted} cells`);
 });

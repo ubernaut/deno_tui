@@ -38,6 +38,19 @@ const PACKS = ["base.js", "extra.js", "image.js", "md1.js", "minimal.js", "nonMi
 
 const SAMPLER_SET = new Set(SAMPLERS);
 
+interface WaveSource {
+  readonly baseVals: Record<string, number>;
+  readonly init: string;
+  readonly frame: string;
+  readonly point: string;
+}
+
+interface ShapeSource {
+  readonly baseVals: Record<string, number>;
+  readonly init: string;
+  readonly frame: string;
+}
+
 interface PresetSource {
   readonly name: string;
   readonly baseVals: Record<string, number>;
@@ -49,6 +62,9 @@ interface PresetSource {
   readonly warpSamplers: readonly string[];
   readonly comp: string;
   readonly compSamplers: readonly string[];
+  /** Enabled custom waves only; disabled ones are dead weight. */
+  readonly waves: readonly WaveSource[];
+  readonly shapes: readonly ShapeSource[];
 }
 
 /**
@@ -114,6 +130,27 @@ if (import.meta.main) {
     for (const source of [warpSource, compSource]) if (source.trim()) authored += 1;
     const warp = translate(warpSource);
     const comp = translate(compSource);
+    const waves: WaveSource[] = [];
+    for (const raw of Array.isArray(preset.waves) ? preset.waves as Record<string, unknown>[] : []) {
+      const baseVals = (raw.baseVals ?? {}) as Record<string, number>;
+      if (!baseVals.enabled) continue;
+      waves.push({
+        baseVals,
+        init: (raw.init_eqs_eel as string | undefined) ?? "",
+        frame: (raw.frame_eqs_eel as string | undefined) ?? "",
+        point: (raw.point_eqs_eel as string | undefined) ?? "",
+      });
+    }
+    const shapes: ShapeSource[] = [];
+    for (const raw of Array.isArray(preset.shapes) ? preset.shapes as Record<string, unknown>[] : []) {
+      const baseVals = (raw.baseVals ?? {}) as Record<string, number>;
+      if (!baseVals.enabled) continue;
+      shapes.push({
+        baseVals,
+        init: (raw.init_eqs_eel as string | undefined) ?? "",
+        frame: (raw.frame_eqs_eel as string | undefined) ?? "",
+      });
+    }
     if (warpSource.trim() && !warp) untranslatable.push(`${name} (warp)`);
     if (compSource.trim() && !comp) untranslatable.push(`${name} (comp)`);
     presets.push({
@@ -126,6 +163,8 @@ if (import.meta.main) {
       warpSamplers: warp?.samplers ?? [],
       comp: comp?.body ?? "",
       compSamplers: comp?.samplers ?? [],
+      waves,
+      shapes,
     });
   }
 
@@ -177,6 +216,27 @@ export interface ExomuxButterchurnPresetSource {
   readonly comp: string;
   /** Samplers the composite body binds, in binding order. */
   readonly compSamplers: readonly string[];
+  /** The preset's enabled custom waves, in draw order. */
+  readonly waves: readonly ExomuxButterchurnWaveSource[];
+  /** The preset's enabled custom shapes, in draw order. */
+  readonly shapes: readonly ExomuxButterchurnShapeSource[];
+}
+
+/** One custom wave as authored: base values plus its three EEL blocks. */
+export interface ExomuxButterchurnWaveSource {
+  readonly baseVals: Readonly<Record<string, number>>;
+  readonly init: string;
+  readonly frame: string;
+  /** Equations run per sample point. */
+  readonly point: string;
+}
+
+/** One custom shape as authored: base values plus its two EEL blocks. */
+export interface ExomuxButterchurnShapeSource {
+  readonly baseVals: Readonly<Record<string, number>>;
+  readonly init: string;
+  /** Equations run once per instance per frame. */
+  readonly frame: string;
 }
 
 // Parsed rather than written as a literal so typechecking stays cheap; see
