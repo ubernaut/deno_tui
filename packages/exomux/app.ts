@@ -43,10 +43,12 @@ import {
 } from "./controller.ts";
 import {
   EXOMUX_BACKGROUND_IDS,
+  EXOMUX_BACKGROUND_SETTING_SPECS,
   EXOMUX_GLOBAL_SETTING_SPECS,
   EXOMUX_THEMES,
   EXOMUX_WINDOW_SETTING_SPECS,
   type ExomuxBackgroundId,
+  exomuxBackgroundSettingsFor,
   type ExomuxBorderGlyphs,
   exomuxBorderGlyphs,
   exomuxResolvedOpacity,
@@ -82,7 +84,8 @@ import {
   releaseExomuxIdleBackgrounds,
 } from "./background.ts";
 import { ExomuxBiomechField } from "./biomech_background.ts";
-import { ExomuxButterchurnField } from "./butterchurn_background.ts";
+import { EXOMUX_BUTTERCHURN_PRESETS, ExomuxButterchurnField } from "./butterchurn_background.ts";
+import { ExomuxImageField } from "./image_background.ts";
 import { ExomuxCircuitField } from "./circuit_background.ts";
 import { ExomuxJungleField } from "./jungle_background.ts";
 import { ExomuxMatrixRainField } from "./matrix_background.ts";
@@ -463,39 +466,79 @@ export function mountExomuxDesktop(
   const backgroundFields = new Map<ExomuxBackgroundId, ExomuxAnimatedBackground>();
   const releaseIdleBackgroundFields = (keep?: ExomuxBackgroundId): void =>
     releaseExomuxIdleBackgrounds(backgroundFields, keep);
+  // Fields are rebuilt when their settings change: every knob in the modal is
+  // a constructor option, and a rebuild is the one path that applies all of
+  // them uniformly.
+  let appliedBackgroundSettingsRevision = controller.backgroundSettingsRevision.peek();
   const activeBackgroundField = (): ExomuxAnimatedBackground | undefined => {
     const id = controller.backgroundId.peek();
+    const revision = controller.backgroundSettingsRevision.peek();
+    if (revision !== appliedBackgroundSettingsRevision) {
+      appliedBackgroundSettingsRevision = revision;
+      const stale = backgroundFields.get(id);
+      if (stale) {
+        (stale as { dispose?: () => void }).dispose?.();
+        backgroundFields.delete(id);
+      }
+    }
     if (id === "metaballs") {
       releaseIdleBackgroundFields();
       return undefined;
     }
     let field = backgroundFields.get(id);
     if (!field) {
+      const values = exomuxBackgroundSettingsFor(controller.backgroundSettings.peek(), id);
+      const density = Number(values.density ?? 1);
       field = id === "matrix"
-        ? new ExomuxMatrixRainField()
+        ? new ExomuxMatrixRainField({ density })
         : id === "rainy windows"
-        ? new ExomuxRainyWindowsField()
+        ? new ExomuxRainyWindowsField({ density })
         : id === "circuit"
-        ? new ExomuxCircuitField()
+        ? new ExomuxCircuitField({ density })
         : id === "biomech"
-        ? new ExomuxBiomechField()
+        ? new ExomuxBiomechField({ density })
         : id === "vaporwave"
         ? new ExomuxVaporwaveField()
         : id === "skull"
         ? new ExomuxSkullField()
         : id === "ivy"
-        ? new ExomuxIvyField()
+        ? new ExomuxIvyField({ density })
         : id === "fire"
-        ? new ExomuxFireField()
+        ? new ExomuxFireField({ intensity: Number(values.intensity ?? 1) })
         : id === "turbulence"
         ? new ExomuxTurbulenceField()
         : id === "butterchurn"
-        ? new ExomuxButterchurnField()
-        : new ExomuxJungleField();
+        ? new ExomuxButterchurnField({
+          cycleSeconds: Number(values.cycleSeconds ?? 15),
+          updateHz: Number(values.updateHz ?? 10),
+          audioMode: values.audioMode === "system" ? "system" : values.audioMode === "synth" ? "synth" : "mic",
+        })
+        : id === "image"
+        ? new ExomuxImageField(typeof values.path === "string" ? { path: values.path } : {})
+        : new ExomuxJungleField({ density });
       backgroundFields.set(id, field);
     }
     releaseIdleBackgroundFields(id);
     return field;
+  };
+  /** Applies one list-row pick: a preset, a directory to enter, or a PNG. */
+  const activateBackgroundConfigRow = (row?: { directory?: boolean; path?: string; presetIndex?: number }): void => {
+    if (!row) return;
+    if (row.presetIndex !== undefined) {
+      const field = activeBackgroundField();
+      if (exomuxBackgroundHasPresets(field)) {
+        field.selectPreset(row.presetIndex);
+        controller.status.value = `Preset ${row.presetIndex + 1}/${field.presetCount}: ${field.presetName}`;
+        metaballRevision.value += 1;
+      }
+      return;
+    }
+    if (row.directory && row.path) {
+      controller.backgroundBrowsePath.value = row.path;
+      controller.backgroundConfigListIndex.value = 0;
+      return;
+    }
+    if (row.path) controller.setBackgroundImagePath(row.path);
   };
   const backgroundSetPointer = (point: { column: number; row: number }): void => {
     metaballs.setPointer(point);
@@ -778,7 +821,26 @@ export function mountExomuxDesktop(
     const overgrew = syncOvergrowth(projection, activeWindowId, now);
     if (advanced || overgrew) metaballRevision.value += 1;
   };
-  const metaballTimer = setInterval(animateMetaballs, EXOMUX_METABALL_FRAME_INTERVAL_MS);
+  // The desktop ticks at the metaball baseline unless the active background
+  // asks for more: butterchurn's update rate is a real setting, and a 60 Hz
+  // field driven by a 8 Hz timer would be the knob that does nothing.
+  const backgroundTickMs = (): number => {
+    if (controller.backgroundId.peek() !== "butterchurn") return EXOMUX_METABALL_FRAME_INTERVAL_MS;
+    const values = exomuxBackgroundSettingsFor(controller.backgroundSettings.peek(), "butterchurn");
+    const hz = Number(values.updateHz ?? 10);
+    return Number.isFinite(hz) && hz > 0 ? Math.max(4, Math.round(1000 / hz)) : EXOMUX_METABALL_FRAME_INTERVAL_MS;
+  };
+  let metaballTimer = setInterval(animateMetaballs, backgroundTickMs());
+  let appliedTickMs = backgroundTickMs();
+  const retimeBackground = (): void => {
+    const next = backgroundTickMs();
+    if (next === appliedTickMs) return;
+    appliedTickMs = next;
+    clearInterval(metaballTimer);
+    metaballTimer = setInterval(animateMetaballs, next);
+  };
+  controller.backgroundSettingsRevision.subscribe(retimeBackground, subscriptions.signal);
+  controller.backgroundId.subscribe(retimeBackground, subscriptions.signal);
   unsubscribers.push(() => clearInterval(metaballTimer));
 
   const renderRevision = own(
@@ -798,6 +860,12 @@ export function mountExomuxDesktop(
         selectedSessionIndex.value,
         controller.windowHost.viewRevision.value,
         controller.windowHost.commitRevision.value,
+        controller.backgroundConfigVisible.value,
+        controller.backgroundConfigPane.value,
+        controller.backgroundConfigOptionIndex.value,
+        controller.backgroundConfigListIndex.value,
+        controller.backgroundBrowsePath.value,
+        controller.backgroundSettingsRevision.value,
         terminalRenderRevision.value,
         metaballRevision.value,
         // Settings reach the painter directly — border glyphs, window opacity —
@@ -857,6 +925,7 @@ export function mountExomuxDesktop(
     controller.helpVisible.peek() || controller.pendingKillSessionId.peek() !== undefined ||
     controller.quitModalVisible.peek() || controller.pendingScp.peek() !== undefined ||
     controller.configSessionId.peek() !== undefined || controller.globalConfigVisible.peek() ||
+    controller.backgroundConfigVisible.peek() ||
     controller.startMenuVisible.peek();
 
   let exitRequested = false;
@@ -1079,10 +1148,41 @@ export function mountExomuxDesktop(
       else if (contains(layout.cancelRect, column, row)) controller.cancelQuitModal();
       return true;
     }
+    if (controller.backgroundConfigVisible.peek()) {
+      const specs = EXOMUX_BACKGROUND_SETTING_SPECS[controller.backgroundId.peek()] ?? [];
+      const list = exomuxBackgroundConfigList(controller);
+      const listIndex = Math.min(
+        Math.max(0, controller.backgroundConfigListIndex.peek()),
+        Math.max(0, list.length - 1),
+      );
+      const layout = exomuxBackgroundConfigLayout(windowProjection.peek().bounds, list.length, listIndex, specs.length);
+      if (contains(layout.closeRect, column, row) || !contains(layout.rect, column, row)) {
+        controller.closeBackgroundConfig();
+        return true;
+      }
+      const hitList = layout.listRows.find((candidate) => contains(candidate.rect, column, row));
+      if (hitList) {
+        controller.backgroundConfigPane.value = "list";
+        controller.backgroundConfigListIndex.value = hitList.index;
+        activateBackgroundConfigRow(list[hitList.index]);
+        return true;
+      }
+      const optionAt = layout.optionRows.findIndex((candidate) => contains(candidate, column, row));
+      if (optionAt >= 0 && specs[optionAt]) {
+        controller.backgroundConfigPane.value = "options";
+        controller.backgroundConfigOptionIndex.value = optionAt;
+        controller.cycleBackgroundSetting(specs[optionAt]!.id, 1);
+      }
+      return true;
+    }
     if (controller.globalConfigVisible.peek()) {
       const themeIndex = Math.max(0, EXOMUX_THEMES.findIndex((entry) => entry.id === controller.themeId.peek()));
       const backgroundIndex = Math.max(0, EXOMUX_BACKGROUND_IDS.indexOf(controller.backgroundId.peek()));
       const layout = exomuxGlobalConfigLayout(windowProjection.peek().bounds, themeIndex, backgroundIndex);
+      if (contains(layout.backgroundConfigRect, column, row)) {
+        controller.openBackgroundConfig();
+        return true;
+      }
       if (contains(layout.closeRect, column, row)) {
         controller.closeGlobalConfig();
         return true;
@@ -1791,6 +1891,47 @@ export function mountExomuxDesktop(
       }
       return;
     }
+    if (controller.backgroundConfigVisible.peek()) {
+      const specs = EXOMUX_BACKGROUND_SETTING_SPECS[controller.backgroundId.peek()] ?? [];
+      const list = exomuxBackgroundConfigList(controller);
+      const pane = controller.backgroundConfigPane.peek();
+      const inList = pane === "list" && list.length > 0;
+      const settingId = specs[controller.backgroundConfigOptionIndex.peek()]?.id;
+      const moveList = (delta: number) => {
+        const count = Math.max(1, list.length);
+        controller.backgroundConfigListIndex.value = (controller.backgroundConfigListIndex.peek() + delta + count) %
+          count;
+      };
+      if (event.key === "escape" || event.key.toLowerCase() === "q") {
+        controller.closeBackgroundConfig();
+      } else if (event.key === "tab") {
+        controller.backgroundConfigPane.value = pane === "list" ? "options" : list.length > 0 ? "list" : "options";
+      } else if (event.key === "up") {
+        if (inList) moveList(-1);
+        else if (specs.length > 0) {
+          controller.backgroundConfigOptionIndex.value =
+            (controller.backgroundConfigOptionIndex.peek() - 1 + specs.length) % specs.length;
+        }
+      } else if (event.key === "down") {
+        if (inList) moveList(1);
+        else if (specs.length > 0) {
+          controller.backgroundConfigOptionIndex.value = (controller.backgroundConfigOptionIndex.peek() + 1) %
+            specs.length;
+        }
+      } else if (event.key === "pageup" && inList) {
+        moveList(-10);
+      } else if (event.key === "pagedown" && inList) {
+        moveList(10);
+      } else if (event.key === "left") {
+        if (!inList && settingId) controller.cycleBackgroundSetting(settingId, -1);
+      } else if (event.key === "right") {
+        if (!inList && settingId) controller.cycleBackgroundSetting(settingId, 1);
+      } else if (event.key === "return" || event.key === "space") {
+        if (inList) activateBackgroundConfigRow(list[controller.backgroundConfigListIndex.peek()]);
+        else if (settingId) controller.cycleBackgroundSetting(settingId, 1);
+      }
+      return;
+    }
     if (controller.globalConfigVisible.peek()) {
       const optionId = EXOMUX_GLOBAL_SETTING_SPECS[controller.globalConfigOptionIndex.peek()]?.id;
       const inOptions = controller.globalConfigPane.peek() === "options";
@@ -1810,6 +1951,8 @@ export function mountExomuxDesktop(
         else controller.moveGlobalConfigPane(1);
       } else if ((event.key === "return" || event.key === "space") && inOptions && optionId) {
         controller.cycleGlobalSetting(optionId, 1);
+      } else if (event.key.toLowerCase() === "b") {
+        controller.openBackgroundConfig();
       }
       return;
     }
@@ -2489,6 +2632,9 @@ function renderExomuxDesktop(options: RenderExomuxDesktopOptions): string[][] {
   const configSessionId = controller.configSessionId.peek();
   if (configSessionId) paintWindowConfigModal(painter, projection, theme, controller, configSessionId);
   if (controller.globalConfigVisible.peek()) paintGlobalConfigModal(painter, projection, theme, controller);
+  if (controller.backgroundConfigVisible.peek()) {
+    paintBackgroundConfigModal(painter, projection, theme, controller, options.backgroundField);
+  }
   const pendingKillSessionId = controller.pendingKillSessionId.peek();
   if (pendingKillSessionId) paintKillConfirmation(painter, projection, controller, pendingKillSessionId);
 
@@ -3147,6 +3293,8 @@ export interface ExomuxGlobalConfigLayout {
   /** One hit row per entry in EXOMUX_GLOBAL_SETTING_SPECS, in declaration order. */
   readonly optionRows: readonly Rectangle[];
   readonly closeRect: Rectangle;
+  /** Opens the background config modal for the selected background. */
+  readonly backgroundConfigRect: Rectangle;
 }
 
 /** Scrolls a select list so the selected row stays visible. */
@@ -3198,10 +3346,117 @@ export function exomuxGlobalConfigLayout(
   for (let index = 0; index < optionCount; index += 1) {
     optionRows.push({ column: rect.column + 2, row: optionTop + index, width: Math.max(0, rect.width - 4), height: 1 });
   }
+  const closeRect = {
+    column: Math.max(rect.column + 1, rect.column + rect.width - 10),
+    row: rect.row + rect.height - 1,
+    width: Math.max(1, Math.min(9, rect.width - 2)),
+    height: 1,
+  };
   return {
     rect,
     themeRows,
     backgroundRows,
+    optionRows,
+    closeRect,
+    backgroundConfigRect: {
+      column: Math.max(rect.column + 1, closeRect.column - 22),
+      row: closeRect.row,
+      width: Math.max(1, Math.min(21, closeRect.column - rect.column - 2)),
+      height: 1,
+    },
+  };
+}
+
+/** One row of the background config modal's list pane. */
+interface ExomuxBackgroundConfigListRow {
+  readonly label: string;
+  /** True for the browser's directories, which descend instead of selecting. */
+  readonly directory?: boolean;
+  /** Absolute path the row selects or descends into, for the image browser. */
+  readonly path?: string;
+  /** Preset index the row selects, for the butterchurn picker. */
+  readonly presetIndex?: number;
+  readonly active?: boolean;
+}
+
+/** Cache of the one directory the image browser is showing. */
+let browseCache: { path: string; rows: ExomuxBackgroundConfigListRow[] } | undefined;
+
+/** Rows for the image browser: parent, subdirectories, then PNG files. */
+function exomuxBrowseRows(path: string): ExomuxBackgroundConfigListRow[] {
+  if (browseCache?.path === path) return browseCache.rows;
+  const rows: ExomuxBackgroundConfigListRow[] = [];
+  const parent = path.replace(/\/+$/, "").split("/").slice(0, -1).join("/") || "/";
+  if (path !== "/") rows.push({ label: "../", directory: true, path: parent });
+  const directories: ExomuxBackgroundConfigListRow[] = [];
+  const files: ExomuxBackgroundConfigListRow[] = [];
+  try {
+    for (const entry of Deno.readDirSync(path)) {
+      if (entry.name.startsWith(".")) continue;
+      const full = `${path.replace(/\/+$/, "")}/${entry.name}`;
+      if (entry.isDirectory) directories.push({ label: `${entry.name}/`, directory: true, path: full });
+      else if (/\.png$/i.test(entry.name)) files.push({ label: entry.name, path: full });
+    }
+  } catch {
+    rows.push({ label: "(unreadable directory)" });
+  }
+  const byLabel = (a: ExomuxBackgroundConfigListRow, b: ExomuxBackgroundConfigListRow) =>
+    a.label.localeCompare(b.label);
+  rows.push(...directories.sort(byLabel), ...files.sort(byLabel));
+  browseCache = { path, rows };
+  return rows;
+}
+
+/** The list pane's rows for the active background, or empty when it has none. */
+function exomuxBackgroundConfigList(controller: ExomuxController): ExomuxBackgroundConfigListRow[] {
+  const id = controller.backgroundId.peek();
+  if (id === "butterchurn") {
+    return EXOMUX_BUTTERCHURN_PRESETS.map((preset, index) => ({ label: preset.name, presetIndex: index }));
+  }
+  if (id === "image") return exomuxBrowseRows(controller.backgroundBrowsePath.peek() || "/");
+  return [];
+}
+
+/** Layout for the background config modal; exported for pointer tests. */
+export interface ExomuxBackgroundConfigLayout {
+  readonly rect: Rectangle;
+  /** Visible list rows, paired with the list index each row shows. */
+  readonly listRows: readonly { readonly rect: Rectangle; readonly index: number }[];
+  /** One hit row per setting spec of the active background. */
+  readonly optionRows: readonly Rectangle[];
+  readonly closeRect: Rectangle;
+}
+
+/** Layout for the background config modal. */
+export function exomuxBackgroundConfigLayout(
+  bounds: Rectangle,
+  listLength: number,
+  listIndex: number,
+  optionCount: number,
+): ExomuxBackgroundConfigLayout {
+  const width = fitModalSpan(bounds.width, 46, 84, 6);
+  const wantsList = listLength > 0;
+  const desired = (wantsList ? 18 : 0) + optionCount + 6;
+  const height = Math.min(Math.max(desired, 8), fitModalSpan(bounds.height, 8, bounds.height, 2));
+  const rect = centeredRect(bounds, width, height);
+  const listTop = rect.row + 2;
+  const visibleRows = wantsList ? Math.max(1, rect.height - optionCount - 5) : 0;
+  const start = selectListStart(listIndex, listLength, visibleRows);
+  const listRows: { rect: Rectangle; index: number }[] = [];
+  for (let offset = 0; offset < visibleRows && start + offset < listLength; offset += 1) {
+    listRows.push({
+      rect: { column: rect.column + 2, row: listTop + offset, width: Math.max(1, rect.width - 4), height: 1 },
+      index: start + offset,
+    });
+  }
+  const optionTop = rect.row + rect.height - optionCount - 2;
+  const optionRows: Rectangle[] = [];
+  for (let index = 0; index < optionCount; index += 1) {
+    optionRows.push({ column: rect.column + 2, row: optionTop + index, width: Math.max(0, rect.width - 4), height: 1 });
+  }
+  return {
+    rect,
+    listRows,
     optionRows,
     closeRect: {
       column: Math.max(rect.column + 1, rect.column + rect.width - 10),
@@ -3210,6 +3465,98 @@ export function exomuxGlobalConfigLayout(
       height: 1,
     },
   };
+}
+
+function paintBackgroundConfigModal(
+  painter: DesktopPainter,
+  projection: WorkbenchWindowHostProjection,
+  theme: ExomuxThemeSpec,
+  controller: ExomuxController,
+  backgroundField: ExomuxAnimatedBackground | undefined,
+): void {
+  const id = controller.backgroundId.peek();
+  const specs = EXOMUX_BACKGROUND_SETTING_SPECS[id] ?? [];
+  const list = exomuxBackgroundConfigList(controller);
+  const listIndex = Math.min(Math.max(0, controller.backgroundConfigListIndex.peek()), Math.max(0, list.length - 1));
+  const layout = exomuxBackgroundConfigLayout(projection.bounds, list.length, listIndex, specs.length);
+  const { rect, listRows, optionRows, closeRect } = layout;
+  const pane = controller.backgroundConfigPane.peek();
+  const values = exomuxBackgroundSettingsFor(controller.backgroundSettings.peek(), id);
+  const optionIndex = controller.backgroundConfigOptionIndex.peek();
+
+  painter.fill(rect, " ", { foreground: theme.text, background: theme.surfaceStrong });
+  painter.frame(rect, "#", { foreground: theme.accent, background: theme.surfaceStrong, bold: true });
+  painter.write(rect.column + 2, rect.row, ` Background · ${id} `, {
+    foreground: theme.background,
+    background: theme.accent,
+    bold: true,
+  });
+
+  const header = id === "butterchurn"
+    ? `Preset (${list.length}) — current: ${
+      exomuxBackgroundHasPresets(backgroundField) ? backgroundField.presetName : "…"
+    }`
+    : id === "image"
+    ? `Pick a PNG · ${controller.backgroundBrowsePath.peek() || "/"}`
+    : specs.length > 0
+    ? "Settings"
+    : "This background has nothing to configure.";
+  painter.write(rect.column + 2, rect.row + 1, fitText(header, Math.max(0, rect.width - 4)), {
+    foreground: pane === "list" ? theme.accent : theme.muted,
+    background: theme.surfaceStrong,
+    bold: pane === "list",
+  });
+
+  const activePreset = exomuxBackgroundHasPresets(backgroundField) ? backgroundField.presetIndex : -1;
+  for (const { rect: rowRect, index } of listRows) {
+    const row = list[index]!;
+    const focused = pane === "list" && index === listIndex;
+    const current = row.presetIndex !== undefined && row.presetIndex === activePreset;
+    painter.write(
+      rowRect.column,
+      rowRect.row,
+      fitText(`${focused ? ">" : current ? "·" : " "} ${row.label}`, rowRect.width),
+      {
+        foreground: focused ? theme.background : row.directory ? theme.accent : current ? theme.accent : theme.text,
+        background: focused ? theme.accent : theme.surfaceStrong,
+        bold: focused || current,
+      },
+    );
+  }
+
+  for (let index = 0; index < optionRows.length; index += 1) {
+    const rowRect = optionRows[index]!;
+    const spec = specs[index]!;
+    const focused = pane === "options" && index === optionIndex;
+    const value = spec.format(values[spec.id]!);
+    const valueColumn = rowRect.column + Math.max(0, rowRect.width - textWidth(value) - 1);
+    painter.fill(rowRect, " ", {
+      foreground: focused ? theme.background : theme.text,
+      background: focused ? theme.accent : theme.surfaceStrong,
+      bold: focused,
+    });
+    painter.write(
+      rowRect.column,
+      rowRect.row,
+      fitText(`${focused ? ">" : " "} ${spec.label}`, Math.max(0, valueColumn - rowRect.column - 1)),
+      {
+        foreground: focused ? theme.background : theme.text,
+        background: focused ? theme.accent : theme.surfaceStrong,
+        bold: focused,
+      },
+    );
+    painter.write(valueColumn, rowRect.row, value, {
+      foreground: focused ? theme.background : theme.accent,
+      background: focused ? theme.accent : theme.surfaceStrong,
+      bold: true,
+    });
+  }
+
+  painter.write(closeRect.column, closeRect.row, "[ Close ]", {
+    foreground: theme.background,
+    background: theme.accent,
+    bold: true,
+  });
 }
 
 function paintGlobalConfigModal(
@@ -3296,9 +3643,14 @@ function paintGlobalConfigModal(
     });
   }
 
-  painter.write(rect.column + 2, rect.row + rect.height - 1, fitText(" * overgrows idle windows ", rect.width - 14), {
+  painter.write(rect.column + 2, rect.row + rect.height - 1, fitText(" * overgrows idle windows ", rect.width - 36), {
     foreground: theme.muted,
     background: theme.surfaceStrong,
+  });
+  painter.write(layout.backgroundConfigRect.column, layout.backgroundConfigRect.row, "[ b Background config ]", {
+    foreground: theme.background,
+    background: theme.accent,
+    bold: true,
   });
   painter.write(closeRect.column, closeRect.row, "[ Close ]", {
     foreground: theme.background,

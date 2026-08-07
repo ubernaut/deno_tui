@@ -250,6 +250,7 @@ export const EXOMUX_BACKGROUND_IDS = [
   "fire",
   "turbulence",
   "butterchurn",
+  "image",
 ] as const;
 export type ExomuxBackgroundId = (typeof EXOMUX_BACKGROUND_IDS)[number];
 
@@ -271,6 +272,8 @@ export interface ExomuxWorkspaceState {
   readonly windowSettings: Readonly<Record<string, ExomuxWindowSettings>>;
   /** Desktop-wide settings edited from the global config modal. */
   readonly globalSettings: ExomuxGlobalSettings;
+  /** Per-background settings edited from the background config modal. */
+  readonly backgroundSettings: ExomuxBackgroundSettingsMap;
 }
 
 /** Per-window shell settings owned by one terminal window. */
@@ -615,6 +618,152 @@ export function cycleExomuxGlobalSetting(
   return cycleSetting(settings, EXOMUX_GLOBAL_SETTING_SPECS, id, direction);
 }
 
+// ── per-background settings ─────────────────────────────────────────────────
+
+/** Values for one background's settings, keyed by setting id. */
+export type ExomuxBackgroundSettingValues = Readonly<Record<string, ExomuxSettingValue>>;
+
+/** Per-background settings, keyed by background id; absent means defaults. */
+export type ExomuxBackgroundSettingsMap = Readonly<Partial<Record<ExomuxBackgroundId, ExomuxBackgroundSettingValues>>>;
+
+/** Audio sources the butterchurn background can visualize. */
+export const EXOMUX_AUDIO_MODES = ["mic", "system", "synth"] as const;
+export type ExomuxAudioMode = (typeof EXOMUX_AUDIO_MODES)[number];
+
+const formatAudioMode = (value: ExomuxSettingValue): string =>
+  value === "mic" ? "Microphone" : value === "system" ? "System audio" : "Noise generator";
+
+/** One relative-density spec, shared by the fields whose option is a multiplier. */
+const densitySpec = (detail: string): ExomuxSettingSpec<string> =>
+  Object.freeze({
+    id: "density",
+    label: "Density",
+    detail,
+    values: Object.freeze([1, 1.5, 2, 0.5, 0.75]),
+    format: (value: ExomuxSettingValue) => `${Math.round(Number(value) * 100)}%`,
+  });
+
+/**
+ * Cycleable settings per background, presented by the background config modal.
+ *
+ * Only backgrounds with genuinely tunable behaviour appear: every id listed
+ * here is wired to a real constructor option or field method, and a background
+ * absent from this table simply has nothing worth a knob. The butterchurn
+ * preset picker and the image file browser are modal panes of their own, not
+ * cycleable rows, so they are not listed either.
+ */
+export const EXOMUX_BACKGROUND_SETTING_SPECS: Readonly<
+  Partial<Record<ExomuxBackgroundId, readonly ExomuxSettingSpec<string>[]>>
+> = Object.freeze({
+  matrix: Object.freeze([densitySpec("How many rain columns fall at once.")]),
+  "rainy windows": Object.freeze([densitySpec("How many drops run down the glass.")]),
+  circuit: Object.freeze([densitySpec("How many traces the board grows.")]),
+  biomech: Object.freeze([densitySpec("How much of the lattice is alive.")]),
+  ivy: Object.freeze([densitySpec("How many vines climb the desktop.")]),
+  jungle: Object.freeze([densitySpec("How much undergrowth fills the desktop.")]),
+  fire: Object.freeze([
+    Object.freeze({
+      id: "intensity",
+      label: "Intensity",
+      detail: "How hard the fire burns.",
+      values: Object.freeze([1, 1.4, 1.8, 0.6, 0.8]),
+      format: (value: ExomuxSettingValue) => `${Math.round(Number(value) * 100)}%`,
+    }),
+  ]),
+  butterchurn: Object.freeze([
+    Object.freeze({
+      id: "cycleSeconds",
+      label: "Cycle time",
+      detail: "Seconds each preset holds the desktop; Hold stays on one.",
+      values: Object.freeze([15, 30, 60, 120, 0, 5, 10]),
+      format: (value: ExomuxSettingValue) => (Number(value) === 0 ? "Hold" : `${value}s`),
+    }),
+    Object.freeze({
+      id: "updateHz",
+      label: "Update rate",
+      detail: "Frames per second the field advances at.",
+      values: Object.freeze([10, 15, 30, 60, 120, 5]),
+      format: (value: ExomuxSettingValue) => `${value} Hz`,
+    }),
+    Object.freeze({
+      id: "audioMode",
+      label: "Sound source",
+      detail: "Microphone, the system output, or a generated signal.",
+      values: Object.freeze([...EXOMUX_AUDIO_MODES]),
+      format: formatAudioMode,
+    }),
+  ]),
+}) as Readonly<Partial<Record<ExomuxBackgroundId, readonly ExomuxSettingSpec<string>[]>>>;
+
+/** Defaults for one background: the first value of each of its specs. */
+export function defaultExomuxBackgroundSettings(id: ExomuxBackgroundId): ExomuxBackgroundSettingValues {
+  const specs = EXOMUX_BACKGROUND_SETTING_SPECS[id] ?? [];
+  const values: Record<string, ExomuxSettingValue> = {};
+  for (const spec of specs) values[spec.id] = spec.values[0]!;
+  return Object.freeze(values);
+}
+
+/** Resolves one background's settings against its defaults. */
+export function exomuxBackgroundSettingsFor(
+  map: ExomuxBackgroundSettingsMap,
+  id: ExomuxBackgroundId,
+): ExomuxBackgroundSettingValues {
+  return Object.freeze({ ...defaultExomuxBackgroundSettings(id), ...(map[id] ?? {}) });
+}
+
+/** Free-form string settings a background may carry beyond its cycleable specs. */
+const BACKGROUND_STRING_SETTINGS: Readonly<Partial<Record<ExomuxBackgroundId, readonly string[]>>> = Object.freeze({
+  image: Object.freeze(["path"]),
+});
+
+/** Strictly normalizes a persisted background settings map. */
+export function normalizeExomuxBackgroundSettings(value: unknown): ExomuxBackgroundSettingsMap {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return Object.freeze({});
+  const out: Partial<Record<ExomuxBackgroundId, ExomuxBackgroundSettingValues>> = {};
+  for (const id of EXOMUX_BACKGROUND_IDS) {
+    const raw = (value as Record<string, unknown>)[id];
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+    const record = raw as Record<string, unknown>;
+    const values: Record<string, ExomuxSettingValue> = {};
+    for (const spec of EXOMUX_BACKGROUND_SETTING_SPECS[id] ?? []) {
+      const candidate = record[spec.id];
+      if (spec.values.includes(candidate as ExomuxSettingValue)) values[spec.id] = candidate as ExomuxSettingValue;
+    }
+    for (const key of BACKGROUND_STRING_SETTINGS[id] ?? []) {
+      const candidate = record[key];
+      if (typeof candidate === "string" && candidate.length > 0 && candidate.length <= 1024) values[key] = candidate;
+    }
+    if (Object.keys(values).length > 0) out[id] = Object.freeze(values);
+  }
+  return Object.freeze(out);
+}
+
+/** Returns the map with one background's setting cycled to its next value. */
+export function cycleExomuxBackgroundSetting(
+  map: ExomuxBackgroundSettingsMap,
+  id: ExomuxBackgroundId,
+  settingId: string,
+  direction = 1,
+): ExomuxBackgroundSettingsMap {
+  const spec = (EXOMUX_BACKGROUND_SETTING_SPECS[id] ?? []).find((candidate) => candidate.id === settingId);
+  if (!spec) return map;
+  const current = exomuxBackgroundSettingsFor(map, id)[settingId];
+  const at = spec.values.indexOf(current as ExomuxSettingValue);
+  const next = spec.values[(at + direction + spec.values.length) % spec.values.length]!;
+  return Object.freeze({ ...map, [id]: Object.freeze({ ...map[id], [settingId]: next }) });
+}
+
+/** Returns the map with one free-form string setting replaced. */
+export function withExomuxBackgroundString(
+  map: ExomuxBackgroundSettingsMap,
+  id: ExomuxBackgroundId,
+  settingId: string,
+  value: string,
+): ExomuxBackgroundSettingsMap {
+  if (!(BACKGROUND_STRING_SETTINGS[id] ?? []).includes(settingId)) return map;
+  return Object.freeze({ ...map, [id]: Object.freeze({ ...map[id], [settingId]: value }) });
+}
+
 /** Maximum remembered SSH targets persisted with the workspace. */
 export const EXOMUX_MAX_SAVED_HOSTS = 64;
 
@@ -715,6 +864,7 @@ export function normalizeExomuxWorkspaceState(value: unknown): ExomuxWorkspaceSt
     sessionHosts: Object.freeze(sessionHosts),
     windowSettings: Object.freeze(windowSettings),
     globalSettings: normalizeExomuxGlobalSettings(record.globalSettings),
+    backgroundSettings: normalizeExomuxBackgroundSettings(record.backgroundSettings),
   });
 }
 
@@ -729,6 +879,7 @@ export function initialExomuxWorkspaceState(): ExomuxWorkspaceState {
     sessionHosts: Object.freeze({}),
     windowSettings: Object.freeze({}),
     globalSettings: defaultExomuxGlobalSettings(),
+    backgroundSettings: Object.freeze({}),
   });
 }
 

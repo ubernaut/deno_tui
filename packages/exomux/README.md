@@ -122,6 +122,23 @@ deno task exomux:audit
 
 `butterchurn-presets` is MIT licensed, Copyright (c) 2013-2018 Jordan Berg.
 
+## Background settings
+
+`b` inside the global settings modal (or its `[ b Background config ]` button) opens a per-background config modal. Only
+backgrounds with genuinely tunable behaviour get knobs — every row is wired to a real constructor option, and a
+background with nothing to tune says so instead of showing decorations. Matrix, rainy windows, circuit, biomech, ivy and
+jungle expose their density; fire its intensity.
+
+Butterchurn gets the full panel: a scrollable picker over the whole 472-preset catalog (Enter or click selects it live),
+cycle time (5s to 120s, or Hold to pin the current preset — Hold also disables the dead-preset skip, because a pinned
+preset stays pinned), update rate (5/10/15/30/60/120 Hz, which really changes the desktop tick and rescales the decay
+math), and the sound source: microphone, system audio (the monitor of the default output), or the noise generator.
+Settings persist with the workspace and rebuild the field on change.
+
+The `image` background shows a picture of your own: its pane is a file browser (PNG only — the one common format
+decodable without vendoring a codec), and the picture is box-filtered to the cell grid at the terminal's 2:1 cell aspect
+and painted as shaded blocks, letterboxed in the desktop theme.
+
 ## Transparent windows
 
 Terminal windows can show the desktop background through their text. `opacity` is a desktop-wide setting in the global

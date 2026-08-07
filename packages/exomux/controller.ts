@@ -28,11 +28,13 @@ import {
   type TailnetStatusSource,
 } from "./tailnet.ts";
 import {
+  cycleExomuxBackgroundSetting,
   cycleExomuxGlobalSetting,
   cycleExomuxWindowSetting,
   defaultExomuxGlobalSettings,
   defaultExomuxWindowSettings,
   EXOMUX_BACKGROUND_IDS,
+  EXOMUX_BACKGROUND_SETTING_SPECS,
   EXOMUX_GLOBAL_SETTING_SPECS,
   EXOMUX_MANIFEST,
   EXOMUX_MAX_COLUMNS,
@@ -42,6 +44,8 @@ import {
   EXOMUX_WINDOW_SETTING_SPECS,
   type ExomuxBackgroundId,
   exomuxBackgroundId,
+  exomuxBackgroundSettingsFor,
+  type ExomuxBackgroundSettingsMap,
   type ExomuxClientPort,
   type ExomuxControllerInspection,
   type ExomuxGlobalSettingId,
@@ -61,6 +65,7 @@ import {
   isExomuxSessionId,
   isExomuxSshTarget,
   normalizeExomuxWorkspaceState,
+  withExomuxBackgroundString,
 } from "./model.ts";
 
 /** Stable host-manager window shown alongside terminal windows. */
@@ -75,6 +80,15 @@ export const EXOMUX_WARNING_TTL_MS = 6_000;
 
 /** Focusable panes inside the global config modal, in Tab order. */
 export const EXOMUX_GLOBAL_CONFIG_PANES = Object.freeze(["theme", "background", "options"] as const);
+
+/** The user's home directory, or the filesystem root when it is unreadable. */
+function homeDirectory(): string {
+  try {
+    return Deno.env.get("HOME") || "/";
+  } catch {
+    return "/";
+  }
+}
 
 /** One focusable pane inside the global config modal. */
 export type ExomuxGlobalConfigPane = (typeof EXOMUX_GLOBAL_CONFIG_PANES)[number];
@@ -355,6 +369,22 @@ export class ExomuxController {
   readonly globalConfigVisible = new Signal(false);
   /** Focused pane inside the global config modal. */
   readonly globalConfigPane = new Signal<ExomuxGlobalConfigPane>("theme");
+  /** Per-background settings, persisted with the workspace. */
+  readonly backgroundSettings: Signal<ExomuxBackgroundSettingsMap> = new Signal<ExomuxBackgroundSettingsMap>(
+    Object.freeze({}),
+  );
+  /** Whether the background config modal is open. */
+  readonly backgroundConfigVisible: Signal<boolean> = new Signal(false);
+  /** Selected option row in the background config modal. */
+  readonly backgroundConfigOptionIndex: Signal<number> = new Signal(0);
+  /** Which pane of the background config modal has focus. */
+  readonly backgroundConfigPane: Signal<"list" | "options"> = new Signal<"list" | "options">("options");
+  /** Selection inside the modal's list pane (preset index, or browser row). */
+  readonly backgroundConfigListIndex: Signal<number> = new Signal(0);
+  /** Directory the image background's file browser is showing. */
+  readonly backgroundBrowsePath: Signal<string> = new Signal<string>("");
+  /** Bumped whenever a background's settings change, so the field rebuilds. */
+  readonly backgroundSettingsRevision: Signal<number> = new Signal(0);
   /** Highlighted option row inside the global config modal. */
   readonly globalConfigOptionIndex = new Signal(0);
   /** Pending paste-to-scp confirmation; non-undefined opens the transfer modal. */
@@ -669,6 +699,58 @@ export class ExomuxController {
     const spec = EXOMUX_GLOBAL_SETTING_SPECS.find((candidate) => candidate.id === id);
     if (spec) this.status.value = `${spec.label}: ${spec.format(next[id])}`;
     return next;
+  }
+
+  /** Opens the background config modal for the active background. */
+  openBackgroundConfig(): void {
+    this.#assertActive();
+    this.prefixPending.value = false;
+    this.helpVisible.value = false;
+    this.globalConfigVisible.value = false;
+    this.configSessionId.value = undefined;
+    const id = this.backgroundId.peek();
+    const specs = EXOMUX_BACKGROUND_SETTING_SPECS[id] ?? [];
+    this.backgroundConfigOptionIndex.value = 0;
+    this.backgroundConfigListIndex.value = 0;
+    this.backgroundConfigPane.value = id === "butterchurn" || id === "image" ? "list" : "options";
+    if (id === "image" && !this.backgroundBrowsePath.peek()) {
+      this.backgroundBrowsePath.value = homeDirectory();
+    }
+    this.backgroundConfigVisible.value = true;
+    this.status.value = specs.length > 0 || id === "butterchurn" || id === "image"
+      ? "Background settings · Tab pane · ↑↓ choose · ←→/Enter change · Escape close"
+      : "This background has nothing to configure.";
+  }
+
+  /** Closes the background config modal. */
+  closeBackgroundConfig(): void {
+    if (this.#disposed) return;
+    this.backgroundConfigVisible.value = false;
+    this.status.value = this.#statusSummary();
+  }
+
+  /** Cycles one setting of the active background and persists it. */
+  cycleBackgroundSetting(settingId: string, direction = 1): void {
+    if (this.#disposed) return;
+    const id = this.backgroundId.peek();
+    const next = cycleExomuxBackgroundSetting(this.backgroundSettings.peek(), id, settingId, direction);
+    if (next === this.backgroundSettings.peek()) return;
+    this.backgroundSettings.value = next;
+    this.backgroundSettingsRevision.value += 1;
+    this.#persistMetadata();
+    const spec = (EXOMUX_BACKGROUND_SETTING_SPECS[id] ?? []).find((candidate) => candidate.id === settingId);
+    if (spec) this.status.value = `${spec.label}: ${spec.format(exomuxBackgroundSettingsFor(next, id)[settingId]!)}`;
+  }
+
+  /** Stores the image background's picture path and persists it. */
+  setBackgroundImagePath(path: string): void {
+    if (this.#disposed) return;
+    const next = withExomuxBackgroundString(this.backgroundSettings.peek(), "image", "path", path);
+    if (next === this.backgroundSettings.peek()) return;
+    this.backgroundSettings.value = next;
+    this.backgroundSettingsRevision.value += 1;
+    this.#persistMetadata();
+    this.status.value = `Background image: ${path}`;
   }
 
   /**
@@ -1509,6 +1591,7 @@ export class ExomuxController {
     this.backgroundId.value = restored.backgroundId;
     this.windowSettings.value = restored.windowSettings;
     this.globalSettings.value = restored.globalSettings;
+    this.backgroundSettings.value = restored.backgroundSettings;
     for (const [sessionId, settings] of Object.entries(restored.windowSettings)) {
       this.#applyWindowSettings(sessionId, settings);
     }
@@ -1759,6 +1842,7 @@ export class ExomuxController {
       sessionHosts,
       windowSettings,
       globalSettings: this.globalSettings.peek(),
+      backgroundSettings: this.backgroundSettings.peek(),
     });
   }
 

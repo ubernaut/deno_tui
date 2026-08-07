@@ -78,6 +78,8 @@ interface RecorderCandidate {
   readonly args: readonly string[];
   /** Flag this recorder uses to select a capture device. */
   readonly deviceFlag: string;
+  /** Extra arguments that point this recorder at the system output instead. */
+  readonly monitorArgs?: readonly string[];
 }
 
 const RECORDERS: readonly RecorderCandidate[] = Object.freeze([
@@ -85,11 +87,13 @@ const RECORDERS: readonly RecorderCandidate[] = Object.freeze([
     name: "parec",
     args: Object.freeze(["--format=s16le", `--rate=${SAMPLE_RATE}`, "--channels=1", "--latency-msec=30"]),
     deviceFlag: "-d",
+    monitorArgs: Object.freeze(["-d", "@DEFAULT_MONITOR@"]),
   }),
   Object.freeze({
     name: "pw-record",
     args: Object.freeze(["--format", "s16", "--rate", `${SAMPLE_RATE}`, "--channels", "1", "-"]),
     deviceFlag: "--target",
+    monitorArgs: Object.freeze(["-P", "stream.capture.sink=true"]),
   }),
   Object.freeze({
     name: "arecord",
@@ -157,7 +161,20 @@ function clamp01(value: number): number {
  * Creates an independent analyser with its own recorder process. Most callers
  * want `acquireExomuxAudio` instead, which shares one capture between fields.
  */
-export function createExomuxAudioSource(): ExomuxAudioSource {
+/** What the analyser should listen to. */
+export type ExomuxAudioCaptureMode = "mic" | "system" | "synth";
+
+export interface ExomuxAudioSourceOptions {
+  /**
+   * "mic" records the default input; "system" the monitor of the default
+   * output, so the field visualizes whatever is playing; "synth" spawns no
+   * recorder at all and runs on the generated signal.
+   */
+  readonly mode?: ExomuxAudioCaptureMode;
+}
+
+export function createExomuxAudioSource(options: ExomuxAudioSourceOptions = {}): ExomuxAudioSource {
+  const mode: ExomuxAudioCaptureMode = options.mode ?? "mic";
   const ring = new Float32Array(RING_SIZE);
   let ringWrite = 0;
   let totalSamples = 0;
@@ -232,10 +249,15 @@ export function createExomuxAudioSource(): ExomuxAudioSource {
     const device = configuredDevice();
     for (const candidate of RECORDERS) {
       if (closed) return;
+      // System mode uses each recorder's own way of reaching the output
+      // monitor; a recorder with none is skipped rather than silently
+      // recording the microphone instead.
+      if (mode === "system" && !candidate.monitorArgs && !device) continue;
+      const extra = device ? [candidate.deviceFlag, device] : mode === "system" ? [...candidate.monitorArgs!] : [];
       let process: Deno.ChildProcess;
       try {
         process = new Deno.Command(candidate.name, {
-          args: device ? [...candidate.args, candidate.deviceFlag, device] : [...candidate.args],
+          args: [...candidate.args, ...extra],
           stdin: "null",
           stdout: "piped",
           stderr: "null",
@@ -277,7 +299,7 @@ export function createExomuxAudioSource(): ExomuxAudioSource {
   // Attached here rather than in `close`: a recorder that fails before anything
   // releases the analyser would otherwise be an unhandled rejection, which
   // takes the desktop down over a missing audio device.
-  const capturing = startCapture().catch(() => {
+  const capturing = mode === "synth" ? Promise.resolve(source = "synth" as const) : startCapture().catch(() => {
     if (!closed) source = "synth";
   });
 
@@ -413,6 +435,7 @@ export function createExomuxAudioSource(): ExomuxAudioSource {
 }
 
 let sharedSource: ExomuxAudioSource | undefined;
+let sharedMode: ExomuxAudioCaptureMode = "mic";
 let sharedReaders = 0;
 
 /**
@@ -420,9 +443,13 @@ let sharedReaders = 0;
  * process; the process starts on the first acquire and is killed when the last
  * handle closes, so selecting a non-reactive background stops recording.
  */
-export function acquireExomuxAudio(): ExomuxAudioSource {
+export function acquireExomuxAudio(mode: ExomuxAudioCaptureMode = "mic"): ExomuxAudioSource {
+  // The shared capture keeps the mode of its first reader; a field wanting a
+  // different one gets it once the current capture's last reader releases,
+  // which is what happens when a field is rebuilt over a settings change.
+  if (!sharedSource) sharedMode = mode;
   sharedReaders += 1;
-  const shared = sharedSource ??= createExomuxAudioSource();
+  const shared = sharedSource ??= createExomuxAudioSource({ mode: sharedMode });
   let released = false;
   return {
     frame: (now) => shared.frame(now),

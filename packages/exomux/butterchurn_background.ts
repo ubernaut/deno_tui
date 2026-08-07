@@ -32,7 +32,12 @@ import type {
   ExomuxInteractiveBackground,
   ExomuxPresetBackground,
 } from "./background.ts";
-import { acquireExomuxAudio, type ExomuxAudioFrame, type ExomuxAudioSource } from "./audio.ts";
+import {
+  acquireExomuxAudio,
+  type ExomuxAudioCaptureMode,
+  type ExomuxAudioFrame,
+  type ExomuxAudioSource,
+} from "./audio.ts";
 import { EXOMUX_BUTTERCHURN_CATALOG, type ExomuxButterchurnPresetSource } from "./butterchurn_catalog.ts";
 import { type ExomuxButterchurnAudio, ExomuxButterchurnPreset } from "./butterchurn_preset.ts";
 import { ExomuxButterchurnGpu, requestExomuxGpuDevice } from "./butterchurn_gpu.ts";
@@ -262,6 +267,12 @@ export interface ExomuxButterchurnFieldOptions {
    * renderer, which is what tests use so frames stay reproducible.
    */
   readonly gpu?: boolean;
+  /** Seconds each preset holds before cycling; 0 holds the current one. */
+  readonly cycleSeconds?: number;
+  /** Frames per second the field advances at; timing scales around it. */
+  readonly updateHz?: number;
+  /** What the shared analyser listens to when this field owns the capture. */
+  readonly audioMode?: ExomuxAudioCaptureMode;
 }
 
 interface ButterchurnPointer {
@@ -312,6 +323,11 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
   #previous: ExomuxButterchurnPreset | undefined;
   #blend = 1;
   readonly #autoCycle: boolean;
+  /** Seconds each preset holds; 0 disables the timer like `autoCycle: false`. */
+  readonly #cycleSeconds: number;
+  /** Milliseconds between authored frames, from the configured update rate. */
+  readonly #frameMs: number;
+  readonly #audioMode: ExomuxAudioCaptureMode;
   #heldSeconds = 0;
 
   // GPU path. Presets keep rendering on the CPU until a device and the
@@ -379,6 +395,10 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
       ? ((requested % this.#catalog.length) + this.#catalog.length) % this.#catalog.length
       : 0;
     this.#autoCycle = options.autoCycle ?? true;
+    const cycle = finite(options.cycleSeconds, PRESET_HOLD_SECONDS);
+    this.#cycleSeconds = cycle > 0 ? clamp(cycle, 3, 3600) : 0;
+    this.#frameMs = 1000 / clamp(finite(options.updateHz, 1000 / FRAME_BASELINE_MS), 1, 240);
+    this.#audioMode = options.audioMode ?? "mic";
     this.#wantsGpu = options.gpu ?? true;
     this.#shuffleState = (this.#seed * 2_246_822_519 + 374_761_393) >>> 0;
     this.#preset = this.#load(this.#presetIndex);
@@ -569,7 +589,7 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
     if (!bounds) return false;
     const now = finite(options.now, performance.now());
     const elapsedMs = this.#lastFrameAt === undefined
-      ? FRAME_BASELINE_MS
+      ? this.#frameMs
       : Math.min(MAX_FRAME_DELTA_MS, Math.max(0, now - this.#lastFrameAt));
     this.#lastFrameAt = now;
     if (elapsedMs <= 0) return false;
@@ -579,7 +599,7 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
     if (this.#width === 0 || this.#height === 0) return false;
     this.#windows = options.solidObstacles ?? options.obstacles ?? [];
 
-    if (!this.#audio && this.#ownsAudio) this.#audio = acquireExomuxAudio();
+    if (!this.#audio && this.#ownsAudio) this.#audio = acquireExomuxAudio(this.#audioMode);
     const audio = this.#audio?.frame(now) ?? SILENCE;
     this.#audioLabel = this.#audio?.label() ?? "silent";
 
@@ -588,13 +608,13 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
     this.#advancePreset(dt);
 
     const input = this.#prepareAudio(audio, dt);
-    const fps = 1000 / FRAME_BASELINE_MS;
+    const fps = 1000 / this.#frameMs;
     this.#preset.advance(input, this.#time, this.#frame, fps);
     this.#previous?.advance(input, this.#time, this.#frame, fps);
 
     // Frames are 125 ms apart; scaling by the real delta keeps motion
     // rate-independent when the desktop stalls or the terminal resizes.
-    const frames = elapsedMs / FRAME_BASELINE_MS;
+    const frames = elapsedMs / this.#frameMs;
     if (!this.#renderOnGpu(input, audio, frames)) {
       this.#warpPass(frames);
       this.#drawWaves(audio, frames);
@@ -690,8 +710,9 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
     }
     if (!this.#autoCycle) return;
     this.#heldSeconds += dt;
-    if (this.#heldSeconds > PRESET_HOLD_SECONDS - PRESET_PREWARM_SECONDS) this.#prewarmNext();
-    if (this.#heldSeconds >= PRESET_HOLD_SECONDS) this.nextPreset();
+    if (this.#cycleSeconds === 0) return;
+    if (this.#heldSeconds > this.#cycleSeconds - PRESET_PREWARM_SECONDS) this.#prewarmNext();
+    if (this.#heldSeconds >= this.#cycleSeconds) this.nextPreset();
   }
 
   /** Compiles the preset after this one, spread across the frames before it. */
@@ -778,7 +799,7 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
 
     // Start the next preset compiling before it is needed, so a transition
     // does not begin with several frames of software rendering.
-    if (this.#autoCycle && this.#heldSeconds > PRESET_HOLD_SECONDS - PRESET_PREWARM_SECONDS) {
+    if (this.#autoCycle && this.#cycleSeconds > 0 && this.#heldSeconds > this.#cycleSeconds - PRESET_PREWARM_SECONDS) {
       const next = this.#catalog[(this.#presetIndex + 1) % this.#catalog.length]!;
       if (this.#gpuPresets.get(next.name) !== false) gpu.prepare(next);
     }
@@ -801,12 +822,12 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
       q: this.#q,
       time: this.#time,
       frame: this.#frame,
-      fps: 1000 / FRAME_BASELINE_MS,
+      fps: 1000 / this.#frameMs,
       // Re-based from the 30 fps the catalog was authored against onto this
       // frame's length, exactly as the software path does. Passed raw, a decay
       // of 0.98 retains 85% of the frame after a second here instead of 54%,
       // and the presets that lean on it to stay bounded never come back down.
-      decay: Math.pow(clamp(values.decay, 0, MAX_DECAY), (AUTHORED_FPS / (1000 / FRAME_BASELINE_MS)) * frames),
+      decay: Math.pow(clamp(values.decay, 0, MAX_DECAY), (AUTHORED_FPS / (1000 / this.#frameMs)) * frames),
       bass: input.bass,
       mid: input.mid,
       treb: input.treb,
@@ -824,7 +845,7 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
     // Falling back to the software renderer keeps the background alive.
     if (gpu.readbacks === this.#gpuReadbacks) {
       this.#gpuStall += 1;
-      if (this.#gpuStall > GPU_STALL_FRAMES || gpu.lost) {
+      if (this.#gpuStall > Math.max(GPU_STALL_FRAMES, Math.round(1500 / this.#frameMs)) || gpu.lost) {
         this.#gpu = undefined;
         this.#gpuState = "unavailable";
         gpu.destroy();
@@ -859,7 +880,9 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
    * pass over the field and reflects whichever renderer produced it.
    */
   #skipDeadPreset(): void {
-    if (!this.#autoCycle) return;
+    // Hold means hold: a preset the user pinned stays put even when it renders
+    // nothing, because leaving it is exactly what they turned off.
+    if (!this.#autoCycle || this.#cycleSeconds === 0) return;
     const ink = this.#ink;
     const cells = this.#width * this.#height;
     if (cells === 0) return;
@@ -881,7 +904,7 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
       return;
     }
     this.#deadFrames += 1;
-    if (this.#deadFrames >= DEAD_PRESET_FRAMES) this.nextPreset();
+    if (this.#deadFrames >= Math.max(DEAD_PRESET_FRAMES, Math.round(1000 / this.#frameMs))) this.nextPreset();
   }
 
   /** Copies a resolved GPU frame into the ink buffer the rasterizer reads. */
@@ -917,7 +940,7 @@ export class ExomuxButterchurnField implements ExomuxPresetBackground, ExomuxInt
     const governor = this.#meanInk > TARGET_MEAN_INK ? TARGET_MEAN_INK / this.#meanInk : 1;
     const decay = Math.pow(
       clamp(preset.values.decay, 0, MAX_DECAY) * governor,
-      (AUTHORED_FPS / (1000 / FRAME_BASELINE_MS)) * frames,
+      (AUTHORED_FPS / (1000 / this.#frameMs)) * frames,
     );
 
     const source = this.#ink;
