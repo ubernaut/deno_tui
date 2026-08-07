@@ -2335,6 +2335,51 @@ function exomuxBackdropColor(cell: ExomuxBackgroundCell | undefined, theme: Exom
 /** Reads the desktop background colour behind one absolute desktop cell. */
 type ExomuxBackdrop = (column: number, row: number) => ExomuxRgb;
 
+/** Resolves a window cell's ground: its surface, or the desktop showing through. */
+type ExomuxGround = (column: number, row: number) => ExomuxRgb;
+
+/**
+ * Ground for a window body at a given opacity.
+ *
+ * The sessions and network panels used to fill their body with `theme.surface`
+ * unconditionally, so they stayed opaque at every opacity setting while the
+ * terminals around them went see-through.
+ */
+function exomuxWindowGround(theme: ExomuxThemeSpec, opacity: number, backdrop?: ExomuxBackdrop): ExomuxGround {
+  if (!backdrop || opacity >= 1) return () => theme.surface;
+  return (column, row) => mixExomuxRgb(backdrop(column, row), theme.surface, opacity);
+}
+
+/** Writes text cell by cell so each one keeps its own blended ground. */
+function writeOnGround(
+  painter: DesktopPainter,
+  column: number,
+  row: number,
+  text: string,
+  style: { foreground: ExomuxRgb; bold?: boolean },
+  ground: ExomuxGround,
+): void {
+  const glyphs = [...text];
+  for (let index = 0; index < glyphs.length; index += 1) {
+    painter.write(column + index, row, glyphs[index]!, {
+      foreground: style.foreground,
+      background: ground(column + index, row),
+      bold: style.bold,
+    });
+  }
+}
+
+/** Fills a rect cell by cell so each one can take its own blended ground. */
+function fillWithGround(painter: DesktopPainter, rect: Rectangle, theme: ExomuxThemeSpec, ground: ExomuxGround): void {
+  for (let row = 0; row < rect.height; row += 1) {
+    for (let column = 0; column < rect.width; column += 1) {
+      const x = rect.column + column;
+      const y = rect.row + row;
+      painter.write(x, y, " ", { foreground: theme.text, background: ground(x, y) });
+    }
+  }
+}
+
 /**
  * A background that can say which renderer and audio source it is using.
  *
@@ -2641,13 +2686,18 @@ function paintWindow(
       bold: danger || window.active,
     });
   }
-  painter.fill(window.clientRect, " ", { foreground: theme.text, background: theme.surface });
+  // These two carry no per-window override of their own, so they follow the
+  // desktop setting.
+  const panelOpacity = exomuxResolvedOpacity(controller.globalSettings.peek());
+  const ground = exomuxWindowGround(theme, panelOpacity, backdrop);
+  if (panelOpacity < 1 && backdrop) fillWithGround(painter, window.clientRect, theme, ground);
+  else painter.fill(window.clientRect, " ", { foreground: theme.text, background: theme.surface });
   if (window.id === EXOMUX_SESSIONS_WINDOW_ID) {
-    paintSessionManager(painter, window.clientRect, controller, selectedSessionIndex, window.active);
+    paintSessionManager(painter, window.clientRect, controller, selectedSessionIndex, window.active, ground);
     return;
   }
   if (window.id === EXOMUX_NETWORK_WINDOW_ID) {
-    paintNetworkPanel(painter, window.clientRect, controller, window.active);
+    paintNetworkPanel(painter, window.clientRect, controller, window.active, ground);
     return;
   }
   if (runtime && sessionId) {
@@ -2670,16 +2720,16 @@ function paintNetworkPanel(
   rect: Rectangle,
   controller: ExomuxController,
   active: boolean,
+  ground: ExomuxGround = () => controller.theme.peek().surface,
 ): void {
   const theme = controller.theme.peek();
-  painter.write(
+  writeOnGround(
+    painter,
     rect.column + 1,
     rect.row,
     fitText("Enter open · ←/→ fold · Del forget · r refresh", Math.max(0, rect.width - 2)),
-    {
-      foreground: theme.muted,
-      background: theme.surface,
-    },
+    { foreground: theme.muted },
+    ground,
   );
   const tree = controller.networkTree;
   const height = Math.max(0, rect.height - NETWORK_LIST_START);
@@ -2721,30 +2771,28 @@ function paintSessionManager(
   controller: ExomuxController,
   selectedSessionIndex: number,
   active: boolean,
+  ground: ExomuxGround = () => controller.theme.peek().surface,
 ): void {
   const theme = controller.theme.peek();
   // Both header lines clamp to the window so a narrow session panel never spills
   // text past its border.
   const headerWidth = Math.max(0, rect.width - 2);
-  painter.write(rect.column + 1, rect.row, fitText("Detached host sessions", headerWidth), {
+  writeOnGround(painter, rect.column + 1, rect.row, fitText("Detached host sessions", headerWidth), {
     foreground: theme.accent,
-    background: theme.surface,
     bold: true,
-  });
-  painter.write(rect.column + 1, rect.row + 1, fitText("Enter attach | Del kill", headerWidth), {
+  }, ground);
+  writeOnGround(painter, rect.column + 1, rect.row + 1, fitText("Enter attach | Del kill", headerWidth), {
     foreground: theme.muted,
-    background: theme.surface,
-  });
+  }, ground);
   const sessions = controller.sessions.peek();
   if (sessions.length === 0) {
-    painter.write(
+    writeOnGround(
+      painter,
       rect.column + 1,
       rect.row + SESSION_LIST_START,
       fitText("No terminals. Ctrl-N c creates one.", headerWidth),
-      {
-        foreground: theme.muted,
-        background: theme.surface,
-      },
+      { foreground: theme.muted },
+      ground,
     );
     return;
   }
@@ -2760,24 +2808,21 @@ function paintSessionManager(
     const attached = runtime?.attached.peek() ?? false;
     const status = session.running ? (attached ? "LIVE" : "HOLD") : session.status.toUpperCase();
     const row = rect.row + SESSION_LIST_START + visibleIndex;
-    painter.fill({ column: rect.column, row, width: rect.width, height: 1 }, " ", {
-      foreground: isSelected ? theme.background : session.running ? theme.text : theme.muted,
-      background: isSelected ? theme.accent : theme.surface,
-      bold: isSelected,
-    });
-    painter.write(
-      rect.column + 1,
-      row,
-      fitText(
-        `${isSelected ? ">" : " "} [${status}] ${session.title} :: ${session.commandLine}`,
-        Math.max(0, rect.width - 2),
-      ),
-      {
-        foreground: isSelected ? theme.background : session.running ? theme.text : theme.muted,
-        background: isSelected ? theme.accent : theme.surface,
-        bold: isSelected,
-      },
+    const rowRect = { column: rect.column, row, width: rect.width, height: 1 };
+    const foreground = isSelected ? theme.background : session.running ? theme.text : theme.muted;
+    const label = fitText(
+      `${isSelected ? ">" : " "} [${status}] ${session.title} :: ${session.commandLine}`,
+      Math.max(0, rect.width - 2),
     );
+    // The selected row is a deliberate block of colour and stays opaque; the
+    // rest take the window ground, so the desktop shows through them.
+    if (isSelected) {
+      painter.fill(rowRect, " ", { foreground, background: theme.accent, bold: true });
+      painter.write(rect.column + 1, row, label, { foreground, background: theme.accent, bold: true });
+    } else {
+      fillWithGround(painter, rowRect, theme, ground);
+      writeOnGround(painter, rect.column + 1, row, label, { foreground }, ground);
+    }
   }
 }
 
