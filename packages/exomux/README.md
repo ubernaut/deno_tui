@@ -64,6 +64,11 @@ completed their readbacks, so the stall watchdog never fired and the desktop sat
 for the largest target the device will really give, fits the render size under it at the desktop's aspect, and returns
 nothing at all if even the smallest fails — which leaves the software renderer running instead of a black screen.
 
+**Compiled pipelines are kept for six presets only.** One entry is two render pipelines and the shader modules behind
+them, and the rotation visits 289 presets; cached without a bound, a long session accumulated all of them and exhausted
+the driver — for the whole machine, not just this process, so nothing else could obtain a device until exomux was
+restarted. Eviction costs a recompile, which happens off the main thread three seconds before the switch anyway.
+
 Bind group layouts are declared rather than derived. `layout: "auto"` builds a layout from the bindings the shader is
 seen to reach and prunes the rest, so a preset declaring a sampler it never gets to produced a group with more entries
 than its layout — invalid, cached, and therefore broken for every later frame of that preset.

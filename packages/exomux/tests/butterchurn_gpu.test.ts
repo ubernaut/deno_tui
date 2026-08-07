@@ -281,3 +281,59 @@ Deno.test("butterchurn gpu: a device that can allocate nothing yields no rendere
   const gpu = await ExomuxButterchurnGpu.create(stubDevice(counts, 0), { width: 220, height: 55, random: () => 0.5 });
   assertEquals(gpu, undefined);
 });
+
+Deno.test("butterchurn gpu: cycling the whole rotation does not accumulate pipelines", async () => {
+  // Pipelines and their bind groups were cached per preset and never dropped.
+  // One entry is two render pipelines plus the shader modules behind them, and
+  // the rotation visits 289 presets, so a long session eventually exhausted the
+  // driver — the whole GPU, not just this process, leaving nothing able to get
+  // a device until exomux was restarted.
+  const counts = emptyCounts();
+  const gpu = new ExomuxButterchurnGpu(stubDevice(counts), { width: 80, height: 24, random: () => 0.5 });
+  const waveform = new Float32Array(256);
+  const q = new Float32Array(32);
+  const visited = EXOMUX_BUTTERCHURN_CATALOG.slice(0, 60);
+  for (const entry of visited) {
+    for (let attempt = 0; attempt < 50 && gpu.prepare(entry.name, entry.warp, entry.comp) === "pending"; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    if (gpu.prepare(entry.name, entry.warp, entry.comp) !== "ready") continue;
+    const preset = new ExomuxButterchurnPreset(entry, { random: () => 0.5 });
+    preset.setSize(80, 24);
+    preset.advance({ bass: 1, mid: 1, treb: 1, bassAttack: 1, midAttack: 1, trebleAttack: 1, waveform }, 0, 0, 8);
+    gpu.render(entry.name, {
+      mesh: preset.mesh,
+      meshWidth: preset.meshWidth,
+      meshHeight: preset.meshHeight,
+      wave: preset.wave,
+      waveCount: preset.waveCount,
+      waveColor: [1, 1, 1, 1],
+      q,
+      time: 0,
+      frame: 0,
+      fps: 8,
+      decay: 0.95,
+      bass: 1,
+      mid: 1,
+      treb: 1,
+      bassAttack: 1,
+      midAttack: 1,
+      trebleAttack: 1,
+      aspectX: 1,
+      aspectY: 1,
+    });
+  }
+  assert(
+    gpu.cachedPresets <= 8,
+    `${gpu.cachedPresets} presets still cached after visiting ${visited.length}`,
+  );
+  // Eviction has to actually have happened, or the bound above proves nothing:
+  // the first preset visited should need recompiling to come back.
+  const first = visited[0]!;
+  assertEquals(
+    gpu.prepare(first.name, first.warp, first.comp),
+    "pending",
+    "the earliest preset should have been evicted, not still resident",
+  );
+  gpu.destroy();
+});

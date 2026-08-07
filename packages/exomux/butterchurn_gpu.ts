@@ -38,6 +38,15 @@ const MIN_RENDER_WIDTH = 64;
  * allocates becomes the ceiling every render target is fitted under.
  */
 const BUDGET_LADDER = [512 * 512, 512 * 256, 512 * 128, 256 * 128, 256 * 64, 128 * 64];
+/**
+ * Presets whose compiled pipelines are kept.
+ *
+ * Enough for the one on screen, the one being prewarmed, and a few steps back
+ * through the rotation, which is as far as anyone goes with `Ctrl-N [`.
+ * Evicting costs a recompile, and compiling happens off the main thread three
+ * seconds ahead of the switch.
+ */
+const MAX_CACHED_PRESETS = 6;
 /** Feedback format. Half floats keep highlights from clipping between passes. */
 const MAIN_FORMAT: GPUTextureFormat = "rgba16float";
 /** Uniform block, as vec4 slots; see `UNIFORM_SLOTS` for the layout. */
@@ -363,8 +372,14 @@ export class ExomuxButterchurnGpu {
    * producing frames — which showed up as the background freezing.
    */
   readonly #views = new WeakMap<GPUTexture, Map<string, GPUTextureView>>();
-  /** Bind groups, cached by the resources they point at. Cleared on resize. */
-  readonly #bindGroups = new Map<string, GPUBindGroup>();
+  /**
+   * Bind groups per preset, cached by the resources they point at. Nested by
+   * preset name so a preset's groups can be dropped with its pipelines, and
+   * because a preset name may itself contain the key separator.
+   */
+  readonly #bindGroups = new Map<string, Map<string, GPUBindGroup>>();
+  /** Blur and resolve groups: a fixed handful, not tied to any preset. */
+  readonly #utilityGroups = new Map<string, GPUBindGroup>();
   /** Bind group layouts, cached by the sampler list they describe. */
   readonly #presetLayouts = new Map<string, GPUBindGroupLayout>();
 
@@ -379,7 +394,18 @@ export class ExomuxButterchurnGpu {
   readonly #resolvePipeline: GPURenderPipeline;
   readonly #utilityLayout: GPUBindGroupLayout;
 
-  readonly #pipelines = new Map<string, PresetPipelines | null>();
+  /**
+   * Compiled pipelines, most recently used last.
+   *
+   * Bounded, because it is not a cache of cheap things: each entry holds two
+   * render pipelines and the shader modules behind them, and the rotation
+   * visits 289 presets. Left unbounded, a long session accumulated every one
+   * of them and eventually exhausted the driver — the whole GPU, not just this
+   * process, so nothing else could get a device either.
+   */
+  readonly #pipelines = new Map<string, PresetPipelines>();
+  /** Presets whose shaders will not compile. Cheap, so remembered for good. */
+  readonly #failed = new Set<string>();
   /** Presets whose pipelines are still being built, so work is not duplicated. */
   readonly #compiling = new Set<string>();
   #meshBuffer: GPUBuffer | undefined;
@@ -501,6 +527,11 @@ export class ExomuxButterchurnGpu {
     return this.#lost;
   }
 
+  /** Presets whose compiled pipelines are currently held. Bounded; see the cache. */
+  get cachedPresets(): number {
+    return this.#pipelines.size;
+  }
+
   setSize(width: number, height: number): void {
     const nextWidth = Math.max(1, width);
     const nextHeight = Math.max(1, height);
@@ -532,6 +563,7 @@ export class ExomuxButterchurnGpu {
     this.#readbackBytesPerRow = alignBytesPerRow(this.#width * 4);
     this.#readback = this.#createReadback();
     this.#bindGroups.clear();
+    this.#utilityGroups.clear();
     this.#latest = undefined;
   }
 
@@ -547,23 +579,42 @@ export class ExomuxButterchurnGpu {
    * every frame; the caller renders it on the CPU instead.
    */
   prepare(name: string, warpSource: string, compSource: string): "ready" | "pending" | "failed" {
+    if (this.#failed.has(name)) return "failed";
     const cached = this.#pipelines.get(name);
-    if (cached !== undefined) return cached === null ? "failed" : "ready";
+    if (cached) {
+      // Re-inserting moves it to the end, which is what makes the map an LRU.
+      this.#pipelines.delete(name);
+      this.#pipelines.set(name, cached);
+      return "ready";
+    }
     if (this.#compiling.has(name)) return "pending";
     this.#compiling.add(name);
     this.#compileAsync(warpSource, compSource)
       .then((pipelines) => {
         this.#pipelines.set(name, pipelines);
+        this.#evict();
       })
       .catch(() => {
         // Either the GLSL used something unsupported, the generated WGSL was
         // rejected, or the device is gone; all mean the CPU path for this one.
-        this.#pipelines.set(name, null);
+        this.#failed.add(name);
       })
       .finally(() => {
         this.#compiling.delete(name);
       });
     return "pending";
+  }
+
+  /** Drops the least recently used presets once the cache is over its bound. */
+  #evict(): void {
+    while (this.#pipelines.size > MAX_CACHED_PRESETS) {
+      const oldest = this.#pipelines.keys().next().value;
+      if (oldest === undefined) return;
+      this.#pipelines.delete(oldest);
+      // The groups point at that preset's pipelines; keeping them would defeat
+      // the eviction and leave them pointing at layouts nothing else uses.
+      this.#bindGroups.delete(oldest);
+    }
   }
 
   /** Renders one frame and queues the resolved result for readback. */
@@ -593,7 +644,7 @@ export class ExomuxButterchurnGpu {
     warpPass.setPipeline(pipelines.warp);
     warpPass.setBindGroup(
       0,
-      this.#presetBindGroup(`${name}:warp:${this.#mainIndex}`, pipelines.warpSamplers, source),
+      this.#presetBindGroup(name, `warp:${this.#mainIndex}`, pipelines.warpSamplers, source),
     );
     warpPass.setVertexBuffer(0, this.#meshBuffer!);
     warpPass.draw(this.#meshVertices);
@@ -630,7 +681,7 @@ export class ExomuxButterchurnGpu {
     compPass.setPipeline(pipelines.comp);
     compPass.setBindGroup(
       0,
-      this.#presetBindGroup(`${name}:comp:${1 - this.#mainIndex}`, pipelines.compSamplers, target),
+      this.#presetBindGroup(name, `comp:${1 - this.#mainIndex}`, pipelines.compSamplers, target),
     );
     compPass.draw(3);
     compPass.end();
@@ -776,11 +827,17 @@ export class ExomuxButterchurnGpu {
   }
 
   #presetBindGroup(
+    preset: string,
     key: string,
     samplers: readonly string[],
     main: GPUTexture,
   ): GPUBindGroup {
-    const cached = this.#bindGroups.get(key);
+    let groups = this.#bindGroups.get(preset);
+    if (!groups) {
+      groups = new Map();
+      this.#bindGroups.set(preset, groups);
+    }
+    const cached = groups.get(key);
     if (cached) return cached;
     const entries: GPUBindGroupEntry[] = [{ binding: 0, resource: { buffer: this.#uniform } }];
     samplers.forEach((name, index) => {
@@ -795,7 +852,7 @@ export class ExomuxButterchurnGpu {
       });
     });
     const group = this.#device.createBindGroup({ layout: this.#presetLayout(samplers), entries });
-    this.#bindGroups.set(key, group);
+    groups.set(key, group);
     return group;
   }
 
@@ -817,7 +874,7 @@ export class ExomuxButterchurnGpu {
 
   /** Cached bind group for the blur and resolve passes. */
   #utilityBindGroup(key: string, input: GPUTexture, sampler: GPUSampler, buffer: GPUBuffer): GPUBindGroup {
-    const cached = this.#bindGroups.get(key);
+    const cached = this.#utilityGroups.get(key);
     if (cached) return cached;
     const group = this.#device.createBindGroup({
       layout: this.#utilityLayout,
@@ -827,7 +884,7 @@ export class ExomuxButterchurnGpu {
         { binding: 2, resource: { buffer } },
       ],
     });
-    this.#bindGroups.set(key, group);
+    this.#utilityGroups.set(key, group);
     return group;
   }
 
