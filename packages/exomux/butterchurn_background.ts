@@ -34,7 +34,6 @@ import type {
 } from "./background.ts";
 import { acquireExomuxAudio, type ExomuxAudioFrame, type ExomuxAudioSource } from "./audio.ts";
 import { EXOMUX_BUTTERCHURN_CATALOG, type ExomuxButterchurnPresetSource } from "./butterchurn_catalog.ts";
-import { EXOMUX_BUTTERCHURN_ROTATION } from "./butterchurn_rotation.ts";
 import { type ExomuxButterchurnAudio, ExomuxButterchurnPreset } from "./butterchurn_preset.ts";
 import { ExomuxButterchurnGpu, requestExomuxGpuDevice } from "./butterchurn_gpu.ts";
 import type { ExomuxRgb, ExomuxThemeSpec } from "./model.ts";
