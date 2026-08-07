@@ -15,6 +15,7 @@
 // more.
 
 let pending: Promise<GPUDevice | undefined> | undefined;
+let current: GPUDevice | undefined;
 
 /**
  * The shared device, requested once and reused.
@@ -29,12 +30,15 @@ export function exomuxGpuDevice(): Promise<GPUDevice | undefined> {
       const adapter = await navigator.gpu?.requestAdapter();
       if (!adapter) return undefined;
       const device = await adapter.requestDevice();
+      current = device;
       // A lost device must not stay cached, or every later caller is handed a
       // corpse and there is no way back short of restarting the client.
       device.lost.then(() => {
         pending = undefined;
+        current = undefined;
       }).catch(() => {
         pending = undefined;
+        current = undefined;
       });
       return device;
     } catch {
@@ -47,4 +51,25 @@ export function exomuxGpuDevice(): Promise<GPUDevice | undefined> {
 /** Forgets the cached device, so the next caller requests a fresh one. */
 export function resetExomuxGpuDevice(): void {
   pending = undefined;
+}
+
+/**
+ * Destroys the shared device outright, freeing everything it owns.
+ *
+ * Called on client shutdown. Process exit is supposed to make this redundant,
+ * but a teardown that hangs before `Deno.exit` leaves the client alive and
+ * animating with the device held — the machine's one WebGPU seat, invisible
+ * to anyone grepping for a process that looks stuck. `GPUDevice.destroy()` is
+ * immediate and unconditional, so calling it here makes quit release the GPU
+ * even when the rest of shutdown goes wrong.
+ */
+export function destroyExomuxGpuDevice(): void {
+  const device = current;
+  pending = undefined;
+  current = undefined;
+  try {
+    device?.destroy();
+  } catch {
+    // A device that is already lost has nothing left to destroy.
+  }
 }

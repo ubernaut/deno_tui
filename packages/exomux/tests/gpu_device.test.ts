@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "./deps.ts";
-import { exomuxGpuDevice, resetExomuxGpuDevice } from "../gpu_device.ts";
+import { destroyExomuxGpuDevice, exomuxGpuDevice, resetExomuxGpuDevice } from "../gpu_device.ts";
 import { requestExomuxGpuDevice } from "../butterchurn_gpu.ts";
 
 Deno.test("gpu device: every consumer shares one device", async () => {
@@ -35,4 +35,19 @@ Deno.test("gpu device: resetting lets the next caller request a fresh one", asyn
   const after = await exomuxGpuDevice();
   assert(after === undefined || after !== null);
   void before;
+});
+
+Deno.test("gpu device: destroy releases the device and forgets the cache", async () => {
+  // Quit must free the GPU even when the rest of shutdown hangs: a client
+  // that lingers past a wedged teardown holds the machine's one WebGPU seat.
+  const device = await exomuxGpuDevice();
+  if (!device) return; // No adapter in this environment; nothing to verify.
+  destroyExomuxGpuDevice();
+  // A fresh request after destroy must not hand back the destroyed device.
+  const next = await exomuxGpuDevice();
+  if (next) {
+    // Same-process re-acquisition worked; the destroyed one must be gone.
+    assert(next !== device, "the destroyed device must not be re-served");
+  }
+  destroyExomuxGpuDevice();
 });

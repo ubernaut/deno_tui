@@ -149,7 +149,10 @@ function bindAwaitedExomuxClientShutdown(runtime: ExomuxTerminalAppRuntime): voi
   const requestShutdown = () => {
     shutdown ??= (async () => {
       removeSignals();
-      await runtime.destroy();
+      // Bounded: teardown that hangs — a host handshake, a wedged PTY — must
+      // not leave the client alive and animating. Whatever happens, quit quits.
+      const deadline = new Promise<void>((resolve) => setTimeout(resolve, 3000));
+      await Promise.race([runtime.destroy(), deadline]);
       Deno.exit(0);
     })();
     void shutdown;

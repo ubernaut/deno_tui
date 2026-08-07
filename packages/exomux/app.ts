@@ -86,6 +86,7 @@ import {
 import { ExomuxBiomechField } from "./biomech_background.ts";
 import { EXOMUX_BUTTERCHURN_PRESETS, ExomuxButterchurnField } from "./butterchurn_background.ts";
 import { ExomuxImageField } from "./image_background.ts";
+import { destroyExomuxGpuDevice } from "./gpu_device.ts";
 import { ExomuxCircuitField } from "./circuit_background.ts";
 import { ExomuxJungleField } from "./jungle_background.ts";
 import { ExomuxMatrixRainField } from "./matrix_background.ts";
@@ -842,6 +843,19 @@ export function mountExomuxDesktop(
   controller.backgroundSettingsRevision.subscribe(retimeBackground, subscriptions.signal);
   controller.backgroundId.subscribe(retimeBackground, subscriptions.signal);
   unsubscribers.push(() => clearInterval(metaballTimer));
+  // Client teardown releases the GPU deterministically: every field with a
+  // device-side renderer or a recorder child is disposed, then the shared
+  // device itself is destroyed. Relying on process exit is not enough — a
+  // shutdown that hangs before `Deno.exit` leaves a live render loop holding
+  // the machine's only WebGPU seat.
+  unsubscribers.push(() => {
+    releaseExomuxIdleBackgrounds(backgroundFields);
+    for (const [id, field] of backgroundFields) {
+      (field as { dispose?: () => void }).dispose?.();
+      backgroundFields.delete(id);
+    }
+    destroyExomuxGpuDevice();
+  });
 
   const renderRevision = own(
     new Computed(() => {
